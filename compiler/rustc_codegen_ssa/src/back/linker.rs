@@ -1489,6 +1489,10 @@ impl<'a> Linker for BpfLinker<'a> {
             Some(ref s) => s,
             None => &self.sess.target.options.cpu,
         });
+        self.cmd.arg("--cpu-features").arg(match &self.sess.opts.cg.target_feature {
+            feat if !feat.is_empty() => feat,
+            _ => &self.sess.target.options.features,
+        });
     }
 
     fn link_dylib(&mut self, _lib: Symbol, _verbatim: bool, _as_needed: bool) {
