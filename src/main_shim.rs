@@ -1,6 +1,9 @@
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_hir::LangItem;
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::AssocKind;
 use rustc_session::config::EntryFnType;
+use rustc_span::symbol::Ident;
 
 use crate::prelude::*;
 
@@ -79,8 +82,38 @@ pub(crate) fn maybe_create_entry_wrapper(
             let result = if is_main_fn && ignore_lang_start_wrapper {
                 // regular main fn, but ignoring #[lang = "start"] as we are running in the jit
                 // FIXME set program arguments somehow
-                bcx.ins().call(main_func_ref, &[]);
-                bcx.ins().iconst(m.target_config().pointer_type(), 0)
+                let call_inst = bcx.ins().call(main_func_ref, &[]);
+                let call_results = bcx.func.dfg.inst_results(call_inst).to_owned();
+
+                let termination_trait = tcx.require_lang_item(LangItem::Termination, None);
+                let report = tcx
+                    .associated_items(termination_trait)
+                    .find_by_name_and_kind(
+                        tcx,
+                        Ident::from_str("report"),
+                        AssocKind::Fn,
+                        termination_trait,
+                    )
+                    .unwrap();
+                let report = Instance::resolve(
+                    tcx,
+                    ParamEnv::reveal_all(),
+                    report.def_id,
+                    tcx.mk_substs([GenericArg::from(main_ret_ty)].iter()),
+                )
+                .unwrap()
+                .unwrap();
+
+                let report_name = tcx.symbol_name(report).name;
+                let report_sig = get_function_sig(tcx, m.isa().triple(), report);
+                let report_func_id =
+                    m.declare_function(report_name, Linkage::Import, &report_sig).unwrap();
+                let report_func_ref = m.declare_func_in_func(report_func_id, &mut bcx.func);
+
+                // FIXME do proper abi handling instead of expecting the pass mode to be identical
+                // for returns and arguments.
+                let report_call_inst = bcx.ins().call(report_func_ref, &call_results);
+                bcx.func.dfg.inst_results(report_call_inst)[0]
             } else if is_main_fn {
                 let start_def_id = tcx.require_lang_item(LangItem::Start, None);
                 let start_instance = Instance::resolve(
