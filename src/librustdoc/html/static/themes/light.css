@@ -215,7 +215,8 @@ details.rustdoc-toggle > summary::before {
 	box-shadow: 0 0 8px #078dd8;
 }
 
-.module-item .stab {
+.module-item .stab,
+.import-item .stab {
 	color: #000;
 }
 
