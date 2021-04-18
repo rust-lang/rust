@@ -969,6 +969,15 @@ window.initSearch = function(rawSearchIndex) {
                 if (actives[currentTab].length) {
                     document.location.href =
                         actives[currentTab][0].getElementsByTagName("a")[0].href;
+                } else {
+                    var results = document.getElementById("results").childNodes;
+                    if (results.length > 0) {
+                        var res = results[currentTab].getElementsByClassName("result");
+                        if (res.length > 0) {
+                            document.location.href =
+                                res[0].getElementsByTagName("a")[0].href;
+                        }
+                    }
                 }
             } else if (e.which === 16) { // shift
                 // Does nothing, it's just to avoid losing "focus" on the highlighted element.
