@@ -90,6 +90,13 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "edition2021",
 ];
 
+fn is_rustdoc_fence_token(token: &str) -> bool {
+    if RUSTDOC_FENCE_TOKENS.contains(&token) {
+        return true;
+    }
+    token.starts_with('E') && token.len() == 5 && token[1..].parse::<u32>().is_ok()
+}
+
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(
     hl: &mut Highlights,
@@ -174,8 +181,7 @@ pub(super) fn doc_comment(
                     is_codeblock = !is_codeblock;
                     // Check whether code is rust by inspecting fence guards
                     let guards = &line[idx + RUSTDOC_FENCE.len()..];
-                    let is_rust =
-                        guards.split(',').all(|sub| RUSTDOC_FENCE_TOKENS.contains(&sub.trim()));
+                    let is_rust = guards.split(',').all(|sub| is_rustdoc_fence_token(sub.trim()));
                     is_doctest = is_codeblock && is_rust;
                     continue;
                 }
