@@ -1053,50 +1053,48 @@ fn generic_simd_intrinsic(
         let vec_ty = bx.type_vector(elem_ty, in_len);
 
         let (intr_name, fn_ty) = match name {
-            sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_flog2 => ("log2", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
             sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
             sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
-            sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
+            sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
             _ => return_error!("unrecognized intrinsic `{}`", name),
         };
-
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
         let f = bx.declare_cfn(&llvm_name, llvm::UnnamedAddr::No, fn_ty);
         let c = bx.call(f, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
-        unsafe { llvm::LLVMRustSetHasUnsafeAlgebra(c) };
         Ok(c)
     }
 
     if std::matches!(
         name,
-        sym::simd_fsqrt
-            | sym::simd_fsin
-            | sym::simd_fcos
+        sym::simd_ceil
             | sym::simd_fabs
-            | sym::simd_ceil
-            | sym::simd_floor
-            | sym::simd_round
-            | sym::simd_trunc
-            | sym::simd_fexp
+            | sym::simd_fcos
             | sym::simd_fexp2
+            | sym::simd_fexp
             | sym::simd_flog10
             | sym::simd_flog2
             | sym::simd_flog
-            | sym::simd_fpowi
-            | sym::simd_fpow
+            | sym::simd_floor
             | sym::simd_fma
+            | sym::simd_fpow
+            | sym::simd_fpowi
+            | sym::simd_fsin
+            | sym::simd_fsqrt
+            | sym::simd_round
+            | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
     }
