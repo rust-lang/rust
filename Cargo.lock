@@ -396,6 +396,7 @@ dependencies = [
  "crossbeam-channel",
  "jod-thread",
  "log",
+ "serde",
  "serde_json",
  "stdx",
  "toolchain",
