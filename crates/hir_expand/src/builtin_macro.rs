@@ -110,6 +110,7 @@ register_builtin! {
     (format_args_nl, FormatArgsNl) => format_args_expand,
     (llvm_asm, LlvmAsm) => asm_expand,
     (asm, Asm) => asm_expand,
+    (global_asm, GlobalAsm) => global_asm_expand,
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
@@ -272,6 +273,15 @@ fn asm_expand(
         ()
     };
     ExpandResult::ok(expanded)
+}
+
+fn global_asm_expand(
+    _db: &dyn AstDatabase,
+    _id: LazyMacroId,
+    _tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    // Expand to nothing (at item-level)
+    ExpandResult::ok(quote! {})
 }
 
 fn cfg_expand(
