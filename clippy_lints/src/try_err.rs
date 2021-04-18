@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, in_macro, is_lang_ctor, match_def_path, paths};
+use clippy_utils::{differing_macro_contexts, get_parent_expr, in_macro, is_lang_ctor, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
@@ -102,10 +102,15 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 } else {
                     snippet(cx, err_arg.span, "_")
                 };
-                let suggestion = if err_ty == expr_err_ty {
-                    format!("return {}{}{}", prefix, origin_snippet, suffix)
+                let ret_prefix = if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::Ret(_))) {
+                    "" // already returns
                 } else {
-                    format!("return {}{}.into(){}", prefix, origin_snippet, suffix)
+                    "return "
+                };
+                let suggestion = if err_ty == expr_err_ty {
+                    format!("{}{}{}{}", ret_prefix, prefix, origin_snippet, suffix)
+                } else {
+                    format!("{}{}{}.into(){}", ret_prefix, prefix, origin_snippet, suffix)
                 };
 
                 span_lint_and_sugg(
