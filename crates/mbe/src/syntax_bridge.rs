@@ -213,7 +213,7 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
 
     // Quote the string
     // Note that `tt::Literal` expect an escaped string
-    let text = format!("{:?}", text.escape_debug().to_string());
+    let text = format!("\"{}\"", text.escape_debug());
     text.into()
 }
 
