@@ -2682,6 +2682,13 @@ function hideThemeButtonState() {
                 inner_toggle.onclick = toggleClicked;
                 e.insertBefore(inner_toggle, e.firstChild);
                 impl_call(e.previousSibling, inner_toggle);
+
+                // If *all* the items are hidden by default, remove the unnecessary indirection
+                // by toggling the items to be visible and removing the toggle.
+                if (e.childElementCount - 1 === hiddenElems.length) {
+                    inner_toggle.click();
+                    e.removeChild(inner_toggle);
+                }
             }
         });
 
