@@ -26,12 +26,12 @@ pub mod netc {
 
 pub struct Socket(c::SOCKET);
 
+static INIT: Once = Once::new();
+
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 pub fn init() {
-    static START: Once = Once::new();
-
-    START.call_once(|| unsafe {
+    INIT.call_once(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();
         let ret = c::WSAStartup(
             0x202, // version 2.2
@@ -42,8 +42,11 @@ pub fn init() {
 }
 
 pub fn cleanup() {
-    unsafe {
-        c::WSACleanup();
+    if INIT.is_completed() {
+        // only close the socket interface if it has actually been started
+        unsafe {
+            c::WSACleanup();
+        }
     }
 }
 

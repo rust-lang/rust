@@ -64,10 +64,10 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     args::init(argc, argv);
 
     unsafe fn sanitize_standard_fds() {
+        #[cfg(not(miri))]
+        // The standard fds are always available in Miri.
         cfg_if::cfg_if! {
             if #[cfg(not(any(
-                // The standard fds are always available in Miri.
-                miri,
                 target_os = "emscripten",
                 target_os = "fuchsia",
                 target_os = "vxworks",
