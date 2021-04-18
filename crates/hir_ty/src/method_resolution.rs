@@ -246,29 +246,39 @@ pub struct InherentImpls {
 
 impl InherentImpls {
     pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
-        let mut map: FxHashMap<_, Vec<_>> = FxHashMap::default();
+        let mut impls = Self { map: FxHashMap::default() };
 
         let crate_def_map = db.crate_def_map(krate);
-        for (_module_id, module_data) in crate_def_map.modules() {
-            for impl_id in module_data.scope.impls() {
-                let data = db.impl_data(impl_id);
-                if data.target_trait.is_some() {
-                    continue;
+        collect_def_map(db, &crate_def_map, &mut impls);
+
+        return Arc::new(impls);
+
+        fn collect_def_map(db: &dyn HirDatabase, def_map: &DefMap, impls: &mut InherentImpls) {
+            for (_module_id, module_data) in def_map.modules() {
+                for impl_id in module_data.scope.impls() {
+                    let data = db.impl_data(impl_id);
+                    if data.target_trait.is_some() {
+                        continue;
+                    }
+
+                    let self_ty = db.impl_self_ty(impl_id);
+                    let fp = TyFingerprint::for_inherent_impl(self_ty.skip_binders());
+                    if let Some(fp) = fp {
+                        impls.map.entry(fp).or_default().push(impl_id);
+                    }
+                    // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
                 }
 
-                let self_ty = db.impl_self_ty(impl_id);
-                let fp = TyFingerprint::for_inherent_impl(self_ty.skip_binders());
-                if let Some(fp) = fp {
-                    map.entry(fp).or_default().push(impl_id);
+                // To better support custom derives, collect impls in all unnamed const items.
+                // const _: () = { ... };
+                for konst in module_data.scope.unnamed_consts() {
+                    let body = db.body(konst.into());
+                    for (_, block_def_map) in body.blocks(db.upcast()) {
+                        collect_def_map(db, &block_def_map, impls);
+                    }
                 }
-                // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
             }
         }
-
-        // NOTE: We're not collecting inherent impls from unnamed consts here, we intentionally only
-        // support trait impls there.
-
-        Arc::new(Self { map })
     }
 
     pub fn for_self_ty(&self, self_ty: &Ty) -> &[ImplId] {
