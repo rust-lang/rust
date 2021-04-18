@@ -35,7 +35,6 @@ mod write_shared;
 crate use context::*;
 crate use write_shared::FILES_UNVERSIONED;
 
-use std::cell::Cell;
 use std::collections::VecDeque;
 use std::default::Default;
 use std::fmt;
@@ -208,8 +207,6 @@ crate struct StylePath {
     /// What the `disabled` attribute should be set to in the HTML tag
     crate disabled: bool,
 }
-
-thread_local!(crate static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
 fn write_srclink(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
     if let Some(l) = cx.src_href(item) {
