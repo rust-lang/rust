@@ -1,5 +1,5 @@
 error: generic parameters with a default must be trailing
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:11:12
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:10:12
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
    |            ^
@@ -16,7 +16,7 @@ LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
 error[E0128]: generic parameters with a default cannot use forward declared identifiers
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:11:21
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:10:21
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
    |                     ^ defaulted generic parameters cannot be forward declared

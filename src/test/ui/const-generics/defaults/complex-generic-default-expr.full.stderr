@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/complex-generic-default-expr.rs:6:62
+  --> $DIR/complex-generic-default-expr.rs:9:62
    |
 LL | struct Bar<T, const TYPE_SIZE: usize = { std::mem::size_of::<T>() }>(T);
    |            -                                                 ^ doesn't have a size known at compile-time
