@@ -967,6 +967,10 @@ a.test-arrow:hover{
 	color: inherit;
 }
 
+.code-attribute {
+	font-weight: 300;
+}
+
 .collapse-toggle {
 	font-weight: 300;
 	position: absolute;
