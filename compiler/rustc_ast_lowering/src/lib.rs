@@ -165,6 +165,8 @@ struct LoweringContext<'a, 'hir: 'a> {
 pub trait ResolverAstLowering {
     fn def_key(&mut self, id: DefId) -> DefKey;
 
+    fn def_span(&self, id: LocalDefId) -> Span;
+
     fn item_generics_num_lifetimes(&self, def: DefId) -> usize;
 
     fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>>;
@@ -213,6 +215,11 @@ impl<'a> rustc_span::HashStableContext for LoweringHasher<'a> {
     #[inline]
     fn hash_spans(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn def_span(&self, id: LocalDefId) -> Span {
+        self.resolver.def_span(id)
     }
 
     #[inline]
