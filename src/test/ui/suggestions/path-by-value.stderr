@@ -9,8 +9,8 @@ LL | fn f(p: Path) { }
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn f(&p: Path) { }
-   |      ^
+LL | fn f(p: &Path) { }
+   |         ^
 
 error: aborting due to previous error
 

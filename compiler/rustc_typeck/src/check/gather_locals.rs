@@ -6,7 +6,6 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_middle::ty::Ty;
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits;
-use std::mem;
 
 pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -14,12 +13,12 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     // parameters are special cases of patterns, but we want to handle them as
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
-    outermost_fn_param_pat: bool,
+    outermost_fn_param_pat: Option<Span>,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     pub(super) fn new(fcx: &'a FnCtxt<'a, 'tcx>, parent_id: hir::HirId) -> Self {
-        Self { fcx, parent_id, outermost_fn_param_pat: false }
+        Self { fcx, parent_id, outermost_fn_param_pat: None }
     }
 
     fn assign(&mut self, span: Span, nid: hir::HirId, ty_opt: Option<LocalTy<'tcx>>) -> Ty<'tcx> {
@@ -92,7 +91,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        let old_outermost_fn_param_pat = mem::replace(&mut self.outermost_fn_param_pat, true);
+        let old_outermost_fn_param_pat = self.outermost_fn_param_pat.replace(param.ty_span);
         intravisit::walk_param(self, param);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
     }
@@ -102,12 +101,12 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
-            if self.outermost_fn_param_pat {
+            if let Some(ty_span) = self.outermost_fn_param_pat {
                 if !self.fcx.tcx.features().unsized_fn_params {
                     self.fcx.require_type_is_sized(
                         var_ty,
                         p.span,
-                        traits::SizedArgumentType(Some(p.span)),
+                        traits::SizedArgumentType(Some(ty_span)),
                     );
                 }
             } else {
@@ -123,7 +122,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 var_ty
             );
         }
-        let old_outermost_fn_param_pat = mem::replace(&mut self.outermost_fn_param_pat, false);
+        let old_outermost_fn_param_pat = self.outermost_fn_param_pat.take();
         intravisit::walk_pat(self, p);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
     }
