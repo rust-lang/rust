@@ -279,6 +279,8 @@ declare_features! (
     (accepted, unsafe_block_in_unsafe_fn, "1.52.0", Some(71668), None),
     /// Allows the use of or-patterns (e.g., `0 | 1`).
     (accepted, or_patterns, "1.53.0", Some(54883), None),
+    /// Allows defining identifiers beyond ASCII.
+    (accepted, non_ascii_idents, "1.53.0", Some(55467), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

@@ -8,7 +8,7 @@ use rustc_feature::{Features, GateIssue};
 use rustc_session::parse::{feature_err, feature_err_issue};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use tracing::debug;
@@ -325,17 +325,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     keyword => doc_keyword
                 );
             }
-        }
-    }
-
-    fn visit_name(&mut self, sp: Span, name: Symbol) {
-        if !name.as_str().is_ascii() {
-            gate_feature_post!(
-                &self,
-                non_ascii_idents,
-                self.sess.parse_sess.source_map().guess_head_span(sp),
-                "non-ascii idents are not fully supported"
-            );
         }
     }
 

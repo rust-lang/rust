@@ -255,9 +255,6 @@ declare_features! (
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
-    /// Allows defining identifiers beyond ASCII.
-    (active, non_ascii_idents, "1.0.0", Some(55467), None),
-
     /// Allows using `#[plugin_registrar]` on functions.
     (active, plugin_registrar, "1.0.0", Some(29597), None),
 
