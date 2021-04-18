@@ -1248,14 +1248,18 @@ fn macros_in_type_generics() {
 fn infinitely_recursive_macro_type() {
     check_infer(
         r#"
-        struct Bar<T>(T);
+        struct Bar<T, X>(T, X);
 
         macro_rules! Foo {
             () => { Foo!() }
         }
 
+        macro_rules! U32 {
+            () => { u32 }
+        }
+
         type A = Foo!();
-        type B = Bar<Foo!()>;
+        type B = Bar<Foo!(), U32!()>;
 
         fn main() {
             let a: A;
@@ -1263,9 +1267,9 @@ fn infinitely_recursive_macro_type() {
         }
         "#,
         expect![[r#"
-            112..143 '{     ...: B; }': ()
-            122..123 'a': {unknown}
-            136..137 'b': Bar<{unknown}>
+            166..197 '{     ...: B; }': ()
+            176..177 'a': {unknown}
+            190..191 'b': Bar<{unknown}, u32>
         "#]],
     );
 }

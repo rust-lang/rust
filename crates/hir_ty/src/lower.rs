@@ -296,9 +296,11 @@ impl<'a> TyLoweringContext<'a> {
                 }
             }
             TypeRef::Macro(macro_call) => {
-                let (expander, recursion_start) = match self.expander.borrow_mut() {
-                    expander if expander.is_some() => (Some(expander), false),
-                    mut expander => {
+                let (expander, recursion_start) = {
+                    let mut expander = self.expander.borrow_mut();
+                    if expander.is_some() {
+                        (Some(expander), false)
+                    } else {
                         if let Some(module_id) = self.resolver.module() {
                             *expander = Some(Expander::new(
                                 self.db.upcast(),
