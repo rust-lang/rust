@@ -246,8 +246,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     ) -> Vec<CoverageSpan> {
         let mut coverage_spans = CoverageSpans {
             mir_body,
-            fn_sig_span,
-            body_span,
+            fn_sig_span: fn_sig_span.with_ctxt(SyntaxContext::root()),
+            body_span: body_span.with_ctxt(SyntaxContext::root()),
             basic_coverage_blocks,
             sorted_spans_iter: None,
             refined_spans: Vec::with_capacity(basic_coverage_blocks.num_nodes() * 2),

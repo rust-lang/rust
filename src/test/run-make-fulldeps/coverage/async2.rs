@@ -39,15 +39,6 @@ fn main() {
 
     executor::block_on(async_func());
     executor::block_on(async_func_just_println());
-
-    // let mut future = Box::pin(async_func());
-    // executor::block_on(future.as_mut());
-
-    // let mut future = Box::pin(async_func());
-    // executor::block_on(future.as_mut());
-
-    // let mut future = Box::pin(async_func_just_println());
-    // executor::block_on(future.as_mut());
 }
 
 mod executor {
