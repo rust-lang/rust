@@ -503,14 +503,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             let unit_obligation =
                                 obligation.with(predicate.without_const().to_predicate(tcx));
                             if self.predicate_may_hold(&unit_obligation) {
+                                err.note("this trait is implemented for `()`.");
                                 err.note(
-                                    "the trait is implemented for `()`. \
-                                     Possibly this error has been caused by changes to \
-                                     Rust's type-inference algorithm (see issue #48950 \
-                                     <https://github.com/rust-lang/rust/issues/48950> \
-                                     for more information). Consider whether you meant to use \
-                                     the type `()` here instead.",
+                                    "this error might have been caused by changes to \
+                                    Rust's type-inference algorithm (see issue #48950 \
+                                    <https://github.com/rust-lang/rust/issues/48950> \
+                                    for more information).",
                                 );
+                                err.help("did you intend to use the type `()` here instead?");
                             }
                         }
 
