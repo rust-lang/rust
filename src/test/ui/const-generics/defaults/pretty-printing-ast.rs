@@ -11,4 +11,3 @@ trait Foo<const KIND: bool = true> {}
 fn foo<const SIZE: usize = 5>() {}
 
 struct Range<const FROM: usize = 0, const LEN: usize = 0, const TO: usize = FROM>;
-
