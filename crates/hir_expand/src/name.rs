@@ -221,6 +221,7 @@ pub mod known {
         option_env,
         llvm_asm,
         asm,
+        global_asm,
         // Builtin derives
         Copy,
         Clone,
