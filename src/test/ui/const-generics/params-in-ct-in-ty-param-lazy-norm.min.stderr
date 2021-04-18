@@ -15,11 +15,12 @@ LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
    = note: type parameters may not be used in const expressions
    = help: use `#![feature(const_generics)]` and `#![feature(const_evaluatable_checked)]` to allow generic const expressions
 
-error: constant values inside of type parameter defaults must not depend on generic parameters
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
   --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:11:21
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
-   |                     ^ the anonymous constant must not depend on the parameter `N`
+   |                     ^ defaulted generic parameters cannot be forward declared
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0128`.

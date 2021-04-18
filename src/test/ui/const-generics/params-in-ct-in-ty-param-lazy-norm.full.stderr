@@ -6,17 +6,26 @@ LL | struct Bar<T = [u8; N], const N: usize>(T);
    |
    = note: using type defaults and const parameters in the same parameter list is currently not permitted
 
-error: constant values inside of type parameter defaults must not depend on generic parameters
-  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:6:44
-   |
-LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
-   |                                            ^ the anonymous constant must not depend on the parameter `T`
-
-error: constant values inside of type parameter defaults must not depend on generic parameters
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
   --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:11:21
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);
-   |                     ^ the anonymous constant must not depend on the parameter `N`
+   |                     ^ defaulted generic parameters cannot be forward declared
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:6:44
+   |
+LL | struct Foo<T, U = [u8; std::mem::size_of::<T>()]>(T, U);
+   |            -                               ^ doesn't have a size known at compile-time
+   |            |
+   |            this type parameter needs to be `std::marker::Sized`
+   | 
+  ::: $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
 
 error: aborting due to 3 previous errors
 
+Some errors have detailed explanations: E0128, E0277.
+For more information about an error, try `rustc --explain E0128`.
