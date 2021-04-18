@@ -929,7 +929,8 @@ window.initSearch = function(rawSearchIndex) {
             var actives = [[], [], []];
             // "current" is used to know which tab we're looking into.
             var current = 0;
-            onEachLazy(document.getElementById("results").childNodes, function(e) {
+            var results = document.getElementById("results").childNodes;
+            onEachLazy(results, function(e) {
                 onEachLazy(e.getElementsByClassName("highlighted"), function(h_e) {
                     actives[current].push(h_e);
                 });
@@ -953,7 +954,6 @@ window.initSearch = function(rawSearchIndex) {
                 if (e.ctrlKey) { // Going through result tabs.
                     printTab(currentTab > 1 ? 0 : currentTab + 1);
                 } else if (!actives[currentTab].length) {
-                    var results = document.getElementById("results").childNodes;
                     if (results.length > 0) {
                         var res = results[currentTab].getElementsByClassName("result");
                         if (res.length > 0) {
@@ -970,12 +970,11 @@ window.initSearch = function(rawSearchIndex) {
                     document.location.href =
                         actives[currentTab][0].getElementsByTagName("a")[0].href;
                 } else {
-                    var results = document.getElementById("results").childNodes;
                     if (results.length > 0) {
-                        var res = results[currentTab].getElementsByClassName("result");
-                        if (res.length > 0) {
+                        var firstRes = results[0].getElementsByClassName("result");
+                        if (firstRes.length > 0) {
                             document.location.href =
-                                res[0].getElementsByTagName("a")[0].href;
+                                firstRes[0].getElementsByTagName("a")[0].href;
                         }
                     }
                 }
