@@ -794,7 +794,7 @@ impl SourceMap {
             start_of_next_point.checked_add(width - 1).unwrap_or(start_of_next_point);
 
         let end_of_next_point = BytePos(cmp::max(sp.lo().0 + 1, end_of_next_point));
-        Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt())
+        Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt(), None)
     }
 
     /// Finds the width of the character, either before or after the end of provided span,

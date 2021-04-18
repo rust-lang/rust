@@ -4,6 +4,7 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
+use crate::def_id::LocalDefId;
 use crate::hygiene::SyntaxContext;
 use crate::{BytePos, SpanData};
 
@@ -70,19 +71,25 @@ pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_zero:
 
 impl Span {
     #[inline]
-    pub fn new(mut lo: BytePos, mut hi: BytePos, ctxt: SyntaxContext) -> Self {
+    pub fn new(
+        mut lo: BytePos,
+        mut hi: BytePos,
+        ctxt: SyntaxContext,
+        parent: Option<LocalDefId>,
+    ) -> Self {
         if lo > hi {
             std::mem::swap(&mut lo, &mut hi);
         }
 
         let (base, len, ctxt2) = (lo.0, hi.0 - lo.0, ctxt.as_u32());
 
-        if len <= MAX_LEN && ctxt2 <= MAX_CTXT {
+        if len <= MAX_LEN && ctxt2 <= MAX_CTXT && parent.is_none() {
             // Inline format.
             Span { base_or_index: base, len_or_tag: len as u16, ctxt_or_zero: ctxt2 as u16 }
         } else {
             // Interned format.
-            let index = with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt }));
+            let index =
+                with_span_interner(|interner| interner.intern(&SpanData { lo, hi, ctxt, parent }));
             Span { base_or_index: index, len_or_tag: LEN_TAG, ctxt_or_zero: 0 }
         }
     }
@@ -96,6 +103,7 @@ impl Span {
                 lo: BytePos(self.base_or_index),
                 hi: BytePos(self.base_or_index + self.len_or_tag as u32),
                 ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
+                parent: None,
             }
         } else {
             // Interned format.

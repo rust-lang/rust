@@ -196,7 +196,11 @@ impl CoverageSpan {
     /// body_span), returns the macro name symbol.
     pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
         if let Some(current_macro) = self.current_macro() {
-            if self.expn_span.parent().unwrap_or_else(|| bug!("macro must have a parent")).ctxt()
+            if self
+                .expn_span
+                .parent_callsite()
+                .unwrap_or_else(|| bug!("macro must have a parent"))
+                .ctxt()
                 == body_span.ctxt()
             {
                 return Some(current_macro);
