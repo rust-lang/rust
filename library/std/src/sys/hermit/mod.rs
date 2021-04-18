@@ -96,12 +96,14 @@ pub extern "C" fn __rust_abort() {
 }
 
 // SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
     let _ = net::init();
     args::init(argc, argv);
 }
 
 // SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
     args::cleanup();
 }

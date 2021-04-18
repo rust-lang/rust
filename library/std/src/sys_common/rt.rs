@@ -5,6 +5,7 @@ use crate::thread::Thread;
 
 // One-time runtime initialization.
 // Runs before `main`.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 #[cfg_attr(test, allow(dead_code))]
 pub fn init(argc: isize, argv: *const *const u8) {
     static INIT: Once = Once::new();
@@ -23,8 +24,8 @@ pub fn init(argc: isize, argv: *const *const u8) {
 }
 
 // One-time runtime cleanup.
-// Runs after `main` or at program exit. Note however that this is not guaranteed to run,
-// for example when the program aborts.
+// Runs after `main` or at program exit.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
 #[cfg_attr(test, allow(dead_code))]
 pub fn cleanup() {
     static CLEANUP: Once = Once::new();

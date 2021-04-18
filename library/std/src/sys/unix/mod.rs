@@ -45,6 +45,7 @@ pub mod time;
 pub use crate::sys_common::os_str_bytes as os_str;
 
 // SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
     // The standard streams might be closed on application startup. To prevent
     // std::io::{stdin, stdout,stderr} objects from using other unrelated file
@@ -120,6 +121,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
     args::cleanup();
     stack_overflow::cleanup();

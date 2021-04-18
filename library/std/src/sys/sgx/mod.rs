@@ -40,6 +40,7 @@ pub mod time;
 pub use crate::sys_common::os_str_bytes as os_str;
 
 // SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
     unsafe {
         args::init(argc, argv);
@@ -47,6 +48,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 }
 
 // SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {}
 
 /// This function is used to implement functionality that simply doesn't exist.
