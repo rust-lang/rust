@@ -285,8 +285,6 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let (stab, stab_tags) = if let (Some(def_id), Some(attrs)) =
                     (import.source.did, import.source.attrs.clone())
                 {
-                    let attrs = Box::new(attrs);
-
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item { def_id, attrs, ..myitem.clone() };
 
