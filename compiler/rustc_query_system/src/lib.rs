@@ -1,5 +1,4 @@
 #![feature(bool_to_option)]
-#![feature(const_fn)]
 #![feature(const_panic)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
