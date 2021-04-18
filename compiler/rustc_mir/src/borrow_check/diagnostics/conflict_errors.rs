@@ -197,7 +197,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
                             }
                         }
-                        FnSelfUseKind::Normal { self_arg, implicit_into_iter } => {
+                        FnSelfUseKind::Normal {
+                            self_arg,
+                            implicit_into_iter,
+                            is_option_or_result,
+                        } => {
                             if implicit_into_iter {
                                 err.span_label(
                                     fn_call_span,
@@ -213,6 +217,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                         "{} {}moved due to this method call{}",
                                         place_name, partially_str, loop_message
                                     ),
+                                );
+                            }
+                            if is_option_or_result {
+                                err.span_suggestion_verbose(
+                                    fn_call_span.shrink_to_lo(),
+                                    "consider calling `.as_ref()` to borrow the type's contents",
+                                    "as_ref().".to_string(),
+                                    Applicability::MachineApplicable,
                                 );
                             }
                             // Avoid pointing to the same function in multiple different
