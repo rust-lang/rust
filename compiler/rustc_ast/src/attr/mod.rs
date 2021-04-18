@@ -367,7 +367,7 @@ impl MetaItem {
             let is_first = i == 0;
             if !is_first {
                 let mod_sep_span =
-                    Span::new(last_pos, segment.ident.span.lo(), segment.ident.span.ctxt());
+                    Span::new(last_pos, segment.ident.span.lo(), segment.ident.span.ctxt(), None);
                 idents.push(TokenTree::token(token::ModSep, mod_sep_span).into());
             }
             idents.push(TokenTree::Token(Token::from_ast_ident(segment.ident)).into());

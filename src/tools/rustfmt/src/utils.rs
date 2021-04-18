@@ -356,11 +356,11 @@ macro_rules! source {
 }
 
 pub(crate) fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
-    Span::new(lo, hi, SyntaxContext::root())
+    Span::new(lo, hi, SyntaxContext::root(), None)
 }
 
 pub(crate) fn mk_sp_lo_plus_one(lo: BytePos) -> Span {
-    Span::new(lo, lo + BytePos(1), SyntaxContext::root())
+    Span::new(lo, lo + BytePos(1), SyntaxContext::root(), None)
 }
 
 // Returns `true` if the given span does not intersect with file lines.

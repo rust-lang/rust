@@ -657,7 +657,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // closure span, then we walk up the expansion until we
                     // find the span before the expansion.
                     while !closure_body_span.is_dummy() && !closure_span.contains(closure_body_span) {
-                        closure_body_span = closure_body_span.parent().unwrap_or(DUMMY_SP);
+                        closure_body_span = closure_body_span.parent_callsite().unwrap_or(DUMMY_SP);
                     }
 
                     if let Ok(s) = self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
