@@ -1,16 +1,16 @@
 //! Conversion of rust-analyzer specific types to lsp_types equivalents.
 use std::{
-    collections::HashMap,
+    iter::once,
     path::{self, Path},
     sync::atomic::{AtomicU32, Ordering},
 };
 
 use ide::{
-    Annotation, AnnotationKind, Assist, AssistKind, CallInfo, CompletionItem, CompletionItemKind,
-    CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit, Fold, FoldKind,
-    Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint, InlayKind,
-    InsertTextFormat, Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable, Severity,
-    SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
+    Annotation, AnnotationKind, Assist, AssistKind, CallInfo, Cancelable, CompletionItem,
+    CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
+    Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
+    InlayKind, InsertTextFormat, Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable,
+    Severity, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -690,8 +690,8 @@ pub(crate) fn goto_definition_response(
     }
 }
 
-fn outside_workspace_annotation(snap: &GlobalStateSnapshot) -> Option<String> {
-    snap.config.change_annotation_support().then(|| String::from("OutsideWorkspace"))
+fn outside_workspace_annotation_id() -> String {
+    String::from("OutsideWorkspace")
 }
 
 pub(crate) fn snippet_text_document_edit(
@@ -702,26 +702,21 @@ pub(crate) fn snippet_text_document_edit(
 ) -> Result<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
-    let outside_workspace_annotation = snap
-        .analysis
-        .is_library_file(file_id)?
-        .then(|| outside_workspace_annotation(snap))
-        .flatten();
-    let edits = edit
-        .into_iter()
-        .map(|it| {
-            let mut edit = snippet_text_edit(&line_index, is_snippet, it);
-            edit.annotation_id = outside_workspace_annotation.clone();
-            edit
-        })
-        .collect();
+    let mut edits: Vec<_> =
+        edit.into_iter().map(|it| snippet_text_edit(&line_index, is_snippet, it)).collect();
+
+    if snap.analysis.is_library_file(file_id)? && snap.config.change_annotation_support() {
+        for edit in &mut edits {
+            edit.annotation_id = Some(outside_workspace_annotation_id())
+        }
+    }
     Ok(lsp_ext::SnippetTextDocumentEdit { text_document, edits })
 }
 
 pub(crate) fn snippet_text_document_ops(
     snap: &GlobalStateSnapshot,
     file_system_edit: FileSystemEdit,
-) -> Vec<lsp_ext::SnippetDocumentChangeOperation> {
+) -> Cancelable<Vec<lsp_ext::SnippetDocumentChangeOperation>> {
     let mut ops = Vec::new();
     match file_system_edit {
         FileSystemEdit::CreateFile { dst, initial_contents } => {
@@ -749,21 +744,19 @@ pub(crate) fn snippet_text_document_ops(
         FileSystemEdit::MoveFile { src, dst } => {
             let old_uri = snap.file_id_to_url(src);
             let new_uri = snap.anchored_path(&dst);
-            let rename_file = lsp_types::ResourceOp::Rename(lsp_types::RenameFile {
-                old_uri,
-                new_uri,
-                options: None,
-                annotation_id: snap
-                    .analysis
-                    .is_library_file(src)
-                    .unwrap()
-                    .then(|| outside_workspace_annotation(snap))
-                    .flatten(),
-            });
-            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(rename_file))
+            let mut rename_file =
+                lsp_types::RenameFile { old_uri, new_uri, options: None, annotation_id: None };
+            if snap.analysis.is_library_file(src) == Ok(true)
+                && snap.config.change_annotation_support()
+            {
+                rename_file.annotation_id = Some(outside_workspace_annotation_id())
+            }
+            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(lsp_types::ResourceOp::Rename(
+                rename_file,
+            )))
         }
     }
-    ops
+    Ok(ops)
 }
 
 pub(crate) fn snippet_workspace_edit(
@@ -773,31 +766,33 @@ pub(crate) fn snippet_workspace_edit(
     let mut document_changes: Vec<lsp_ext::SnippetDocumentChangeOperation> = Vec::new();
 
     for op in source_change.file_system_edits {
-        let ops = snippet_text_document_ops(snap, op);
+        let ops = snippet_text_document_ops(snap, op)?;
         document_changes.extend_from_slice(&ops);
     }
     for (file_id, edit) in source_change.source_file_edits {
         let edit = snippet_text_document_edit(&snap, source_change.is_snippet, file_id, edit)?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
-    let change_annotations = outside_workspace_annotation(snap).map(|annotation| {
-        use std::iter::FromIterator;
-        HashMap::from_iter(Some((
-            annotation,
-            lsp_types::ChangeAnnotation {
-                label: String::from("Edit outside of the workspace"),
-                needs_confirmation: Some(true),
-                description: Some(String::from(
-                    "This edit lies outside of the workspace and may affect dependencies",
-                )),
-            },
-        )))
-    });
-    let workspace_edit = lsp_ext::SnippetWorkspaceEdit {
+    let mut workspace_edit = lsp_ext::SnippetWorkspaceEdit {
         changes: None,
         document_changes: Some(document_changes),
-        change_annotations,
+        change_annotations: None,
     };
+    if snap.config.change_annotation_support() {
+        workspace_edit.change_annotations = Some(
+            once((
+                outside_workspace_annotation_id(),
+                lsp_types::ChangeAnnotation {
+                    label: String::from("Edit outside of the workspace"),
+                    needs_confirmation: Some(true),
+                    description: Some(String::from(
+                        "This edit lies outside of the workspace and may affect dependencies",
+                    )),
+                },
+            ))
+            .collect(),
+        )
+    }
     Ok(workspace_edit)
 }
 
