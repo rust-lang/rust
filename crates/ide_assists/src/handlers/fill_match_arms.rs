@@ -8,7 +8,7 @@ use itertools::Itertools;
 use syntax::ast::{self, make, AstNode, MatchArm, NameOwner, Pat};
 
 use crate::{
-    utils::{does_pat_match_variant, render_snippet, Cursor},
+    utils::{self, render_snippet, Cursor},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -135,14 +135,18 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
 }
 
 fn is_variant_missing(existing_pats: &[Pat], var: &Pat) -> bool {
-    !existing_pats.iter().any(|pat| match (pat, var) {
+    !existing_pats.iter().any(|pat| does_pat_match_variant(pat, var))
+}
+
+// Fixme: this is still somewhat limited, use hir_ty::diagnostics::match_check?
+fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
+    match (pat, var) {
+        (Pat::WildcardPat(_), _) => true,
         (Pat::TuplePat(tpat), Pat::TuplePat(tvar)) => {
-            // `does_pat_match_variant` gives false positives for tuple patterns
-            // Fixme: this is still somewhat limited
             tpat.fields().zip(tvar.fields()).all(|(p, v)| does_pat_match_variant(&p, &v))
         }
-        _ => does_pat_match_variant(pat, var),
-    })
+        _ => utils::does_pat_match_variant(pat, var),
+    }
 }
 
 fn resolve_enum_def(sema: &Semantics<RootDatabase>, expr: &ast::Expr) -> Option<hir::Enum> {
@@ -504,11 +508,6 @@ fn main() {
         );
     }
 
-    // Fixme: This fails with extra useless match arms added.
-    // To fix, it needs full fledged match exhaustiveness checking from
-    // hir_ty::diagnostics::match_check
-    // see https://github.com/rust-analyzer/rust-analyzer/issues/8493
-    #[ignore]
     #[test]
     fn fill_match_arms_tuple_of_enum_partial_with_wildcards() {
         let ra_fixture = r#"
@@ -535,6 +534,23 @@ fn main() {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn fill_match_arms_partial_with_deep_pattern() {
+        // Fixme: cannot handle deep patterns
+        let ra_fixture = r#"
+fn main() {
+    match $0Some(true) {
+        Some(true) => {}
+        None => {}
+    }
+}
+"#;
+        check_assist_not_applicable(
+            fill_match_arms,
+            &format!("//- /main.rs crate:main deps:core{}{}", ra_fixture, FamousDefs::FIXTURE),
         );
     }
 
