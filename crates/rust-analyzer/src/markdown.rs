@@ -27,9 +27,8 @@ pub(crate) fn format_docs(src: &str) -> String {
             in_code_block ^= true;
 
             if in_code_block {
-                is_rust = header
-                    .split(',')
-                    .all(|sub| RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC.contains(&sub.trim()));
+                is_rust =
+                    header.split(',').all(|sub| is_rust_specific_code_block_attribute(sub.trim()));
 
                 if is_rust {
                     line = "```rust";
@@ -40,6 +39,13 @@ pub(crate) fn format_docs(src: &str) -> String {
         processed_lines.push(line);
     }
     processed_lines.join("\n")
+}
+
+fn is_rust_specific_code_block_attribute(attr: &str) -> bool {
+    if RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC.contains(&attr) {
+        return true;
+    }
+    attr.starts_with('E') && attr.len() == 5 && attr[1..].parse::<u32>().is_ok()
 }
 
 fn code_line_ignored_by_rustdoc(line: &str) -> bool {
@@ -79,6 +85,12 @@ mod tests {
     fn test_format_docs_handles_complex_code_block_attrs() {
         let comment = "```rust,no_run\nlet z = 55;\n```";
         assert_eq!(format_docs(comment), "```rust\nlet z = 55;\n```");
+    }
+
+    #[test]
+    fn test_format_docs_handles_error_codes() {
+        let comment = "```compile_fail,E0641\nlet b = 0 as *const _;\n```";
+        assert_eq!(format_docs(comment), "```rust\nlet b = 0 as *const _;\n```");
     }
 
     #[test]
