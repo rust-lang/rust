@@ -905,7 +905,6 @@ function hideThemeButtonState() {
             return;
         }
         if (hasClass(innerToggle, "will-expand")) {
-            updateLocalStorage("rustdoc-collapse", "false");
             removeClass(innerToggle, "will-expand");
             onEachLazy(document.getElementsByTagName("details"), function(e) {
                 e.open = true;
@@ -920,7 +919,6 @@ function hideThemeButtonState() {
                 });
             }
         } else {
-            updateLocalStorage("rustdoc-collapse", "true");
             addClass(innerToggle, "will-expand");
             onEachLazy(document.getElementsByTagName("details"), function(e) {
                 e.open = false;
@@ -1075,7 +1073,7 @@ function hideThemeButtonState() {
         }
     }
 
-    function collapser(e, collapse) {
+    function collapseNonInherent(e, collapse) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
@@ -1083,28 +1081,6 @@ function hideThemeButtonState() {
             // Automatically minimize all non-inherent impls
             if (collapse || hasClass(n, "impl")) {
                 collapseDocs(e, "hide");
-            }
-        }
-    }
-
-    function autoCollapse(collapse) {
-        if (collapse) {
-            toggleAllDocs(true);
-        } else if (getSettingValue("auto-hide-trait-implementations") !== "false") {
-            var impl_list = document.getElementById("trait-implementations-list");
-
-            if (impl_list !== null) {
-                onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
-                });
-            }
-
-            var blanket_list = document.getElementById("blanket-implementations-list");
-
-            if (blanket_list !== null) {
-                onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
-                });
             }
         }
     }
@@ -1167,6 +1143,22 @@ function hideThemeButtonState() {
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
         var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
+        var hideTraitImplementations =
+            getSettingValue("auto-hide-trait-implementations") !== "false";
+
+        var impl_list = document.getElementById("trait-implementations-list");
+        if (impl_list !== null) {
+            onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
+                collapseNonInherent(e, collapse);
+            });
+        }
+
+        var blanket_list = document.getElementById("blanket-implementations-list");
+        if (blanket_list !== null) {
+            onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
+                collapseNonInherent(e, collapse);
+            });
+        }
 
         var func = function(e) {
             var next = e.nextElementSibling;
@@ -1352,8 +1344,6 @@ function hideThemeButtonState() {
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
         onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
-
-        autoCollapse(getSettingValue("collapse") === "true");
 
         var pageId = getPageId();
         if (pageId !== null) {
