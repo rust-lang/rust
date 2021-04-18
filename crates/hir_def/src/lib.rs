@@ -108,6 +108,18 @@ impl ModuleId {
     pub fn containing_module(&self, db: &dyn db::DefDatabase) -> Option<ModuleId> {
         self.def_map(db).containing_module(self.local_id)
     }
+
+    /// Returns `true` if this module represents a block expression.
+    ///
+    /// Returns `false` if this module is a submodule *inside* a block expression
+    /// (eg. `m` in `{ mod m {} }`).
+    pub fn is_block_root(&self, db: &dyn db::DefDatabase) -> bool {
+        if self.block.is_none() {
+            return false;
+        }
+
+        self.def_map(db)[self.local_id].parent.is_none()
+    }
 }
 
 /// An ID of a module, **local** to a specific crate
