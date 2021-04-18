@@ -1,4 +1,3 @@
-#![feature(non_ascii_idents)]
 #![deny(non_ascii_idents)]
 
 const חלודה: usize = 2; //~ ERROR identifier contains non-ASCII characters
