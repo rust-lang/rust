@@ -921,7 +921,7 @@ fn test_meta_doc_comments() {
                 MultiLines Doc
             */
         }"#,
-        "# [doc = \" Single Line Doc 1\"] # [doc = \"\\\\n                MultiLines Doc\\\\n            \"] fn bar () {}",
+        "# [doc = \" Single Line Doc 1\"] # [doc = \"\\n                MultiLines Doc\\n            \"] fn bar () {}",
     );
 }
 
@@ -944,7 +944,27 @@ fn test_meta_doc_comments_non_latin() {
                 莊生曉夢迷蝴蝶，望帝春心託杜鵑。
             */
         }"#,
-        "# [doc = \" 錦瑟無端五十弦，一弦一柱思華年。\"] # [doc = \"\\\\n                莊生曉夢迷蝴蝶，望帝春心託杜鵑。\\\\n            \"] fn bar () {}",
+        "# [doc = \" 錦瑟無端五十弦，一弦一柱思華年。\"] # [doc = \"\\n                莊生曉夢迷蝴蝶，望帝春心託杜鵑。\\n            \"] fn bar () {}",
+    );
+}
+
+#[test]
+fn test_meta_doc_comments_escaped_characters() {
+    parse_macro(
+        r#"
+        macro_rules! foo {
+            ($(#[$ i:meta])+) => (
+                $(#[$ i])+
+                fn bar() {}
+            )
+        }
+"#,
+    )
+    .assert_expand_items(
+        r#"foo! {
+            /// \ " '
+        }"#,
+        r#"# [doc = " \\ \" \'"] fn bar () {}"#,
     );
 }
 
