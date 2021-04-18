@@ -156,9 +156,9 @@ extern "C" fn __clif_jit_fn(instance_ptr: *const Instance<'static>) -> *const u8
             let jit_module = &mut lazy_jit_state.jit_module;
             let backend_config = lazy_jit_state.backend_config.clone();
 
-            let name = tcx.symbol_name(instance).name.to_string();
+            let name = tcx.symbol_name(instance).name;
             let sig = crate::abi::get_function_sig(tcx, jit_module.isa().triple(), instance);
-            let func_id = jit_module.declare_function(&name, Linkage::Export, &sig).unwrap();
+            let func_id = jit_module.declare_function(name, Linkage::Export, &sig).unwrap();
             jit_module.prepare_for_function_redefine(func_id).unwrap();
 
             let mut cx = crate::CodegenCx::new(tcx, backend_config, jit_module.isa(), false);
@@ -241,9 +241,9 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: In
 
     let pointer_type = module.target_config().pointer_type();
 
-    let name = tcx.symbol_name(inst).name.to_string();
+    let name = tcx.symbol_name(inst).name;
     let sig = crate::abi::get_function_sig(tcx, module.isa().triple(), inst);
-    let func_id = module.declare_function(&name, Linkage::Export, &sig).unwrap();
+    let func_id = module.declare_function(name, Linkage::Export, &sig).unwrap();
 
     let instance_ptr = Box::into_raw(Box::new(inst));
 

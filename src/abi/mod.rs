@@ -63,9 +63,9 @@ pub(crate) fn import_function<'tcx>(
     module: &mut dyn Module,
     inst: Instance<'tcx>,
 ) -> FuncId {
-    let name = tcx.symbol_name(inst).name.to_string();
+    let name = tcx.symbol_name(inst).name;
     let sig = get_function_sig(tcx, module.isa().triple(), inst);
-    module.declare_function(&name, Linkage::Import, &sig).unwrap()
+    module.declare_function(name, Linkage::Import, &sig).unwrap()
 }
 
 impl<'tcx> FunctionCx<'_, '_, 'tcx> {
@@ -89,7 +89,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         args: &[Value],
     ) -> &[Value] {
         let sig = Signature { params, returns, call_conv: CallConv::triple_default(self.triple()) };
-        let func_id = self.module.declare_function(&name, Linkage::Import, &sig).unwrap();
+        let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {

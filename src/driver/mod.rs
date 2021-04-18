@@ -22,7 +22,7 @@ fn predefine_mono_items<'tcx>(
         for &(mono_item, (linkage, visibility)) in mono_items {
             match mono_item {
                 MonoItem::Fn(instance) => {
-                    let name = tcx.symbol_name(instance).name.to_string();
+                    let name = tcx.symbol_name(instance).name;
                     let _inst_guard = crate::PrintOnPanic(|| format!("{:?} {}", instance, name));
                     let sig = get_function_sig(tcx, module.isa().triple(), instance);
                     let linkage = crate::linkage::get_clif_linkage(
@@ -31,7 +31,7 @@ fn predefine_mono_items<'tcx>(
                         visibility,
                         is_compiler_builtins,
                     );
-                    module.declare_function(&name, linkage, &sig).unwrap();
+                    module.declare_function(name, linkage, &sig).unwrap();
                 }
                 MonoItem::Static(_) | MonoItem::GlobalAsm(_) => {}
             }
