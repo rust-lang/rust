@@ -78,6 +78,7 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
         wasi::ERRNO_TIMEDOUT => TimedOut,
         wasi::ERRNO_EXIST => AlreadyExists,
         wasi::ERRNO_AGAIN => WouldBlock,
+        wasi::ERRNO_NOSYS => Unsupported,
         _ => Other,
     }
 }

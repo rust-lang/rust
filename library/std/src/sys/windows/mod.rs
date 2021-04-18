@@ -78,6 +78,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         | c::ERROR_IPSEC_IKE_TIMED_OUT
         | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
         | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_CALL_NOT_IMPLEMENTED => return ErrorKind::Unsupported,
         _ => {}
     }
 

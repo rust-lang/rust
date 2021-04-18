@@ -166,7 +166,7 @@ impl TcpStream {
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        Err(io::Error::new_const(ErrorKind::Other, &"socket_addr isn't supported"))
+        unsupported()
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -199,7 +199,7 @@ impl TcpStream {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Err(io::Error::new_const(ErrorKind::Other, &"take_error isn't supported"))
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, mode: bool) -> io::Result<()> {
@@ -247,27 +247,27 @@ impl TcpListener {
     }
 
     pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_only_v6(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn only_v6(&self) -> io::Result<bool> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 }
 
@@ -281,127 +281,127 @@ pub struct UdpSocket(abi::Handle);
 
 impl UdpSocket {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn recv_from(&self, _: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn peek_from(&self, _: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn send_to(&self, _: &[u8], _: &SocketAddr) -> io::Result<usize> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_broadcast(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn broadcast(&self) -> io::Result<bool> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_multicast_loop_v4(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_multicast_ttl_v4(&self, _: u32) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_multicast_loop_v6(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_ttl(&self, _: u32) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn set_nonblocking(&self, _: bool) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn recv(&self, _: &mut [u8]) -> io::Result<usize> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn send(&self, _: &[u8]) -> io::Result<usize> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 
     pub fn connect(&self, _: io::Result<&SocketAddr>) -> io::Result<()> {
-        Err(io::Error::new_const(ErrorKind::Other, &"not supported"))
+        unsupported()
     }
 }
 
