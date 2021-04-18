@@ -618,6 +618,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         } else {
             assert!(value.is_none(), "`return` and `break` should have a destination");
+            // `continue` statements generate no MIR statement with the `continue` statement's Span,
+            // and the `InstrumentCoverage` statement will have no way to generate a coverage
+            // code region for the `continue` statement, unless we add a dummy `Assign` here:
+            let mut local_decl = LocalDecl::new(self.tcx.mk_unit(), span);
+            local_decl = local_decl.immutable();
+            let temp = self.local_decls.push(local_decl);
+            let temp_place = Place::from(temp);
+            self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });
+            self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
+            self.cfg.push(block, Statement { source_info, kind: StatementKind::StorageDead(temp) });
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
