@@ -189,34 +189,21 @@ impl<'v> Visitor<'v> for LocalUsedVisitor<'v> {
     }
 }
 
+/// A type which can be visited.
 pub trait Visitable<'tcx> {
-    fn visit<V: Visitor<'tcx>>(self, v: &mut V);
+    /// Calls the corresponding `visit_*` function on the visitor.
+    fn visit<V: Visitor<'tcx>>(self, visitor: &mut V);
 }
-impl Visitable<'tcx> for &'tcx Expr<'tcx> {
-    fn visit<V: Visitor<'tcx>>(self, v: &mut V) {
-        v.visit_expr(self)
-    }
+macro_rules! visitable_ref {
+    ($t:ident, $f:ident) => {
+        impl Visitable<'tcx> for &'tcx $t<'tcx> {
+            fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) {
+                visitor.$f(self);
+            }
+        }
+    };
 }
-impl Visitable<'tcx> for &'tcx Block<'tcx> {
-    fn visit<V: Visitor<'tcx>>(self, v: &mut V) {
-        v.visit_block(self)
-    }
-}
-impl<'tcx> Visitable<'tcx> for &'tcx Stmt<'tcx> {
-    fn visit<V: Visitor<'tcx>>(self, v: &mut V) {
-        v.visit_stmt(self)
-    }
-}
-impl<'tcx> Visitable<'tcx> for &'tcx Body<'tcx> {
-    fn visit<V: Visitor<'tcx>>(self, v: &mut V) {
-        v.visit_body(self)
-    }
-}
-impl<'tcx> Visitable<'tcx> for &'tcx Arm<'tcx> {
-    fn visit<V: Visitor<'tcx>>(self, v: &mut V) {
-        v.visit_arm(self)
-    }
-}
+visitable_ref!(Block, visit_block);
 
 /// Calls the given function for each break expression.
 pub fn visit_break_exprs<'tcx>(

@@ -18,7 +18,6 @@ fn main() {
     let vec = Vec::new();
     let vec_val = g(&vec); // should not error, because `&Vec<T>` derefs to `&[T]`
     h(&"foo"); // should not error, because the `&&str` is required, due to `&Trait`
-    if let Some(cake) = Some(&5) {}
     let garbl = match 42 {
         44 => &a,
         45 => {
@@ -43,19 +42,3 @@ trait Trait {}
 impl<'a> Trait for &'a str {}
 
 fn h(_: &dyn Trait) {}
-#[warn(clippy::needless_borrow)]
-#[allow(dead_code)]
-fn issue_1432() {
-    let mut v = Vec::<String>::new();
-    let _ = v.iter_mut().filter(|&ref a| a.is_empty());
-    let _ = v.iter().filter(|&a| a.is_empty());
-
-    let _ = v.iter().filter(|&a| a.is_empty());
-}
-
-#[allow(dead_code)]
-#[warn(clippy::needless_borrow)]
-#[derive(Debug)]
-enum Foo<'a> {
-    Str(&'a str),
-}
