@@ -37,13 +37,15 @@ use crate::{
 
 /// A subset of Expander that only deals with cfg attributes. We only need it to
 /// avoid cyclic queries in crate def map during enum processing.
+#[derive(Debug)]
 pub(crate) struct CfgExpander {
     cfg_options: CfgOptions,
     hygiene: Hygiene,
     krate: CrateId,
 }
 
-pub(crate) struct Expander {
+#[derive(Debug)]
+pub struct Expander {
     cfg_expander: CfgExpander,
     def_map: Arc<DefMap>,
     current_file_id: HirFileId,
@@ -80,11 +82,7 @@ impl CfgExpander {
 }
 
 impl Expander {
-    pub(crate) fn new(
-        db: &dyn DefDatabase,
-        current_file_id: HirFileId,
-        module: ModuleId,
-    ) -> Expander {
+    pub fn new(db: &dyn DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let cfg_expander = CfgExpander::new(db, current_file_id, module.krate);
         let def_map = module.def_map(db);
         let ast_id_map = db.ast_id_map(current_file_id);
@@ -98,7 +96,7 @@ impl Expander {
         }
     }
 
-    pub(crate) fn enter_expand<T: ast::AstNode>(
+    pub fn enter_expand<T: ast::AstNode>(
         &mut self,
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
@@ -170,7 +168,7 @@ impl Expander {
         Ok(ExpandResult { value: Some((mark, node)), err })
     }
 
-    pub(crate) fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
+    pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
         self.cfg_expander.hygiene = Hygiene::new(db.upcast(), mark.file_id);
         self.current_file_id = mark.file_id;
         self.ast_id_map = mem::take(&mut mark.ast_id_map);
@@ -190,7 +188,7 @@ impl Expander {
         &self.cfg_expander.cfg_options
     }
 
-    pub(crate) fn current_file_id(&self) -> HirFileId {
+    pub fn current_file_id(&self) -> HirFileId {
         self.current_file_id
     }
 
@@ -210,7 +208,7 @@ impl Expander {
 }
 
 #[derive(Debug)]
-pub(crate) struct Mark {
+pub struct Mark {
     file_id: HirFileId,
     ast_id_map: Arc<AstIdMap>,
     bomb: DropBomb,

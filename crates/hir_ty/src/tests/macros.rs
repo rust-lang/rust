@@ -1243,3 +1243,29 @@ fn macros_in_type_generics() {
         "#]],
     );
 }
+
+#[test]
+fn infinitely_recursive_macro_type() {
+    check_infer(
+        r#"
+        struct Bar<T>(T);
+
+        macro_rules! Foo {
+            () => { Foo!() }
+        }
+
+        type A = Foo!();
+        type B = Bar<Foo!()>;
+
+        fn main() {
+            let a: A;
+            let b: B;
+        }
+        "#,
+        expect![[r#"
+            112..143 '{     ...: B; }': ()
+            122..123 'a': {unknown}
+            136..137 'b': Bar<{unknown}>
+        "#]],
+    );
+}

@@ -1,15 +1,10 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use hir_expand::{name::Name, AstId, ExpandResult, InFile};
+use hir_expand::{name::Name, AstId, InFile};
 use syntax::ast;
 
-use crate::{
-    body::{Expander, LowerCtx},
-    db::DefDatabase,
-    path::Path,
-    ModuleId,
-};
+use crate::{body::LowerCtx, path::Path};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Mutability {
@@ -124,7 +119,7 @@ pub enum TypeBound {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Self {
+    pub fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Self {
         match node {
             ast::Type::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
             ast::Type::TupleType(inner) => {
@@ -302,31 +297,4 @@ impl TypeBound {
             _ => None,
         }
     }
-}
-
-pub fn expand_macro_type(
-    db: &dyn DefDatabase,
-    module_id: ModuleId,
-    macro_type: &TypeRef,
-) -> Option<TypeRef> {
-    let macro_call = match macro_type {
-        TypeRef::Macro(macro_call) => macro_call,
-        _ => panic!("expected TypeRef::Macro"),
-    };
-
-    let file_id = macro_call.file_id;
-    let macro_call = macro_call.to_node(db.upcast());
-
-    let mut expander = Expander::new(db, file_id, module_id);
-    let (file_id, expanded) = match expander.enter_expand::<ast::Type>(db, macro_call.clone()) {
-        Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
-            let file_id = expander.current_file_id();
-            expander.exit(db, mark);
-            (file_id, expanded)
-        }
-        _ => return None,
-    };
-
-    let ctx = LowerCtx::new(db, file_id);
-    return Some(TypeRef::from_ast(&ctx, expanded));
 }

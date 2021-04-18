@@ -5,25 +5,28 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
+use std::cell::{Cell, RefCell};
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, fold::Shift, interner::HasInterner, Mutability, Safety};
 use hir_def::{
     adt::StructKind,
+    body::{Expander, LowerCtx},
     builtin_type::BuiltinType,
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, Path, PathSegment, PathSegments},
     resolver::{HasResolver, Resolver, TypeNs},
-    type_ref::{expand_macro_type, TraitRef as HirTraitRef, TypeBound, TypeRef},
+    type_ref::{TraitRef as HirTraitRef, TypeBound, TypeRef},
     AdtId, AssocContainerId, AssocItemId, ConstId, ConstParamId, EnumId, EnumVariantId, FunctionId,
     GenericDefId, HasModule, ImplId, LocalFieldId, Lookup, StaticId, StructId, TraitId,
     TypeAliasId, TypeParamId, UnionId, VariantId,
 };
-use hir_expand::name::Name;
+use hir_expand::{name::Name, ExpandResult};
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
+use syntax::ast;
 
 use crate::{
     db::HirDatabase,
@@ -50,7 +53,7 @@ pub struct TyLoweringContext<'a> {
     /// possible currently, so this should be fine for now.
     pub type_param_mode: TypeParamLoweringMode,
     pub impl_trait_mode: ImplTraitLoweringMode,
-    impl_trait_counter: std::cell::Cell<u16>,
+    impl_trait_counter: Cell<u16>,
     /// When turning `impl Trait` into opaque types, we have to collect the
     /// bounds at the same time to get the IDs correct (without becoming too
     /// complicated). I don't like using interior mutability (as for the
@@ -59,16 +62,17 @@ pub struct TyLoweringContext<'a> {
     /// we're grouping the mutable data (the counter and this field) together
     /// with the immutable context (the references to the DB and resolver).
     /// Splitting this up would be a possible fix.
-    opaque_type_data: std::cell::RefCell<Vec<ReturnTypeImplTrait>>,
+    opaque_type_data: RefCell<Vec<ReturnTypeImplTrait>>,
+    expander: RefCell<Option<Expander>>,
 }
 
 impl<'a> TyLoweringContext<'a> {
     pub fn new(db: &'a dyn HirDatabase, resolver: &'a Resolver) -> Self {
-        let impl_trait_counter = std::cell::Cell::new(0);
+        let impl_trait_counter = Cell::new(0);
         let impl_trait_mode = ImplTraitLoweringMode::Disallowed;
         let type_param_mode = TypeParamLoweringMode::Placeholder;
         let in_binders = DebruijnIndex::INNERMOST;
-        let opaque_type_data = std::cell::RefCell::new(Vec::new());
+        let opaque_type_data = RefCell::new(Vec::new());
         Self {
             db,
             resolver,
@@ -77,6 +81,7 @@ impl<'a> TyLoweringContext<'a> {
             impl_trait_counter,
             type_param_mode,
             opaque_type_data,
+            expander: RefCell::new(None),
         }
     }
 
@@ -86,15 +91,18 @@ impl<'a> TyLoweringContext<'a> {
         f: impl FnOnce(&TyLoweringContext) -> T,
     ) -> T {
         let opaque_ty_data_vec = self.opaque_type_data.replace(Vec::new());
+        let expander = self.expander.replace(None);
         let new_ctx = Self {
             in_binders: debruijn,
-            impl_trait_counter: std::cell::Cell::new(self.impl_trait_counter.get()),
-            opaque_type_data: std::cell::RefCell::new(opaque_ty_data_vec),
+            impl_trait_counter: Cell::new(self.impl_trait_counter.get()),
+            opaque_type_data: RefCell::new(opaque_ty_data_vec),
+            expander: RefCell::new(expander),
             ..*self
         };
         let result = f(&new_ctx);
         self.impl_trait_counter.set(new_ctx.impl_trait_counter.get());
         self.opaque_type_data.replace(new_ctx.opaque_type_data.into_inner());
+        self.expander.replace(new_ctx.expander.into_inner());
         result
     }
 
@@ -287,15 +295,50 @@ impl<'a> TyLoweringContext<'a> {
                     }
                 }
             }
-            mt @ TypeRef::Macro(_) => {
-                if let Some(module_id) = self.resolver.module() {
-                    match expand_macro_type(self.db.upcast(), module_id, mt) {
-                        Some(type_ref) => self.lower_ty(&type_ref),
-                        None => TyKind::Error.intern(&Interner),
+            TypeRef::Macro(macro_call) => {
+                let (expander, recursion_start) = match self.expander.borrow_mut() {
+                    expander if expander.is_some() => (Some(expander), false),
+                    mut expander => {
+                        if let Some(module_id) = self.resolver.module() {
+                            *expander = Some(Expander::new(
+                                self.db.upcast(),
+                                macro_call.file_id,
+                                module_id,
+                            ));
+                            (Some(expander), true)
+                        } else {
+                            (None, false)
+                        }
+                    }
+                };
+                let ty = if let Some(mut expander) = expander {
+                    let expander_mut = expander.as_mut().unwrap();
+                    let macro_call = macro_call.to_node(self.db.upcast());
+                    match expander_mut.enter_expand::<ast::Type>(self.db.upcast(), macro_call) {
+                        Ok(ExpandResult { value: Some((mark, expanded)), .. }) => {
+                            let ctx =
+                                LowerCtx::new(self.db.upcast(), expander_mut.current_file_id());
+                            let type_ref = TypeRef::from_ast(&ctx, expanded);
+
+                            drop(expander);
+                            let ty = self.lower_ty(&type_ref);
+
+                            self.expander
+                                .borrow_mut()
+                                .as_mut()
+                                .unwrap()
+                                .exit(self.db.upcast(), mark);
+                            Some(ty)
+                        }
+                        _ => None,
                     }
                 } else {
-                    TyKind::Error.intern(&Interner)
+                    None
+                };
+                if recursion_start {
+                    *self.expander.borrow_mut() = None;
                 }
+                ty.unwrap_or_else(|| TyKind::Error.intern(&Interner))
             }
             TypeRef::Error => TyKind::Error.intern(&Interner),
         };
