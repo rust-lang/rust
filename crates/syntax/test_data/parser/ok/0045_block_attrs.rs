@@ -1,4 +1,4 @@
-fn block() {
+fn inner() {
     #![doc("Inner attributes allowed here")]
     //! As are ModuleDoc style comments
     {
@@ -10,6 +10,10 @@ fn block() {
         #![doc("Inner attributes are allowed in blocks when they are the last statement of another block")]
         //! As are ModuleDoc style comments
     }
+}
+
+fn outer() {
+    let _ = #[doc("Outer attributes are always allowed")] {};
 }
 
 // https://github.com/rust-analyzer/rust-analyzer/issues/689

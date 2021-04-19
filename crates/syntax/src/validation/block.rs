@@ -13,7 +13,7 @@ pub(crate) fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<Syntax
             _ => {}
         }
     }
-    errors.extend(block.attrs().map(|attr| {
+    errors.extend(block.attrs().filter(|attr| attr.kind().is_inner()).map(|attr| {
         SyntaxError::new(
             "A block in this position cannot accept inner attributes",
             attr.syntax().text_range(),

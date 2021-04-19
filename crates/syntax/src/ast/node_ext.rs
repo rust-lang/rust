@@ -125,6 +125,18 @@ pub enum AttrKind {
     Outer,
 }
 
+impl AttrKind {
+    /// Returns `true` if the attr_kind is [`Inner`].
+    pub fn is_inner(&self) -> bool {
+        matches!(self, Self::Inner)
+    }
+
+    /// Returns `true` if the attr_kind is [`Outer`].
+    pub fn is_outer(&self) -> bool {
+        matches!(self, Self::Outer)
+    }
+}
+
 impl ast::Attr {
     pub fn as_simple_atom(&self) -> Option<SmolStr> {
         if self.eq_token().is_some() || self.token_tree().is_some() {
