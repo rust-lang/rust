@@ -545,7 +545,7 @@ fn inner_attributes(
             _ => return None,
         }
     };
-    let attrs = attrs.filter(|attr| attr.excl_token().is_some());
+    let attrs = attrs.filter(|attr| attr.kind().is_inner());
     let docs = docs.filter(|doc| doc.is_inner());
     Some((attrs, docs))
 }
@@ -740,7 +740,7 @@ fn collect_attrs(
     let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
         .map_or((None, None), |(attrs, docs)| (Some(attrs), Some(docs)));
 
-    let outer_attrs = owner.attrs().filter(|attr| attr.excl_token().is_none());
+    let outer_attrs = owner.attrs().filter(|attr| attr.kind().is_outer());
     let attrs = outer_attrs
         .chain(inner_attrs.into_iter().flatten())
         .map(|attr| (attr.syntax().text_range().start(), Either::Left(attr)));

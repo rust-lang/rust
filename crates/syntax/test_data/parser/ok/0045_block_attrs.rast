@@ -1,0 +1,218 @@
+SOURCE_FILE@0..764
+  FN@0..461
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..8
+      IDENT@3..8 "inner"
+    PARAM_LIST@8..10
+      L_PAREN@8..9 "("
+      R_PAREN@9..10 ")"
+    WHITESPACE@10..11 " "
+    BLOCK_EXPR@11..461
+      L_CURLY@11..12 "{"
+      WHITESPACE@12..17 "\n    "
+      ATTR@17..57
+        POUND@17..18 "#"
+        BANG@18..19 "!"
+        L_BRACK@19..20 "["
+        PATH@20..23
+          PATH_SEGMENT@20..23
+            NAME_REF@20..23
+              IDENT@20..23 "doc"
+        TOKEN_TREE@23..56
+          L_PAREN@23..24 "("
+          STRING@24..55 "\"Inner attributes all ..."
+          R_PAREN@55..56 ")"
+        R_BRACK@56..57 "]"
+      WHITESPACE@57..62 "\n    "
+      COMMENT@62..97 "//! As are ModuleDoc  ..."
+      WHITESPACE@97..102 "\n    "
+      EXPR_STMT@102..295
+        BLOCK_EXPR@102..294
+          L_CURLY@102..103 "{"
+          WHITESPACE@103..112 "\n        "
+          ATTR@112..180
+            POUND@112..113 "#"
+            BANG@113..114 "!"
+            L_BRACK@114..115 "["
+            PATH@115..118
+              PATH_SEGMENT@115..118
+                NAME_REF@115..118
+                  IDENT@115..118 "doc"
+            TOKEN_TREE@118..179
+              L_PAREN@118..119 "("
+              STRING@119..178 "\"Inner attributes are ..."
+              R_PAREN@178..179 ")"
+            R_BRACK@179..180 "]"
+          WHITESPACE@180..189 "\n        "
+          ATTR@189..244
+            POUND@189..190 "#"
+            BANG@190..191 "!"
+            L_BRACK@191..192 "["
+            PATH@192..195
+              PATH_SEGMENT@192..195
+                NAME_REF@192..195
+                  IDENT@192..195 "doc"
+            TOKEN_TREE@195..243
+              L_PAREN@195..196 "("
+              STRING@196..242 "\"Being validated is n ..."
+              R_PAREN@242..243 ")"
+            R_BRACK@243..244 "]"
+          WHITESPACE@244..253 "\n        "
+          COMMENT@253..288 "//! As are ModuleDoc  ..."
+          WHITESPACE@288..293 "\n    "
+          R_CURLY@293..294 "}"
+        SEMICOLON@294..295 ";"
+      WHITESPACE@295..300 "\n    "
+      BLOCK_EXPR@300..459
+        L_CURLY@300..301 "{"
+        WHITESPACE@301..310 "\n        "
+        ATTR@310..409
+          POUND@310..311 "#"
+          BANG@311..312 "!"
+          L_BRACK@312..313 "["
+          PATH@313..316
+            PATH_SEGMENT@313..316
+              NAME_REF@313..316
+                IDENT@313..316 "doc"
+          TOKEN_TREE@316..408
+            L_PAREN@316..317 "("
+            STRING@317..407 "\"Inner attributes are ..."
+            R_PAREN@407..408 ")"
+          R_BRACK@408..409 "]"
+        WHITESPACE@409..418 "\n        "
+        COMMENT@418..453 "//! As are ModuleDoc  ..."
+        WHITESPACE@453..458 "\n    "
+        R_CURLY@458..459 "}"
+      WHITESPACE@459..460 "\n"
+      R_CURLY@460..461 "}"
+  WHITESPACE@461..463 "\n\n"
+  FN@463..539
+    FN_KW@463..465 "fn"
+    WHITESPACE@465..466 " "
+    NAME@466..471
+      IDENT@466..471 "outer"
+    PARAM_LIST@471..473
+      L_PAREN@471..472 "("
+      R_PAREN@472..473 ")"
+    WHITESPACE@473..474 " "
+    BLOCK_EXPR@474..539
+      L_CURLY@474..475 "{"
+      WHITESPACE@475..480 "\n    "
+      LET_STMT@480..537
+        LET_KW@480..483 "let"
+        WHITESPACE@483..484 " "
+        WILDCARD_PAT@484..485
+          UNDERSCORE@484..485 "_"
+        WHITESPACE@485..486 " "
+        EQ@486..487 "="
+        WHITESPACE@487..488 " "
+        BLOCK_EXPR@488..536
+          ATTR@488..533
+            POUND@488..489 "#"
+            L_BRACK@489..490 "["
+            PATH@490..493
+              PATH_SEGMENT@490..493
+                NAME_REF@490..493
+                  IDENT@490..493 "doc"
+            TOKEN_TREE@493..532
+              L_PAREN@493..494 "("
+              STRING@494..531 "\"Outer attributes are ..."
+              R_PAREN@531..532 ")"
+            R_BRACK@532..533 "]"
+          WHITESPACE@533..534 " "
+          L_CURLY@534..535 "{"
+          R_CURLY@535..536 "}"
+        SEMICOLON@536..537 ";"
+      WHITESPACE@537..538 "\n"
+      R_CURLY@538..539 "}"
+  WHITESPACE@539..541 "\n\n"
+  COMMENT@541..601 "// https://github.com ..."
+  WHITESPACE@601..602 "\n"
+  IMPL@602..763
+    IMPL_KW@602..606 "impl"
+    WHITESPACE@606..607 " "
+    PATH_TYPE@607..615
+      PATH@607..615
+        PATH_SEGMENT@607..615
+          NAME_REF@607..615
+            IDENT@607..615 "Whatever"
+    WHITESPACE@615..616 " "
+    ASSOC_ITEM_LIST@616..763
+      L_CURLY@616..617 "{"
+      WHITESPACE@617..622 "\n    "
+      FN@622..761
+        FN_KW@622..624 "fn"
+        WHITESPACE@624..625 " "
+        NAME@625..636
+          IDENT@625..636 "salsa_event"
+        PARAM_LIST@636..679
+          L_PAREN@636..637 "("
+          SELF_PARAM@637..642
+            AMP@637..638 "&"
+            NAME@638..642
+              SELF_KW@638..642 "self"
+          COMMA@642..643 ","
+          WHITESPACE@643..644 " "
+          PARAM@644..678
+            IDENT_PAT@644..652
+              NAME@644..652
+                IDENT@644..652 "event_fn"
+            COLON@652..653 ":"
+            WHITESPACE@653..654 " "
+            IMPL_TRAIT_TYPE@654..678
+              IMPL_KW@654..658 "impl"
+              WHITESPACE@658..659 " "
+              TYPE_BOUND_LIST@659..678
+                TYPE_BOUND@659..678
+                  PATH_TYPE@659..678
+                    PATH@659..678
+                      PATH_SEGMENT@659..678
+                        NAME_REF@659..661
+                          IDENT@659..661 "Fn"
+                        PARAM_LIST@661..663
+                          L_PAREN@661..662 "("
+                          R_PAREN@662..663 ")"
+                        WHITESPACE@663..664 " "
+                        RET_TYPE@664..678
+                          THIN_ARROW@664..666 "->"
+                          WHITESPACE@666..667 " "
+                          PATH_TYPE@667..678
+                            PATH@667..678
+                              PATH_SEGMENT@667..678
+                                NAME_REF@667..672
+                                  IDENT@667..672 "Event"
+                                GENERIC_ARG_LIST@672..678
+                                  L_ANGLE@672..673 "<"
+                                  TYPE_ARG@673..677
+                                    PATH_TYPE@673..677
+                                      PATH@673..677
+                                        PATH_SEGMENT@673..677
+                                          NAME_REF@673..677
+                                            IDENT@673..677 "Self"
+                                  R_ANGLE@677..678 ">"
+          R_PAREN@678..679 ")"
+        WHITESPACE@679..680 " "
+        BLOCK_EXPR@680..761
+          L_CURLY@680..681 "{"
+          WHITESPACE@681..690 "\n        "
+          ATTR@690..717
+            POUND@690..691 "#"
+            BANG@691..692 "!"
+            L_BRACK@692..693 "["
+            PATH@693..698
+              PATH_SEGMENT@693..698
+                NAME_REF@693..698
+                  IDENT@693..698 "allow"
+            TOKEN_TREE@698..716
+              L_PAREN@698..699 "("
+              IDENT@699..715 "unused_variables"
+              R_PAREN@715..716 ")"
+            R_BRACK@716..717 "]"
+          WHITESPACE@717..718 " "
+          COMMENT@718..755 "// this is  `inner_at ..."
+          WHITESPACE@755..760 "\n    "
+          R_CURLY@760..761 "}"
+      WHITESPACE@761..762 "\n"
+      R_CURLY@762..763 "}"
+  WHITESPACE@763..764 "\n"
