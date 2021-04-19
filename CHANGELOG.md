@@ -2216,6 +2216,7 @@ Released 2018-09-13
 [`filter_next`]: https://rust-lang.github.io/rust-clippy/master/index.html#filter_next
 [`find_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#find_map
 [`flat_map_identity`]: https://rust-lang.github.io/rust-clippy/master/index.html#flat_map_identity
+[`flat_map_option`]: https://rust-lang.github.io/rust-clippy/master/index.html#flat_map_option
 [`float_arithmetic`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_arithmetic
 [`float_cmp`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_cmp
 [`float_cmp_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_cmp_const
