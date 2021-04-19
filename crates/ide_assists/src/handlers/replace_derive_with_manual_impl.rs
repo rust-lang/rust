@@ -5,7 +5,6 @@ use itertools::Itertools;
 use syntax::{
     ast::{self, make, AstNode, NameOwner},
     SyntaxKind::{IDENT, WHITESPACE},
-    TextSize,
 };
 
 use crate::{
@@ -43,32 +42,23 @@ pub(crate) fn replace_derive_with_manual_impl(
     ctx: &AssistContext,
 ) -> Option<()> {
     let attr = ctx.find_node_at_offset::<ast::Attr>()?;
-
-    let has_derive = attr
-        .syntax()
-        .descendants_with_tokens()
-        .filter(|t| t.kind() == IDENT)
-        .find_map(syntax::NodeOrToken::into_token)
-        .filter(|t| t.text() == "derive")
-        .is_some();
-    if !has_derive {
+    let (name, args) = attr.as_simple_call()?;
+    if name != "derive" {
         return None;
     }
 
-    let trait_token = ctx.token_at_offset().find(|t| t.kind() == IDENT && t.text() != "derive")?;
-    let trait_path = make::path_unqualified(make::path_segment(make::name_ref(trait_token.text())));
+    let trait_token = args.syntax().token_at_offset(ctx.offset()).find(|t| t.kind() == IDENT)?;
+    let trait_name = trait_token.text();
 
     let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
-    let annotated_name = adt.name()?;
-    let insert_pos = adt.syntax().text_range().end();
 
-    let current_module = ctx.sema.scope(annotated_name.syntax()).module()?;
+    let current_module = ctx.sema.scope(adt.syntax()).module()?;
     let current_crate = current_module.krate();
 
     let found_traits = items_locator::items_with_name(
         &ctx.sema,
         current_crate,
-        NameToImport::Exact(trait_token.text().to_string()),
+        NameToImport::Exact(trait_name.to_string()),
         items_locator::AssocItemSearch::Exclude,
         Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT),
     )
@@ -86,10 +76,11 @@ pub(crate) fn replace_derive_with_manual_impl(
 
     let mut no_traits_found = true;
     for (trait_path, trait_) in found_traits.inspect(|_| no_traits_found = false) {
-        add_assist(acc, ctx, &attr, &trait_path, Some(trait_), &adt, &annotated_name, insert_pos)?;
+        add_assist(acc, ctx, &attr, &args, &trait_path, Some(trait_), &adt)?;
     }
     if no_traits_found {
-        add_assist(acc, ctx, &attr, &trait_path, None, &adt, &annotated_name, insert_pos)?;
+        let trait_path = make::path_unqualified(make::path_segment(make::name_ref(trait_name)));
+        add_assist(acc, ctx, &attr, &args, &trait_path, None, &adt)?;
     }
     Some(())
 }
@@ -98,15 +89,14 @@ fn add_assist(
     acc: &mut Assists,
     ctx: &AssistContext,
     attr: &ast::Attr,
+    input: &ast::TokenTree,
     trait_path: &ast::Path,
     trait_: Option<hir::Trait>,
     adt: &ast::Adt,
-    annotated_name: &ast::Name,
-    insert_pos: TextSize,
 ) -> Option<()> {
     let target = attr.syntax().text_range();
-    let input = attr.token_tree()?;
-    let label = format!("Convert to manual  `impl {} for {}`", trait_path, annotated_name);
+    let annotated_name = adt.name()?;
+    let label = format!("Convert to manual `impl {} for {}`", trait_path, annotated_name);
     let trait_name = trait_path.segment().and_then(|seg| seg.name_ref())?;
 
     acc.add(
@@ -114,8 +104,9 @@ fn add_assist(
         label,
         target,
         |builder| {
+            let insert_pos = adt.syntax().text_range().end();
             let impl_def_with_items =
-                impl_def_from_trait(&ctx.sema, annotated_name, trait_, trait_path);
+                impl_def_from_trait(&ctx.sema, &annotated_name, trait_, trait_path);
             update_attribute(builder, &input, &trait_name, &attr);
             let trait_path = format!("{}", trait_path);
             match (ctx.config.snippet_cap, impl_def_with_items) {
