@@ -245,37 +245,39 @@ struct CacheAnalysis {
         }
         if (auto II = dyn_cast<IntrinsicInst>(inst2)) {
           if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0) {
-            allUnsyncdPredecessorsOf(II, [&](Instruction *mid) {
-              if (!mid->mayWriteToMemory())
-                return false;
+            allUnsyncdPredecessorsOf(
+                II,
+                [&](Instruction *mid) {
+                  if (!mid->mayWriteToMemory())
+                    return false;
 
-              if (unnecessaryInstructions.count(mid)) {
-                return false;
-              }
+                  if (unnecessaryInstructions.count(mid)) {
+                    return false;
+                  }
 
-              if (!writesToMemoryReadBy(AA, &li, mid)) {
-                return false;
-              }
+                  if (!writesToMemoryReadBy(AA, &li, mid)) {
+                    return false;
+                  }
 
-              can_modref = true;
-              EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
-                          li.getParent(), "Load may need caching ", li,
-                          " due to ", *mid, " via ", *II);
-              return true;
-            }, [&]() {
-              // if gone past entry
-              if (!topLevel) {
-                EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
-                            li.getParent(), "Load may need caching ", li,
-                            " due to entry via ", *II);
-                can_modref = true;
-              }
-            });
+                  can_modref = true;
+                  EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
+                              li.getParent(), "Load may need caching ", li,
+                              " due to ", *mid, " via ", *II);
+                  return true;
+                },
+                [&]() {
+                  // if gone past entry
+                  if (!topLevel) {
+                    EmitWarning("Uncacheable", li.getDebugLoc(), oldFunc,
+                                li.getParent(), "Load may need caching ", li,
+                                " due to entry via ", *II);
+                    can_modref = true;
+                  }
+                });
             if (can_modref)
               return true;
             else
               return false;
-
           }
         }
         can_modref = true;
@@ -2691,11 +2693,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     for (auto &g : gutils->newFunc->getParent()->globals()) {
       if (hasMetadata(&g, "enzyme_internalshadowglobal")) {
         IRBuilder<> entryBuilder(gutils->inversionAllocs,
-                                gutils->inversionAllocs->begin());
+                                 gutils->inversionAllocs->begin());
 
         if (g.getType()->getAddressSpace() == 3) {
           if (sharedBlock == nullptr)
-            sharedBlock = BasicBlock::Create(entry->getContext(), "shblock", gutils->newFunc);
+            sharedBlock = BasicBlock::Create(entry->getContext(), "shblock",
+                                             gutils->newFunc);
           entryBuilder.SetInsertPoint(sharedBlock);
         }
         auto store = entryBuilder.CreateStore(
@@ -2713,18 +2716,22 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     if (sharedBlock) {
       BasicBlock *OldEntryInsts = entry->splitBasicBlock(entry->begin());
       entry->getTerminator()->eraseFromParent();
-      IRBuilder <>ebuilder(entry);
+      IRBuilder<> ebuilder(entry);
 
-      Value *tx = ebuilder.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_x));
+      Value *tx = ebuilder.CreateCall(Intrinsic::getDeclaration(
+          gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_x));
       tx = ebuilder.CreateICmpEQ(tx, ConstantInt::get(tx->getType(), 0));
-      Value *ty = ebuilder.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_y));
+      Value *ty = ebuilder.CreateCall(Intrinsic::getDeclaration(
+          gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_y));
       ty = ebuilder.CreateICmpEQ(ty, ConstantInt::get(ty->getType(), 0));
-      Value *tz = ebuilder.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_z));
+      Value *tz = ebuilder.CreateCall(Intrinsic::getDeclaration(
+          gutils->newFunc->getParent(), Intrinsic::nvvm_read_ptx_sreg_tid_z));
       tz = ebuilder.CreateICmpEQ(tz, ConstantInt::get(tz->getType(), 0));
 
-      ebuilder.CreateCondBr(ebuilder.CreateAnd(ebuilder.CreateAnd(tx, ty), tz), sharedBlock, OldEntryInsts);
+      ebuilder.CreateCondBr(ebuilder.CreateAnd(ebuilder.CreateAnd(tx, ty), tz),
+                            sharedBlock, OldEntryInsts);
 
-      IRBuilder <>instbuilder(OldEntryInsts, OldEntryInsts->begin());
+      IRBuilder<> instbuilder(OldEntryInsts, OldEntryInsts->begin());
 
       cast<CallInst>(instbuilder.CreateCall(
           Intrinsic::getDeclaration(gutils->newFunc->getParent(),
@@ -2732,10 +2739,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           {}));
       OldEntryInsts->moveAfter(entry);
       sharedBlock->moveAfter(entry);
-      IRBuilder <>sbuilder(sharedBlock);
+      IRBuilder<> sbuilder(sharedBlock);
       sbuilder.CreateBr(OldEntryInsts);
-      SmallVector<AllocaInst*, 3> AIs;
-      for(auto &I : *OldEntryInsts) {
+      SmallVector<AllocaInst *, 3> AIs;
+      for (auto &I : *OldEntryInsts) {
         if (auto AI = dyn_cast<AllocaInst>(&I))
           AIs.push_back(AI);
       }

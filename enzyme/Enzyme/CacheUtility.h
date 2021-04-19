@@ -300,7 +300,7 @@ public:
   virtual llvm::Value *unwrapM(llvm::Value *const val,
                                llvm::IRBuilder<> &BuilderM,
                                const llvm::ValueToValueMapTy &available,
-                               UnwrapMode mode) = 0;
+                               UnwrapMode mode, bool permitCache = true) = 0;
 
   /// High-level utility to get the value an instruction at a new location
   /// specified by BuilderM. Unlike unwrap, this function can never fail --

@@ -608,7 +608,7 @@ allPredecessorsOf(llvm::Instruction *inst,
 /// If the function returns true, the iteration will early exit
 static inline void
 allDomPredecessorsOf(llvm::Instruction *inst, llvm::DominatorTree &DT,
-                  std::function<bool(llvm::Instruction *)> f) {
+                     std::function<bool(llvm::Instruction *)> f) {
 
   for (auto uinst = inst->getPrevNode(); uinst != nullptr;
        uinst = uinst->getPrevNode()) {
@@ -642,8 +642,6 @@ allDomPredecessorsOf(llvm::Instruction *inst, llvm::DominatorTree &DT,
     }
   }
 }
-
-
 
 /// Call the function f for all instructions that happen before inst
 /// If the function returns true, the iteration will early exit

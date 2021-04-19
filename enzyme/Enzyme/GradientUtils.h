@@ -106,7 +106,7 @@ public:
   DominatorTree &OrigDT;
   PostDominatorTree &OrigPDT;
   LoopInfo &OrigLI;
-  ScalarEvolution& OrigSE;
+  ScalarEvolution &OrigSE;
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
   ValueMap<BasicBlock *, BasicBlock *> reverseBlocks;
@@ -734,7 +734,8 @@ public:
         OrigPDT(Logic.PPC.FAM.getResult<llvm::PostDominatorTreeAnalysis>(
             *oldFunc_)),
         OrigLI(Logic.PPC.FAM.getResult<llvm::LoopAnalysis>(*oldFunc_)),
-        OrigSE(Logic.PPC.FAM.getResult<llvm::ScalarEvolutionAnalysis>(*oldFunc_)),
+        OrigSE(
+            Logic.PPC.FAM.getResult<llvm::ScalarEvolutionAnalysis>(*oldFunc_)),
         ATA(new ActivityAnalyzer(
             Logic.PPC, Logic.PPC.getAAResultsFromFunction(oldFunc_), TLI_,
             constantvalues_, activevals_, ActiveReturn)),
@@ -990,8 +991,8 @@ public:
   /// if full unwrap, don't just unwrap this instruction, but also its operands,
   /// etc
   Value *unwrapM(Value *const val, IRBuilder<> &BuilderM,
-                 const ValueToValueMapTy &available,
-                 UnwrapMode mode) override final;
+                 const ValueToValueMapTy &available, UnwrapMode mode,
+                 bool permitCache = true) override final;
 
   void ensureLookupCached(Instruction *inst, bool shouldFree = true) {
     assert(inst);
