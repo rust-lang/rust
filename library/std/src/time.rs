@@ -323,9 +323,7 @@ impl Instant {
 
     /// Returns the amount of time elapsed since this instant was created.
     ///
-    /// # Panics
-    ///
-    /// This function may panic if the current time is earlier than this
+    /// Returns zero duration if the current time is earlier than this
     /// instant, which is something that can happen if an `Instant` is
     /// produced synthetically.
     ///
@@ -342,7 +340,7 @@ impl Instant {
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn elapsed(&self) -> Duration {
-        Instant::now() - *self
+        Instant::now().saturating_duration_since(*self)
     }
 
     /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
