@@ -32,8 +32,7 @@ macro_rules! impl_float_vector {
             /// equivalently-indexed lane in `self`.
             #[inline]
             pub fn abs(self) -> Self {
-                let no_sign = crate::$bits_ty::splat(!0 >> 1);
-                Self::from_bits(self.to_bits() & no_sign)
+                unsafe { crate::intrinsics::simd_fabs(self) }
             }
         }
 
