@@ -36,7 +36,6 @@ use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::FileName;
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
 use tracing::{info, warn};
@@ -575,14 +574,7 @@ fn write_out_deps(
             .iter()
             .filter(|fmap| fmap.is_real_file())
             .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| {
-                escape_dep_filename(&match &fmap.name {
-                    FileName::Real(real) => {
-                        real.local_path().unwrap_or(real.stable_name()).display().to_string()
-                    }
-                    _ => fmap.name.to_string(),
-                })
-            })
+            .map(|fmap| escape_dep_filename(&fmap.name.prefer_local().to_string()))
             .collect();
 
         if let Some(ref backend) = sess.opts.debugging_opts.codegen_backend {

@@ -34,12 +34,7 @@ impl<'a> SpanUtils<'a> {
                         .to_string()
                 }
             }
-            // If the file name was remapped, we assume the user
-            // configured it the way they wanted to, so use that directly
-            FileName::Real(RealFileName::Remapped { local_path: _, virtual_name }) => {
-                virtual_name.display().to_string()
-            }
-            filename => filename.to_string(),
+            filename => filename.prefer_remapped().to_string(),
         }
     }
 

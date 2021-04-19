@@ -840,7 +840,7 @@ impl Collector {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        format!("{} - {}(line {})", filename, item_path, line)
+        format!("{} - {}(line {})", filename.prefer_local(), item_path, line)
     }
 
     crate fn set_position(&mut self, position: Span) {
@@ -891,7 +891,7 @@ impl Tester for Collector {
                     local_path.to_path_buf()
                 } else {
                     // Somehow we got the filename from the metadata of another crate, should never happen
-                    PathBuf::from(r"doctest.rs")
+                    unreachable!("doctest from a different crate");
                 }
             }
             _ => PathBuf::from(r"doctest.rs"),
@@ -899,7 +899,8 @@ impl Tester for Collector {
 
         // For example `module/file.rs` would become `module_file_rs`
         let file = filename
-            .to_string()
+            .prefer_local()
+            .to_string_lossy()
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
             .collect::<String>();

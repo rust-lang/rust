@@ -376,17 +376,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         } = options;
 
         let src_root = match krate.src {
-            FileName::Real(ref p) => {
-                if let Some(local_path) = p.local_path() {
-                    match local_path.parent() {
-                        Some(p) => p.to_path_buf(),
-                        None => PathBuf::new(),
-                    }
-                } else {
-                    // Somehow we got the filename from the metadata of another crate, should never happen
-                    PathBuf::new()
-                }
-            }
+            FileName::Real(ref p) => match p.local_path_if_available().parent() {
+                Some(p) => p.to_path_buf(),
+                None => PathBuf::new(),
+            },
             _ => PathBuf::new(),
         };
         // If user passed in `--playground-url` arg, we fill in crate name here

@@ -305,6 +305,16 @@ impl FileName {
         }
     }
 
+    pub fn prefer_remapped(&self) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, prefer_local: false }
+    }
+
+    // This may include transient local filesystem information.
+    // Must not be embedded in build outputs.
+    pub fn prefer_local(&self) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, prefer_local: true }
+    }
+
     pub fn macro_expansion_source_code(src: &str) -> FileName {
         let mut hasher = StableHasher::new();
         src.hash(&mut hasher);

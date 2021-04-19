@@ -188,8 +188,10 @@ pub fn maybe_file_to_stream(
     override_span: Option<Span>,
 ) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
-        sess.span_diagnostic
-            .bug(&format!("cannot lex `source_file` without source: {}", source_file.name));
+        sess.span_diagnostic.bug(&format!(
+            "cannot lex `source_file` without source: {}",
+            source_file.name.prefer_local()
+        ));
     });
 
     let (token_trees, unmatched_braces) =

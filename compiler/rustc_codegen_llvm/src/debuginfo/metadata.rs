@@ -759,10 +759,10 @@ fn hex_encode(data: &[u8]) -> String {
 }
 
 pub fn file_metadata(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
-    debug!("file_metadata: file_name: {}", source_file.name);
+    debug!("file_metadata: file_name: {:?}", source_file.name);
 
     let hash = Some(&source_file.src_hash);
-    let file_name = Some(source_file.name.to_string());
+    let file_name = Some(source_file.name.prefer_remapped().to_string());
     let directory = if source_file.is_real_file() && !source_file.is_imported() {
         Some(cx.sess().working_dir.to_string_lossy(false).to_string())
     } else {

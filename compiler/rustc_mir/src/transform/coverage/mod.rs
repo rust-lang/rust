@@ -290,7 +290,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
-        let file_name = Symbol::intern(&self.source_file.name.to_string());
+        let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for covspan in coverage_spans {
