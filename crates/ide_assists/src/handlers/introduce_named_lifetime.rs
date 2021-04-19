@@ -1,7 +1,8 @@
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, GenericParamsOwner, NameOwner},
-    AstNode, TextRange, TextSize,
+    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, GenericParamsOwner},
+    ted::{self, Position},
+    AstNode, TextRange,
 };
 
 use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -37,10 +38,12 @@ static ASSIST_LABEL: &str = "Introduce named lifetime";
 pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let lifetime =
         ctx.find_node_at_offset::<ast::Lifetime>().filter(|lifetime| lifetime.text() == "'_")?;
+    let lifetime_loc = lifetime.lifetime_ident_token()?.text_range();
+
     if let Some(fn_def) = lifetime.syntax().ancestors().find_map(ast::Fn::cast) {
-        generate_fn_def_assist(acc, &fn_def, lifetime.lifetime_ident_token()?.text_range())
+        generate_fn_def_assist(acc, fn_def, lifetime_loc, lifetime)
     } else if let Some(impl_def) = lifetime.syntax().ancestors().find_map(ast::Impl::cast) {
-        generate_impl_def_assist(acc, &impl_def, lifetime.lifetime_ident_token()?.text_range())
+        generate_impl_def_assist(acc, impl_def, lifetime_loc, lifetime)
     } else {
         None
     }
@@ -49,26 +52,26 @@ pub(crate) fn introduce_named_lifetime(acc: &mut Assists, ctx: &AssistContext) -
 /// Generate the assist for the fn def case
 fn generate_fn_def_assist(
     acc: &mut Assists,
-    fn_def: &ast::Fn,
+    fn_def: ast::Fn,
     lifetime_loc: TextRange,
+    lifetime: ast::Lifetime,
 ) -> Option<()> {
     let param_list: ast::ParamList = fn_def.param_list()?;
-    let new_lifetime_param = generate_unique_lifetime_param_name(&fn_def.generic_param_list())?;
-    let end_of_fn_ident = fn_def.name()?.ident_token()?.text_range().end();
+    let new_lifetime_param = generate_unique_lifetime_param_name(fn_def.generic_param_list())?;
     let self_param =
         // use the self if it's a reference and has no explicit lifetime
         param_list.self_param().filter(|p| p.lifetime().is_none() && p.amp_token().is_some());
     // compute the location which implicitly has the same lifetime as the anonymous lifetime
     let loc_needing_lifetime = if let Some(self_param) = self_param {
         // if we have a self reference, use that
-        Some(self_param.name()?.syntax().text_range().start())
+        Some(NeedsLifetime::SelfParam(self_param))
     } else {
         // otherwise, if there's a single reference parameter without a named liftime, use that
         let fn_params_without_lifetime: Vec<_> = param_list
             .params()
             .filter_map(|param| match param.ty() {
                 Some(ast::Type::RefType(ascribed_type)) if ascribed_type.lifetime().is_none() => {
-                    Some(ascribed_type.amp_token()?.text_range().end())
+                    Some(NeedsLifetime::RefType(ascribed_type))
                 }
                 _ => None,
             })
@@ -81,30 +84,46 @@ fn generate_fn_def_assist(
         }
     };
     acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
-        add_lifetime_param(fn_def, builder, end_of_fn_ident, new_lifetime_param);
-        builder.replace(lifetime_loc, format!("'{}", new_lifetime_param));
-        loc_needing_lifetime.map(|loc| builder.insert(loc, format!("'{} ", new_lifetime_param)));
+        let fn_def = builder.make_ast_mut(fn_def);
+        let lifetime = builder.make_ast_mut(lifetime);
+        let loc_needing_lifetime =
+            loc_needing_lifetime.and_then(|it| it.make_mut(builder).to_position());
+
+        add_lifetime_param(fn_def.get_or_create_generic_param_list(), new_lifetime_param);
+        ted::replace(
+            lifetime.syntax(),
+            make_ast_lifetime(new_lifetime_param).clone_for_update().syntax(),
+        );
+        loc_needing_lifetime.map(|position| {
+            ted::insert(position, make_ast_lifetime(new_lifetime_param).clone_for_update().syntax())
+        });
     })
 }
 
 /// Generate the assist for the impl def case
 fn generate_impl_def_assist(
     acc: &mut Assists,
-    impl_def: &ast::Impl,
+    impl_def: ast::Impl,
     lifetime_loc: TextRange,
+    lifetime: ast::Lifetime,
 ) -> Option<()> {
-    let new_lifetime_param = generate_unique_lifetime_param_name(&impl_def.generic_param_list())?;
-    let end_of_impl_kw = impl_def.impl_token()?.text_range().end();
+    let new_lifetime_param = generate_unique_lifetime_param_name(impl_def.generic_param_list())?;
     acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
-        add_lifetime_param(impl_def, builder, end_of_impl_kw, new_lifetime_param);
-        builder.replace(lifetime_loc, format!("'{}", new_lifetime_param));
+        let impl_def = builder.make_ast_mut(impl_def);
+        let lifetime = builder.make_ast_mut(lifetime);
+
+        add_lifetime_param(impl_def.get_or_create_generic_param_list(), new_lifetime_param);
+        ted::replace(
+            lifetime.syntax(),
+            make_ast_lifetime(new_lifetime_param).clone_for_update().syntax(),
+        );
     })
 }
 
 /// Given a type parameter list, generate a unique lifetime parameter name
 /// which is not in the list
 fn generate_unique_lifetime_param_name(
-    existing_type_param_list: &Option<ast::GenericParamList>,
+    existing_type_param_list: Option<ast::GenericParamList>,
 ) -> Option<char> {
     match existing_type_param_list {
         Some(type_params) => {
@@ -118,25 +137,37 @@ fn generate_unique_lifetime_param_name(
     }
 }
 
-/// Add the lifetime param to `builder`. If there are type parameters in `type_params_owner`, add it to the end. Otherwise
-/// add new type params brackets with the lifetime parameter at `new_type_params_loc`.
-fn add_lifetime_param<TypeParamsOwner: ast::GenericParamsOwner>(
-    type_params_owner: &TypeParamsOwner,
-    builder: &mut AssistBuilder,
-    new_type_params_loc: TextSize,
-    new_lifetime_param: char,
-) {
-    match type_params_owner.generic_param_list() {
-        // add the new lifetime parameter to an existing type param list
-        Some(type_params) => {
-            builder.insert(
-                (u32::from(type_params.syntax().text_range().end()) - 1).into(),
-                format!(", '{}", new_lifetime_param),
-            );
+fn add_lifetime_param(type_params: ast::GenericParamList, new_lifetime_param: char) {
+    let generic_param =
+        make::generic_param(format!("'{}", new_lifetime_param), None).clone_for_update();
+    type_params.add_generic_param(generic_param);
+}
+
+fn make_ast_lifetime(new_lifetime_param: char) -> ast::Lifetime {
+    make::generic_param(format!("'{}", new_lifetime_param), None)
+        .syntax()
+        .descendants()
+        .find_map(ast::Lifetime::cast)
+        .unwrap()
+}
+
+enum NeedsLifetime {
+    SelfParam(ast::SelfParam),
+    RefType(ast::RefType),
+}
+
+impl NeedsLifetime {
+    fn make_mut(self, builder: &mut AssistBuilder) -> Self {
+        match self {
+            Self::SelfParam(it) => Self::SelfParam(builder.make_ast_mut(it)),
+            Self::RefType(it) => Self::RefType(builder.make_ast_mut(it)),
         }
-        // create a new type param list containing only the new lifetime parameter
-        None => {
-            builder.insert(new_type_params_loc, format!("<'{}>", new_lifetime_param));
+    }
+
+    fn to_position(self) -> Option<Position> {
+        match self {
+            Self::SelfParam(it) => Some(Position::after(it.amp_token()?)),
+            Self::RefType(it) => Some(Position::after(it.amp_token()?)),
         }
     }
 }
@@ -310,6 +341,15 @@ mod tests {
             introduce_named_lifetime,
             r#"fn my_fun<'other>(self, f: &Foo, b: &'other Bar) -> X<'_$0>"#,
             r#"fn my_fun<'other, 'a>(self, f: &'a Foo, b: &'other Bar) -> X<'a>"#,
+        );
+    }
+
+    #[test]
+    fn test_function_add_lifetime_to_self_ref_mut() {
+        check_assist(
+            introduce_named_lifetime,
+            r#"fn foo(&mut self) -> &'_$0 ()"#,
+            r#"fn foo<'a>(&'a mut self) -> &'a ()"#,
         );
     }
 }

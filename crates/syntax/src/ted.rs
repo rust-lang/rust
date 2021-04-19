@@ -165,6 +165,13 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
     if right.kind() == T![;] || right.kind() == T![,] {
         return None;
     }
+    if left.kind() == T![<] || right.kind() == T![>] {
+        return None;
+    }
+    if left.kind() == T![&] && right.kind() == SyntaxKind::LIFETIME {
+        return None;
+    }
+
     if right.kind() == SyntaxKind::USE {
         let indent = IndentLevel::from_element(left);
         return Some(make::tokens::whitespace(&format!("\n{}", indent)));

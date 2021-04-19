@@ -599,7 +599,12 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
     // we have selected a few statements in a block
     // so covering_element returns the whole block
     if node.kind() == BLOCK_EXPR {
-        let body = FunctionBody::from_range(node.clone(), selection_range);
+        // Extract the full statements.
+        let statements_range = node
+            .children()
+            .filter(|c| selection_range.intersect(c.text_range()).is_some())
+            .fold(selection_range, |acc, c| acc.cover(c.text_range()));
+        let body = FunctionBody::from_range(node.clone(), statements_range);
         if body.is_some() {
             return body;
         }
@@ -610,7 +615,8 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
     // so we try to expand covering_element to parent and repeat the previous
     if let Some(parent) = node.parent() {
         if parent.kind() == BLOCK_EXPR {
-            let body = FunctionBody::from_range(parent, selection_range);
+            // Extract the full statement.
+            let body = FunctionBody::from_range(parent, node.text_range());
             if body.is_some() {
                 return body;
             }
@@ -1780,6 +1786,60 @@ fn $0fun_name() -> i32 {
         Some(x) => x,
         None => 0,
     }
+}"#,
+        );
+    }
+
+    #[test]
+    fn extract_partial_block_single_line() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    let n = 1;
+    let mut v = $0n * n;$0
+    v += 1;
+}"#,
+            r#"
+fn foo() {
+    let n = 1;
+    let mut v = fun_name(n);
+    v += 1;
+}
+
+fn $0fun_name(n: i32) -> i32 {
+    let mut v = n * n;
+    v
+}"#,
+        );
+    }
+
+    #[test]
+    fn extract_partial_block() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    let m = 2;
+    let n = 1;
+    let mut v = m $0* n;
+    let mut w = 3;$0
+    v += 1;
+    w += 1;
+}"#,
+            r#"
+fn foo() {
+    let m = 2;
+    let n = 1;
+    let (mut v, mut w) = fun_name(m, n);
+    v += 1;
+    w += 1;
+}
+
+fn $0fun_name(m: i32, n: i32) -> (i32, i32) {
+    let mut v = m * n;
+    let mut w = 3;
+    (v, w)
 }"#,
         );
     }
