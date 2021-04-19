@@ -119,8 +119,7 @@ fn find_path_inner(
 
     // - if the item is the crate root, return `crate`
     let root = def_map.crate_root(db);
-    if item == ItemInNs::Types(ModuleDefId::ModuleId(root)) && def_map.block_id().is_none() {
-        // FIXME: the `block_id()` check should be unnecessary, but affects the result
+    if item == ItemInNs::Types(ModuleDefId::ModuleId(root)) {
         return Some(ModPath::from_segments(PathKind::Crate, Vec::new()));
     }
 
@@ -131,7 +130,7 @@ fn find_path_inner(
     }
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
-    for (name, def_id) in def_map.extern_prelude() {
+    for (name, def_id) in root.def_map(db).extern_prelude() {
         if item == ItemInNs::Types(*def_id) {
             let name = scope_name.unwrap_or_else(|| name.clone());
             return Some(ModPath::from_segments(PathKind::Plain, vec![name]));
@@ -298,6 +297,7 @@ fn find_local_import_locations(
     let data = &def_map[from.local_id];
     let mut worklist =
         data.children.values().map(|child| def_map.module_id(*child)).collect::<Vec<_>>();
+    // FIXME: do we need to traverse out of block expressions here?
     for ancestor in iter::successors(from.containing_module(db), |m| m.containing_module(db)) {
         worklist.push(ancestor);
     }
@@ -947,10 +947,11 @@ fn main() {
     $0
 }
             "#,
-            "module::CompleteMe",
+            // FIXME: these could use fewer/better prefixes
             "module::CompleteMe",
             "crate::module::CompleteMe",
-            "self::module::CompleteMe",
+            "crate::module::CompleteMe",
+            "crate::module::CompleteMe",
         )
     }
 
@@ -966,6 +967,28 @@ mod baz {
 
 mod bar {
     fn bar() {
+        $0
+    }
+}
+            "#,
+            "crate::baz::Foo",
+            "crate::baz::Foo",
+            "crate::baz::Foo",
+            "crate::baz::Foo",
+        )
+    }
+
+    #[test]
+    fn from_inside_module_with_inner_items() {
+        check_found_path(
+            r#"
+mod baz {
+    pub struct Foo {}
+}
+
+mod bar {
+    fn bar() {
+        fn inner() {}
         $0
     }
 }
@@ -1002,6 +1025,36 @@ pub mod name {
             "name::AsName",
             "crate::name::AsName",
             "self::name::AsName",
+        );
+    }
+
+    #[test]
+    fn extern_crate() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:dep
+$0
+//- /dep.rs crate:dep
+"#,
+            "dep",
+            "dep",
+            "dep",
+            "dep",
+        );
+
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:dep
+fn f() {
+    fn inner() {}
+    $0
+}
+//- /dep.rs crate:dep
+"#,
+            "dep",
+            "dep",
+            "dep",
+            "dep",
         );
     }
 }
