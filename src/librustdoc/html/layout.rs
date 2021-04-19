@@ -110,7 +110,6 @@ crate fn render<T: Print, S: Print>(
     </nav>\
     <section id=\"main\" class=\"content\">{content}</section>\
     <section id=\"search\" class=\"content hidden\"></section>\
-    <section class=\"footer\"></section>\
     {after_content}\
     <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\" \
        data-search-index-js=\"{root_path}search-index{suffix}.js\" \
