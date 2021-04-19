@@ -1281,7 +1281,7 @@ function hideThemeButtonState() {
         if (currentType) {
             currentType = currentType.getElementsByClassName("rust")[0];
             if (currentType) {
-                currentType.classList.forEach(function(item) {
+                onEachLazy(currentType.classList, function(item) {
                     if (item !== "main") {
                         className = item;
                         return true;
