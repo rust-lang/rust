@@ -227,8 +227,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
     ),
     ungated!(link_name, AssumedUsed, template!(NameValueStr: "name")),
-    ungated!(no_link, Normal, template!(Word)),
-    ungated!(repr, Normal, template!(List: "C")),
+    ungated!(no_link, AssumedUsed, template!(Word)),
+    ungated!(repr, AssumedUsed, template!(List: "C")),
     ungated!(export_name, AssumedUsed, template!(NameValueStr: "name")),
     ungated!(link_section, AssumedUsed, template!(NameValueStr: "name")),
     ungated!(no_mangle, AssumedUsed, template!(Word)),
@@ -317,7 +317,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "custom test frameworks are an unstable feature",
     ),
     // RFC #1268
-    gated!(marker, Normal, template!(Word), marker_trait_attr, experimental!(marker)),
+    gated!(marker, AssumedUsed, template!(Word), marker_trait_attr, experimental!(marker)),
     gated!(
         thread_local, AssumedUsed, template!(Word),
         "`#[thread_local]` is an experimental feature, and does not currently handle destructors",
