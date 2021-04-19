@@ -8,6 +8,8 @@ const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC: &[&str] = &[
     "ignore",
     "no_run",
     "compile_fail",
+    "allow_fail",
+    "test_harness",
     "edition2015",
     "edition2018",
     "edition2021",
@@ -28,7 +30,7 @@ pub(crate) fn format_docs(src: &str) -> String {
 
             if in_code_block {
                 is_rust =
-                    header.split(',').all(|sub| is_rust_specific_code_block_attribute(sub.trim()));
+                    header.split(',').any(|sub| is_rust_specific_code_block_attribute(sub.trim()));
 
                 if is_rust {
                     line = "```rust";

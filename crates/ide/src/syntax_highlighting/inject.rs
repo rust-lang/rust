@@ -85,6 +85,8 @@ const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
     "ignore",
     "no_run",
     "compile_fail",
+    "allow_fail",
+    "test_harness",
     "edition2015",
     "edition2018",
     "edition2021",
@@ -181,7 +183,7 @@ pub(super) fn doc_comment(
                     is_codeblock = !is_codeblock;
                     // Check whether code is rust by inspecting fence guards
                     let guards = &line[idx + RUSTDOC_FENCE.len()..];
-                    let is_rust = guards.split(',').all(|sub| is_rustdoc_fence_token(sub.trim()));
+                    let is_rust = guards.split(',').any(|sub| is_rustdoc_fence_token(sub.trim()));
                     is_doctest = is_codeblock && is_rust;
                     continue;
                 }
