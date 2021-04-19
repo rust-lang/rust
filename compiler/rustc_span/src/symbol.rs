@@ -796,7 +796,6 @@ symbols! {
         non_modrs_mods,
         none_error,
         nontemporal_store,
-        nontrapping_dash_fptoint: "nontrapping-fptoint",
         noop_method_borrow,
         noop_method_clone,
         noop_method_deref,
