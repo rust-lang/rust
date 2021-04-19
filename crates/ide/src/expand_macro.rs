@@ -3,9 +3,7 @@ use std::iter;
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
-    algo::{find_node_at_offset, SyntaxRewriter},
-    ast, AstNode, NodeOrToken, SyntaxKind,
-    SyntaxKind::*,
+    algo::find_node_at_offset, ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxKind::*,
     SyntaxNode, WalkEvent, T,
 };
 
@@ -46,26 +44,23 @@ fn expand_macro_recur(
     sema: &Semantics<RootDatabase>,
     macro_call: &ast::MacroCall,
 ) -> Option<SyntaxNode> {
-    let mut expanded = sema.expand(macro_call)?;
+    let expanded = sema.expand(macro_call)?.clone_for_update();
 
     let children = expanded.descendants().filter_map(ast::MacroCall::cast);
-    let mut rewriter = SyntaxRewriter::default();
+    let mut replacements = Vec::new();
 
-    for child in children.into_iter() {
+    for child in children {
         if let Some(new_node) = expand_macro_recur(sema, &child) {
-            // Replace the whole node if it is root
-            // `replace_descendants` will not replace the parent node
-            // but `SyntaxNode::descendants include itself
+            // check if the whole original syntax is replaced
             if expanded == *child.syntax() {
-                expanded = new_node;
-            } else {
-                rewriter.replace(child.syntax(), &new_node)
+                return Some(new_node);
             }
+            replacements.push((child, new_node));
         }
     }
 
-    let res = rewriter.rewrite(&expanded);
-    Some(res)
+    replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
+    Some(expanded)
 }
 
 // FIXME: It would also be cool to share logic here and in the mbe tests,

@@ -29,7 +29,7 @@ use base_db::CrateId;
 use mbe::ExpandResult;
 use parser::FragmentKind;
 use std::sync::Arc;
-use syntax::{algo::SyntaxRewriter, SyntaxNode};
+use syntax::{ted, SyntaxNode};
 
 #[derive(Debug)]
 pub struct ErrorEmitted {
@@ -192,10 +192,10 @@ fn eager_macro_recur(
     macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
     mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<SyntaxNode, ErrorEmitted> {
-    let original = curr.value.clone();
+    let original = curr.value.clone().clone_for_update();
 
-    let children = curr.value.descendants().filter_map(ast::MacroCall::cast);
-    let mut rewriter = SyntaxRewriter::default();
+    let children = original.descendants().filter_map(ast::MacroCall::cast);
+    let mut replacements = Vec::new();
 
     // Collect replacement
     for child in children {
@@ -214,6 +214,7 @@ fn eager_macro_recur(
                 .into();
                 db.parse_or_expand(id.as_file())
                     .expect("successful macro expansion should be parseable")
+                    .clone_for_update()
             }
             MacroDefKind::Declarative(_)
             | MacroDefKind::BuiltIn(..)
@@ -227,15 +228,14 @@ fn eager_macro_recur(
             }
         };
 
-        // check if the whole original sytnax is replaced
-        // Note that SyntaxRewriter cannot replace the root node itself
+        // check if the whole original syntax is replaced
         if child.syntax() == &original {
             return Ok(insert);
         }
 
-        rewriter.replace(child.syntax(), &insert);
+        replacements.push((child, insert));
     }
 
-    let res = rewriter.rewrite(&original);
-    Ok(res)
+    replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
+    Ok(original)
 }
