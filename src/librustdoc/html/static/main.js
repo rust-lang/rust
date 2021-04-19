@@ -451,7 +451,7 @@ function hideThemeButtonState() {
                     // The element is not visible, we need to make it appear!
                     collapseDocs(collapses[0], "show");
                 }
-                // In case this is a sub-variant, toggle the <details> open.
+                // Open all ancestor <details> to make this element visible.
                 openParentDetails(h3.parentNode);
             }
         }
