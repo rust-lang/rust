@@ -1073,13 +1073,13 @@ function hideThemeButtonState() {
         }
     }
 
-    function collapseNonInherent(e, collapse) {
+    function collapseNonInherent(e) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
         if (n.id.match(/^impl(?:-\d+)?$/) === null) {
             // Automatically minimize all non-inherent impls
-            if (collapse || hasClass(n, "impl")) {
+            if (hasClass(n, "impl")) {
                 collapseDocs(e, "hide");
             }
         }
@@ -1149,14 +1149,14 @@ function hideThemeButtonState() {
         var impl_list = document.getElementById("trait-implementations-list");
         if (impl_list !== null) {
             onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
-                collapseNonInherent(e, collapse);
+                collapseNonInherent(e);
             });
         }
 
         var blanket_list = document.getElementById("blanket-implementations-list");
         if (blanket_list !== null) {
             onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
-                collapseNonInherent(e, collapse);
+                collapseNonInherent(e);
             });
         }
 
