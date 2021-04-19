@@ -509,7 +509,7 @@ fn document(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, parent: Option
         info!("Documenting {}", name);
     }
     document_item_info(w, cx, item, false, parent);
-    document_full(w, item, cx, "", false);
+    document_full(w, item, cx, false);
 }
 
 /// Render md_text as markdown.
@@ -518,15 +518,13 @@ fn render_markdown(
     cx: &Context<'_>,
     md_text: &str,
     links: Vec<RenderedLink>,
-    prefix: &str,
     is_hidden: bool,
 ) {
     let mut ids = cx.id_map.borrow_mut();
     write!(
         w,
-        "<div class=\"docblock{}\">{}{}</div>",
+        "<div class=\"docblock{}\">{}</div>",
         if is_hidden { " hidden" } else { "" },
-        prefix,
         Markdown(
             md_text,
             &links,
@@ -546,12 +544,11 @@ fn document_short(
     item: &clean::Item,
     cx: &Context<'_>,
     link: AssocItemLink<'_>,
-    prefix: &str,
     is_hidden: bool,
-    parent: Option<&clean::Item>,
+    parent: &clean::Item,
     show_def_docs: bool,
 ) {
-    document_item_info(w, cx, item, is_hidden, parent);
+    document_item_info(w, cx, item, is_hidden, Some(parent));
     if !show_def_docs {
         return;
     }
@@ -570,39 +567,17 @@ fn document_short(
 
         write!(
             w,
-            "<div class='docblock{}'>{}{}</div>",
+            "<div class='docblock{}'>{}</div>",
             if is_hidden { " hidden" } else { "" },
-            prefix,
             summary_html,
-        );
-    } else if !prefix.is_empty() {
-        write!(
-            w,
-            "<div class=\"docblock{}\">{}</div>",
-            if is_hidden { " hidden" } else { "" },
-            prefix
         );
     }
 }
 
-fn document_full(
-    w: &mut Buffer,
-    item: &clean::Item,
-    cx: &Context<'_>,
-    prefix: &str,
-    is_hidden: bool,
-) {
+fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, is_hidden: bool) {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, cx, &*s, item.links(cx), prefix, is_hidden);
-    } else if !prefix.is_empty() {
-        if is_hidden {
-            w.write_str("<div class=\"docblock hidden\">");
-        } else {
-            w.write_str("<div class=\"docblock\">");
-        }
-        w.write_str(prefix);
-        w.write_str("</div>");
+        render_markdown(w, cx, &s, item.links(cx), is_hidden);
     }
 }
 
@@ -1547,30 +1522,21 @@ fn render_impl(
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
                             document_item_info(w, cx, it, is_hidden, Some(parent));
-                            document_full(w, item, cx, "", is_hidden);
+                            document_full(w, item, cx, is_hidden);
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(
-                                w,
-                                it,
-                                cx,
-                                link,
-                                "",
-                                is_hidden,
-                                Some(parent),
-                                show_def_docs,
-                            );
+                            document_short(w, it, cx, link, is_hidden, parent, show_def_docs);
                         }
                     }
                 } else {
                     document_item_info(w, cx, item, is_hidden, Some(parent));
                     if show_def_docs {
-                        document_full(w, item, cx, "", is_hidden);
+                        document_full(w, item, cx, is_hidden);
                     }
                 }
             } else {
-                document_short(w, item, cx, link, "", is_hidden, Some(parent), show_def_docs);
+                document_short(w, item, cx, link, is_hidden, parent, show_def_docs);
             }
         }
     }
