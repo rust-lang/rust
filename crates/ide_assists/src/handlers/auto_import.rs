@@ -934,4 +934,37 @@ fn main() {
 ",
         );
     }
+
+    #[test]
+    fn inner_items() {
+        check_assist(
+            auto_import,
+            r#"
+mod baz {
+    pub struct Foo {}
+}
+
+mod bar {
+    fn bar() {
+        Foo$0;
+        println!("Hallo");
+    }
+}
+"#,
+            r#"
+mod baz {
+    pub struct Foo {}
+}
+
+mod bar {
+    use crate::baz::Foo;
+
+    fn bar() {
+        Foo;
+        println!("Hallo");
+    }
+}
+"#,
+        );
+    }
 }
