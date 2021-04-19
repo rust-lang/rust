@@ -552,7 +552,7 @@ impl NonConstOp for UnsizingCast {
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_unsize,
             span,
-            "unsizing casts to types besides slices are not allowed in const fn"
+            "unsizing casts to types besides slices are not allowed in const fn",
         )
     }
 }
