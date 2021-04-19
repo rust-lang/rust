@@ -212,14 +212,6 @@ extern "C" {
     fn llvm_i64x2_all_true(x: simd::i64x2) -> i32;
     #[link_name = "llvm.wasm.bitmask.v2i64"]
     fn llvm_bitmask_i64x2(a: simd::i64x2) -> i32;
-    #[link_name = "llvm.wasm.extend.low.signed"]
-    fn llvm_i64x2_extend_low_i32x4_s(a: simd::i32x4) -> simd::i64x2;
-    #[link_name = "llvm.wasm.extend.high.signed"]
-    fn llvm_i64x2_extend_high_i32x4_s(a: simd::i32x4) -> simd::i64x2;
-    #[link_name = "llvm.wasm.extend.low.unsigned"]
-    fn llvm_i64x2_extend_low_i32x4_u(a: simd::i32x4) -> simd::i64x2;
-    #[link_name = "llvm.wasm.extend.high.unsigned"]
-    fn llvm_i64x2_extend_high_i32x4_u(a: simd::i32x4) -> simd::i64x2;
     #[link_name = "llvm.wasm.extmul.low.signed.v2i64"]
     fn llvm_i64x2_extmul_low_i32x4_s(a: simd::i32x4, b: simd::i32x4) -> simd::i64x2;
     #[link_name = "llvm.wasm.extmul.high.signed.v2i64"]
@@ -229,13 +221,13 @@ extern "C" {
     #[link_name = "llvm.wasm.extmul.high.unsigned.v2i64"]
     fn llvm_i64x2_extmul_high_i32x4_u(a: simd::i32x4, b: simd::i32x4) -> simd::i64x2;
 
-    #[link_name = "llvm.wasm.ceil.v4f32"]
+    #[link_name = "llvm.ceil.v4f32"]
     fn llvm_f32x4_ceil(x: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.wasm.floor.v4f32"]
+    #[link_name = "llvm.floor.v4f32"]
     fn llvm_f32x4_floor(x: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.wasm.trunc.v4f32"]
+    #[link_name = "llvm.trunc.v4f32"]
     fn llvm_f32x4_trunc(x: simd::f32x4) -> simd::f32x4;
-    #[link_name = "llvm.wasm.nearest.v4f32"]
+    #[link_name = "llvm.nearbyint.v4f32"]
     fn llvm_f32x4_nearest(x: simd::f32x4) -> simd::f32x4;
     #[link_name = "llvm.fabs.v4f32"]
     fn llvm_f32x4_abs(x: simd::f32x4) -> simd::f32x4;
@@ -250,13 +242,13 @@ extern "C" {
     #[link_name = "llvm.wasm.pmax.v4f32"]
     fn llvm_f32x4_pmax(x: simd::f32x4, y: simd::f32x4) -> simd::f32x4;
 
-    #[link_name = "llvm.wasm.ceil.v2f64"]
+    #[link_name = "llvm.ceil.v2f64"]
     fn llvm_f64x2_ceil(x: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.wasm.floor.v2f64"]
+    #[link_name = "llvm.floor.v2f64"]
     fn llvm_f64x2_floor(x: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.wasm.trunc.v2f64"]
+    #[link_name = "llvm.trunc.v2f64"]
     fn llvm_f64x2_trunc(x: simd::f64x2) -> simd::f64x2;
-    #[link_name = "llvm.wasm.nearest.v2f64"]
+    #[link_name = "llvm.nearbyint.v2f64"]
     fn llvm_f64x2_nearest(x: simd::f64x2) -> simd::f64x2;
     #[link_name = "llvm.fabs.v2f64"]
     fn llvm_f64x2_abs(x: simd::f64x2) -> simd::f64x2;
@@ -271,18 +263,14 @@ extern "C" {
     #[link_name = "llvm.wasm.pmax.v2f64"]
     fn llvm_f64x2_pmax(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
 
-    #[link_name = "llvm.wasm.trunc.saturate.signed.v4i32.v4f32"]
+    #[link_name = "llvm.fptosi.sat.v4i32.v4f32"]
     fn llvm_i32x4_trunc_sat_f32x4_s(x: simd::f32x4) -> simd::i32x4;
-    #[link_name = "llvm.wasm.trunc.saturate.unsigned.v4i32.v4f32"]
+    #[link_name = "llvm.fptoui.sat.v4i32.v4f32"]
     fn llvm_i32x4_trunc_sat_f32x4_u(x: simd::f32x4) -> simd::i32x4;
-    #[link_name = "llvm.wasm.convert.low.signed"]
-    fn llvm_f64x2_convert_low_i32x4_s(x: simd::i32x4) -> simd::f64x2;
-    #[link_name = "llvm.wasm.convert.low.unsigned"]
-    fn llvm_f64x2_convert_low_i32x4_u(x: simd::i32x4) -> simd::f64x2;
-    #[link_name = "llvm.wasm.trunc.sat.zero.signed"]
-    fn llvm_i32x4_trunc_sat_f64x2_s_zero(x: simd::f64x2) -> simd::i32x4;
-    #[link_name = "llvm.wasm.trunc.sat.zero.unsigned"]
-    fn llvm_i32x4_trunc_sat_f64x2_u_zero(x: simd::f64x2) -> simd::i32x4;
+    #[link_name = "llvm.fptosi.sat.v2i32.v2f64"]
+    fn llvm_i32x2_trunc_sat_f64x2_s(x: simd::f64x2) -> simd::i32x2;
+    #[link_name = "llvm.fptoui.sat.v2i32.v2f64"]
+    fn llvm_i32x2_trunc_sat_f64x2_u(x: simd::f64x2) -> simd::i32x2;
     #[link_name = "llvm.wasm.demote.zero"]
     fn llvm_f32x4_demote_f64x2_zero(x: simd::f64x2) -> simd::f32x4;
     #[link_name = "llvm.wasm.promote.low"]
@@ -1836,7 +1824,7 @@ pub unsafe fn v128_bitselect(v1: v128, v2: v128, c: v128) -> v128 {
 
 /// Returns true if any lane is nonzero or false if all lanes are zero.
 #[inline]
-// #[cfg_attr(test, assert_instr(v128.any_true))] // FIXME llvm
+#[cfg_attr(test, assert_instr(v128.any_true))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn v128_any_true(a: v128) -> bool {
     llvm_any_true_i8x16(a.as_i8x16()) != 0
@@ -2688,7 +2676,9 @@ pub unsafe fn i64x2_bitmask(a: v128) -> i32 {
 // #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_low_i32x4(a: v128) -> v128 {
-    transmute(llvm_i64x2_extend_low_i32x4_s(a.as_i32x4()))
+    transmute(simd_cast::<_, simd::i64x2>(
+        simd_shuffle2::<_, simd::i32x2>(a.as_i32x4(), a.as_i32x4(), [0, 1]),
+    ))
 }
 
 /// Converts high half of the smaller lane vector to a larger lane
@@ -2697,7 +2687,9 @@ pub unsafe fn i64x2_extend_low_i32x4(a: v128) -> v128 {
 // #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_s))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_high_i32x4(a: v128) -> v128 {
-    transmute(llvm_i64x2_extend_high_i32x4_s(a.as_i32x4()))
+    transmute(simd_cast::<_, simd::i64x2>(
+        simd_shuffle2::<_, simd::i32x2>(a.as_i32x4(), a.as_i32x4(), [2, 3]),
+    ))
 }
 
 /// Converts low half of the smaller lane vector to a larger lane
@@ -2706,7 +2698,9 @@ pub unsafe fn i64x2_extend_high_i32x4(a: v128) -> v128 {
 // #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_low_u32x4(a: v128) -> v128 {
-    transmute(llvm_i64x2_extend_low_i32x4_u(a.as_i32x4()))
+    transmute(simd_cast::<_, simd::i64x2>(
+        simd_shuffle2::<_, simd::u32x2>(a.as_u32x4(), a.as_u32x4(), [0, 1]),
+    ))
 }
 
 /// Converts high half of the smaller lane vector to a larger lane
@@ -2715,7 +2709,9 @@ pub unsafe fn i64x2_extend_low_u32x4(a: v128) -> v128 {
 // #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i64x2_extend_high_u32x4(a: v128) -> v128 {
-    transmute(llvm_i64x2_extend_low_i32x4_u(a.as_i32x4()))
+    transmute(simd_cast::<_, simd::i64x2>(
+        simd_shuffle2::<_, simd::u32x2>(a.as_u32x4(), a.as_u32x4(), [2, 3]),
+    ))
 }
 
 /// Shifts each lane to the left by the specified number of bits.
@@ -3137,7 +3133,11 @@ pub unsafe fn f32x4_convert_u32x4(a: v128) -> v128 {
 // #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_s_zero))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn i32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
-    transmute(llvm_i32x4_trunc_sat_f64x2_s_zero(a.as_f64x2()))
+    transmute(simd_shuffle4::<simd::i32x2, simd::i32x4>(
+        llvm_i32x2_trunc_sat_f64x2_s(a.as_f64x2()),
+        simd::i32x2::splat(0),
+        [0, 1, 2, 3],
+    ))
 }
 
 /// Saturating conversion of the two double-precision floating point lanes to
@@ -3152,7 +3152,11 @@ pub unsafe fn i32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
 // #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_u_zero))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn u32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
-    transmute(llvm_i32x4_trunc_sat_f64x2_u_zero(a.as_f64x2()))
+    transmute(simd_shuffle4::<simd::i32x2, simd::i32x4>(
+        llvm_i32x2_trunc_sat_f64x2_u(a.as_f64x2()),
+        simd::i32x2::splat(0),
+        [0, 1, 2, 3],
+    ))
 }
 
 /// Lane-wise conversion from integer to floating point.
@@ -3160,7 +3164,14 @@ pub unsafe fn u32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
 #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_s))]
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_convert_low_i32x4(a: v128) -> v128 {
-    transmute(llvm_f64x2_convert_low_i32x4_s(a.as_i32x4()))
+    transmute(simd_cast::<_, simd::f64x2>(simd_shuffle2::<
+        simd::i32x4,
+        simd::i32x2,
+    >(
+        a.as_i32x4(),
+        a.as_i32x4(),
+        [0, 1],
+    )))
 }
 
 /// Lane-wise conversion from integer to floating point.
@@ -3168,7 +3179,14 @@ pub unsafe fn f64x2_convert_low_i32x4(a: v128) -> v128 {
 // #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_u))] // FIXME wasmtime
 #[target_feature(enable = "simd128")]
 pub unsafe fn f64x2_convert_low_u32x4(a: v128) -> v128 {
-    transmute(llvm_f64x2_convert_low_i32x4_u(a.as_i32x4()))
+    transmute(simd_cast::<_, simd::f64x2>(simd_shuffle2::<
+        simd::u32x4,
+        simd::u32x2,
+    >(
+        a.as_u32x4(),
+        a.as_u32x4(),
+        [0, 1],
+    )))
 }
 
 /// Conversion of the two double-precision floating point lanes to two lower
