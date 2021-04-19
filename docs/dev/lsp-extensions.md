@@ -422,7 +422,7 @@ Reloads project information (that is, re-executes `cargo metadata`).
 
 ## Server Status
 
-**Experimental Client Capability:** `{ "serverStatus": boolean }`
+**Experimental Client Capability:** `{ "serverStatusNotification": boolean }`
 
 **Method:** `experimental/serverStatus`
 
