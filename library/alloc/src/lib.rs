@@ -76,6 +76,7 @@
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(test, feature(new_uninit))]
 #![feature(allocator_api)]
+#![feature(allocator_api_internals)]
 #![feature(vec_extend_from_within)]
 #![feature(array_chunks)]
 #![feature(array_methods)]

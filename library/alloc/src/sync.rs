@@ -4,6 +4,7 @@
 //!
 //! See the [`Arc<T>`][Arc] documentation for more details.
 
+use core::alloc::helper::PrefixAllocator;
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
@@ -14,7 +15,7 @@ use core::hint;
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of_val_raw, size_of_val};
+use core::mem::{self, size_of_val, MaybeUninit};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -296,18 +297,33 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     }
 }
 
-// This is repr(C) to future-proof against possible field-reordering, which
-// would interfere with otherwise safe [into|from]_raw() of transmutable
-// inner types.
-#[repr(C)]
-struct ArcInner<T: ?Sized> {
+struct ArcInnerMetadata {
     strong: atomic::AtomicUsize,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
     // ability to upgrade weak pointers or downgrade strong ones; this is used
     // to avoid races in `make_mut` and `get_mut`.
     weak: atomic::AtomicUsize,
+}
 
+impl ArcInnerMetadata {
+    #[inline]
+    fn new_strong() -> Self {
+        Self { strong: atomic::AtomicUsize::new(1), weak: atomic::AtomicUsize::new(1) }
+    }
+
+    #[inline]
+    fn new_weak() -> Self {
+        Self { strong: atomic::AtomicUsize::new(0), weak: atomic::AtomicUsize::new(1) }
+    }
+}
+
+// This is repr(C) to future-proof against possible field-reordering, which
+// would interfere with otherwise safe [into|from]_raw() of transmutable
+// inner types.
+#[repr(C)]
+struct ArcInner<T: ?Sized> {
+    meta: ArcInnerMetadata,
     data: T,
 }
 
@@ -327,13 +343,7 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(data: T) -> Arc<T> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = box ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        };
+        let x: Box<_> = box ArcInner { meta: ArcInnerMetadata::new_strong(), data };
         Self::from_inner(Box::leak(x).into())
     }
 
@@ -363,8 +373,7 @@ impl<T> Arc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box ArcInner {
-            strong: atomic::AtomicUsize::new(0),
-            weak: atomic::AtomicUsize::new(1),
+            meta: ArcInnerMetadata::new_weak(),
             data: mem::MaybeUninit::<T>::uninit(),
         })
         .into();
@@ -398,7 +407,7 @@ impl<T> Arc<T> {
             //
             // These side effects do not impact us in any way, and no other side effects are
             // possible with safe code alone.
-            let prev_value = (*inner).strong.fetch_add(1, Release);
+            let prev_value = (*inner).meta.strong.fetch_add(1, Release);
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
         }
 
@@ -494,13 +503,7 @@ impl<T> Arc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
-        // Start the weak pointer count as 1 which is the weak pointer that's
-        // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x: Box<_> = Box::try_new(ArcInner {
-            strong: atomic::AtomicUsize::new(1),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        })?;
+        let x: Box<_> = Box::try_new(ArcInner { meta: ArcInnerMetadata::new_strong(), data })?;
         Ok(Self::from_inner(Box::leak(x).into()))
     }
 
@@ -593,11 +596,11 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
-        if this.inner().strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
+        if this.inner().meta.strong.compare_exchange(1, 0, Relaxed, Relaxed).is_err() {
             return Err(this);
         }
 
-        acquire!(this.inner().strong);
+        acquire!(this.inner().meta.strong);
 
         unsafe {
             let elem = ptr::read(&this.ptr.as_ref().data);
@@ -842,14 +845,7 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe {
-            let offset = data_offset(ptr);
-
-            // Reverse the offset to find the original ArcInner.
-            let arc_ptr = (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset));
-
-            Self::from_ptr(arc_ptr)
-        }
+        unsafe { Self::from_data_ptr(ptr).assume_init() }
     }
 
     /// Creates a new [`Weak`] pointer to this allocation.
@@ -867,13 +863,13 @@ impl<T: ?Sized> Arc<T> {
     pub fn downgrade(this: &Self) -> Weak<T> {
         // This Relaxed is OK because we're checking the value in the CAS
         // below.
-        let mut cur = this.inner().weak.load(Relaxed);
+        let mut cur = this.inner().meta.weak.load(Relaxed);
 
         loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
                 hint::spin_loop();
-                cur = this.inner().weak.load(Relaxed);
+                cur = this.inner().meta.weak.load(Relaxed);
                 continue;
             }
 
@@ -884,7 +880,7 @@ impl<T: ?Sized> Arc<T> {
             // Unlike with Clone(), we need this to be an Acquire read to
             // synchronize with the write coming from `is_unique`, so that the
             // events prior to that write happen before this read.
-            match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
+            match this.inner().meta.weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
                 Ok(_) => {
                     // Make sure we do not create a dangling Weak
                     debug_assert!(!is_dangling(this.ptr.as_ptr()));
@@ -918,7 +914,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        let cnt = this.inner().weak.load(SeqCst);
+        let cnt = this.inner().meta.weak.load(SeqCst);
         // If the weak count is currently locked, the value of the
         // count was 0 just before taking the lock.
         if cnt == usize::MAX { 0 } else { cnt - 1 }
@@ -947,7 +943,7 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "arc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong.load(SeqCst)
+        this.inner().meta.strong.load(SeqCst)
     }
 
     /// Increments the strong reference count on the `Arc<T>` associated with the
@@ -1112,8 +1108,8 @@ impl<T: ?Sized> Arc<T> {
         debug_assert_eq!(unsafe { Layout::for_value(&*inner) }, layout);
 
         unsafe {
-            ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
-            ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
+            ptr::write(&mut (*inner).meta.strong, atomic::AtomicUsize::new(1));
+            ptr::write(&mut (*inner).meta.weak, atomic::AtomicUsize::new(1));
         }
 
         Ok(inner)
@@ -1150,6 +1146,24 @@ impl<T: ?Sized> Arc<T> {
             box_free(box_unique, alloc);
 
             Self::from_ptr(ptr)
+        }
+    }
+
+    /// # Safety
+    ///
+    /// The caller must ensure that the pointer points to the `data` field of a `Global`
+    /// allocation of type `ArcInner<T>`. Depending on how the pointer was created, the
+    /// `meta` field might or might not be uninitialized. It's up to the caller to ensure
+    /// that this field is set to the correct value before the return value is unwrapped.
+    #[inline]
+    unsafe fn from_data_ptr(ptr: *const T) -> MaybeUninit<Self> {
+        unsafe {
+            let offset = data_offset(ptr);
+
+            // Reverse the offset to find the original ArcInner.
+            let arc_ptr = (ptr as *mut ArcInner<T>).set_ptr_value((ptr as *mut u8).offset(-offset));
+
+            MaybeUninit::new(Self::from_ptr(arc_ptr))
         }
     }
 }
@@ -1276,7 +1290,7 @@ impl<T: ?Sized> Clone for Arc<T> {
         // another must already provide any required synchronization.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        let old_size = self.inner().strong.fetch_add(1, Relaxed);
+        let old_size = self.inner().meta.strong.fetch_add(1, Relaxed);
 
         // However we need to guard against massive refcounts in case someone
         // is `mem::forget`ing Arcs. If we don't do this the count can overflow
@@ -1352,7 +1366,7 @@ impl<T: Clone> Arc<T> {
         // before release writes (i.e., decrements) to `strong`. Since we hold a
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
-        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
+        if this.inner().meta.strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             // Another strong pointer exists, so we must clone.
             // Pre-allocate memory to allow writing the cloned value directly.
             let mut arc = Self::new_uninit();
@@ -1361,7 +1375,7 @@ impl<T: Clone> Arc<T> {
                 (**this).write_clone_into_raw(data.as_mut_ptr());
                 *this = arc.assume_init();
             }
-        } else if this.inner().weak.load(Relaxed) != 1 {
+        } else if this.inner().meta.weak.load(Relaxed) != 1 {
             // Relaxed suffices in the above because this is fundamentally an
             // optimization: we are always racing with weak pointers being
             // dropped. Worst case, we end up allocated a new Arc unnecessarily.
@@ -1388,7 +1402,7 @@ impl<T: Clone> Arc<T> {
         } else {
             // We were the sole reference of either kind; bump back up the
             // strong ref count.
-            this.inner().strong.store(1, Release);
+            this.inner().meta.strong.store(1, Release);
         }
 
         // As with `get_mut()`, the unsafety is ok because our reference was
@@ -1484,16 +1498,16 @@ impl<T: ?Sized> Arc<T> {
         // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
         // of the `weak` count (via `Weak::drop`, which uses release).  If the upgraded
         // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
-        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
+        if self.inner().meta.weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
             // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
             // counter in `drop` -- the only access that happens when any but the last reference
             // is being dropped.
-            let unique = self.inner().strong.load(Acquire) == 1;
+            let unique = self.inner().meta.strong.load(Acquire) == 1;
 
             // The release write here synchronizes with a read in `downgrade`,
             // effectively preventing the above read of `strong` from happening
             // after the write.
-            self.inner().weak.store(1, Release); // release the lock
+            self.inner().meta.weak.store(1, Release); // release the lock
             unique
         } else {
             false
@@ -1533,7 +1547,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         // Because `fetch_sub` is already atomic, we do not need to synchronize
         // with other threads unless we are going to delete the object. This
         // same logic applies to the below `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, Release) != 1 {
+        if self.inner().meta.strong.fetch_sub(1, Release) != 1 {
             return;
         }
 
@@ -1565,7 +1579,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Arc<T> {
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         // [2]: (https://github.com/rust-lang/rust/pull/41714)
-        acquire!(self.inner().strong);
+        acquire!(self.inner().meta.strong);
 
         unsafe {
             self.drop_slow();
@@ -1883,7 +1897,7 @@ impl<T: ?Sized> Weak<T> {
             // is dropped, the data field will be dropped in-place).
             Some(unsafe {
                 let ptr = self.ptr.as_ptr();
-                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
+                WeakInner { strong: &(*ptr).meta.strong, weak: &(*ptr).meta.weak }
             })
         }
     }
@@ -2507,6 +2521,8 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Arc<T> {}
 
+type ArcAllocator = PrefixAllocator<ArcInnerMetadata, Global>;
+
 /// Get the offset within an `ArcInner` for the payload behind a pointer.
 ///
 /// # Safety
@@ -2514,17 +2530,12 @@ impl<T: ?Sized> Unpin for Arc<T> {}
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    // Align the unsized value to the end of the ArcInner.
-    // Because RcBox is repr(C), it will always be the last field in memory.
-    // SAFETY: since the only unsized types possible are slices, trait objects,
-    // and extern types, the input safety requirement is currently enough to
-    // satisfy the requirements of align_of_val_raw; this is an implementation
-    // detail of the language that may not be relied upon outside of std.
-    unsafe { data_offset_align(align_of_val_raw(ptr)) }
-}
-
-#[inline]
-fn data_offset_align(align: usize) -> isize {
-    let layout = Layout::new::<ArcInner<()>>();
-    (layout.size() + layout.padding_needed_for(align)) as isize
+    unsafe {
+        // SAFETY: since the only unsized types possible are slices, trait objects,
+        // and extern types, the input safety requirement is currently enough to
+        // satisfy the requirements of for_value_raw; this is an implementation
+        // detail of the language that may not be relied upon outside of std.
+        let layout = Layout::for_value_raw(ptr);
+        ArcAllocator::prefix_offset(layout) as isize
+    }
 }

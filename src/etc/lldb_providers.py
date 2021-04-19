@@ -603,10 +603,10 @@ class StdRcSyntheticProvider:
 
         self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
 
-        self.strong = self.ptr.GetChildMemberWithName("strong").GetChildAtIndex(
-            0).GetChildMemberWithName("value")
-        self.weak = self.ptr.GetChildMemberWithName("weak").GetChildAtIndex(
-            0).GetChildMemberWithName("value")
+        self.strong = self.ptr.GetChildMemberWithName("meta")\
+                .GetChildMemberWithName("strong").GetChildAtIndex(0).GetChildMemberWithName("value")
+        self.weak = self.ptr.GetChildMemberWithName("meta")\
+                .GetChildMemberWithName("weak").GetChildAtIndex(0).GetChildMemberWithName("value"))
 
         self.value_builder = ValueBuilder(valobj)
 
