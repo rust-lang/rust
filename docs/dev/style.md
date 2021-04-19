@@ -83,8 +83,19 @@ This makes it easier to prepare a changelog.
 
 If the change adds a new user-visible functionality, consider recording a GIF with [peek](https://github.com/phw/peek) and pasting it into the PR description.
 
+To make writing the release notes easier, you can mark a pull request as a feature, fix, internal change, or minor.
+Minor changes are excluded from the release notes, while the other types are distributed in their corresponding sections.
+There are two ways to mark this:
+
+* use a `feat: `, `feature: `, `fix: `, `internal: ` or `minor: ` prefix in the PR title
+* write `changelog [feature|fix|internal|skip] [description]` in a comment or in the PR description; the description is optional, and will replace the title if included.
+
+These comments don't have to be added by the PR author.
+Editing a comment or the PR description or title is also fine, as long as it happens before the release.
+
 **Rationale:** clean history is potentially useful, but rarely used.
 But many users read changelogs.
+Including a description and GIF suitable for the changelog means less work for the maintainers on the release day.
 
 ## Clippy
 
