@@ -222,7 +222,7 @@ pub(super) fn element(
             T![>] | T![<] | T![==] | T![>=] | T![<=] | T![!=]
                 if element.parent().and_then(ast::BinExpr::cast).is_some() =>
             {
-                HlTag::Operator(HlOperator::Comparision).into()
+                HlTag::Operator(HlOperator::Comparison).into()
             }
             _ if element.parent().and_then(ast::BinExpr::cast).is_some() => {
                 HlTag::Operator(HlOperator::Other).into()
