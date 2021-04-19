@@ -283,17 +283,21 @@ pub(super) fn path_type(p: &mut Parser) {
 // type B = crate::foo!();
 fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
     assert!(paths::is_path_start(p));
+    let r = p.start();
     let m = p.start();
+
     paths::type_path(p);
 
     let kind = if p.at(T![!]) && !p.at(T![!=]) {
         items::macro_call_after_excl(p);
-        MACRO_CALL
+        m.complete(p, MACRO_CALL);
+        MACRO_TYPE
     } else {
+        m.abandon(p);
         PATH_TYPE
     };
 
-    let path = m.complete(p, kind);
+    let path = r.complete(p, kind);
 
     if allow_bounds {
         opt_type_bounds_as_dyn_trait_type(p, path);
@@ -319,7 +323,7 @@ pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
 fn opt_type_bounds_as_dyn_trait_type(p: &mut Parser, type_marker: CompletedMarker) {
     assert!(matches!(
         type_marker.kind(),
-        SyntaxKind::PATH_TYPE | SyntaxKind::FOR_TYPE | SyntaxKind::MACRO_CALL
+        SyntaxKind::PATH_TYPE | SyntaxKind::FOR_TYPE | SyntaxKind::MACRO_TYPE
     ));
     if !p.at(T![+]) {
         return;

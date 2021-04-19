@@ -1,6 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
-use hir_expand::name::Name;
+
+use hir_expand::{name::Name, AstId, InFile};
 use syntax::ast;
 
 use crate::{body::LowerCtx, path::Path};
@@ -68,6 +69,7 @@ impl TraitRef {
         }
     }
 }
+
 /// Compare ty::Ty
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeRef {
@@ -84,6 +86,7 @@ pub enum TypeRef {
     // For
     ImplTrait(Vec<TypeBound>),
     DynTrait(Vec<TypeBound>),
+    Macro(AstId<ast::MacroCall>),
     Error,
 }
 
@@ -116,7 +119,7 @@ pub enum TypeBound {
 
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
-    pub(crate) fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Self {
+    pub fn from_ast(ctx: &LowerCtx, node: ast::Type) -> Self {
         match node {
             ast::Type::ParenType(inner) => TypeRef::from_ast_opt(&ctx, inner.ty()),
             ast::Type::TupleType(inner) => {
@@ -176,8 +179,13 @@ impl TypeRef {
             ast::Type::DynTraitType(inner) => {
                 TypeRef::DynTrait(type_bounds_from_ast(ctx, inner.type_bound_list()))
             }
-            // FIXME: Macros in type position are not yet supported.
-            ast::Type::MacroType(_) => TypeRef::Error,
+            ast::Type::MacroType(mt) => match mt.macro_call() {
+                Some(mc) => ctx
+                    .ast_id(&mc)
+                    .map(|mc| TypeRef::Macro(InFile::new(ctx.file_id(), mc)))
+                    .unwrap_or(TypeRef::Error),
+                None => TypeRef::Error,
+            },
         }
     }
 
@@ -215,7 +223,7 @@ impl TypeRef {
                     }
                 }
                 TypeRef::Path(path) => go_path(path, f),
-                TypeRef::Never | TypeRef::Placeholder | TypeRef::Error => {}
+                TypeRef::Never | TypeRef::Placeholder | TypeRef::Macro(_) | TypeRef::Error => {}
             };
         }
 

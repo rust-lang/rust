@@ -6,10 +6,11 @@ use std::{cell::RefCell, fmt, iter::successors};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
+    body,
     resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{hygiene::Hygiene, name::AsName, ExpansionInfo};
+use hir_expand::{name::AsName, ExpansionInfo};
 use hir_ty::associated_type_shorthand_candidates;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -853,8 +854,8 @@ impl<'a> SemanticsScope<'a> {
     /// Resolve a path as-if it was written at the given scope. This is
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
-        let hygiene = Hygiene::new(self.db.upcast(), self.file_id);
-        let path = Path::from_src(path.clone(), &hygiene)?;
+        let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
+        let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }
 }

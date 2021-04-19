@@ -6,10 +6,7 @@ use crate::intern::Interned;
 use std::sync::Arc;
 
 use either::Either;
-use hir_expand::{
-    hygiene::Hygiene,
-    name::{name, AsName},
-};
+use hir_expand::name::{name, AsName};
 use syntax::ast::{self, AstNode, TypeBoundsOwner};
 
 use super::AssociatedTypeBinding;
@@ -23,12 +20,12 @@ pub(super) use lower_use::lower_use_tree;
 
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.
-pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
+pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
     let mut segments = Vec::new();
     let mut generic_args = Vec::new();
-    let ctx = LowerCtx::with_hygiene(hygiene);
+    let hygiene = ctx.hygiene();
     loop {
         let segment = path.segment()?;
 
@@ -43,10 +40,10 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                     Either::Left(name) => {
                         let args = segment
                             .generic_arg_list()
-                            .and_then(|it| lower_generic_args(&ctx, it))
+                            .and_then(|it| lower_generic_args(ctx, it))
                             .or_else(|| {
                                 lower_generic_args_from_fn_path(
-                                    &ctx,
+                                    ctx,
                                     segment.param_list(),
                                     segment.ret_type(),
                                 )
@@ -64,7 +61,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 assert!(path.qualifier().is_none()); // this can only occur at the first segment
 
-                let self_type = TypeRef::from_ast(&ctx, type_ref?);
+                let self_type = TypeRef::from_ast(ctx, type_ref?);
 
                 match trait_ref {
                     // <T>::foo
@@ -74,7 +71,7 @@ pub(super) fn lower_path(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path>
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let path = Path::from_src(trait_ref.path()?, hygiene)?;
+                        let path = Path::from_src(trait_ref.path()?, ctx)?;
                         let mod_path = (*path.mod_path).clone();
                         let num_segments = path.mod_path.segments.len();
                         kind = mod_path.kind;

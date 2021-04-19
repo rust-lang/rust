@@ -1,10 +1,11 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use std::mem;
+use std::{mem, sync::Arc};
 
 use either::Either;
 use hir_expand::{
+    ast_id_map::{AstIdMap, FileAstId},
     hygiene::Hygiene,
     name::{name, AsName, Name},
     ExpandError, HirFileId,
@@ -39,20 +40,39 @@ use crate::{
 
 use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
 
-pub(crate) struct LowerCtx {
+pub struct LowerCtx {
     hygiene: Hygiene,
+    file_id: Option<HirFileId>,
+    source_ast_id_map: Option<Arc<AstIdMap>>,
 }
 
 impl LowerCtx {
-    pub(crate) fn new(db: &dyn DefDatabase, file_id: HirFileId) -> Self {
-        LowerCtx { hygiene: Hygiene::new(db.upcast(), file_id) }
+    pub fn new(db: &dyn DefDatabase, file_id: HirFileId) -> Self {
+        LowerCtx {
+            hygiene: Hygiene::new(db.upcast(), file_id),
+            file_id: Some(file_id),
+            source_ast_id_map: Some(db.ast_id_map(file_id)),
+        }
     }
-    pub(crate) fn with_hygiene(hygiene: &Hygiene) -> Self {
-        LowerCtx { hygiene: hygiene.clone() }
+
+    pub fn with_hygiene(hygiene: &Hygiene) -> Self {
+        LowerCtx { hygiene: hygiene.clone(), file_id: None, source_ast_id_map: None }
+    }
+
+    pub(crate) fn hygiene(&self) -> &Hygiene {
+        &self.hygiene
+    }
+
+    pub(crate) fn file_id(&self) -> HirFileId {
+        self.file_id.unwrap()
     }
 
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
-        Path::from_src(ast, &self.hygiene)
+        Path::from_src(ast, self)
+    }
+
+    pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> Option<FileAstId<N>> {
+        self.source_ast_id_map.as_ref().map(|ast_id_map| ast_id_map.ast_id(item))
     }
 }
 
