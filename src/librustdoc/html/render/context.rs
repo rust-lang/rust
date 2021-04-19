@@ -16,7 +16,7 @@ use rustc_span::{symbol::sym, Symbol};
 use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
-use super::{print_sidebar, settings, AllTypes, NameDoc, StylePath, BASIC_KEYWORDS, CURRENT_DEPTH};
+use super::{print_sidebar, settings, AllTypes, NameDoc, StylePath, BASIC_KEYWORDS};
 
 use crate::clean::{self, AttributesExt};
 use crate::config::RenderOptions;
@@ -168,12 +168,6 @@ impl<'tcx> Context<'tcx> {
     }
 
     fn render_item(&self, it: &clean::Item, pushname: bool) -> String {
-        // A little unfortunate that this is done like this, but it sure
-        // does make formatting *a lot* nicer.
-        CURRENT_DEPTH.with(|slot| {
-            slot.set(self.current.len());
-        });
-
         let mut title = if it.is_primitive() || it.is_keyword() {
             // No need to include the namespace for primitive types and keywords
             String::new()
@@ -481,8 +475,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared: Rc::new(scx),
             cache: Rc::new(cache),
         };
-
-        CURRENT_DEPTH.with(|s| s.set(0));
 
         // Write shared runs within a flock; disable thread dispatching of IO temporarily.
         Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);

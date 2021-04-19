@@ -7,6 +7,7 @@
 
 use std::cell::Cell;
 use std::fmt;
+use std::iter;
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -16,12 +17,10 @@ use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
 use crate::clean::{self, utils::find_nearest_parent_module, PrimitiveType};
-use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
 use crate::html::render::Context;
-use crate::html::render::CURRENT_DEPTH;
 
 crate trait Print {
     fn print(self, buffer: &mut Buffer);
@@ -497,7 +496,7 @@ crate fn href_relative_parts<'a>(fqp: &'a [String], relative_to_fqp: &'a [String
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
             let fqp_module = fqp[i..fqp.len()].iter().map(String::as_str);
-            return std::iter::repeat("..").take(dissimilar_part_count).chain(fqp_module).collect();
+            return iter::repeat("..").take(dissimilar_part_count).chain(fqp_module).collect();
         }
     }
     // e.g. linking to std::sync::atomic from std::sync
@@ -506,7 +505,7 @@ crate fn href_relative_parts<'a>(fqp: &'a [String], relative_to_fqp: &'a [String
     // e.g. linking to std::sync from std::sync::atomic
     } else if fqp.len() < relative_to_fqp.len() {
         let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-        std::iter::repeat("..").take(dissimilar_part_count).collect()
+        iter::repeat("..").take(dissimilar_part_count).collect()
     // linking to the same module
     } else {
         Vec::new()
@@ -555,13 +554,14 @@ fn primitive_link(
     f: &mut fmt::Formatter<'_>,
     prim: clean::PrimitiveType,
     name: &str,
-    m: &Cache,
+    cx: &Context<'_>,
 ) -> fmt::Result {
+    let m = &cx.cache();
     let mut needs_termination = false;
     if !f.alternate() {
         match m.primitive_locations.get(&prim) {
             Some(&def_id) if def_id.is_local() => {
-                let len = CURRENT_DEPTH.with(|s| s.get());
+                let len = cx.current.len();
                 let len = if len == 0 { 0 } else { len - 1 };
                 write!(
                     f,
@@ -572,20 +572,28 @@ fn primitive_link(
                 needs_termination = true;
             }
             Some(&def_id) => {
+                let cname_str;
                 let loc = match m.extern_locations[&def_id.krate] {
-                    (ref cname, _, ExternalLocation::Remote(ref s)) => Some((cname, s.to_string())),
+                    (ref cname, _, ExternalLocation::Remote(ref s)) => {
+                        cname_str = cname.as_str();
+                        Some(vec![s.trim_end_matches('/'), &cname_str[..]])
+                    }
                     (ref cname, _, ExternalLocation::Local) => {
-                        let len = CURRENT_DEPTH.with(|s| s.get());
-                        Some((cname, "../".repeat(len)))
+                        cname_str = cname.as_str();
+                        Some(if cx.current.first().map(|x| &x[..]) == Some(&cname_str[..]) {
+                            iter::repeat("..").take(cx.current.len() - 1).collect()
+                        } else {
+                            let cname = iter::once(&cname_str[..]);
+                            iter::repeat("..").take(cx.current.len()).chain(cname).collect()
+                        })
                     }
                     (.., ExternalLocation::Unknown) => None,
                 };
-                if let Some((cname, root)) = loc {
+                if let Some(loc) = loc {
                     write!(
                         f,
-                        "<a class=\"primitive\" href=\"{}{}/primitive.{}.html\">",
-                        root,
-                        cname,
+                        "<a class=\"primitive\" href=\"{}/primitive.{}.html\">",
+                        loc.join("/"),
                         prim.to_url_str()
                     )?;
                     needs_termination = true;
@@ -660,7 +668,7 @@ fn fmt_type<'cx>(
             fmt::Display::fmt(&tybounds(param_names, cx), f)
         }
         clean::Infer => write!(f, "_"),
-        clean::Primitive(prim) => primitive_link(f, prim, prim.as_str(), &cx.cache()),
+        clean::Primitive(prim) => primitive_link(f, prim, prim.as_str(), cx),
         clean::BareFunction(ref decl) => {
             if f.alternate() {
                 write!(
@@ -679,46 +687,46 @@ fn fmt_type<'cx>(
                     decl.unsafety.print_with_space(),
                     print_abi_with_space(decl.abi)
                 )?;
-                primitive_link(f, PrimitiveType::Fn, "fn", &cx.cache())?;
+                primitive_link(f, PrimitiveType::Fn, "fn", cx)?;
                 write!(f, "{}", decl.decl.print(cx))
             }
         }
         clean::Tuple(ref typs) => {
             match &typs[..] {
-                &[] => primitive_link(f, PrimitiveType::Unit, "()", &cx.cache()),
+                &[] => primitive_link(f, PrimitiveType::Unit, "()", cx),
                 &[ref one] => {
-                    primitive_link(f, PrimitiveType::Tuple, "(", &cx.cache())?;
+                    primitive_link(f, PrimitiveType::Tuple, "(", cx)?;
                     // Carry `f.alternate()` into this display w/o branching manually.
                     fmt::Display::fmt(&one.print(cx), f)?;
-                    primitive_link(f, PrimitiveType::Tuple, ",)", &cx.cache())
+                    primitive_link(f, PrimitiveType::Tuple, ",)", cx)
                 }
                 many => {
-                    primitive_link(f, PrimitiveType::Tuple, "(", &cx.cache())?;
+                    primitive_link(f, PrimitiveType::Tuple, "(", cx)?;
                     for (i, item) in many.iter().enumerate() {
                         if i != 0 {
                             write!(f, ", ")?;
                         }
                         fmt::Display::fmt(&item.print(cx), f)?;
                     }
-                    primitive_link(f, PrimitiveType::Tuple, ")", &cx.cache())
+                    primitive_link(f, PrimitiveType::Tuple, ")", cx)
                 }
             }
         }
         clean::Slice(ref t) => {
-            primitive_link(f, PrimitiveType::Slice, "[", &cx.cache())?;
+            primitive_link(f, PrimitiveType::Slice, "[", cx)?;
             fmt::Display::fmt(&t.print(cx), f)?;
-            primitive_link(f, PrimitiveType::Slice, "]", &cx.cache())
+            primitive_link(f, PrimitiveType::Slice, "]", cx)
         }
         clean::Array(ref t, ref n) => {
-            primitive_link(f, PrimitiveType::Array, "[", &cx.cache())?;
+            primitive_link(f, PrimitiveType::Array, "[", cx)?;
             fmt::Display::fmt(&t.print(cx), f)?;
             if f.alternate() {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n), &cx.cache())
+                primitive_link(f, PrimitiveType::Array, &format!("; {}]", n), cx)
             } else {
-                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)), &cx.cache())
+                primitive_link(f, PrimitiveType::Array, &format!("; {}]", Escape(n)), cx)
             }
         }
-        clean::Never => primitive_link(f, PrimitiveType::Never, "!", &cx.cache()),
+        clean::Never => primitive_link(f, PrimitiveType::Never, "!", cx),
         clean::RawPointer(m, ref t) => {
             let m = match m {
                 hir::Mutability::Mut => "mut",
@@ -731,24 +739,19 @@ fn fmt_type<'cx>(
                             f,
                             clean::PrimitiveType::RawPointer,
                             &format!("*{} {:#}", m, t.print(cx)),
-                            &cx.cache(),
+                            cx,
                         )
                     } else {
                         primitive_link(
                             f,
                             clean::PrimitiveType::RawPointer,
                             &format!("*{} {}", m, t.print(cx)),
-                            &cx.cache(),
+                            cx,
                         )
                     }
                 }
                 _ => {
-                    primitive_link(
-                        f,
-                        clean::PrimitiveType::RawPointer,
-                        &format!("*{} ", m),
-                        &cx.cache(),
-                    )?;
+                    primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{} ", m), cx)?;
                     fmt::Display::fmt(&t.print(cx), f)
                 }
             }
@@ -770,14 +773,14 @@ fn fmt_type<'cx>(
                                     f,
                                     PrimitiveType::Slice,
                                     &format!("{}{}{}[{:#}]", amp, lt, m, bt.print(cx)),
-                                    &cx.cache(),
+                                    cx,
                                 )
                             } else {
                                 primitive_link(
                                     f,
                                     PrimitiveType::Slice,
                                     &format!("{}{}{}[{}]", amp, lt, m, bt.print(cx)),
-                                    &cx.cache(),
+                                    cx,
                                 )
                             }
                         }
@@ -786,14 +789,14 @@ fn fmt_type<'cx>(
                                 f,
                                 PrimitiveType::Slice,
                                 &format!("{}{}{}[", amp, lt, m),
-                                &cx.cache(),
+                                cx,
                             )?;
                             if f.alternate() {
                                 write!(f, "{:#}", bt.print(cx))?;
                             } else {
                                 write!(f, "{}", bt.print(cx))?;
                             }
-                            primitive_link(f, PrimitiveType::Slice, "]", &cx.cache())
+                            primitive_link(f, PrimitiveType::Slice, "]", cx)
                         }
                     }
                 }
@@ -807,7 +810,7 @@ fn fmt_type<'cx>(
                         f,
                         PrimitiveType::Reference,
                         &format!("{}{}{}", amp, lt, m),
-                        &cx.cache(),
+                        cx,
                     )?;
                     fmt_type(&ty, f, use_absolute, cx)
                 }
@@ -1292,7 +1295,7 @@ impl clean::ImportSource {
                 }
                 let name = self.path.last_name();
                 if let hir::def::Res::PrimTy(p) = self.path.res {
-                    primitive_link(f, PrimitiveType::from(p), &*name, &cx.cache())?;
+                    primitive_link(f, PrimitiveType::from(p), &*name, cx)?;
                 } else {
                     write!(f, "{}", name)?;
                 }
