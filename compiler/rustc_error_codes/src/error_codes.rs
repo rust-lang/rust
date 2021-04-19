@@ -416,7 +416,6 @@ E0716: include_str!("./error_codes/E0716.md"),
 E0718: include_str!("./error_codes/E0718.md"),
 E0719: include_str!("./error_codes/E0719.md"),
 E0720: include_str!("./error_codes/E0720.md"),
-E0723: include_str!("./error_codes/E0723.md"),
 E0724: include_str!("./error_codes/E0724.md"),
 E0725: include_str!("./error_codes/E0725.md"),
 E0727: include_str!("./error_codes/E0727.md"),
@@ -636,6 +635,7 @@ E0781: include_str!("./error_codes/E0781.md"),
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
     E0722, // Malformed `#[optimize]` attribute
+//    E0723, unstable feature in `const` context
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
     E0757, // `#[ffi_const]` functions cannot be `#[ffi_pure]`
