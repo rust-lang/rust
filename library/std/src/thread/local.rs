@@ -217,7 +217,7 @@ macro_rules! __thread_local_inner {
                         //   so now.
                         0 => {
                             $crate::thread::__FastLocalKeyInner::<$t>::register_dtor(
-                                &VAL as *const _ as *mut u8,
+                                $crate::ptr::addr_of_mut!(VAL) as *mut u8,
                                 destroy,
                             );
                             STATE = 1;

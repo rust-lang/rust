@@ -438,6 +438,11 @@ macro_rules! define_queries {
                 try_load_from_on_disk_cache: |_, _| {},
             };
 
+            pub const CompileMonoItem: QueryStruct = QueryStruct {
+                force_from_dep_node: |_, _| false,
+                try_load_from_on_disk_cache: |_, _| {},
+            };
+
             $(pub const $name: QueryStruct = {
                 const is_anon: bool = is_anon!([$($modifiers)*]);
 

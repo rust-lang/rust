@@ -135,8 +135,8 @@ LL | fn g1<X: ?Sized>(x: X) {}
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn g1<X: ?Sized>(&x: X) {}
-   |                  ^
+LL | fn g1<X: ?Sized>(x: &X) {}
+   |                     ^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized6.rs:40:22
@@ -149,8 +149,8 @@ LL | fn g2<X: ?Sized + T>(x: X) {}
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn g2<X: ?Sized + T>(&x: X) {}
-   |                      ^
+LL | fn g2<X: ?Sized + T>(x: &X) {}
+   |                         ^
 
 error: aborting due to 13 previous errors
 
