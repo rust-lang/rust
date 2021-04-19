@@ -49,7 +49,7 @@ define_semantic_token_types![
     (CHAR_LITERAL, "characterLiteral"),
     (COLON, "colon"),
     (COMMA, "comma"),
-    (COMPARISION, "comparision"),
+    (COMPARISON, "comparison"),
     (CONST_PARAMETER, "constParameter"),
     (DOT, "dot"),
     (ESCAPE_SEQUENCE, "escapeSequence"),

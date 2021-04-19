@@ -469,7 +469,7 @@ fn semantic_token_type_and_modifiers(
             HlOperator::Bitwise => semantic_tokens::BITWISE,
             HlOperator::Arithmetic => semantic_tokens::ARITHMETIC,
             HlOperator::Logical => semantic_tokens::LOGICAL,
-            HlOperator::Comparision => semantic_tokens::COMPARISION,
+            HlOperator::Comparison => semantic_tokens::COMPARISON,
             HlOperator::Other => semantic_tokens::OPERATOR,
         },
         HlTag::StringLiteral => lsp_types::SemanticTokenType::STRING,
