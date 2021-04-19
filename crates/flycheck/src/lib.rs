@@ -319,13 +319,13 @@ impl CargoActor {
 
             read_at_least_one_message = true;
 
-            // Try to deserialize a message from Cargo.
-            {
-                let mut deserializer = serde_json::Deserializer::from_str(&message);
-                deserializer.disable_recursion_limit();
-                if let Ok(message) = cargo_metadata::Message::deserialize(&mut deserializer) {
+            // Try to deserialize a message from Cargo or Rustc.
+            let mut deserializer = serde_json::Deserializer::from_str(&message);
+            deserializer.disable_recursion_limit();
+            if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
+                match message {
                     // Skip certain kinds of messages to only spend time on what's useful
-                    match message {
+                    JsonMessage::Cargo(message) => match message {
                         cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
                             self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap()
                         }
@@ -338,16 +338,10 @@ impl CargoActor {
                         | cargo_metadata::Message::BuildFinished(_)
                         | cargo_metadata::Message::TextLine(_)
                         | _ => (),
+                    },
+                    JsonMessage::Rustc(message) => {
+                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap()
                     }
-                }
-            }
-
-            // Try to deserialize a Diagnostic directly from Rustc.
-            {
-                let mut deserializer = serde_json::Deserializer::from_str(&message);
-                deserializer.disable_recursion_limit();
-                if let Ok(message) = Diagnostic::deserialize(&mut deserializer) {
-                    self.sender.send(CargoMessage::Diagnostic(message)).unwrap()
                 }
             }
         }
@@ -358,4 +352,11 @@ impl CargoActor {
 enum CargoMessage {
     CompilerArtifact(cargo_metadata::Artifact),
     Diagnostic(Diagnostic),
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum JsonMessage {
+    Cargo(cargo_metadata::Message),
+    Rustc(Diagnostic),
 }
