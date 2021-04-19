@@ -108,13 +108,13 @@ pub(crate) fn external_docs(
     let node = token.parent()?;
     let definition = match_ast! {
         match node {
-            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db)),
-            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.referenced_or_defined(sema.db)),
-            _ => None,
+            ast::NameRef(name_ref) => NameRefClass::classify(&sema, &name_ref).map(|d| d.referenced(sema.db))?,
+            ast::Name(name) => NameClass::classify(&sema, &name).map(|d| d.referenced_or_defined(sema.db))?,
+            _ => return None,
         }
     };
 
-    get_doc_link(db, definition?)
+    get_doc_link(db, definition)
 }
 
 /// Extracts all links from a given markdown text.
@@ -214,20 +214,20 @@ fn broken_link_clone_cb<'a, 'b>(link: BrokenLink<'a>) -> Option<(CowStr<'b>, Cow
 // This should cease to be a problem if RFC2988 (Stable Rustdoc URLs) is implemented
 // https://github.com/rust-lang/rfcs/pull/2988
 fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
-    // Get the outermost definition for the moduledef. This is used to resolve the public path to the type,
+    // Get the outermost definition for the module def. This is used to resolve the public path to the type,
     // then we can join the method, field, etc onto it if required.
     let target_def: ModuleDef = match definition {
-        Definition::ModuleDef(moddef) => match moddef {
+        Definition::ModuleDef(def) => match def {
             ModuleDef::Function(f) => f
                 .as_assoc_item(db)
                 .and_then(|assoc| match assoc.container(db) {
                     AssocItemContainer::Trait(t) => Some(t.into()),
-                    AssocItemContainer::Impl(impld) => {
-                        impld.self_ty(db).as_adt().map(|adt| adt.into())
+                    AssocItemContainer::Impl(impl_) => {
+                        impl_.self_ty(db).as_adt().map(|adt| adt.into())
                     }
                 })
-                .unwrap_or_else(|| f.clone().into()),
-            moddef => moddef,
+                .unwrap_or_else(|| def),
+            def => def,
         },
         Definition::Field(f) => f.parent_def(db).into(),
         // FIXME: Handle macros
@@ -236,17 +236,28 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
 
     let ns = ItemInNs::from(target_def);
 
-    let module = definition.module(db)?;
-    let krate = module.krate();
+    let krate = match definition {
+        // Definition::module gives back the parent module, we don't want that as it fails for root modules
+        Definition::ModuleDef(ModuleDef::Module(module)) => module.krate(),
+        _ => definition.module(db)?.krate(),
+    };
     let import_map = db.import_map(krate.into());
-    let base = once(krate.display_name(db)?.to_string())
-        .chain(import_map.path_of(ns)?.segments.iter().map(|name| name.to_string()))
-        .join("/")
-        + "/";
+
+    let mut base = krate.display_name(db)?.to_string();
+    let is_root_module = matches!(
+        definition,
+        Definition::ModuleDef(ModuleDef::Module(module)) if krate.root_module(db) == module
+    );
+    if !is_root_module {
+        base = once(base)
+            .chain(import_map.path_of(ns)?.segments.iter().map(|name| name.to_string()))
+            .join("/");
+    }
+    base += "/";
 
     let filename = get_symbol_filename(db, &target_def);
     let fragment = match definition {
-        Definition::ModuleDef(moddef) => match moddef {
+        Definition::ModuleDef(def) => match def {
             ModuleDef::Function(f) => {
                 get_symbol_fragment(db, &FieldOrAssocItem::AssocItem(AssocItem::Function(f)))
             }
@@ -530,6 +541,19 @@ mod tests {
         let url = analysis.external_docs(position).unwrap().expect("could not find url for symbol");
 
         expect.assert_eq(&url)
+    }
+
+    #[test]
+    fn test_doc_url_crate() {
+        check(
+            r#"
+//- /main.rs crate:main deps:test
+use test$0::Foo;
+//- /lib.rs crate:test
+pub struct Foo;
+"#,
+            expect![[r#"https://docs.rs/test/*/test/index.html"#]],
+        );
     }
 
     #[test]
