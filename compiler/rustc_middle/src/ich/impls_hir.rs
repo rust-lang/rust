@@ -6,7 +6,6 @@ use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
 use smallvec::SmallVec;
 use std::mem;
@@ -112,46 +111,6 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         f(self);
 
         self.node_id_hashing_mode = prev_hash_node_ids;
-    }
-
-    #[inline]
-    fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.local_def_path_hash(def_id)
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for DefId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> DefPathHash {
-        hcx.def_path_hash(*self)
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for LocalDefId {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        hcx.def_path_hash(self.to_def_id()).hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for LocalDefId {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> DefPathHash {
-        hcx.def_path_hash(self.to_def_id())
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for CrateNum {
-    type KeyType = DefPathHash;
-
-    #[inline]
-    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> DefPathHash {
-        let def_id = DefId { krate: *self, index: CRATE_DEF_INDEX };
-        def_id.to_stable_hash_key(hcx)
     }
 }
 

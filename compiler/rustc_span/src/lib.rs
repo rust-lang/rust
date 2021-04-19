@@ -40,7 +40,7 @@ pub use hygiene::SyntaxContext;
 use hygiene::Transparency;
 pub use hygiene::{DesugaringKind, ExpnData, ExpnId, ExpnKind, ForLoopLoc, MacroKind};
 pub mod def_id;
-use def_id::{CrateNum, DefId, LOCAL_CRATE};
+use def_id::{CrateNum, DefId, DefPathHash, LOCAL_CRATE};
 pub mod lev_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -1928,13 +1928,12 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// This is a hack to allow using the [`HashStable_Generic`] derive macro
 /// instead of implementing everything in rustc_middle.
 pub trait HashStableContext {
-    fn hash_def_id(&mut self, _: DefId, hasher: &mut StableHasher);
+    fn def_path_hash(&self, def_id: DefId) -> DefPathHash;
     /// Obtains a cache for storing the `Fingerprint` of an `ExpnId`.
     /// This method allows us to have multiple `HashStableContext` implementations
     /// that hash things in a different way, without the results of one polluting
     /// the cache of the other.
     fn expn_id_cache() -> &'static LocalKey<ExpnIdCache>;
-    fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
     fn hash_spans(&self) -> bool;
     fn span_data_to_lines_and_cols(
         &mut self,
