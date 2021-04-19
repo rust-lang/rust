@@ -5,6 +5,9 @@
 mod global;
 mod layout;
 
+#[unstable(feature = "allocator_api_internals", issue = "none")]
+pub mod helper;
+
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub use self::global::GlobalAlloc;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
