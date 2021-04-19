@@ -87,7 +87,7 @@ fn line_program_add_file(
         filename => {
             let dir_id = line_program.default_directory();
             let dummy_file_name = LineString::new(
-                filename.to_string().into_bytes(),
+                filename.prefer_remapped().to_string().into_bytes(),
                 line_program.encoding(),
                 line_strings,
             );
