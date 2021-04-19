@@ -1,14 +1,38 @@
 /// Implemented for vectors that are supported by the implementation.
-pub trait LanesAtMost32 {}
+pub trait LanesAtMost32: sealed::Sealed {
+    #[doc(hidden)]
+    type BitMask: Into<u64>;
+}
+
+mod sealed {
+    pub trait Sealed {}
+}
 
 macro_rules! impl_for {
     { $name:ident } => {
-        impl LanesAtMost32 for $name<1> {}
-        impl LanesAtMost32 for $name<2> {}
-        impl LanesAtMost32 for $name<4> {}
-        impl LanesAtMost32 for $name<8> {}
-        impl LanesAtMost32 for $name<16> {}
-        impl LanesAtMost32 for $name<32> {}
+        impl<const LANES: usize> sealed::Sealed for $name<LANES>
+        where
+            $name<LANES>: LanesAtMost32,
+        {}
+
+        impl LanesAtMost32 for $name<1> {
+            type BitMask = u8;
+        }
+        impl LanesAtMost32 for $name<2> {
+            type BitMask = u8;
+        }
+        impl LanesAtMost32 for $name<4> {
+            type BitMask = u8;
+        }
+        impl LanesAtMost32 for $name<8> {
+            type BitMask = u8;
+        }
+        impl LanesAtMost32 for $name<16> {
+            type BitMask = u16;
+        }
+        impl LanesAtMost32 for $name<32> {
+            type BitMask = u32;
+        }
     }
 }
 

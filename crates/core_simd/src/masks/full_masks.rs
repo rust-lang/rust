@@ -46,14 +46,12 @@ macro_rules! define_mask {
             }
 
             #[inline]
-            pub fn test(&self, lane: usize) -> bool {
-                assert!(lane < LANES, "lane index out of range");
+            pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
                 self.0[lane] == -1
             }
 
             #[inline]
-            pub fn set(&mut self, lane: usize, value: bool) {
-                assert!(lane < LANES, "lane index out of range");
+            pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
                 self.0[lane] = if value {
                     -1
                 } else {
@@ -70,6 +68,12 @@ macro_rules! define_mask {
             pub unsafe fn from_int_unchecked(value: crate::$type<LANES>) -> Self {
                 Self(value)
             }
+
+            #[inline]
+            pub fn to_bitmask(self) -> u64 {
+                let mask: <crate::$type<LANES> as crate::LanesAtMost32>::BitMask = unsafe { crate::intrinsics::simd_bitmask(self.0) };
+                mask.into()
+            }
         }
 
         impl<const LANES: usize> core::convert::From<$name<LANES>> for crate::$type<LANES>
@@ -78,53 +82,6 @@ macro_rules! define_mask {
         {
             fn from(value: $name<LANES>) -> Self {
                 value.0
-            }
-        }
-
-        impl<const LANES: usize> core::fmt::Debug for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                f.debug_list()
-                    .entries((0..LANES).map(|lane| self.test(lane)))
-                    .finish()
-            }
-        }
-
-        impl<const LANES: usize> core::fmt::Binary for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                core::fmt::Binary::fmt(&self.0, f)
-            }
-        }
-
-        impl<const LANES: usize> core::fmt::Octal for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                core::fmt::Octal::fmt(&self.0, f)
-            }
-        }
-
-        impl<const LANES: usize> core::fmt::LowerHex for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                core::fmt::LowerHex::fmt(&self.0, f)
-            }
-        }
-
-        impl<const LANES: usize> core::fmt::UpperHex for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                core::fmt::UpperHex::fmt(&self.0, f)
             }
         }
 

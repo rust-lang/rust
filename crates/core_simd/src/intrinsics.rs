@@ -76,6 +76,9 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_reduce_and<T, U>(x: T) -> U;
     pub(crate) fn simd_reduce_or<T, U>(x: T) -> U;
     pub(crate) fn simd_reduce_xor<T, U>(x: T) -> U;
+
+    // truncate integer vector to bitmask
+    pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
 }
 
 #[cfg(feature = "std")]

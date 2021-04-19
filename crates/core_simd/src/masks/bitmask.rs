@@ -1,13 +1,9 @@
-use crate::LanesAtMost32;
-
 /// A mask where each lane is represented by a single bit.
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Ord, Eq, Hash)]
 #[repr(transparent)]
-pub struct BitMask<const LANES: usize>(u64)
+pub struct BitMask<const LANES: usize>(u64);
 
 impl<const LANES: usize> BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     #[inline]
     pub fn splat(value: bool) -> Self {
@@ -25,13 +21,50 @@ where
 
     #[inline]
     pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
-        self.0 ^= ((value ^ self.test(lane)) as u64) << lane
+        self.0 ^= ((value ^ self.test_unchecked(lane)) as u64) << lane
+    }
+
+    #[inline]
+    pub fn to_int<V, T>(self) -> V
+    where
+        V: Default + AsMut<[T; LANES]>,
+        T: From<i8>,
+    {
+        // TODO this should be an intrinsic sign-extension
+        let mut v = V::default();
+        for i in 0..LANES {
+            let lane = unsafe { self.test_unchecked(i) };
+            v.as_mut()[i] = (-(lane as i8)).into();
+        }
+        v
+    }
+
+    #[inline]
+    pub unsafe fn from_int_unchecked<V>(value: V) -> Self
+    where
+        V: crate::LanesAtMost32,
+    {
+        let mask: V::BitMask = crate::intrinsics::simd_bitmask(value);
+        Self(mask.into())
+    }
+
+    #[inline]
+    pub fn to_bitmask(self) -> u64 {
+        self.0
+    }
+
+    #[inline]
+    pub fn any(self) -> bool {
+        self != Self::splat(false)
+    }
+
+    #[inline]
+    pub fn all(self) -> bool {
+        self == Self::splat(true)
     }
 }
 
 impl<const LANES: usize> core::ops::BitAnd for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -41,8 +74,6 @@ where
 }
 
 impl<const LANES: usize> core::ops::BitAnd<bool> for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -52,8 +83,6 @@ where
 }
 
 impl<const LANES: usize> core::ops::BitAnd<BitMask<LANES>> for bool
-where
-    BitMask<LANES>: LanesAtMost32,
 {
     type Output = BitMask<LANES>;
     #[inline]
@@ -63,8 +92,6 @@ where
 }
 
 impl<const LANES: usize> core::ops::BitOr for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -73,31 +100,7 @@ where
     }
 }
 
-impl<const LANES: usize> core::ops::BitOr<bool> for BitMask<LANES>
-where
-    Self: LanesAtMost32,
-{
-    type Output = Self;
-    #[inline]
-    fn bitor(self, rhs: bool) -> Self {
-        self | Self::splat(rhs)
-    }
-}
-
-impl<const LANES: usize> core::ops::BitOr<BitMask<LANES>> for bool
-where
-    BitMask<LANES>: LanesAtMost32,
-{
-    type Output = BitMask<LANES>;
-    #[inline]
-    fn bitor(self, rhs: BitMask<LANES>) -> BitMask<LANES> {
-        BitMask::<LANES>::splat(self) | rhs
-    }
-}
-
 impl<const LANES: usize> core::ops::BitXor for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     type Output = Self;
     #[inline]
@@ -106,42 +109,16 @@ where
     }
 }
 
-impl<const LANES: usize> core::ops::BitXor<bool> for BitMask<LANES>
-where
-    Self: LanesAtMost32,
-{
-    type Output = Self;
-    #[inline]
-    fn bitxor(self, rhs: bool) -> Self::Output {
-        self ^ Self::splat(rhs)
-    }
-}
-
-impl<const LANES: usize> core::ops::BitXor<BitMask<LANES>> for bool
-where
-    BitMask<LANES>: LanesAtMost32,
-{
-    type Output = BitMask<LANES>;
-    #[inline]
-    fn bitxor(self, rhs: BitMask<LANES>) -> Self::Output {
-        BitMask::<LANES>::splat(self) ^ rhs
-    }
-}
-
 impl<const LANES: usize> core::ops::Not for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     type Output = BitMask<LANES>;
     #[inline]
     fn not(self) -> Self::Output {
-        Self(!self.0)
+        Self(!self.0) & Self::splat(true)
     }
 }
 
 impl<const LANES: usize> core::ops::BitAndAssign for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     #[inline]
     fn bitand_assign(&mut self, rhs: Self) {
@@ -149,19 +126,7 @@ where
     }
 }
 
-impl<const LANES: usize> core::ops::BitAndAssign<bool> for BitMask<LANES>
-where
-    Self: LanesAtMost32,
-{
-    #[inline]
-    fn bitand_assign(&mut self, rhs: bool) {
-        *self &= Self::splat(rhs);
-    }
-}
-
 impl<const LANES: usize> core::ops::BitOrAssign for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     #[inline]
     fn bitor_assign(&mut self, rhs: Self) {
@@ -169,19 +134,7 @@ where
     }
 }
 
-impl<const LANES: usize> core::ops::BitOrAssign<bool> for BitMask<LANES>
-where
-    Self: LanesAtMost32,
-{
-    #[inline]
-    fn bitor_assign(&mut self, rhs: bool) {
-        *self |= Self::splat(rhs);
-    }
-}
-
 impl<const LANES: usize> core::ops::BitXorAssign for BitMask<LANES>
-where
-    Self: LanesAtMost32,
 {
     #[inline]
     fn bitxor_assign(&mut self, rhs: Self) {
@@ -189,12 +142,9 @@ where
     }
 }
 
-impl<const LANES: usize> core::ops::BitXorAssign<bool> for BitMask<LANES>
-where
-    Self: LanesAtMost32,
-{
-    #[inline]
-    fn bitxor_assign(&mut self, rhs: bool) {
-        *self ^= Self::splat(rhs);
-    }
-}
+pub type Mask8<const LANES: usize> = BitMask<LANES>;
+pub type Mask16<const LANES: usize> = BitMask<LANES>;
+pub type Mask32<const LANES: usize> = BitMask<LANES>;
+pub type Mask64<const LANES: usize> = BitMask<LANES>;
+pub type Mask128<const LANES: usize> = BitMask<LANES>;
+pub type MaskSize<const LANES: usize> = BitMask<LANES>;

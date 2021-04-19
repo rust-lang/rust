@@ -8,6 +8,12 @@ mod mask_impl;
 
 use crate::{LanesAtMost32, SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize};
 
+/// Converts masks to bitmasks, with one bit set for each lane.
+pub trait ToBitMask {
+    /// Converts this mask to a bitmask.
+    fn to_bitmask(self) -> u64;
+}
+
 macro_rules! define_opaque_mask {
     {
         $(#[$attr:meta])*
@@ -61,13 +67,53 @@ macro_rules! define_opaque_mask {
                 Self(<$inner_ty>::from_int_unchecked(value))
             }
 
+            /// Converts a vector of integers to a mask, where 0 represents `false` and -1
+            /// represents `true`.
+            ///
+            /// # Panics
+            /// Panics if any lane is not 0 or -1.
+            #[inline]
+            pub fn from_int(value: $bits_ty<LANES>) -> Self {
+                assert!(
+                    (value.lanes_eq($bits_ty::splat(0)) | value.lanes_eq($bits_ty::splat(-1))).all(),
+                    "all values must be either 0 or -1",
+                );
+                unsafe { Self::from_int_unchecked(value) }
+            }
+
+            /// Converts the mask to a vector of integers, where 0 represents `false` and -1
+            /// represents `true`.
+            #[inline]
+            pub fn to_int(self) -> $bits_ty<LANES> {
+                self.0.to_int()
+            }
+
+            /// Tests the value of the specified lane.
+            ///
+            /// # Safety
+            /// `lane` must be less than `LANES`.
+            #[inline]
+            pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
+                self.0.test_unchecked(lane)
+            }
+
             /// Tests the value of the specified lane.
             ///
             /// # Panics
             /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
             #[inline]
             pub fn test(&self, lane: usize) -> bool {
-                self.0.test(lane)
+                assert!(lane < LANES, "lane index out of range");
+                unsafe { self.test_unchecked(lane) }
+            }
+
+            /// Sets the value of the specified lane.
+            ///
+            /// # Safety
+            /// `lane` must be less than `LANES`.
+            #[inline]
+            pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
+                self.0.set_unchecked(lane, value);
             }
 
             /// Sets the value of the specified lane.
@@ -76,7 +122,44 @@ macro_rules! define_opaque_mask {
             /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
             #[inline]
             pub fn set(&mut self, lane: usize, value: bool) {
-                self.0.set(lane, value);
+                assert!(lane < LANES, "lane index out of range");
+                unsafe { self.set_unchecked(lane, value); }
+            }
+        }
+
+        impl ToBitMask for $name<1> {
+            fn to_bitmask(self) -> u64 {
+                self.0.to_bitmask()
+            }
+        }
+
+        impl ToBitMask for $name<2> {
+            fn to_bitmask(self) -> u64 {
+                self.0.to_bitmask()
+            }
+        }
+
+        impl ToBitMask for $name<4> {
+            fn to_bitmask(self) -> u64 {
+                self.0.to_bitmask()
+            }
+        }
+
+        impl ToBitMask for $name<8> {
+            fn to_bitmask(self) -> u64 {
+                self.0.to_bitmask()
+            }
+        }
+
+        impl ToBitMask for $name<16> {
+            fn to_bitmask(self) -> u64 {
+                self.0.to_bitmask()
+            }
+        }
+
+        impl ToBitMask for $name<32> {
+            fn to_bitmask(self) -> u64 {
+                self.0.to_bitmask()
             }
         }
 
@@ -147,10 +230,12 @@ macro_rules! define_opaque_mask {
 
         impl<const LANES: usize> core::fmt::Debug for $name<LANES>
         where
-            $bits_ty<LANES>: LanesAtMost32,
+            $bits_ty<LANES>: crate::LanesAtMost32,
         {
             fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                core::fmt::Debug::fmt(&self.0, f)
+                f.debug_list()
+                    .entries((0..LANES).map(|lane| self.test(lane)))
+                    .finish()
             }
         }
 
