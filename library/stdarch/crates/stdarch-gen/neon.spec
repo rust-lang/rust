@@ -2709,6 +2709,218 @@ aarch64 = str
 generate float32x2_t:float64x1_t, float64x1_t:float32x2_t
 generate float32x4_t:float64x2_t, float64x2_t:float32x4_t
 
+/// Signed rounding shift left
+name = vrshl
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+
+aarch64 = srshl
+link-aarch64 = srshl._EXT_
+
+arm = vrshl
+link-arm = vrshifts._EXT_
+generate int*_t, int64x*_t
+
+/// Signed rounding shift left
+name = vrshl
+multi_fn = transmute, {vrshl-in_ntt-noext, transmute(a), transmute(b)}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+
+aarch64 = srshl
+generate i64
+
+/// Unsigned rounding shift left
+name = vrshl
+out-suffix
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+
+aarch64 = urshl
+link-aarch64 = urshl._EXT_
+
+arm = vrshl
+link-arm = vrshiftu._EXT_
+generate uint8x8_t:int8x8_t:uint8x8_t, uint8x16_t:int8x16_t:uint8x16_t, uint16x4_t:int16x4_t:uint16x4_t, uint16x8_t:int16x8_t:uint16x8_t
+generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint64x1_t:int64x1_t:uint64x1_t, uint64x2_t:int64x2_t:uint64x2_t
+
+/// Unsigned rounding shift left
+name = vrshl
+out-suffix
+multi_fn = transmute, {vrshl-out_ntt-noext, transmute(a), transmute(b)}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+
+aarch64 = urshl
+generate u64:i64:u64
+
+/// Signed rounding shift right
+name = vrshr
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = vrshl-self-noext, a, {vdup-nself-noext, (-N).try_into().unwrap()}
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = srshr
+arm = vrshr
+generate int*_t, int64x*_t
+
+/// Signed rounding shift right
+name = vrshr
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = vrshl-self-noext, a, -N as i64
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = srshr
+generate i64
+
+/// Unsigned rounding shift right
+name = vrshr
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = vrshl-self-noext, a, {vdup-nsigned-noext, (-N).try_into().unwrap()}
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = urshr
+arm = vrshr
+generate uint*_t, uint64x*_t
+
+/// Unsigned rounding shift right
+name = vrshr
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = vrshl-self-noext, a, -N as i64
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = urshr
+generate u64
+
+/// Rounding shift right narrow
+name = vrshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = rshrn
+link-aarch64 = rshrn._EXT2_
+const-aarch64 = N
+
+arm = vrshrn
+link-arm = vrshiftn._EXT2_
+const-arm = -N as ttn
+generate int16x8_t:int8x8_t, int32x4_t:int16x4_t, int64x2_t:int32x2_t
+
+/// Rounding shift right narrow
+name = vrshrn
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = transmute, {vrshrn_n-noqsigned-::<N>, transmute(a)}
+a = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = rshrn
+arm = vrshrn
+generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
+
+/// Rounding shift right narrow
+name = vrshrn_high
+noq-n-suffix
+constn = N
+multi_fn = static_assert-N-1-halfbits
+multi_fn = simd_shuffle-out_len-noext, a, {vrshrn_n-noqself-::<N>, b}, {asc-0-out_len}
+a = 0, 1, 8, 9, 8, 9, 10, 11
+b = 32, 36, 40, 44, 48, 52, 56, 60
+n = 2
+validate 0, 1, 8, 9, 8, 9, 10, 11, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = rshrn2
+generate int8x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int32x4_t
+generate uint8x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint32x4_t
+
+/// Signed rounding shift right and accumulate
+name = vrsra
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = simd_add, a, {vrshr-nself-::<N>, b}
+a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+b = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+
+aarch64 = srsra
+arm = vrsra
+generate int*_t, int64x*_t
+
+/// Unsigned rounding shift right and accumulate
+name = vrsra
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = simd_add, a, {vrshr-nself-::<N>, b}
+a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+b = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+
+aarch64 = ursra
+arm = vrsra
+generate uint*_t, uint64x*_t
+
+/// Signed rounding shift right and accumulate.
+name = vrsra
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = vrshr_n-in_ntt-::<N>, b:in_ntt, transmute(b)
+multi_fn = transmute, {simd_add, transmute(a), b}
+a = 1
+b = 4
+n = 2
+validate 2
+
+// We use "nop" here to skip the instruction test, since it cannot be optimized correctly.
+aarch64 = nop
+generate i64
+
+/// Ungisned rounding shift right and accumulate.
+name = vrsra
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = vrshr_n-in_ntt-::<N>, b:in_ntt, transmute(b)
+multi_fn = transmute, {simd_add, transmute(a), b}
+a = 1
+b = 4
+n = 2
+validate 2
+
+// We use "nop" here to skip the instruction test, since it cannot be optimized correctly.
+aarch64 = nop
+generate u64
+
 /// Signed Shift left
 name = vshl
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
@@ -2720,6 +2932,16 @@ link-arm = vshifts._EXT_
 aarch64 = sshl
 link-aarch64 = sshl._EXT_
 generate int*_t, int64x*_t
+
+/// Signed Shift left
+name = vshl
+multi_fn = transmute, {vshl-in_ntt-noext, transmute(a), transmute(b)}
+a = 1
+b = 2
+validate 4
+
+aarch64 = sshl
+generate i64
 
 /// Unsigned Shift left
 name = vshl
@@ -2734,6 +2956,17 @@ aarch64 = ushl
 link-aarch64 = ushl._EXT_
 generate uint8x8_t:int8x8_t:uint8x8_t, uint8x16_t:int8x16_t:uint8x16_t, uint16x4_t:int16x4_t:uint16x4_t, uint16x8_t:int16x8_t:uint16x8_t
 generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint64x1_t:int64x1_t:uint64x1_t, uint64x2_t:int64x2_t:uint64x2_t
+
+/// Unsigned Shift left
+out-suffix
+name = vshl
+multi_fn = transmute, {vshl-out_ntt-noext, transmute(a), transmute(b)}
+a = 1
+b = 2
+validate 4
+
+aarch64 = ushl
+generate u64:i64:u64
 
 /// Shift left
 name = vshl
@@ -2826,6 +3059,36 @@ validate 1, 2, 5, 6, 5, 6, 7, 8, 5, 6, 7, 8, 13, 14, 15, 16
 aarch64 = shrn2
 generate int8x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int32x4_t
 generate uint8x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint32x4_t
+
+/// Signed shift right and accumulate
+name = vsra
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = simd_add, a, {vshr-nself-::<N>, b}
+a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+b = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+
+aarch64 = ssra
+arm = vsra
+generate int*_t, int64x*_t
+
+/// Unsigned shift right and accumulate
+name = vsra
+n-suffix
+constn = N
+multi_fn = static_assert-N-1-bits
+multi_fn = simd_add, a, {vshr-nself-::<N>, b}
+a = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+b = 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
+n = 2
+validate 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+
+aarch64 = usra
+arm = vsra
+generate uint*_t, uint64x*_t
 
 /// Transpose vectors
 name = vtrn1

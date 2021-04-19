@@ -2447,6 +2447,66 @@ pub unsafe fn vqtbx4q_p8(a: poly8x16_t, t: poly8x16x4_t, idx: uint8x16_t) -> pol
     ))
 }
 
+/// Shift left
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vshld_n_s64<const N: i32>(a: i64) -> i64 {
+    static_assert_imm6!(N);
+    a << N
+}
+
+/// Shift left
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vshld_n_u64<const N: i32>(a: u64) -> u64 {
+    static_assert_imm6!(N);
+    a << N
+}
+
+/// Signed shift right
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vshrd_n_s64<const N: i32>(a: i64) -> i64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    a >> N
+}
+
+/// Unsigned shift right
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vshrd_n_u64<const N: i32>(a: u64) -> u64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    a >> N
+}
+
+/// Signed shift right and accumulate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsrad_n_s64<const N: i32>(a: i64, b: i64) -> i64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    a + (b >> N)
+}
+
+/// Unsigned shift right and accumulate
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N = 2))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsrad_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    a + (b >> N)
+}
+
 /// Shift Left and Insert (immediate)
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3509,6 +3569,56 @@ mod tests {
         let b: f64x1 = f64x1::new(1.);
         let e: f64x1 = f64x1::new(0.);
         let r: f64x1 = transmute(vext_f64::<0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vshld_n_s64() {
+        let a: i64 = 1;
+        let e: i64 = 4;
+        let r: i64 = vshld_n_s64::<2>(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vshld_n_u64() {
+        let a: u64 = 1;
+        let e: u64 = 4;
+        let r: u64 = vshld_n_u64::<2>(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vshrd_n_s64() {
+        let a: i64 = 4;
+        let e: i64 = 1;
+        let r: i64 = vshrd_n_s64::<2>(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vshrd_n_u64() {
+        let a: u64 = 4;
+        let e: u64 = 1;
+        let r: u64 = vshrd_n_u64::<2>(a);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsrad_n_s64() {
+        let a: i64 = 1;
+        let b: i64 = 4;
+        let e: i64 = 2;
+        let r: i64 = vsrad_n_s64::<2>(a, b);
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsrad_n_u64() {
+        let a: u64 = 1;
+        let b: u64 = 4;
+        let e: u64 = 2;
+        let r: u64 = vsrad_n_u64::<2>(a, b);
         assert_eq!(r, e);
     }
 

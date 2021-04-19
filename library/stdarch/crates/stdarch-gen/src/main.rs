@@ -1932,6 +1932,8 @@ fn get_call(
             fn_name.push_str(&type_to_noq_double_suffixes(out_t, in_t[1]));
         } else if fn_format[1] == "noqself" {
             fn_name.push_str(type_to_noq_suffix(in_t[1]));
+        } else if fn_format[1] == "noqsigned" {
+            fn_name.push_str(type_to_noq_suffix(type_to_signed(in_t[1])));
         } else if fn_format[1] == "nosuffix" {
         } else if fn_format[1] == "in_len" {
             fn_name.push_str(&type_len(in_t[1]).to_string());
