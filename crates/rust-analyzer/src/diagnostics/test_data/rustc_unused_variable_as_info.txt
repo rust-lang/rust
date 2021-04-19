@@ -179,6 +179,7 @@
                             },
                         ),
                         document_changes: None,
+                        change_annotations: None,
                     },
                 ),
                 is_preferred: Some(

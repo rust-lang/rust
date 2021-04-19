@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: b19ddc3ab8767af9
+lsp_ext.rs hash: 28a9d5a24b7ca396
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -46,6 +46,7 @@ If this capability is set, `WorkspaceEdit`s returned from `codeAction` requests 
 ```typescript
 interface SnippetTextEdit extends TextEdit {
     insertTextFormat?: InsertTextFormat;
+    annotationId?: ChangeAnnotationIdentifier;
 }
 ```
 

@@ -136,6 +136,7 @@ fn map_rust_child_diagnostic(
                     // FIXME: there's no good reason to use edit_map here....
                     changes: Some(edit_map),
                     document_changes: None,
+                    change_annotations: None,
                 }),
                 is_preferred: Some(true),
                 data: None,

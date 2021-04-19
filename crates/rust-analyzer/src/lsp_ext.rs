@@ -312,6 +312,9 @@ pub struct SnippetWorkspaceEdit {
     pub changes: Option<HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub document_changes: Option<Vec<SnippetDocumentChangeOperation>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub change_annotations:
+        Option<HashMap<lsp_types::ChangeAnnotationIdentifier, lsp_types::ChangeAnnotation>>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Deserialize, Serialize)]
@@ -335,6 +338,9 @@ pub struct SnippetTextEdit {
     pub new_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub insert_text_format: Option<lsp_types::InsertTextFormat>,
+    /// The annotation id if this is an annotated
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub annotation_id: Option<lsp_types::ChangeAnnotationIdentifier>,
 }
 
 pub enum HoverRequest {}
