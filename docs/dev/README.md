@@ -242,6 +242,9 @@ There are three sets of people with extra permissions:
   They also have direct commit access, but all changes should via bors queue.
   It's ok to self-approve if you think you know what you are doing!
   bors should automatically sync the permissions.
+  Feel free to request a review or assign any PR to a reviewer with the relevant expertise to bring the work to their attention.
+  Don't feel pressured to review assigned PRs though.
+  If you don't feel like reviewing for whatever reason, someone else will pick the review up!
 * [**triage**](https://github.com/orgs/rust-analyzer/teams/triage) team in the organization.
   This team can label and close issues.
 
