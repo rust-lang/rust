@@ -481,32 +481,32 @@ fn main() {
         check_assist(
             fill_match_arms,
             r#"
-            enum A { One, Two }
-            enum B { One, Two }
+enum A { One, Two }
+enum B { One, Two }
 
-            fn main() {
-                let a = A::One;
-                let b = B::One;
-                match (a$0, b) {
-                    (A::Two, B::One) => {}
-                }
-            }
-            "#,
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a$0, b) {
+        (A::Two, B::One) => {}
+    }
+}
+"#,
             r#"
-            enum A { One, Two }
-            enum B { One, Two }
+enum A { One, Two }
+enum B { One, Two }
 
-            fn main() {
-                let a = A::One;
-                let b = B::One;
-                match (a, b) {
-                    (A::Two, B::One) => {}
-                    $0(A::One, B::One) => {}
-                    (A::One, B::Two) => {}
-                    (A::Two, B::Two) => {}
-                }
-            }
-            "#,
+fn main() {
+    let a = A::One;
+    let b = B::One;
+    match (a, b) {
+        (A::Two, B::One) => {}
+        $0(A::One, B::One) => {}
+        (A::One, B::Two) => {}
+        (A::Two, B::Two) => {}
+    }
+}
+"#,
         );
     }
 
