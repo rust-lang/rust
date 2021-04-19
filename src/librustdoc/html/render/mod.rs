@@ -986,7 +986,6 @@ fn render_assoc_item(
 
 const ALLOWED_ATTRIBUTES: &[Symbol] = &[
     sym::export_name,
-    sym::lang,
     sym::link_section,
     sym::must_use,
     sym::no_mangle,
