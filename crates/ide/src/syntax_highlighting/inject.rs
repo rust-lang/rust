@@ -4,7 +4,7 @@ use std::mem;
 
 use either::Either;
 use hir::{InFile, Semantics};
-use ide_db::{call_info::ActiveParameter, SymbolKind};
+use ide_db::{call_info::ActiveParameter, helpers::rust_doc::is_rust_fence, SymbolKind};
 use syntax::{
     ast::{self, AstNode},
     AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -78,24 +78,6 @@ pub(super) fn ra_fixture(
 }
 
 const RUSTDOC_FENCE: &'static str = "```";
-const RUSTDOC_FENCE_TOKENS: &[&'static str] = &[
-    "",
-    "rust",
-    "should_panic",
-    "ignore",
-    "no_run",
-    "compile_fail",
-    "edition2015",
-    "edition2018",
-    "edition2021",
-];
-
-fn is_rustdoc_fence_token(token: &str) -> bool {
-    if RUSTDOC_FENCE_TOKENS.contains(&token) {
-        return true;
-    }
-    token.starts_with('E') && token.len() == 5 && token[1..].parse::<u32>().is_ok()
-}
 
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(
@@ -181,7 +163,7 @@ pub(super) fn doc_comment(
                     is_codeblock = !is_codeblock;
                     // Check whether code is rust by inspecting fence guards
                     let guards = &line[idx + RUSTDOC_FENCE.len()..];
-                    let is_rust = guards.split(',').all(|sub| is_rustdoc_fence_token(sub.trim()));
+                    let is_rust = is_rust_fence(guards);
                     is_doctest = is_codeblock && is_rust;
                     continue;
                 }

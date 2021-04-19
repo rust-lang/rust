@@ -1,17 +1,7 @@
 //! Transforms markdown
+use ide_db::helpers::rust_doc::is_rust_fence;
 
 const RUSTDOC_FENCE: &str = "```";
-const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC: &[&str] = &[
-    "",
-    "rust",
-    "should_panic",
-    "ignore",
-    "no_run",
-    "compile_fail",
-    "edition2015",
-    "edition2018",
-    "edition2021",
-];
 
 pub(crate) fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();
@@ -27,8 +17,7 @@ pub(crate) fn format_docs(src: &str) -> String {
             in_code_block ^= true;
 
             if in_code_block {
-                is_rust =
-                    header.split(',').all(|sub| is_rust_specific_code_block_attribute(sub.trim()));
+                is_rust = is_rust_fence(header);
 
                 if is_rust {
                     line = "```rust";
@@ -39,13 +28,6 @@ pub(crate) fn format_docs(src: &str) -> String {
         processed_lines.push(line);
     }
     processed_lines.join("\n")
-}
-
-fn is_rust_specific_code_block_attribute(attr: &str) -> bool {
-    if RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUST_SPECIFIC.contains(&attr) {
-        return true;
-    }
-    attr.starts_with('E') && attr.len() == 5 && attr[1..].parse::<u32>().is_ok()
 }
 
 fn code_line_ignored_by_rustdoc(line: &str) -> bool {
