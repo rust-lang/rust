@@ -468,10 +468,10 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
 }
 
 crate fn resolve_use_source(cx: &mut DocContext<'_>, path: Path) -> ImportSource {
-    let did = if path.res.opt_def_id().is_none() { None } else { Some(register_res(cx, path.res)) };
-    let attrs = did.map(|did| Box::new(cx.tcx.get_attrs(did).clean(cx)));
-
-    ImportSource { did, path, attrs }
+    ImportSource {
+        did: if path.res.opt_def_id().is_none() { None } else { Some(register_res(cx, path.res)) },
+        path,
+    }
 }
 
 crate fn enter_impl_trait<F, R>(cx: &mut DocContext<'_>, f: F) -> R

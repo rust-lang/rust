@@ -2081,7 +2081,6 @@ crate enum ImportKind {
 crate struct ImportSource {
     crate path: Path,
     crate did: Option<DefId>,
-    crate attrs: Option<Box<Attributes>>,
 }
 
 #[derive(Clone, Debug)]

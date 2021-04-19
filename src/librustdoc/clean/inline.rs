@@ -477,7 +477,6 @@ fn build_module(
                                 }],
                             },
                             did: None,
-                            attrs: None,
                         },
                         true,
                     )),
