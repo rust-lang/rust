@@ -6,13 +6,13 @@ macro_rules! impl_integer_reductions {
         {
             /// Horizontal wrapping add.  Returns the sum of the lanes of the vector, with wrapping addition.
             #[inline]
-            pub fn wrapping_sum(self) -> $scalar {
+            pub fn horizontal_wrapping_sum(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_add_ordered(self, 0) }
             }
 
             /// Horizontal wrapping multiply.  Returns the product of the lanes of the vector, with wrapping multiplication.
             #[inline]
-            pub fn wrapping_product(self) -> $scalar {
+            pub fn horizontal_wrapping_product(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_mul_ordered(self, 1) }
             }
 
@@ -61,7 +61,7 @@ macro_rules! impl_float_reductions {
 
             /// Horizontal add.  Returns the sum of the lanes of the vector.
             #[inline]
-            pub fn sum(self) -> $scalar {
+            pub fn horizontal_sum(self) -> $scalar {
                 // LLVM sum is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_slice().iter().sum()
@@ -72,7 +72,7 @@ macro_rules! impl_float_reductions {
 
             /// Horizontal multiply.  Returns the product of the lanes of the vector.
             #[inline]
-            pub fn product(self) -> $scalar {
+            pub fn horizontal_product(self) -> $scalar {
                 // LLVM product is inaccurate on i586
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_slice().iter().product()
