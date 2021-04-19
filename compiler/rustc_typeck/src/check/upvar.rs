@@ -1588,7 +1588,7 @@ fn migration_suggestion_for_2229(
 /// If both the CaptureKind and Expression are considered to be equivalent,
 /// then `CaptureInfo` A is preferred. This can be useful in cases where we want to priortize
 /// expressions reported back to the user as part of diagnostics based on which appears earlier
-/// in the closure. This can be acheived simply by calling
+/// in the closure. This can be achieved simply by calling
 /// `determine_capture_info(existing_info, current_info)`. This works out because the
 /// expressions that occur earlier in the closure body than the current expression are processed before.
 /// Consider the following example

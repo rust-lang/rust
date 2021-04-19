@@ -225,7 +225,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
+    /// Normalize `place.ptr` to a `Pointer` if this is a place and not a ZST.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
     #[inline]
     pub fn force_op_ptr(

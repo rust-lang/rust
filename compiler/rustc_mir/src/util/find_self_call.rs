@@ -3,7 +3,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
 
-/// Checks if the specified `local` is used as the `self` prameter of a method call
+/// Checks if the specified `local` is used as the `self` parameter of a method call
 /// in the provided `BasicBlock`. If it is, then the `DefId` of the called method is
 /// returned.
 pub fn find_self_call<'tcx>(

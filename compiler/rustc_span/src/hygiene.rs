@@ -748,7 +748,7 @@ pub struct ExpnData {
 
     /// Used to force two `ExpnData`s to have different `Fingerprint`s.
     /// Due to macro expansion, it's possible to end up with two `ExpnId`s
-    /// that have identical `ExpnData`s. This violates the constract of `HashStable`
+    /// that have identical `ExpnData`s. This violates the contract of `HashStable`
     /// - the two `ExpnId`s are not equal, but their `Fingerprint`s are equal
     /// (since the numerical `ExpnId` value is not considered by the `HashStable`
     /// implementation).

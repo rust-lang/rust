@@ -1448,7 +1448,7 @@ impl<'a> Parser<'a> {
         Ok((ident, ItemKind::MacroDef(ast::MacroDef { body, macro_rules: false })))
     }
 
-    /// Is this unambiguously the start of a `macro_rules! foo` item defnition?
+    /// Is this unambiguously the start of a `macro_rules! foo` item definition?
     fn is_macro_rules_item(&mut self) -> bool {
         self.check_keyword(kw::MacroRules)
             && self.look_ahead(1, |t| *t == token::Not)

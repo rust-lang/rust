@@ -1954,7 +1954,7 @@ pub enum ArgKind {
     Arg(String, String),
 
     /// An argument of tuple type. For a "found" argument, the span is
-    /// the locationo in the source of the pattern. For a "expected"
+    /// the location in the source of the pattern. For a "expected"
     /// argument, it will be None. The vector is a list of (name, ty)
     /// strings for the components of the tuple.
     Tuple(Option<Span>, Vec<(String, String)>),

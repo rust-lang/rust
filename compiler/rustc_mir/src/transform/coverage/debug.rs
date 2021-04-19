@@ -816,7 +816,7 @@ fn bcb_to_string_sections(
     sections
 }
 
-/// Returns a simple string representation of a `TerminatorKind` variant, indenpendent of any
+/// Returns a simple string representation of a `TerminatorKind` variant, independent of any
 /// values it might hold.
 pub(super) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
     match kind {

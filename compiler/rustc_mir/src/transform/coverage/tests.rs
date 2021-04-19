@@ -17,7 +17,7 @@
 //! Also note, some basic features of `Span` also rely on the `Span`s own "session globals", which
 //! are unrelated to the `TyCtxt` global. Without initializing the `Span` session globals, some
 //! basic, coverage-specific features would be impossible to test, but thankfully initializing these
-//! globals is comparitively simpler. The easiest way is to wrap the test in a closure argument
+//! globals is comparatively simpler. The easiest way is to wrap the test in a closure argument
 //! to: `rustc_span::with_default_session_globals(|| { test_here(); })`.
 
 use super::counters;
