@@ -274,12 +274,12 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
-struct RcBoxMetadata {
+struct RcMetadata {
     strong: Cell<usize>,
     weak: Cell<usize>,
 }
 
-impl RcBoxMetadata {
+impl RcMetadata {
     // There is an implicit weak pointer owned by all the strong
     // pointers, which ensures that the weak destructor never frees
     // the allocation while the strong destructor is running, even
@@ -300,7 +300,7 @@ impl RcBoxMetadata {
 // inner types.
 #[repr(C)]
 struct RcBox<T: ?Sized> {
-    meta: RcBoxMetadata,
+    meta: RcMetadata,
     value: T,
 }
 
@@ -363,7 +363,7 @@ impl<T> Rc<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        Self::from_inner(Box::leak(box RcBox { meta: RcBoxMetadata::new_strong(), value }).into())
+        Self::from_inner(Box::leak(box RcBox { meta: RcMetadata::new_strong(), value }).into())
     }
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
@@ -395,7 +395,7 @@ impl<T> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
-            meta: RcBoxMetadata::new_weak(),
+            meta: RcMetadata::new_weak(),
             value: mem::MaybeUninit::<T>::uninit(),
         })
         .into();
@@ -510,7 +510,7 @@ impl<T> Rc<T> {
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
         Ok(Self::from_inner(
-            Box::leak(Box::try_new(RcBox { meta: RcBoxMetadata::new_strong(), value })?).into(),
+            Box::leak(Box::try_new(RcBox { meta: RcMetadata::new_strong(), value })?).into(),
         ))
     }
 
@@ -2479,7 +2479,7 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Rc<T> {}
 
-type RcAllocator = PrefixAllocator<RcBoxMetadata, Global>;
+type RcAllocator = PrefixAllocator<Global, RcMetadata>;
 
 /// Get the offset within an `RcBox` for the payload behind a pointer.
 ///

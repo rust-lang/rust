@@ -297,7 +297,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
     }
 }
 
-struct ArcInnerMetadata {
+struct ArcMetadata {
     strong: atomic::AtomicUsize,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
@@ -306,7 +306,7 @@ struct ArcInnerMetadata {
     weak: atomic::AtomicUsize,
 }
 
-impl ArcInnerMetadata {
+impl ArcMetadata {
     #[inline]
     fn new_strong() -> Self {
         Self { strong: atomic::AtomicUsize::new(1), weak: atomic::AtomicUsize::new(1) }
@@ -323,7 +323,7 @@ impl ArcInnerMetadata {
 // inner types.
 #[repr(C)]
 struct ArcInner<T: ?Sized> {
-    meta: ArcInnerMetadata,
+    meta: ArcMetadata,
     data: T,
 }
 
@@ -343,7 +343,7 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(data: T) -> Arc<T> {
-        let x: Box<_> = box ArcInner { meta: ArcInnerMetadata::new_strong(), data };
+        let x: Box<_> = box ArcInner { meta: ArcMetadata::new_strong(), data };
         Self::from_inner(Box::leak(x).into())
     }
 
@@ -373,7 +373,7 @@ impl<T> Arc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box ArcInner {
-            meta: ArcInnerMetadata::new_weak(),
+            meta: ArcMetadata::new_weak(),
             data: mem::MaybeUninit::<T>::uninit(),
         })
         .into();
@@ -503,7 +503,7 @@ impl<T> Arc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_new(data: T) -> Result<Arc<T>, AllocError> {
-        let x: Box<_> = Box::try_new(ArcInner { meta: ArcInnerMetadata::new_strong(), data })?;
+        let x: Box<_> = Box::try_new(ArcInner { meta: ArcMetadata::new_strong(), data })?;
         Ok(Self::from_inner(Box::leak(x).into()))
     }
 
@@ -2521,7 +2521,7 @@ impl<T: ?Sized> AsRef<T> for Arc<T> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Arc<T> {}
 
-type ArcAllocator = PrefixAllocator<ArcInnerMetadata, Global>;
+type ArcAllocator = PrefixAllocator<Global, ArcMetadata>;
 
 /// Get the offset within an `ArcInner` for the payload behind a pointer.
 ///
