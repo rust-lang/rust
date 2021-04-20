@@ -944,7 +944,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// subobligations without taking in a 'parent' depth, causing the
     /// generated subobligations to have a `recursion_depth` of `0`.
     ///
-    /// To ensure that obligation_depth never decreasees, we force all subobligations
+    /// To ensure that obligation_depth never decreases, we force all subobligations
     /// to have at least the depth of the original obligation.
     fn add_depth<T: 'cx, I: Iterator<Item = &'cx mut Obligation<'tcx, T>>>(
         &self,

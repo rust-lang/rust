@@ -301,7 +301,7 @@ impl AttrAnnotatedTokenStream {
 /// tokens.
 ///
 /// For example, `#[cfg(FALSE)] struct Foo {}` would
-/// have an `attrs` field contaiing the `#[cfg(FALSE)]` attr,
+/// have an `attrs` field containing the `#[cfg(FALSE)]` attr,
 /// and a `tokens` field storing the (unparesd) tokens `struct Foo {}`
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct AttributesData {

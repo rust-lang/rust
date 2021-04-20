@@ -245,7 +245,7 @@ enum Scope<'a> {
         opaque_type_parent: bool,
 
         /// True only if this `Binder` scope is from the quantifiers on a
-        /// `PolyTraitRef`. This is necessary for `assocated_type_bounds`, which
+        /// `PolyTraitRef`. This is necessary for `associated_type_bounds`, which
         /// requires binders of nested trait refs to be merged.
         from_poly_trait_ref: bool,
 
@@ -303,7 +303,7 @@ enum Scope<'a> {
     /// of. Other than that, if ask for bound vars for each, we expect
     /// `['a, 'b]`. If we *didn't* allow binders before `T`, then we would
     /// always introduce a binder scope at the inner trait ref. This is great,
-    /// becauase later on during type-checking, we will ask "what are the late
+    /// because later on during type-checking, we will ask "what are the late
     /// bound vars on this trait ref". However, because we allow bound vars on
     /// the bound itself, we have to have some way of keeping track of the fact
     /// that we actually want to store the late bound vars as being associated

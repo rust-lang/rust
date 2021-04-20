@@ -2483,7 +2483,7 @@ declare_lint! {
     ///
     /// On x86, `asm!` uses the intel assembly syntax by default. While this
     /// can be switched using assembler directives like `.att_syntax`, using the
-    /// `att_syntax` option is recomended instead because it will also properly
+    /// `att_syntax` option is recommended instead because it will also properly
     /// prefix register placeholders with `%` as required by AT&T syntax.
     pub BAD_ASM_STYLE,
     Warn,
@@ -2678,7 +2678,7 @@ declare_lint! {
     /// Statics with an uninhabited type can never be initialized, so they are impossible to define.
     /// However, this can be side-stepped with an `extern static`, leading to problems later in the
     /// compiler which assumes that there are no initialized uninhabited places (such as locals or
-    /// statics). This was accientally allowed, but is being phased out.
+    /// statics). This was accidentally allowed, but is being phased out.
     pub UNINHABITED_STATIC,
     Warn,
     "uninhabited static",

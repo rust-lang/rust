@@ -80,7 +80,7 @@ crate struct PlaceBuilder<'tcx> {
 /// The projections are truncated to represent a path that might be captured by a
 /// closure/generator. This implies the vector returned from this function doesn't contain
 /// ProjectionElems `Downcast`, `ConstantIndex`, `Index`, or `Subslice` because those will never be
-/// part of a path that is captued by a closure. We stop applying projections once we see the first
+/// part of a path that is captured by a closure. We stop applying projections once we see the first
 /// projection that isn't captured by a closure.
 fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
     mir_projections: &[PlaceElem<'tcx>],
@@ -578,7 +578,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Lower a captured upvar. Note we might not know the actual capture index,
     /// so we create a place starting from `PlaceBase::Upvar`, which will be resolved
-    /// once all projections that allow us to indentify a capture have been applied.
+    /// once all projections that allow us to identify a capture have been applied.
     fn lower_captured_upvar(
         &mut self,
         block: BasicBlock,

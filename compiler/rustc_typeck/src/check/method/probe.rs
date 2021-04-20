@@ -158,7 +158,7 @@ enum ProbeResult {
 
 /// When adjusting a receiver we often want to do one of
 ///
-/// - Add a `&` (or `&mut`), converting the recevier from `T` to `&T` (or `&mut T`)
+/// - Add a `&` (or `&mut`), converting the receiver from `T` to `&T` (or `&mut T`)
 /// - If the receiver has type `*mut T`, convert it to `*const T`
 ///
 /// This type tells us which one to do.

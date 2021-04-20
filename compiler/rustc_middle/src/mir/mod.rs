@@ -1521,7 +1521,7 @@ pub enum StatementKind<'tcx> {
     /// Marks the start of a "coverage region", injected with '-Zinstrument-coverage'. A
     /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage
     /// map into the binary. If `Coverage::kind` is a `Counter`, the statement also generates
-    /// executable code, to increment a counter varible at runtime, each time the code region is
+    /// executable code, to increment a counter variable at runtime, each time the code region is
     /// executed.
     Coverage(Box<Coverage>),
 

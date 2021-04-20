@@ -160,7 +160,7 @@ impl CapturedPlace<'tcx> {
         }
     }
 
-    /// Returns the `LocalDefId` of the closure that captureed this Place
+    /// Returns the `LocalDefId` of the closure that captured this Place
     pub fn get_closure_local_def_id(&self) -> LocalDefId {
         match self.place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.closure_expr_id,

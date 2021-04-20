@@ -279,7 +279,7 @@ where
     /// Relate a type inference variable with a value type. This works
     /// by creating a "generalization" G of the value where all the
     /// lifetimes are replaced with fresh inference values. This
-    /// genearlization G becomes the value of the inference variable,
+    /// generalization G becomes the value of the inference variable,
     /// and is then related in turn to the value. So e.g. if you had
     /// `vid = ?0` and `value = &'a u32`, we might first instantiate
     /// `?0` to a type like `&'0 u32` where `'0` is a fresh variable,

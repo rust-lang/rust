@@ -1114,7 +1114,7 @@ impl<'tcx> Visitor<'tcx> for NamePrivacyVisitor<'tcx> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 /// Type privacy visitor, checks types for privacy and reports violations.
-/// Both explicitly written types and inferred types of expressions and patters are checked.
+/// Both explicitly written types and inferred types of expressions and patterns are checked.
 /// Checks are performed on "semantic" types regardless of names and their hygiene.
 ////////////////////////////////////////////////////////////////////////////////////////////
 
