@@ -68,7 +68,7 @@ crate fn render<T: Print, S: Print>(
     </style>\
 </head>\
 <body class=\"rustdoc {css_class}\">\
-    <!--[if lte IE 8]>\
+    <!--[if lte IE 11]>\
     <div class=\"warning\">\
         This old browser is unsupported and will most likely display funky \
         things.\
