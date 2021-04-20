@@ -75,19 +75,21 @@ impl_stable_hash_via_hash!(OptLevel);
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
 /// and taking other command line options into account.
+///
+/// Note that linker plugin-based LTO is a different mechanism entirely.
 #[derive(Clone, PartialEq)]
 pub enum Lto {
-    /// Don't do any LTO whatsoever
+    /// Don't do any LTO whatsoever.
     No,
 
-    /// Do a full crate graph LTO with ThinLTO
+    /// Do a full-crate-graph (inter-crate) LTO with ThinLTO.
     Thin,
 
-    /// Do a local graph LTO with ThinLTO (only relevant for multiple codegen
-    /// units).
+    /// Do a local ThinLTO (intra-crate, over the CodeGen Units of the local crate only). This is
+    /// only relevant if multiple CGUs are used.
     ThinLocal,
 
-    /// Do a full crate graph LTO with "fat" LTO
+    /// Do a full-crate-graph (inter-crate) LTO with "fat" LTO.
     Fat,
 }
 
