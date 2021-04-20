@@ -31,11 +31,24 @@ macro_rules! impl_shuffle_lane {
 
             /// Interleave two vectors.
             ///
-            /// The even lanes of the first result contain the lower half of `self`, and the odd
-            /// lanes contain the lower half of `other`.
+            /// Produces two vectors with lanes taken alternately from `self` and `other`.
             ///
-            /// The even lanes of the second result contain the upper half of `self`, and the odd
-            /// lanes contain the upper half of `other`.
+            /// The first result contains the first `LANES / 2` lanes from `self` and `other`,
+            /// alternating, starting with the first lane of `self`.
+            ///
+            /// The second result contains the last `LANES / 2` lanes from `self` and `other`,
+            /// alternating, starting with the lane `LANES / 2` from the start of `self`.
+            ///
+            /// This particular permutation is efficient on many architectures.
+            ///
+            /// ```
+            /// # use core_simd::SimdU32;
+            /// let a = SimdU32::from_array([0, 1, 2, 3]);
+            /// let b = SimdU32::from_array([4, 5, 6, 7]);
+            /// let (x, y) = a.interleave(b);
+            /// assert_eq!(x.to_array(), [0, 4, 1, 5]);
+            /// assert_eq!(y.to_array(), [2, 6, 3, 7]);
+            /// ```
             #[inline]
             pub fn interleave(self, other: Self) -> (Self, Self) {
                 const fn lo() -> [u32; $n] {
@@ -71,9 +84,22 @@ macro_rules! impl_shuffle_lane {
 
             /// Deinterleave two vectors.
             ///
-            /// The first result contains the even lanes of `self` and then `other`, concatenated.
+            /// The first result takes every other lane of `self` and then `other`, starting with
+            /// the first lane.
             ///
-            /// The second result contains the odd lanes of `self` and then `other`, concatenated.
+            /// The second result takes every other lane of `self` and then `other`, starting with
+            /// the second lane.
+            ///
+            /// This particular permutation is efficient on many architectures.
+            ///
+            /// ```
+            /// # use core_simd::SimdU32;
+            /// let a = SimdU32::from_array([0, 4, 1, 5]);
+            /// let b = SimdU32::from_array([2, 6, 3, 7]);
+            /// let (x, y) = a.deinterleave(b);
+            /// assert_eq!(x.to_array(), [0, 1, 2, 3]);
+            /// assert_eq!(y.to_array(), [4, 5, 6, 7]);
+            /// ```
             #[inline]
             pub fn deinterleave(self, other: Self) -> (Self, Self) {
                 const fn even() -> [u32; $n] {
