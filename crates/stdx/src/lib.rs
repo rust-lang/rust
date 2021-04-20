@@ -1,7 +1,8 @@
 //! Missing batteries for standard libraries.
-use std::{cmp::Ordering, ops, process, time::Instant};
+use std::{cmp::Ordering, ops, time::Instant};
 
 mod macros;
+pub mod process;
 pub mod panic_context;
 
 pub use always_assert::{always, never};
@@ -179,17 +180,17 @@ where
 }
 
 #[repr(transparent)]
-pub struct JodChild(pub process::Child);
+pub struct JodChild(pub std::process::Child);
 
 impl ops::Deref for JodChild {
-    type Target = process::Child;
-    fn deref(&self) -> &process::Child {
+    type Target = std::process::Child;
+    fn deref(&self) -> &std::process::Child {
         &self.0
     }
 }
 
 impl ops::DerefMut for JodChild {
-    fn deref_mut(&mut self) -> &mut process::Child {
+    fn deref_mut(&mut self) -> &mut std::process::Child {
         &mut self.0
     }
 }
@@ -202,9 +203,9 @@ impl Drop for JodChild {
 }
 
 impl JodChild {
-    pub fn into_inner(self) -> process::Child {
+    pub fn into_inner(self) -> std::process::Child {
         // SAFETY: repr transparent
-        unsafe { std::mem::transmute::<JodChild, process::Child>(self) }
+        unsafe { std::mem::transmute::<JodChild, std::process::Child>(self) }
     }
 }
 
