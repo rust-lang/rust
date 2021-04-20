@@ -26,7 +26,7 @@ fn main() {
     });
     A_CONST.with(|f| {
         assert_eq!(*f.value.borrow(), 10);
-        *f.value.borrow_mut() = 15;
+        *f.value.borrow_mut() = 5; // Same value as above since the drop order is different on different platforms
     });
     eprintln!("Continue main.")
 }
