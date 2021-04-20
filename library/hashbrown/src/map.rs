@@ -395,6 +395,12 @@ impl<K, V, S> HashMap<K, V, S> {
 }
 
 impl<K, V, S, A: Allocator + Clone> HashMap<K, V, S, A> {
+    /// Returns a reference to the underlying allocator.
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.table.allocator()
+    }
+
     /// Creates an empty `HashMap` which will use the given hash builder to hash
     /// keys. It will be allocated with the given allocator.
     ///

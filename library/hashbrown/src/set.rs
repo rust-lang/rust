@@ -454,6 +454,12 @@ impl<T, S, A> HashSet<T, S, A>
 where
     A: Allocator + Clone,
 {
+    /// Returns a reference to the underlying allocator.
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        self.map.allocator()
+    }
+
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
