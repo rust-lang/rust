@@ -168,18 +168,17 @@ impl<'tcx> Context<'tcx> {
     }
 
     fn render_item(&self, it: &clean::Item, pushname: bool) -> String {
-        let mut title = if it.is_primitive() || it.is_keyword() {
-            // No need to include the namespace for primitive types and keywords
-            String::new()
-        } else {
-            self.current.join("::")
-        };
+        let mut title = String::new();
         if pushname {
-            if !title.is_empty() {
-                title.push_str("::");
-            }
             title.push_str(&it.name.unwrap().as_str());
         }
+        if !it.is_primitive() && !it.is_keyword() {
+            if pushname {
+                title.push_str(" in ");
+            }
+            // No need to include the namespace for primitive types and keywords
+            title.push_str(&self.current.join("::"));
+        };
         title.push_str(" - Rust");
         let tyname = it.type_();
         let desc = it.doc_value().as_ref().map(|doc| plain_text_summary(&doc));

@@ -1,0 +1,33 @@
+#![crate_name = "foo"]
+#![feature(doc_keyword)]
+
+// @has foo/fn.widget_count.html '//head/title' 'widget_count in foo - Rust'
+/// blah
+pub fn widget_count() {}
+
+// @has foo/struct.Widget.html '//head/title' 'Widget in foo - Rust'
+pub struct Widget;
+
+// @has foo/constant.ANSWER.html '//head/title' 'ANSWER in foo - Rust'
+pub const ANSWER: u8 = 42;
+
+pub mod blah {
+    // @has foo/blah/struct.Widget.html '//head/title' 'Widget in foo::blah - Rust'
+    pub struct Widget;
+
+    // @has foo/blah/trait.Awesome.html '//head/title' 'Awesome in foo::blah - Rust'
+    pub trait Awesome {}
+
+    // @has foo/blah/fn.make_widget.html '//head/title' 'make_widget in foo::blah - Rust'
+    pub fn make_widget() {}
+
+    // @has foo/macro.cool_macro.html '//head/title' 'cool_macro in foo - Rust'
+    #[macro_export]
+    macro_rules! cool_macro {
+        ($t:tt) => { $t }
+    }
+}
+
+// @has foo/keyword.continue.html '//head/title' 'continue - Rust'
+#[doc(keyword = "continue")]
+mod continue_keyword {}
