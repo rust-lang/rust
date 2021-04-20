@@ -210,6 +210,8 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
 ];
 
+const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -224,6 +226,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(MIPS_ALLOWED_FEATURES.iter())
         .chain(RISCV_ALLOWED_FEATURES.iter())
         .chain(WASM_ALLOWED_FEATURES.iter())
+        .chain(BPF_ALLOWED_FEATURES.iter())
         .cloned()
 }
 
@@ -237,6 +240,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
+        "bpf" => BPF_ALLOWED_FEATURES,
         _ => &[],
     }
 }

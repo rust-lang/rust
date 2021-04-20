@@ -3,6 +3,7 @@ use crate::{abi::Endian, spec::abi::Abi};
 
 pub fn opts(endian: Endian) -> TargetOptions {
     TargetOptions {
+        allow_asm: true,
         endian,
         linker_flavor: LinkerFlavor::BpfLinker,
         atomic_cas: false,

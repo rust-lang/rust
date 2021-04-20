@@ -655,7 +655,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 }
             }
             "asmjs" => wasm::compute_c_abi_info(cx, self),
-            "bpfel" | "bpfeb" => bpf::compute_abi_info(self),
+            "bpf" => bpf::compute_abi_info(self),
             a => return Err(format!("unrecognized arch \"{}\" in target specification", a)),
         }
 
