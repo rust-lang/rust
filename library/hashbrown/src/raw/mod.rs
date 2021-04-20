@@ -492,6 +492,12 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
         }
     }
 
+    /// Returns a reference to the underlying allocator.
+    #[inline]
+    pub fn allocator(&self) -> &A {
+        &self.table.alloc
+    }
+
     /// Deallocates the table without dropping any entries.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn free_buckets(&mut self) {
