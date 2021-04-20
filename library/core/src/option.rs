@@ -594,34 +594,6 @@ impl<T> Option<T> {
         }
     }
 
-    /// Inserts `value` into the option then returns a mutable reference to it.
-    ///
-    /// If the option already contains a value, the old value is dropped.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let mut opt = None;
-    /// let val = opt.insert(1);
-    /// assert_eq!(*val, 1);
-    /// assert_eq!(opt.unwrap(), 1);
-    /// let val = opt.insert(2);
-    /// assert_eq!(*val, 2);
-    /// *val = 3;
-    /// assert_eq!(opt.unwrap(), 3);
-    /// ```
-    #[inline]
-    #[stable(feature = "option_insert", since = "1.53.0")]
-    pub fn insert(&mut self, value: T) -> &mut T {
-        *self = Some(value);
-
-        match self {
-            Some(v) => v,
-            // SAFETY: the code above just filled the option
-            None => unsafe { hint::unreachable_unchecked() },
-        }
-    }
-
     /////////////////////////////////////////////////////////////////////////
     // Iterator constructors
     /////////////////////////////////////////////////////////////////////////
@@ -849,11 +821,45 @@ impl<T> Option<T> {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    // Entry-like operations to insert if None and return a reference
+    // Entry-like operations to insert a value and return a reference
     /////////////////////////////////////////////////////////////////////////
+
+    /// Inserts `value` into the option then returns a mutable reference to it.
+    ///
+    /// If the option already contains a value, the old value is dropped.
+    ///
+    /// See also [`Option::get_or_insert`], which doesn't update the value if
+    /// the option already contains [`Some`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut opt = None;
+    /// let val = opt.insert(1);
+    /// assert_eq!(*val, 1);
+    /// assert_eq!(opt.unwrap(), 1);
+    /// let val = opt.insert(2);
+    /// assert_eq!(*val, 2);
+    /// *val = 3;
+    /// assert_eq!(opt.unwrap(), 3);
+    /// ```
+    #[inline]
+    #[stable(feature = "option_insert", since = "1.53.0")]
+    pub fn insert(&mut self, value: T) -> &mut T {
+        *self = Some(value);
+
+        match self {
+            Some(v) => v,
+            // SAFETY: the code above just filled the option
+            None => unsafe { hint::unreachable_unchecked() },
+        }
+    }
 
     /// Inserts `value` into the option if it is [`None`], then
     /// returns a mutable reference to the contained value.
+    ///
+    /// See also [`Option::insert`], which updates the value even if
+    /// the option already contains [`Some`].
     ///
     /// # Examples
     ///
