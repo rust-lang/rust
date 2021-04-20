@@ -47,6 +47,11 @@ pub(crate) fn replace_derive_with_manual_impl(
         return None;
     }
 
+    if !args.syntax().text_range().contains(ctx.offset()) {
+        cov_mark::hit!(outside_of_attr_args);
+        return None;
+    }
+
     let trait_token = args.syntax().token_at_offset(ctx.offset()).find(|t| t.kind() == IDENT)?;
     let trait_name = trait_token.text();
 
@@ -395,5 +400,17 @@ struct Foo {}
 struct Foo {}
             ",
         )
+    }
+
+    #[test]
+    fn works_at_start_of_file() {
+        cov_mark::check!(outside_of_attr_args);
+        check_assist_not_applicable(
+            replace_derive_with_manual_impl,
+            r#"
+$0#[derive(Debug)]
+struct S;
+            "#,
+        );
     }
 }
