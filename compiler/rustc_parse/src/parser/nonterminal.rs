@@ -24,13 +24,14 @@ impl<'a> Parser<'a> {
         }
 
         match kind {
-            NonterminalKind::Expr => {
+            NonterminalKind::Expr2015 { .. } => {
                 token.can_begin_expr()
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Let)
                 // This exception is here for backwards compatibility.
                 && !token.is_keyword(kw::Const)
             }
+            NonterminalKind::Expr202x { .. } => token.can_begin_expr(),
             NonterminalKind::Ty => token.can_begin_type(),
             NonterminalKind::Ident => get_macro_ident(token).is_some(),
             NonterminalKind::Literal => token.can_begin_literal_maybe_minus(),
@@ -128,7 +129,9 @@ impl<'a> Parser<'a> {
                 })?)
             }
 
-            NonterminalKind::Expr => token::NtExpr(self.parse_expr_force_collect()?),
+            NonterminalKind::Expr2015 { .. } | NonterminalKind::Expr202x { .. } => {
+                token::NtExpr(self.parse_expr_force_collect()?)
+            }
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes
                 token::NtLiteral(

@@ -63,16 +63,27 @@ pub(super) fn parse(
                                     let span = token.span.with_lo(start_sp.lo());
 
                                     match frag.name {
-                                        sym::pat2015 | sym::pat2021 => {
-                                            if !features.edition_macro_pats {
-                                                feature_err(
-                                                    sess,
-                                                    sym::edition_macro_pats,
-                                                    frag.span,
-                                                    "`pat2015` and `pat2021` are unstable.",
-                                                )
-                                                .emit();
-                                            }
+                                        sym::pat2015 | sym::pat2021
+                                            if !features.edition_macro_pats =>
+                                        {
+                                            feature_err(
+                                                sess,
+                                                sym::edition_macro_pats,
+                                                frag.span,
+                                                "`pat2015` and `pat2021` are unstable.",
+                                            )
+                                            .emit();
+                                        }
+                                        sym::expr2015 | sym::expr202x
+                                            if !features.edition_macro_expr =>
+                                        {
+                                            feature_err(
+                                                sess,
+                                                sym::edition_macro_expr,
+                                                frag.span,
+                                                "`expr2015` and `expr202x` are unstable.",
+                                            )
+                                            .emit();
                                         }
                                         _ => {}
                                     }

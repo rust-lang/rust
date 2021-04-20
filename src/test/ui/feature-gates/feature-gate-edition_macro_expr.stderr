@@ -1,0 +1,19 @@
+error[E0658]: `expr2015` and `expr202x` are unstable.
+  --> $DIR/feature-gate-edition_macro_expr.rs:4:9
+   |
+LL |     ($x:expr2015) => {};
+   |         ^^^^^^^^
+   |
+   = help: add `#![feature(edition_macro_expr)]` to the crate attributes to enable
+
+error[E0658]: `expr2015` and `expr202x` are unstable.
+  --> $DIR/feature-gate-edition_macro_expr.rs:5:9
+   |
+LL |     ($x:expr202x) => {};
+   |         ^^^^^^^^
+   |
+   = help: add `#![feature(edition_macro_expr)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

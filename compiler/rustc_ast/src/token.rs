@@ -698,7 +698,13 @@ pub enum NonterminalKind {
         /// edition of the span. This is used for diagnostics.
         inferred: bool,
     },
-    Expr,
+    /// Expr202x with exceptions for const and let not being allowed at the start
+    Expr2015 {
+        inferred: bool,
+    },
+    Expr202x {
+        inferred: bool,
+    },
     Ty,
     Ident,
     Lifetime,
@@ -728,7 +734,9 @@ impl NonterminalKind {
             },
             sym::pat2015 => NonterminalKind::Pat2015 { inferred: false },
             sym::pat2021 => NonterminalKind::Pat2021 { inferred: false },
-            sym::expr => NonterminalKind::Expr,
+            sym::expr => NonterminalKind::Expr2015 { inferred: true },
+            sym::expr2015 => NonterminalKind::Expr2015 { inferred: false },
+            sym::expr202x => NonterminalKind::Expr202x { inferred: false },
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
             sym::lifetime => NonterminalKind::Lifetime,
@@ -749,7 +757,10 @@ impl NonterminalKind {
             NonterminalKind::Pat2021 { inferred: false } => sym::pat2021,
             NonterminalKind::Pat2015 { inferred: true }
             | NonterminalKind::Pat2021 { inferred: true } => sym::pat,
-            NonterminalKind::Expr => sym::expr,
+            NonterminalKind::Expr2015 { inferred: false } => sym::expr2015,
+            NonterminalKind::Expr202x { inferred: false } => sym::expr202x,
+            NonterminalKind::Expr2015 { inferred: true }
+            | NonterminalKind::Expr202x { inferred: true } => sym::expr,
             NonterminalKind::Ty => sym::ty,
             NonterminalKind::Ident => sym::ident,
             NonterminalKind::Lifetime => sym::lifetime,
