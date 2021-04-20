@@ -1,6 +1,8 @@
 #![crate_name = "foo"]
 #![feature(doc_keyword)]
 
+// tests for the html <title> element
+
 // @has foo/index.html '//head/title' 'foo - Rust'
 
 // @has foo/fn.widget_count.html '//head/title' 'widget_count in foo - Rust'
@@ -34,3 +36,9 @@ pub mod blah {
 // @has foo/keyword.continue.html '//head/title' 'continue - Rust'
 #[doc(keyword = "continue")]
 mod continue_keyword {}
+
+// @has foo/primitive.u8.html '//head/title' 'u8 - Rust'
+// @!has - '//head/title' 'foo'
+#[doc(primitive = "u8")]
+/// `u8` docs
+mod u8 {}
