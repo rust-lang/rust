@@ -27,6 +27,7 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
     let topo = &graph.crates_in_topological_order();
 
     cb(PrimeCachesProgress::Started);
+    let _d = stdx::defer(|| cb(PrimeCachesProgress::Finished));
 
     // FIXME: This would be easy to parallelize, since it's in the ideal ordering for that.
     // Unfortunately rayon prevents panics from propagation out of a `scope`, which breaks
@@ -41,6 +42,4 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
         });
         db.crate_def_map(*krate);
     }
-
-    cb(PrimeCachesProgress::Finished);
 }
