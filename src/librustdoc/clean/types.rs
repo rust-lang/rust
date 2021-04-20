@@ -1943,14 +1943,18 @@ crate enum Variant {
 crate struct Span(rustc_span::Span);
 
 impl Span {
+    /// Wraps a [`rustc_span::Span`]. In case this span is the result of a macro expansion, the
+    /// span will be updated to point to the macro invocation instead of the macro definition.
+    ///
+    /// (See rust-lang/rust#39726)
     crate fn from_rustc_span(sp: rustc_span::Span) -> Self {
-        // Get the macro invocation instead of the definition,
-        // in case the span is result of a macro expansion.
-        // (See rust-lang/rust#39726)
         Self(sp.source_callsite())
     }
 
     /// Unless you know what you're doing, use [`Self::from_rustc_span`] instead!
+    ///
+    /// Contrary to [`Self::from_rustc_span`], this constructor wraps the span as is and don't
+    /// perform any operation on it, even if it's from a macro expansion.
     crate fn wrap(sp: rustc_span::Span) -> Span {
         Self(sp)
     }

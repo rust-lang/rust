@@ -63,6 +63,24 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
     }
 }
 
+/// Convert the given `src` source code into HTML by adding classes for highlighting.
+///
+/// This code is used to render code blocks (in the documentation) as well as the source code pages.
+///
+/// Some explanations on the last arguments:
+///
+/// In case we are rendering a code block and not a source code file, `file_span_lo` value doesn't
+/// matter and `context` will be `None`. To put it more simply: if `context` is `None`, the code
+/// won't try to generate links to an ident definition.
+///
+/// More explanations about spans and how we use them here are provided in the
+/// [`local_span_to_global_span`] function documentation about how it works.
+///
+/// As for `root_path`, it's used to know "how far" from the top of the directory we are to link
+/// to either documentation pages or other source pages.
+///
+/// Same as `file_span_lo`: its value doesn't matter in case you are not rendering a source code
+/// file.
 fn write_code(
     out: &mut Buffer,
     src: &str,
@@ -135,6 +153,8 @@ impl Class {
         }
     }
 
+    /// In case this is an item which can be converted into a link to a definition, it'll contain
+    /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
     fn get_span(self) -> Option<(u32, u32)> {
         match self {
             Self::Ident(sp) | Self::Self_(sp) => Some(sp),
@@ -166,7 +186,7 @@ impl Iterator for TokenIter<'a> {
     }
 }
 
-/// Returns `None` if this is a `Class::Ident`.
+/// Classifies into identifier class; returns `None` if this is a non-keyword identifier.
 fn get_real_ident_class(text: &str, edition: Edition, allow_path_keywords: bool) -> Option<Class> {
     let ignore: &[&str] =
         if allow_path_keywords { &["self", "Self", "super", "crate"] } else { &["self", "Self"] };
@@ -181,7 +201,20 @@ fn get_real_ident_class(text: &str, edition: Edition, allow_path_keywords: bool)
     })
 }
 
-fn move_span(file_span_lo: u32, start: u32, end: u32) -> (u32, u32) {
+/// Before explaining what this function does, some global explanations on rust's `Span`:
+///
+/// Each source code file is stored in the source map in the compiler and has a
+/// `lo` and a `hi` (lowest and highest bytes in this source map which can be seen as one huge
+/// string to simplify things). So in this case, this represents the starting byte of the current
+/// file. It'll be used later on to retrieve the "definition span" from the
+/// `span_correspondance_map` (which is inside `context`).
+///
+/// This when we transform the "span" we have from reading the input into a "span" which can be
+/// used as index to the `span_correspondance_map` to get the definition of this item.
+///
+/// So in here, `file_span_lo` is representing the "lo" byte in the global source map, and to make
+/// our "span" works in there, we simply add `file_span_lo` to our values.
+fn local_span_to_global_span(file_span_lo: u32, start: u32, end: u32) -> (u32, u32) {
     (start + file_span_lo, end + file_span_lo)
 }
 
@@ -199,6 +232,9 @@ struct Classifier<'a> {
 }
 
 impl<'a> Classifier<'a> {
+    /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
+    /// file "lo" byte which we be used later on by the `span_correspondance_map`. More explanations
+    /// are provided in the [`local_span_to_global_span`] function documentation about how it works.
     fn new(src: &str, edition: Edition, file_span_lo: u32) -> Classifier<'_> {
         let tokens = TokenIter { src }.peekable();
         Classifier {
@@ -263,7 +299,10 @@ impl<'a> Classifier<'a> {
         }
     }
 
-    /// Wraps the tokens iteration to ensure that the byte_pos is always correct.
+    /// Wraps the tokens iteration to ensure that the `byte_pos` is always correct.
+    ///
+    /// It returns the token's kind, the token as a string and its byte position in the source
+    /// string.
     fn next(&mut self) -> Option<(TokenKind, &'a str, u32)> {
         if let Some((kind, text)) = self.tokens.next() {
             let before = self.byte_pos;
@@ -306,8 +345,12 @@ impl<'a> Classifier<'a> {
         }
     }
 
-    /// Single step of highlighting. This will classify `token`, but maybe also
-    /// a couple of following ones as well.
+    /// Single step of highlighting. This will classify `token`, but maybe also a couple of
+    /// following ones as well.
+    ///
+    /// `before` is the position of the given token in the `source` string and is used as "lo" byte
+    /// in case we want to try to generate a link for this token using the
+    /// `span_correspondance_map`.
     fn advance(
         &mut self,
         token: TokenKind,
@@ -453,12 +496,12 @@ impl<'a> Classifier<'a> {
                         self.in_macro_nonterminal = false;
                         Class::MacroNonTerminal
                     }
-                    "self" | "Self" => Class::Self_(move_span(
+                    "self" | "Self" => Class::Self_(local_span_to_global_span(
                         self.file_span_lo,
                         before,
                         before + text.len() as u32,
                     )),
-                    _ => Class::Ident(move_span(
+                    _ => Class::Ident(local_span_to_global_span(
                         self.file_span_lo,
                         before,
                         before + text.len() as u32,
@@ -466,9 +509,11 @@ impl<'a> Classifier<'a> {
                 },
                 Some(c) => c,
             },
-            TokenKind::RawIdent | TokenKind::UnknownPrefix => {
-                Class::Ident(move_span(self.file_span_lo, before, before + text.len() as u32))
-            }
+            TokenKind::RawIdent | TokenKind::UnknownPrefix => Class::Ident(local_span_to_global_span(
+                self.file_span_lo,
+                before,
+                before + text.len() as u32,
+            )),
             TokenKind::Lifetime { .. } => Class::Lifetime,
         };
         // Anything that didn't return above is the simple case where we the
@@ -501,8 +546,13 @@ fn exit_span(out: &mut Buffer) {
 ///     enter_span(Foo), string("text", None), exit_span()
 ///     string("text", Foo)
 /// ```
+///
 /// The latter can be thought of as a shorthand for the former, which is more
 /// flexible.
+///
+/// Note that if `context` is not `None` and that the given `klass` contains a `Span`, the function
+/// will then try to find this `span` in the `span_correspondance_map`. If found, it'll then
+/// generate a link for this element (which corresponds to where its definition is located).
 fn string<T: Display>(
     out: &mut Buffer,
     text: T,
