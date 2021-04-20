@@ -167,13 +167,13 @@ impl<'tcx> Context<'tcx> {
         "../".repeat(self.current.len())
     }
 
-    fn render_item(&self, it: &clean::Item, pushname: bool) -> String {
+    fn render_item(&self, it: &clean::Item, is_module: bool) -> String {
         let mut title = String::new();
-        if pushname {
+        if is_module {
             title.push_str(&it.name.unwrap().as_str());
         }
         if !it.is_primitive() && !it.is_keyword() {
-            if pushname {
+            if is_module {
                 title.push_str(" in ");
             }
             // No need to include the namespace for primitive types and keywords
