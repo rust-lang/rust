@@ -1822,7 +1822,7 @@ pub unsafe fn v128_bitselect(v1: v128, v2: v128, c: v128) -> v128 {
     transmute(llvm_bitselect(v1.as_i8x16(), v2.as_i8x16(), c.as_i8x16()))
 }
 
-/// Returns true if any lane is nonzero or false if all lanes are zero.
+/// Returns `true` if any bit in `a` is set, or `false` otherwise.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.any_true))]
 #[target_feature(enable = "simd128")]
