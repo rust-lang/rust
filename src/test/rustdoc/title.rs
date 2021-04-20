@@ -1,6 +1,8 @@
 #![crate_name = "foo"]
 #![feature(doc_keyword)]
 
+// @has foo/index.html '//head/title' 'foo - Rust'
+
 // @has foo/fn.widget_count.html '//head/title' 'widget_count in foo - Rust'
 /// blah
 pub fn widget_count() {}
