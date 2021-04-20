@@ -5,7 +5,7 @@ use hir::{Module, ModuleDef, Name, Variant};
 use ide_db::{
     defs::Definition,
     helpers::{
-        insert_use::{insert_use, ImportScope},
+        insert_use::{insert_use, ImportScope, InsertUseConfig},
         mod_path_to_ast,
     },
     search::FileReference,
@@ -79,16 +79,8 @@ pub(crate) fn extract_struct_from_enum_variant(
                     &variant_hir_name,
                     references,
                 );
-                processed.into_iter().for_each(|(segment, node, import)| {
-                    if let Some((scope, path)) = import {
-                        insert_use(&scope, mod_path_to_ast(&path), ctx.config.insert_use);
-                    }
-                    ted::insert_raw(
-                        ted::Position::before(segment.syntax()),
-                        make::path_from_text(&format!("{}", segment)).clone_for_update().syntax(),
-                    );
-                    ted::insert_raw(ted::Position::before(segment.syntax()), make::token(T!['(']));
-                    ted::insert_raw(ted::Position::after(&node), make::token(T![')']));
+                processed.into_iter().for_each(|(path, node, import)| {
+                    apply_references(ctx.config.insert_use, path, node, import)
                 });
             }
             builder.edit_file(ctx.frange.file_id);
@@ -103,21 +95,12 @@ pub(crate) fn extract_struct_from_enum_variant(
                     &variant_hir_name,
                     references,
                 );
-                processed.into_iter().for_each(|(segment, node, import)| {
-                    if let Some((scope, path)) = import {
-                        insert_use(&scope, mod_path_to_ast(&path), ctx.config.insert_use);
-                    }
-                    ted::insert_raw(
-                        ted::Position::before(segment.syntax()),
-                        make::path_from_text(&format!("{}", segment)).clone_for_update().syntax(),
-                    );
-                    ted::insert_raw(ted::Position::before(segment.syntax()), make::token(T!['(']));
-                    ted::insert_raw(ted::Position::after(&node), make::token(T![')']));
+                processed.into_iter().for_each(|(path, node, import)| {
+                    apply_references(ctx.config.insert_use, path, node, import)
                 });
             }
 
-            let def = create_struct_def(variant_name.clone(), &field_list, enum_ast.visibility())
-                .unwrap();
+            let def = create_struct_def(variant_name.clone(), &field_list, enum_ast.visibility());
             let start_offset = &variant.parent_enum().syntax().clone();
             ted::insert_raw(ted::Position::before(start_offset), def.syntax());
             ted::insert_raw(ted::Position::before(start_offset), &make::tokens::blank_line());
@@ -167,7 +150,7 @@ fn create_struct_def(
     variant_name: ast::Name,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     visibility: Option<ast::Visibility>,
-) -> Option<ast::Struct> {
+) -> ast::Struct {
     let pub_vis = Some(make::visibility_pub());
     let field_list = match field_list {
         Either::Left(field_list) => {
@@ -184,7 +167,7 @@ fn create_struct_def(
         .into(),
     };
 
-    Some(make::struct_(visibility, variant_name, None, field_list).clone_for_update())
+    make::struct_(visibility, variant_name, None, field_list).clone_for_update()
 }
 
 fn update_variant(variant: &ast::Variant) -> Option<()> {
@@ -199,6 +182,23 @@ fn update_variant(variant: &ast::Variant) -> Option<()> {
     Some(())
 }
 
+fn apply_references(
+    insert_use_cfg: InsertUseConfig,
+    segment: ast::PathSegment,
+    node: SyntaxNode,
+    import: Option<(ImportScope, hir::ModPath)>,
+) {
+    if let Some((scope, path)) = import {
+        insert_use(&scope, mod_path_to_ast(&path), insert_use_cfg);
+    }
+    ted::insert_raw(
+        ted::Position::before(segment.syntax()),
+        make::path_from_text(&format!("{}", segment)).clone_for_update().syntax(),
+    );
+    ted::insert_raw(ted::Position::before(segment.syntax()), make::token(T!['(']));
+    ted::insert_raw(ted::Position::after(&node), make::token(T![')']));
+}
+
 fn process_references(
     ctx: &AssistContext,
     visited_modules: &mut FxHashSet<Module>,
@@ -207,6 +207,8 @@ fn process_references(
     variant_hir_name: &Name,
     refs: Vec<FileReference>,
 ) -> Vec<(ast::PathSegment, SyntaxNode, Option<(ImportScope, hir::ModPath)>)> {
+    // we have to recollect here eagerly as we are about to edit the tree we need to calculate the changes
+    // and corresponding nodes up front
     refs.into_iter()
         .flat_map(|reference| {
             let (segment, scope_node, module) =
@@ -220,8 +222,7 @@ fn process_references(
                 if let Some(mut mod_path) = mod_path {
                     mod_path.pop_segment();
                     mod_path.push_segment(variant_hir_name.clone());
-                    // uuuh this wont properly work, find_insert_use_container ascends macros so we might a get new syntax node???
-                    let scope = ImportScope::find_insert_use_container(&scope_node, &ctx.sema)?;
+                    let scope = ImportScope::find_insert_use_container(&scope_node)?;
                     visited_modules.insert(module);
                     return Some((segment, scope_node, Some((scope, mod_path))));
                 }

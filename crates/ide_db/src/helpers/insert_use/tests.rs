@@ -5,6 +5,7 @@ use test_utils::assert_eq_text;
 
 #[test]
 fn insert_not_group() {
+    cov_mark::check!(insert_no_grouping_last);
     check(
         "use external_crate2::bar::A",
         r"
@@ -20,6 +21,21 @@ use crate::bar::A;
 use self::bar::A;
 use super::bar::A;
 use external_crate2::bar::A;",
+        None,
+        false,
+        false,
+    );
+}
+
+#[test]
+fn insert_not_group_empty() {
+    cov_mark::check!(insert_no_grouping_last2);
+    check(
+        "use external_crate2::bar::A",
+        r"",
+        r"use external_crate2::bar::A;
+
+",
         None,
         false,
         false,
@@ -65,6 +81,7 @@ fn insert_start_indent() {
 
 #[test]
 fn insert_middle() {
+    cov_mark::check!(insert_group);
     check_none(
         "std::bar::EE",
         r"
@@ -101,6 +118,7 @@ fn insert_middle_indent() {
 
 #[test]
 fn insert_end() {
+    cov_mark::check!(insert_group_last);
     check_none(
         "std::bar::ZZ",
         r"
@@ -199,6 +217,7 @@ fn insert_first_matching_group() {
 
 #[test]
 fn insert_missing_group_std() {
+    cov_mark::check!(insert_group_new_group);
     check_none(
         "std::fmt",
         r"
@@ -214,6 +233,7 @@ fn insert_missing_group_std() {
 
 #[test]
 fn insert_missing_group_self() {
+    cov_mark::check!(insert_group_no_group);
     check_none(
         "self::fmt",
         r"
@@ -240,6 +260,7 @@ fn main() {}",
 
 #[test]
 fn insert_empty_file() {
+    cov_mark::check!(insert_group_empty_file);
     // empty files will get two trailing newlines
     // this is due to the test case insert_no_imports above
     check_full(
@@ -253,6 +274,7 @@ fn insert_empty_file() {
 
 #[test]
 fn insert_empty_module() {
+    cov_mark::check!(insert_group_empty_module);
     check(
         "foo::bar",
         "mod x {}",
@@ -267,6 +289,7 @@ fn insert_empty_module() {
 
 #[test]
 fn insert_after_inner_attr() {
+    cov_mark::check!(insert_group_empty_inner_attr);
     check_full(
         "foo::bar",
         r"#![allow(unused_imports)]",

@@ -31,7 +31,7 @@ pub(crate) fn replace_qualified_name_with_use(
     }
 
     let target = path.syntax().text_range();
-    let scope = ImportScope::find_insert_use_container(path.syntax(), &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container_with_macros(path.syntax(), &ctx.sema)?;
     let syntax = scope.as_syntax_node();
     acc.add(
         AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
@@ -42,15 +42,15 @@ pub(crate) fn replace_qualified_name_with_use(
             // affected (that is, all paths inside the node we added the `use` to).
             let syntax = builder.make_mut(syntax.clone());
             if let Some(ref import_scope) = ImportScope::from(syntax.clone()) {
-                insert_use(import_scope, path.clone(), ctx.config.insert_use);
+                shorten_paths(&syntax, &path.clone_for_update());
+                insert_use(import_scope, path, ctx.config.insert_use);
             }
-            shorten_paths(syntax.clone(), &path.clone_for_update());
         },
     )
 }
 
 /// Adds replacements to `re` that shorten `path` in all descendants of `node`.
-fn shorten_paths(node: SyntaxNode, path: &ast::Path) {
+fn shorten_paths(node: &SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -59,14 +59,10 @@ fn shorten_paths(node: SyntaxNode, path: &ast::Path) {
                 ast::Use(_it) => continue,
                 // Don't descend into submodules, they don't have the same `use` items in scope.
                 ast::Module(_it) => continue,
-
-                ast::Path(p) => {
-                    match maybe_replace_path(p.clone(), path.clone()) {
-                        Some(()) => {},
-                        None => shorten_paths(p.syntax().clone(), path),
-                    }
+                ast::Path(p) => if maybe_replace_path(p.clone(), path.clone()).is_none() {
+                    shorten_paths(p.syntax(), path);
                 },
-                _ => shorten_paths(child, path),
+                _ => shorten_paths(&child, path),
             }
         }
     }

@@ -38,11 +38,16 @@ impl ImportScope {
     }
 
     /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
-    pub fn find_insert_use_container(
+    pub fn find_insert_use_container_with_macros(
         position: &SyntaxNode,
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
         sema.ancestors_with_macros(position.clone()).find_map(Self::from)
+    }
+
+    /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
+    pub fn find_insert_use_container(position: &SyntaxNode) -> Option<Self> {
+        std::iter::successors(Some(position.clone()), SyntaxNode::parent).find_map(Self::from)
     }
 
     pub fn as_syntax_node(&self) -> &SyntaxNode {
@@ -446,8 +451,10 @@ fn insert_use_(
 
     if !group_imports {
         if let Some((_, _, node)) = path_node_iter.last() {
+            cov_mark::hit!(insert_no_grouping_last);
             ted::insert(ted::Position::after(node), use_item.syntax());
         } else {
+            cov_mark::hit!(insert_no_grouping_last2);
             ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
             ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
         }
@@ -471,10 +478,12 @@ fn insert_use_(
         });
 
     if let Some((.., node)) = post_insert {
+        cov_mark::hit!(insert_group);
         // insert our import before that element
         return ted::insert(ted::Position::before(node), use_item.syntax());
     }
     if let Some(node) = last {
+        cov_mark::hit!(insert_group_last);
         // there is no element after our new import, so append it to the end of the group
         return ted::insert(ted::Position::after(node), use_item.syntax());
     }
@@ -487,6 +496,7 @@ fn insert_use_(
         .inspect(|(.., node)| last = Some(node.clone()))
         .find(|(p, ..)| ImportGroup::new(p) > group);
     if let Some((.., node)) = post_group {
+        cov_mark::hit!(insert_group_new_group);
         ted::insert(ted::Position::before(&node), use_item.syntax());
         if let Some(node) = algo::non_trivia_sibling(node.into(), Direction::Prev) {
             ted::insert(ted::Position::after(node), make::tokens::single_newline());
@@ -495,6 +505,7 @@ fn insert_use_(
     }
     // there is no such group, so append after the last one
     if let Some(node) = last {
+        cov_mark::hit!(insert_group_no_group);
         ted::insert(ted::Position::after(&node), use_item.syntax());
         ted::insert(ted::Position::after(node), make::tokens::single_newline());
         return;
@@ -508,22 +519,26 @@ fn insert_use_(
         })
         .last()
     {
+        cov_mark::hit!(insert_group_empty_inner_attr);
         ted::insert(ted::Position::after(&last_inner_element), use_item.syntax());
         ted::insert(ted::Position::after(last_inner_element), make::tokens::single_newline());
         return;
     }
     match scope {
         ImportScope::File(_) => {
+            cov_mark::hit!(insert_group_empty_file);
             ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
             ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax())
         }
         // don't insert the imports before the item list's opening curly brace
         ImportScope::Module(item_list) => match item_list.l_curly_token() {
             Some(b) => {
+                cov_mark::hit!(insert_group_empty_module);
                 ted::insert(ted::Position::after(&b), make::tokens::single_newline());
                 ted::insert(ted::Position::after(&b), use_item.syntax());
             }
             None => {
+                // This should never happens, broken module syntax node
                 ted::insert(
                     ted::Position::first_child_of(scope_syntax),
                     make::tokens::blank_line(),
