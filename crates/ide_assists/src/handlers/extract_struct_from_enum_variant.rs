@@ -15,7 +15,7 @@ use rustc_hash::FxHashSet;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, make, AstNode, NameOwner, VisibilityOwner},
-    ted, SourceFile, SyntaxElement, SyntaxNode, T,
+    ted, SyntaxNode, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -62,6 +62,7 @@ pub(crate) fn extract_struct_from_enum_variant(
             let mut visited_modules_set = FxHashSet::default();
             let current_module = enum_hir.module(ctx.db());
             visited_modules_set.insert(current_module);
+            // record file references of the file the def resides in, we only want to swap to the edited file in the builder once
             let mut def_file_references = None;
             for (file_id, references) in usages {
                 if file_id == ctx.frange.file_id {
@@ -70,36 +71,57 @@ pub(crate) fn extract_struct_from_enum_variant(
                 }
                 builder.edit_file(file_id);
                 let source_file = builder.make_ast_mut(ctx.sema.parse(file_id));
-                for reference in references {
-                    update_reference(
-                        ctx,
-                        reference,
-                        &source_file,
-                        &enum_module_def,
-                        &variant_hir_name,
-                        &mut visited_modules_set,
-                    );
-                }
-            }
-            builder.edit_file(ctx.frange.file_id);
-            let variant = builder.make_ast_mut(variant.clone());
-            let source_file = builder.make_ast_mut(ctx.sema.parse(ctx.frange.file_id));
-            for reference in def_file_references.into_iter().flatten() {
-                update_reference(
+                let processed = process_references(
                     ctx,
-                    reference,
-                    &source_file,
+                    &mut visited_modules_set,
+                    source_file.syntax(),
                     &enum_module_def,
                     &variant_hir_name,
-                    &mut visited_modules_set,
+                    references,
                 );
+                processed.into_iter().for_each(|(segment, node, import)| {
+                    if let Some((scope, path)) = import {
+                        insert_use(&scope, mod_path_to_ast(&path), ctx.config.insert_use);
+                    }
+                    ted::insert_raw(
+                        ted::Position::before(segment.syntax()),
+                        make::path_from_text(&format!("{}", segment)).clone_for_update().syntax(),
+                    );
+                    ted::insert_raw(ted::Position::before(segment.syntax()), make::token(T!['(']));
+                    ted::insert_raw(ted::Position::after(&node), make::token(T![')']));
+                });
             }
-            extract_struct_def(
-                variant_name.clone(),
-                &field_list,
-                &variant.parent_enum().syntax().clone().into(),
-                enum_ast.visibility(),
-            );
+            builder.edit_file(ctx.frange.file_id);
+            let source_file = builder.make_ast_mut(ctx.sema.parse(ctx.frange.file_id));
+            let variant = builder.make_ast_mut(variant.clone());
+            if let Some(references) = def_file_references {
+                let processed = process_references(
+                    ctx,
+                    &mut visited_modules_set,
+                    source_file.syntax(),
+                    &enum_module_def,
+                    &variant_hir_name,
+                    references,
+                );
+                processed.into_iter().for_each(|(segment, node, import)| {
+                    if let Some((scope, path)) = import {
+                        insert_use(&scope, mod_path_to_ast(&path), ctx.config.insert_use);
+                    }
+                    ted::insert_raw(
+                        ted::Position::before(segment.syntax()),
+                        make::path_from_text(&format!("{}", segment)).clone_for_update().syntax(),
+                    );
+                    ted::insert_raw(ted::Position::before(segment.syntax()), make::token(T!['(']));
+                    ted::insert_raw(ted::Position::after(&node), make::token(T![')']));
+                });
+            }
+
+            let def = create_struct_def(variant_name.clone(), &field_list, enum_ast.visibility())
+                .unwrap();
+            let start_offset = &variant.parent_enum().syntax().clone();
+            ted::insert_raw(ted::Position::before(start_offset), def.syntax());
+            ted::insert_raw(ted::Position::before(start_offset), &make::tokens::blank_line());
+
             update_variant(&variant);
         },
     )
@@ -141,31 +163,11 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
         .any(|(name, _)| name.to_string() == variant_name.to_string())
 }
 
-fn insert_import(
-    ctx: &AssistContext,
-    scope_node: &SyntaxNode,
-    module: &Module,
-    enum_module_def: &ModuleDef,
-    variant_hir_name: &Name,
-) -> Option<()> {
-    let db = ctx.db();
-    let mod_path =
-        module.find_use_path_prefixed(db, *enum_module_def, ctx.config.insert_use.prefix_kind);
-    if let Some(mut mod_path) = mod_path {
-        mod_path.pop_segment();
-        mod_path.push_segment(variant_hir_name.clone());
-        let scope = ImportScope::find_insert_use_container(scope_node, &ctx.sema)?;
-        insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use);
-    }
-    Some(())
-}
-
-fn extract_struct_def(
+fn create_struct_def(
     variant_name: ast::Name,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
-    start_offset: &SyntaxElement,
     visibility: Option<ast::Visibility>,
-) -> Option<()> {
+) -> Option<ast::Struct> {
     let pub_vis = Some(make::visibility_pub());
     let field_list = match field_list {
         Either::Left(field_list) => {
@@ -182,18 +184,7 @@ fn extract_struct_def(
         .into(),
     };
 
-    ted::insert_raw(
-        ted::Position::before(start_offset),
-        make::struct_(visibility, variant_name, None, field_list).clone_for_update().syntax(),
-    );
-    ted::insert_raw(ted::Position::before(start_offset), &make::tokens::blank_line());
-
-    // if let indent_level @ 1..=usize::MAX = IndentLevel::from_node(enum_.syntax()).0 as usize {
-    //     ted::insert(ted::Position::before(start_offset), &make::tokens::blank_line());
-    //     rewriter
-    //         .insert_before(start_offset, &make::tokens::whitespace(&" ".repeat(4 * indent_level)));
-    // }
-    Some(())
+    Some(make::struct_(visibility, variant_name, None, field_list).clone_for_update())
 }
 
 fn update_variant(variant: &ast::Variant) -> Option<()> {
@@ -208,42 +199,57 @@ fn update_variant(variant: &ast::Variant) -> Option<()> {
     Some(())
 }
 
-fn update_reference(
+fn process_references(
     ctx: &AssistContext,
-    reference: FileReference,
-    source_file: &SourceFile,
+    visited_modules: &mut FxHashSet<Module>,
+    source_file: &SyntaxNode,
     enum_module_def: &ModuleDef,
     variant_hir_name: &Name,
-    visited_modules_set: &mut FxHashSet<Module>,
-) -> Option<()> {
-    let offset = reference.range.start();
-    let (segment, expr) = if let Some(path_expr) =
-        find_node_at_offset::<ast::PathExpr>(source_file.syntax(), offset)
-    {
-        // tuple variant
-        (path_expr.path()?.segment()?, path_expr.syntax().parent()?)
-    } else if let Some(record_expr) =
-        find_node_at_offset::<ast::RecordExpr>(source_file.syntax(), offset)
-    {
-        // record variant
-        (record_expr.path()?.segment()?, record_expr.syntax().clone())
-    } else {
-        return None;
-    };
+    refs: Vec<FileReference>,
+) -> Vec<(ast::PathSegment, SyntaxNode, Option<(ImportScope, hir::ModPath)>)> {
+    refs.into_iter()
+        .flat_map(|reference| {
+            let (segment, scope_node, module) =
+                reference_to_node(&ctx.sema, source_file, reference)?;
+            if !visited_modules.contains(&module) {
+                let mod_path = module.find_use_path_prefixed(
+                    ctx.sema.db,
+                    *enum_module_def,
+                    ctx.config.insert_use.prefix_kind,
+                );
+                if let Some(mut mod_path) = mod_path {
+                    mod_path.pop_segment();
+                    mod_path.push_segment(variant_hir_name.clone());
+                    // uuuh this wont properly work, find_insert_use_container ascends macros so we might a get new syntax node???
+                    let scope = ImportScope::find_insert_use_container(&scope_node, &ctx.sema)?;
+                    visited_modules.insert(module);
+                    return Some((segment, scope_node, Some((scope, mod_path))));
+                }
+            }
+            Some((segment, scope_node, None))
+        })
+        .collect()
+}
 
-    let module = ctx.sema.scope(&expr).module()?;
-    if !visited_modules_set.contains(&module) {
-        if insert_import(ctx, &expr, &module, enum_module_def, variant_hir_name).is_some() {
-            visited_modules_set.insert(module);
-        }
+fn reference_to_node(
+    sema: &hir::Semantics<RootDatabase>,
+    source_file: &SyntaxNode,
+    reference: FileReference,
+) -> Option<(ast::PathSegment, SyntaxNode, hir::Module)> {
+    let offset = reference.range.start();
+    if let Some(path_expr) = find_node_at_offset::<ast::PathExpr>(source_file, offset) {
+        // tuple variant
+        Some((path_expr.path()?.segment()?, path_expr.syntax().parent()?))
+    } else if let Some(record_expr) = find_node_at_offset::<ast::RecordExpr>(source_file, offset) {
+        // record variant
+        Some((record_expr.path()?.segment()?, record_expr.syntax().clone()))
+    } else {
+        None
     }
-    ted::insert_raw(
-        ted::Position::before(segment.syntax()),
-        make::path_from_text(&format!("{}", segment)).clone_for_update().syntax(),
-    );
-    ted::insert_raw(ted::Position::before(segment.syntax()), make::token(T!['(']));
-    ted::insert_raw(ted::Position::after(&expr), make::token(T![')']));
-    Some(())
+    .and_then(|(segment, expr)| {
+        let module = sema.scope(&expr).module()?;
+        Some((segment, expr, module))
+    })
 }
 
 #[cfg(test)]
@@ -350,7 +356,7 @@ mod my_mod {
 
         pub struct MyField(pub u8, pub u8);
 
-        pub enum MyEnum {
+pub enum MyEnum {
             MyField(MyField),
         }
     }
