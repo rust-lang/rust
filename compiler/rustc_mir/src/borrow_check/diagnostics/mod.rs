@@ -573,7 +573,13 @@ pub(super) enum UseSpans<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(super) enum FnSelfUseKind<'tcx> {
     /// A normal method call of the form `receiver.foo(a, b, c)`
-    Normal { self_arg: Ident, implicit_into_iter: bool },
+    Normal {
+        self_arg: Ident,
+        implicit_into_iter: bool,
+        /// Whether the self type of the method call has an `.as_ref()` method.
+        /// Used for better diagnostics.
+        is_option_or_result: bool,
+    },
     /// A call to `FnOnce::call_once`, desugared from `my_closure(a, b, c)`
     FnOnceCall,
     /// A call to an operator trait, desuraged from operator syntax (e.g. `a << b`)
@@ -900,7 +906,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     fn_call_span.desugaring_kind(),
                     Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
                 );
-                FnSelfUseKind::Normal { self_arg, implicit_into_iter }
+                let parent_self_ty = parent
+                    .filter(|did| tcx.def_kind(*did) == rustc_hir::def::DefKind::Impl)
+                    .and_then(|did| match tcx.type_of(did).kind() {
+                        ty::Adt(def, ..) => Some(def.did),
+                        _ => None,
+                    });
+                let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
+                    tcx.is_diagnostic_item(sym::option_type, def_id)
+                        || tcx.is_diagnostic_item(sym::result_type, def_id)
+                });
+                FnSelfUseKind::Normal { self_arg, implicit_into_iter, is_option_or_result }
             });
 
             return FnSelfUse {
