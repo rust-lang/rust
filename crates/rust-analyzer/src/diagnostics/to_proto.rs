@@ -1,6 +1,9 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use flycheck::{DiagnosticLevel, DiagnosticSpan};
 use stdx::format_to;
@@ -42,7 +45,7 @@ fn is_dummy_macro_file(file_name: &str) -> bool {
 
 /// Converts a Rust span to a LSP location
 fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
-    let file_name = workspace_root.join(&span.file_name);
+    let file_name = resolve_path(workspace_root, &span.file_name);
     let uri = url_from_abs_path(&file_name);
 
     // FIXME: this doesn't handle UTF16 offsets correctly
@@ -61,7 +64,7 @@ fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location
 fn primary_location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
     let span_stack = std::iter::successors(Some(span), |span| Some(&span.expansion.as_ref()?.span));
     for span in span_stack.clone() {
-        let abs_path = workspace_root.join(&span.file_name);
+        let abs_path = resolve_path(workspace_root, &span.file_name);
         if !is_dummy_macro_file(&span.file_name) && abs_path.starts_with(workspace_root) {
             return location(workspace_root, span);
         }
@@ -82,6 +85,30 @@ fn diagnostic_related_information(
     let message = span.label.clone()?;
     let location = location(workspace_root, span);
     Some(lsp_types::DiagnosticRelatedInformation { location, message })
+}
+
+/// Resolves paths mimicking VSCode's behavior when `file_name` starts
+/// with the root directory component, which does not discard the base
+/// path.  If this relative path exists, use it, otherwise fall back
+/// to the existing Rust behavior of path joining.
+fn resolve_path(workspace_root: &Path, file_name: &str) -> PathBuf {
+    let file_name = Path::new(file_name);
+
+    // Test path with VSCode's path join behavior.
+    let vscode_path = {
+        let mut result = PathBuf::from(workspace_root);
+        result.extend(file_name.components().skip_while(|component| match component {
+            std::path::Component::RootDir => true,
+            _ => false,
+        }));
+        result
+    };
+    if vscode_path.exists() {
+        return vscode_path;
+    }
+
+    // Default to Rust's path join behavior.
+    workspace_root.join(file_name)
 }
 
 struct SubDiagnostic {
