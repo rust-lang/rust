@@ -1655,6 +1655,78 @@ generate float64x*_t
 arm = vsub.
 generate float*_t
 
+/// Signed Add Long across Vector
+name = vaddlv
+a = 1, 2, 3, 4
+validate 10
+
+aarch64 = saddlv
+link-aarch64 = llvm.aarch64.neon.saddlv.i32._EXT_
+generate int16x4_t:i32
+
+/// Signed Add Long across Vector
+name = vaddlv
+a = 1, 2, 3, 4, 5, 6, 7, 8
+validate 36
+
+aarch64 = saddlv
+link-aarch64 = llvm.aarch64.neon.saddlv.i32._EXT_
+generate int16x8_t:i32
+
+/// Signed Add Long across Vector
+name = vaddlv
+a = 1, 2
+validate 3
+
+aarch64 = saddlp
+link-aarch64 = llvm.aarch64.neon.saddlv.i64._EXT_
+generate int32x2_t:i64
+
+/// Signed Add Long across Vector
+name = vaddlv
+a = 1, 2, 3, 4
+validate 10
+
+aarch64 = saddlv
+link-aarch64 = llvm.aarch64.neon.saddlv.i64._EXT_
+generate int32x4_t:i64
+
+/// Unsigned Add Long across Vector
+name = vaddlv
+a = 1, 2, 3, 4
+validate 10
+
+aarch64 = uaddlv
+link-aarch64 = llvm.aarch64.neon.uaddlv.i32._EXT_
+generate uint16x4_t:u32
+
+/// Unsigned Add Long across Vector
+name = vaddlv
+a = 1, 2, 3, 4, 5, 6, 7, 8
+validate 36
+
+aarch64 = uaddlv
+link-aarch64 = llvm.aarch64.neon.uaddlv.i32._EXT_
+generate uint16x8_t:u32
+
+/// Unsigned Add Long across Vector
+name = vaddlv
+a = 1, 2
+validate 3
+
+aarch64 = uaddlp
+link-aarch64 = llvm.aarch64.neon.uaddlv.i64._EXT_
+generate uint32x2_t:u64
+
+/// Unsigned Add Long across Vector
+name = vaddlv
+a = 1, 2, 3, 4
+validate 10
+
+aarch64 = uaddlv
+link-aarch64 = llvm.aarch64.neon.uaddlv.i64._EXT_
+generate uint32x4_t:u64
+
 /// Subtract returning high narrow
 name = vsubhn
 no-q

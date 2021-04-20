@@ -147,6 +147,15 @@ extern "C" {
     #[link_name = "llvm.aarch64.neon.uaddv.i64.v2i64"]
     fn vaddvq_u64_(a: uint64x2_t) -> u64;
 
+    #[link_name = "llvm.aarch64.neon.saddlv.i32.v8i8"]
+    fn vaddlv_s8_(a: int8x8_t) -> i32;
+    #[link_name = "llvm.aarch64.neon.uaddlv.i32.v8i8"]
+    fn vaddlv_u8_(a: uint8x8_t) -> u32;
+    #[link_name = "llvm.aarch64.neon.saddlv.i32.v16i8"]
+    fn vaddlvq_s8_(a: int8x16_t) -> i32;
+    #[link_name = "llvm.aarch64.neon.uaddlv.i32.v16i8"]
+    fn vaddlvq_u8_(a: uint8x16_t) -> u32;
+
     #[link_name = "llvm.aarch64.neon.smaxv.i8.v8i8"]
     fn vmaxv_s8_(a: int8x8_t) -> i8;
     #[link_name = "llvm.aarch64.neon.smaxv.i8.6i8"]
@@ -998,6 +1007,35 @@ pub unsafe fn vaddvq_s64(a: int64x2_t) -> i64 {
 #[cfg_attr(test, assert_instr(addp))]
 pub unsafe fn vaddvq_u64(a: uint64x2_t) -> u64 {
     vaddvq_u64_(a)
+}
+
+/// Signed Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(saddlv))]
+pub unsafe fn vaddlv_s8(a: int8x8_t) -> i16 {
+    vaddlv_s8_(a) as i16
+}
+/// Signed Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(saddlv))]
+pub unsafe fn vaddlvq_s8(a: int8x16_t) -> i16 {
+    vaddlvq_s8_(a) as i16
+}
+/// Unsigned Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uaddlv))]
+pub unsafe fn vaddlv_u8(a: uint8x8_t) -> u16 {
+    vaddlv_u8_(a) as u16
+}
+/// Unsigned Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uaddlv))]
+pub unsafe fn vaddlvq_u8(a: uint8x16_t) -> u16 {
+    vaddlvq_u8_(a) as u16
 }
 
 /// Polynomial multiply long
@@ -4365,6 +4403,35 @@ mod tests {
         let a = u64x2::new(1, 2);
         let r: u64 = transmute(vaddvq_u64(transmute(a)));
         let e = 3_u64;
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlv_s8() {
+        let a = i8x8::new(1, 2, 3, 4, 5, 6, 7, -8);
+        let r: i16 = vaddlv_s8(transmute(a));
+        let e = 20_i16;
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlv_u8() {
+        let a = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let r: u16 = vaddlv_u8(transmute(a));
+        let e = 36_u16;
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlvq_s8() {
+        let a = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, -16);
+        let r: i16 = vaddlvq_s8(transmute(a));
+        let e = 104_i16;
+        assert_eq!(r, e);
+    }
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlvq_u8() {
+        let a = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r: u16 = vaddlvq_u8(transmute(a));
+        let e = 136_u16;
         assert_eq!(r, e);
     }
 }

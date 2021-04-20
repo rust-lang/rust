@@ -2876,6 +2876,110 @@ pub unsafe fn vsubq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     simd_sub(a, b)
 }
 
+/// Signed Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(saddlv))]
+pub unsafe fn vaddlv_s16(a: int16x4_t) -> i32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i32.v4i16")]
+        fn vaddlv_s16_(a: int16x4_t) -> i32;
+    }
+    vaddlv_s16_(a)
+}
+
+/// Signed Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(saddlv))]
+pub unsafe fn vaddlvq_s16(a: int16x8_t) -> i32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i32.v8i16")]
+        fn vaddlvq_s16_(a: int16x8_t) -> i32;
+    }
+    vaddlvq_s16_(a)
+}
+
+/// Signed Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(saddlp))]
+pub unsafe fn vaddlv_s32(a: int32x2_t) -> i64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i64.v2i32")]
+        fn vaddlv_s32_(a: int32x2_t) -> i64;
+    }
+    vaddlv_s32_(a)
+}
+
+/// Signed Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(saddlv))]
+pub unsafe fn vaddlvq_s32(a: int32x4_t) -> i64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.saddlv.i64.v4i32")]
+        fn vaddlvq_s32_(a: int32x4_t) -> i64;
+    }
+    vaddlvq_s32_(a)
+}
+
+/// Unsigned Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uaddlv))]
+pub unsafe fn vaddlv_u16(a: uint16x4_t) -> u32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i32.v4i16")]
+        fn vaddlv_u16_(a: uint16x4_t) -> u32;
+    }
+    vaddlv_u16_(a)
+}
+
+/// Unsigned Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uaddlv))]
+pub unsafe fn vaddlvq_u16(a: uint16x8_t) -> u32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i32.v8i16")]
+        fn vaddlvq_u16_(a: uint16x8_t) -> u32;
+    }
+    vaddlvq_u16_(a)
+}
+
+/// Unsigned Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uaddlp))]
+pub unsafe fn vaddlv_u32(a: uint32x2_t) -> u64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i64.v2i32")]
+        fn vaddlv_u32_(a: uint32x2_t) -> u64;
+    }
+    vaddlv_u32_(a)
+}
+
+/// Unsigned Add Long across Vector
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uaddlv))]
+pub unsafe fn vaddlvq_u32(a: uint32x4_t) -> u64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uaddlv.i64.v4i32")]
+        fn vaddlvq_u32_(a: uint32x4_t) -> u64;
+    }
+    vaddlvq_u32_(a)
+}
+
 /// Signed Subtract Wide
 #[inline]
 #[target_feature(enable = "neon")]
@@ -8455,6 +8559,70 @@ mod test {
         let b: f64x2 = f64x2::new(1.0, 2.0);
         let e: f64x2 = f64x2::new(0.0, 2.0);
         let r: f64x2 = transmute(vsubq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlv_s16() {
+        let a: i16x4 = i16x4::new(1, 2, 3, 4);
+        let e: i32 = 10;
+        let r: i32 = transmute(vaddlv_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlvq_s16() {
+        let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: i32 = 36;
+        let r: i32 = transmute(vaddlvq_s16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlv_s32() {
+        let a: i32x2 = i32x2::new(1, 2);
+        let e: i64 = 3;
+        let r: i64 = transmute(vaddlv_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlvq_s32() {
+        let a: i32x4 = i32x4::new(1, 2, 3, 4);
+        let e: i64 = 10;
+        let r: i64 = transmute(vaddlvq_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlv_u16() {
+        let a: u16x4 = u16x4::new(1, 2, 3, 4);
+        let e: u32 = 10;
+        let r: u32 = transmute(vaddlv_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlvq_u16() {
+        let a: u16x8 = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let e: u32 = 36;
+        let r: u32 = transmute(vaddlvq_u16(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlv_u32() {
+        let a: u32x2 = u32x2::new(1, 2);
+        let e: u64 = 3;
+        let r: u64 = transmute(vaddlv_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vaddlvq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let e: u64 = 10;
+        let r: u64 = transmute(vaddlvq_u32(transmute(a)));
         assert_eq!(r, e);
     }
 
