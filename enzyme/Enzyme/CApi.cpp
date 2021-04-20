@@ -140,13 +140,18 @@ FnTypeInfo eunwrap(CFnTypeInfo CTI, llvm::Function *F) {
 extern "C" {
 
 void EnzymeSetCLBool(void *ptr, uint8_t val) {
-  auto &cl = (llvm::cl::opt<bool> &)ptr;
-  cl.setValue((bool)val);
+  auto cl = (llvm::cl::opt<bool> *)ptr;
+  cl->setValue((bool)val);
+}
+
+uint8_t EnzymeGetCLBool(void *ptr) {
+  auto cl = (llvm::cl::opt<bool> *)ptr;
+  return (uint8_t)(bool)cl->getValue();
 }
 
 void EnzymeSetCLInteger(void *ptr, int64_t val) {
-  auto &cl = (llvm::cl::opt<int> &)ptr;
-  cl.setValue((int)val);
+  auto cl = (llvm::cl::opt<int> *)ptr;
+  cl->setValue((int)val);
 }
 
 EnzymeLogicRef CreateEnzymeLogic() {

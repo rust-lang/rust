@@ -1524,6 +1524,69 @@ Function *PreProcessCache::CloneFunctionWithReturns(
   return NewF;
 }
 
+void CoaleseTrivialMallocs(Function &F, DominatorTree &DT) {
+  std::map<BasicBlock *, std::vector<std::pair<CallInst *, CallInst *>>>
+      LegalMallocs;
+  for (BasicBlock &BB : F) {
+    for (Instruction &I : BB) {
+      if (auto CI = dyn_cast<CallInst>(&I)) {
+        if (auto F = CI->getCalledFunction()) {
+          if (F->getName() == "malloc") {
+            for (auto U : CI->users()) {
+              if (auto CI2 = dyn_cast<CallInst>(U)) {
+                if (auto F2 = CI2->getCalledFunction()) {
+                  if (F2->getName() == "free") {
+                    if (DT.dominates(CI, CI2)) {
+                      LegalMallocs[&BB].emplace_back(CI, CI2);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  for (auto &pair : LegalMallocs) {
+    if (pair.second.size() < 2)
+      continue;
+    CallInst *First = pair.second[0].first;
+    for (auto &z : pair.second) {
+      if (!DT.dominates(First, z.first))
+        First = z.first;
+    }
+    bool legal = true;
+    for (auto &z : pair.second) {
+      if (auto inst = dyn_cast<Instruction>(z.first->getArgOperand(0)))
+        if (!DT.dominates(inst, First))
+          legal = true;
+    }
+    if (!legal)
+      continue;
+    IRBuilder<> B(First);
+    Value *Size = First->getArgOperand(0);
+    for (auto &z : pair.second) {
+      if (z.first == First)
+        continue;
+      Size = B.CreateAdd(
+          B.CreateOr(B.CreateSub(Size, ConstantInt::get(Size->getType(), 1)),
+                     ConstantInt::get(Size->getType(), 15)),
+          ConstantInt::get(Size->getType(), 1));
+      z.second->eraseFromParent();
+      IRBuilder B2(z.first);
+      z.first->replaceAllUsesWith(B2.CreateInBoundsGEP(First, Size));
+      Size = B.CreateAdd(Size, z.first->getArgOperand(0));
+      z.first->eraseFromParent();
+    }
+    auto NewMalloc =
+        cast<CallInst>(B.CreateCall(First->getCalledFunction(), Size));
+    NewMalloc->copyIRFlags(First);
+    First->replaceAllUsesWith(NewMalloc);
+    First->eraseFromParent();
+  }
+}
+
 void PreProcessCache::optimizeIntermediate(Function *F) {
   PromotePass().run(*F, FAM);
 #if LLVM_VERSION_MAJOR <= 7
