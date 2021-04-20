@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `Provider::A`
+  --> $DIR/issue-71176.rs:5:10
+   |
+LL |     type A<'a>;
+   |          ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-71176.rs:5:10
+   |
+LL |     type A<'a>;
+   |          ^ --
+help: use angle brackets to add missing lifetime argument
+   |
+LL |     type A<'a><'a>;
+   |           ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.
