@@ -11,6 +11,7 @@ pub struct Widget;
 // @has foo/constant.ANSWER.html '//head/title' 'ANSWER in foo - Rust'
 pub const ANSWER: u8 = 42;
 
+// @has foo/blah/index.html '//head/title' 'foo::blah - Rust'
 pub mod blah {
     // @has foo/blah/struct.Widget.html '//head/title' 'Widget in foo::blah - Rust'
     pub struct Widget;
