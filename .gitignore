@@ -10,10 +10,6 @@
 .DS_Store
 desktop.ini
 
-## Version control
-.hgignore
-.hg/
-
 ## Editor
 *.swp
 *.swo
