@@ -169,11 +169,11 @@ impl<'tcx> Context<'tcx> {
 
     fn render_item(&self, it: &clean::Item, is_module: bool) -> String {
         let mut title = String::new();
-        if is_module {
+        if !is_module {
             title.push_str(&it.name.unwrap().as_str());
         }
         if !it.is_primitive() && !it.is_keyword() {
-            if is_module {
+            if !is_module {
                 title.push_str(" in ");
             }
             // No need to include the namespace for primitive types and keywords
@@ -597,7 +597,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
-        let buf = self.render_item(item, false);
+        let buf = self.render_item(item, true);
         // buf will be empty if the module is stripped and there is no redirect for it
         if !buf.is_empty() {
             self.shared.ensure_dir(&self.dst)?;
@@ -640,7 +640,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.render_redirect_pages = item.is_stripped();
         }
 
-        let buf = self.render_item(&item, true);
+        let buf = self.render_item(&item, false);
         // buf will be empty if the item is stripped and there is no redirect for it
         if !buf.is_empty() {
             let name = item.name.as_ref().unwrap();
