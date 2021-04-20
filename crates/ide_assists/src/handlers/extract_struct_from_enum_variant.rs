@@ -13,9 +13,9 @@ use ide_db::{
 };
 use rustc_hash::FxHashSet;
 use syntax::{
-    algo::{find_node_at_offset, SyntaxRewriter},
-    ast::{self, edit::IndentLevel, make, AstNode, NameOwner, VisibilityOwner},
-    SourceFile, SyntaxElement, SyntaxNode, T,
+    algo::find_node_at_offset,
+    ast::{self, make, AstNode, NameOwner, VisibilityOwner},
+    ted, SourceFile, SyntaxElement, SyntaxNode, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -62,14 +62,17 @@ pub(crate) fn extract_struct_from_enum_variant(
             let mut visited_modules_set = FxHashSet::default();
             let current_module = enum_hir.module(ctx.db());
             visited_modules_set.insert(current_module);
-            let mut def_rewriter = None;
+            let mut def_file_references = None;
             for (file_id, references) in usages {
-                let mut rewriter = SyntaxRewriter::default();
-                let source_file = ctx.sema.parse(file_id);
+                if file_id == ctx.frange.file_id {
+                    def_file_references = Some(references);
+                    continue;
+                }
+                builder.edit_file(file_id);
+                let source_file = builder.make_ast_mut(ctx.sema.parse(file_id));
                 for reference in references {
                     update_reference(
                         ctx,
-                        &mut rewriter,
                         reference,
                         &source_file,
                         &enum_module_def,
@@ -77,25 +80,27 @@ pub(crate) fn extract_struct_from_enum_variant(
                         &mut visited_modules_set,
                     );
                 }
-                if file_id == ctx.frange.file_id {
-                    def_rewriter = Some(rewriter);
-                    continue;
-                }
-                builder.edit_file(file_id);
-                builder.rewrite(rewriter);
             }
-            let mut rewriter = def_rewriter.unwrap_or_default();
-            update_variant(&mut rewriter, &variant);
+            builder.edit_file(ctx.frange.file_id);
+            let variant = builder.make_ast_mut(variant.clone());
+            let source_file = builder.make_ast_mut(ctx.sema.parse(ctx.frange.file_id));
+            for reference in def_file_references.into_iter().flatten() {
+                update_reference(
+                    ctx,
+                    reference,
+                    &source_file,
+                    &enum_module_def,
+                    &variant_hir_name,
+                    &mut visited_modules_set,
+                );
+            }
             extract_struct_def(
-                &mut rewriter,
-                &enum_ast,
                 variant_name.clone(),
                 &field_list,
                 &variant.parent_enum().syntax().clone().into(),
                 enum_ast.visibility(),
             );
-            builder.edit_file(ctx.frange.file_id);
-            builder.rewrite(rewriter);
+            update_variant(&variant);
         },
     )
 }
@@ -138,7 +143,6 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
 
 fn insert_import(
     ctx: &AssistContext,
-    rewriter: &mut SyntaxRewriter,
     scope_node: &SyntaxNode,
     module: &Module,
     enum_module_def: &ModuleDef,
@@ -151,14 +155,12 @@ fn insert_import(
         mod_path.pop_segment();
         mod_path.push_segment(variant_hir_name.clone());
         let scope = ImportScope::find_insert_use_container(scope_node, &ctx.sema)?;
-        *rewriter += insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use);
+        insert_use(&scope, mod_path_to_ast(&mod_path), ctx.config.insert_use);
     }
     Some(())
 }
 
 fn extract_struct_def(
-    rewriter: &mut SyntaxRewriter,
-    enum_: &ast::Enum,
     variant_name: ast::Name,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     start_offset: &SyntaxElement,
@@ -180,33 +182,34 @@ fn extract_struct_def(
         .into(),
     };
 
-    rewriter.insert_before(
-        start_offset,
-        make::struct_(visibility, variant_name, None, field_list).syntax(),
+    ted::insert_raw(
+        ted::Position::before(start_offset),
+        make::struct_(visibility, variant_name, None, field_list).clone_for_update().syntax(),
     );
-    rewriter.insert_before(start_offset, &make::tokens::blank_line());
+    ted::insert_raw(ted::Position::before(start_offset), &make::tokens::blank_line());
 
-    if let indent_level @ 1..=usize::MAX = IndentLevel::from_node(enum_.syntax()).0 as usize {
-        rewriter
-            .insert_before(start_offset, &make::tokens::whitespace(&" ".repeat(4 * indent_level)));
-    }
+    // if let indent_level @ 1..=usize::MAX = IndentLevel::from_node(enum_.syntax()).0 as usize {
+    //     ted::insert(ted::Position::before(start_offset), &make::tokens::blank_line());
+    //     rewriter
+    //         .insert_before(start_offset, &make::tokens::whitespace(&" ".repeat(4 * indent_level)));
+    // }
     Some(())
 }
 
-fn update_variant(rewriter: &mut SyntaxRewriter, variant: &ast::Variant) -> Option<()> {
+fn update_variant(variant: &ast::Variant) -> Option<()> {
     let name = variant.name()?;
     let tuple_field = make::tuple_field(None, make::ty(&name.text()));
     let replacement = make::variant(
         name,
         Some(ast::FieldList::TupleFieldList(make::tuple_field_list(iter::once(tuple_field)))),
-    );
-    rewriter.replace(variant.syntax(), replacement.syntax());
+    )
+    .clone_for_update();
+    ted::replace(variant.syntax(), replacement.syntax());
     Some(())
 }
 
 fn update_reference(
     ctx: &AssistContext,
-    rewriter: &mut SyntaxRewriter,
     reference: FileReference,
     source_file: &SourceFile,
     enum_module_def: &ModuleDef,
@@ -230,14 +233,16 @@ fn update_reference(
 
     let module = ctx.sema.scope(&expr).module()?;
     if !visited_modules_set.contains(&module) {
-        if insert_import(ctx, rewriter, &expr, &module, enum_module_def, variant_hir_name).is_some()
-        {
+        if insert_import(ctx, &expr, &module, enum_module_def, variant_hir_name).is_some() {
             visited_modules_set.insert(module);
         }
     }
-    rewriter.insert_after(segment.syntax(), &make::token(T!['(']));
-    rewriter.insert_after(segment.syntax(), segment.syntax());
-    rewriter.insert_after(&expr, &make::token(T![')']));
+    ted::insert_raw(
+        ted::Position::before(segment.syntax()),
+        make::path_from_text(&format!("{}", segment)).clone_for_update().syntax(),
+    );
+    ted::insert_raw(ted::Position::before(segment.syntax()), make::token(T!['(']));
+    ted::insert_raw(ted::Position::after(&expr), make::token(T![')']));
     Some(())
 }
 

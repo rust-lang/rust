@@ -598,6 +598,7 @@ pub mod tokens {
         SOURCE_FILE
             .tree()
             .syntax()
+            .clone_for_update()
             .descendants_with_tokens()
             .filter_map(|it| it.into_token())
             .find(|it| it.kind() == WHITESPACE && it.text() == "\n\n")

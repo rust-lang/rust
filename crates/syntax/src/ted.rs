@@ -7,7 +7,7 @@ use std::{mem, ops::RangeInclusive};
 use parser::T;
 
 use crate::{
-    ast::{edit::IndentLevel, make},
+    ast::{self, edit::IndentLevel, make, AstNode},
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
@@ -147,6 +147,16 @@ pub fn append_child_raw(node: &(impl Into<SyntaxNode> + Clone), child: impl Elem
 fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {
     let prev = match &position.repr {
         PositionRepr::FirstChild(_) => return None,
+        PositionRepr::After(it) if it.kind() == SyntaxKind::L_CURLY => {
+            if new.kind() == SyntaxKind::USE {
+                if let Some(item_list) = it.parent().and_then(ast::ItemList::cast) {
+                    let mut indent = IndentLevel::from_element(&item_list.syntax().clone().into());
+                    indent.0 += 1;
+                    return Some(make::tokens::whitespace(&format!("\n{}", indent)));
+                }
+            }
+            it
+        }
         PositionRepr::After(it) => it,
     };
     ws_between(prev, new)
@@ -173,7 +183,10 @@ fn ws_between(left: &SyntaxElement, right: &SyntaxElement) -> Option<SyntaxToken
     }
 
     if right.kind() == SyntaxKind::USE {
-        let indent = IndentLevel::from_element(left);
+        let mut indent = IndentLevel::from_element(left);
+        if left.kind() == SyntaxKind::USE {
+            indent.0 = IndentLevel::from_element(right).0.max(indent.0);
+        }
         return Some(make::tokens::whitespace(&format!("\n{}", indent)));
     }
     Some(make::tokens::single_space())

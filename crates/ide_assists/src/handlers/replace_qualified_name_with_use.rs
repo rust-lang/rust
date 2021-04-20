@@ -1,5 +1,5 @@
 use ide_db::helpers::insert_use::{insert_use, ImportScope};
-use syntax::{algo::SyntaxRewriter, ast, match_ast, AstNode, SyntaxNode};
+use syntax::{ast, match_ast, ted, AstNode, SyntaxNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -40,18 +40,17 @@ pub(crate) fn replace_qualified_name_with_use(
         |builder| {
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
-            let mut rewriter = SyntaxRewriter::default();
-            shorten_paths(&mut rewriter, syntax.clone(), &path);
+            let syntax = builder.make_mut(syntax.clone());
             if let Some(ref import_scope) = ImportScope::from(syntax.clone()) {
-                rewriter += insert_use(import_scope, path, ctx.config.insert_use);
-                builder.rewrite(rewriter);
+                insert_use(import_scope, path.clone(), ctx.config.insert_use);
             }
+            shorten_paths(syntax.clone(), &path.clone_for_update());
         },
     )
 }
 
 /// Adds replacements to `re` that shorten `path` in all descendants of `node`.
-fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path: &ast::Path) {
+fn shorten_paths(node: SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -62,32 +61,28 @@ fn shorten_paths(rewriter: &mut SyntaxRewriter<'static>, node: SyntaxNode, path:
                 ast::Module(_it) => continue,
 
                 ast::Path(p) => {
-                    match maybe_replace_path(rewriter, p.clone(), path.clone()) {
+                    match maybe_replace_path(p.clone(), path.clone()) {
                         Some(()) => {},
-                        None => shorten_paths(rewriter, p.syntax().clone(), path),
+                        None => shorten_paths(p.syntax().clone(), path),
                     }
                 },
-                _ => shorten_paths(rewriter, child, path),
+                _ => shorten_paths(child, path),
             }
         }
     }
 }
 
-fn maybe_replace_path(
-    rewriter: &mut SyntaxRewriter<'static>,
-    path: ast::Path,
-    target: ast::Path,
-) -> Option<()> {
+fn maybe_replace_path(path: ast::Path, target: ast::Path) -> Option<()> {
     if !path_eq(path.clone(), target) {
         return None;
     }
 
     // Shorten `path`, leaving only its last segment.
     if let Some(parent) = path.qualifier() {
-        rewriter.delete(parent.syntax());
+        ted::remove(parent.syntax());
     }
     if let Some(double_colon) = path.coloncolon_token() {
-        rewriter.delete(&double_colon);
+        ted::remove(&double_colon);
     }
 
     Some(())
@@ -150,6 +145,7 @@ Debug
     ",
         );
     }
+
     #[test]
     fn test_replace_add_use_no_anchor_with_item_below() {
         check_assist(

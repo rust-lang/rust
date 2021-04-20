@@ -51,17 +51,16 @@ use std::bar::G;",
 
 #[test]
 fn insert_start_indent() {
-    cov_mark::check!(insert_use_indent_after);
     check_none(
         "std::bar::AA",
         r"
     use std::bar::B;
-    use std::bar::D;",
+    use std::bar::C;",
         r"
     use std::bar::AA;
     use std::bar::B;
-    use std::bar::D;",
-    )
+    use std::bar::C;",
+    );
 }
 
 #[test]
@@ -120,7 +119,6 @@ use std::bar::ZZ;",
 
 #[test]
 fn insert_end_indent() {
-    cov_mark::check!(insert_use_indent_before);
     check_none(
         "std::bar::ZZ",
         r"
@@ -255,7 +253,6 @@ fn insert_empty_file() {
 
 #[test]
 fn insert_empty_module() {
-    cov_mark::check!(insert_use_no_indent_after);
     check(
         "foo::bar",
         "mod x {}",
@@ -615,7 +612,7 @@ fn check(
     if module {
         syntax = syntax.descendants().find_map(ast::Module::cast).unwrap().syntax().clone();
     }
-    let file = super::ImportScope::from(syntax).unwrap();
+    let file = super::ImportScope::from(syntax.clone_for_update()).unwrap();
     let path = ast::SourceFile::parse(&format!("use {};", path))
         .tree()
         .syntax()
@@ -623,12 +620,8 @@ fn check(
         .find_map(ast::Path::cast)
         .unwrap();
 
-    let rewriter = insert_use(
-        &file,
-        path,
-        InsertUseConfig { merge: mb, prefix_kind: PrefixKind::Plain, group },
-    );
-    let result = rewriter.rewrite(file.as_syntax_node()).to_string();
+    insert_use(&file, path, InsertUseConfig { merge: mb, prefix_kind: PrefixKind::Plain, group });
+    let result = file.as_syntax_node().to_string();
     assert_eq_text!(ra_fixture_after, &result);
 }
 
