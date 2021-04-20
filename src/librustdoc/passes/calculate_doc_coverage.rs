@@ -219,7 +219,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 // unless the user had an explicit `allow`
                 let should_have_docs =
                     level != lint::Level::Allow || matches!(source, LintLevelSource::Default);
-                debug!("counting {:?} {:?} in {}", i.type_(), i.name, filename);
+                debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
                 self.items.entry(filename).or_default().count_item(
                     has_docs,
                     has_doc_example,

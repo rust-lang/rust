@@ -202,6 +202,23 @@ impl RealFileName {
             | RealFileName::Remapped { local_path: _, virtual_name: p } => &p,
         }
     }
+
+    fn to_string_lossy(&self, prefer_local: bool) -> Cow<'_, str> {
+        use RealFileName::*;
+        if prefer_local {
+            match self {
+                LocalPath(path)
+                | Remapped { local_path: None, virtual_name: path }
+                | Remapped { local_path: Some(path), virtual_name: _ } => path.to_string_lossy(),
+            }
+        } else {
+            match self {
+                LocalPath(path) | Remapped { local_path: _, virtual_name: path } => {
+                    path.to_string_lossy()
+                }
+            }
+        }
+    }
 }
 
 /// Differentiates between real files and common virtual files.
@@ -228,16 +245,24 @@ pub enum FileName {
     InlineAsm(u64),
 }
 
-impl std::fmt::Display for FileName {
+impl From<PathBuf> for FileName {
+    fn from(p: PathBuf) -> Self {
+        assert!(!p.to_string_lossy().ends_with('>'));
+        FileName::Real(RealFileName::LocalPath(p))
+    }
+}
+
+pub struct FileNameDisplay<'a> {
+    inner: &'a FileName,
+    prefer_local: bool,
+}
+
+impl fmt::Display for FileNameDisplay<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
-        match *self {
-            Real(RealFileName::Named(ref path)) => write!(fmt, "{}", path.display()),
-            // FIXME: might be nice to display both components of Devirtualized.
-            // But for now (to backport fix for issue #70924), best to not
-            // perturb diagnostics so its obvious test suite still works.
-            Real(RealFileName::Devirtualized { ref local_path, virtual_name: _ }) => {
-                write!(fmt, "{}", local_path.display())
+        match *self.inner {
+            Real(ref name) => {
+                write!(fmt, "{}", name.to_string_lossy(self.prefer_local))
             }
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
@@ -252,10 +277,12 @@ impl std::fmt::Display for FileName {
     }
 }
 
-impl From<PathBuf> for FileName {
-    fn from(p: PathBuf) -> Self {
-        assert!(!p.to_string_lossy().ends_with('>'));
-        FileName::Real(RealFileName::LocalPath(p))
+impl FileNameDisplay<'_> {
+    pub fn to_string_lossy(&self) -> Cow<'_, str> {
+        match self.inner {
+            FileName::Real(ref inner) => inner.to_string_lossy(self.prefer_local),
+            _ => Cow::from(format!("{}", self)),
+        }
     }
 }
 
