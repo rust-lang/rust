@@ -1,4 +1,6 @@
+// compile-flags: -Zmiri-track-raw-pointers
 //! Check that destructors of the thread locals are executed on all OSes.
+#![feature(thread_local_const_init)]
 
 use std::cell::RefCell;
 
@@ -14,12 +16,17 @@ impl Drop for TestCell {
 
 thread_local! {
     static A: TestCell = TestCell { value: RefCell::new(0) };
+    static A_CONST: TestCell = const { TestCell { value: RefCell::new(10) } };
 }
 
 fn main() {
     A.with(|f| {
         assert_eq!(*f.value.borrow(), 0);
         *f.value.borrow_mut() = 5;
+    });
+    A_CONST.with(|f| {
+        assert_eq!(*f.value.borrow(), 10);
+        *f.value.borrow_mut() = 5; // Same value as above since the drop order is different on different platforms
     });
     eprintln!("Continue main.")
 }
