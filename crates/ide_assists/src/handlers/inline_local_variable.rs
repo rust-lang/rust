@@ -1,7 +1,9 @@
-use ide_db::{defs::Definition, search::FileReference};
+use either::Either;
+use hir::PathResolution;
+use ide_db::{base_db::FileId, defs::Definition, search::FileReference};
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, AstNode, AstToken},
+    ast::{self, AstNode, AstToken, NameOwner},
     TextRange,
 };
 
@@ -27,44 +29,28 @@ use crate::{
 // }
 // ```
 pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
-    let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
-    let bind_pat = match let_stmt.pat()? {
-        ast::Pat::IdentPat(pat) => pat,
-        _ => return None,
-    };
-    if bind_pat.mut_token().is_some() {
-        cov_mark::hit!(test_not_inline_mut_variable);
-        return None;
-    }
-    if !bind_pat.syntax().text_range().contains_inclusive(ctx.offset()) {
-        cov_mark::hit!(not_applicable_outside_of_bind_pat);
-        return None;
-    }
+    let InlineData { let_stmt, delete_let, replace_usages, target } =
+        inline_let(ctx).or_else(|| inline_usage(ctx))?;
     let initializer_expr = let_stmt.initializer()?;
 
-    let def = ctx.sema.to_def(&bind_pat)?;
-    let def = Definition::Local(def);
-    let usages = def.usages(&ctx.sema).all();
-    if usages.is_empty() {
-        cov_mark::hit!(test_not_applicable_if_variable_unused);
-        return None;
-    };
-
-    let delete_range = if let Some(whitespace) = let_stmt
-        .syntax()
-        .next_sibling_or_token()
-        .and_then(|it| ast::Whitespace::cast(it.as_token()?.clone()))
-    {
-        TextRange::new(
-            let_stmt.syntax().text_range().start(),
-            whitespace.syntax().text_range().end(),
-        )
+    let delete_range = if delete_let {
+        if let Some(whitespace) = let_stmt
+            .syntax()
+            .next_sibling_or_token()
+            .and_then(|it| ast::Whitespace::cast(it.as_token()?.clone()))
+        {
+            Some(TextRange::new(
+                let_stmt.syntax().text_range().start(),
+                whitespace.syntax().text_range().end(),
+            ))
+        } else {
+            Some(let_stmt.syntax().text_range())
+        }
     } else {
-        let_stmt.syntax().text_range()
+        None
     };
 
-    let wrap_in_parens = usages
-        .references
+    let wrap_in_parens = replace_usages
         .iter()
         .map(|(&file_id, refs)| {
             refs.iter()
@@ -114,14 +100,20 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
     let init_str = initializer_expr.syntax().text().to_string();
     let init_in_paren = format!("({})", &init_str);
 
-    let target = bind_pat.syntax().text_range();
+    let target = match target {
+        ast::NameOrNameRef::Name(it) => it.syntax().text_range(),
+        ast::NameOrNameRef::NameRef(it) => it.syntax().text_range(),
+    };
+
     acc.add(
         AssistId("inline_local_variable", AssistKind::RefactorInline),
         "Inline variable",
         target,
         move |builder| {
-            builder.delete(delete_range);
-            for (file_id, references) in usages.references {
+            if let Some(range) = delete_range {
+                builder.delete(range);
+            }
+            for (file_id, references) in replace_usages {
                 for (&should_wrap, reference) in wrap_in_parens[&file_id].iter().zip(references) {
                     let replacement =
                         if should_wrap { init_in_paren.clone() } else { init_str.clone() };
@@ -138,6 +130,81 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext) -> O
             }
         },
     )
+}
+
+struct InlineData {
+    let_stmt: ast::LetStmt,
+    delete_let: bool,
+    target: ast::NameOrNameRef,
+    replace_usages: FxHashMap<FileId, Vec<FileReference>>,
+}
+
+fn inline_let(ctx: &AssistContext) -> Option<InlineData> {
+    let let_stmt = ctx.find_node_at_offset::<ast::LetStmt>()?;
+    let bind_pat = match let_stmt.pat()? {
+        ast::Pat::IdentPat(pat) => pat,
+        _ => return None,
+    };
+    if bind_pat.mut_token().is_some() {
+        cov_mark::hit!(test_not_inline_mut_variable);
+        return None;
+    }
+    if !bind_pat.syntax().text_range().contains_inclusive(ctx.offset()) {
+        cov_mark::hit!(not_applicable_outside_of_bind_pat);
+        return None;
+    }
+
+    let def = ctx.sema.to_def(&bind_pat)?;
+    let def = Definition::Local(def);
+    let usages = def.usages(&ctx.sema).all();
+    if usages.is_empty() {
+        cov_mark::hit!(test_not_applicable_if_variable_unused);
+        return None;
+    };
+
+    Some(InlineData {
+        let_stmt,
+        delete_let: true,
+        target: ast::NameOrNameRef::Name(bind_pat.name()?),
+        replace_usages: usages.references,
+    })
+}
+
+fn inline_usage(ctx: &AssistContext) -> Option<InlineData> {
+    let path_expr = ctx.find_node_at_offset::<ast::PathExpr>()?;
+    let path = path_expr.path()?;
+    let name = match path.as_single_segment()?.kind()? {
+        ast::PathSegmentKind::Name(name) => name,
+        _ => return None,
+    };
+
+    let local = match ctx.sema.resolve_path(&path)? {
+        PathResolution::Local(local) => local,
+        _ => return None,
+    };
+
+    let bind_pat = match local.source(ctx.db()).value {
+        Either::Left(ident) => ident,
+        _ => return None,
+    };
+
+    let let_stmt = ast::LetStmt::cast(bind_pat.syntax().parent()?)?;
+
+    let def = Definition::Local(local);
+    let mut usages = def.usages(&ctx.sema).all();
+
+    let delete_let = usages.references.values().map(|v| v.len()).sum::<usize>() == 1;
+
+    for references in usages.references.values_mut() {
+        references.retain(|reference| reference.name.as_name_ref() == Some(&name));
+    }
+
+    Some(InlineData {
+        let_stmt,
+        delete_let,
+        target: ast::NameOrNameRef::NameRef(name),
+        replace_usages: usages.references,
+    })
 }
 
 #[cfg(test)]
@@ -725,5 +792,85 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn works_on_local_usage() {
+        check_assist(
+            inline_local_variable,
+            r#"
+fn f() {
+    let xyz = 0;
+    xyz$0;
+}
+"#,
+            r#"
+fn f() {
+    0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn does_not_remove_let_when_multiple_usages() {
+        check_assist(
+            inline_local_variable,
+            r#"
+fn f() {
+    let xyz = 0;
+    xyz$0;
+    xyz;
+}
+"#,
+            r#"
+fn f() {
+    let xyz = 0;
+    0;
+    xyz;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_with_non_ident_pattern() {
+        check_assist_not_applicable(
+            inline_local_variable,
+            r#"
+fn main() {
+    let (x, y) = (0, 1);
+    x$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_applicable_on_local_usage_in_macro() {
+        check_assist_not_applicable(
+            inline_local_variable,
+            r#"
+macro_rules! m {
+    ($i:ident) => { $i }
+}
+fn f() {
+    let xyz = 0;
+    m!(xyz$0); // replacing it would break the macro
+}
+"#,
+        );
+        check_assist_not_applicable(
+            inline_local_variable,
+            r#"
+macro_rules! m {
+    ($i:ident) => { $i }
+}
+fn f() {
+    let xyz$0 = 0;
+    m!(xyz); // replacing it would break the macro
+}
+"#,
+        );
     }
 }
