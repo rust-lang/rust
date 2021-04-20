@@ -47,6 +47,11 @@ pub(crate) fn replace_derive_with_manual_impl(
         return None;
     }
 
+    if !args.syntax().text_range().contains(ctx.offset()) {
+        cov_mark::hit!(outside_of_attr_args);
+        return None;
+    }
+
     let trait_token = args.syntax().token_at_offset(ctx.offset()).find(|t| t.kind() == IDENT)?;
     let trait_name = trait_token.text();
 
@@ -207,7 +212,7 @@ mod tests {
     fn add_custom_impl_debug() {
         check_assist(
             replace_derive_with_manual_impl,
-            "
+            r#"
 mod fmt {
     pub struct Error;
     pub type Result = Result<(), Error>;
@@ -221,8 +226,8 @@ mod fmt {
 struct Foo {
     bar: String,
 }
-",
-            "
+"#,
+            r#"
 mod fmt {
     pub struct Error;
     pub type Result = Result<(), Error>;
@@ -241,14 +246,14 @@ impl fmt::Debug for Foo {
         ${0:todo!()}
     }
 }
-",
+"#,
         )
     }
     #[test]
     fn add_custom_impl_all() {
         check_assist(
             replace_derive_with_manual_impl,
-            "
+            r#"
 mod foo {
     pub trait Bar {
         type Qux;
@@ -263,8 +268,8 @@ mod foo {
 struct Foo {
     bar: String,
 }
-",
-            "
+"#,
+            r#"
 mod foo {
     pub trait Bar {
         type Qux;
@@ -290,20 +295,20 @@ impl foo::Bar for Foo {
         todo!()
     }
 }
-",
+"#,
         )
     }
     #[test]
     fn add_custom_impl_for_unique_input() {
         check_assist(
             replace_derive_with_manual_impl,
-            "
+            r#"
 #[derive(Debu$0g)]
 struct Foo {
     bar: String,
 }
-            ",
-            "
+            "#,
+            r#"
 struct Foo {
     bar: String,
 }
@@ -311,7 +316,7 @@ struct Foo {
 impl Debug for Foo {
     $0
 }
-            ",
+            "#,
         )
     }
 
@@ -319,13 +324,13 @@ impl Debug for Foo {
     fn add_custom_impl_for_with_visibility_modifier() {
         check_assist(
             replace_derive_with_manual_impl,
-            "
+            r#"
 #[derive(Debug$0)]
 pub struct Foo {
     bar: String,
 }
-            ",
-            "
+            "#,
+            r#"
 pub struct Foo {
     bar: String,
 }
@@ -333,7 +338,7 @@ pub struct Foo {
 impl Debug for Foo {
     $0
 }
-            ",
+            "#,
         )
     }
 
@@ -341,18 +346,18 @@ impl Debug for Foo {
     fn add_custom_impl_when_multiple_inputs() {
         check_assist(
             replace_derive_with_manual_impl,
-            "
+            r#"
 #[derive(Display, Debug$0, Serialize)]
 struct Foo {}
-            ",
-            "
+            "#,
+            r#"
 #[derive(Display, Serialize)]
 struct Foo {}
 
 impl Debug for Foo {
     $0
 }
-            ",
+            "#,
         )
     }
 
@@ -360,10 +365,10 @@ impl Debug for Foo {
     fn test_ignore_derive_macro_without_input() {
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
-            "
+            r#"
 #[derive($0)]
 struct Foo {}
-            ",
+            "#,
         )
     }
 
@@ -371,18 +376,18 @@ struct Foo {}
     fn test_ignore_if_cursor_on_param() {
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
-            "
+            r#"
 #[derive$0(Debug)]
 struct Foo {}
-            ",
+            "#,
         );
 
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
-            "
+            r#"
 #[derive(Debug)$0]
 struct Foo {}
-            ",
+            "#,
         )
     }
 
@@ -390,10 +395,22 @@ struct Foo {}
     fn test_ignore_if_not_derive() {
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
-            "
+            r#"
 #[allow(non_camel_$0case_types)]
 struct Foo {}
-            ",
+            "#,
         )
+    }
+
+    #[test]
+    fn works_at_start_of_file() {
+        cov_mark::check!(outside_of_attr_args);
+        check_assist_not_applicable(
+            replace_derive_with_manual_impl,
+            r#"
+$0#[derive(Debug)]
+struct S;
+            "#,
+        );
     }
 }
