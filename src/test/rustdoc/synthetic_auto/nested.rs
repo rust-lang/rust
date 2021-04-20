@@ -9,10 +9,10 @@ where
 }
 
 // @has nested/struct.Foo.html
-// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//code' 'impl<T> Send for \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//code' 'impl<T> Send for \
 // Foo<T> where T: Copy'
 //
-// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//code' \
+// @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//code' \
 // 'impl<T> Sync for Foo<T> where T: Sync'
 pub struct Foo<T> {
     inner_field: Inner<T>,
