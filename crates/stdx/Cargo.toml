@@ -10,9 +10,14 @@ edition = "2018"
 doctest = false
 
 [dependencies]
+libc = "0.2.93"
 backtrace = { version = "0.3.44", optional = true }
 always-assert = { version = "0.1.2", features = ["log"] }
 # Think twice before adding anything here
+
+[target.'cfg(windows)'.dependencies]
+miow = "0.3.6"
+winapi = "0.3.9"
 
 [features]
 # Uncomment to enable for the whole crate graph

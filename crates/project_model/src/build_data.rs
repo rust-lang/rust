@@ -1,7 +1,6 @@
 //! Handles build script specific information
 
 use std::{
-    io::BufReader,
     path::PathBuf,
     process::{Command, Stdio},
     sync::Arc,
@@ -13,7 +12,8 @@ use cargo_metadata::{BuildScript, Message};
 use itertools::Itertools;
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::FxHashMap;
-use stdx::{format_to, JodChild};
+use serde::Deserialize;
+use stdx::format_to;
 
 use crate::{cfg_flag::CfgFlag, CargoConfig};
 
@@ -171,67 +171,86 @@ impl WorkspaceBuildData {
 
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
 
-        let mut child = cmd.spawn().map(JodChild)?;
-        let child_stdout = child.stdout.take().unwrap();
-        let stdout = BufReader::new(child_stdout);
-
         let mut res = WorkspaceBuildData::default();
-        for message in cargo_metadata::Message::parse_stream(stdout).flatten() {
-            match message {
-                Message::BuildScriptExecuted(BuildScript {
-                    package_id,
-                    out_dir,
-                    cfgs,
-                    env,
-                    ..
-                }) => {
-                    let cfgs = {
-                        let mut acc = Vec::new();
-                        for cfg in cfgs {
-                            match cfg.parse::<CfgFlag>() {
-                                Ok(it) => acc.push(it),
-                                Err(err) => {
-                                    anyhow::bail!("invalid cfg from cargo-metadata: {}", err)
-                                }
-                            };
-                        }
-                        acc
-                    };
-                    let package_build_data =
-                        res.per_package.entry(package_id.repr.clone()).or_default();
-                    // cargo_metadata crate returns default (empty) path for
-                    // older cargos, which is not absolute, so work around that.
-                    if !out_dir.as_str().is_empty() {
-                        let out_dir = AbsPathBuf::assert(PathBuf::from(out_dir.into_os_string()));
-                        package_build_data.out_dir = Some(out_dir);
-                        package_build_data.cfgs = cfgs;
-                    }
 
-                    package_build_data.envs = env;
+        let mut callback_err = None;
+        let output = stdx::process::streaming_output(
+            cmd,
+            &mut |line| {
+                if callback_err.is_some() {
+                    return;
                 }
-                Message::CompilerArtifact(message) => {
-                    progress(format!("metadata {}", message.target.name));
 
-                    if message.target.kind.contains(&"proc-macro".to_string()) {
-                        let package_id = message.package_id;
-                        // Skip rmeta file
-                        if let Some(filename) = message.filenames.iter().find(|name| is_dylib(name))
-                        {
-                            let filename = AbsPathBuf::assert(PathBuf::from(&filename));
-                            let package_build_data =
-                                res.per_package.entry(package_id.repr.clone()).or_default();
-                            package_build_data.proc_macro_dylib_path = Some(filename);
+                // Copy-pasted from existing cargo_metadata. It seems like we
+                // should be using sered_stacker here?
+                let mut deserializer = serde_json::Deserializer::from_str(&line);
+                deserializer.disable_recursion_limit();
+                let message = Message::deserialize(&mut deserializer)
+                    .unwrap_or(Message::TextLine(line.to_string()));
+
+                match message {
+                    Message::BuildScriptExecuted(BuildScript {
+                        package_id,
+                        out_dir,
+                        cfgs,
+                        env,
+                        ..
+                    }) => {
+                        let cfgs = {
+                            let mut acc = Vec::new();
+                            for cfg in cfgs {
+                                match cfg.parse::<CfgFlag>() {
+                                    Ok(it) => acc.push(it),
+                                    Err(err) => {
+                                        callback_err = Some(anyhow::format_err!(
+                                            "invalid cfg from cargo-metadata: {}",
+                                            err
+                                        ));
+                                        return;
+                                    }
+                                };
+                            }
+                            acc
+                        };
+                        let package_build_data =
+                            res.per_package.entry(package_id.repr.clone()).or_default();
+                        // cargo_metadata crate returns default (empty) path for
+                        // older cargos, which is not absolute, so work around that.
+                        if !out_dir.as_str().is_empty() {
+                            let out_dir =
+                                AbsPathBuf::assert(PathBuf::from(out_dir.into_os_string()));
+                            package_build_data.out_dir = Some(out_dir);
+                            package_build_data.cfgs = cfgs;
+                        }
+
+                        package_build_data.envs = env;
+                    }
+                    Message::CompilerArtifact(message) => {
+                        progress(format!("metadata {}", message.target.name));
+
+                        if message.target.kind.contains(&"proc-macro".to_string()) {
+                            let package_id = message.package_id;
+                            // Skip rmeta file
+                            if let Some(filename) =
+                                message.filenames.iter().find(|name| is_dylib(name))
+                            {
+                                let filename = AbsPathBuf::assert(PathBuf::from(&filename));
+                                let package_build_data =
+                                    res.per_package.entry(package_id.repr.clone()).or_default();
+                                package_build_data.proc_macro_dylib_path = Some(filename);
+                            }
                         }
                     }
+                    Message::CompilerMessage(message) => {
+                        progress(message.target.name.clone());
+                    }
+                    Message::BuildFinished(_) => {}
+                    Message::TextLine(_) => {}
+                    _ => {}
                 }
-                Message::CompilerMessage(message) => {
-                    progress(message.target.name.clone());
-                }
-                Message::BuildFinished(_) => {}
-                Message::TextLine(_) => {}
-                _ => {}
-            }
-        }
+            },
+            &mut |_| (),
+        )?;
 
         for package in packages {
             let package_build_data = res.per_package.entry(package.id.repr.clone()).or_default();
@@ -244,7 +263,6 @@ impl WorkspaceBuildData {
             }
         }
 
-        let output = child.into_inner().wait_with_output()?;
         if !output.status.success() {
             let mut stderr = String::from_utf8(output.stderr).unwrap_or_default();
             if stderr.is_empty() {

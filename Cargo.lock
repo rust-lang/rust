@@ -1573,6 +1573,9 @@ version = "0.0.0"
 dependencies = [
  "always-assert",
  "backtrace",
+ "libc",
+ "miow",
+ "winapi",
 ]
 
 [[package]]
