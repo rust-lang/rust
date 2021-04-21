@@ -410,6 +410,20 @@ impl DefMap {
         }
     }
 
+    pub fn dump_block_scopes(&self, db: &dyn DefDatabase) -> String {
+        let mut buf = String::new();
+        let mut arc;
+        let mut current_map = self;
+        while let Some(block) = &current_map.block {
+            format_to!(buf, "{:?} in {:?}\n", block.block, block.parent);
+            arc = block.parent.def_map(db);
+            current_map = &*arc;
+        }
+
+        format_to!(buf, "crate scope\n");
+        buf
+    }
+
     fn shrink_to_fit(&mut self) {
         // Exhaustive match to require handling new fields.
         let Self {

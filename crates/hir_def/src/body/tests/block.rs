@@ -134,6 +134,30 @@ struct Struct {}
 }
 
 #[test]
+fn nested_module_scoping() {
+    check_block_scopes_at(
+        r#"
+fn f() {
+    mod module {
+        struct Struct {}
+        fn f() {
+            use self::Struct;
+            $0
+        }
+    }
+}
+    "#,
+        expect![[r#"
+            BlockId(1) in ModuleId { krate: CrateId(0), block: Some(BlockId(0)), local_id: Idx::<ModuleData>(0) }
+            BlockId(0) in ModuleId { krate: CrateId(0), block: None, local_id: Idx::<ModuleData>(0) }
+            crate scope
+        "#]],
+    );
+    // FIXME: The module nesting here is wrong!
+    // The first block map should be located in module #1 (`mod module`), not #0 (BlockId(0) root module)
+}
+
+#[test]
 fn legacy_macro_items() {
     // Checks that legacy-scoped `macro_rules!` from parent namespaces are resolved and expanded
     // correctly.
