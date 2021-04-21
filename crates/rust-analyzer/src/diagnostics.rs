@@ -12,7 +12,7 @@ pub(crate) type CheckFixes = Arc<FxHashMap<FileId, Vec<Fix>>>;
 
 #[derive(Debug, Default, Clone)]
 pub struct DiagnosticsMapConfig {
-    pub remap_path_prefixes: FxHashMap<String, String>,
+    pub remap_prefix: FxHashMap<String, String>,
     pub warnings_as_info: Vec<String>,
     pub warnings_as_hint: Vec<String>,
 }

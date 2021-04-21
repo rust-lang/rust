@@ -99,10 +99,12 @@ fn diagnostic_related_information(
 /// Resolves paths applying any matching path prefix remappings, and then
 /// joining the path to the workspace root.
 fn resolve_path(config: &DiagnosticsMapConfig, workspace_root: &Path, file_name: &str) -> PathBuf {
-    match config.remap_path_prefixes.iter().find(|(from, _)| file_name.starts_with(*from)) {
-        Some((from, to)) => {
-            workspace_root.join(format!("{}{}", to, file_name.strip_prefix(from).unwrap()))
-        }
+    match config
+        .remap_prefix
+        .iter()
+        .find_map(|(from, to)| file_name.strip_prefix(from).map(|file_name| (to, file_name)))
+    {
+        Some((to, file_name)) => workspace_root.join(format!("{}{}", to, file_name)),
         None => workspace_root.join(file_name),
     }
 }

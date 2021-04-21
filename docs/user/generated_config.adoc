@@ -147,10 +147,10 @@ have more false positives than usual.
 --
 List of rust-analyzer diagnostics to disable.
 --
-[[rust-analyzer.diagnostics.remapPathPrefixes]]rust-analyzer.diagnostics.remapPathPrefixes (default: `{}`)::
+[[rust-analyzer.diagnostics.remapPrefix]]rust-analyzer.diagnostics.remapPrefix (default: `{}`)::
 +
 --
-Map of path prefixes to be substituted when parsing diagnostic file paths.
+Map of prefixes to be substituted when parsing diagnostic file paths.
 This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
 --
 [[rust-analyzer.diagnostics.warningsAsHint]]rust-analyzer.diagnostics.warningsAsHint (default: `[]`)::

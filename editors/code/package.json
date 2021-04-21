@@ -565,8 +565,8 @@
                     },
                     "uniqueItems": true
                 },
-                "rust-analyzer.diagnostics.remapPathPrefixes": {
-                    "markdownDescription": "Map of path prefixes to be substituted when parsing diagnostic file paths.\nThis should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.",
+                "rust-analyzer.diagnostics.remapPrefix": {
+                    "markdownDescription": "Map of prefixes to be substituted when parsing diagnostic file paths.\nThis should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.",
                     "default": {},
                     "type": "object"
                 },

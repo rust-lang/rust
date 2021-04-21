@@ -99,9 +99,9 @@ config_data! {
         diagnostics_enableExperimental: bool    = "true",
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
-        /// Map of path prefixes to be substituted when parsing diagnostic file paths.
+        /// Map of prefixes to be substituted when parsing diagnostic file paths.
         /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
-        diagnostics_remapPathPrefixes: FxHashMap<String, String> = "{}",
+        diagnostics_remapPrefix: FxHashMap<String, String> = "{}",
         /// List of warnings that should be displayed with info severity.
         ///
         /// The warnings will be indicated by a blue squiggly underline in code
@@ -477,7 +477,7 @@ impl Config {
     }
     pub fn diagnostics_map(&self) -> DiagnosticsMapConfig {
         DiagnosticsMapConfig {
-            remap_path_prefixes: self.data.diagnostics_remapPathPrefixes.clone(),
+            remap_prefix: self.data.diagnostics_remapPrefix.clone(),
             warnings_as_info: self.data.diagnostics_warningsAsInfo.clone(),
             warnings_as_hint: self.data.diagnostics_warningsAsHint.clone(),
         }
