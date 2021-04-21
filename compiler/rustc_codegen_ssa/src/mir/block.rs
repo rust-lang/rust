@@ -88,14 +88,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         target: mir::BasicBlock,
     ) {
-        let (lltarget, is_cleanupret) = self.lltarget(fx, target);
-        if is_cleanupret {
-            // micro-optimization: generate a `ret` rather than a jump
-            // to a trampoline.
-            bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
-        } else {
-            bx.br(lltarget);
-        }
+        bx.br(self.llblock(fx, target));
     }
 
     /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
