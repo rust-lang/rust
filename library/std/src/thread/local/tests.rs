@@ -1,5 +1,6 @@
 use crate::cell::{Cell, UnsafeCell};
-use crate::sync::mpsc::{channel, Sender};
+use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::mpsc::{self, channel, Sender};
 use crate::thread::{self, LocalKey};
 use crate::thread_local;
 
@@ -206,4 +207,56 @@ fn dtors_in_dtors_in_dtors_const_init() {
         K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
     });
     rx.recv().unwrap();
+}
+
+// This test tests that TLS destructors have run before the thread joins. The
+// test has no false positives (meaning: if the test fails, there's actually
+// an ordering problem). It may have false negatives, where the test passes but
+// join is not guaranteed to be after the TLS destructors. However, false
+// negatives should be exceedingly rare due to judicious use of
+// thread::yield_now and running the test several times.
+#[test]
+fn join_orders_after_tls_destructors() {
+    static THREAD2_LAUNCHED: AtomicBool = AtomicBool::new(false);
+
+    for _ in 0..10 {
+        let (tx, rx) = mpsc::sync_channel(0);
+        THREAD2_LAUNCHED.store(false, Ordering::SeqCst);
+
+        let jh = thread::spawn(move || {
+            struct RecvOnDrop(Cell<Option<mpsc::Receiver<()>>>);
+
+            impl Drop for RecvOnDrop {
+                fn drop(&mut self) {
+                    let rx = self.0.take().unwrap();
+                    while !THREAD2_LAUNCHED.load(Ordering::SeqCst) {
+                        thread::yield_now();
+                    }
+                    rx.recv().unwrap();
+                }
+            }
+
+            thread_local! {
+                static TL_RX: RecvOnDrop = RecvOnDrop(Cell::new(None));
+            }
+
+            TL_RX.with(|v| v.0.set(Some(rx)))
+        });
+
+        let tx_clone = tx.clone();
+        let jh2 = thread::spawn(move || {
+            THREAD2_LAUNCHED.store(true, Ordering::SeqCst);
+            jh.join().unwrap();
+            tx_clone.send(()).expect_err(
+                "Expecting channel to be closed because thread 1 TLS destructors must've run",
+            );
+        });
+
+        while !THREAD2_LAUNCHED.load(Ordering::SeqCst) {
+            thread::yield_now();
+        }
+        thread::yield_now();
+        tx.send(()).expect("Expecting channel to be live because thread 2 must block on join");
+        jh2.join().unwrap();
+    }
 }
