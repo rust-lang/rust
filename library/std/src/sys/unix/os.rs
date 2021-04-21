@@ -21,8 +21,8 @@ use crate::slice;
 use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
+use crate::sys::rwlock::{RWLockReadGuard, StaticRWLock};
 use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
-use crate::sys_common::rwlock::{RWLockReadGuard, StaticRWLock};
 use crate::vec;
 
 use libc::{c_char, c_int, c_void};
