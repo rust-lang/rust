@@ -83,11 +83,9 @@ fn replace<T: AstNode + PartialEq>(
     fields: impl Iterator<Item = T>,
     sorted_fields: impl IntoIterator<Item = T>,
 ) {
-    fields.zip(sorted_fields).filter(|(field, sorted)| field != sorted).for_each(
-        |(field, sorted_field)| {
-            ted::replace(field.syntax(), sorted_field.syntax().clone_for_update());
-        },
-    );
+    fields.zip(sorted_fields).for_each(|(field, sorted_field)| {
+        ted::replace(field.syntax(), sorted_field.syntax().clone_for_update())
+    });
 }
 
 fn compute_fields_ranks(path: &ast::Path, ctx: &AssistContext) -> Option<FxHashMap<String, usize>> {

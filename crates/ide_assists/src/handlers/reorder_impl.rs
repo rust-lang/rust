@@ -79,11 +79,9 @@ pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         "Sort methods",
         target,
         |builder| {
-            for (old, new) in
-                methods.into_iter().zip(sorted).filter(|(field, sorted)| field != sorted)
-            {
-                ted::replace(builder.make_ast_mut(old).syntax(), new.clone_for_update().syntax());
-            }
+            methods.into_iter().zip(sorted).for_each(|(old, new)| {
+                ted::replace(builder.make_ast_mut(old).syntax(), new.clone_for_update().syntax())
+            });
         },
     )
 }
