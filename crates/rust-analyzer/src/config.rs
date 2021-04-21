@@ -145,6 +145,8 @@ config_data! {
         inlayHints_parameterHints: bool     = "true",
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints: bool          = "true",
+        /// Whether inlay hints font size should be smaller than editor's font size.
+        inlayHints_smallerHints: bool       = "true",
 
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
