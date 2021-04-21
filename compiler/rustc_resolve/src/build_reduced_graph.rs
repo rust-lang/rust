@@ -342,7 +342,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let field_names = vdata
             .fields()
             .iter()
-            .map(|field| respan(field.span, field.ident.map_or(kw::Empty, |ident| ident.name)))
+            .filter_map(|field| match &field.variant {
+                ast::FieldVariant::Named(ast::NamedField { ident, ty: _ }) => {
+                    Some(respan(field.span, ident.map_or(kw::Empty, |ident| ident.name)))
+                }
+                // FIXME: Handle Unnamed variant
+                _ => None,
+            })
             .collect();
         self.insert_field_names(def_id, field_names);
     }

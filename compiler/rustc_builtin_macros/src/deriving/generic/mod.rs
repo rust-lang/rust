@@ -720,8 +720,15 @@ impl<'a> TraitDef<'a> {
         from_scratch: bool,
         use_temporaries: bool,
     ) -> P<ast::Item> {
-        let field_tys: Vec<P<ast::Ty>> =
-            struct_def.fields().iter().map(|field| field.ty.clone()).collect();
+        let field_tys: Vec<P<ast::Ty>> = struct_def
+            .fields()
+            .iter()
+            .filter_map(|field| match &field.variant {
+                ast::FieldVariant::Named(ast::NamedField { ident: _, ty }) => Some(ty.clone()),
+                // FIXME: Handle Unnamed variant
+                _ => None,
+            })
+            .collect();
 
         let methods = self
             .methods
@@ -769,7 +776,13 @@ impl<'a> TraitDef<'a> {
         let mut field_tys = Vec::new();
 
         for variant in &enum_def.variants {
-            field_tys.extend(variant.data.fields().iter().map(|field| field.ty.clone()));
+            field_tys.extend(variant.data.fields().iter().filter_map(
+                |field| match &field.variant {
+                    ast::FieldVariant::Named(ast::NamedField { ident: _, ty }) => Some(ty.clone()),
+                    // FIXME: Handle Unnamed variant
+                    _ => None,
+                },
+            ))
         }
 
         let methods = self
@@ -1515,8 +1528,11 @@ impl<'a> TraitDef<'a> {
         let mut just_spans = Vec::new();
         for field in struct_def.fields() {
             let sp = field.span.with_ctxt(self.span.ctxt());
-            match field.ident {
-                Some(ident) => named_idents.push((ident, sp)),
+            match field.variant {
+                ast::FieldVariant::Named(ast::NamedField { ident: Some(ident), ty: _ }) => {
+                    named_idents.push((ident, sp))
+                }
+                // FIXME: Handle Unnamed variant
                 _ => just_spans.push(sp),
             }
         }
@@ -1576,7 +1592,13 @@ impl<'a> TraitDef<'a> {
             let val = if use_temporaries { val } else { cx.expr_deref(sp, val) };
             let val = cx.expr(sp, ast::ExprKind::Paren(val));
 
-            ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
+            match struct_field.variant {
+                ast::FieldVariant::Named(ast::NamedField { ident, ty: _ }) => {
+                    ident_exprs.push((sp, ident, val, &struct_field.attrs[..]))
+                }
+                // FIXME: Handle Unnamed variant
+                _ => {}
+            }
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl, use_temporaries);

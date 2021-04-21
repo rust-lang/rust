@@ -127,7 +127,13 @@ fn cs_clone_shallow(
     fn process_variant(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
         for field in variant.fields() {
             // let _: AssertParamIsClone<FieldTy>;
-            assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsClone");
+            match &field.variant {
+                ast::FieldVariant::Named(ast::NamedField { ident: _, ty }) => {
+                    assert_ty_bounds(cx, stmts, ty.clone(), field.span, "AssertParamIsClone")
+                }
+                // FIXME: Handle Unnamed variant
+                _ => {}
+            }
         }
     }
 

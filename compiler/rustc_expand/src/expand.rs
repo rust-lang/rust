@@ -328,11 +328,15 @@ impl InvocationKind {
         // and it holds because only inert attributes are supported in this position.
         match self {
             InvocationKind::Attr { item: Annotatable::FieldDef(field), .. }
-            | InvocationKind::Derive { item: Annotatable::FieldDef(field), .. }
-                if field.ident.is_none() =>
+            | InvocationKind::Derive { item: Annotatable::FieldDef(field), .. } => match field
+                .variant
             {
-                Some(field.vis.clone())
-            }
+                ast::FieldVariant::Named(ast::NamedField { ident, ty: _ }) if ident.is_none() => {
+                    Some(field.vis.clone())
+                }
+                // FIXME: Handle Unnamed variant
+                _ => None,
+            },
             _ => None,
         }
     }

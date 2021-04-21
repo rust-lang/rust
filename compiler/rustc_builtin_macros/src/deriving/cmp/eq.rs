@@ -78,7 +78,13 @@ fn cs_total_eq_assert(
     ) {
         for field in variant.fields() {
             // let _: AssertParamIsEq<FieldTy>;
-            assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsEq");
+            match &field.variant {
+                ast::FieldVariant::Named(ast::NamedField { ident: _, ty }) => {
+                    assert_ty_bounds(cx, stmts, ty.clone(), field.span, "AssertParamIsEq")
+                }
+                // FIXME: Handle Unnamed variant
+                _ => {}
+            }
         }
     }
 

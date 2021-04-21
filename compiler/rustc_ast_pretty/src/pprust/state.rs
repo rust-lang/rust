@@ -1408,7 +1408,13 @@ impl<'a> State<'a> {
                         s.maybe_print_comment(field.span.lo());
                         s.print_outer_attributes(&field.attrs);
                         s.print_visibility(&field.vis);
-                        s.print_type(&field.ty)
+                        match &field.variant {
+                            ast::FieldVariant::Named(ast::NamedField { ident: _, ty }) => {
+                                s.print_type(ty)
+                            }
+                            // FIXME: Handle Unnamed variant
+                            _ => {}
+                        }
                     });
                     self.pclose();
                 }
@@ -1430,10 +1436,15 @@ impl<'a> State<'a> {
                     self.maybe_print_comment(field.span.lo());
                     self.print_outer_attributes(&field.attrs);
                     self.print_visibility(&field.vis);
-                    self.print_ident(field.ident.unwrap());
-                    self.word_nbsp(":");
-                    self.print_type(&field.ty);
-                    self.s.word(",");
+                    match &field.variant {
+                        ast::FieldVariant::Named(ast::NamedField { ident, ty }) => {
+                            self.print_ident(ident.unwrap());
+                            self.word_nbsp(":");
+                            self.print_type(ty);
+                            self.s.word(",");
+                        }
+                        _ => {}
+                    }
                 }
 
                 self.bclose(span)

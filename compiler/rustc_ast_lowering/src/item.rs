@@ -792,31 +792,42 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_field_def(&mut self, (index, f): (usize, &FieldDef)) -> hir::FieldDef<'hir> {
-        let ty = if let TyKind::Path(ref qself, ref path) = f.ty.kind {
-            let t = self.lower_path_ty(
-                &f.ty,
-                qself,
-                path,
-                ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
-                ImplTraitContext::disallowed(),
-            );
-            self.arena.alloc(t)
-        } else {
-            self.lower_ty(&f.ty, ImplTraitContext::disallowed())
-        };
         let hir_id = self.lower_node_id(f.id);
+
+        let (ident, ty) = match &f.variant {
+            FieldVariant::Named(NamedField { ident, ty }) => {
+                let ident = match ident {
+                    Some(ident) => *ident,
+                    // FIXME(jseyfried): positional field hygiene.
+                    None => Ident::new(sym::integer(index), f.span),
+                };
+
+                let ty = if let TyKind::Path(ref qself, ref path) = ty.kind {
+                    let t = self.lower_path_ty(
+                        ty,
+                        qself,
+                        path,
+                        ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
+                        ImplTraitContext::disallowed(),
+                    );
+                    self.arena.alloc(t)
+                } else {
+                    self.lower_ty(&ty, ImplTraitContext::disallowed())
+                };
+
+                (ident, ty)
+            }
+            // FIXME: Handle Unnamed variant. Currently creates useless data to pass the typecheck
+            _ => {
+                let ident = Ident::from_str_and_span("", f.span);
+                let ty = self.arena.alloc(hir::Ty { hir_id, kind: hir::TyKind::Err, span: f.span });
+                (ident, &*ty)
+            }
+        };
+
         self.lower_attrs(hir_id, &f.attrs);
-        hir::FieldDef {
-            span: f.span,
-            hir_id,
-            ident: match f.ident {
-                Some(ident) => ident,
-                // FIXME(jseyfried): positional field hygiene.
-                None => Ident::new(sym::integer(index), f.span),
-            },
-            vis: self.lower_visibility(&f.vis, None),
-            ty,
-        }
+
+        hir::FieldDef { span: f.span, hir_id, ident, vis: self.lower_visibility(&f.vis, None), ty }
     }
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem<'hir> {

@@ -2471,19 +2471,39 @@ impl VisibilityKind {
     }
 }
 
+/// Named field type
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct NamedField {
+    // FIXME: Maybe remove option and use UnnamedField::Type instead of NamedField?
+    pub ident: Option<Ident>,
+    pub ty: P<Ty>,
+}
+
+/// Unnamed field type
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum UnnamedField {
+    Struct(Vec<FieldDef>),
+    Union(Vec<FieldDef>),
+    Type(P<Ty>),
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum FieldVariant {
+    Named(NamedField),
+    Unnamed(UnnamedField),
+}
+
 /// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct FieldDef {
     pub attrs: Vec<Attribute>,
-    pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
-    pub ident: Option<Ident>,
-
-    pub ty: P<Ty>,
+    pub id: NodeId,
     pub is_placeholder: bool,
+    pub variant: FieldVariant,
 }
 
 /// Fields and constructor ids of enum variants and structs.

@@ -673,10 +673,16 @@ pub fn walk_struct_def<'a, V: Visitor<'a>>(visitor: &mut V, struct_definition: &
 
 pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) {
     visitor.visit_vis(&field.vis);
-    if let Some(ident) = field.ident {
-        visitor.visit_ident(ident);
+    match &field.variant {
+        FieldVariant::Named(NamedField { ident, ty }) => {
+            if let Some(ident) = ident {
+                visitor.visit_ident(*ident);
+            }
+            visitor.visit_ty(&ty);
+        }
+        // FIXME: Handle Unnamed variant
+        _ => {}
     }
-    visitor.visit_ty(&field.ty);
     walk_list!(visitor, visit_attribute, &field.attrs);
 }
 

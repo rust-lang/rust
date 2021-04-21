@@ -155,12 +155,12 @@ pub fn placeholder(
         }]),
         AstFragmentKind::StructFields => AstFragment::StructFields(smallvec![ast::FieldDef {
             attrs: Default::default(),
-            id,
-            ident: None,
             span,
-            ty: ty(),
             vis,
+            id,
             is_placeholder: true,
+            // FIXME: Maybe change to UnnamedField?
+            variant: ast::FieldVariant::Named(ast::NamedField { ident: None, ty: ty() })
         }]),
         AstFragmentKind::Variants => AstFragment::Variants(smallvec![ast::Variant {
             attrs: Default::default(),

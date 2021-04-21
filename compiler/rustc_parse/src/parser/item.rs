@@ -1280,11 +1280,11 @@ impl<'a> Parser<'a> {
                     FieldDef {
                         span: lo.to(ty.span),
                         vis,
-                        ident: None,
-                        id: DUMMY_NODE_ID,
-                        ty,
                         attrs,
+                        id: DUMMY_NODE_ID,
                         is_placeholder: false,
+                        // FIXME: Maybe change to UnnamedField?
+                        variant: FieldVariant::Named(NamedField { ident: None, ty }),
                     },
                     TrailingToken::MaybeComma,
                 ))
@@ -1354,20 +1354,25 @@ impl<'a> Parser<'a> {
 
                 // Try to recover extra trailing angle brackets
                 let mut recovered = false;
-                if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind {
-                    if let Some(last_segment) = segments.last() {
-                        recovered = self.check_trailing_angle_brackets(
-                            last_segment,
-                            &[&token::Comma, &token::CloseDelim(token::Brace)],
-                        );
-                        if recovered {
-                            // Handle a case like `Vec<u8>>,` where we can continue parsing fields
-                            // after the comma
-                            self.eat(&token::Comma);
-                            // `check_trailing_angle_brackets` already emitted a nicer error
-                            err.cancel();
+                match &a_var.variant {
+                    FieldVariant::Named(NamedField { ident: _, ty }) => {
+                        if let TyKind::Path(_, Path { segments, .. }) = &ty.kind {
+                            if let Some(last_segment) = segments.last() {
+                                recovered = self.check_trailing_angle_brackets(
+                                    last_segment,
+                                    &[&token::Comma, &token::CloseDelim(token::Brace)],
+                                );
+                                if recovered {
+                                    // Handle a case like `Vec<u8>>,` where we can continue parsing fields
+                                    // after the comma
+                                    self.eat(&token::Comma);
+                                    // `check_trailing_angle_brackets` already emitted a nicer error
+                                    err.cancel();
+                                }
+                            }
                         }
                     }
+                    _ => {}
                 }
 
                 if self.token.is_ident() {
@@ -1395,6 +1400,69 @@ impl<'a> Parser<'a> {
         Ok(a_var)
     }
 
+    fn parse_named_field_type(
+        &mut self,
+        lo: Span,
+        vis: Visibility,
+        attrs: Vec<Attribute>,
+        name: Ident,
+    ) -> PResult<'a, FieldDef> {
+        let ty = self.parse_ty()?;
+        Ok(FieldDef {
+            attrs,
+            span: lo.to(self.prev_token.span),
+            vis,
+            id: DUMMY_NODE_ID,
+            is_placeholder: false,
+            variant: FieldVariant::Named(NamedField { ident: Some(name), ty }),
+        })
+    }
+
+    fn parse_unnamed_field_type(
+        &mut self,
+        lo: Span,
+        vis: Visibility,
+        attrs: Vec<Attribute>,
+    ) -> PResult<'a, FieldDef> {
+        if self.eat_keyword(kw::Struct) {
+            let (fields, _) = self.parse_record_struct_body()?;
+            Ok(FieldDef {
+                attrs,
+                span: lo.to(self.prev_token.span),
+                vis,
+                id: DUMMY_NODE_ID,
+                is_placeholder: false,
+                variant: FieldVariant::Unnamed(UnnamedField::Struct(fields)),
+            })
+        }
+        // Can't directly eat_keyword because technically a union could
+        // be a user defined type, so disambiguate by looking ahead for a `{`
+        else if self.token.is_keyword(kw::Union)
+            && self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+        {
+            self.bump(); // `union`
+            let (fields, _) = self.parse_record_struct_body()?;
+            Ok(FieldDef {
+                attrs,
+                span: lo.to(self.prev_token.span),
+                vis,
+                id: DUMMY_NODE_ID,
+                is_placeholder: false,
+                variant: FieldVariant::Unnamed(UnnamedField::Union(fields)),
+            })
+        } else {
+            let ty = self.parse_ty()?;
+            Ok(FieldDef {
+                attrs,
+                span: lo.to(self.prev_token.span),
+                vis,
+                id: DUMMY_NODE_ID,
+                is_placeholder: false,
+                variant: FieldVariant::Unnamed(UnnamedField::Type(ty)),
+            })
+        }
+    }
+
     /// Parses a structure field.
     fn parse_name_and_ty(
         &mut self,
@@ -1402,18 +1470,13 @@ impl<'a> Parser<'a> {
         vis: Visibility,
         attrs: Vec<Attribute>,
     ) -> PResult<'a, FieldDef> {
-        let name = self.parse_ident_common(false)?;
+        let name = self.parse_ident_or_underscore()?;
         self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
-        Ok(FieldDef {
-            span: lo.to(self.prev_token.span),
-            ident: Some(name),
-            vis,
-            id: DUMMY_NODE_ID,
-            ty,
-            attrs,
-            is_placeholder: false,
-        })
+        if name.name == kw::Underscore {
+            self.parse_unnamed_field_type(lo, vis, attrs)
+        } else {
+            self.parse_named_field_type(lo, vis, attrs, name)
+        }
     }
 
     /// Parses a declarative macro 2.0 definition.

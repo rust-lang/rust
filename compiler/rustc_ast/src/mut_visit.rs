@@ -909,13 +909,19 @@ pub fn noop_flat_map_field_def<T: MutVisitor>(
     mut fd: FieldDef,
     visitor: &mut T,
 ) -> SmallVec<[FieldDef; 1]> {
-    let FieldDef { span, ident, vis, id, ty, attrs, is_placeholder: _ } = &mut fd;
+    let FieldDef { span, vis, id, attrs, is_placeholder: _, variant } = &mut fd;
     visitor.visit_span(span);
-    visit_opt(ident, |ident| visitor.visit_ident(ident));
     visitor.visit_vis(vis);
     visitor.visit_id(id);
-    visitor.visit_ty(ty);
     visit_attrs(attrs, visitor);
+    match variant {
+        FieldVariant::Named(NamedField { ident, ty }) => {
+            visit_opt(ident, |ident| visitor.visit_ident(ident));
+            visitor.visit_ty(ty);
+        }
+        // FIXME: Handle Unnamed variant
+        _ => {}
+    }
     smallvec![fd]
 }
 
