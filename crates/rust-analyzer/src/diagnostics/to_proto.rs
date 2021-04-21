@@ -1,6 +1,9 @@
 //! This module provides the functionality needed to convert diagnostics from
 //! `cargo check` json format to the LSP diagnostic format.
-use std::{collections::HashMap, path::Path};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use flycheck::{DiagnosticLevel, DiagnosticSpan};
 use stdx::format_to;
@@ -41,8 +44,12 @@ fn is_dummy_macro_file(file_name: &str) -> bool {
 }
 
 /// Converts a Rust span to a LSP location
-fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
-    let file_name = workspace_root.join(&span.file_name);
+fn location(
+    config: &DiagnosticsMapConfig,
+    workspace_root: &Path,
+    span: &DiagnosticSpan,
+) -> lsp_types::Location {
+    let file_name = resolve_path(config, workspace_root, &span.file_name);
     let uri = url_from_abs_path(&file_name);
 
     // FIXME: this doesn't handle UTF16 offsets correctly
@@ -58,30 +65,48 @@ fn location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location
 ///
 /// This takes locations pointing into the standard library, or generally outside the current
 /// workspace into account and tries to avoid those, in case macros are involved.
-fn primary_location(workspace_root: &Path, span: &DiagnosticSpan) -> lsp_types::Location {
+fn primary_location(
+    config: &DiagnosticsMapConfig,
+    workspace_root: &Path,
+    span: &DiagnosticSpan,
+) -> lsp_types::Location {
     let span_stack = std::iter::successors(Some(span), |span| Some(&span.expansion.as_ref()?.span));
     for span in span_stack.clone() {
-        let abs_path = workspace_root.join(&span.file_name);
+        let abs_path = resolve_path(config, workspace_root, &span.file_name);
         if !is_dummy_macro_file(&span.file_name) && abs_path.starts_with(workspace_root) {
-            return location(workspace_root, span);
+            return location(config, workspace_root, span);
         }
     }
 
     // Fall back to the outermost macro invocation if no suitable span comes up.
     let last_span = span_stack.last().unwrap();
-    location(workspace_root, last_span)
+    location(config, workspace_root, last_span)
 }
 
 /// Converts a secondary Rust span to a LSP related information
 ///
 /// If the span is unlabelled this will return `None`.
 fn diagnostic_related_information(
+    config: &DiagnosticsMapConfig,
     workspace_root: &Path,
     span: &DiagnosticSpan,
 ) -> Option<lsp_types::DiagnosticRelatedInformation> {
     let message = span.label.clone()?;
-    let location = location(workspace_root, span);
+    let location = location(config, workspace_root, span);
     Some(lsp_types::DiagnosticRelatedInformation { location, message })
+}
+
+/// Resolves paths applying any matching path prefix remappings, and then
+/// joining the path to the workspace root.
+fn resolve_path(config: &DiagnosticsMapConfig, workspace_root: &Path, file_name: &str) -> PathBuf {
+    match config
+        .remap_prefix
+        .iter()
+        .find_map(|(from, to)| file_name.strip_prefix(from).map(|file_name| (to, file_name)))
+    {
+        Some((to, file_name)) => workspace_root.join(format!("{}{}", to, file_name)),
+        None => workspace_root.join(file_name),
+    }
 }
 
 struct SubDiagnostic {
@@ -95,6 +120,7 @@ enum MappedRustChildDiagnostic {
 }
 
 fn map_rust_child_diagnostic(
+    config: &DiagnosticsMapConfig,
     workspace_root: &Path,
     rd: &flycheck::Diagnostic,
 ) -> MappedRustChildDiagnostic {
@@ -108,7 +134,7 @@ fn map_rust_child_diagnostic(
     let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
     for &span in &spans {
         if let Some(suggested_replacement) = &span.suggested_replacement {
-            let location = location(workspace_root, span);
+            let location = location(config, workspace_root, span);
             let edit = lsp_types::TextEdit::new(location.range, suggested_replacement.clone());
             edit_map.entry(location.uri).or_default().push(edit);
         }
@@ -117,7 +143,7 @@ fn map_rust_child_diagnostic(
     if edit_map.is_empty() {
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
-                location: location(workspace_root, spans[0]),
+                location: location(config, workspace_root, spans[0]),
                 message: rd.message.clone(),
             },
             suggested_fix: None,
@@ -125,7 +151,7 @@ fn map_rust_child_diagnostic(
     } else {
         MappedRustChildDiagnostic::SubDiagnostic(SubDiagnostic {
             related: lsp_types::DiagnosticRelatedInformation {
-                location: location(workspace_root, spans[0]),
+                location: location(config, workspace_root, spans[0]),
                 message: rd.message.clone(),
             },
             suggested_fix: Some(lsp_ext::CodeAction {
@@ -190,7 +216,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     let mut tags = Vec::new();
 
     for secondary_span in rd.spans.iter().filter(|s| !s.is_primary) {
-        let related = diagnostic_related_information(workspace_root, secondary_span);
+        let related = diagnostic_related_information(config, workspace_root, secondary_span);
         if let Some(related) = related {
             subdiagnostics.push(SubDiagnostic { related, suggested_fix: None });
         }
@@ -198,7 +224,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 
     let mut message = rd.message.clone();
     for child in &rd.children {
-        let child = map_rust_child_diagnostic(workspace_root, &child);
+        let child = map_rust_child_diagnostic(config, workspace_root, &child);
         match child {
             MappedRustChildDiagnostic::SubDiagnostic(sub) => {
                 subdiagnostics.push(sub);
@@ -242,7 +268,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
     primary_spans
         .iter()
         .flat_map(|primary_span| {
-            let primary_location = primary_location(workspace_root, &primary_span);
+            let primary_location = primary_location(config, workspace_root, &primary_span);
 
             let mut message = message.clone();
             if needs_primary_span_label {
@@ -272,7 +298,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                 // generated that code.
                 let is_in_macro_call = i != 0;
 
-                let secondary_location = location(workspace_root, &span);
+                let secondary_location = location(config, workspace_root, &span);
                 if secondary_location == primary_location {
                     continue;
                 }
