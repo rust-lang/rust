@@ -1323,14 +1323,15 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         // of "if there isn't a Binder scope above us, add one", but I
         // imagine there's a better way to go about this.
         let mut scope = self.scope;
-        let trait_ref_hack = loop {
+        let (binders, scope_type) = loop {
             match scope {
                 Scope::TraitRefBoundary { .. } | Scope::Body { .. } | Scope::Root => {
-                    break false;
+                    break (vec![], BinderScopeType::PolyTraitRef);
                 }
 
-                Scope::Binder { .. } => {
-                    break true;
+                Scope::Binder { hir_id, .. } => {
+                    let binders = self.map.late_bound_vars.entry(*hir_id).or_default().clone();
+                    break (binders, BinderScopeType::Concatenating);
                 }
 
                 Scope::Elision { s, .. }
@@ -1341,8 +1342,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
         };
         match bound {
-            hir::GenericBound::LangItemTrait(_, _, hir_id, _) if !trait_ref_hack => {
-                self.map.late_bound_vars.insert(*hir_id, vec![]);
+            hir::GenericBound::LangItemTrait(_, _, hir_id, _) => {
+                self.map.late_bound_vars.insert(*hir_id, binders);
                 let scope = Scope::Binder {
                     hir_id: *hir_id,
                     lifetimes: FxHashMap::default(),
@@ -1350,7 +1351,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     next_early_index: self.next_early_index(),
                     track_lifetime_uses: true,
                     opaque_type_parent: false,
-                    scope_type: BinderScopeType::Other,
+                    scope_type,
                 };
                 self.with(scope, |_, this| {
                     intravisit::walk_param_bound(this, bound);
