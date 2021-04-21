@@ -127,7 +127,7 @@ pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for PoisonError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "PoisonError { inner: .. }".fmt(f)
+        f.debug_struct("PoisonError").finish_non_exhaustive()
     }
 }
 

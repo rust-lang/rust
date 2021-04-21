@@ -1413,7 +1413,7 @@ impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T> fmt::Debug for JoinHandle<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("JoinHandle { .. }")
+        f.debug_struct("JoinHandle").finish_non_exhaustive()
     }
 }
 

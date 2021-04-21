@@ -373,7 +373,7 @@ impl Stdin {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Stdin { .. }")
+        f.debug_struct("Stdin").finish_non_exhaustive()
     }
 }
 
@@ -467,7 +467,7 @@ impl BufRead for StdinLock<'_> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdinLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("StdinLock { .. }")
+        f.debug_struct("StdinLock").finish_non_exhaustive()
     }
 }
 
@@ -607,7 +607,7 @@ impl Stdout {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdout {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Stdout { .. }")
+        f.debug_struct("Stdout").finish_non_exhaustive()
     }
 }
 
@@ -689,7 +689,7 @@ impl Write for StdoutLock<'_> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdoutLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("StdoutLock { .. }")
+        f.debug_struct("StdoutLock").finish_non_exhaustive()
     }
 }
 
@@ -804,7 +804,7 @@ impl Stderr {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stderr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Stderr { .. }")
+        f.debug_struct("Stderr").finish_non_exhaustive()
     }
 }
 
@@ -886,7 +886,7 @@ impl Write for StderrLock<'_> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StderrLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("StderrLock { .. }")
+        f.debug_struct("StderrLock").finish_non_exhaustive()
     }
 }
 

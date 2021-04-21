@@ -53,7 +53,7 @@ pub enum c_void {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for c_void {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("c_void")
+        f.debug_struct("c_void").finish()
     }
 }
 
