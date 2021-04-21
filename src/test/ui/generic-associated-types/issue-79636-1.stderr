@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `Monad::Wrapped`
+  --> $DIR/issue-79636-1.rs:6:10
+   |
+LL |     type Wrapped<B>;
+   |          ^^^^^^^ expected 1 type argument
+   |
+note: associated type defined here, with 1 type parameter: `B`
+  --> $DIR/issue-79636-1.rs:6:10
+   |
+LL |     type Wrapped<B>;
+   |          ^^^^^^^ -
+help: use angle brackets to add missing type argument
+   |
+LL |     type Wrapped<B><B>;
+   |                 ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.
