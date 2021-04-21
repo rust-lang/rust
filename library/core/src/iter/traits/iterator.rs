@@ -3403,16 +3403,37 @@ pub trait Iterator {
         unreachable!("Always specialized");
     }
 
-    /// [`str::strip_prefix`] for iterators!
-    // FIXME(programmerjake): come up with actual docs
+    /// Returns this iterator with the prefix removed.
+    ///
+    /// If `self` starts with the same sequence of items as in `prefix`,
+    /// returns `self` after advancing past the items matching `prefix`, wrapped in `Some`.
+    /// If `prefix` is empty, simply returns `self` unmodified.
+    ///
+    /// If `self` does not start with the same sequence of items as in `prefix`, returns `None`.
+    ///
+    /// This is just like [`slice::strip_prefix`], except for iterators.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iterator_strip_affix)]
+    /// fn f(prefix: Vec<i32>) -> Option<Vec<i32>> {
+    ///     vec![10, 40, 30].into_iter().strip_prefix(prefix).map(Iterator::collect)
+    /// }
+    /// assert_eq!(f(vec![10]), Some(vec![40, 30]));
+    /// assert_eq!(f(vec![10, 40]), Some(vec![30]));
+    /// assert_eq!(f(vec![50]), None);
+    /// assert_eq!(f(vec![10, 50]), None);
+    /// assert_eq!(f(vec![]), Some(vec![10, 40, 30]));
+    /// ```
     #[must_use]
     #[unstable(feature = "iterator_strip_affix", reason = "new API", issue = "none")]
-    fn strip_prefix<I: IntoIterator>(mut self, match_against: I) -> Option<Self>
+    fn strip_prefix<I: IntoIterator>(mut self, prefix: I) -> Option<Self>
     where
         Self: Sized,
         Self::Item: PartialEq<I::Item>,
     {
-        for i in match_against {
+        for i in prefix {
             if self.next()? != i {
                 return None;
             }
@@ -3420,17 +3441,38 @@ pub trait Iterator {
         Some(self)
     }
 
-    /// [`str::strip_suffix`] for iterators!
-    // FIXME(programmerjake): come up with actual docs
+    /// Returns this iterator with the suffix removed.
+    ///
+    /// If `self` ends with the same sequence of items as in `suffix`,
+    /// returns `self` after removing the items matching `suffix`, wrapped in `Some`.
+    /// If `suffix` is empty, simply returns `self` unmodified.
+    ///
+    /// If `self` does not end with the same sequence of items as in `suffix`, returns `None`.
+    ///
+    /// This is just like [`slice::strip_suffix`], except for iterators.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iterator_strip_affix)]
+    /// fn f(suffix: Vec<i32>) -> Option<Vec<i32>> {
+    ///     vec![10, 40, 30].into_iter().strip_suffix(suffix).map(Iterator::collect)
+    /// }
+    /// assert_eq!(f(vec![30]), Some(vec![10, 40]));
+    /// assert_eq!(f(vec![40, 30]), Some(vec![10]));
+    /// assert_eq!(f(vec![50]), None);
+    /// assert_eq!(f(vec![50, 30]), None);
+    /// assert_eq!(f(vec![]), Some(vec![10, 40, 30]));
+    /// ```
     #[must_use]
     #[unstable(feature = "iterator_strip_affix", reason = "new API", issue = "none")]
-    fn strip_suffix<I: IntoIterator>(mut self, match_against: I) -> Option<Self>
+    fn strip_suffix<I: IntoIterator>(mut self, suffix: I) -> Option<Self>
     where
         Self: Sized + DoubleEndedIterator,
         Self::Item: PartialEq<I::Item>,
         I::IntoIter: DoubleEndedIterator,
     {
-        for i in match_against.into_iter().rev() {
+        for i in suffix.into_iter().rev() {
             if self.next_back()? != i {
                 return None;
             }
