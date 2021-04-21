@@ -81,6 +81,13 @@ struct AstValidator<'a> {
     is_assoc_ty_bound_banned: bool,
 
     lint_buffer: &'a mut LintBuffer,
+
+    /// This is slightly complicated. Our representation for poly-trait-refs contains a single
+    /// binder and thus we only allow a single level of quantification. However,
+    /// the syntax of Rust permits quantification in two places in where clauses,
+    /// e.g., `T: for <'a> Foo<'a>` and `for <'a, 'b> &'b T: Foo<'a>`. If both are
+    /// defined, then error.
+    trait_ref_hack: bool,
 }
 
 impl<'a> AstValidator<'a> {
@@ -1213,8 +1220,25 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 deny_equality_constraints(self, predicate, generics);
             }
         }
+        walk_list!(self, visit_generic_param, &generics.params);
+        for predicate in &generics.where_clause.predicates {
+            match predicate {
+                WherePredicate::BoundPredicate(bound_pred) => {
+                    // A type binding, eg `for<'c> Foo: Send+Clone+'c`
+                    self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
 
-        visit::walk_generics(self, generics)
+                    self.visit_ty(&bound_pred.bounded_ty);
+
+                    self.trait_ref_hack = !bound_pred.bound_generic_params.is_empty();
+                    walk_list!(self, visit_param_bound, &bound_pred.bounds);
+                    walk_list!(self, visit_generic_param, &bound_pred.bound_generic_params);
+                    self.trait_ref_hack = false;
+                }
+                _ => {
+                    self.visit_where_predicate(predicate);
+                }
+            }
+        }
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
@@ -1263,17 +1287,21 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_pat(self, pat)
     }
 
-    fn visit_where_predicate(&mut self, p: &'a WherePredicate) {
-        if let &WherePredicate::BoundPredicate(ref bound_predicate) = p {
-            // A type binding, eg `for<'c> Foo: Send+Clone+'c`
-            self.check_late_bound_lifetime_defs(&bound_predicate.bound_generic_params);
-        }
-        visit::walk_where_predicate(self, p);
-    }
-
     fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef, m: &'a TraitBoundModifier) {
         self.check_late_bound_lifetime_defs(&t.bound_generic_params);
+        if self.trait_ref_hack && !t.bound_generic_params.is_empty() {
+            struct_span_err!(
+                self.err_handler(),
+                t.span,
+                E0316,
+                "nested quantification of lifetimes"
+            )
+            .emit();
+        }
+        let trait_ref_hack = self.trait_ref_hack;
+        self.trait_ref_hack = false;
         visit::walk_poly_trait_ref(self, t, m);
+        self.trait_ref_hack = trait_ref_hack;
     }
 
     fn visit_variant_data(&mut self, s: &'a VariantData) {
@@ -1492,6 +1520,7 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
         lint_buffer: lints,
+        trait_ref_hack: false,
     };
     visit::walk_crate(&mut validator, krate);
 
