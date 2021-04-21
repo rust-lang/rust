@@ -653,6 +653,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.smallerHints": {
+                    "markdownDescription": "Whether inlay hints font size should be smaller than editor's font size.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.lens.debug": {
                     "markdownDescription": "Whether to show `Debug` lens. Only applies when\n`#rust-analyzer.lens.enable#` is set.",
                     "default": true,
