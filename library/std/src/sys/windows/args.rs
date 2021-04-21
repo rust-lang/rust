@@ -164,19 +164,9 @@ pub struct Args {
     parsed_args_list: vec::IntoIter<OsString>,
 }
 
-pub struct ArgsInnerDebug<'a> {
-    args: &'a Args,
-}
-
-impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
+impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.args.parsed_args_list.as_slice().fmt(f)
-    }
-}
-
-impl Args {
-    pub fn inner_debug(&self) -> ArgsInnerDebug<'_> {
-        ArgsInnerDebug { args: self }
+        self.parsed_args_list.as_slice().fmt(f)
     }
 }
 
