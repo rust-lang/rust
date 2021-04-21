@@ -36,11 +36,6 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     (1, 2)
 }
 
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
-
 pub unsafe fn strlen(mut s: *const c_char) -> usize {
     // SAFETY: The caller must guarantee `s` points to a valid 0-terminated string.
     unsafe {

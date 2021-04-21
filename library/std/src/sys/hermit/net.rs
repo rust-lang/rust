@@ -6,7 +6,7 @@ use crate::str;
 use crate::sync::Arc;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::abi::IpAddress::{Ipv4, Ipv6};
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sys_common::AsInner;
 use crate::time::Duration;
 
@@ -411,18 +411,18 @@ impl fmt::Debug for UdpSocket {
     }
 }
 
-pub struct LookupHost(Void);
+pub struct LookupHost(!);
 
 impl LookupHost {
     pub fn port(&self) -> u16 {
-        match self.0 {}
+        self.0
     }
 }
 
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
-        match self.0 {}
+        self.0
     }
 }
 
