@@ -470,12 +470,16 @@ impl Step for Std {
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
         for path in builder.paths.iter().map(components_simplified) {
-            if path.get(0) == Some(&"library") {
-                let requested_crate = &path[1];
-                if krates.contains(&requested_crate) {
-                    let index = out.join(requested_crate).join("index.html");
-                    open(builder, &index);
-                }
+            let requested_crate = if path.get(0) == Some(&"library") {
+                &path[1]
+            } else if !path.is_empty() {
+                &path[0]
+            } else {
+                continue;
+            };
+            if krates.contains(&requested_crate) {
+                let index = out.join(requested_crate).join("index.html");
+                open(builder, &index);
             }
         }
     }
