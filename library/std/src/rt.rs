@@ -28,8 +28,11 @@ fn lang_start_internal(
     use crate::panic;
     use crate::sys_common;
 
-    sys_common::rt::init(argc, argv);
+    // SAFETY: Only called once during runtime initialization.
+    unsafe { sys_common::rt::init(argc, argv) };
+
     let exit_code = panic::catch_unwind(main);
+
     sys_common::rt::cleanup();
 
     exit_code.unwrap_or(101) as isize

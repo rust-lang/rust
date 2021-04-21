@@ -1,3 +1,5 @@
+#![deny(unsafe_op_in_unsafe_fn)]
+
 use crate::sync::Once;
 use crate::sys;
 use crate::sys_common::thread_info;
@@ -5,12 +7,11 @@ use crate::thread::Thread;
 
 // One-time runtime initialization.
 // Runs before `main`.
+// SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 #[cfg_attr(test, allow(dead_code))]
-pub fn init(argc: isize, argv: *const *const u8) {
-    static INIT: Once = Once::new();
-    INIT.call_once(|| unsafe {
-        // SAFETY: Only called once during runtime initialization.
+pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    unsafe {
         sys::init(argc, argv);
 
         let main_guard = sys::thread::guard::init();
@@ -20,7 +21,7 @@ pub fn init(argc: isize, argv: *const *const u8) {
         // info about the stack bounds.
         let thread = Thread::new(Some("main".to_owned()));
         thread_info::set(main_guard, thread);
-    });
+    }
 }
 
 // One-time runtime cleanup.
