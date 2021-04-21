@@ -1359,7 +1359,7 @@ pub struct EncodeUtf16<'a> {
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl fmt::Debug for EncodeUtf16<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("EncodeUtf16 { .. }")
+        f.debug_struct("EncodeUtf16").finish_non_exhaustive()
     }
 }
 

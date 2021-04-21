@@ -154,7 +154,7 @@ impl Iterator for Vars {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Vars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Vars { .. }")
+        f.debug_struct("Vars").finish_non_exhaustive()
     }
 }
 
@@ -172,7 +172,7 @@ impl Iterator for VarsOs {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for VarsOs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("VarsOs { .. }")
+        f.debug_struct("VarOs").finish_non_exhaustive()
     }
 }
 
@@ -419,7 +419,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for SplitPaths<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("SplitPaths { .. }")
+        f.debug_struct("SplitPaths").finish_non_exhaustive()
     }
 }
 

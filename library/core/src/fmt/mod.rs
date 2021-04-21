@@ -2220,7 +2220,7 @@ impl Debug for () {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad("PhantomData")
+        f.debug_struct("PhantomData").finish()
     }
 }
 
@@ -2270,7 +2270,7 @@ impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad("UnsafeCell")
+        f.debug_struct("UnsafeCell").finish_non_exhaustive()
     }
 }
 

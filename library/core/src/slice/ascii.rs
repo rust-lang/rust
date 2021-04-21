@@ -146,7 +146,7 @@ impl<'a> fmt::Display for EscapeAscii<'a> {
 #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
 impl<'a> fmt::Debug for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("EscapeAscii { .. }")
+        f.debug_struct("EscapeAscii").finish_non_exhaustive()
     }
 }
 
