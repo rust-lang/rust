@@ -17,7 +17,7 @@ use ide_db::helpers::{
 };
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource};
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
 use vfs::AbsPathBuf;
 
@@ -99,6 +99,9 @@ config_data! {
         diagnostics_enableExperimental: bool    = "true",
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
+        /// Map of path prefixes to be substituted when parsing diagnostic file paths.
+        /// This should be the reverse mapping of what is passed to `rustc` as `--remap-path-prefix`.
+        diagnostics_remapPathPrefixes: FxHashMap<String, String> = "{}",
         /// List of warnings that should be displayed with info severity.
         ///
         /// The warnings will be indicated by a blue squiggly underline in code
@@ -474,6 +477,7 @@ impl Config {
     }
     pub fn diagnostics_map(&self) -> DiagnosticsMapConfig {
         DiagnosticsMapConfig {
+            remap_path_prefixes: self.data.diagnostics_remapPathPrefixes.clone(),
             warnings_as_info: self.data.diagnostics_warningsAsInfo.clone(),
             warnings_as_hint: self.data.diagnostics_warningsAsHint.clone(),
         }
@@ -834,6 +838,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "type": "array",
             "items": { "type": "string" },
             "uniqueItems": true,
+        },
+        "FxHashMap<String, String>" => set! {
+            "type": "object",
         },
         "Option<usize>" => set! {
             "type": ["null", "integer"],
