@@ -18,7 +18,6 @@ impl Command {
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
         use crate::sys::cvt_r;
-        // const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
         let envp = self.capture_env();
 
         if self.saw_nul() {
@@ -60,6 +59,9 @@ impl Command {
             if let Some(ref cwd) = *self.get_cwd() {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
+
+            // pre_exec closures are ignored on VxWorks
+            let _ = self.get_closures();
 
             let c_envp = envp
                 .as_ref()

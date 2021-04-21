@@ -223,7 +223,7 @@ impl Command {
     pub fn get_groups(&self) -> Option<&[gid_t]> {
         self.groups.as_deref()
     }
-    #[allow(dead_code)]
+
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
         &mut self.closures
     }
