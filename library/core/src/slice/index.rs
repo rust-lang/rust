@@ -81,7 +81,7 @@ mod private_slice_index {
     impl Sealed for ops::RangeInclusive<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::RangeToInclusive<usize> {}
-    #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.51.0")]
+    #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
     impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
 }
 
@@ -622,7 +622,7 @@ fn into_slice_range(
     start..end
 }
 
-#[stable(feature = "slice_index_with_ops_bound_pair", since = "1.51.0")]
+#[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
 unsafe impl<T> SliceIndex<[T]> for (ops::Bound<usize>, ops::Bound<usize>) {
     type Output = [T];
 
