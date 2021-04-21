@@ -72,9 +72,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.56"
+version = "0.3.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d117600f438b1707d4e4ae15d3595657288f8235a0eb593e80ecc98ab34e1bc"
+checksum = "78ed203b9ba68b242c62b3fb7480f589dd49829be1edb3fe8fc8b4ffda2dcb8d"
 dependencies = [
  "addr2line",
  "cfg-if",
@@ -168,9 +168,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.60.0"
+version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab0f74445d4fbeaf0217bc1d23978cc73b95b28e8a738b81894580dd646822d2"
+checksum = "d9acf2a9eab79ae7d44cd77ad86a8b1569d7a5e6d9a7db4a0a57a7344dd82c24"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -180,9 +180,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.60.0"
+version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "294b1fc6210a5b3bd06c1d01dda48a581e2cafec80b8d659139ce45456644be2"
+checksum = "877661627f54ba3666a72943c43b326cb170d60899e50a8426111e7a657ff032"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -191,9 +191,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.60.0"
+version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b9386936070be4545bfa22b094b7065af79aa2aeaccc945438f1c5ffe74c30a"
+checksum = "072ffcf17243c2aa3e4b9ea6de3d29e7ef64cfdb0ceccaa431965070a1dc1475"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -204,9 +204,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.60.0"
+version = "0.64.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c12a1ec7e850b50a049f27ef9cf5df3056bbd1acbb3eeb44d024e501a641f3a"
+checksum = "97d4920c9ef2b26dd0b98ffdf070e27fa31e0b6f637463132083cee597e3d326"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -684,9 +684,9 @@ dependencies = [
 
 [[package]]
 name = "idna"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89829a5d69c23d348314a7ac337fe39173b61149a9864deabd260983aed48c21"
+checksum = "418a0a6fab821475f634efe3ccc45c013f742efe03d853e8d3355d5cb850ecf8"
 dependencies = [
  "matches",
  "unicode-bidi",
@@ -1292,9 +1292,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94341e4e44e24f6b591b59e47a8a027df12e008d73fd5672dbea9cc22f4507d9"
+checksum = "8270314b5ccceb518e7e578952f0b72b88222d02e8f77f5ecf7abbb673539041"
 dependencies = [
  "bitflags",
 ]
@@ -1391,9 +1391,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "714.0.0"
+version = "716.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a35856f140bed0dc7c7d6ba2134099d337377a3a4e11bfc79bccabf1fd4c9d42"
+checksum = "12eac7554c1d3f49f105f14d53c0f3402220e875983113562701d8e597a0995c"
 dependencies = [
  "unicode-xid",
 ]
