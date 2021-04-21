@@ -362,11 +362,23 @@ pub fn eq_variant_data(l: &VariantData, r: &VariantData) -> bool {
 }
 
 pub fn eq_struct_field(l: &FieldDef, r: &FieldDef) -> bool {
-    l.is_placeholder == r.is_placeholder
-        && over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))
-        && eq_vis(&l.vis, &r.vis)
-        && both(&l.ident, &r.ident, |l, r| eq_id(*l, *r))
-        && eq_ty(&l.ty, &r.ty)
+    if l.is_placeholder != r.is_placeholder
+    || !over(&l.attrs, &r.attrs, |l, r| eq_attr(l, r))
+    || !eq_vis(&l.vis, &r.vis)
+    {
+        false
+    } else {
+        match (&l.variant, &r.variant) {
+            (FieldVariant::Named(NamedField{ident: l_ident, ty: l_ty}),
+            FieldVariant::Named(NamedField{ident: r_ident, ty: r_ty})) =>
+            both(l_ident, r_ident, |l, r| eq_id(*l, *r))
+            && eq_ty(l_ty, r_ty),
+            // FIXME: Compare two unnamed fields and check for equality
+            (FieldVariant::Unnamed(_),
+            FieldVariant::Named(_)) => false,
+            _ => false
+        }
+    }
 }
 
 pub fn eq_fn_sig(l: &FnSig, r: &FnSig) -> bool {

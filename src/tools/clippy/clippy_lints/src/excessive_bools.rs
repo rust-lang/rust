@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{in_macro, match_path_ast};
-use rustc_ast::ast::{AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind};
+use rustc_ast::ast::{AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind, FieldVariant, NamedField};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
@@ -145,7 +145,11 @@ impl EarlyLintPass for ExcessiveBools {
                 let struct_bools = variant_data
                     .fields()
                     .iter()
-                    .filter(|field| is_bool_ty(&field.ty))
+                    .filter(|field| match &field.variant {
+                        FieldVariant::Named(NamedField{ty, ident:_}) if is_bool_ty(ty) => true,
+                        // FIXME: Handle Unnamed variant
+                        _ => false
+                    })
                     .count()
                     .try_into()
                     .unwrap();
