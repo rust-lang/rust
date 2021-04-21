@@ -117,7 +117,6 @@ h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 }
 h1.fqn {
 	display: flex;
-	gap: 8px;
 	width: 100%;
 	border-bottom: 1px dashed;
 	margin-top: 0;
@@ -465,6 +464,7 @@ h1.fqn > .out-of-band {
 	float: unset;
 	flex: 1;
 	text-align: right;
+	margin-left: 8px;
 }
 
 h3.impl > .out-of-band {
