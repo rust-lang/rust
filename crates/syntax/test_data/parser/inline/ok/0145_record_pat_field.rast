@@ -1,5 +1,5 @@
-SOURCE_FILE@0..63
-  FN@0..62
+SOURCE_FILE@0..102
+  FN@0..101
     FN_KW@0..2 "fn"
     WHITESPACE@2..3 " "
     NAME@3..6
@@ -8,7 +8,7 @@ SOURCE_FILE@0..63
       L_PAREN@6..7 "("
       R_PAREN@7..8 ")"
     WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..62
+    BLOCK_EXPR@9..101
       L_CURLY@9..10 "{"
       WHITESPACE@10..15 "\n    "
       LET_STMT@15..35
@@ -70,6 +70,52 @@ SOURCE_FILE@0..63
           L_PAREN@57..58 "("
           R_PAREN@58..59 ")"
         SEMICOLON@59..60 ";"
-      WHITESPACE@60..61 "\n"
-      R_CURLY@61..62 "}"
-  WHITESPACE@62..63 "\n"
+      WHITESPACE@60..65 "\n    "
+      LET_STMT@65..99
+        LET_KW@65..68 "let"
+        WHITESPACE@68..69 " "
+        RECORD_PAT@69..93
+          PATH@69..70
+            PATH_SEGMENT@69..70
+              NAME_REF@69..70
+                IDENT@69..70 "S"
+          WHITESPACE@70..71 " "
+          RECORD_PAT_FIELD_LIST@71..93
+            L_CURLY@71..72 "{"
+            WHITESPACE@72..73 " "
+            RECORD_PAT_FIELD@73..91
+              ATTR@73..86
+                POUND@73..74 "#"
+                L_BRACK@74..75 "["
+                PATH@75..78
+                  PATH_SEGMENT@75..78
+                    NAME_REF@75..78
+                      IDENT@75..78 "cfg"
+                TOKEN_TREE@78..85
+                  L_PAREN@78..79 "("
+                  IDENT@79..82 "any"
+                  TOKEN_TREE@82..84
+                    L_PAREN@82..83 "("
+                    R_PAREN@83..84 ")"
+                  R_PAREN@84..85 ")"
+                R_BRACK@85..86 "]"
+              WHITESPACE@86..87 " "
+              NAME_REF@87..88
+                IDENT@87..88 "x"
+              COLON@88..89 ":"
+              WHITESPACE@89..90 " "
+              LITERAL_PAT@90..91
+                LITERAL@90..91
+                  INT_NUMBER@90..91 "1"
+            WHITESPACE@91..92 " "
+            R_CURLY@92..93 "}"
+        WHITESPACE@93..94 " "
+        EQ@94..95 "="
+        WHITESPACE@95..96 " "
+        TUPLE_EXPR@96..98
+          L_PAREN@96..97 "("
+          R_PAREN@97..98 ")"
+        SEMICOLON@98..99 ";"
+      WHITESPACE@99..100 "\n"
+      R_CURLY@100..101 "}"
+  WHITESPACE@101..102 "\n"

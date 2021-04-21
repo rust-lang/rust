@@ -206,13 +206,15 @@ fn record_pat_field_list(p: &mut Parser) {
             T![.] if p.at(T![..]) => p.bump(T![..]),
             T!['{'] => error_block(p, "expected ident"),
 
-            c => {
+            _ => {
                 let m = p.start();
-                match c {
+                attributes::outer_attrs(p);
+                match p.current() {
                     // test record_pat_field
                     // fn foo() {
                     //     let S { 0: 1 } = ();
                     //     let S { x: 1 } = ();
+                    //     let S { #[cfg(any())] x: 1 } = ();
                     // }
                     IDENT | INT_NUMBER if p.nth(1) == T![:] => {
                         name_ref_or_index(p);
