@@ -300,6 +300,21 @@ impl<'a> PostExpansionVisitor<'a> {
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
+    fn visit_field_def(&mut self, s: &'a ast::FieldDef) {
+        match s.variant {
+            ast::FieldVariant::Unnamed(_) => {
+                gate_feature_post!(
+                    &self,
+                    unnamed_fields,
+                    s.span,
+                    "unnamed fields are not yet fully implemented"
+                )
+            }
+            _ => {}
+        }
+        visit::walk_field_def(self, s);
+    }
+
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         let attr_info =
             attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).map(|a| **a);
@@ -692,6 +707,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         gate_all!(destructuring_assignment, "destructuring assignments are unstable");
     }
     gate_all!(pub_macro_rules, "`pub` on `macro_rules` items is unstable");
+    gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

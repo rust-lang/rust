@@ -642,6 +642,9 @@ declare_features! (
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
 
+    /// Allows unnamed fields of struct and union type
+    (active, unnamed_fields, "1.53.0", Some(49804), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -669,6 +672,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics_defaults,
     sym::inherent_associated_types,
     sym::type_alias_impl_trait,
+    sym::unnamed_fields,
 ];
 
 /// Some features are not allowed to be used together at the same time, if
