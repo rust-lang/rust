@@ -4,10 +4,9 @@
 //! get a super-set of matches. Then, we we confirm each match using precise
 //! name resolution.
 
-use std::{convert::TryInto, iter, mem};
+use std::{convert::TryInto, mem};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
-use either::Either;
 use hir::{
     DefWithBody, HasAttrs, HasSource, InFile, ModuleDef, ModuleSource, Semantics, Visibility,
 };
@@ -370,35 +369,45 @@ impl<'a> FindUsages<'a> {
 
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
-            let matches = text.match_indices(pat).chain(if search_for_self {
-                Either::Left(text.match_indices("Self"))
-            } else {
-                Either::Right(iter::empty())
-            });
-
-            for (idx, _) in matches {
+            let mut handle_match = |idx: usize| -> bool {
                 let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
-                    continue;
+                    return false;
                 }
 
                 if let Some(name) = sema.find_node_at_offset_with_descend(&tree, offset) {
                     match name {
                         ast::NameLike::NameRef(name_ref) => {
                             if self.found_name_ref(&name_ref, sink) {
-                                return;
+                                return true;
                             }
                         }
                         ast::NameLike::Name(name) => {
                             if self.found_name(&name, sink) {
-                                return;
+                                return true;
                             }
                         }
                         ast::NameLike::Lifetime(lifetime) => {
                             if self.found_lifetime(&lifetime, sink) {
-                                return;
+                                return true;
                             }
                         }
+                    }
+                }
+
+                return false;
+            };
+
+            for (idx, _) in text.match_indices(pat) {
+                if handle_match(idx) {
+                    return;
+                }
+            }
+
+            if search_for_self {
+                for (idx, _) in text.match_indices("Self") {
+                    if handle_match(idx) {
+                        return;
                     }
                 }
             }
