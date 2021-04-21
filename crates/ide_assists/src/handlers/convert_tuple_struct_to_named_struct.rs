@@ -1,4 +1,4 @@
-use hir::{Adt, ModuleDef};
+use hir::{Adt, ModuleDef, Struct};
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     ast::{self, AstNode, GenericParamsOwner, VisibilityOwner},
@@ -55,6 +55,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
         ast::FieldList::TupleFieldList(it) => it,
         ast::FieldList::RecordFieldList(_) => return None,
     };
+    let strukt_def = ctx.sema.to_def(&strukt)?;
 
     let target = strukt.syntax().text_range();
     acc.add(
@@ -64,7 +65,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
         |edit| {
             let names = generate_names(tuple_fields.fields());
             edit_field_references(ctx, edit, tuple_fields.fields(), &names);
-            edit_struct_references(ctx, edit, &strukt, &names);
+            edit_struct_references(ctx, edit, strukt_def, &names);
             edit_struct_def(ctx, edit, &strukt, tuple_fields, names);
         },
     )
@@ -80,7 +81,7 @@ fn edit_struct_def(
     let record_fields = tuple_fields
         .fields()
         .zip(names)
-        .map(|(f, name)| ast::make::record_field(f.visibility(), name, f.ty().unwrap()));
+        .filter_map(|(f, name)| Some(ast::make::record_field(f.visibility(), name, f.ty()?)));
     let record_fields = ast::make::record_field_list(record_fields);
     let tuple_fields_text_range = tuple_fields.syntax().text_range();
 
@@ -103,10 +104,9 @@ fn edit_struct_def(
 fn edit_struct_references(
     ctx: &AssistContext,
     edit: &mut AssistBuilder,
-    strukt: &ast::Struct,
+    strukt: Struct,
     names: &[ast::Name],
 ) {
-    let strukt = ctx.sema.to_def(strukt).unwrap();
     let strukt_def = Definition::ModuleDef(ModuleDef::Adt(Adt::Struct(strukt)));
     let usages = strukt_def.usages(&ctx.sema).include_self_kw_refs(true).all();
 
@@ -117,10 +117,15 @@ fn edit_struct_references(
                 match_ast! {
                     match node {
                         ast::TupleStructPat(tuple_struct_pat) => {
+                            let path = match tuple_struct_pat.path() {
+                                Some(it) => it,
+                                None => continue,
+                            };
+
                             edit.replace(
                                 tuple_struct_pat.syntax().text_range(),
                                 ast::make::record_pat_with_fields(
-                                    tuple_struct_pat.path().unwrap(),
+                                    path,
                                     ast::make::record_pat_field_list(tuple_struct_pat.fields().zip(names).map(
                                         |(pat, name)| {
                                             ast::make::record_pat_field(
@@ -135,7 +140,10 @@ fn edit_struct_references(
                         },
                         // for tuple struct creations like Foo(42)
                         ast::CallExpr(call_expr) => {
-                            let path = call_expr.syntax().descendants().find_map(ast::PathExpr::cast).unwrap().path().unwrap();
+                            let path = match call_expr.syntax().descendants().find_map(ast::PathExpr::cast).map(|expr| expr.path()) {
+                                Some(Some(it)) => it,
+                                _ => continue,
+                            };
 
                             // this also includes method calls like Foo::new(42), we should skip them
                             if let Some(Some(name_ref)) = path.segment().map(|s| s.name_ref()) {
@@ -146,8 +154,10 @@ fn edit_struct_references(
                                 };
                             }
 
-                            let arg_list =
-                                call_expr.syntax().descendants().find_map(ast::ArgList::cast).unwrap();
+                            let arg_list = match call_expr.syntax().descendants().find_map(ast::ArgList::cast) {
+                                Some(it) => it,
+                                None => continue,
+                            };
 
                             edit.replace(
                                 call_expr.syntax().text_range(),
