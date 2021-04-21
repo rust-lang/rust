@@ -12,13 +12,39 @@ use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, 
 // Converts tuple struct to struct with named fields.
 //
 // ```
-// struct Inner;
-// struct A$0(Inner);
+// struct Point$0(f32, f32);
+//
+// impl Point {
+//     pub fn new(x: f32, y: f32) -> Self {
+//         Point(x, y)
+//     }
+//
+//     pub fn x(&self) -> f32 {
+//         self.0
+//     }
+//
+//     pub fn y(&self) -> f32 {
+//         self.1
+//     }
+// }
 // ```
 // ->
 // ```
-// struct Inner;
-// struct A { field1: Inner }
+// struct Point { field1: f32, field2: f32 }
+//
+// impl Point {
+//     pub fn new(x: f32, y: f32) -> Self {
+//         Point { field1: x, field2: y }
+//     }
+//
+//     pub fn x(&self) -> f32 {
+//         self.field1
+//     }
+//
+//     pub fn y(&self) -> f32 {
+//         self.field2
+//     }
+// }
 // ```
 pub(crate) fn convert_tuple_struct_to_named_struct(
     acc: &mut Assists,
