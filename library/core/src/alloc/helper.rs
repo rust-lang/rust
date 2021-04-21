@@ -2,8 +2,16 @@ use crate::{
     alloc::{AllocError, Allocator, Layout},
     fmt,
     marker::PhantomData,
+    mem,
     ptr::NonNull,
 };
+
+#[unstable(feature = "allocator_api_internals", issue = "none")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AllocInit {
+    Uninitialized,
+    Zeroed,
+}
 
 /// An allocator that requests some extra memory from the parent allocator for storing a prefix and/or a suffix.
 ///
@@ -38,7 +46,7 @@ pub struct PrefixAllocator<Alloc, Prefix = ()> {
 
 impl<Alloc: fmt::Debug, Prefix> fmt::Debug for PrefixAllocator<Alloc, Prefix> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Affix").field("parent", &self.parent).finish()
+        f.debug_struct("PrefixAllocator").field("parent", &self.parent).finish()
     }
 }
 
@@ -85,15 +93,26 @@ impl<Alloc, Prefix> PrefixAllocator<Alloc, Prefix> {
     /// # Safety
     ///
     /// * `ptr` must denote a block of memory *[currently allocated]* via this allocator, and
-    /// * `layout` must *[fit]* that block of memory.
+    /// * `ptr` must point to (and have valid metadata for) a previously valid instance of `T`,
+    ///   but the `T` is allowed to be dropped.
     ///
     /// [currently allocated]: https://doc.rust-lang.org/nightly/core/alloc/trait.AllocRef.html#currently-allocated-memory
-    /// [fit]: https://doc.rust-lang.org/nightly/core/alloc/trait.AllocRef.html#memory-fitting
     #[inline]
-    pub unsafe fn prefix(ptr: NonNull<u8>, layout: Layout) -> NonNull<Prefix> {
-        let prefix_offset = Self::prefix_offset(layout);
-        // SAFETY: `prefix_offset` is smaller (and not equal to) `ptr` as the same function for calculating `prefix_offset` is used when allocating.
-        unsafe { NonNull::new_unchecked(ptr.as_ptr().sub(prefix_offset)).cast() }
+    pub unsafe fn prefix<T: ?Sized>(ptr: NonNull<T>) -> NonNull<Prefix> {
+        let prefix_layout = Layout::new::<Prefix>();
+
+        // SAFETY: since the only unsized types possible are slices, trait objects,
+        //   and extern types, the input safety requirement is currently enough to
+        //   satisfy the requirements of for_value_raw; this is an implementation
+        //   detail of the language that may not be relied upon outside of std.
+        let align = unsafe { mem::align_of_val_raw(ptr.as_ptr()) };
+
+        let offset = prefix_layout.size() + prefix_layout.padding_needed_for(align);
+        let ptr = ptr.as_ptr() as *mut u8;
+
+        // SAFETY: `ptr` was allocated with this allocator thus, `ptr - offset` points to the
+        //   prefix and is non-null.
+        unsafe { NonNull::new_unchecked(ptr.sub(offset)).cast() }
     }
 
     fn create_ptr(ptr: NonNull<[u8]>, offset_prefix: usize) -> NonNull<[u8]> {

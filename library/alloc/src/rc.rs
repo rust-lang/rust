@@ -247,7 +247,7 @@ use crate::boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
-use core::alloc::helper::PrefixAllocator;
+use core::alloc::helper::{AllocInit, PrefixAllocator};
 use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
@@ -258,7 +258,7 @@ use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
 use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
-use core::mem::{self, forget, size_of_val, MaybeUninit};
+use core::mem::{self, forget};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -274,7 +274,11 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
-struct RcMetadata {
+/// Metadata `Rc` and `Weak` to be allocated as prefix.
+#[unstable(feature = "allocator_api_internals", issue = "none")]
+#[derive(Debug, Clone)]
+#[doc(hidden)]
+pub struct RcMetadata {
     strong: Cell<usize>,
     weak: Cell<usize>,
 }
@@ -293,16 +297,60 @@ impl RcMetadata {
     fn new_weak() -> Self {
         Self { strong: Cell::new(0), weak: Cell::new(1) }
     }
+
+    #[inline]
+    fn strong(&self) -> usize {
+        self.strong.get()
+    }
+
+    #[inline]
+    fn inc_strong(&self) {
+        let strong = self.strong();
+
+        // We want to abort on overflow instead of dropping the value.
+        // The reference count will never be zero when this is called;
+        // nevertheless, we insert an abort here to hint LLVM at
+        // an otherwise missed optimization.
+        if strong == 0 || strong == usize::MAX {
+            abort();
+        }
+        self.strong.set(strong + 1);
+    }
+
+    #[inline]
+    fn dec_strong(&self) {
+        self.strong.set(self.strong() - 1);
+    }
+
+    #[inline]
+    fn weak(&self) -> usize {
+        self.weak.get()
+    }
+
+    #[inline]
+    fn inc_weak(&self) {
+        let weak = self.weak();
+
+        // We want to abort on overflow instead of dropping the value.
+        // The reference count will never be zero when this is called;
+        // nevertheless, we insert an abort here to hint LLVM at
+        // an otherwise missed optimization.
+        if weak == 0 || weak == usize::MAX {
+            abort();
+        }
+        self.weak.set(weak + 1);
+    }
+
+    #[inline]
+    fn dec_weak(&self) {
+        self.weak.set(self.weak() - 1);
+    }
 }
 
-// This is repr(C) to future-proof against possible field-reordering, which
-// would interfere with otherwise safe [into|from]_raw() of transmutable
-// inner types.
-#[repr(C)]
-struct RcBox<T: ?Sized> {
-    meta: RcMetadata,
-    value: T,
-}
+/// Allocator used for `Rc` and `Weak`.
+#[unstable(feature = "allocator_api_internals", issue = "none")]
+#[doc(hidden)]
+pub type RcAllocator<A> = PrefixAllocator<A, RcMetadata>;
 
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
 /// Counted'.
@@ -317,8 +365,9 @@ struct RcBox<T: ?Sized> {
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T: ?Sized> {
-    ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    ptr: NonNull<T>,
+    alloc: RcAllocator<Global>,
+    _marker: PhantomData<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -334,20 +383,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {
-        // This unsafety is ok because while this Rc is alive we're guaranteed
-        // that the inner pointer is valid.
-        unsafe { self.ptr.as_ref() }
-    }
-
-    #[inline]
-    fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
-        Self { ptr, phantom: PhantomData }
-    }
-
-    #[inline]
-    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
-        Self::from_inner(unsafe { NonNull::new_unchecked(ptr) })
+    fn metadata(&self) -> &RcMetadata {
+        unsafe { RcAllocator::<Global>::prefix(self.ptr).as_ref() }
     }
 }
 
@@ -361,9 +398,10 @@ impl<T> Rc<T> {
     ///
     /// let five = Rc::new(5);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        Self::from_inner(Box::leak(box RcBox { meta: RcMetadata::new_strong(), value }).into())
+        Self::try_new(value).unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
     }
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
@@ -390,19 +428,52 @@ impl<T> Rc<T> {
     ///     }
     /// }
     /// ```
+    #[inline]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
-        // Construct the inner in the "uninitialized" state with a single
-        // weak reference.
-        let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
-            meta: RcMetadata::new_weak(),
-            value: mem::MaybeUninit::<T>::uninit(),
-        })
-        .into();
+        Self::try_new_cyclic(data_fn).unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+    }
 
-        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+    /// Tries to construct a new `Rc<T>` using a weak reference to itself. Attempting
+    /// to upgrade the weak reference before this function returns will result
+    /// in a `None` value. However, the weak reference may be cloned freely and
+    /// stored for use at a later time.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api, arc_new_cyclic)]
+    /// #![allow(dead_code)]
+    /// use std::alloc::AllocError;
+    /// use std::rc::{Rc, Weak};
+    ///
+    /// struct Gadget {
+    ///     self_weak: Weak<Self>,
+    ///     // ... more fields
+    /// }
+    /// impl Gadget {
+    ///     pub fn new() -> Result<Rc<Self>, AllocError> {
+    ///         Rc::try_new_cyclic(|self_weak| {
+    ///             Gadget { self_weak: self_weak.clone(), /* ... */ }
+    ///         })
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "arc_new_cyclic", issue = "75861")]
+    pub fn try_new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Result<Rc<T>, AllocError> {
+        let alloc = RcAllocator::new(Global);
+        let ptr = Self::try_allocate(
+            &alloc,
+            Layout::new::<T>(),
+            RcMetadata::new_weak(),
+            AllocInit::Uninitialized,
+            NonNull::cast,
+        )?;
 
-        let weak = Weak { ptr: init_ptr };
+        // Strong references should collectively own a shared weak reference,
+        // so don't run the destructor for our old weak reference.
+        let weak = mem::ManuallyDrop::new(Weak { ptr, alloc });
 
         // It's important we don't give up ownership of the weak pointer, or
         // else the memory might be freed by the time `data_fn` returns. If
@@ -410,23 +481,15 @@ impl<T> Rc<T> {
         // weak pointer for ourselves, but this would result in additional
         // updates to the weak reference count which might not be necessary
         // otherwise.
-        let data = data_fn(&weak);
-
         unsafe {
-            let inner = init_ptr.as_ptr();
-            ptr::write(ptr::addr_of_mut!((*inner).value), data);
-
-            let prev_value = (*inner).meta.strong.get();
-            debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-            (*inner).meta.strong.set(1);
+            ptr.as_ptr().write(data_fn(&weak));
         }
 
-        let strong = Rc::from_inner(init_ptr);
+        let meta = unsafe { RcAllocator::<Global>::prefix(ptr).as_ref() };
+        debug_assert_eq!(meta.strong.get(), 0, "No prior strong references should exist");
+        meta.strong.set(1);
 
-        // Strong references should collectively own a shared weak reference,
-        // so don't run the destructor for our old weak reference.
-        mem::forget(weak);
-        strong
+        unsafe { Ok(Rc::from_raw_in(ptr.as_ptr(), weak.alloc)) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents.
@@ -450,15 +513,10 @@ impl<T> Rc<T> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            ))
-        }
+        Self::try_new_uninit().unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -481,15 +539,10 @@ impl<T> Rc<T> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
+    #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            ))
-        }
+        Self::try_new_zeroed().unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
     }
 
     /// Constructs a new `Rc<T>`, returning an error if the allocation fails
@@ -503,15 +556,14 @@ impl<T> Rc<T> {
     /// let five = Rc::try_new(5);
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
+    #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
-        // There is an implicit weak pointer owned by all the strong
-        // pointers, which ensures that the weak destructor never frees
-        // the allocation while the strong destructor is running, even
-        // if the weak pointer is stored inside the strong one.
-        Ok(Self::from_inner(
-            Box::leak(Box::try_new(RcBox { meta: RcMetadata::new_strong(), value })?).into(),
-        ))
+        let mut rc = Self::try_new_uninit()?;
+        unsafe {
+            Rc::get_mut_unchecked(&mut rc).as_mut_ptr().write(value);
+            Ok(rc.assume_init())
+        }
     }
 
     /// Constructs a new `Rc` with uninitialized contents, returning an error if the allocation fails
@@ -539,13 +591,16 @@ impl<T> Rc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            )?))
-        }
+        let alloc = RcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::try_allocate(
+            &alloc,
+            layout,
+            RcMetadata::new_strong(),
+            AllocInit::Uninitialized,
+            NonNull::cast,
+        )?;
+        unsafe { Ok(Rc::from_raw_in(ptr.as_ptr().cast(), alloc)) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -572,16 +627,21 @@ impl<T> Rc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     //#[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
-        unsafe {
-            Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
-                Layout::new::<T>(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
-            )?))
-        }
+        let alloc = RcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::try_allocate(
+            &alloc,
+            layout,
+            RcMetadata::new_strong(),
+            AllocInit::Zeroed,
+            NonNull::cast,
+        )?;
+        unsafe { Ok(Rc::from_raw_in(ptr.as_ptr().cast(), alloc)) }
     }
+
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
+    #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn pin(value: T) -> Pin<Rc<T>> {
         unsafe { Pin::new_unchecked(Rc::new(value)) }
@@ -610,16 +670,16 @@ impl<T> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         if Rc::strong_count(&this) == 1 {
+            let this = mem::ManuallyDrop::new(this);
             unsafe {
-                let val = ptr::read(&*this); // copy the contained object
+                let val = ptr::read(&**this); // copy the contained object
 
                 // Indicate to Weaks that they can't be promoted by decrementing
                 // the strong count, and then remove the implicit "strong weak"
                 // pointer while also handling drop logic by just crafting a
                 // fake Weak.
-                this.inner().dec_strong();
-                let _weak = Weak { ptr: this.ptr };
-                forget(this);
+                this.metadata().dec_strong();
+                let _weak = Weak { ptr: this.ptr, alloc: this.alloc };
                 Ok(val)
             }
         } else {
@@ -654,7 +714,15 @@ impl<T> Rc<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
-        unsafe { Rc::from_ptr(Rc::allocate_for_slice(len)) }
+        let alloc = RcAllocator::new(Global);
+        let ptr = Rc::allocate(
+            &alloc,
+            Layout::array::<T>(len).unwrap(),
+            RcMetadata::new_strong(),
+            AllocInit::Uninitialized,
+            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+        );
+        unsafe { Rc::from_raw_in(ptr.as_ptr(), alloc) }
     }
 
     /// Constructs a new reference-counted slice with uninitialized contents, with the memory being
@@ -679,16 +747,15 @@ impl<T> Rc<[T]> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
-        unsafe {
-            Rc::from_ptr(Rc::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate_zeroed(layout),
-                |mem| {
-                    ptr::slice_from_raw_parts_mut(mem as *mut T, len)
-                        as *mut RcBox<[mem::MaybeUninit<T>]>
-                },
-            ))
-        }
+        let alloc = RcAllocator::new(Global);
+        let ptr = Rc::allocate(
+            &alloc,
+            Layout::array::<T>(len).unwrap(),
+            RcMetadata::new_strong(),
+            AllocInit::Zeroed,
+            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+        );
+        unsafe { Rc::from_raw_in(ptr.as_ptr(), alloc) }
     }
 }
 
@@ -724,10 +791,13 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-    #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub unsafe fn assume_init(self) -> Rc<T> {
-        Rc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
+        let this = mem::ManuallyDrop::new(self);
+        let ptr = this.ptr;
+        let alloc = this.alloc;
+        unsafe { Rc::from_raw_in(ptr.cast().as_ptr(), alloc) }
     }
 }
 
@@ -765,10 +835,16 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
-    #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
+    #[unstable(feature = "new_uninit", issue = "63291")]
     pub unsafe fn assume_init(self) -> Rc<[T]> {
-        unsafe { Rc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _) }
+        let this = mem::ManuallyDrop::new(self);
+        let len = this.ptr.len();
+        let ptr = unsafe {
+            NonNull::slice_from_raw_parts(NonNull::new_unchecked(this.ptr.as_mut_ptr().cast()), len)
+        };
+        let alloc = this.alloc;
+        unsafe { Rc::from_raw_in(ptr.as_ptr(), alloc) }
     }
 }
 
@@ -789,11 +865,11 @@ impl<T: ?Sized> Rc<T> {
     /// let x_ptr = Rc::into_raw(x);
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
+    #[inline]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub fn into_raw(this: Self) -> *const T {
-        let ptr = Self::as_ptr(&this);
-        mem::forget(this);
-        ptr
+        let this = mem::ManuallyDrop::new(this);
+        Self::as_ptr(&this)
     }
 
     /// Provides a raw pointer to the data.
@@ -812,14 +888,10 @@ impl<T: ?Sized> Rc<T> {
     /// assert_eq!(x_ptr, Rc::as_ptr(&y));
     /// assert_eq!(unsafe { &*x_ptr }, "hello");
     /// ```
+    #[inline(always)]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
-
-        // SAFETY: This cannot go through Deref::deref or Rc::inner because
-        // this is required to retain raw/mut provenance such that e.g. `get_mut` can
-        // write through the pointer after the Rc is recovered through `from_raw`.
-        unsafe { ptr::addr_of_mut!((*ptr).value) }
+        this.ptr.as_ptr()
     }
 
     /// Constructs an `Rc<T>` from a raw pointer.
@@ -859,9 +931,17 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
+    #[inline]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe { Self::from_data_ptr(ptr).assume_init() }
+        unsafe { Self::from_raw_in(ptr, RcAllocator::new(Global)) }
+    }
+
+    /// Constructs an `Rc<T, A>` from a raw pointer.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub unsafe fn from_raw_in(ptr: *const T, alloc: RcAllocator<Global>) -> Self {
+        Self { ptr: unsafe { NonNull::new_unchecked(ptr as *mut T) }, alloc, _marker: PhantomData }
     }
 
     /// Creates a new [`Weak`] pointer to this allocation.
@@ -875,12 +955,13 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// let weak_five = Rc::downgrade(&five);
     /// ```
+    #[inline]
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
-        this.inner().inc_weak();
+        this.metadata().inc_weak();
         // Make sure we do not create a dangling Weak
         debug_assert!(!is_dangling(this.ptr.as_ptr()));
-        Weak { ptr: this.ptr }
+        Weak { ptr: this.ptr, alloc: this.alloc.clone() }
     }
 
     /// Gets the number of [`Weak`] pointers to this allocation.
@@ -898,7 +979,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn weak_count(this: &Self) -> usize {
-        this.inner().weak() - 1
+        this.metadata().weak() - 1
     }
 
     /// Gets the number of strong (`Rc`) pointers to this allocation.
@@ -916,7 +997,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_counts", since = "1.15.0")]
     pub fn strong_count(this: &Self) -> usize {
-        this.inner().strong()
+        this.metadata().strong()
     }
 
     /// Increments the strong reference count on the `Rc<T>` associated with the
@@ -947,7 +1028,8 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
     pub unsafe fn increment_strong_count(ptr: *const T) {
         // Retain Rc, but don't touch refcount by wrapping in ManuallyDrop
-        let rc = unsafe { mem::ManuallyDrop::new(Rc::<T>::from_raw(ptr)) };
+        let rc = unsafe { mem::ManuallyDrop::new(Self::from_raw(ptr)) };
+        debug_assert_ne!(Self::strong_count(&rc), 0, "the strong count must be at least 1");
         // Now increase refcount, but don't drop new refcount either
         let _rc_clone: mem::ManuallyDrop<_> = rc.clone();
     }
@@ -983,14 +1065,14 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_mutate_strong_count", since = "1.53.0")]
     pub unsafe fn decrement_strong_count(ptr: *const T) {
-        unsafe { mem::drop(Rc::from_raw(ptr)) };
+        unsafe { mem::drop(Self::from_raw(ptr)) };
     }
 
     /// Returns `true` if there are no other `Rc` or [`Weak`] pointers to
     /// this allocation.
     #[inline]
     fn is_unique(this: &Self) -> bool {
-        Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
+        Self::weak_count(this) == 0 && Self::strong_count(this) == 1
     }
 
     /// Returns a mutable reference into the given `Rc`, if there are
@@ -1020,7 +1102,7 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
-        if Rc::is_unique(this) { unsafe { Some(Rc::get_mut_unchecked(this)) } } else { None }
+        if Self::is_unique(this) { unsafe { Some(Self::get_mut_unchecked(this)) } } else { None }
     }
 
     /// Returns a mutable reference into the given `Rc`,
@@ -1053,13 +1135,12 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+        debug_assert!(Self::is_unique(this), "The pointer has to be unique");
         // We are careful to *not* create a reference covering the "count" fields, as
         // this would conflict with accesses to the reference counts (e.g. by `Weak`).
-        unsafe { &mut (*this.ptr.as_ptr()).value }
+        unsafe { this.ptr.as_mut() }
     }
 
-    #[inline]
-    #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns `true` if the two `Rc`s point to the same allocation
     /// (in a vein similar to [`ptr::eq`]).
     ///
@@ -1077,8 +1158,10 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     ///
     /// [`ptr::eq`]: core::ptr::eq
+    #[inline]
+    #[stable(feature = "ptr_eq", since = "1.17.0")]
     pub fn ptr_eq(this: &Self, other: &Self) -> bool {
-        this.ptr.as_ptr() == other.ptr.as_ptr()
+        this.ptr == other.ptr
     }
 }
 
@@ -1134,7 +1217,7 @@ impl<T: Clone> Rc<T> {
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
-        if Rc::strong_count(this) != 1 {
+        if Self::strong_count(this) != 1 {
             // Gotta clone the data, there are other Rcs.
             // Pre-allocate memory to allow writing the cloned value directly.
             let mut rc = Self::new_uninit();
@@ -1150,10 +1233,10 @@ impl<T: Clone> Rc<T> {
                 let data = Rc::get_mut_unchecked(&mut rc);
                 data.as_mut_ptr().copy_from_nonoverlapping(&**this, 1);
 
-                this.inner().dec_strong();
+                this.metadata().dec_strong();
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
-                this.inner().dec_weak();
+                this.metadata().dec_weak();
                 ptr::write(this, rc.assume_init());
             }
         }
@@ -1162,13 +1245,11 @@ impl<T: Clone> Rc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
         // reference to the allocation.
-        unsafe { &mut this.ptr.as_mut().value }
+        unsafe { Self::get_mut_unchecked(this) }
     }
 }
 
 impl Rc<dyn Any> {
-    #[inline]
-    #[stable(feature = "rc_downcast", since = "1.29.0")]
     /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
@@ -1187,11 +1268,14 @@ impl Rc<dyn Any> {
     /// print_if_string(Rc::new(my_string));
     /// print_if_string(Rc::new(0i8));
     /// ```
+    #[inline]
+    #[stable(feature = "rc_downcast", since = "1.29.0")]
     pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
-            let ptr = self.ptr.cast::<RcBox<T>>();
-            forget(self);
-            Ok(Rc::from_inner(ptr))
+            let this = mem::ManuallyDrop::new(self);
+            let ptr = this.ptr;
+            let alloc = this.alloc;
+            unsafe { Ok(Rc::from_raw_in(ptr.cast().as_ptr(), alloc)) }
         } else {
             Err(self)
         }
@@ -1200,24 +1284,21 @@ impl Rc<dyn Any> {
 
 impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcBox<T>` with sufficient space for
-    /// a possibly-unsized inner value where the value has the layout provided.
+    /// a possibly-unsized inner value where the value has the layout provided,
+    /// returning an error if allocation fails.
     ///
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
-    unsafe fn allocate_for_layout(
-        value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> *mut RcBox<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
-        unsafe {
-            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-        }
+    #[inline]
+    fn allocate(
+        alloc: &RcAllocator<Global>,
+        layout: Layout,
+        meta: RcMetadata,
+        init: AllocInit,
+        mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
+    ) -> NonNull<T> {
+        Self::try_allocate(alloc, layout, meta, init, mem_to_ptr)
+            .unwrap_or_else(|_| handle_alloc_error(layout))
     }
 
     /// Allocates an `RcBox<T>` with sufficient space for
@@ -1227,104 +1308,71 @@ impl<T: ?Sized> Rc<T> {
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
     #[inline]
-    unsafe fn try_allocate_for_layout(
-        value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> Result<*mut RcBox<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+    fn try_allocate(
+        alloc: &RcAllocator<Global>,
+        layout: Layout,
+        meta: RcMetadata,
+        init: AllocInit,
+        mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
+    ) -> Result<NonNull<T>, AllocError> {
+        let memory = match init {
+            AllocInit::Uninitialized => alloc.allocate(layout)?,
+            AllocInit::Zeroed => alloc.allocate_zeroed(layout)?,
+        };
 
-        // Allocate for the layout.
-        let ptr = allocate(layout)?;
-
-        // Initialize the RcBox
-        let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
+        let ptr = mem_to_ptr(memory.as_non_null_ptr());
         unsafe {
-            debug_assert_eq!(Layout::for_value(&*inner), layout);
-
-            ptr::write(&mut (*inner).meta.strong, Cell::new(1));
-            ptr::write(&mut (*inner).meta.weak, Cell::new(1));
+            RcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
         }
-
-        Ok(inner)
-    }
-
-    /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
-        // Allocate for the `RcBox<T>` using the given value.
-        unsafe {
-            Self::allocate_for_layout(
-                Layout::for_value(&*ptr),
-                |layout| Global.allocate(layout),
-                |mem| (ptr as *mut RcBox<T>).set_ptr_value(mem),
-            )
-        }
+        Ok(ptr)
     }
 
     fn from_box(v: Box<T>) -> Rc<T> {
         unsafe {
             let (box_unique, alloc) = Box::into_unique(v);
             let bptr = box_unique.as_ptr();
+            let rc_alloc = RcAllocator::new(alloc);
 
-            let value_size = size_of_val(&*bptr);
-            let ptr = Self::allocate_for_ptr(bptr);
+            let layout = Layout::for_value(&*bptr);
+            let ptr = Self::allocate(
+                &rc_alloc,
+                layout,
+                RcMetadata::new_strong(),
+                AllocInit::Uninitialized,
+                |mem| NonNull::new_unchecked(bptr.set_ptr_value(mem.as_ptr())),
+            );
 
             // Copy value as bytes
             ptr::copy_nonoverlapping(
                 bptr as *const T as *const u8,
-                &mut (*ptr).value as *mut _ as *mut u8,
-                value_size,
+                ptr.as_ptr() as *mut u8,
+                layout.size(),
             );
 
             // Free the allocation without dropping its contents
-            box_free(box_unique, alloc);
+            box_free(box_unique, &rc_alloc.parent);
 
-            Self::from_ptr(ptr)
+            Self::from_raw_in(ptr.as_ptr(), rc_alloc)
         }
-    }
-
-    /// # Safety
-    ///
-    /// The caller must ensure that the pointer points to the `value` field of a `Global`
-    /// allocation of type `RcBox<T>`. Depending on how the pointer was created, the
-    /// `meta` field might or might not be uninitialized. It's up to the caller to ensure
-    /// that this field is set to the correct value before the return value is unwrapped.
-    #[inline]
-    unsafe fn from_data_ptr(ptr: *const T) -> MaybeUninit<Self> {
-        let offset = unsafe { data_offset(ptr) };
-
-        // Reverse the offset to find the original RcBox.
-        let rc_ptr =
-            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) };
-
-        unsafe { MaybeUninit::new(Self::from_ptr(rc_ptr)) }
     }
 }
 
 impl<T> Rc<[T]> {
-    /// Allocates an `RcBox<[T]>` with the given length.
-    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
-        unsafe {
-            Self::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
-            )
-        }
-    }
-
     /// Copy elements from slice into newly allocated Rc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
+        let alloc = RcAllocator::new(Global);
+        let ptr = Self::allocate(
+            &alloc,
+            Layout::array::<T>(v.len()).unwrap(),
+            RcMetadata::new_strong(),
+            AllocInit::Uninitialized,
+            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), v.len()),
+        );
         unsafe {
-            let ptr = Self::allocate_for_slice(v.len());
-            ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).value as *mut [T] as *mut T, v.len());
-            Self::from_ptr(ptr)
+            ptr::copy_nonoverlapping(v.as_ptr(), ptr.as_non_null_ptr().as_ptr(), v.len());
+            Self::from_raw_in(ptr.as_ptr(), alloc)
         }
     }
 
@@ -1335,44 +1383,47 @@ impl<T> Rc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
-        struct Guard<T> {
-            mem: NonNull<u8>,
-            elems: *mut T,
+        struct Guard<T, A: Allocator> {
+            ptr: NonNull<T>,
             layout: Layout,
             n_elems: usize,
+            alloc: A,
         }
 
-        impl<T> Drop for Guard<T> {
+        impl<T, A: Allocator> Drop for Guard<T, A> {
             fn drop(&mut self) {
                 unsafe {
-                    let slice = from_raw_parts_mut(self.elems, self.n_elems);
+                    let slice = from_raw_parts_mut(self.ptr.as_ptr(), self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Global.deallocate(self.mem, self.layout);
+                    self.alloc.deallocate(self.ptr.cast(), self.layout);
                 }
             }
         }
 
         unsafe {
-            let ptr = Self::allocate_for_slice(len);
+            let alloc = RcAllocator::new(Global);
+            let layout = Layout::array::<T>(len).unwrap();
+            let ptr = Self::allocate(
+                &alloc,
+                layout,
+                RcMetadata::new_strong(),
+                AllocInit::Uninitialized,
+                |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+            );
 
-            let mem = ptr as *mut _ as *mut u8;
-            let layout = Layout::for_value(&*ptr);
-
-            // Pointer to first element
-            let elems = &mut (*ptr).value as *mut [T] as *mut T;
-
-            let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
+            let mut guard =
+                Guard { ptr: ptr.as_non_null_ptr(), layout, n_elems: 0, alloc: alloc.by_ref() };
 
             for (i, item) in iter.enumerate() {
-                ptr::write(elems.add(i), item);
+                ptr::write(ptr.get_unchecked_mut(i).as_ptr(), item);
                 guard.n_elems += 1;
             }
 
             // All clear. Forget the guard so it doesn't free the new RcBox.
             forget(guard);
 
-            Self::from_ptr(ptr)
+            Self::from_raw_in(ptr.as_ptr(), alloc)
         }
     }
 }
@@ -1402,7 +1453,7 @@ impl<T: ?Sized> Deref for Rc<T> {
 
     #[inline(always)]
     fn deref(&self) -> &T {
-        &self.inner().value
+        unsafe { self.ptr.as_ref() }
     }
 }
 
@@ -1437,18 +1488,20 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// drop(foo2);   // Prints "dropped!"
     /// ```
     fn drop(&mut self) {
-        unsafe {
-            self.inner().dec_strong();
-            if self.inner().strong() == 0 {
-                // destroy the contained object
+        self.metadata().dec_strong();
+        if self.metadata().strong() == 0 {
+            // destroy the contained object
+            unsafe {
                 ptr::drop_in_place(Self::get_mut_unchecked(self));
+            }
 
-                // remove the implicit "strong weak" pointer now that we've
-                // destroyed the contents.
-                self.inner().dec_weak();
-
-                if self.inner().weak() == 0 {
-                    Global.deallocate(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
+            // remove the implicit "strong weak" pointer now that we've
+            // destroyed the contents.
+            self.metadata().dec_weak();
+            if self.metadata().weak() == 0 {
+                unsafe {
+                    let layout = Layout::for_value_raw(self.ptr.as_ptr());
+                    self.alloc.deallocate(self.ptr.cast(), layout);
                 }
             }
         }
@@ -1473,8 +1526,8 @@ impl<T: ?Sized> Clone for Rc<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Rc<T> {
-        self.inner().inc_strong();
-        Self::from_inner(self.ptr)
+        self.metadata().inc_strong();
+        unsafe { Self::from_raw(self.ptr.as_ptr()) }
     }
 }
 
@@ -1976,9 +2029,10 @@ pub struct Weak<T: ?Sized> {
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap.  That's not a value a real pointer
-    // will ever have because RcBox has alignment at least 2.
+    // will ever have because `RcMetadata` has alignment at least 2.
     // This is only possible when `T: Sized`; unsized `T` never dangle.
-    ptr: NonNull<RcBox<T>>,
+    ptr: NonNull<T>,
+    alloc: RcAllocator<Global>,
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
@@ -1991,6 +2045,17 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
+
+impl<T: ?Sized> Weak<T> {
+    #[inline(always)]
+    fn metadata(&self) -> Option<&RcMetadata> {
+        if is_dangling(self.ptr.as_ptr()) {
+            None
+        } else {
+            Some(unsafe { RcAllocator::<Global>::prefix(self.ptr).as_ref() })
+        }
+    }
+}
 
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
@@ -2008,20 +2073,16 @@ impl<T> Weak<T> {
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
     pub fn new() -> Weak<T> {
-        Weak { ptr: NonNull::new(usize::MAX as *mut RcBox<T>).expect("MAX is not 0") }
+        Weak {
+            ptr: NonNull::new(usize::MAX as *mut T).expect("MAX is not 0"),
+            alloc: RcAllocator::new(Global),
+        }
     }
 }
 
+#[inline]
 pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {
-    let address = ptr as *mut () as usize;
-    address == usize::MAX
-}
-
-/// Helper type to allow accessing the reference counts without
-/// making any assertions about the data field.
-struct WeakInner<'a> {
-    weak: &'a Cell<usize>,
-    strong: &'a Cell<usize>,
+    ptr as *mut () as usize == usize::MAX
 }
 
 impl<T: ?Sized> Weak<T> {
@@ -2050,20 +2111,10 @@ impl<T: ?Sized> Weak<T> {
     /// ```
     ///
     /// [`null`]: core::ptr::null
+    #[inline(always)]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
-
-        if is_dangling(ptr) {
-            // If the pointer is dangling, we return the sentinel directly. This cannot be
-            // a valid payload address, as the payload is at least as aligned as RcBox (usize).
-            ptr as *const T
-        } else {
-            // SAFETY: if is_dangling returns false, then the pointer is dereferencable.
-            // The payload may be dropped at this point, and we have to maintain provenance,
-            // so use raw pointer manipulation.
-            unsafe { ptr::addr_of_mut!((*ptr).value) }
-        }
+        self.ptr.as_ptr()
     }
 
     /// Consumes the `Weak<T>` and turns it into a raw pointer.
@@ -2093,6 +2144,7 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// [`from_raw`]: Weak::from_raw
     /// [`as_ptr`]: Weak::as_ptr
+    #[inline]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub fn into_raw(self) -> *const T {
         let result = self.as_ptr();
@@ -2142,24 +2194,17 @@ impl<T: ?Sized> Weak<T> {
     /// [`into_raw`]: Weak::into_raw
     /// [`upgrade`]: Weak::upgrade
     /// [`new`]: Weak::new
+    #[inline]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        // See Weak::as_ptr for context on how the input pointer is derived.
+        unsafe { Self::from_raw_in(ptr, RcAllocator::new(Global)) }
+    }
 
-        let ptr = if is_dangling(ptr as *mut T) {
-            // This is a dangling Weak.
-            ptr as *mut RcBox<T>
-        } else {
-            // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
-            // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
-            let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcBox.
-            // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { (ptr as *mut RcBox<T>).set_ptr_value((ptr as *mut u8).offset(-offset)) }
-        };
-
-        // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
-        Weak { ptr: unsafe { NonNull::new_unchecked(ptr) } }
+    /// Constructs a `Weak<T, A>` from a raw pointer.
+    #[inline]
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub unsafe fn from_raw_in(ptr: *const T, alloc: RcAllocator<Global>) -> Self {
+        Self { ptr: unsafe { NonNull::new_unchecked(ptr as *mut T) }, alloc }
     }
 
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
@@ -2187,13 +2232,11 @@ impl<T: ?Sized> Weak<T> {
     /// ```
     #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Rc<T>> {
-        let inner = self.inner()?;
-        if inner.strong() == 0 {
-            None
-        } else {
-            inner.inc_strong();
-            Some(Rc::from_inner(self.ptr))
-        }
+        let meta = self.metadata()?;
+        (meta.strong() != 0).then(|| {
+            meta.inc_strong();
+            unsafe { Rc::from_raw(self.ptr.as_ptr()) }
+        })
     }
 
     /// Gets the number of strong (`Rc`) pointers pointing to this allocation.
@@ -2201,7 +2244,7 @@ impl<T: ?Sized> Weak<T> {
     /// If `self` was created using [`Weak::new`], this will return 0.
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong() } else { 0 }
+        self.metadata().map(|meta| meta.strong()).unwrap_or(0)
     }
 
     /// Gets the number of `Weak` pointers pointing to this allocation.
@@ -2209,32 +2252,15 @@ impl<T: ?Sized> Weak<T> {
     /// If no strong pointers remain, this will return zero.
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn weak_count(&self) -> usize {
-        self.inner()
-            .map(|inner| {
-                if inner.strong() > 0 {
-                    inner.weak() - 1 // subtract the implicit weak ptr
+        self.metadata()
+            .map(|meta| {
+                if meta.strong() > 0 {
+                    meta.weak() - 1 // subtract the implicit weak ptr
                 } else {
                     0
                 }
             })
             .unwrap_or(0)
-    }
-
-    /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`,
-    /// (i.e., when this `Weak` was created by `Weak::new`).
-    #[inline]
-    fn inner(&self) -> Option<WeakInner<'_>> {
-        if is_dangling(self.ptr.as_ptr()) {
-            None
-        } else {
-            // We are careful to *not* create a reference covering the "data" field, as
-            // the field may be mutated concurrently (for example, if the last `Rc`
-            // is dropped, the data field will be dropped in-place).
-            Some(unsafe {
-                let ptr = self.ptr.as_ptr();
-                WeakInner { strong: &(*ptr).meta.strong, weak: &(*ptr).meta.weak }
-            })
-        }
     }
 
     /// Returns `true` if the two `Weak`s point to the same allocation (similar to
@@ -2278,10 +2304,10 @@ impl<T: ?Sized> Weak<T> {
     /// ```
     ///
     /// [`ptr::eq`]: core::ptr::eq
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "weak_ptr_eq", since = "1.39.0")]
     pub fn ptr_eq(&self, other: &Self) -> bool {
-        self.ptr.as_ptr() == other.ptr.as_ptr()
+        self.ptr == other.ptr
     }
 }
 
@@ -2312,14 +2338,15 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
     fn drop(&mut self) {
-        let inner = if let Some(inner) = self.inner() { inner } else { return };
+        let meta = if let Some(meta) = self.metadata() { meta } else { return };
 
-        inner.dec_weak();
+        meta.dec_weak();
         // the weak count starts at 1, and will only go to zero if all
         // the strong pointers have disappeared.
-        if inner.weak() == 0 {
+        if meta.weak() == 0 {
             unsafe {
-                Global.deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
+                let layout = Layout::for_value_raw(self.ptr.as_ptr());
+                self.alloc.deallocate(self.ptr.cast(), layout);
             }
         }
     }
@@ -2340,10 +2367,10 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
-        if let Some(inner) = self.inner() {
-            inner.inc_weak()
+        if let Some(meta) = self.metadata() {
+            meta.inc_weak()
         }
-        Weak { ptr: self.ptr }
+        Weak { ptr: self.ptr, alloc: RcAllocator::new(Global) }
     }
 }
 
@@ -2375,93 +2402,6 @@ impl<T> Default for Weak<T> {
     }
 }
 
-// NOTE: We checked_add here to deal with mem::forget safely. In particular
-// if you mem::forget Rcs (or Weaks), the ref-count can overflow, and then
-// you can free the allocation while outstanding Rcs (or Weaks) exist.
-// We abort because this is such a degenerate scenario that we don't care about
-// what happens -- no real program should ever experience this.
-//
-// This should have negligible overhead since you don't actually need to
-// clone these much in Rust thanks to ownership and move-semantics.
-
-#[doc(hidden)]
-trait RcInnerPtr {
-    fn weak_ref(&self) -> &Cell<usize>;
-    fn strong_ref(&self) -> &Cell<usize>;
-
-    #[inline]
-    fn strong(&self) -> usize {
-        self.strong_ref().get()
-    }
-
-    #[inline]
-    fn inc_strong(&self) {
-        let strong = self.strong();
-
-        // We want to abort on overflow instead of dropping the value.
-        // The reference count will never be zero when this is called;
-        // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missed optimization.
-        if strong == 0 || strong == usize::MAX {
-            abort();
-        }
-        self.strong_ref().set(strong + 1);
-    }
-
-    #[inline]
-    fn dec_strong(&self) {
-        self.strong_ref().set(self.strong() - 1);
-    }
-
-    #[inline]
-    fn weak(&self) -> usize {
-        self.weak_ref().get()
-    }
-
-    #[inline]
-    fn inc_weak(&self) {
-        let weak = self.weak();
-
-        // We want to abort on overflow instead of dropping the value.
-        // The reference count will never be zero when this is called;
-        // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missed optimization.
-        if weak == 0 || weak == usize::MAX {
-            abort();
-        }
-        self.weak_ref().set(weak + 1);
-    }
-
-    #[inline]
-    fn dec_weak(&self) {
-        self.weak_ref().set(self.weak() - 1);
-    }
-}
-
-impl<T: ?Sized> RcInnerPtr for RcBox<T> {
-    #[inline(always)]
-    fn weak_ref(&self) -> &Cell<usize> {
-        &self.meta.weak
-    }
-
-    #[inline(always)]
-    fn strong_ref(&self) -> &Cell<usize> {
-        &self.meta.strong
-    }
-}
-
-impl<'a> RcInnerPtr for WeakInner<'a> {
-    #[inline(always)]
-    fn weak_ref(&self) -> &Cell<usize> {
-        self.weak
-    }
-
-    #[inline(always)]
-    fn strong_ref(&self) -> &Cell<usize> {
-        self.strong
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> borrow::Borrow<T> for Rc<T> {
     fn borrow(&self) -> &T {
@@ -2478,22 +2418,3 @@ impl<T: ?Sized> AsRef<T> for Rc<T> {
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized> Unpin for Rc<T> {}
-
-type RcAllocator = PrefixAllocator<Global, RcMetadata>;
-
-/// Get the offset within an `RcBox` for the payload behind a pointer.
-///
-/// # Safety
-///
-/// The pointer must point to (and have valid metadata for) a previously
-/// valid instance of T, but the T is allowed to be dropped.
-unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> isize {
-    unsafe {
-        // SAFETY: since the only unsized types possible are slices, trait objects,
-        // and extern types, the input safety requirement is currently enough to
-        // satisfy the requirements of for_value_raw; this is an implementation
-        // detail of the language that may not be relied upon outside of std.
-        let layout = Layout::for_value_raw(ptr);
-        RcAllocator::prefix_offset(layout) as isize
-    }
-}
