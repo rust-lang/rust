@@ -101,14 +101,35 @@ fn compute_components<'tcx>(
             }
 
             ty::Closure(_, ref substs) => {
-                let tupled_ty = substs.as_closure().tupled_upvars_ty();
-                compute_components(tcx, tupled_ty, out, visited);
+                let closure_substs = substs.as_closure();
+                compute_components(tcx, closure_substs.tupled_upvars_ty(), out, visited);
+                // Subtle: The return type of a closure can be used in a projection
+                // of the form `<closure as FnOnce>::Output`. Per the RFC 1214 rules
+                // for projections, we can use `closure: 'a` to conclude that
+                // `<closure as FnOnce>::Output: 'a` holds. In order for this to be sound,
+                // we must enforce that requiring `closure: 'a` also requires that.
+                // the return type of the closure outlive `a`.
+                // We do not require that any of the closure's *argument* types outlive 'a
+                // - this is sound, because there is no rule that would allow us to conclide
+                // anything about the argument types from the fact that `closure: 'a` holds
+                // (the arguments of a closure do not appear in the output type of a trait impl
+                // for any trait implemented for a closure).
+                // This is inconsistent with function pointers, which require that all of their
+                // argument types (as well as the return type) outlive `'a` in order for
+                // `fn(A, B) -> R : ' a` to hold. It would be a breaking change to enforce this for
+                // closuers, and is not required for soundness.
+                //
+                // Note: The 'skip_binder()' call here matches the way we handle fn substs
+                // via `walk_shallow`, which also skips binders.
+                compute_components(tcx, closure_substs.sig().output().skip_binder(), out, visited);
             }
 
             ty::Generator(_, ref substs, _) => {
                 // Same as the closure case
-                let tupled_ty = substs.as_generator().tupled_upvars_ty();
-                compute_components(tcx, tupled_ty, out, visited);
+                let generator_substs = substs.as_generator();
+                compute_components(tcx, generator_substs.tupled_upvars_ty(), out, visited);
+                compute_components(tcx, generator_substs.yield_ty(), out, visited);
+                compute_components(tcx, generator_substs.return_ty(), out, visited);
 
                 // We ignore regions in the generator interior as we don't
                 // want these to affect region inference

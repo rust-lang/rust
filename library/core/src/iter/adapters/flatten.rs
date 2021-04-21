@@ -334,9 +334,9 @@ where
         Fold: FnMut(Acc, U) -> Acc,
     {
         #[inline]
-        fn flatten<T: IntoIterator, Acc>(
-            fold: &mut impl FnMut(Acc, T::IntoIter) -> Acc,
-        ) -> impl FnMut(Acc, T) -> Acc + '_ {
+        fn flatten<'a, T: IntoIterator, Acc: 'a>(
+            fold: &'a mut impl FnMut(Acc, T::IntoIter) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc + 'a {
             move |acc, iter| fold(acc, iter.into_iter())
         }
 
@@ -365,7 +365,7 @@ where
         R: Try<Output = Acc>,
     {
         #[inline]
-        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc>>(
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc> + 'a>(
             frontiter: &'a mut Option<T::IntoIter>,
             fold: &'a mut impl FnMut(Acc, &mut T::IntoIter) -> R,
         ) -> impl FnMut(Acc, T) -> R + 'a {
@@ -403,9 +403,9 @@ where
         Fold: FnMut(Acc, U) -> Acc,
     {
         #[inline]
-        fn flatten<T: IntoIterator, Acc>(
-            fold: &mut impl FnMut(Acc, T::IntoIter) -> Acc,
-        ) -> impl FnMut(Acc, T) -> Acc + '_ {
+        fn flatten<'a, T: IntoIterator, Acc: 'a>(
+            fold: &'a mut impl FnMut(Acc, T::IntoIter) -> Acc,
+        ) -> impl FnMut(Acc, T) -> Acc + 'a {
             move |acc, iter| fold(acc, iter.into_iter())
         }
 
@@ -434,7 +434,7 @@ where
         R: Try<Output = Acc>,
     {
         #[inline]
-        fn flatten<'a, T: IntoIterator, Acc, R: Try>(
+        fn flatten<'a, T: IntoIterator, Acc, R: Try + 'a>(
             backiter: &'a mut Option<T::IntoIter>,
             fold: &'a mut impl FnMut(Acc, &mut T::IntoIter) -> R,
         ) -> impl FnMut(Acc, T) -> R + 'a {

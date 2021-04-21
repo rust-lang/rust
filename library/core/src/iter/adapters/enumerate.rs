@@ -76,7 +76,7 @@ where
         R: Try<Output = Acc>,
     {
         #[inline]
-        fn enumerate<'a, T, Acc, R>(
+        fn enumerate<'a, T, Acc, R: 'a>(
             count: &'a mut usize,
             mut fold: impl FnMut(Acc, (usize, T)) -> R + 'a,
         ) -> impl FnMut(Acc, T) -> R + 'a {

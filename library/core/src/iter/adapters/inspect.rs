@@ -54,7 +54,7 @@ fn inspect_fold<T, Acc>(
     }
 }
 
-fn inspect_try_fold<'a, T, Acc, R>(
+fn inspect_try_fold<'a, T, Acc, R: 'a>(
     f: &'a mut impl FnMut(&T),
     mut fold: impl FnMut(Acc, T) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {

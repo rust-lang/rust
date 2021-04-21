@@ -1,0 +1,17 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/issue-84366-closure-outlives-ret.rs:27:5
+   |
+LL | fn make_static_displayable<'a>(s: &'a str) -> Box<dyn fmt::Display> {
+   |                            --  - `s` is a reference that is only valid in the function body
+   |                            |
+   |                            lifetime `'a` defined here
+...
+LL |     static_transfers_to_associated(&f, s)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     `s` escapes the function body here
+   |     argument requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0521`.

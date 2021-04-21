@@ -37,7 +37,7 @@ fn filter_fold<T, Acc>(
     move |acc, item| if predicate(&item) { fold(acc, item) } else { acc }
 }
 
-fn filter_try_fold<'a, T, Acc, R: Try<Output = Acc>>(
+fn filter_try_fold<'a, T, Acc, R: Try<Output = Acc> + 'a>(
     predicate: &'a mut impl FnMut(&T) -> bool,
     mut fold: impl FnMut(Acc, T) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {

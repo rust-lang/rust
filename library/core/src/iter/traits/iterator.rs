@@ -3848,7 +3848,7 @@ where
     F: FnMut(A::Item, B::Item) -> ControlFlow<T>,
 {
     #[inline]
-    fn compare<'a, B, X, T>(
+    fn compare<'a, B, X, T: 'a>(
         b: &'a mut B,
         mut f: impl FnMut(X, B::Item) -> ControlFlow<T> + 'a,
     ) -> impl FnMut(X) -> ControlFlow<ControlFlow<T, Ordering>> + 'a

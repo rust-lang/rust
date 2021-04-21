@@ -58,7 +58,7 @@ where
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
-        fn scan<'a, T, St, B, Acc, R: Try<Output = Acc>>(
+        fn scan<'a, T, St, B, Acc: 'a, R: Try<Output = Acc> + 'a>(
             state: &'a mut St,
             f: &'a mut impl FnMut(&mut St, T) -> Option<B>,
             mut fold: impl FnMut(Acc, B) -> R + 'a,

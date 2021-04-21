@@ -39,7 +39,7 @@ fn filter_map_fold<T, B, Acc>(
     }
 }
 
-fn filter_map_try_fold<'a, T, B, Acc, R: Try<Output = Acc>>(
+fn filter_map_try_fold<'a, T, B, Acc, R: Try<Output = Acc> + 'a>(
     f: &'a mut impl FnMut(T) -> Option<B>,
     mut fold: impl FnMut(Acc, B) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {
@@ -94,9 +94,9 @@ where
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         #[inline]
-        fn find<T, B>(
-            f: &mut impl FnMut(T) -> Option<B>,
-        ) -> impl FnMut((), T) -> ControlFlow<B> + '_ {
+        fn find<'a, T, B: 'a>(
+            f: &'a mut impl FnMut(T) -> Option<B>,
+        ) -> impl FnMut((), T) -> ControlFlow<B> + 'a {
             move |(), x| match f(x) {
                 Some(x) => ControlFlow::Break(x),
                 None => ControlFlow::CONTINUE,

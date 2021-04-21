@@ -84,7 +84,7 @@ fn map_fold<T, B, Acc>(
     move |acc, elt| g(acc, f(elt))
 }
 
-fn map_try_fold<'a, T, B, Acc, R>(
+fn map_try_fold<'a, T, B, Acc, R: 'a>(
     f: &'a mut impl FnMut(T) -> B,
     mut g: impl FnMut(Acc, B) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {
