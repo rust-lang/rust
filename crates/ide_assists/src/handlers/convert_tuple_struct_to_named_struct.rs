@@ -1,5 +1,5 @@
 use hir::{Adt, ModuleDef};
-use ide_db::defs::Definition;
+use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     ast::{self, AstNode, GenericParamsOwner, VisibilityOwner},
     match_ast,
@@ -80,11 +80,9 @@ fn edit_struct_references(
     strukt: &ast::Struct,
     names: &[ast::Name],
 ) {
-    let strukt_def = ctx.sema.to_def(strukt).unwrap();
-    let usages = Definition::ModuleDef(ModuleDef::Adt(Adt::Struct(strukt_def)))
-        .usages(&ctx.sema)
-        .include_self_kw_refs(true)
-        .all();
+    let strukt = ctx.sema.to_def(strukt).unwrap();
+    let strukt_def = Definition::ModuleDef(ModuleDef::Adt(Adt::Struct(strukt)));
+    let usages = strukt_def.usages(&ctx.sema).include_self_kw_refs(true).all();
 
     for (file_id, refs) in usages {
         edit.edit_file(file_id);
@@ -109,16 +107,26 @@ fn edit_struct_references(
                                 .to_string(),
                             );
                         },
-                        // for tuple struct creations like: Foo(42)
+                        // for tuple struct creations like Foo(42)
                         ast::CallExpr(call_expr) => {
-                            let path = call_expr.syntax().descendants().find_map(ast::PathExpr::cast).unwrap();
+                            let path = call_expr.syntax().descendants().find_map(ast::PathExpr::cast).unwrap().path().unwrap();
+
+                            // this also includes method calls like Foo::new(42), we should skip them
+                            if let Some(Some(name_ref)) = path.segment().map(|s| s.name_ref()) {
+                                match NameRefClass::classify(&ctx.sema, &name_ref) {
+                                    Some(NameRefClass::Definition(Definition::SelfType(_))) => {},
+                                    Some(NameRefClass::Definition(def)) if def == strukt_def => {},
+                                    _ => continue,
+                                };
+                            }
+
                             let arg_list =
                                 call_expr.syntax().descendants().find_map(ast::ArgList::cast).unwrap();
 
                             edit.replace(
                                 call_expr.syntax().text_range(),
                                 ast::make::record_expr(
-                                    path.path().unwrap(),
+                                    path,
                                     ast::make::record_expr_field_list(arg_list.args().zip(names).map(
                                         |(expr, name)| {
                                             ast::make::record_expr_field(
@@ -191,8 +199,12 @@ struct Inner;
 struct A$0(Inner);
 
 impl A {
-    fn new() -> A {
-        A(Inner)
+    fn new(inner: Inner) -> A {
+        A(inner)
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
     }
 
     fn into_inner(self) -> Inner {
@@ -204,8 +216,12 @@ struct Inner;
 struct A { field1: Inner }
 
 impl A {
-    fn new() -> A {
-        A { field1: Inner }
+    fn new(inner: Inner) -> A {
+        A { field1: inner }
+    }
+
+    fn new_with_default() -> A {
+        A::new(Inner)
     }
 
     fn into_inner(self) -> Inner {
@@ -224,8 +240,12 @@ struct Inner;
 struct A$0(Inner);
 
 impl A {
-    fn new() -> Self {
-        Self(Inner)
+    fn new(inner: Inner) -> Self {
+        Self(inner)
+    }
+
+    fn new_with_default() -> Self {
+        Self::new(Inner)
     }
 
     fn into_inner(self) -> Inner {
@@ -237,8 +257,12 @@ struct Inner;
 struct A { field1: Inner }
 
 impl A {
-    fn new() -> Self {
-        Self { field1: Inner }
+    fn new(inner: Inner) -> Self {
+        Self { field1: inner }
+    }
+
+    fn new_with_default() -> Self {
+        Self::new(Inner)
     }
 
     fn into_inner(self) -> Inner {
