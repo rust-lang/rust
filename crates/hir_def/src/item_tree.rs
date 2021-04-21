@@ -196,13 +196,6 @@ impl ItemTree {
         self.raw_attrs(of).clone().filter(db, krate)
     }
 
-    pub fn all_inner_items(&self) -> impl Iterator<Item = ModItem> + '_ {
-        match &self.data {
-            Some(data) => Some(data.inner_items.values().flatten().copied()).into_iter().flatten(),
-            None => None.into_iter().flatten(),
-        }
-    }
-
     pub fn inner_items_of_block(&self, block: FileAstId<ast::BlockExpr>) -> &[ModItem] {
         match &self.data {
             Some(data) => data.inner_items.get(&block).map(|it| &**it).unwrap_or(&[]),
