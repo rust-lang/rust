@@ -1,9 +1,9 @@
 use crate::ffi::CStr;
 use crate::io;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::time::Duration;
 
-pub struct Thread(Void);
+pub struct Thread(!);
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
@@ -47,7 +47,7 @@ impl Thread {
     }
 
     pub fn join(self) {
-        match self.0 {}
+        self.0
     }
 }
 

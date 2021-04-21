@@ -61,11 +61,6 @@ pub fn unsupported_err() -> crate::io::Error {
     )
 }
 
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
-
 pub unsafe fn strlen(start: *const c_char) -> usize {
     let mut str = start;
 
