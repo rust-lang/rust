@@ -320,10 +320,10 @@ fn type_to_noq_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
 
 fn type_to_noq_suffix(t: &str) -> &str {
     match t {
-        "int8x8_t" | "int8x16_t" => "_s8",
-        "int16x4_t" | "int16x8_t" => "_s16",
-        "int32x2_t" | "int32x4_t" => "_s32",
-        "int64x1_t" | "int64x2_t" => "_s64",
+        "int8x8_t" | "int8x16_t" | "i8" => "_s8",
+        "int16x4_t" | "int16x8_t" | "i16" => "_s16",
+        "int32x2_t" | "int32x4_t" | "i32" => "_s32",
+        "int64x1_t" | "int64x2_t" | "i64" => "_s64",
         "uint8x8_t" | "uint8x16_t" => "_u8",
         "uint16x4_t" | "uint16x8_t" => "_u16",
         "uint32x2_t" | "uint32x4_t" => "_u32",
@@ -348,6 +348,7 @@ enum Suffix {
     NoQNSuffix,
     OutSuffix,
     Lane,
+    In2,
 }
 
 #[derive(Clone, Copy)]
@@ -845,6 +846,7 @@ fn gen_aarch64(
         NoQNSuffix => format!("{}{}", current_name, type_to_noq_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
+        In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -1218,6 +1220,7 @@ fn gen_arm(
         NoQNSuffix => format!("{}{}", current_name, type_to_noq_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
+        In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
     };
     let current_aarch64 = current_aarch64
         .clone()
@@ -1729,6 +1732,7 @@ fn get_call(
         let start = match &*fn_format[1] {
             "0" => 0,
             "n" => n.unwrap(),
+            "out_len" => type_len(out_t) as i32,
             "halflen" => (type_len(in_t[1]) / 2) as i32,
             s => s.parse::<i32>().unwrap(),
         };
@@ -1747,6 +1751,7 @@ fn get_call(
             "out_bits_exp_len" => type_bits_exp_len(out_t),
             "in_exp_len" => type_exp_len(in_t[1]),
             "in_bits_exp_len" => type_bits_exp_len(in_t[1]),
+            "in2_exp_len" => type_exp_len(in_t[2]),
             _ => 0,
         };
         if len == 0 {
@@ -1922,6 +1927,10 @@ fn get_call(
             fn_name.push_str(type_to_suffix(in_t[1]));
         } else if fn_format[1] == "nself" {
             fn_name.push_str(type_to_n_suffix(in_t[1]));
+        } else if fn_format[1] == "out" {
+            fn_name.push_str(type_to_suffix(out_t));
+        } else if fn_format[1] == "in2" {
+            fn_name.push_str(type_to_suffix(in_t[2]));
         } else if fn_format[1] == "signed" {
             fn_name.push_str(type_to_suffix(type_to_signed(in_t[1])));
         } else if fn_format[1] == "unsigned" {
@@ -2132,6 +2141,8 @@ mod test {
             suffix = OutSuffix;
         } else if line.starts_with("lane-suffixes") {
             suffix = Lane;
+        } else if line.starts_with("in2-suffix") {
+            suffix = In2;
         } else if line.starts_with("a = ") {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {

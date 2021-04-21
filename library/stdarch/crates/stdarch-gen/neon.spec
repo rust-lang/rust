@@ -1296,15 +1296,29 @@ validate 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 29, 28, 27, 26
 
 arm = vqsub.s
 aarch64 = uqsub
-link-arm = vqsubu._EXT_
+link-arm = llvm.usub.sat._EXT_
 link-aarch64 = uqsub._EXT_
 generate uint*_t, uint64x*_t
 
 arm = vqsub.s
 aarch64 = sqsub
-link-arm = vqsubs._EXT_
+link-arm = llvm.ssub.sat._EXT_
 link-aarch64 = sqsub._EXT_
 generate int*_t, int64x*_t
+
+/// Saturating subtract
+name = vqsub
+multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = simd_extract, {vqsub-in_ntt-noext, a, b}, 0
+a = 42
+b = 1
+validate 41
+
+aarch64 = sqsub
+generate i8, i16, i32, i64
+aarch64 = uqsub
+generate u8, u16, u32, u64
 
 /// Halving add
 name = vhadd
@@ -1433,15 +1447,29 @@ validate 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58
 
 arm = vqadd.s
 aarch64 = uqadd
-link-arm = vqaddu._EXT_
+link-arm = llvm.uadd.sat._EXT_
 link-aarch64 = uqadd._EXT_
 generate uint*_t, uint64x*_t
 
 arm = vqadd.s
 aarch64 = sqadd
-link-arm = vqadds._EXT_
+link-arm = llvm.sadd.sat._EXT_
 link-aarch64 = sqadd._EXT_
 generate int*_t, int64x*_t
+
+/// Saturating add
+name = vqadd
+multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = simd_extract, {vqadd-in_ntt-noext, a, b}, 0
+a = 42
+b = 1
+validate 43
+
+aarch64 = sqadd
+generate i8, i16, i32, i64
+aarch64 = uqadd
+generate u8, u16, u32, u64
 
 /// Multiply
 name = vmul
@@ -2134,6 +2162,395 @@ validate 1.0, -4.0, 8.0, -1.0
 aarch64 = fminnmp
 link-aarch64 = fminnmp._EXT_
 generate float32x4_t:float32x4_t:float32x4_t
+
+/// Signed saturating doubling multiply long
+name = vqdmull
+a = 0, 1, 2, 3, 4, 5, 6, 7
+b = 1, 2, 3, 4, 5, 6, 7, 8
+validate 0, 4, 12, 24, 40, 60, 84, 108
+
+aarch64 = sqdmull
+link-aarch64 = sqdmull._EXT2_
+arm = vqdmull
+link-arm = vqdmull._EXT2_
+generate int16x4_t:int16x4_t:int32x4_t, int32x2_t:int32x2_t:int64x2_t
+
+/// Signed saturating doubling multiply long
+name = vqdmull
+multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = simd_extract, {vqdmull-in_ntt-noext, a, b}, 0
+a = 2
+b = 3
+validate 12
+
+aarch64 = sqdmull
+generate i16:i16:i32
+
+/// Signed saturating doubling multiply long
+name = vqdmull
+a = 2
+b = 3
+validate 12
+
+aarch64 = sqdmull
+link-aarch64 = sqdmulls.scalar
+generate i32:i32:i64
+
+/// Vector saturating doubling long multiply with scalar
+name = vqdmull_n
+no-q
+multi_fn = vqdmull-in_ntt-noext, a, {vdup_n-in_ntt-noext, b}
+a = 2, 4, 6, 8
+b = 2
+validate 8, 16, 24, 32
+
+aarch64 = sqdmull
+arm = vqdmull
+generate int16x4_t:i16:int32x4_t, int32x2_t:i32:int64x2_t
+
+/// Signed saturating doubling multiply long
+name = vqdmull_high
+no-q
+multi_fn = simd_shuffle-out_len-noext, a:half, a, a, {asc-halflen-halflen}
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {asc-halflen-halflen}
+multi_fn = vqdmull-noqself-noext, a, b
+a = 0, 1, 4, 5, 4, 5, 6, 7
+b = 1, 2, 5, 6, 5, 6, 7, 8
+validate 40, 60, 84, 112
+
+aarch64 = sqdmull2
+generate int16x8_t:int16x8_t:int32x4_t, int32x4_t:int32x4_t:int64x2_t
+
+/// Signed saturating doubling multiply long
+name = vqdmull_high_n
+no-q
+multi_fn = simd_shuffle-out_len-noext, a:in_ntt, a, a, {asc-out_len-out_len}
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = vqdmull-in_ntt-noext, a, b
+a = 0, 2, 8, 10, 8, 10, 12, 14
+b = 2
+validate 32, 40, 48, 56
+
+aarch64 = sqdmull2
+generate int16x8_t:i16:int32x4_t, int32x4_t:i32:int64x2_t
+
+/// Vector saturating doubling long multiply by scalar
+name = vqdmull_lane
+constn = N
+multi_fn = static_assert_imm-in_exp_len-N
+multi_fn = simd_shuffle-out_len-noext, b:in_t0, b, b, {dup-out_len-N as u32}
+multi_fn = vqdmull-noqself-noext, a, b
+a = 1, 2, 3, 4
+b = 0, 2, 2, 0, 2, 0, 0, 0
+n = HFLEN
+validate 4, 8, 12, 16
+
+aarch64 = sqdmull
+generate int16x4_t:int16x8_t:int32x4_t, int32x2_t:int32x4_t:int64x2_t
+
+arm = vqdmull
+generate int16x4_t:int16x4_t:int32x4_t, int32x2_t:int32x2_t:int64x2_t
+
+/// Signed saturating doubling multiply long
+name = vqdmullh_lane
+constn = N
+multi_fn = static_assert_imm-in_exp_len-N
+multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = vqdmullh-noqself-noext, a, b
+a = 2
+b = 0, 2, 2, 0, 2, 0, 0, 0
+n = HFLEN
+validate 8
+
+aarch64 = sqdmull
+generate i16:int16x4_t:i32, i16:int16x8_t:i32
+
+/// Signed saturating doubling multiply long
+name = vqdmulls_lane
+constn = N
+multi_fn = static_assert_imm-in_exp_len-N
+multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = vqdmulls-noqself-noext, a, b
+a = 2
+b = 0, 2, 2, 0, 2, 0, 0, 0
+n = HFLEN
+validate 8
+
+aarch64 = sqdmull
+generate i32:int32x2_t:i64, i32:int32x4_t:i64
+
+/// Signed saturating doubling multiply long
+name = vqdmull_high_lane
+constn = N
+multi_fn = static_assert_imm-in_exp_len-N
+multi_fn = simd_shuffle-out_len-noext, a:in_t, a, a, {asc-out_len-out_len}
+multi_fn = simd_shuffle-out_len-noext, b:in_t, b, b, {dup-out_len-N as u32}
+multi_fn = vqdmull-self-noext, a, b
+a = 0, 1, 4, 5, 4, 5, 6, 7
+b = 0, 2, 2, 0, 2, 0, 0, 0
+n = HFLEN
+validate 16, 20, 24, 28
+
+aarch64 = sqdmull2
+generate int16x8_t:int16x4_t:int32x4_t, int32x4_t:int32x2_t:int64x2_t
+
+/// Signed saturating doubling multiply long
+name = vqdmull_high_lane
+constn = N
+multi_fn = static_assert_imm-in_exp_len-N
+multi_fn = simd_shuffle-out_len-noext, a:half, a, a, {asc-out_len-out_len}
+multi_fn = simd_shuffle-out_len-noext, b:half, b, b, {dup-out_len-N as u32}
+multi_fn = vqdmull-noqself-noext, a, b
+a = 0, 1, 4, 5, 4, 5, 6, 7
+b = 0, 2, 2, 0, 2, 0, 0, 0
+n = HFLEN
+validate 16, 20, 24, 28
+
+aarch64 = sqdmull2
+generate int16x8_t:int16x8_t:int32x4_t, int32x4_t:int32x4_t:int64x2_t
+
+/// Signed saturating doubling multiply-add long
+name = vqdmlal
+multi_fn = vqadd-out-noext, a, {vqdmull-self-noext, b, c}
+a = 1, 1, 1, 1
+b = 1, 2, 3, 4
+c = 2, 2, 2, 2
+validate 5, 9, 13, 17
+
+aarch64 = sqdmlal
+arm = vqdmlal
+generate int32x4_t:int16x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int32x2_t:int64x2_t
+
+/// Vector widening saturating doubling multiply accumulate with scalar
+name = vqdmlal
+n-suffix
+multi_fn = vqadd-out-noext, a, {vqdmull_n-self-noext, b, c}
+a = 1, 1, 1, 1
+b = 1, 2, 3, 4
+c = 2
+validate 5, 9, 13, 17
+
+aarch64 = sqdmlal
+arm = vqdmlal
+generate int32x4_t:int16x4_t:i16:int32x4_t, int64x2_t:int32x2_t:i32:int64x2_t
+
+/// Signed saturating doubling multiply-add long
+name = vqdmlal_high
+no-q
+multi_fn = vqadd-out-noext, a, {vqdmull_high-noqself-noext, b, c}
+a = 1, 2, 3, 4
+b = 0, 1, 4, 5, 4, 5, 6, 7
+c = 1, 2, 5, 6, 5, 6, 7, 8
+validate 41, 62, 87, 116
+
+aarch64 = sqdmlal2
+generate int32x4_t:int16x8_t:int16x8_t:int32x4_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+
+/// Signed saturating doubling multiply-add long
+name = vqdmlal_high_n
+no-q
+multi_fn = vqadd-out-noext, a, {vqdmull_high_n-noqself-noext, b, c}
+a = 1, 2, 3, 4
+b = 0, 2, 8, 10, 8, 10, 12, 14
+c = 2
+validate 33, 42, 51, 60
+
+aarch64 = sqdmlal2
+generate int32x4_t:int16x8_t:i16:int32x4_t, int64x2_t:int32x4_t:i32:int64x2_t
+
+/// Vector widening saturating doubling multiply accumulate with scalar
+name = vqdmlal_lane
+in2-suffix
+constn = N
+multi_fn = static_assert_imm-in2_exp_len-N
+multi_fn = vqadd-out-noext, a, {vqdmull_lane-in2-::<N>, b, c}
+a = 1, 2, 3, 4
+b = 1, 2, 3, 4
+c = 0, 2, 2, 0, 2, 0, 0, 0
+n = HFLEN
+validate 5, 10, 15, 20
+
+aarch64 = sqdmlal
+generate int32x4_t:int16x4_t:int16x8_t:int32x4_t, int64x2_t:int32x2_t:int32x4_t:int64x2_t
+
+arm = vqdmlal
+generate int32x4_t:int16x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int32x2_t:int64x2_t
+
+/// Signed saturating doubling multiply-add long
+name = vqdmlal_high_lane
+in2-suffix
+constn = N
+multi_fn = static_assert_imm-in2_exp_len-N
+multi_fn = vqadd-out-noext, a, {vqdmull_high_lane-in2-::<N>, b, c}
+a = 1, 2, 3, 4
+b = 0, 1, 4, 5, 4, 5, 6, 7
+c = 0, 2, 0, 0, 0, 0, 0, 0
+n = 1
+validate 17, 22, 27, 32
+
+aarch64 = sqdmlal2
+generate int32x4_t:int16x8_t:int16x4_t:int32x4_t, int32x4_t:int16x8_t:int16x8_t:int32x4_t, int64x2_t: int32x4_t:int32x2_t:int64x2_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+
+/// Signed saturating doubling multiply-subtract long
+name = vqdmlsl
+multi_fn = vqsub-out-noext, a, {vqdmull-self-noext, b, c}
+a = 3, 7, 11, 15
+b = 1, 2, 3, 4
+c = 2, 2, 2, 2
+validate -1, -1, -1, -1
+
+aarch64 = sqdmlsl
+arm = vqdmlsl
+generate int32x4_t:int16x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int32x2_t:int64x2_t
+
+/// Vector widening saturating doubling multiply subtract with scalar
+name = vqdmlsl
+n-suffix
+multi_fn = vqsub-out-noext, a, {vqdmull_n-self-noext, b, c}
+a = 3, 7, 11, 15
+b = 1, 2, 3, 4
+c = 2
+validate -1, -1, -1, -1
+
+aarch64 = sqdmlsl
+arm = vqdmlsl
+generate int32x4_t:int16x4_t:i16:int32x4_t, int64x2_t:int32x2_t:i32:int64x2_t
+
+/// Signed saturating doubling multiply-subtract long
+name = vqdmlsl_high
+no-q
+multi_fn = vqsub-out-noext, a, {vqdmull_high-noqself-noext, b, c}
+a = 39, 58, 81, 108
+b = 0, 1, 4, 5, 4, 5, 6, 7
+c = 1, 2, 5, 6, 5, 6, 7, 8
+validate -1, -2, -3, -4
+
+aarch64 = sqdmlsl2
+generate int32x4_t:int16x8_t:int16x8_t:int32x4_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+
+/// Signed saturating doubling multiply-subtract long
+name = vqdmlsl_high_n
+no-q
+multi_fn = vqsub-out-noext, a, {vqdmull_high_n-noqself-noext, b, c}
+a = 31, 38, 45, 52
+b = 0, 2, 8, 10, 8, 10, 12, 14
+c = 2
+validate -1, -2, -3, -4
+
+aarch64 = sqdmlsl2
+generate int32x4_t:int16x8_t:i16:int32x4_t, int64x2_t:int32x4_t:i32:int64x2_t
+
+/// Vector widening saturating doubling multiply subtract with scalar
+name = vqdmlsl_lane
+in2-suffix
+constn = N
+multi_fn = static_assert_imm-in2_exp_len-N
+multi_fn = vqsub-out-noext, a, {vqdmull_lane-in2-::<N>, b, c}
+a = 3, 6, 9, 12
+b = 1, 2, 3, 4
+c = 0, 2, 2, 0, 2, 0, 0, 0
+n = HFLEN
+validate -1, -2, -3, -4
+
+aarch64 = sqdmlsl
+generate int32x4_t:int16x4_t:int16x8_t:int32x4_t, int64x2_t:int32x2_t:int32x4_t:int64x2_t
+
+arm = vqdmlsl
+generate int32x4_t:int16x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int32x2_t:int64x2_t
+
+/// Signed saturating doubling multiply-subtract long
+name = vqdmlsl_high_lane
+in2-suffix
+constn = N
+multi_fn = static_assert_imm-in2_exp_len-N
+multi_fn = vqsub-out-noext, a, {vqdmull_high_lane-in2-::<N>, b, c}
+a = 15, 18, 21, 24
+b = 0, 1, 4, 5, 4, 5, 6, 7
+c = 0, 2, 0, 0, 0, 0, 0, 0
+n = 1
+validate -1, -2, -3, -4
+
+aarch64 = sqdmlsl2
+generate int32x4_t:int16x8_t:int16x4_t:int32x4_t, int32x4_t:int16x8_t:int16x8_t:int32x4_t, int64x2_t: int32x4_t:int32x2_t:int64x2_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+
+/// Signed saturating doubling multiply returning high half
+name = vqdmulh
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+b = 2, 2, 2, 2, 2, 2, 2, 2
+validate 1, 1, 1, 1, 1, 1, 1, 1
+
+aarch64 = sqdmulh
+link-aarch64 = sqdmulh._EXT_
+arm = vqdmulh
+link-arm = vqdmulh._EXT_
+generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
+
+/// Signed saturating doubling multiply returning high half
+name = vqdmulh
+multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = simd_extract, {vqdmulh-in_ntt-noext, a, b}, 0
+a = 1
+b = 2
+validate 0
+
+aarch64 = sqdmulh
+generate i16, i32
+
+/// Vector saturating doubling multiply high with scalar
+name = vqdmulh_n
+out-suffix
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = vqdmulh-out-noext, a, b
+a = MAX, MAX, MAX, MAX
+b = 2
+validate 1, 1, 1, 1
+
+aarch64 = sqdmulh
+arm = vqdmulh
+generate int16x4_t:i16:int16x4_t, int32x2_t:i32:int32x2_t
+
+/// Vector saturating doubling multiply high with scalar
+name = vqdmulhq_n
+out-suffix
+multi_fn = vdupq_n-in_ntt-noext, b:out_t, b
+multi_fn = vqdmulh-out-noext, a, b
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+b = 2
+validate 1, 1, 1, 1, 1, 1, 1, 1
+
+aarch64 = sqdmulh
+arm = vqdmulh
+generate int16x8_t:i16:int16x8_t, int32x4_t:i32:int32x4_t
+
+/// Signed saturating doubling multiply returning high half
+name = vqdmulhh_lane
+constn = N
+multi_fn = static_assert_imm-in_exp_len-N
+multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = vqdmulhh-out_ntt-noext, a, b
+a = 2
+b = 0, 0, MAX, 0, 0, 0, 0, 0
+n = 2
+validate 1
+
+aarch64 = sqdmulh
+generate i16:int16x4_t:i16, i16:int16x8_t:i16
+
+/// Signed saturating doubling multiply returning high half
+name = vqdmulhs_lane
+constn = N
+multi_fn = static_assert_imm-in_exp_len-N
+multi_fn = simd_extract, b:in_t0, b, N as u32
+multi_fn = vqdmulhs-out_ntt-noext, a, b
+a = 2
+b = 0, MAX, 0, 0
+n = 1
+validate 1
+
+aarch64 = sqdmulh
+generate i32:int32x2_t:i32, i32:int32x4_t:i32
 
 /// Signed saturating rounding shift left
 name = vqrshl
