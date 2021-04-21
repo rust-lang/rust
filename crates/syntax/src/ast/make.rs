@@ -294,6 +294,14 @@ pub fn wildcard_pat() -> ast::WildcardPat {
     }
 }
 
+pub fn literal_pat(lit: &str) -> ast::LiteralPat {
+    return from_text(lit);
+
+    fn from_text(text: &str) -> ast::LiteralPat {
+        ast_from_text(&format!("fn f() {{ match x {{ {} => {{}} }} }}", text))
+    }
+}
+
 /// Creates a tuple of patterns from an iterator of patterns.
 ///
 /// Invariant: `pats` must be length > 0
