@@ -18,7 +18,6 @@ impl Command {
         needs_stdin: bool,
     ) -> io::Result<(Process, StdioPipes)> {
         use crate::sys::cvt_r;
-        const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
         let envp = self.capture_env();
 
         if self.saw_nul() {
@@ -61,6 +60,9 @@ impl Command {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 
+            // pre_exec closures are ignored on VxWorks
+            let _ = self.get_closures();
+
             let c_envp = envp
                 .as_ref()
                 .map(|c| c.as_ptr())
@@ -68,7 +70,7 @@ impl Command {
             let stack_size = thread::min_stack();
 
             // ensure that access to the environment is synchronized
-            let _lock = sys::os::env_lock();
+            let _lock = sys::os::env_read_lock();
 
             let ret = libc::rtpSpawn(
                 self.get_program_cstr().as_ptr(),
@@ -195,6 +197,24 @@ impl ExitStatus {
 
     pub fn signal(&self) -> Option<i32> {
         if !self.exited() { Some(libc::WTERMSIG(self.0)) } else { None }
+    }
+
+    pub fn core_dumped(&self) -> bool {
+        // This method is not yet properly implemented on VxWorks
+        false
+    }
+
+    pub fn stopped_signal(&self) -> Option<i32> {
+        if libc::WIFSTOPPED(self.0) { Some(libc::WSTOPSIG(self.0)) } else { None }
+    }
+
+    pub fn continued(&self) -> bool {
+        // This method is not yet properly implemented on VxWorks
+        false
+    }
+
+    pub fn into_raw(&self) -> c_int {
+        self.0
     }
 }
 
