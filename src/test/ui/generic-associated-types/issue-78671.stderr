@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `CollectionFamily::Member`
+  --> $DIR/issue-78671.rs:5:10
+   |
+LL |     type Member<T>;
+   |          ^^^^^^ expected 1 type argument
+   |
+note: associated type defined here, with 1 type parameter: `T`
+  --> $DIR/issue-78671.rs:5:10
+   |
+LL |     type Member<T>;
+   |          ^^^^^^ -
+help: use angle brackets to add missing type argument
+   |
+LL |     type Member<T><T>;
+   |                ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.
