@@ -385,6 +385,39 @@ impl A {
     }
 
     #[test]
+    fn convert_struct_with_multi_file_references() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+//- /main.rs
+struct Inner;
+struct A$0(Inner);
+
+mod foo;
+
+//- /foo.rs
+use crate::{A, Inner};
+fn f() {
+    let a = A(Inner);
+}
+"#,
+            r#"
+//- /main.rs
+struct Inner;
+struct A { field1: Inner }
+
+mod foo;
+
+//- /foo.rs
+use crate::{A, Inner};
+fn f() {
+    let a = A { field1: Inner };
+}
+"#,
+        );
+    }
+
+    #[test]
     fn convert_struct_with_where_clause() {
         check_assist(
             convert_tuple_struct_to_named_struct,
