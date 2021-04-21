@@ -4,13 +4,14 @@
 
 use std::{
     fmt,
-    io::{self, BufReader},
+    io::{self, BufRead, BufReader},
     path::PathBuf,
     process::{self, Command, Stdio},
     time::Duration,
 };
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
+use serde::Deserialize;
 use stdx::JodChild;
 
 pub use cargo_metadata::diagnostic::{
@@ -128,7 +129,7 @@ struct FlycheckActor {
 
 enum Event {
     Restart(Restart),
-    CheckEvent(Option<cargo_metadata::Message>),
+    CheckEvent(Option<CargoMessage>),
 }
 
 impl FlycheckActor {
@@ -180,21 +181,16 @@ impl FlycheckActor {
                     self.progress(Progress::DidFinish(res));
                 }
                 Event::CheckEvent(Some(message)) => match message {
-                    cargo_metadata::Message::CompilerArtifact(msg) => {
+                    CargoMessage::CompilerArtifact(msg) => {
                         self.progress(Progress::DidCheckCrate(msg.target.name));
                     }
 
-                    cargo_metadata::Message::CompilerMessage(msg) => {
+                    CargoMessage::Diagnostic(msg) => {
                         self.send(Message::AddDiagnostic {
                             workspace_root: self.workspace_root.clone(),
-                            diagnostic: msg.message,
+                            diagnostic: msg,
                         });
                     }
-
-                    cargo_metadata::Message::BuildScriptExecuted(_)
-                    | cargo_metadata::Message::BuildFinished(_)
-                    | cargo_metadata::Message::TextLine(_)
-                    | _ => {}
                 },
             }
         }
@@ -261,7 +257,7 @@ struct CargoHandle {
     child: JodChild,
     #[allow(unused)]
     thread: jod_thread::JoinHandle<io::Result<bool>>,
-    receiver: Receiver<cargo_metadata::Message>,
+    receiver: Receiver<CargoMessage>,
 }
 
 impl CargoHandle {
@@ -294,14 +290,11 @@ impl CargoHandle {
 
 struct CargoActor {
     child_stdout: process::ChildStdout,
-    sender: Sender<cargo_metadata::Message>,
+    sender: Sender<CargoMessage>,
 }
 
 impl CargoActor {
-    fn new(
-        child_stdout: process::ChildStdout,
-        sender: Sender<cargo_metadata::Message>,
-    ) -> CargoActor {
+    fn new(child_stdout: process::ChildStdout, sender: Sender<CargoMessage>) -> CargoActor {
         CargoActor { child_stdout, sender }
     }
     fn run(self) -> io::Result<bool> {
@@ -315,7 +308,7 @@ impl CargoActor {
         // erroneus output.
         let stdout = BufReader::new(self.child_stdout);
         let mut read_at_least_one_message = false;
-        for message in cargo_metadata::Message::parse_stream(stdout) {
+        for message in stdout.lines() {
             let message = match message {
                 Ok(message) => message,
                 Err(err) => {
@@ -326,13 +319,44 @@ impl CargoActor {
 
             read_at_least_one_message = true;
 
-            // Skip certain kinds of messages to only spend time on what's useful
-            match &message {
-                cargo_metadata::Message::CompilerArtifact(artifact) if artifact.fresh => (),
-                cargo_metadata::Message::BuildScriptExecuted(_) => (),
-                _ => self.sender.send(message).unwrap(),
+            // Try to deserialize a message from Cargo or Rustc.
+            let mut deserializer = serde_json::Deserializer::from_str(&message);
+            deserializer.disable_recursion_limit();
+            if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
+                match message {
+                    // Skip certain kinds of messages to only spend time on what's useful
+                    JsonMessage::Cargo(message) => match message {
+                        cargo_metadata::Message::CompilerArtifact(artifact) if !artifact.fresh => {
+                            self.sender.send(CargoMessage::CompilerArtifact(artifact)).unwrap()
+                        }
+                        cargo_metadata::Message::CompilerMessage(msg) => {
+                            self.sender.send(CargoMessage::Diagnostic(msg.message)).unwrap()
+                        }
+
+                        cargo_metadata::Message::CompilerArtifact(_)
+                        | cargo_metadata::Message::BuildScriptExecuted(_)
+                        | cargo_metadata::Message::BuildFinished(_)
+                        | cargo_metadata::Message::TextLine(_)
+                        | _ => (),
+                    },
+                    JsonMessage::Rustc(message) => {
+                        self.sender.send(CargoMessage::Diagnostic(message)).unwrap()
+                    }
+                }
             }
         }
         Ok(read_at_least_one_message)
     }
+}
+
+enum CargoMessage {
+    CompilerArtifact(cargo_metadata::Artifact),
+    Diagnostic(Diagnostic),
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum JsonMessage {
+    Cargo(cargo_metadata::Message),
+    Rustc(Diagnostic),
 }
