@@ -198,10 +198,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok(())
     }
 
-    fn mod_item_out(&mut self, _item_name: &str) -> Result<(), Error> {
-        Ok(())
-    }
-
     fn after_krate(&mut self) -> Result<(), Error> {
         debug!("Done with crate");
         let mut index = (*self.index).clone().into_inner();

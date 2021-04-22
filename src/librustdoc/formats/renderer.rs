@@ -37,7 +37,9 @@ crate trait FormatRenderer<'tcx>: Sized {
     fn mod_item_in(&mut self, item: &clean::Item, item_name: &str) -> Result<(), Error>;
 
     /// Runs after recursively rendering all sub-items of a module.
-    fn mod_item_out(&mut self, item_name: &str) -> Result<(), Error>;
+    fn mod_item_out(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
 
     /// Post processing hook for cleanup and dumping output to files.
     fn after_krate(&mut self) -> Result<(), Error>;
@@ -87,7 +89,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
                 work.push((cx.make_child_renderer(), it));
             }
 
-            cx.mod_item_out(&name)?;
+            cx.mod_item_out()?;
         // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
         // cases. Use an explicit match instead.
         } else if item.name.is_some() && !item.is_extern_crate() {

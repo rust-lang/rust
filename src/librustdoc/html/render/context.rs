@@ -617,7 +617,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok(())
     }
 
-    fn mod_item_out(&mut self, _item_name: &str) -> Result<(), Error> {
+    fn mod_item_out(&mut self) -> Result<(), Error> {
         info!("Recursed; leaving {}", self.dst.display());
 
         // Go back to where we were at
