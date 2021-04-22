@@ -52,7 +52,7 @@ unicode-width = "0.1.5"
 unicode_categories = "0.1.1"
 dirs = "2.0.1"
 ignore = "0.4.11"
-annotate-snippets = { version = "0.6", features = ["ansi_term"] }
+annotate-snippets = { version = "0.8", features = ["color"] }
 structopt = "0.3"
 rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
 lazy_static = "1.0.0"
