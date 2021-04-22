@@ -728,20 +728,36 @@ fn check_where_clauses<'tcx, 'fcx>(
     //
     // Here, the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for param in &generics.params {
-        if let GenericParamDefKind::Type { .. } = param.kind {
-            if is_our_default(&param) {
-                let ty = fcx.tcx.type_of(param.def_id);
-                // Ignore dependent defaults -- that is, where the default of one type
-                // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
-                // be sure if it will error or not as user might always specify the other.
-                if !ty.needs_subst() {
+        match param.kind {
+            GenericParamDefKind::Type { .. } => {
+                if is_our_default(&param) {
+                    let ty = fcx.tcx.type_of(param.def_id);
+                    // Ignore dependent defaults -- that is, where the default of one type
+                    // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
+                    // be sure if it will error or not as user might always specify the other.
+                    if !ty.needs_subst() {
+                        fcx.register_wf_obligation(
+                            ty.into(),
+                            fcx.tcx.def_span(param.def_id),
+                            ObligationCauseCode::MiscObligation,
+                        );
+                    }
+                }
+            }
+            GenericParamDefKind::Const { .. } => {
+                // FIXME(const_generics_defaults): Figure out if this
+                // is the behavior we want, see the comment further below.
+                if is_our_default(&param) {
+                    let default_ct = tcx.const_param_default(param.def_id);
                     fcx.register_wf_obligation(
-                        ty.into(),
+                        default_ct.into(),
                         fcx.tcx.def_span(param.def_id),
                         ObligationCauseCode::MiscObligation,
                     );
                 }
             }
+            // Doesn't have defaults.
+            GenericParamDefKind::Lifetime => {}
         }
     }
 
@@ -774,14 +790,25 @@ fn check_where_clauses<'tcx, 'fcx>(
                 fcx.tcx.mk_param_from_def(param)
             }
             GenericParamDefKind::Const { .. } => {
+                // FIXME(const_generics_defaults): I(@lcnr) feel like always
+                // using the const parameter is the right choice here, even
+                // if it needs substs.
+                //
+                // Before stabilizing this we probably want to get some tests
+                // where this makes a difference and figure out what's the exact
+                // behavior we want here.
+
+                // If the param has a default, ...
                 if is_our_default(param) {
                     let default_ct = tcx.const_param_default(param.def_id);
-                    // Const params currently have to be concrete.
-                    assert!(!default_ct.needs_subst());
-                    default_ct.into()
-                } else {
-                    fcx.tcx.mk_param_from_def(param)
+                    // ... and it's not a dependent default, ...
+                    if !default_ct.needs_subst() {
+                        // ... then substitute it with the default.
+                        return default_ct.into();
+                    }
                 }
+
+                fcx.tcx.mk_param_from_def(param)
             }
         }
     });
