@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as readline from 'readline';
 import { OutputChannel } from 'vscode';
-import { log, memoize } from './util';
+import { execute, log, memoize } from './util';
 
 interface CompilationArtifact {
     fileName: string;
@@ -122,24 +122,11 @@ export class Cargo {
 }
 
 /** Mirrors `project_model::sysroot::discover_sysroot_dir()` implementation*/
-export function sysrootForDir(dir: string): Promise<string> {
-    const rustc_path = getPathForExecutable("rustc");
+export function getSysroot(dir: string): Promise<string> {
+    const rustcPath = getPathForExecutable("rustc");
 
-    return new Promise((resolve, reject) => {
-        cp.exec(`${rustc_path} --print sysroot`, { cwd: dir }, (err, stdout, stderr) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-
-            if (stderr) {
-                reject(new Error(stderr));
-                return;
-            }
-
-            resolve(stdout.trimEnd());
-        });
-    });
+    // do not memoize the result because the toolchain may change between runs
+    return execute(`${rustcPath} --print sysroot`, { cwd: dir });
 }
 
 /** Mirrors `toolchain::cargo()` implementation */
