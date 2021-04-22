@@ -121,6 +121,27 @@ export class Cargo {
     }
 }
 
+/** Mirrors `project_model::sysroot::discover_sysroot_dir()` implementation*/
+export function sysrootForDir(dir: string): Promise<string> {
+    const rustc_path = getPathForExecutable("rustc");
+
+    return new Promise((resolve, reject) => {
+        cp.exec(`${rustc_path} --print sysroot`, { cwd: dir }, (err, stdout, stderr) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (stderr) {
+                reject(new Error(stderr));
+                return;
+            }
+
+            resolve(stdout.trimEnd());
+        });
+    });
+}
+
 /** Mirrors `toolchain::cargo()` implementation */
 export function cargoPath(): string {
     return getPathForExecutable("cargo");
