@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::match_qpath;
+use clippy_utils::is_qpath_def_path;
 use clippy_utils::source::snippet_with_applicability;
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -94,11 +94,11 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<M
 
     // `std::T::MAX` `std::T::MIN` constants
     if let hir::ExprKind::Path(path) = &expr.kind {
-        if match_qpath(path, &["core", &ty_str, "MAX"][..]) {
+        if is_qpath_def_path(cx, path, expr.hir_id, &["core", &ty_str, "MAX"][..]) {
             return Some(MinMax::Max);
         }
 
-        if match_qpath(path, &["core", &ty_str, "MIN"][..]) {
+        if is_qpath_def_path(cx, path, expr.hir_id, &["core", &ty_str, "MIN"][..]) {
             return Some(MinMax::Min);
         }
     }

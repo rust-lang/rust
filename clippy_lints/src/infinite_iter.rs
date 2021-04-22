@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{implements_trait, match_type};
-use clippy_utils::{get_trait_def_id, higher, match_qpath, paths};
+use clippy_utils::{get_trait_def_id, higher, is_qpath_def_path, paths};
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -163,7 +163,7 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
         ExprKind::Box(e) | ExprKind::AddrOf(BorrowKind::Ref, _, e) => is_infinite(cx, e),
         ExprKind::Call(path, _) => {
             if let ExprKind::Path(ref qpath) = path.kind {
-                match_qpath(qpath, &paths::REPEAT).into()
+                is_qpath_def_path(cx, qpath, path.hir_id, &paths::ITER_REPEAT).into()
             } else {
                 Finite
             }

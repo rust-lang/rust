@@ -8,17 +8,16 @@ mod chars_next_cmp;
 mod chars_next_cmp_with_unwrap;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
+mod cloned_instead_of_copied;
 mod expect_fun_call;
 mod expect_used;
 mod filetype_is_file;
-mod filter_flat_map;
 mod filter_map;
-mod filter_map_flat_map;
 mod filter_map_identity;
-mod filter_map_map;
 mod filter_map_next;
 mod filter_next;
 mod flat_map_identity;
+mod flat_map_option;
 mod from_iter_instead_of_collect;
 mod get_unwrap;
 mod implicit_clone;
@@ -75,6 +74,52 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::SymbolStr;
 use rustc_span::{sym, Span};
 use rustc_typeck::hir_ty_to_ty;
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usages of `cloned()` on an `Iterator` or `Option` where
+    /// `copied()` could be used instead.
+    ///
+    /// **Why is this bad?** `copied()` is better because it guarantees that the type being cloned
+    /// implements `Copy`.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// [1, 2, 3].iter().cloned();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// [1, 2, 3].iter().copied();
+    /// ```
+    pub CLONED_INSTEAD_OF_COPIED,
+    pedantic,
+    "used `cloned` where `copied` could be used instead"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usages of `Iterator::flat_map()` where `filter_map()` could be
+    /// used instead.
+    ///
+    /// **Why is this bad?** When applicable, `filter_map()` is more clear since it shows that
+    /// `Option` is used to produce 0 or 1 items.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().flat_map(|x| x.parse().ok()).collect();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let nums: Vec<i32> = ["1", "2", "whee!"].iter().filter_map(|x| x.parse().ok()).collect();
+    /// ```
+    pub FLAT_MAP_OPTION,
+    pedantic,
+    "used `flat_map` where `filter_map` could be used instead"
+}
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `.unwrap()` calls on `Option`s and on `Result`s.
@@ -470,35 +515,6 @@ declare_clippy_lint! {
     pub MAP_FLATTEN,
     pedantic,
     "using combinations of `flatten` and `map` which can usually be written as a single method call"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for usage of `_.filter(_).map(_)`,
-    /// `_.filter(_).flat_map(_)`, `_.filter_map(_).flat_map(_)` and similar.
-    ///
-    /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `_.filter_map(_)`.
-    ///
-    /// **Known problems:** Often requires a condition + Option/Iterator creation
-    /// inside the closure.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// let vec = vec![1];
-    ///
-    /// // Bad
-    /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
-    ///
-    /// // Good
-    /// vec.iter().filter_map(|x| if *x == 0 {
-    ///     Some(*x * 2)
-    /// } else {
-    ///     None
-    /// });
-    /// ```
-    pub FILTER_MAP,
-    pedantic,
-    "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
 }
 
 declare_clippy_lint! {
@@ -1670,6 +1686,8 @@ impl_lint_pass!(Methods => [
     CLONE_ON_COPY,
     CLONE_ON_REF_PTR,
     CLONE_DOUBLE_REF,
+    CLONED_INSTEAD_OF_COPIED,
+    FLAT_MAP_OPTION,
     INEFFICIENT_TO_STRING,
     NEW_RET_NO_SELF,
     SINGLE_CHAR_PATTERN,
@@ -1677,7 +1695,6 @@ impl_lint_pass!(Methods => [
     SEARCH_IS_SOME,
     FILTER_NEXT,
     SKIP_WHILE_NEXT,
-    FILTER_MAP,
     FILTER_MAP_IDENTITY,
     MANUAL_FILTER_MAP,
     MANUAL_FIND_MAP,
@@ -1741,7 +1758,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
         match expr.kind {
             hir::ExprKind::Call(func, args) => {
-                from_iter_instead_of_collect::check(cx, expr, args, &func.kind);
+                from_iter_instead_of_collect::check(cx, expr, args, func);
             },
             hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
                 or_fun_call::check(cx, expr, *method_span, &method_call.ident.as_str(), args);
@@ -1942,6 +1959,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
             ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
             ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
+            ("cloned", []) => cloned_instead_of_copied::check(cx, expr, recv, span),
             ("collect", []) => match method_call!(recv) {
                 Some(("cloned", [recv2], _)) => iter_cloned_collect::check(cx, expr, recv2),
                 Some(("map", [m_recv, m_arg], _)) => {
@@ -1965,10 +1983,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 unnecessary_filter_map::check(cx, expr, arg);
                 filter_map_identity::check(cx, expr, arg, span);
             },
-            ("flat_map", [flm_arg]) => match method_call!(recv) {
-                Some(("filter", [_, _], _)) => filter_flat_map::check(cx, expr),
-                Some(("filter_map", [_, _], _)) => filter_map_flat_map::check(cx, expr),
-                _ => flat_map_identity::check(cx, expr, flm_arg, span),
+            ("flat_map", [arg]) => {
+                flat_map_identity::check(cx, expr, arg, span);
+                flat_map_option::check(cx, expr, arg, span);
             },
             ("flatten", []) => {
                 if let Some(("map", [recv, map_arg], _)) = method_call!(recv) {
@@ -1993,7 +2010,6 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         ("filter", [f_arg]) => {
                             filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false)
                         },
-                        ("filter_map", [_]) => filter_map_map::check(cx, expr),
                         ("find", [f_arg]) => filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, true),
                         _ => {},
                     }
@@ -2025,10 +2041,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 }
             },
             ("step_by", [arg]) => iterator_step_by_zero::check(cx, expr, arg),
-            ("to_os_string", []) => implicit_clone::check(cx, expr, sym::OsStr),
-            ("to_owned", []) => implicit_clone::check(cx, expr, sym::ToOwned),
-            ("to_path_buf", []) => implicit_clone::check(cx, expr, sym::Path),
-            ("to_vec", []) => implicit_clone::check(cx, expr, sym::slice),
+            ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
+                implicit_clone::check(cx, name, expr, recv, span);
+            },
             ("unwrap", []) => match method_call!(recv) {
                 Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
                 Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),

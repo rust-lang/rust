@@ -2,7 +2,12 @@
 
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
-#![allow(unused_must_use, clippy::needless_bool, clippy::match_like_matches_macro)]
+#![allow(
+    unused_must_use,
+    clippy::needless_bool,
+    clippy::match_like_matches_macro,
+    clippy::if_same_then_else
+)]
 
 fn main() {
     if let None = None::<()> {}
