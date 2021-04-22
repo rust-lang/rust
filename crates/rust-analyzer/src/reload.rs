@@ -322,6 +322,7 @@ impl GlobalState {
             let loader = &mut self.loader;
             let mem_docs = &self.mem_docs;
             let mut load = |path: &AbsPath| {
+                let _p = profile::span("GlobalState::load");
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 if !mem_docs.contains_key(&vfs_path) {
                     let contents = loader.handle.load_sync(path);
