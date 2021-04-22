@@ -12,7 +12,6 @@ use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::iter;
-use crate::marker::PhantomData;
 use crate::mem;
 use crate::memchr;
 use crate::path::{self, PathBuf};
@@ -460,8 +459,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Env {}
+impl !Sync for Env {}
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
@@ -510,7 +511,7 @@ pub fn env() -> Env {
                 environ = environ.add(1);
             }
         }
-        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
+        return Env { iter: result.into_iter() };
     }
 
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
