@@ -181,7 +181,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok(())
     }
 
-    fn mod_item_in(&mut self, item: &clean::Item, _module_name: &str) -> Result<(), Error> {
+    fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error> {
         use clean::types::ItemKind::*;
         if let ModuleItem(m) = &*item.kind {
             for item in &m.items {

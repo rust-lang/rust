@@ -34,7 +34,7 @@ crate trait FormatRenderer<'tcx>: Sized {
     fn item(&mut self, item: clean::Item) -> Result<(), Error>;
 
     /// Renders a module (should not handle recursing into children).
-    fn mod_item_in(&mut self, item: &clean::Item, item_name: &str) -> Result<(), Error>;
+    fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error>;
 
     /// Runs after recursively rendering all sub-items of a module.
     fn mod_item_out(&mut self) -> Result<(), Error> {
@@ -73,13 +73,10 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
         if item.is_mod() && T::RUN_ON_MODULE {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
-            let name = item.name.as_ref().unwrap().to_string();
-            if name.is_empty() {
-                panic!("Unexpected module with empty name");
-            }
-            let _timer = prof.generic_activity_with_arg("render_mod_item", name.as_str());
+            let _timer =
+                prof.generic_activity_with_arg("render_mod_item", item.name.unwrap().to_string());
 
-            cx.mod_item_in(&item, &name)?;
+            cx.mod_item_in(&item)?;
             let module = match *item.kind {
                 clean::StrippedItem(box clean::ModuleItem(m)) | clean::ModuleItem(m) => m,
                 _ => unreachable!(),

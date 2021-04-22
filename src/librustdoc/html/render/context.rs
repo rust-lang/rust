@@ -578,7 +578,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
     }
 
-    fn mod_item_in(&mut self, item: &clean::Item, item_name: &str) -> Result<(), Error> {
+    fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error> {
         // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
         // contain items such as publicly re-exported structures.
@@ -590,8 +590,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.render_redirect_pages = item.is_stripped();
         }
         let scx = &self.shared;
-        self.dst.push(item_name);
-        self.current.push(item_name.to_owned());
+        let item_name = item.name.as_ref().unwrap().to_string();
+        self.dst.push(&item_name);
+        self.current.push(item_name);
 
         info!("Recursing into {}", self.dst.display());
 
