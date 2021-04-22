@@ -43,11 +43,7 @@ crate trait FormatRenderer<'tcx>: Sized {
     /// Post processing hook for cleanup and dumping output to files.
     ///
     /// A handler is available if the renderer wants to report errors.
-    fn after_krate(
-        &mut self,
-        crate_name: Symbol,
-        diag: &rustc_errors::Handler,
-    ) -> Result<(), Error>;
+    fn after_krate(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error>;
 
     fn cache(&self) -> &Cache;
 }
@@ -73,7 +69,6 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     }
 
     // Render the crate documentation
-    let crate_name = krate.name;
     let mut work = vec![(format_renderer.make_child_renderer(), krate.module)];
 
     let unknown = Symbol::intern("<unknown item>");
@@ -106,5 +101,5 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
         }
     }
     prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
-        .run(|| format_renderer.after_krate(crate_name, diag))
+        .run(|| format_renderer.after_krate(diag))
 }

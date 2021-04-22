@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
-use rustc_span::{symbol::sym, Symbol};
+use rustc_span::symbol::sym;
 
 use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
@@ -494,11 +494,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
     }
 
-    fn after_krate(
-        &mut self,
-        crate_name: Symbol,
-        diag: &rustc_errors::Handler,
-    ) -> Result<(), Error> {
+    fn after_krate(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error> {
+        let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(&*crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
 
