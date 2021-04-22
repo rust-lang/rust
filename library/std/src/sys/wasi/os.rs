@@ -5,7 +5,6 @@ use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
-use crate::marker::PhantomData;
 use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
 use crate::str;
@@ -129,8 +128,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 }
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Env {}
+impl !Sync for Env {}
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
@@ -155,7 +156,7 @@ pub fn env() -> Env {
                 environ = environ.add(1);
             }
         }
-        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
+        return Env { iter: result.into_iter() };
     }
 
     // See src/libstd/sys/unix/os.rs, same as that
