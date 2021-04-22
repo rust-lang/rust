@@ -375,7 +375,7 @@ const SPARSE_MAX: usize = 8;
 #[derive(Clone, Debug)]
 pub struct SparseBitSet<T> {
     domain_size: usize,
-    elems: ArrayVec<[T; SPARSE_MAX]>,
+    elems: ArrayVec<T, SPARSE_MAX>,
 }
 
 impl<T: Idx> SparseBitSet<T> {

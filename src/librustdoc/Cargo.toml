@@ -8,7 +8,7 @@ edition = "2018"
 path = "lib.rs"
 
 [dependencies]
-arrayvec = { version = "0.5.1", default-features = false }
+arrayvec = { version = "0.7", default-features = false }
 pulldown-cmark = { version = "0.8", default-features = false }
 minifier = "0.0.39"
 rayon = { version = "0.3.0", package = "rustc-rayon" }
