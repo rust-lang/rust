@@ -597,7 +597,7 @@ fn string<T: Display>(
                                 LinkFromSrc::Local(span) => {
                                     eprintln!("==> {:?}:{:?}", span.lo(), span.hi());
                                     context
-                                        .href_from_span(clean::Span::wrap(*span))
+                                        .href_from_span(clean::Span::wrap_raw(*span))
                                         .map(|s| format!("{}{}", root_path, s))
                                 }
                                 LinkFromSrc::External(def_id) => {
