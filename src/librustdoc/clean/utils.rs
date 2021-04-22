@@ -56,7 +56,8 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     let local_crate = LOCAL_CRATE.clean(cx);
     let src = local_crate.src(cx.tcx);
-    let ExternalCrate { name, primitives, keywords, .. } = local_crate;
+    let name = local_crate.name(cx.tcx);
+    let ExternalCrate { primitives, keywords, .. } = local_crate;
     {
         let m = match *module.kind {
             ItemKind::ModuleItem(ref mut m) => m,

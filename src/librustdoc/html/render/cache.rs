@@ -31,10 +31,11 @@ crate fn extern_location(
     e: &clean::ExternalCrate,
     extern_url: Option<&str>,
     dst: &Path,
+    tcx: TyCtxt<'_>,
 ) -> ExternalLocation {
     use ExternalLocation::*;
     // See if there's documentation generated into the local directory
-    let local_location = dst.join(&*e.name.as_str());
+    let local_location = dst.join(&*e.name(tcx).as_str());
     if local_location.is_dir() {
         return Local;
     }

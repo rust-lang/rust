@@ -162,12 +162,13 @@ impl Cache {
                 },
                 _ => PathBuf::new(),
             };
-            let extern_url = extern_html_root_urls.get(&*e.name.as_str()).map(|u| &**u);
+            let name = e.name(tcx);
+            let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
             self.extern_locations
-                .insert(n, (e.name, src_root, extern_location(e, extern_url, &dst)));
+                .insert(n, (name, src_root, extern_location(e, extern_url, &dst, tcx)));
 
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
-            self.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
+            self.external_paths.insert(did, (vec![name.to_string()], ItemType::Module));
         }
 
         // Cache where all known primitives have their documentation located.
