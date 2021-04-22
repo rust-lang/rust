@@ -13,7 +13,7 @@ cc = "1.0.1"
 itertools = "0.9"
 tracing = "0.1"
 libc = "0.2.50"
-jobserver = "0.1.11"
+jobserver = "0.1.22"
 tempfile = "3.1"
 pathdiff = "0.2.0"
 
