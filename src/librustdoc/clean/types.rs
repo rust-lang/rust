@@ -72,11 +72,19 @@ crate struct TraitWithExtraInfo {
 
 #[derive(Clone, Debug)]
 crate struct ExternalCrate {
+    crate crate_num: CrateNum,
     crate name: Symbol,
-    crate src: FileName,
     crate attrs: Attributes,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
     crate keywords: ThinVec<(DefId, Symbol)>,
+}
+
+impl ExternalCrate {
+    crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
+        let root = DefId { krate: self.crate_num, index: rustc_hir::def_id::CRATE_DEF_INDEX };
+        let krate_span = tcx.def_span(root);
+        tcx.sess.source_map().span_to_filename(krate_span)
+    }
 }
 
 /// Anything with a source location and set of attributes and, optionally, a

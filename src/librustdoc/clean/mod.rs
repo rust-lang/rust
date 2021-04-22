@@ -86,8 +86,6 @@ impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &mut DocContext<'_>) -> ExternalCrate {
         let tcx = cx.tcx;
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
-        let krate_span = tcx.def_span(root);
-        let krate_src = cx.sess().source_map().span_to_filename(krate_span);
 
         // Collect all inner modules which are tagged as implementations of
         // primitives.
@@ -195,8 +193,8 @@ impl Clean<ExternalCrate> for CrateNum {
         };
 
         ExternalCrate {
+            crate_num: *self,
             name: tcx.crate_name(*self),
-            src: krate_src,
             attrs: tcx.get_attrs(root).clean(cx),
             primitives,
             keywords,
