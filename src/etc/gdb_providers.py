@@ -156,9 +156,10 @@ class StdRcProvider:
             return
         self.value = self.ptr.dereference()
 
-        metadata_type = gdb.lookup_type("alloc::sync::ArcMetadata" if is_atomic else "alloc::rc::RcMetadata")
+        metadata_type = self.valobj["alloc"].type.template_argument(1)
         offset = size_rounded_up(metadata_type.sizeof, self.value.type.alignof)
-        self.metadata = (self.ptr.cast(gdb.lookup_type("u8").pointer()) - offset).cast(metadata_type.pointer())
+        u8_pointer = gdb.lookup_type("u8").pointer()
+        self.metadata = (self.ptr.cast(u8_pointer) - offset).cast(metadata_type.pointer())
         self.strong = self.metadata["strong"]["v" if is_atomic else "value"]["value"]
         self.weak = self.metadata["weak"]["v" if is_atomic else "value"]["value"] - 1
 
