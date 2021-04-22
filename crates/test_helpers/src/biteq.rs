@@ -95,7 +95,7 @@ impl<T: BitEq> core::fmt::Debug for BitEqWrapper<'_, T> {
 
 #[macro_export]
 macro_rules! prop_assert_biteq {
-    { $a:expr, $b:expr } => {
+    { $a:expr, $b:expr $(,)? } => {
         {
             use $crate::biteq::BitEqWrapper;
             let a = $a;

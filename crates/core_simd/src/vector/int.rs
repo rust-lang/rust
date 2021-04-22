@@ -4,6 +4,7 @@
 macro_rules! impl_integer_vector {
     { $name:ident, $type:ty, $mask_ty:ident, $mask_impl_ty:ident } => {
         impl_vector! { $name, $type }
+        impl_integer_reductions! { $name, $type }
 
         impl<const LANES: usize> Eq for $name<LANES> where Self: crate::LanesAtMost32 {}
 

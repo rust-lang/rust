@@ -6,6 +6,7 @@
 macro_rules! impl_float_vector {
     { $name:ident, $type:ty, $bits_ty:ident, $mask_ty:ident, $mask_impl_ty:ident } => {
         impl_vector! { $name, $type }
+        impl_float_reductions! { $name, $type }
 
         impl<const LANES: usize> $name<LANES>
         where

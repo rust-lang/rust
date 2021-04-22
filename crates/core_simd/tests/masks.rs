@@ -59,6 +59,24 @@ macro_rules! test_mask_api {
                 let mask = core_simd::$name::<8>::splat(false);
                 let _ = mask.test(8);
             }
+
+            #[test]
+            fn any() {
+                assert!(!core_simd::$name::<8>::splat(false).any());
+                assert!(core_simd::$name::<8>::splat(true).any());
+                let mut v = core_simd::$name::<8>::splat(false);
+                v.set(2, true);
+                assert!(v.any());
+            }
+
+            #[test]
+            fn all() {
+                assert!(!core_simd::$name::<8>::splat(false).all());
+                assert!(core_simd::$name::<8>::splat(true).all());
+                let mut v = core_simd::$name::<8>::splat(false);
+                v.set(2, true);
+                assert!(!v.all());
+            }
         }
     }
 }

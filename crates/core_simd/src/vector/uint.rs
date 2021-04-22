@@ -5,6 +5,7 @@
 macro_rules! impl_unsigned_vector {
     { $name:ident, $type:ty } => {
         impl_vector! { $name, $type }
+        impl_integer_reductions! { $name, $type }
 
         impl<const LANES: usize> Eq for $name<LANES> where Self: crate::LanesAtMost32 {}
 
