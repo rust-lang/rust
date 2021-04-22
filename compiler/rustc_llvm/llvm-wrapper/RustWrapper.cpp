@@ -70,17 +70,6 @@ extern "C" void LLVMRustInstallFatalErrorHandler() {
   install_fatal_error_handler(FatalErrorHandler);
 }
 
-extern "C" LLVMMemoryBufferRef
-LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
-  ErrorOr<std::unique_ptr<MemoryBuffer>> BufOr =
-      MemoryBuffer::getFile(Path, -1, false);
-  if (!BufOr) {
-    LLVMRustSetLastError(BufOr.getError().message().c_str());
-    return nullptr;
-  }
-  return wrap(BufOr.get().release());
-}
-
 extern "C" char *LLVMRustGetLastError(void) {
   char *Ret = LastError;
   LastError = nullptr;
@@ -1075,30 +1064,6 @@ extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
     unwrap<llvm::Value>(V)->print(OS);
     OS << ")";
   }
-}
-
-// Note that the two following functions look quite similar to the
-// LLVMGetSectionName function. Sadly, it appears that this function only
-// returns a char* pointer, which isn't guaranteed to be null-terminated. The
-// function provided by LLVM doesn't return the length, so we've created our own
-// function which returns the length as well as the data pointer.
-//
-// For an example of this not returning a null terminated string, see
-// lib/Object/COFFObjectFile.cpp in the getSectionName function. One of the
-// branches explicitly creates a StringRef without a null terminator, and then
-// that's returned.
-
-inline section_iterator *unwrap(LLVMSectionIteratorRef SI) {
-  return reinterpret_cast<section_iterator *>(SI);
-}
-
-extern "C" size_t LLVMRustGetSectionName(LLVMSectionIteratorRef SI,
-                                         const char **Ptr) {
-  auto NameOrErr = (*unwrap(SI))->getName();
-  if (!NameOrErr)
-    report_fatal_error(NameOrErr.takeError());
-  *Ptr = NameOrErr->data();
-  return NameOrErr->size();
 }
 
 // LLVMArrayType function does not support 64-bit ElementCount

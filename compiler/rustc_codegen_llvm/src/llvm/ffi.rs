@@ -583,11 +583,6 @@ extern "C" {
     pub type PassManagerBuilder;
 }
 extern "C" {
-    pub type ObjectFile;
-}
-#[repr(C)]
-pub struct SectionIterator<'a>(InvariantOpaque<'a>);
-extern "C" {
     pub type Pass;
 }
 extern "C" {
@@ -1703,35 +1698,6 @@ extern "C" {
 
     pub fn LLVMDisposeMessage(message: *mut c_char);
 
-    // Stuff that's in llvm-wrapper/ because it's not upstream yet.
-
-    /// Opens an object file.
-    pub fn LLVMCreateObjectFile(
-        MemBuf: &'static mut MemoryBuffer,
-    ) -> Option<&'static mut ObjectFile>;
-    /// Closes an object file.
-    pub fn LLVMDisposeObjectFile(ObjFile: &'static mut ObjectFile);
-
-    /// Enumerates the sections in an object file.
-    pub fn LLVMGetSections(ObjFile: &'a ObjectFile) -> &'a mut SectionIterator<'a>;
-    /// Destroys a section iterator.
-    pub fn LLVMDisposeSectionIterator(SI: &'a mut SectionIterator<'a>);
-    /// Returns `true` if the section iterator is at the end of the section
-    /// list:
-    pub fn LLVMIsSectionIteratorAtEnd(ObjFile: &'a ObjectFile, SI: &SectionIterator<'a>) -> Bool;
-    /// Moves the section iterator to point to the next section.
-    pub fn LLVMMoveToNextSection(SI: &SectionIterator<'_>);
-    /// Returns the current section size.
-    pub fn LLVMGetSectionSize(SI: &SectionIterator<'_>) -> c_ulonglong;
-    /// Returns the current section contents as a string buffer.
-    pub fn LLVMGetSectionContents(SI: &SectionIterator<'_>) -> *const c_char;
-
-    /// Reads the given file and returns it as a memory buffer. Use
-    /// LLVMDisposeMemoryBuffer() to get rid of it.
-    pub fn LLVMRustCreateMemoryBufferWithContentsOfFile(
-        Path: *const c_char,
-    ) -> Option<&'static mut MemoryBuffer>;
-
     pub fn LLVMStartMultithreaded() -> Bool;
 
     /// Returns a string describing the last error caused by an LLVMRust* call.
@@ -2235,12 +2201,6 @@ extern "C" {
     pub fn LLVMRustArchiveChildFree(ACR: &'a mut ArchiveChild<'a>);
     pub fn LLVMRustArchiveIteratorFree(AIR: &'a mut ArchiveIterator<'a>);
     pub fn LLVMRustDestroyArchive(AR: &'static mut Archive);
-
-    #[allow(improper_ctypes)]
-    pub fn LLVMRustGetSectionName(
-        SI: &SectionIterator<'_>,
-        data: &mut Option<std::ptr::NonNull<c_char>>,
-    ) -> size_t;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTwineToString(T: &Twine, s: &RustString);

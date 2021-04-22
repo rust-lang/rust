@@ -985,7 +985,7 @@ fn encode_and_write_metadata(
             .tempdir_in(out_filename.parent().unwrap())
             .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
-        let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
+        let metadata_filename = emit_metadata(tcx.sess, &metadata.raw_data, &metadata_tmpdir);
         if let Err(e) = util::non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }

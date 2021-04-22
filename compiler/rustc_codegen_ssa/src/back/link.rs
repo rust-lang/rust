@@ -3,7 +3,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
-use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
+use rustc_middle::middle::cstore::LibSource;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
@@ -14,6 +14,7 @@ use rustc_session::utils::NativeLibKind;
 /// need out of the shared crate context before we get rid of it.
 use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
+use rustc_target::abi::Endian;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
 use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
@@ -28,6 +29,9 @@ use crate::{
 };
 
 use cc::windows_registry;
+use object::elf;
+use object::write::Object;
+use object::{Architecture, BinaryFormat, Endianness, FileFlags, SectionFlags, SectionKind};
 use tempfile::Builder as TempFileBuilder;
 
 use std::ffi::OsString;
@@ -278,9 +282,9 @@ pub fn each_linked_rlib(
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &EncodedMetadata, tmpdir: &MaybeTempDir) -> PathBuf {
+pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> PathBuf {
     let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, &metadata.raw_data);
+    let result = fs::write(&out_filename, metadata);
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
@@ -366,9 +370,11 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // code above.
     match flavor {
         RlibFlavor::Normal => {
-            // Instead of putting the metadata in an object file section, rlibs
-            // contain the metadata in a separate file.
-            ab.add_file(&emit_metadata(sess, &codegen_results.metadata, tmpdir));
+            // metadata in rlib files is wrapped in a "dummy" object file for
+            // the target platform so the rlib can be processed entirely by
+            // normal linkers for the platform.
+            let metadata = create_metadata_file(sess, &codegen_results.metadata.raw_data);
+            ab.add_file(&emit_metadata(sess, &metadata, tmpdir));
 
             // After adding all files to the archive, we need to update the
             // symbol table of the archive. This currently dies on macOS (see
@@ -385,8 +391,137 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             }
         }
     }
+    return ab;
 
-    ab
+    // For rlibs we "pack" rustc metadata into a dummy object file. When rustc
+    // creates a dylib crate type it will pass `--whole-archive` (or the
+    // platform equivalent) to include all object files from an rlib into the
+    // final dylib itself. This causes linkers to iterate and try to include all
+    // files located in an archive, so if metadata is stored in an archive then
+    // it needs to be of a form that the linker will be able to process.
+    //
+    // Note, though, that we don't actually want this metadata to show up in any
+    // final output of the compiler. Instead this is purely for rustc's own
+    // metadata tracking purposes.
+    //
+    // With the above in mind, each "flavor" of object format gets special
+    // handling here depending on the target:
+    //
+    // * MachO - macos-like targets will insert the metadata into a section that
+    //   is sort of fake dwarf debug info. Inspecting the source of the macos
+    //   linker this causes these sections to be skipped automatically because
+    //   it's not in an allowlist of otherwise well known dwarf section names to
+    //   go into the final artifact.
+    //
+    // * WebAssembly - we actually don't have any container format for this
+    //   target. WebAssembly doesn't support the `dylib` crate type anyway so
+    //   there's no need for us to support this at this time. Consequently the
+    //   metadata bytes are simply stored as-is into an rlib.
+    //
+    // * COFF - Windows-like targets create an object with a section that has
+    //   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
+    //   ever sees the section it doesn't process it and it's removed.
+    //
+    // * ELF - All other targets are similar to Windows in that there's a
+    //   `SHF_EXCLUDE` flag we can set on sections in an object file to get
+    //   automatically removed from the final output.
+    //
+    // Note that this metdata format is kept in sync with
+    // `rustc_codegen_ssa/src/back/metadata.rs`.
+    fn create_metadata_file(sess: &Session, metadata: &[u8]) -> Vec<u8> {
+        let endianness = match sess.target.options.endian {
+            Endian::Little => Endianness::Little,
+            Endian::Big => Endianness::Big,
+        };
+        let architecture = match &sess.target.arch[..] {
+            "arm" => Architecture::Arm,
+            "aarch64" => Architecture::Aarch64,
+            "x86" => Architecture::I386,
+            "s390x" => Architecture::S390x,
+            "mips" => Architecture::Mips,
+            "mips64" => Architecture::Mips64,
+            "x86_64" => {
+                if sess.target.pointer_width == 32 {
+                    Architecture::X86_64_X32
+                } else {
+                    Architecture::X86_64
+                }
+            }
+            "powerpc" => Architecture::PowerPc,
+            "powerpc64" => Architecture::PowerPc64,
+            "riscv32" => Architecture::Riscv32,
+            "riscv64" => Architecture::Riscv64,
+            "sparc64" => Architecture::Sparc64,
+
+            // This is used to handle all "other" targets. This includes targets
+            // in two categories:
+            //
+            // * Some targets don't have support in the `object` crate just yet
+            //   to write an object file. These targets are likely to get filled
+            //   out over time.
+            //
+            // * Targets like WebAssembly don't support dylibs, so the purpose
+            //   of putting metadata in object files, to support linking rlibs
+            //   into dylibs, is moot.
+            //
+            // In both of these cases it means that linking into dylibs will
+            // not be supported by rustc. This doesn't matter for targets like
+            // WebAssembly and for targets not supported by the `object` crate
+            // yet it means that work will need to be done in the `object` crate
+            // to add a case above.
+            _ => return metadata.to_vec(),
+        };
+
+        if sess.target.is_like_osx {
+            let mut file = Object::new(BinaryFormat::MachO, architecture, endianness);
+
+            let section =
+                file.add_section(b"__DWARF".to_vec(), b".rmeta".to_vec(), SectionKind::Debug);
+            file.append_section_data(section, metadata, 1);
+            file.write().unwrap()
+        } else if sess.target.is_like_windows {
+            const IMAGE_SCN_LNK_REMOVE: u32 = 0;
+            let mut file = Object::new(BinaryFormat::Coff, architecture, endianness);
+
+            let section = file.add_section(Vec::new(), b".rmeta".to_vec(), SectionKind::Debug);
+            file.section_mut(section).flags =
+                SectionFlags::Coff { characteristics: IMAGE_SCN_LNK_REMOVE };
+            file.append_section_data(section, metadata, 1);
+            file.write().unwrap()
+        } else {
+            const SHF_EXCLUDE: u64 = 0x80000000;
+            let mut file = Object::new(BinaryFormat::Elf, architecture, endianness);
+
+            match &sess.target.arch[..] {
+                // copied from `mipsel-linux-gnu-gcc foo.c -c` and
+                // inspecting the resulting `e_flags` field.
+                "mips" => {
+                    let e_flags = elf::EF_MIPS_ARCH_32R2 | elf::EF_MIPS_CPIC | elf::EF_MIPS_PIC;
+                    file.flags = FileFlags::Elf { e_flags };
+                }
+                // copied from `mips64el-linux-gnuabi64-gcc foo.c -c`
+                "mips64" => {
+                    let e_flags = elf::EF_MIPS_ARCH_64R2 | elf::EF_MIPS_CPIC | elf::EF_MIPS_PIC;
+                    file.flags = FileFlags::Elf { e_flags };
+                }
+
+                // copied from `riscv64-linux-gnu-gcc foo.c -c`, note though
+                // that the `+d` target feature represents whether the double
+                // float abi is enabled.
+                "riscv64" if sess.target.options.features.contains("+d") => {
+                    let e_flags = elf::EF_RISCV_RVC | elf::EF_RISCV_FLOAT_ABI_DOUBLE;
+                    file.flags = FileFlags::Elf { e_flags };
+                }
+
+                _ => {}
+            }
+
+            let section = file.add_section(Vec::new(), b".rmeta".to_vec(), SectionKind::Debug);
+            file.section_mut(section).flags = SectionFlags::Elf { sh_flags: SHF_EXCLUDE };
+            file.append_section_data(section, metadata, 1);
+            file.write().unwrap()
+        }
+    }
 }
 
 /// Create a static archive.
@@ -1964,11 +2099,8 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
-    // There's a bit of magic which happens here specifically related to LTO and
-    // dynamic libraries. Specifically:
-    //
-    // * For LTO, we remove upstream object files.
-    // * For dylibs we remove metadata and bytecode from upstream rlibs
+    // There's a bit of magic which happens here specifically related to LTO,
+    // namely that we remove upstream object files.
     //
     // When performing LTO, almost(*) all of the bytecode from the upstream
     // libraries has already been included in our object file output. As a
@@ -1981,20 +2113,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     // their bytecode wasn't included. The object files in those libraries must
     // still be passed to the linker.
     //
-    // When making a dynamic library, linkers by default don't include any
-    // object files in an archive if they're not necessary to resolve the link.
-    // We basically want to convert the archive (rlib) to a dylib, though, so we
-    // *do* want everything included in the output, regardless of whether the
-    // linker thinks it's needed or not. As a result we must use the
-    // --whole-archive option (or the platform equivalent). When using this
-    // option the linker will fail if there are non-objects in the archive (such
-    // as our own metadata and/or bytecode). All in all, for rlibs to be
-    // entirely included in dylibs, we need to remove all non-object files.
-    //
-    // Note, however, that if we're not doing LTO or we're not producing a dylib
-    // (aka we're making an executable), we can just pass the rlib blindly to
-    // the linker (fast) because it's fine if it's not actually included as
-    // we're at the end of the dependency chain.
+    // Note, however, that if we're not doing LTO we can just pass the rlib
+    // blindly to the linker (fast) because it's fine if it's not actually
+    // included as we're at the end of the dependency chain.
     fn add_static_crate<'a, B: ArchiveBuilder<'a>>(
         cmd: &mut dyn Linker,
         sess: &'a Session,
@@ -2005,6 +2126,24 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     ) {
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         let cratepath = &src.rlib.as_ref().unwrap().0;
+
+        let mut link_upstream = |path: &Path| {
+            // If we're creating a dylib, then we need to include the
+            // whole of each object in our archive into that artifact. This is
+            // because a `dylib` can be reused as an intermediate artifact.
+            //
+            // Note, though, that we don't want to include the whole of a
+            // compiler-builtins crate (e.g., compiler-rt) because it'll get
+            // repeatedly linked anyway.
+            let path = fix_windows_verbatim_for_gcc(path);
+            if crate_type == CrateType::Dylib
+                && codegen_results.crate_info.compiler_builtins != Some(cnum)
+            {
+                cmd.link_whole_rlib(&path);
+            } else {
+                cmd.link_rlib(&path);
+            }
+        };
 
         // See the comment above in `link_staticlib` and `link_rlib` for why if
         // there's a static library that's not relevant we skip all object
@@ -2017,10 +2156,9 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
         if (!are_upstream_rust_objects_already_included(sess)
             || ignored_for_lto(sess, &codegen_results.crate_info, cnum))
-            && crate_type != CrateType::Dylib
             && !skip_native
         {
-            cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
+            link_upstream(cratepath);
             return;
         }
 
@@ -2070,21 +2208,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                 return;
             }
             archive.build();
-
-            // If we're creating a dylib, then we need to include the
-            // whole of each object in our archive into that artifact. This is
-            // because a `dylib` can be reused as an intermediate artifact.
-            //
-            // Note, though, that we don't want to include the whole of a
-            // compiler-builtins crate (e.g., compiler-rt) because it'll get
-            // repeatedly linked anyway.
-            if crate_type == CrateType::Dylib
-                && codegen_results.crate_info.compiler_builtins != Some(cnum)
-            {
-                cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
-            } else {
-                cmd.link_rlib(&fix_windows_verbatim_for_gcc(&dst));
-            }
+            link_upstream(&dst);
         });
     }
 
