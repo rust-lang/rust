@@ -2,8 +2,9 @@ error: variant is never constructed: `Variant2`
   --> $DIR/lint-dead-code-5.rs:6:5
    |
 LL |     Variant2
-   |     ^^^^^^^^
+   |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_Variant2`
    |
+   = note: the leading underscore signals that this variant serves some other purpose even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/lint-dead-code-5.rs:2:9
    |
@@ -14,19 +15,29 @@ error: variant is never constructed: `Variant5`
   --> $DIR/lint-dead-code-5.rs:13:5
    |
 LL |     Variant5 { _x: isize },
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     --------^^^^^^^^^^^^^^
+   |     |
+   |     help: if this is intentional, prefix it with an underscore: `_Variant5`
+   |
+   = note: the leading underscore signals that this variant serves some other purpose even if it isn't used in a way that we can detect.
 
 error: variant is never constructed: `Variant6`
   --> $DIR/lint-dead-code-5.rs:14:5
    |
 LL |     Variant6(isize),
-   |     ^^^^^^^^^^^^^^^
+   |     --------^^^^^^^
+   |     |
+   |     help: if this is intentional, prefix it with an underscore: `_Variant6`
+   |
+   = note: the leading underscore signals that this variant serves some other purpose even if it isn't used in a way that we can detect.
 
 error: enum is never used: `Enum3`
   --> $DIR/lint-dead-code-5.rs:35:6
    |
 LL | enum Enum3 {
-   |      ^^^^^
+   |      ^^^^^ help: if this is intentional, prefix it with an underscore: `_Enum3`
+   |
+   = note: the leading underscore signals that this enum serves some other purpose even if it isn't used in a way that we can detect.
 
 error: aborting due to 4 previous errors
 
