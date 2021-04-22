@@ -77,6 +77,7 @@ impl ProcMacroClient {
     }
 
     pub fn by_dylib_path(&self, dylib_path: &Path) -> Vec<ProcMacro> {
+        let _p = profile::span("ProcMacroClient::by_dylib_path");
         match version::read_dylib_info(dylib_path) {
             Ok(info) => {
                 if info.version.0 < 1 || info.version.1 < 47 {

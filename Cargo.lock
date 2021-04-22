@@ -1175,6 +1175,7 @@ dependencies = [
  "log",
  "memmap",
  "object",
+ "profile",
  "serde",
  "serde_json",
  "snap",
