@@ -154,7 +154,7 @@ impl<'tcx> Context<'tcx> {
         &self.cache
     }
 
-    fn sess(&self) -> &'tcx Session {
+    pub(super) fn sess(&self) -> &'tcx Session {
         &self.shared.tcx.sess
     }
 
