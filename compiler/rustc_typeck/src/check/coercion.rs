@@ -973,6 +973,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
+            // Intrinsics are not coercible to function pointers.
+            if a_sig.abi() == Abi::RustIntrinsic
+                || a_sig.abi() == Abi::PlatformIntrinsic
+                || b_sig.abi() == Abi::RustIntrinsic
+                || b_sig.abi() == Abi::PlatformIntrinsic
+            {
+                return Err(TypeError::IntrinsicCast);
+            }
             // The signature must match.
             let a_sig = self.normalize_associated_types_in(new.span, a_sig);
             let b_sig = self.normalize_associated_types_in(new.span, b_sig);
