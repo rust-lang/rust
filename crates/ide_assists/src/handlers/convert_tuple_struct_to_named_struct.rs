@@ -1,8 +1,7 @@
-use hir::{Adt, ModuleDef, Struct};
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     ast::{self, AstNode, GenericParamsOwner, VisibilityOwner},
-    match_ast,
+    match_ast, SyntaxNode,
 };
 
 use crate::{assist_context::AssistBuilder, AssistContext, AssistId, AssistKind, Assists};
@@ -104,80 +103,74 @@ fn edit_struct_def(
 fn edit_struct_references(
     ctx: &AssistContext,
     edit: &mut AssistBuilder,
-    strukt: Struct,
+    strukt: hir::Struct,
     names: &[ast::Name],
 ) {
-    let strukt_def = Definition::ModuleDef(ModuleDef::Adt(Adt::Struct(strukt)));
+    let strukt_def = Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(strukt)));
     let usages = strukt_def.usages(&ctx.sema).include_self_kw_refs(true).all();
+
+    let edit_node = |edit: &mut AssistBuilder, node: SyntaxNode| -> Option<()> {
+        match_ast! {
+            match node {
+                ast::TupleStructPat(tuple_struct_pat) => {
+                    edit.replace(
+                        tuple_struct_pat.syntax().text_range(),
+                        ast::make::record_pat_with_fields(
+                            tuple_struct_pat.path()?,
+                            ast::make::record_pat_field_list(tuple_struct_pat.fields().zip(names).map(
+                                |(pat, name)| {
+                                    ast::make::record_pat_field(
+                                        ast::make::name_ref(&name.to_string()),
+                                        pat,
+                                    )
+                                },
+                            )),
+                        )
+                        .to_string(),
+                    );
+                },
+                // for tuple struct creations like Foo(42)
+                ast::CallExpr(call_expr) => {
+                    let path = call_expr.syntax().descendants().find_map(ast::PathExpr::cast).and_then(|expr| expr.path())?;
+
+                    // this also includes method calls like Foo::new(42), we should skip them
+                    if let Some(name_ref) = path.segment().and_then(|s| s.name_ref()) {
+                        match NameRefClass::classify(&ctx.sema, &name_ref) {
+                            Some(NameRefClass::Definition(Definition::SelfType(_))) => {},
+                            Some(NameRefClass::Definition(def)) if def == strukt_def => {},
+                            _ => return None,
+                        };
+                    }
+
+                    let arg_list = call_expr.syntax().descendants().find_map(ast::ArgList::cast)?;
+
+                    edit.replace(
+                        call_expr.syntax().text_range(),
+                        ast::make::record_expr(
+                            path,
+                            ast::make::record_expr_field_list(arg_list.args().zip(names).map(
+                                |(expr, name)| {
+                                    ast::make::record_expr_field(
+                                        ast::make::name_ref(&name.to_string()),
+                                        Some(expr),
+                                    )
+                                },
+                            )),
+                        )
+                        .to_string(),
+                    );
+                },
+                _ => ()
+            }
+        }
+        Some(())
+    };
 
     for (file_id, refs) in usages {
         edit.edit_file(file_id);
         for r in refs {
             for node in r.name.syntax().ancestors() {
-                match_ast! {
-                    match node {
-                        ast::TupleStructPat(tuple_struct_pat) => {
-                            let path = match tuple_struct_pat.path() {
-                                Some(it) => it,
-                                None => continue,
-                            };
-
-                            edit.replace(
-                                tuple_struct_pat.syntax().text_range(),
-                                ast::make::record_pat_with_fields(
-                                    path,
-                                    ast::make::record_pat_field_list(tuple_struct_pat.fields().zip(names).map(
-                                        |(pat, name)| {
-                                            ast::make::record_pat_field(
-                                                ast::make::name_ref(&name.to_string()),
-                                                pat,
-                                            )
-                                        },
-                                    )),
-                                )
-                                .to_string(),
-                            );
-                        },
-                        // for tuple struct creations like Foo(42)
-                        ast::CallExpr(call_expr) => {
-                            let path = match call_expr.syntax().descendants().find_map(ast::PathExpr::cast).map(|expr| expr.path()) {
-                                Some(Some(it)) => it,
-                                _ => continue,
-                            };
-
-                            // this also includes method calls like Foo::new(42), we should skip them
-                            if let Some(Some(name_ref)) = path.segment().map(|s| s.name_ref()) {
-                                match NameRefClass::classify(&ctx.sema, &name_ref) {
-                                    Some(NameRefClass::Definition(Definition::SelfType(_))) => {},
-                                    Some(NameRefClass::Definition(def)) if def == strukt_def => {},
-                                    _ => continue,
-                                };
-                            }
-
-                            let arg_list = match call_expr.syntax().descendants().find_map(ast::ArgList::cast) {
-                                Some(it) => it,
-                                None => continue,
-                            };
-
-                            edit.replace(
-                                call_expr.syntax().text_range(),
-                                ast::make::record_expr(
-                                    path,
-                                    ast::make::record_expr_field_list(arg_list.args().zip(names).map(
-                                        |(expr, name)| {
-                                            ast::make::record_expr_field(
-                                                ast::make::name_ref(&name.to_string()),
-                                                Some(expr),
-                                            )
-                                        },
-                                    )),
-                                )
-                                .to_string(),
-                            );
-                        },
-                        _ => ()
-                    }
-                }
+                edit_node(edit, node);
             }
         }
     }
