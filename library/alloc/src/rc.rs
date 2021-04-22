@@ -274,7 +274,7 @@ use crate::vec::Vec;
 #[cfg(test)]
 mod tests;
 
-/// Metadata `Rc` and `Weak` to be allocated as prefix.
+/// Metadata for `Rc` and `Weak` to be allocated as prefix.
 #[unstable(feature = "allocator_api_internals", issue = "none")]
 #[derive(Debug, Clone)]
 #[doc(hidden)]
@@ -462,6 +462,8 @@ impl<T> Rc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn try_new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Result<Rc<T>, AllocError> {
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
         let alloc = RcAllocator::new(Global);
         let ptr = Self::try_allocate(
             &alloc,
@@ -489,7 +491,7 @@ impl<T> Rc<T> {
         debug_assert_eq!(meta.strong.get(), 0, "No prior strong references should exist");
         meta.strong.set(1);
 
-        unsafe { Ok(Rc::from_raw_in(ptr.as_ptr(), weak.alloc)) }
+        unsafe { Ok(Self::from_raw_in(ptr.as_ptr(), weak.alloc)) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents.
@@ -795,9 +797,7 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub unsafe fn assume_init(self) -> Rc<T> {
         let this = mem::ManuallyDrop::new(self);
-        let ptr = this.ptr;
-        let alloc = this.alloc;
-        unsafe { Rc::from_raw_in(ptr.cast().as_ptr(), alloc) }
+        unsafe { Rc::from_raw_in(this.ptr.cast().as_ptr(), this.alloc) }
     }
 }
 
@@ -843,8 +843,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
         let ptr = unsafe {
             NonNull::slice_from_raw_parts(NonNull::new_unchecked(this.ptr.as_mut_ptr().cast()), len)
         };
-        let alloc = this.alloc;
-        unsafe { Rc::from_raw_in(ptr.as_ptr(), alloc) }
+        unsafe { Rc::from_raw_in(ptr.as_ptr(), this.alloc) }
     }
 }
 
@@ -1272,9 +1271,7 @@ impl Rc<dyn Any> {
     pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
             let this = mem::ManuallyDrop::new(self);
-            let ptr = this.ptr;
-            let alloc = this.alloc;
-            unsafe { Ok(Rc::from_raw_in(ptr.cast().as_ptr(), alloc)) }
+            unsafe { Ok(Rc::from_raw_in(this.ptr.cast().as_ptr(), this.alloc)) }
         } else {
             Err(self)
         }
@@ -1282,7 +1279,7 @@ impl Rc<dyn Any> {
 }
 
 impl<T: ?Sized> Rc<T> {
-    /// Allocates an `RcBox<T>` with sufficient space for
+    /// Allocates an `Rc<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
     /// returning an error if allocation fails.
     ///
@@ -1300,11 +1297,11 @@ impl<T: ?Sized> Rc<T> {
             .unwrap_or_else(|_| handle_alloc_error(layout))
     }
 
-    /// Allocates an `RcBox<T>` with sufficient space for
+    /// Allocates an `Rc<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
     /// returning an error if allocation fails.
     ///
-    /// The function `mem_to_rcbox` is called with the data pointer
+    /// The function `mem_to_ptr` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
     #[inline]
     fn try_allocate(

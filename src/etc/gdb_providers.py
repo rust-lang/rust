@@ -148,12 +148,6 @@ class StdRcProvider:
         self.valobj = valobj
         self.is_atomic = is_atomic
         self.ptr = unwrap_unique_or_non_null(valobj["ptr"])
-        if is_atomic:
-            # Use old lookup for Arc as it is not refactored yet
-            self.value = self.ptr["data" if is_atomic else "value"]
-            self.strong = self.ptr["meta"]["strong"]["v"]["value"]
-            self.weak = self.ptr["meta"]["weak"]["v"]["value"] - 1
-            return
         self.value = self.ptr.dereference()
 
         metadata_type = self.valobj["alloc"].type.template_argument(1)

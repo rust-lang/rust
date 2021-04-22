@@ -606,14 +606,11 @@ class StdRcSyntheticProvider:
 
         self.ptr = unwrap_unique_or_non_null(self.valobj.GetChildMemberWithName("ptr"))
 
-        if is_atomic:
-            self.meta = self.ptr.GetChildMemberWithName("meta")
-        else:
-            metadata_type = self.valobj.GetChildMemberWithName("alloc").type.template_args[1]
-            align = self.ptr.type.GetPointeeType().GetByteSize()
-            offset = size_rounded_up(metadata_type.size, align)
-            meta_address = self.ptr.GetValueAsUnsigned() - offset
-            self.meta = self.valobj.CreateValueFromAddress("meta", meta_address, metadata_type)
+        metadata_type = self.valobj.GetChildMemberWithName("alloc").type.template_args[1]
+        align = self.ptr.type.GetPointeeType().GetByteSize()
+        offset = size_rounded_up(metadata_type.size, align)
+        meta_address = self.ptr.GetValueAsUnsigned() - offset
+        self.meta = self.valobj.CreateValueFromAddress("meta", meta_address, metadata_type)
 
         self.update()
 
@@ -635,8 +632,7 @@ class StdRcSyntheticProvider:
     def get_child_at_index(self, index):
         # type: (int) -> SBValue
         if index == 0:
-            value = self.ptr.GetChildMemberWithName("data") if self.is_atomic \
-                else self.ptr.Dereference()
+            value = self.ptr.Dereference()
             return self.valobj.CreateValueFromData("value", value.data, value.type)
         if index == 1:
             return self.value_builder.from_uint("strong", self.strong_count)
