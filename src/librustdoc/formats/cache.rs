@@ -176,7 +176,7 @@ impl Cache {
         // Favor linking to as local extern as possible, so iterate all crates in
         // reverse topological order.
         for &(_, ref e) in krate.externs.iter().rev() {
-            for &(def_id, prim) in &e.primitives {
+            for &(def_id, prim) in &e.primitives(tcx) {
                 self.primitive_locations.insert(prim, def_id);
             }
         }

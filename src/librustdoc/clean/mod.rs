@@ -87,73 +87,9 @@ impl Clean<ExternalCrate> for CrateNum {
         let tcx = cx.tcx;
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
 
-        // Collect all inner modules which are tagged as implementations of
-        // primitives.
-        //
-        // Note that this loop only searches the top-level items of the crate,
-        // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[doc(primitive)]` then we would also have to
-        // search the entirety of external modules for items tagged
-        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
-        // all that metadata unconditionally).
-        //
-        // In order to keep the metadata load under control, the
-        // `#[doc(primitive)]` feature is explicitly designed to only allow the
-        // primitive tags to show up as the top level items in a crate.
-        //
-        // Also note that this does not attempt to deal with modules tagged
-        // duplicately for the same primitive. This is handled later on when
-        // rendering by delegating everything to a hash map.
-        let mut as_primitive = |res: Res| {
+        let as_keyword = |res: Res| {
             if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = cx.tcx.get_attrs(def_id).clean(cx);
-                let mut prim = None;
-                for attr in attrs.lists(sym::doc) {
-                    if let Some(v) = attr.value_str() {
-                        if attr.has_name(sym::primitive) {
-                            prim = PrimitiveType::from_symbol(v);
-                            if prim.is_some() {
-                                break;
-                            }
-                            // FIXME: should warn on unknown primitives?
-                        }
-                    }
-                }
-                return prim.map(|p| (def_id, p));
-            }
-            None
-        };
-        let primitives = if root.is_local() {
-            tcx.hir()
-                .krate()
-                .item
-                .item_ids
-                .iter()
-                .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
-                    match item.kind {
-                        hir::ItemKind::Mod(_) => {
-                            as_primitive(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
-                        }
-                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
-                            if item.vis.node.is_pub() =>
-                        {
-                            as_primitive(path.res).map(|(_, prim)| {
-                                // Pretend the primitive is local.
-                                (id.def_id.to_def_id(), prim)
-                            })
-                        }
-                        _ => None,
-                    }
-                })
-                .collect()
-        } else {
-            tcx.item_children(root).iter().map(|item| item.res).filter_map(as_primitive).collect()
-        };
-
-        let mut as_keyword = |res: Res| {
-            if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = tcx.get_attrs(def_id).clean(cx);
+                let attrs = tcx.get_attrs(def_id);
                 let mut keyword = None;
                 for attr in attrs.lists(sym::doc) {
                     if attr.has_name(sym::keyword) {
@@ -192,12 +128,7 @@ impl Clean<ExternalCrate> for CrateNum {
             tcx.item_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
         };
 
-        ExternalCrate {
-            crate_num: *self,
-            attrs: tcx.get_attrs(root).clean(cx),
-            primitives,
-            keywords,
-        }
+        ExternalCrate { crate_num: *self, attrs: tcx.get_attrs(root).clean(cx), keywords }
     }
 }
 
