@@ -2,6 +2,7 @@
 
 #![allow(unused_must_use)]
 #![feature(unwind_attributes)]
+#![feature(panic_always_abort)]
 // Since we mark some ABIs as "nounwind" to LLVM, we must make sure that
 // we never unwind through them.
 
@@ -11,7 +12,9 @@
 use std::{env, panic};
 use std::io::prelude::*;
 use std::io;
-use std::process::{Command, Stdio};
+use std::process::{exit, Command, Stdio};
+use std::sync::{Arc, Barrier};
+use std::thread;
 
 #[unwind(aborts)] // FIXME(#58794) should work even without the attribute
 extern "C" fn panic_in_ffi() {
@@ -49,11 +52,27 @@ fn test_always_abort() {
     should_have_aborted();
 }
 
+fn test_always_abort_thread() {
+    let barrier = Arc::new(Barrier::new(2));
+    let thr = {
+        let barrier = barrier.clone();
+        thread::spawn(move ||{
+            barrier.wait();
+            panic!("in thread");
+        })
+    };
+    panic::always_abort();
+    barrier.wait();
+    let _ = thr.join();
+    bomb_out_but_not_abort("joined - but we were supposed to panic!");
+}
+
 fn main() {
     let tests: &[(_, fn())] = &[
         ("test", test),
         ("testrust", testrust),
         ("test_always_abort", test_always_abort),
+        ("test_always_abort_thread", test_always_abort_thread),
     ];
 
     let args: Vec<String> = env::args().collect();
