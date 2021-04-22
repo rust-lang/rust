@@ -1,4 +1,5 @@
 use crate::ffi::OsString;
+use crate::fmt;
 use crate::marker::PhantomData;
 use crate::vec;
 
@@ -22,9 +23,9 @@ pub struct Args {
     _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        self.iter.as_slice()
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.iter.as_slice().fmt(f)
     }
 }
 
