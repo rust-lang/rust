@@ -346,7 +346,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,
-        edition: Edition,
         mut cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
@@ -435,7 +434,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             resource_suffix,
             static_root_path,
             fs: DocFS::new(sender),
-            edition,
+            edition: tcx.sess.edition(),
             codes: ErrorCodes::from(unstable_features.is_nightly_build()),
             playground,
             all: RefCell::new(AllTypes::new()),

@@ -1,5 +1,5 @@
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{edition::Edition, Symbol};
+use rustc_span::Symbol;
 
 use crate::clean;
 use crate::config::RenderOptions;
@@ -23,7 +23,6 @@ crate trait FormatRenderer<'tcx>: Sized {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error>;
@@ -51,7 +50,6 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     krate: clean::Crate,
     options: RenderOptions,
     cache: Cache,
-    edition: Edition,
     tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
     let prof = &tcx.sess.prof;
@@ -59,7 +57,7 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     let emit_crate = options.should_emit_crate();
     let (mut format_renderer, krate) = prof
         .extra_verbose_generic_activity("create_renderer", T::descr())
-        .run(|| T::init(krate, options, edition, cache, tcx))?;
+        .run(|| T::init(krate, options, cache, tcx))?;
 
     if !emit_crate {
         return Ok(());

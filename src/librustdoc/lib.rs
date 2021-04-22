@@ -656,10 +656,9 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
-    edition: rustc_span::edition::Edition,
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, cache, edition, tcx) {
+    match formats::run_format::<T>(krate, renderopts, cache, tcx) {
         Ok(_) => Ok(()),
         Err(e) => {
             let mut msg =
@@ -692,7 +691,6 @@ fn main_options(options: config::Options) -> MainResult {
 
     // need to move these items separately because we lose them by the time the closure is called,
     // but we can't create the Handler ahead of time because it's not Send
-    let edition = options.edition;
     let show_coverage = options.show_coverage;
     let run_check = options.run_check;
 
@@ -760,22 +758,10 @@ fn main_options(options: config::Options) -> MainResult {
                 info!("going to format");
                 match output_format {
                     config::OutputFormat::Html => sess.time("render_html", || {
-                        run_renderer::<html::render::Context<'_>>(
-                            krate,
-                            render_opts,
-                            cache,
-                            edition,
-                            tcx,
-                        )
+                        run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
                     }),
                     config::OutputFormat::Json => sess.time("render_json", || {
-                        run_renderer::<json::JsonRenderer<'_>>(
-                            krate,
-                            render_opts,
-                            cache,
-                            edition,
-                            tcx,
-                        )
+                        run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
                     }),
                 }
             })

@@ -14,7 +14,6 @@ use std::rc::Rc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::edition::Edition;
 
 use rustdoc_json_types as types;
 
@@ -134,7 +133,6 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn init(
         krate: clean::Crate,
         options: RenderOptions,
-        _edition: Edition,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
