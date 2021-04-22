@@ -371,11 +371,18 @@ pub fn eq_struct_field(l: &FieldDef, r: &FieldDef) -> bool {
         match (&l.variant, &r.variant) {
             (FieldVariant::Named(NamedField{ident: l_ident, ty: l_ty}),
             FieldVariant::Named(NamedField{ident: r_ident, ty: r_ty})) =>
-            both(l_ident, r_ident, |l, r| eq_id(*l, *r))
-            && eq_ty(l_ty, r_ty),
-            // FIXME: Compare two unnamed fields and check for equality
-            (FieldVariant::Unnamed(_),
-            FieldVariant::Named(_)) => false,
+            both(l_ident, r_ident, |l, r| eq_id(*l, *r)) && eq_ty(l_ty, r_ty),
+
+            (FieldVariant::Unnamed(UnnamedField::Struct(l_v)),
+            FieldVariant::Unnamed(UnnamedField::Struct(r_v)))
+            | (FieldVariant::Unnamed(UnnamedField::Union(l_v)),
+            FieldVariant::Unnamed(UnnamedField::Union(r_v))) =>
+            l_v.iter().zip(r_v.iter()).all(|(l_f, r_f)| eq_struct_field(l_f, r_f)),
+
+            (FieldVariant::Unnamed(UnnamedField::Type(l_ty)),
+            FieldVariant::Unnamed(UnnamedField::Type(r_ty))) =>
+            eq_ty(l_ty, r_ty),
+
             _ => false
         }
     }
