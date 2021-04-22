@@ -239,6 +239,7 @@ impl CrateGraph {
         name: CrateName,
         to: CrateId,
     ) -> Result<(), CyclicDependenciesError> {
+        let _p = profile::span("add_dep");
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
             return Err(CyclicDependenciesError {
                 from: (from, self[from].display_name.clone()),
