@@ -142,12 +142,25 @@ class StdVecDequeProvider:
 
 class StdRcProvider:
     def __init__(self, valobj, is_atomic=False):
+        def size_rounded_up(size, align):
+            return (size + align - 1) & ~(align - 1)
+
         self.valobj = valobj
         self.is_atomic = is_atomic
         self.ptr = unwrap_unique_or_non_null(valobj["ptr"])
-        self.value = self.ptr["data" if is_atomic else "value"]
-        self.strong = self.ptr["meta"]["strong"]["v" if is_atomic else "value"]["value"]
-        self.weak = self.ptr["meta"]["weak"]["v" if is_atomic else "value"]["value"] - 1
+        if is_atomic:
+            # Use old lookup for Arc as it is not refactored yet
+            self.value = self.ptr["data" if is_atomic else "value"]
+            self.strong = self.ptr["meta"]["strong"]["v"]["value"]
+            self.weak = self.ptr["meta"]["weak"]["v"]["value"] - 1
+            return
+        self.value = self.ptr.dereference()
+
+        metadata_type = gdb.lookup_type("alloc::sync::ArcMetadata" if is_atomic else "alloc::rc::RcMetadata")
+        offset = size_rounded_up(metadata_type.sizeof, self.value.type.alignof)
+        self.metadata = (self.ptr.cast(gdb.lookup_type("u8").pointer()) - offset).cast(metadata_type.pointer())
+        self.strong = self.metadata["strong"]["v" if is_atomic else "value"]["value"]
+        self.weak = self.metadata["weak"]["v" if is_atomic else "value"]["value"] - 1
 
     def to_string(self):
         if self.is_atomic:

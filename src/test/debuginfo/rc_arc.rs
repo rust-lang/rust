@@ -20,7 +20,7 @@
 // lldb-command:print r
 // lldb-check:[...]$0 = strong=2, weak=1 { value = 42 }
 // lldb-command:print a
-// lldb-check:[...]$1 = strong=2, weak=1 { data = 42 }
+// lldb-check:[...]$1 = strong=2, weak=1 { value = 42 }
 
 use std::rc::Rc;
 use std::sync::Arc;

@@ -582,33 +582,36 @@ def StdRcSummaryProvider(valobj, dict):
 class StdRcSyntheticProvider:
     """Pretty-printer for alloc::rc::Rc<T> and alloc::sync::Arc<T>
 
-    struct Rc<T> { ptr: NonNull<RcBox<T>>, ... }
+    struct Rc<T> { ptr: NonNull<T>, alloc: PrefixAllocator<_, RcMetadata>, ... }
     rust 1.31.1: struct NonNull<T> { pointer: NonZero<*const T> }
     rust 1.33.0: struct NonNull<T> { pointer: *const T }
     struct NonZero<T>(T)
-    struct RcBox<T> { strong: Cell<usize>, weak: Cell<usize>, value: T }
+    struct RcMetadata { strong: Cell<usize>, weak: Cell<usize> }
     struct Cell<T> { value: UnsafeCell<T> }
     struct UnsafeCell<T> { value: T }
 
-    struct Arc<T> { ptr: NonNull<ArcInner<T>>, ... }
-    struct ArcInner<T> { strong: atomic::AtomicUsize, weak: atomic::AtomicUsize, data: T }
+    struct Arc<T> { ptr: NonNull<T>, alloc: PrefixAllocator<_, ArcMetadata>, ... }
+    struct ArcMetadata{ strong: atomic::AtomicUsize, weak: atomic::AtomicUsize }
     struct AtomicUsize { v: UnsafeCell<usize> }
     """
 
     def __init__(self, valobj, dict, is_atomic=False):
+        def size_rounded_up(size, align):
+            return (size + align - 1) & ~(align - 1)
+
         # type: (SBValue, dict, bool) -> StdRcSyntheticProvider
         self.valobj = valobj
+        self.value_builder = ValueBuilder(valobj)
+        self.is_atomic = is_atomic
 
         self.ptr = unwrap_unique_or_non_null(self.valobj.GetChildMemberWithName("ptr"))
 
-        self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
-
-        self.strong = self.ptr.GetChildMemberWithName("meta")\
-                .GetChildMemberWithName("strong").GetChildAtIndex(0).GetChildMemberWithName("value")
-        self.weak = self.ptr.GetChildMemberWithName("meta")\
-                .GetChildMemberWithName("weak").GetChildAtIndex(0).GetChildMemberWithName("value"))
-
-        self.value_builder = ValueBuilder(valobj)
+        if is_atomic:
+            self.meta = self.ptr.GetChildMemberWithName("meta")
+        else:
+            metadata_type = self.valobj.GetChildMemberWithName("alloc").type.template_args[1]
+            offset = size_rounded_up(metadata_type.size, self.ptr.type.GetPointeeType().GetByteSize())
+            self.meta = self.valobj.CreateValueFromAddress("meta", self.ptr.GetValueAsUnsigned() - offset, metadata_type)
 
         self.update()
 
@@ -630,7 +633,8 @@ class StdRcSyntheticProvider:
     def get_child_at_index(self, index):
         # type: (int) -> SBValue
         if index == 0:
-            return self.value
+            value = self.ptr.GetChildMemberWithName("data") if self.is_atomic else self.ptr.Dereference()
+            return self.valobj.CreateValueFromData("value", value.data, value.type)
         if index == 1:
             return self.value_builder.from_uint("strong", self.strong_count)
         if index == 2:
@@ -640,8 +644,12 @@ class StdRcSyntheticProvider:
 
     def update(self):
         # type: () -> None
-        self.strong_count = self.strong.GetValueAsUnsigned()
-        self.weak_count = self.weak.GetValueAsUnsigned() - 1
+        if self.is_atomic:
+            self.strong_count = self.meta.GetChildMemberWithName("strong").GetChildAtIndex(0).GetChildMemberWithName("value").GetValueAsUnsigned()
+            self.weak_count = self.meta.GetChildMemberWithName("weak").GetChildAtIndex(0).GetChildMemberWithName("value").GetValueAsUnsigned() - 1
+        else:
+            self.strong_count = self.meta.GetChildMemberWithName("strong").GetChildMemberWithName("value").GetValueAsUnsigned()
+            self.weak_count = self.meta.GetChildMemberWithName("weak").GetChildMemberWithName("value").GetValueAsUnsigned() - 1
 
     def has_children(self):
         # type: () -> bool
