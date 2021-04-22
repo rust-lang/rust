@@ -74,13 +74,16 @@ crate struct TraitWithExtraInfo {
 crate struct ExternalCrate {
     crate crate_num: CrateNum,
     crate attrs: Attributes,
-    crate keywords: ThinVec<(DefId, Symbol)>,
 }
 
 impl ExternalCrate {
+    #[inline]
+    fn def_id(&self) -> DefId {
+        DefId { krate: self.crate_num, index: CRATE_DEF_INDEX }
+    }
+
     crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
-        let root = DefId { krate: self.crate_num, index: rustc_hir::def_id::CRATE_DEF_INDEX };
-        let krate_span = tcx.def_span(root);
+        let krate_span = tcx.def_span(self.def_id());
         tcx.sess.source_map().span_to_filename(krate_span)
     }
 
@@ -88,8 +91,53 @@ impl ExternalCrate {
         tcx.crate_name(self.crate_num)
     }
 
+    crate fn keywords(&self, tcx: TyCtxt<'_>) -> ThinVec<(DefId, Symbol)> {
+        let root = self.def_id();
+
+        let as_keyword = |res: Res| {
+            if let Res::Def(DefKind::Mod, def_id) = res {
+                let attrs = tcx.get_attrs(def_id);
+                let mut keyword = None;
+                for attr in attrs.lists(sym::doc) {
+                    if attr.has_name(sym::keyword) {
+                        if let Some(v) = attr.value_str() {
+                            keyword = Some(v);
+                            break;
+                        }
+                    }
+                }
+                return keyword.map(|p| (def_id, p));
+            }
+            None
+        };
+        if root.is_local() {
+            tcx.hir()
+                .krate()
+                .item
+                .item_ids
+                .iter()
+                .filter_map(|&id| {
+                    let item = tcx.hir().item(id);
+                    match item.kind {
+                        hir::ItemKind::Mod(_) => {
+                            as_keyword(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
+                        }
+                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
+                            if item.vis.node.is_pub() =>
+                        {
+                            as_keyword(path.res).map(|(_, prim)| (id.def_id.to_def_id(), prim))
+                        }
+                        _ => None,
+                    }
+                })
+                .collect()
+        } else {
+            tcx.item_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
+        }
+    }
+
     crate fn primitives(&self, tcx: TyCtxt<'_>) -> ThinVec<(DefId, PrimitiveType)> {
-        let root = DefId { krate: self.crate_num, index: CRATE_DEF_INDEX };
+        let root = self.def_id();
 
         // Collect all inner modules which are tagged as implementations of
         // primitives.

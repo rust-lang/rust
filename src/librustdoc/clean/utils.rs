@@ -1,9 +1,9 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
-    ItemKind, Lifetime, MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type,
-    TypeBinding, TypeKind,
+    inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
+    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
+    TypeKind,
 };
 use crate::core::DocContext;
 
@@ -58,7 +58,7 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     let src = local_crate.src(cx.tcx);
     let name = local_crate.name(cx.tcx);
     let primitives = local_crate.primitives(cx.tcx);
-    let ExternalCrate { keywords, .. } = local_crate;
+    let keywords = local_crate.keywords(cx.tcx);
     {
         let m = match *module.kind {
             ItemKind::ModuleItem(ref mut m) => m,
