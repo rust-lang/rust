@@ -727,16 +727,46 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
 }
 
 fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
+    use rustc_errors::Applicability;
+
     if !sess.opts.unstable_features.is_nightly_build() {
+        let lang_features = &sess.features_untracked().declared_lang_features;
         for attr in krate.attrs.iter().filter(|attr| sess.check_name(attr, sym::feature)) {
-            struct_span_err!(
+            let mut err = struct_span_err!(
                 sess.parse_sess.span_diagnostic,
                 attr.span,
                 E0554,
                 "`#![feature]` may not be used on the {} release channel",
                 option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)")
-            )
-            .emit();
+            );
+            let mut all_stable = true;
+            for ident in
+                attr.meta_item_list().into_iter().flatten().map(|nested| nested.ident()).flatten()
+            {
+                let name = ident.name;
+                let stable_since = lang_features
+                    .iter()
+                    .flat_map(|&(feature, _, since)| if feature == name { since } else { None })
+                    .next();
+                if let Some(since) = stable_since {
+                    err.help(&format!(
+                        "the feature `{}` has been stable since {} and no longer requires \
+                                  an attribute to enable",
+                        name, since
+                    ));
+                } else {
+                    all_stable = false;
+                }
+            }
+            if all_stable {
+                err.span_suggestion(
+                    attr.span,
+                    "remove the attribute",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            }
+            err.emit();
         }
     }
 }
