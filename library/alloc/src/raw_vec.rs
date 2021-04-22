@@ -1,7 +1,7 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
-use core::alloc::LayoutError;
+use core::alloc::{LayoutError, helper::AllocInit};
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
@@ -15,13 +15,6 @@ use crate::collections::TryReserveError::{self, *};
 
 #[cfg(test)]
 mod tests;
-
-enum AllocInit {
-    /// The contents of the new memory are uninitialized.
-    Uninitialized,
-    /// The new memory is guaranteed to be zeroed.
-    Zeroed,
-}
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases

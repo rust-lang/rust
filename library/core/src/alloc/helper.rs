@@ -1,3 +1,6 @@
+#![unstable(feature = "allocator_api_internals", issue = "none")]
+#![doc(hidden)]
+
 use crate::{
     alloc::{AllocError, Allocator, Layout},
     fmt,
@@ -6,10 +9,11 @@ use crate::{
     ptr::NonNull,
 };
 
-#[unstable(feature = "allocator_api_internals", issue = "none")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AllocInit {
+    /// The contents of the new memory are uninitialized.
     Uninitialized,
+    /// The new memory is guaranteed to be zeroed.
     Zeroed,
 }
 
@@ -37,7 +41,6 @@ pub enum AllocInit {
 /// When this allocator creates an allocation for layout `layout`, the pointer can be
 /// offset by `-offsetof(Struct, data)` and the resulting pointer points is an allocation
 /// of `A` for `Layout::new::<Struct>()`.
-#[unstable(feature = "allocator_api_internals", issue = "none")]
 pub struct PrefixAllocator<Alloc, Prefix = ()> {
     /// The parent allocator to be used as backend
     pub parent: Alloc,
