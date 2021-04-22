@@ -1213,8 +1213,41 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 deny_equality_constraints(self, predicate, generics);
             }
         }
+        walk_list!(self, visit_generic_param, &generics.params);
+        for predicate in &generics.where_clause.predicates {
+            match predicate {
+                WherePredicate::BoundPredicate(bound_pred) => {
+                    // A type binding, eg `for<'c> Foo: Send+Clone+'c`
+                    self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
 
-        visit::walk_generics(self, generics)
+                    // This is slightly complicated. Our representation for poly-trait-refs contains a single
+                    // binder and thus we only allow a single level of quantification. However,
+                    // the syntax of Rust permits quantification in two places in where clauses,
+                    // e.g., `T: for <'a> Foo<'a>` and `for <'a, 'b> &'b T: Foo<'a>`. If both are
+                    // defined, then error.
+                    if !bound_pred.bound_generic_params.is_empty() {
+                        for bound in &bound_pred.bounds {
+                            match bound {
+                                GenericBound::Trait(t, _) => {
+                                    if !t.bound_generic_params.is_empty() {
+                                        struct_span_err!(
+                                            self.err_handler(),
+                                            t.span,
+                                            E0316,
+                                            "nested quantification of lifetimes"
+                                        )
+                                        .emit();
+                                    }
+                                }
+                                GenericBound::Outlives(_) => {}
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+            self.visit_where_predicate(predicate);
+        }
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
@@ -1261,14 +1294,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_pat(self, pat)
-    }
-
-    fn visit_where_predicate(&mut self, p: &'a WherePredicate) {
-        if let &WherePredicate::BoundPredicate(ref bound_predicate) = p {
-            // A type binding, eg `for<'c> Foo: Send+Clone+'c`
-            self.check_late_bound_lifetime_defs(&bound_predicate.bound_generic_params);
-        }
-        visit::walk_where_predicate(self, p);
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef, m: &'a TraitBoundModifier) {
