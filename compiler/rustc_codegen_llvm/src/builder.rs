@@ -670,7 +670,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptoui_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
-        if llvm_util::get_version() >= (12, 0, 0) {
+        if llvm_util::get_version() >= (12, 0, 0) && !self.fptoint_sat_broken_in_llvm() {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
@@ -683,7 +683,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn fptosi_sat(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> Option<&'ll Value> {
-        if llvm_util::get_version() >= (12, 0, 0) {
+        if llvm_util::get_version() >= (12, 0, 0) && !self.fptoint_sat_broken_in_llvm() {
             let src_ty = self.cx.val_ty(val);
             let float_width = self.cx.float_width(src_ty);
             let int_width = self.cx.int_width(dest_ty);
@@ -1385,6 +1385,14 @@ impl Builder<'a, 'll, 'tcx> {
     fn add_incoming_to_phi(&mut self, phi: &'ll Value, val: &'ll Value, bb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
+        }
+    }
+
+    fn fptoint_sat_broken_in_llvm(&self) -> bool {
+        match self.tcx.sess.target.arch.as_str() {
+            // FIXME - https://bugs.llvm.org/show_bug.cgi?id=50083
+            "riscv64" => llvm_util::get_version() < (13, 0, 0),
+            _ => false,
         }
     }
 }
