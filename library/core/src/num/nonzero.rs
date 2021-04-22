@@ -23,7 +23,7 @@ macro_rules! impl_nonzero_fmt {
 }
 
 macro_rules! nonzero_integers {
-    ( $( #[$stability: meta] $Ty: ident($Int: ty); )+ ) => {
+    ( $( #[$stability: meta] #[$const_new_unchecked_stability: meta] $Ty: ident($Int: ty); )+ ) => {
         $(
             /// An integer that is known not to equal zero.
             ///
@@ -48,7 +48,7 @@ macro_rules! nonzero_integers {
                 ///
                 /// The value must not be zero.
                 #[$stability]
-                #[rustc_const_stable(feature = "nonzero", since = "1.34.0")]
+                #[$const_new_unchecked_stability]
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
@@ -146,18 +146,18 @@ macro_rules! nonzero_integers {
 }
 
 nonzero_integers! {
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8);
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU64(u64);
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128);
-    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroUsize(usize);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI8(i8);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI16(i16);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI32(i32);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI64(i64);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128);
-    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU8(u8);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU64(u64);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128);
+    #[stable(feature = "nonzero", since = "1.28.0")] #[rustc_const_stable(feature = "nonzero", since = "1.28.0")] NonZeroUsize(usize);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI8(i8);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI16(i16);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI32(i32);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI64(i64);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] #[rustc_const_stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
 }
 
 macro_rules! from_str_radix_nzint_impl {

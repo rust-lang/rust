@@ -507,7 +507,7 @@ pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
 #[stable(since = "1.9.0", feature = "core_impl_debug")]
 impl<H> fmt::Debug for BuildHasherDefault<H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("BuildHasherDefault")
+        f.debug_struct("BuildHasherDefault").finish()
     }
 }
 

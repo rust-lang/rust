@@ -85,11 +85,6 @@ pub fn errno() -> i32 {
     unsafe { libc::errnoGet() }
 }
 
-#[cfg(target_os = "vxworks")]
-pub fn set_errno(e: i32) {
-    unsafe { libc::errnoSet(e as c_int) };
-}
-
 #[cfg(target_os = "dragonfly")]
 pub fn errno() -> i32 {
     extern "C" {
@@ -642,7 +637,7 @@ pub fn getppid() -> u32 {
     unsafe { libc::getppid() as u32 }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 pub fn glibc_version() -> Option<(usize, usize)> {
     if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
         parse_glibc_version(version_str)
@@ -651,7 +646,7 @@ pub fn glibc_version() -> Option<(usize, usize)> {
     }
 }
 
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 fn glibc_version_cstr() -> Option<&'static CStr> {
     weak! {
         fn gnu_get_libc_version() -> *const libc::c_char
@@ -665,7 +660,7 @@ fn glibc_version_cstr() -> Option<&'static CStr> {
 
 // Returns Some((major, minor)) if the string is a valid "x.y" version,
 // ignoring any extra dot-separated parts. Otherwise return None.
-#[cfg(target_env = "gnu")]
+#[cfg(all(target_env = "gnu", not(target_os = "vxworks")))]
 fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
     let mut parsed_ints = version.split('.').map(str::parse::<usize>).fuse();
     match (parsed_ints.next(), parsed_ints.next()) {

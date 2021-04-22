@@ -100,7 +100,7 @@ pub struct LocalKey<T: 'static> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: 'static> fmt::Debug for LocalKey<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("LocalKey { .. }")
+        f.debug_struct("LocalKey").finish_non_exhaustive()
     }
 }
 
@@ -472,7 +472,7 @@ pub mod statik {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 
@@ -537,7 +537,7 @@ pub mod fast {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 
@@ -651,7 +651,7 @@ pub mod os {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 

@@ -1477,7 +1477,7 @@ impl<T> fmt::Debug for Receiver<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "SendError(..)".fmt(f)
+        f.debug_struct("SendError").finish_non_exhaustive()
     }
 }
 

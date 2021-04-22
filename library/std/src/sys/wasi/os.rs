@@ -10,7 +10,7 @@ use crate::os::wasi::prelude::*;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sys::memchr;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::vec;
 
 // Add a few symbols not in upstream `libc` just yet.
@@ -87,7 +87,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     }
 }
 
-pub struct SplitPaths<'a>(&'a Void);
+pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
@@ -96,7 +96,7 @@ pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> {
-        match *self.0 {}
+        self.0
     }
 }
 
