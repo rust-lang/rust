@@ -494,7 +494,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
     }
 
-    fn after_krate(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error> {
+    fn after_krate(&mut self) -> Result<(), Error> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(&*crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
@@ -569,7 +569,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
-        let nb_errors = self.shared.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
+        let nb_errors =
+            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(&err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
         } else {

@@ -41,9 +41,7 @@ crate trait FormatRenderer<'tcx>: Sized {
     fn mod_item_out(&mut self, item_name: &str) -> Result<(), Error>;
 
     /// Post processing hook for cleanup and dumping output to files.
-    ///
-    /// A handler is available if the renderer wants to report errors.
-    fn after_krate(&mut self, diag: &rustc_errors::Handler) -> Result<(), Error>;
+    fn after_krate(&mut self) -> Result<(), Error>;
 
     fn cache(&self) -> &Cache;
 }
@@ -53,7 +51,6 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     krate: clean::Crate,
     options: RenderOptions,
     cache: Cache,
-    diag: &rustc_errors::Handler,
     edition: Edition,
     tcx: TyCtxt<'tcx>,
 ) -> Result<(), Error> {
@@ -101,5 +98,5 @@ crate fn run_format<'tcx, T: FormatRenderer<'tcx>>(
         }
     }
     prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
-        .run(|| format_renderer.after_krate(diag))
+        .run(|| format_renderer.after_krate())
 }

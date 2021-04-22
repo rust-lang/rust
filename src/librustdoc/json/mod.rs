@@ -204,7 +204,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok(())
     }
 
-    fn after_krate(&mut self, _diag: &rustc_errors::Handler) -> Result<(), Error> {
+    fn after_krate(&mut self) -> Result<(), Error> {
         debug!("Done with crate");
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items());
