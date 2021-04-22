@@ -1,5 +1,5 @@
-#![allow(deprecated, invalid_value)]
-#![warn(clippy::all)]
+#![allow(deprecated, invalid_value, clippy::uninit_assumed_init)]
+#![warn(clippy::mem_replace_with_uninit)]
 
 use std::mem;
 

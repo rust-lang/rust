@@ -281,3 +281,29 @@ mod issue_4958 {
         for _ in rr.into_iter() {}
     }
 }
+
+// explicit_into_iter_loop
+#[warn(clippy::explicit_into_iter_loop)]
+mod issue_6900 {
+    struct S;
+    impl S {
+        #[allow(clippy::should_implement_trait)]
+        pub fn into_iter<T>(self) -> I<T> {
+            unimplemented!()
+        }
+    }
+
+    struct I<T>(T);
+    impl<T> Iterator for I<T> {
+        type Item = T;
+        fn next(&mut self) -> Option<Self::Item> {
+            unimplemented!()
+        }
+    }
+
+    fn f() {
+        for _ in S.into_iter::<u32>() {
+            unimplemented!()
+        }
+    }
+}

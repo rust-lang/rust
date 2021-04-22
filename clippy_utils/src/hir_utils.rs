@@ -96,6 +96,16 @@ impl HirEqInterExpr<'_, '_, '_> {
     pub fn eq_stmt(&mut self, left: &Stmt<'_>, right: &Stmt<'_>) -> bool {
         match (&left.kind, &right.kind) {
             (&StmtKind::Local(ref l), &StmtKind::Local(ref r)) => {
+                // This additional check ensures that the type of the locals are equivalent even if the init
+                // expression or type have some inferred parts.
+                if let Some(typeck) = self.inner.maybe_typeck_results {
+                    let l_ty = typeck.pat_ty(&l.pat);
+                    let r_ty = typeck.pat_ty(&r.pat);
+                    if !rustc_middle::ty::TyS::same_type(l_ty, r_ty) {
+                        return false;
+                    }
+                }
+
                 // eq_pat adds the HirIds to the locals map. We therefor call it last to make sure that
                 // these only get added if the init and type is equal.
                 both(&l.init, &r.init, |l, r| self.eq_expr(l, r))
@@ -424,7 +434,7 @@ fn reduce_exprkind<'hir>(cx: &LateContext<'_>, kind: &'hir ExprKind<'hir>) -> &'
                                 TokenKind::LineComment { .. } | TokenKind::BlockComment { .. } | TokenKind::Whitespace
                             )
                         })
-                        .ne([TokenKind::OpenBrace, TokenKind::CloseBrace].iter().cloned()) =>
+                        .ne([TokenKind::OpenBrace, TokenKind::CloseBrace].iter().copied()) =>
                 {
                     kind
                 },

@@ -212,4 +212,11 @@ fn main() {
             None => None,
         };
     }
+
+    // #7077
+    let s = &String::new();
+    let _: Option<&str> = match Some(s) {
+        Some(s) => Some(s),
+        None => None,
+    };
 }

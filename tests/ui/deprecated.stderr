@@ -24,23 +24,23 @@ error: lint `clippy::unused_collect` has been removed: `collect` has been marked
 LL | #[warn(clippy::unused_collect)]
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::invalid_ref` has been removed: superseded by rustc lint `invalid_value`
+error: lint `clippy::invalid_ref` has been renamed to `invalid_value`
   --> $DIR/deprecated.rs:5:8
    |
 LL | #[warn(clippy::invalid_ref)]
-   |        ^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_value`
 
-error: lint `clippy::into_iter_on_array` has been removed: this lint has been uplifted to rustc and is now called `array_into_iter`
+error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
   --> $DIR/deprecated.rs:6:8
    |
 LL | #[warn(clippy::into_iter_on_array)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `array_into_iter`
 
-error: lint `clippy::unused_label` has been removed: this lint has been uplifted to rustc and is now called `unused_labels`
+error: lint `clippy::unused_label` has been renamed to `unused_labels`
   --> $DIR/deprecated.rs:7:8
    |
 LL | #[warn(clippy::unused_label)]
-   |        ^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unused_labels`
 
 error: lint `clippy::regex_macro` has been removed: the regex! macro has been removed from the regex crate in 2018
   --> $DIR/deprecated.rs:8:8
@@ -48,29 +48,29 @@ error: lint `clippy::regex_macro` has been removed: the regex! macro has been re
 LL | #[warn(clippy::regex_macro)]
    |        ^^^^^^^^^^^^^^^^^^^
 
-error: lint `clippy::drop_bounds` has been removed: this lint has been uplifted to rustc and is now called `drop_bounds`
+error: lint `clippy::drop_bounds` has been renamed to `drop_bounds`
   --> $DIR/deprecated.rs:9:8
    |
 LL | #[warn(clippy::drop_bounds)]
-   |        ^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^ help: use the new name: `drop_bounds`
 
-error: lint `clippy::temporary_cstring_as_ptr` has been removed: this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`
+error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `temporary_cstring_as_ptr`
   --> $DIR/deprecated.rs:10:8
    |
 LL | #[warn(clippy::temporary_cstring_as_ptr)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `temporary_cstring_as_ptr`
 
-error: lint `clippy::panic_params` has been removed: this lint has been uplifted to rustc and is now called `panic_fmt`
+error: lint `clippy::panic_params` has been renamed to `non_fmt_panic`
   --> $DIR/deprecated.rs:11:8
    |
 LL | #[warn(clippy::panic_params)]
-   |        ^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panic`
 
-error: lint `clippy::unknown_clippy_lints` has been removed: this lint has been integrated into the `unknown_lints` rustc lint
+error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
   --> $DIR/deprecated.rs:12:8
    |
 LL | #[warn(clippy::unknown_clippy_lints)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unknown_lints`
 
 error: lint `clippy::find_map` has been removed: this lint has been replaced by `manual_find_map`, a more specific lint
   --> $DIR/deprecated.rs:13:8
@@ -78,11 +78,17 @@ error: lint `clippy::find_map` has been removed: this lint has been replaced by 
 LL | #[warn(clippy::find_map)]
    |        ^^^^^^^^^^^^^^^^
 
+error: lint `clippy::filter_map` has been removed: this lint has been replaced by `manual_filter_map`, a more specific lint
+  --> $DIR/deprecated.rs:14:8
+   |
+LL | #[warn(clippy::filter_map)]
+   |        ^^^^^^^^^^^^^^^^^^
+
 error: lint `clippy::unstable_as_slice` has been removed: `Vec::as_slice` has been stabilized in 1.7
   --> $DIR/deprecated.rs:1:8
    |
 LL | #[warn(clippy::unstable_as_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 

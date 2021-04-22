@@ -274,7 +274,7 @@ declare_clippy_lint! {
     /// let _ = unsafe{ &*(&1u32 as *const u32 as *const f32) };
     /// ```
     pub TRANSMUTE_PTR_TO_PTR,
-    complexity,
+    pedantic,
     "transmutes from a pointer to a pointer / a reference to a reference"
 }
 
