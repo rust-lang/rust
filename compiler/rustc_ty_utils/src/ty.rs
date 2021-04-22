@@ -210,9 +210,9 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: DefId) -> &[DefId] {
     }
 }
 
-fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssociatedItems<'_> {
+fn associated_items(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItems<'_> {
     let items = tcx.associated_item_def_ids(def_id).iter().map(|did| tcx.associated_item(*did));
-    ty::AssociatedItems::new(items)
+    ty::AssocItems::new(items)
 }
 
 fn def_ident_span(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Span> {

@@ -96,15 +96,15 @@ impl AssocKind {
 /// it is relatively expensive. Instead, items are indexed by `Symbol` and hygienic comparison is
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
-pub struct AssociatedItems<'tcx> {
+pub struct AssocItems<'tcx> {
     pub(super) items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
 }
 
-impl<'tcx> AssociatedItems<'tcx> {
+impl<'tcx> AssocItems<'tcx> {
     /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
     pub fn new(items_in_def_order: impl IntoIterator<Item = &'tcx ty::AssocItem>) -> Self {
         let items = items_in_def_order.into_iter().map(|item| (item.ident.name, item)).collect();
-        AssociatedItems { items }
+        AssocItems { items }
     }
 
     /// Returns a slice of associated items in the order they were defined.
