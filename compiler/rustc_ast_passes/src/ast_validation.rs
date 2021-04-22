@@ -754,7 +754,7 @@ fn validate_generic_param_order(
             GenericParamKind::Type { default: _ } => (ParamKindOrd::Type, ident),
             GenericParamKind::Const { ref ty, kw_span: _, default: _ } => {
                 let ty = pprust::ty_to_string(ty);
-                let unordered = sess.features_untracked().const_generics;
+                let unordered = sess.features_untracked().unordered_const_ty_params();
                 (ParamKindOrd::Const { unordered }, Some(format!("const {}: {}", param.ident, ty)))
             }
         };
