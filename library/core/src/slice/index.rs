@@ -81,6 +81,8 @@ mod private_slice_index {
     impl Sealed for ops::RangeInclusive<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for ops::RangeToInclusive<usize> {}
+    #[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
+    impl Sealed for (ops::Bound<usize>, ops::Bound<usize>) {}
 }
 
 /// A helper trait used for indexing operations.
@@ -545,4 +547,114 @@ where
     }
 
     ops::Range { start, end }
+}
+
+/// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking and (in debug) overflow checking
+fn into_range_unchecked(
+    len: usize,
+    (start, end): (ops::Bound<usize>, ops::Bound<usize>),
+) -> ops::Range<usize> {
+    use ops::Bound;
+    let start = match start {
+        Bound::Included(i) => i,
+        Bound::Excluded(i) => i + 1,
+        Bound::Unbounded => 0,
+    };
+    let end = match end {
+        Bound::Included(i) => i + 1,
+        Bound::Excluded(i) => i,
+        Bound::Unbounded => len,
+    };
+    start..end
+}
+
+/// Convert pair of `ops::Bound`s into `ops::Range`.
+/// Returns `None` on overflowing indices.
+fn into_range(
+    len: usize,
+    (start, end): (ops::Bound<usize>, ops::Bound<usize>),
+) -> Option<ops::Range<usize>> {
+    use ops::Bound;
+    let start = match start {
+        Bound::Included(start) => start,
+        Bound::Excluded(start) => start.checked_add(1)?,
+        Bound::Unbounded => 0,
+    };
+
+    let end = match end {
+        Bound::Included(end) => end.checked_add(1)?,
+        Bound::Excluded(end) => end,
+        Bound::Unbounded => len,
+    };
+
+    // Don't bother with checking `start < end` and `end <= len`
+    // since these checks are handled by `Range` impls
+
+    Some(start..end)
+}
+
+/// Convert pair of `ops::Bound`s into `ops::Range`.
+/// Panics on overflowing indices.
+fn into_slice_range(
+    len: usize,
+    (start, end): (ops::Bound<usize>, ops::Bound<usize>),
+) -> ops::Range<usize> {
+    use ops::Bound;
+    let start = match start {
+        Bound::Included(start) => start,
+        Bound::Excluded(start) => {
+            start.checked_add(1).unwrap_or_else(|| slice_start_index_overflow_fail())
+        }
+        Bound::Unbounded => 0,
+    };
+
+    let end = match end {
+        Bound::Included(end) => {
+            end.checked_add(1).unwrap_or_else(|| slice_end_index_overflow_fail())
+        }
+        Bound::Excluded(end) => end,
+        Bound::Unbounded => len,
+    };
+
+    // Don't bother with checking `start < end` and `end <= len`
+    // since these checks are handled by `Range` impls
+
+    start..end
+}
+
+#[stable(feature = "slice_index_with_ops_bound_pair", since = "1.53.0")]
+unsafe impl<T> SliceIndex<[T]> for (ops::Bound<usize>, ops::Bound<usize>) {
+    type Output = [T];
+
+    #[inline]
+    fn get(self, slice: &[T]) -> Option<&Self::Output> {
+        into_range(slice.len(), self)?.get(slice)
+    }
+
+    #[inline]
+    fn get_mut(self, slice: &mut [T]) -> Option<&mut Self::Output> {
+        into_range(slice.len(), self)?.get_mut(slice)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked(self, slice: *const [T]) -> *const Self::Output {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked`.
+        unsafe { into_range_unchecked(slice.len(), self).get_unchecked(slice) }
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut(self, slice: *mut [T]) -> *mut Self::Output {
+        // SAFETY: the caller has to uphold the safety contract for `get_unchecked_mut`.
+        unsafe { into_range_unchecked(slice.len(), self).get_unchecked_mut(slice) }
+    }
+
+    #[inline]
+    fn index(self, slice: &[T]) -> &Self::Output {
+        into_slice_range(slice.len(), self).index(slice)
+    }
+
+    #[inline]
+    fn index_mut(self, slice: &mut [T]) -> &mut Self::Output {
+        into_slice_range(slice.len(), self).index_mut(slice)
+    }
 }
