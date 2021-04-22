@@ -1616,18 +1616,18 @@ impl PrimitiveType {
         }
     }
 
-    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<[DefId; 4]> {
+    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<DefId, 4> {
         Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
     }
 
-    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, ArrayVec<[DefId; 4]>> {
-        static CELL: OnceCell<FxHashMap<PrimitiveType, ArrayVec<[DefId; 4]>>> = OnceCell::new();
+    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, ArrayVec<DefId, 4>> {
+        static CELL: OnceCell<FxHashMap<PrimitiveType, ArrayVec<DefId, 4>>> = OnceCell::new();
 
         CELL.get_or_init(move || {
             use self::PrimitiveType::*;
 
             let single = |a: Option<DefId>| a.into_iter().collect();
-            let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_> {
+            let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_, 4> {
                 a.into_iter().chain(b).collect()
             };
 
