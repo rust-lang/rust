@@ -832,16 +832,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
-        if self.eat_keyword(kw::As) { self.parse_ident_or_underscore().map(Some) } else { Ok(None) }
+        if self.eat_keyword(kw::As) {
+            self.parse_ident_or_underscore(true).map(Some)
+        } else {
+            Ok(None)
+        }
     }
 
-    fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
+    fn parse_ident_or_underscore(&mut self, recover: bool) -> PResult<'a, Ident> {
         match self.token.ident() {
             Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
                 self.bump();
                 Ok(ident)
             }
-            _ => self.parse_ident(),
+            _ => self.parse_ident_common(recover),
         }
     }
 
@@ -1056,7 +1060,8 @@ impl<'a> Parser<'a> {
         &mut self,
         m: Option<Mutability>,
     ) -> PResult<'a, (Ident, P<Ty>, Option<P<ast::Expr>>)> {
-        let id = if m.is_none() { self.parse_ident_or_underscore() } else { self.parse_ident() }?;
+        let id =
+            if m.is_none() { self.parse_ident_or_underscore(true) } else { self.parse_ident() }?;
 
         // Parse the type of a `const` or `static mut?` item.
         // That is, the `":" $ty` fragment.
@@ -1470,7 +1475,7 @@ impl<'a> Parser<'a> {
         vis: Visibility,
         attrs: Vec<Attribute>,
     ) -> PResult<'a, FieldDef> {
-        let name = self.parse_ident_or_underscore()?;
+        let name = self.parse_ident_or_underscore(false)?;
         self.expect(&token::Colon)?;
         if name.name == kw::Underscore {
             self.parse_unnamed_field_type(lo, vis, attrs)
