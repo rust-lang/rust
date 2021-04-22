@@ -36,7 +36,7 @@ impl GenericParamDefKind {
             GenericParamDefKind::Lifetime => ast::ParamKindOrd::Lifetime,
             GenericParamDefKind::Type { .. } => ast::ParamKindOrd::Type,
             GenericParamDefKind::Const { .. } => {
-                ast::ParamKindOrd::Const { unordered: tcx.features().const_generics }
+                ast::ParamKindOrd::Const { unordered: tcx.features().unordered_const_ty_params() }
             }
         }
     }
