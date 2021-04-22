@@ -6,8 +6,14 @@
 // rev3 and make sure that the hash has not changed.
 
 // build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans -Zmir-opt-level=0
+// revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+// compile-flags: -Z query-dep-graph -Zmir-opt-level=0
+// [cfail1]compile-flags: -Zincremental-ignore-spans
+// [cfail2]compile-flags: -Zincremental-ignore-spans
+// [cfail3]compile-flags: -Zincremental-ignore-spans
+// [cfail4]compile-flags: -Zincremental-relative-spans
+// [cfail5]compile-flags: -Zincremental-relative-spans
+// [cfail6]compile-flags: -Zincremental-relative-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -24,7 +30,7 @@ pub enum Enum {
 }
 
 // Change field value (struct-like) -----------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_field_value_struct_like() -> Enum {
     Enum::Struct {
         x: 0,
@@ -33,9 +39,11 @@ pub fn change_field_value_struct_like() -> Enum {
     }
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_field_value_struct_like() -> Enum {
     Enum::Struct {
         x: 0,
@@ -47,7 +55,7 @@ pub fn change_field_value_struct_like() -> Enum {
 
 
 // Change field order (struct-like) -----------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_field_order_struct_like() -> Enum {
     Enum::Struct {
         x: 3,
@@ -56,9 +64,11 @@ pub fn change_field_order_struct_like() -> Enum {
     }
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,typeck,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 // FIXME(michaelwoerister):Interesting. I would have thought that that changes the MIR. And it
 // would if it were not all constants
 pub fn change_field_order_struct_like() -> Enum {
@@ -86,18 +96,20 @@ pub enum Enum2 {
 }
 
 // Change constructor path (struct-like) ------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_constructor_path_struct_like() {
-    let _ = Enum::Struct {
+    let _ = Enum ::Struct {
         x: 0,
         y: 1,
         z: 2,
     };
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_path_struct_like() {
     let _ = Enum2::Struct {
         x: 0,
@@ -109,18 +121,20 @@ pub fn change_constructor_path_struct_like() {
 
 
 // Change variant (regular struct) ------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_constructor_variant_struct_like() {
-    let _ = Enum2::Struct {
+    let _ = Enum2::Struct  {
         x: 0,
         y: 1,
         z: 2,
     };
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_variant_struct_like() {
     let _ = Enum2::Struct2 {
         x: 0,
@@ -132,9 +146,9 @@ pub fn change_constructor_variant_struct_like() {
 
 // Change constructor path indirectly (struct-like) -------------------------
 pub mod change_constructor_path_indirectly_struct_like {
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::Enum as TheEnum;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::Enum2 as TheEnum;
 
     #[rustc_clean(
@@ -143,6 +157,12 @@ pub mod change_constructor_path_indirectly_struct_like {
                 typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(
+        cfg="cfail5",
+        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
+                typeck"
+    )]
+    #[rustc_clean(cfg="cfail6")]
     pub fn function() -> TheEnum {
         TheEnum::Struct {
             x: 0,
@@ -156,13 +176,15 @@ pub mod change_constructor_path_indirectly_struct_like {
 // Change constructor variant indirectly (struct-like) ---------------------------
 pub mod change_constructor_variant_indirectly_struct_like {
     use super::Enum2;
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::Enum2::Struct as Variant;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::Enum2::Struct2 as Variant;
 
     #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="cfail6")]
     pub fn function() -> Enum2 {
         Variant {
             x: 0,
@@ -174,14 +196,16 @@ pub mod change_constructor_variant_indirectly_struct_like {
 
 
 // Change field value (tuple-like) -------------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_field_value_tuple_like() -> Enum {
     Enum::Tuple(0, 1, 2)
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_field_value_tuple_like() -> Enum {
     Enum::Tuple(0, 1, 3)
 }
@@ -189,17 +213,22 @@ pub fn change_field_value_tuple_like() -> Enum {
 
 
 // Change constructor path (tuple-like) --------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_constructor_path_tuple_like() {
-    let _ = Enum::Tuple(0, 1, 2);
+    let _ = Enum ::Tuple(0, 1, 2);
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(
     cfg="cfail2",
     except="hir_owner_nodes,optimized_mir,typeck"
 )]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(
+    cfg="cfail5",
+    except="hir_owner_nodes,optimized_mir,typeck"
+)]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_path_tuple_like() {
     let _ = Enum2::Tuple(0, 1, 2);
 }
@@ -207,17 +236,22 @@ pub fn change_constructor_path_tuple_like() {
 
 
 // Change constructor variant (tuple-like) --------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_constructor_variant_tuple_like() {
-    let _ = Enum2::Tuple(0, 1, 2);
+    let _ = Enum2::Tuple (0, 1, 2);
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(
     cfg="cfail2",
     except="hir_owner_nodes,optimized_mir,typeck"
 )]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(
+    cfg="cfail5",
+    except="hir_owner_nodes,optimized_mir,typeck"
+)]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_variant_tuple_like() {
     let _ = Enum2::Tuple2(0, 1, 2);
 }
@@ -225,9 +259,9 @@ pub fn change_constructor_variant_tuple_like() {
 
 // Change constructor path indirectly (tuple-like) ---------------------------
 pub mod change_constructor_path_indirectly_tuple_like {
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::Enum as TheEnum;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::Enum2 as TheEnum;
 
     #[rustc_clean(
@@ -236,6 +270,12 @@ pub mod change_constructor_path_indirectly_tuple_like {
                 typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(
+        cfg="cfail5",
+        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
+                typeck"
+    )]
+    #[rustc_clean(cfg="cfail6")]
     pub fn function() -> TheEnum {
         TheEnum::Tuple(0, 1, 2)
     }
@@ -246,13 +286,15 @@ pub mod change_constructor_path_indirectly_tuple_like {
 // Change constructor variant indirectly (tuple-like) ---------------------------
 pub mod change_constructor_variant_indirectly_tuple_like {
     use super::Enum2;
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::Enum2::Tuple as Variant;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::Enum2::Tuple2 as Variant;
 
     #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail6")]
     pub fn function() -> Enum2 {
         Variant(0, 1, 2)
     }
@@ -272,14 +314,16 @@ pub enum Clike2 {
 }
 
 // Change constructor path (C-like) --------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_constructor_path_c_like() {
-    let _x = Clike::B;
+    let _x = Clike ::B;
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_path_c_like() {
     let _x = Clike2::B;
 }
@@ -287,14 +331,16 @@ pub fn change_constructor_path_c_like() {
 
 
 // Change constructor variant (C-like) --------------------------------------
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_constructor_variant_c_like() {
     let _x = Clike::A;
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_constructor_variant_c_like() {
     let _x = Clike::C;
 }
@@ -302,9 +348,9 @@ pub fn change_constructor_variant_c_like() {
 
 // Change constructor path indirectly (C-like) ---------------------------
 pub mod change_constructor_path_indirectly_c_like {
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::Clike as TheEnum;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::Clike2 as TheEnum;
 
     #[rustc_clean(
@@ -313,6 +359,12 @@ pub mod change_constructor_path_indirectly_c_like {
                 typeck"
     )]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(
+        cfg="cfail5",
+        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
+                typeck"
+    )]
+    #[rustc_clean(cfg="cfail6")]
     pub fn function() -> TheEnum {
         TheEnum::B
     }
@@ -323,13 +375,15 @@ pub mod change_constructor_path_indirectly_c_like {
 // Change constructor variant indirectly (C-like) ---------------------------
 pub mod change_constructor_variant_indirectly_c_like {
     use super::Clike;
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::Clike::A as Variant;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::Clike::B as Variant;
 
     #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+    #[rustc_clean(cfg="cfail6")]
     pub fn function() -> Clike {
         Variant
     }

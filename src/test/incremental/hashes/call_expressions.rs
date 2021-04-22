@@ -6,8 +6,14 @@
 // rev3 and make sure that the hash has not changed.
 
 // build-pass (FIXME(62277): could be check-pass?)
-// revisions: cfail1 cfail2 cfail3
-// compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
+// revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+// compile-flags: -Z query-dep-graph
+// [cfail1]compile-flags: -Zincremental-ignore-spans
+// [cfail2]compile-flags: -Zincremental-ignore-spans
+// [cfail3]compile-flags: -Zincremental-ignore-spans
+// [cfail4]compile-flags: -Zincremental-relative-spans
+// [cfail5]compile-flags: -Zincremental-relative-spans
+// [cfail6]compile-flags: -Zincremental-relative-spans
 
 
 #![allow(warnings)]
@@ -19,14 +25,16 @@ fn callee2(_x: u32, _y: i64) {}
 
 
 // Change Callee (Function)
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_callee_function() {
     callee1(1, 2)
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_callee_function() {
     callee2(1, 2)
 }
@@ -34,14 +42,16 @@ pub fn change_callee_function() {
 
 
 // Change Argument (Function)
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_argument_function() {
     callee1(1, 2)
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_argument_function() {
     callee1(1, 3)
 }
@@ -50,13 +60,15 @@ pub fn change_argument_function() {
 
 // Change Callee Indirectly (Function)
 mod change_callee_indirectly_function {
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::callee1 as callee;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::callee2 as callee;
 
     #[rustc_clean(except="hir_owner_nodes,typeck", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(except="hir_owner_nodes,typeck", cfg="cfail5")]
+    #[rustc_clean(cfg="cfail6")]
     pub fn change_callee_indirectly_function() {
         callee(1, 2)
     }
@@ -70,15 +82,17 @@ impl Struct {
 }
 
 // Change Callee (Method)
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_callee_method() {
     let s = Struct;
     s.method1('x', true);
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_callee_method() {
     let s = Struct;
     s.method2('x', true);
@@ -87,15 +101,17 @@ pub fn change_callee_method() {
 
 
 // Change Argument (Method)
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_argument_method() {
     let s = Struct;
     s.method1('x', true);
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_argument_method() {
     let s = Struct;
     s.method1('y', true);
@@ -104,15 +120,17 @@ pub fn change_argument_method() {
 
 
 // Change Callee (Method, UFCS)
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_ufcs_callee_method() {
     let s = Struct;
     Struct::method1(&s, 'x', true);
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_ufcs_callee_method() {
     let s = Struct;
     Struct::method2(&s, 'x', true);
@@ -121,32 +139,36 @@ pub fn change_ufcs_callee_method() {
 
 
 // Change Argument (Method, UFCS)
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_argument_method_ufcs() {
     let s = Struct;
     Struct::method1(&s, 'x', true);
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="cfail6")]
 pub fn change_argument_method_ufcs() {
     let s = Struct;
-    Struct::method1(&s, 'x', false);
+    Struct::method1(&s, 'x',false);
 }
 
 
 
 // Change To UFCS
-#[cfg(cfail1)]
+#[cfg(any(cfail1,cfail4))]
 pub fn change_to_ufcs() {
     let s = Struct;
-    s.method1('x', true);
+    s.method1('x', true); // ------
 }
 
-#[cfg(not(cfail1))]
+#[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
 #[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+#[rustc_clean(cfg="cfail6")]
 // One might think this would be expanded in the hir_owner_nodes/Mir, but it actually
 // results in slightly different hir_owner/Mir.
 pub fn change_to_ufcs() {
@@ -162,15 +184,15 @@ impl Struct2 {
 
 // Change UFCS Callee Indirectly
 pub mod change_ufcs_callee_indirectly {
-    #[cfg(cfail1)]
+    #[cfg(any(cfail1,cfail4))]
     use super::Struct as Struct;
-    #[cfg(not(cfail1))]
+    #[cfg(not(any(cfail1,cfail4)))]
     use super::Struct2 as Struct;
 
     #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
-
-
+    #[rustc_clean(cfg="cfail5", except="hir_owner_nodes,optimized_mir,typeck")]
+    #[rustc_clean(cfg="cfail6")]
     pub fn change_ufcs_callee_indirectly() {
         let s = Struct;
         Struct::method1(&s, 'q', false)

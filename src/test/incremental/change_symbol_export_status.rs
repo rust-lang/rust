@@ -1,9 +1,15 @@
-// revisions: rpass1 rpass2
+// revisions: rpass1 rpass2 rpass3 rpass4
 // compile-flags: -Zquery-dep-graph
+// [rpass1]compile-flags: -Zincremental-ignore-spans
+// [rpass2]compile-flags: -Zincremental-ignore-spans
+// [rpass3]compile-flags: -Zincremental-relative-spans
+// [rpass4]compile-flags: -Zincremental-relative-spans
 
 #![feature(rustc_attrs)]
-#![rustc_partition_codegened(module = "change_symbol_export_status-mod1", cfg = "rpass2")]
+#![rustc_partition_reused(module = "change_symbol_export_status-mod1", cfg = "rpass2")]
 #![rustc_partition_reused(module = "change_symbol_export_status-mod2", cfg = "rpass2")]
+#![rustc_partition_reused(module = "change_symbol_export_status-mod1", cfg = "rpass4")]
+#![rustc_partition_reused(module = "change_symbol_export_status-mod2", cfg = "rpass4")]
 
 // This test case makes sure that a change in symbol visibility is detected by
 // our dependency tracking. We do this by changing a module's visibility to
@@ -13,13 +19,13 @@
 // even from an executable. Plain Rust functions are only exported from Rust
 // libraries, which our test infrastructure does not support.
 
-#[cfg(rpass1)]
+#[cfg(any(rpass1,rpass3))]
 pub mod mod1 {
     #[no_mangle]
     pub fn foo() {}
 }
 
-#[cfg(rpass2)]
+#[cfg(any(rpass2,rpass4))]
 mod mod1 {
     #[no_mangle]
     pub fn foo() {}
