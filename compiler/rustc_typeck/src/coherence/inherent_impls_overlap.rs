@@ -24,8 +24,8 @@ impl InherentOverlapChecker<'tcx> {
     /// namespace.
     fn impls_have_common_items(
         &self,
-        impl_items1: &ty::AssociatedItems<'_>,
-        impl_items2: &ty::AssociatedItems<'_>,
+        impl_items1: &ty::AssocItems<'_>,
+        impl_items2: &ty::AssocItems<'_>,
     ) -> bool {
         let mut impl_items1 = &impl_items1;
         let mut impl_items2 = &impl_items2;
