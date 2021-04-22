@@ -2,8 +2,11 @@ error: variant is never constructed: `Bar`
   --> $DIR/unused-struct-variant.rs:8:5
    |
 LL |     Bar(B),
-   |     ^^^^^^
+   |     ---^^^
+   |     |
+   |     help: if this is intentional, prefix it with an underscore: `_Bar`
    |
+   = note: the leading underscore signals that this variant serves some other purpose even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/unused-struct-variant.rs:1:9
    |
