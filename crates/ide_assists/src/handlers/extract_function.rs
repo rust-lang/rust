@@ -1227,9 +1227,19 @@ fn make_body(
         FunctionBody::Expr(expr) => {
             let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax());
             let expr = ast::Expr::cast(expr).unwrap();
-            let expr = expr.dedent(old_indent).indent(IndentLevel(1));
+            match expr {
+                ast::Expr::BlockExpr(block) => {
+                    // If the extracted expression is itself a block, there is no need to wrap it inside another block.
+                    let block = block.dedent(old_indent);
+                    // Recreate the block for formatting consistency with other extracted functions.
+                    make::block_expr(block.statements(), block.tail_expr())
+                }
+                _ => {
+                    let expr = expr.dedent(old_indent).indent(IndentLevel(1));
 
-            make::block_expr(Vec::new(), Some(expr))
+                    make::block_expr(Vec::new(), Some(expr))
+                }
+            }
         }
         FunctionBody::Span { parent, text_range } => {
             let mut elements: Vec<_> = parent
@@ -1544,7 +1554,7 @@ fn foo() {
 }
 
 fn $0fun_name() -> i32 {
-    { 1 + 1 }
+    1 + 1
 }"#,
         );
     }
@@ -2526,17 +2536,15 @@ fn foo() {
 }
 
 fn $0fun_name(n: &mut i32) {
-    {
-        *n += *n;
-        bar(*n);
-        bar(*n+1);
-        bar(*n**n);
-        bar(&*n);
-        n.inc();
-        let v = n;
-        *v = v.succ();
-        n.succ();
-    }
+    *n += *n;
+    bar(*n);
+    bar(*n+1);
+    bar(*n**n);
+    bar(&*n);
+    n.inc();
+    let v = n;
+    *v = v.succ();
+    n.succ();
 }",
         );
     }
