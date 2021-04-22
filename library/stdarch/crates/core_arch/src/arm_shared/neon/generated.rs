@@ -4198,6 +4198,38 @@ pub unsafe fn vrhaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 vrhaddq_s32_(a, b)
 }
 
+/// Floating-point round to integral, to nearest with ties to even
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrintn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frintn))]
+pub unsafe fn vrndn_f32(a: float32x2_t) -> float32x2_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v2f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v2f32")]
+        fn vrndn_f32_(a: float32x2_t) -> float32x2_t;
+    }
+vrndn_f32_(a)
+}
+
+/// Floating-point round to integral, to nearest with ties to even
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrintn))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frintn))]
+pub unsafe fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrintn.v4f32")]
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v4f32")]
+        fn vrndnq_f32_(a: float32x4_t) -> float32x4_t;
+    }
+vrndnq_f32_(a)
+}
+
 /// Saturating add
 #[inline]
 #[target_feature(enable = "neon")]
@@ -14918,6 +14950,22 @@ mod test {
         let b: i32x4 = i32x4::new(1, 2, 3, 4);
         let e: i32x4 = i32x4::new(22, 22, 23, 23);
         let r: i32x4 = transmute(vrhaddq_s32(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrndn_f32() {
+        let a: f32x2 = f32x2::new(-1.5, 0.5);
+        let e: f32x2 = f32x2::new(-2.0, 0.0);
+        let r: f32x2 = transmute(vrndn_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vrndnq_f32() {
+        let a: f32x4 = f32x4::new(-1.5, 0.5, 1.5, 2.5);
+        let e: f32x4 = f32x4::new(-2.0, 0.0, 2.0, 2.0);
+        let r: f32x4 = transmute(vrndnq_f32(transmute(a)));
         assert_eq!(r, e);
     }
 

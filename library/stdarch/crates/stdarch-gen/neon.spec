@@ -1401,7 +1401,12 @@ validate -2.0, 0.0, 2.0, 2.0
 
 link-aarch64 = frintn._EXT_
 aarch64 = frintn
-generate float*_t, float64x*_t
+generate float64x*_t
+
+target = fp-armv8
+arm = vrintn
+link-arm = vrintn._EXT_
+generate float*_t
 
 /// Floating-point round to integral, toward minus infinity
 name = vrndm

@@ -2522,32 +2522,6 @@ pub unsafe fn vrndaq_f64(a: float64x2_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(frintn))]
-pub unsafe fn vrndn_f32(a: float32x2_t) -> float32x2_t {
-    #[allow(improper_ctypes)]
-    extern "C" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v2f32")]
-        fn vrndn_f32_(a: float32x2_t) -> float32x2_t;
-    }
-    vrndn_f32_(a)
-}
-
-/// Floating-point round to integral, to nearest with ties to even
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(frintn))]
-pub unsafe fn vrndnq_f32(a: float32x4_t) -> float32x4_t {
-    #[allow(improper_ctypes)]
-    extern "C" {
-        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frintn.v4f32")]
-        fn vrndnq_f32_(a: float32x4_t) -> float32x4_t;
-    }
-    vrndnq_f32_(a)
-}
-
-/// Floating-point round to integral, to nearest with ties to even
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(frintn))]
 pub unsafe fn vrndn_f64(a: float64x1_t) -> float64x1_t {
     #[allow(improper_ctypes)]
     extern "C" {
@@ -8881,22 +8855,6 @@ mod test {
         let a: f64x2 = f64x2::new(-1.5, 0.5);
         let e: f64x2 = f64x2::new(-2.0, 1.0);
         let r: f64x2 = transmute(vrndaq_f64(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vrndn_f32() {
-        let a: f32x2 = f32x2::new(-1.5, 0.5);
-        let e: f32x2 = f32x2::new(-2.0, 0.0);
-        let r: f32x2 = transmute(vrndn_f32(transmute(a)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vrndnq_f32() {
-        let a: f32x4 = f32x4::new(-1.5, 0.5, 1.5, 2.5);
-        let e: f32x4 = f32x4::new(-2.0, 0.0, 2.0, 2.0);
-        let r: f32x4 = transmute(vrndnq_f32(transmute(a)));
         assert_eq!(r, e);
     }
 
