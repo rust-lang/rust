@@ -343,7 +343,7 @@ crate struct Item {
 rustc_data_structures::static_assert_size!(Item, 56);
 
 crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
-    Span::from_rustc_span(def_id.as_local().map_or_else(
+    Span::new(def_id.as_local().map_or_else(
         || tcx.def_span(def_id),
         |local| {
             let hir = tcx.hir();
@@ -1947,15 +1947,15 @@ impl Span {
     /// span will be updated to point to the macro invocation instead of the macro definition.
     ///
     /// (See rust-lang/rust#39726)
-    crate fn from_rustc_span(sp: rustc_span::Span) -> Self {
+    crate fn new(sp: rustc_span::Span) -> Self {
         Self(sp.source_callsite())
     }
 
-    /// Unless you know what you're doing, use [`Self::from_rustc_span`] instead!
+    /// Unless you know what you're doing, use [`Self::new`] instead!
     ///
-    /// Contrary to [`Self::from_rustc_span`], this constructor wraps the span as is and don't
-    /// perform any operation on it, even if it's from a macro expansion.
-    crate fn wrap(sp: rustc_span::Span) -> Span {
+    /// This function doesn't clean the span at all. Compare with [`Self::new`]'s body to see the
+    /// difference.
+    crate fn wrap_raw(sp: rustc_span::Span) -> Span {
         Self(sp)
     }
 
