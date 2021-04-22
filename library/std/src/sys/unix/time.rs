@@ -273,11 +273,11 @@ mod inner {
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod inner {
+    use super::Timespec;
     use crate::fmt;
+    use crate::sys::common::time::{instant_reliability_override, InstantReliability};
     use crate::sys::cvt;
     use crate::time::Duration;
-
-    use super::Timespec;
 
     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct Instant {
@@ -301,9 +301,15 @@ mod inner {
         }
 
         pub fn actually_monotonic() -> bool {
-            (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64"))
-                || (cfg!(target_os = "linux") && cfg!(target_arch = "x86"))
-                || cfg!(target_os = "fuchsia")
+            match instant_reliability_override() {
+                InstantReliability::Default => {
+                    (cfg!(target_os = "linux") && cfg!(target_arch = "x86_64"))
+                        || (cfg!(target_os = "linux") && cfg!(target_arch = "x86"))
+                        || cfg!(target_os = "fuchsia")
+                }
+                InstantReliability::AssumeMonotonic => true,
+                InstantReliability::AssumeBroken => false,
+            }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
