@@ -140,20 +140,20 @@ macro_rules! impl_binary_checked_op_test {
 macro_rules! impl_common_integer_tests {
     { $vector:ident, $scalar:ident } => {
         test_helpers::test_lanes! {
-            fn horizontal_wrapping_sum<const LANES: usize>() {
+            fn horizontal_sum<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_wrapping_sum(),
+                        $vector::<LANES>::from_array(x).horizontal_sum(),
                         x.iter().copied().fold(0 as $scalar, $scalar::wrapping_add),
                     );
                     Ok(())
                 });
             }
 
-            fn horizontal_wrapping_product<const LANES: usize>() {
+            fn horizontal_product<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_wrapping_product(),
+                        $vector::<LANES>::from_array(x).horizontal_product(),
                         x.iter().copied().fold(1 as $scalar, $scalar::wrapping_mul),
                     );
                     Ok(())

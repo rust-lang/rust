@@ -6,13 +6,13 @@ macro_rules! impl_integer_reductions {
         {
             /// Horizontal wrapping add.  Returns the sum of the lanes of the vector, with wrapping addition.
             #[inline]
-            pub fn horizontal_wrapping_sum(self) -> $scalar {
+            pub fn horizontal_sum(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_add_ordered(self, 0) }
             }
 
             /// Horizontal wrapping multiply.  Returns the product of the lanes of the vector, with wrapping multiplication.
             #[inline]
-            pub fn horizontal_wrapping_product(self) -> $scalar {
+            pub fn horizontal_product(self) -> $scalar {
                 unsafe { crate::intrinsics::simd_reduce_mul_ordered(self, 1) }
             }
 
