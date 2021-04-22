@@ -70,6 +70,7 @@ fn lint_break(cx: &LateContext<'_>, break_span: Span, expr_span: Span) {
     )
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum LintLocation {
     /// The lint was applied to a parent expression.
     Parent,
@@ -81,8 +82,8 @@ impl LintLocation {
         if b { self } else { Self::Inner }
     }
 
-    fn is_parent(&self) -> bool {
-        matches!(*self, Self::Parent)
+    fn is_parent(self) -> bool {
+        self == Self::Parent
     }
 }
 
