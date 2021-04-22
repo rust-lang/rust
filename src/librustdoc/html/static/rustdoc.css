@@ -116,6 +116,8 @@ h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	padding-bottom: 6px;
 }
 h1.fqn {
+	display: flex;
+	width: 100%;
 	border-bottom: 1px dashed;
 	margin-top: 0;
 }
@@ -456,6 +458,13 @@ nav.sub {
 	margin: 0px;
 	padding: 0px;
 	font-weight: normal;
+}
+
+h1.fqn > .out-of-band {
+	float: unset;
+	flex: 1;
+	text-align: right;
+	margin-left: 8px;
 }
 
 h3.impl > .out-of-band {
@@ -1448,10 +1457,6 @@ h4 > .notable-traits {
 	#main, #search {
 		margin-top: 45px;
 		padding: 0;
-	}
-
-	.content .in-band {
-		width: 100%;
 	}
 
 	.content h4 > .out-of-band {
