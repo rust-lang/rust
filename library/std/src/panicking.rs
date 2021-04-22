@@ -252,13 +252,13 @@ pub mod panic_count {
         })
     }
 
-    pub fn decrease() -> usize {
+    pub fn decrease() {
         GLOBAL_PANIC_COUNT.fetch_sub(1, Ordering::Relaxed);
         LOCAL_PANIC_COUNT.with(|c| {
             let next = c.get() - 1;
             c.set(next);
             next
-        })
+        });
     }
 
     pub fn get() -> usize {
