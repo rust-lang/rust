@@ -425,7 +425,7 @@ pub(super) fn write_shared(
             md_opts.output = cx.dst.clone();
             md_opts.external_html = (*cx.shared).layout.external_html.clone();
 
-            crate::markdown::render(&index_page, md_opts, cx.shared.edition)
+            crate::markdown::render(&index_page, md_opts, cx.shared.edition())
                 .map_err(|e| Error::new(e, &index_page))?;
         } else {
             let dst = cx.dst.join("index.html");

@@ -111,8 +111,6 @@ crate struct SharedContext<'tcx> {
     crate static_root_path: Option<String>,
     /// The fs handle we are working with.
     crate fs: DocFS,
-    /// The default edition used to parse doctests.
-    crate edition: Edition,
     pub(super) codes: ErrorCodes,
     pub(super) playground: Option<markdown::Playground>,
     all: RefCell<AllTypes>,
@@ -140,6 +138,10 @@ impl SharedContext<'_> {
     /// `collapsed_doc_value` of the given item.
     crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
         if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
+    }
+
+    crate fn edition(&self) -> Edition {
+        self.tcx.sess.edition()
     }
 }
 
@@ -434,7 +436,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             resource_suffix,
             static_root_path,
             fs: DocFS::new(sender),
-            edition: tcx.sess.edition(),
             codes: ErrorCodes::from(unstable_features.is_nightly_build()),
             playground,
             all: RefCell::new(AllTypes::new()),
