@@ -1,0 +1,627 @@
+use hir_def::{
+    expr::{Pat, PatId},
+    AttrDefId, EnumVariantId, HasModule, VariantId,
+};
+
+use smallvec::{smallvec, SmallVec};
+
+use crate::{AdtId, Interner, Scalar, Ty, TyExt, TyKind};
+
+use super::usefulness::{MatchCheckCtx, PatCtxt};
+
+use self::Constructor::*;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) enum ToDo {}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct IntRange {
+    range: ToDo,
+}
+
+impl IntRange {
+    #[inline]
+    fn is_integral(ty: &Ty) -> bool {
+        match ty.kind(&Interner) {
+            TyKind::Scalar(Scalar::Char)
+            | TyKind::Scalar(Scalar::Int(_))
+            | TyKind::Scalar(Scalar::Uint(_))
+            | TyKind::Scalar(Scalar::Bool) => true,
+            _ => false,
+        }
+    }
+
+    /// See `Constructor::is_covered_by`
+    fn is_covered_by(&self, other: &Self) -> bool {
+        todo!()
+    }
+}
+
+/// A constructor for array and slice patterns.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(super) struct Slice {
+    todo: ToDo,
+}
+
+impl Slice {
+    /// See `Constructor::is_covered_by`
+    fn is_covered_by(self, other: Self) -> bool {
+        todo!()
+    }
+}
+
+/// A value can be decomposed into a constructor applied to some fields. This struct represents
+/// the constructor. See also `Fields`.
+///
+/// `pat_constructor` retrieves the constructor corresponding to a pattern.
+/// `specialize_constructor` returns the list of fields corresponding to a pattern, given a
+/// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
+/// `Fields`.
+#[derive(Clone, Debug, PartialEq)]
+pub(super) enum Constructor {
+    /// The constructor for patterns that have a single constructor, like tuples, struct patterns
+    /// and fixed-length arrays.
+    Single,
+    /// Enum variants.
+    Variant(EnumVariantId),
+    /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
+    IntRange(IntRange),
+    /// Array and slice patterns.
+    Slice(Slice),
+    /// Stands for constructors that are not seen in the matrix, as explained in the documentation
+    /// for [`SplitWildcard`].
+    Missing,
+    /// Wildcard pattern.
+    Wildcard,
+}
+
+impl Constructor {
+    pub(super) fn is_wildcard(&self) -> bool {
+        matches!(self, Wildcard)
+    }
+
+    fn as_int_range(&self) -> Option<&IntRange> {
+        match self {
+            IntRange(range) => Some(range),
+            _ => None,
+        }
+    }
+
+    fn as_slice(&self) -> Option<Slice> {
+        match self {
+            Slice(slice) => Some(*slice),
+            _ => None,
+        }
+    }
+
+    fn variant_id_for_adt(&self, adt: hir_def::AdtId, cx: &MatchCheckCtx<'_>) -> VariantId {
+        match *self {
+            Variant(id) => id.into(),
+            Single => {
+                assert!(!matches!(adt, hir_def::AdtId::EnumId(_)));
+                match adt {
+                    hir_def::AdtId::EnumId(_) => unreachable!(),
+                    hir_def::AdtId::StructId(id) => id.into(),
+                    hir_def::AdtId::UnionId(id) => id.into(),
+                }
+            }
+            _ => panic!("bad constructor {:?} for adt {:?}", self, adt),
+        }
+    }
+
+    pub(super) fn from_pat(cx: &MatchCheckCtx<'_>, pat: PatId) -> Self {
+        match &cx.pattern_arena.borrow()[pat] {
+            Pat::Bind { .. } | Pat::Wild => Wildcard,
+            Pat::Tuple { .. } | Pat::Ref { .. } | Pat::Box { .. } => Single,
+
+            pat => todo!("Constructor::from_pat {:?}", pat),
+            // Pat::Missing => {}
+            // Pat::Or(_) => {}
+            // Pat::Record { path, args, ellipsis } => {}
+            // Pat::Range { start, end } => {}
+            // Pat::Slice { prefix, slice, suffix } => {}
+            // Pat::Path(_) => {}
+            // Pat::Lit(_) => {}
+            // Pat::TupleStruct { path, args, ellipsis } => {}
+            // Pat::ConstBlock(_) => {}
+        }
+    }
+
+    /// Some constructors (namely `Wildcard`, `IntRange` and `Slice`) actually stand for a set of actual
+    /// constructors (like variants, integers or fixed-sized slices). When specializing for these
+    /// constructors, we want to be specialising for the actual underlying constructors.
+    /// Naively, we would simply return the list of constructors they correspond to. We instead are
+    /// more clever: if there are constructors that we know will behave the same wrt the current
+    /// matrix, we keep them grouped. For example, all slices of a sufficiently large length
+    /// will either be all useful or all non-useful with a given matrix.
+    ///
+    /// See the branches for details on how the splitting is done.
+    ///
+    /// This function may discard some irrelevant constructors if this preserves behavior and
+    /// diagnostics. Eg. for the `_` case, we ignore the constructors already present in the
+    /// matrix, unless all of them are.
+    pub(super) fn split<'a>(
+        &self,
+        pcx: &PatCtxt<'_>,
+        ctors: impl Iterator<Item = &'a Constructor> + Clone,
+    ) -> SmallVec<[Self; 1]> {
+        match self {
+            Wildcard => {
+                let mut split_wildcard = SplitWildcard::new(pcx);
+                split_wildcard.split(pcx, ctors);
+                split_wildcard.into_ctors(pcx)
+            }
+            // Fast-track if the range is trivial. In particular, we don't do the overlapping
+            // ranges check.
+            IntRange(_) => todo!("Constructor::split IntRange"),
+            Slice(_) => todo!("Constructor::split Slice"),
+            // Any other constructor can be used unchanged.
+            _ => smallvec![self.clone()],
+        }
+    }
+
+    /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
+    /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
+    /// this checks for inclusion.
+    // We inline because this has a single call site in `Matrix::specialize_constructor`.
+    #[inline]
+    pub(super) fn is_covered_by(&self, pcx: &PatCtxt<'_>, other: &Self) -> bool {
+        // This must be kept in sync with `is_covered_by_any`.
+        match (self, other) {
+            // Wildcards cover anything
+            (_, Wildcard) => true,
+            // The missing ctors are not covered by anything in the matrix except wildcards.
+            (Missing, _) | (Wildcard, _) => false,
+
+            (Single, Single) => true,
+            (Variant(self_id), Variant(other_id)) => self_id == other_id,
+
+            (Constructor::IntRange(_), Constructor::IntRange(_)) => todo!(),
+
+            (Constructor::Slice(_), Constructor::Slice(_)) => todo!(),
+
+            _ => panic!("bug"),
+        }
+    }
+
+    /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
+    /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
+    /// assumed to have been split from a wildcard.
+    fn is_covered_by_any(&self, pcx: &PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
+        if used_ctors.is_empty() {
+            return false;
+        }
+
+        // This must be kept in sync with `is_covered_by`.
+        match self {
+            // If `self` is `Single`, `used_ctors` cannot contain anything else than `Single`s.
+            Single => !used_ctors.is_empty(),
+            Variant(_) => used_ctors.iter().any(|c| c == self),
+            IntRange(range) => used_ctors
+                .iter()
+                .filter_map(|c| c.as_int_range())
+                .any(|other| range.is_covered_by(other)),
+            Slice(slice) => used_ctors
+                .iter()
+                .filter_map(|c| c.as_slice())
+                .any(|other| slice.is_covered_by(other)),
+
+            _ => todo!(),
+        }
+    }
+}
+
+/// A wildcard constructor that we split relative to the constructors in the matrix, as explained
+/// at the top of the file.
+///
+/// A constructor that is not present in the matrix rows will only be covered by the rows that have
+/// wildcards. Thus we can group all of those constructors together; we call them "missing
+/// constructors". Splitting a wildcard would therefore list all present constructors individually
+/// (or grouped if they are integers or slices), and then all missing constructors together as a
+/// group.
+///
+/// However we can go further: since any constructor will match the wildcard rows, and having more
+/// rows can only reduce the amount of usefulness witnesses, we can skip the present constructors
+/// and only try the missing ones.
+/// This will not preserve the whole list of witnesses, but will preserve whether the list is empty
+/// or not. In fact this is quite natural from the point of view of diagnostics too. This is done
+/// in `to_ctors`: in some cases we only return `Missing`.
+#[derive(Debug)]
+pub(super) struct SplitWildcard {
+    /// Constructors seen in the matrix.
+    matrix_ctors: Vec<Constructor>,
+    /// All the constructors for this type
+    all_ctors: SmallVec<[Constructor; 1]>,
+}
+
+impl SplitWildcard {
+    pub(super) fn new(pcx: &PatCtxt<'_>) -> Self {
+        // let cx = pcx.cx;
+        // let make_range = |start, end| IntRange(todo!());
+
+        // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
+        // arrays and slices we use ranges and variable-length slices when appropriate.
+        //
+        // If the `exhaustive_patterns` feature is enabled, we make sure to omit constructors that
+        // are statically impossible. E.g., for `Option<!>`, we do not include `Some(_)` in the
+        // returned list of constructors.
+        // Invariant: this is empty if and only if the type is uninhabited (as determined by
+        // `cx.is_uninhabited()`).
+        let all_ctors = match pcx.ty.kind(&Interner) {
+            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(_)), _) => todo!(),
+            TyKind::Adt(..) | TyKind::Tuple(..) | TyKind::Ref(..) => smallvec![Single],
+            _ => todo!(),
+        };
+        SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
+    }
+
+    /// Pass a set of constructors relative to which to split this one. Don't call twice, it won't
+    /// do what you want.
+    pub(super) fn split<'a>(
+        &mut self,
+        pcx: &PatCtxt<'_>,
+        ctors: impl Iterator<Item = &'a Constructor> + Clone,
+    ) {
+        // Since `all_ctors` never contains wildcards, this won't recurse further.
+        self.all_ctors =
+            self.all_ctors.iter().flat_map(|ctor| ctor.split(pcx, ctors.clone())).collect();
+        self.matrix_ctors = ctors.filter(|c| !c.is_wildcard()).cloned().collect();
+    }
+
+    /// Whether there are any value constructors for this type that are not present in the matrix.
+    fn any_missing(&self, pcx: &PatCtxt<'_>) -> bool {
+        self.iter_missing(pcx).next().is_some()
+    }
+
+    /// Iterate over the constructors for this type that are not present in the matrix.
+    pub(super) fn iter_missing<'a>(
+        &'a self,
+        pcx: &'a PatCtxt<'_>,
+    ) -> impl Iterator<Item = &'a Constructor> {
+        self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
+    }
+
+    /// Return the set of constructors resulting from splitting the wildcard. As explained at the
+    /// top of the file, if any constructors are missing we can ignore the present ones.
+    fn into_ctors(self, pcx: &PatCtxt<'_>) -> SmallVec<[Constructor; 1]> {
+        if self.any_missing(pcx) {
+            // Some constructors are missing, thus we can specialize with the special `Missing`
+            // constructor, which stands for those constructors that are not seen in the matrix,
+            // and matches the same rows as any of them (namely the wildcard rows). See the top of
+            // the file for details.
+            // However, when all constructors are missing we can also specialize with the full
+            // `Wildcard` constructor. The difference will depend on what we want in diagnostics.
+
+            // If some constructors are missing, we typically want to report those constructors,
+            // e.g.:
+            // ```
+            //     enum Direction { N, S, E, W }
+            //     let Direction::N = ...;
+            // ```
+            // we can report 3 witnesses: `S`, `E`, and `W`.
+            //
+            // However, if the user didn't actually specify a constructor
+            // in this arm, e.g., in
+            // ```
+            //     let x: (Direction, Direction, bool) = ...;
+            //     let (_, _, false) = x;
+            // ```
+            // we don't want to show all 16 possible witnesses `(<direction-1>, <direction-2>,
+            // true)` - we are satisfied with `(_, _, true)`. So if all constructors are missing we
+            // prefer to report just a wildcard `_`.
+            //
+            // The exception is: if we are at the top-level, for example in an empty match, we
+            // sometimes prefer reporting the list of constructors instead of just `_`.
+
+            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(&pcx.ty);
+            let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
+                Missing
+            } else {
+                Wildcard
+            };
+            return smallvec![ctor];
+        }
+
+        // All the constructors are present in the matrix, so we just go through them all.
+        self.all_ctors
+    }
+}
+
+#[test]
+fn it_works2() {}
+
+/// Some fields need to be explicitly hidden away in certain cases; see the comment above the
+/// `Fields` struct. This struct represents such a potentially-hidden field.
+#[derive(Debug, Copy, Clone)]
+pub(super) enum FilteredField {
+    Kept(PatId),
+    Hidden,
+}
+
+impl FilteredField {
+    fn kept(self) -> Option<PatId> {
+        match self {
+            FilteredField::Kept(p) => Some(p),
+            FilteredField::Hidden => None,
+        }
+    }
+}
+
+/// A value can be decomposed into a constructor applied to some fields. This struct represents
+/// those fields, generalized to allow patterns in each field. See also `Constructor`.
+/// This is constructed from a constructor using [`Fields::wildcards()`].
+///
+/// If a private or `non_exhaustive` field is uninhabited, the code mustn't observe that it is
+/// uninhabited. For that, we filter these fields out of the matrix. This is handled automatically
+/// in `Fields`. This filtering is uncommon in practice, because uninhabited fields are rarely used,
+/// so we avoid it when possible to preserve performance.
+#[derive(Debug, Clone)]
+pub(super) enum Fields {
+    /// Lists of patterns that don't contain any filtered fields.
+    /// `Slice` and `Vec` behave the same; the difference is only to avoid allocating and
+    /// triple-dereferences when possible. Frankly this is premature optimization, I (Nadrieril)
+    /// have not measured if it really made a difference.
+    Vec(SmallVec<[PatId; 2]>),
+}
+
+impl Fields {
+    /// Internal use. Use `Fields::wildcards()` instead.
+    /// Must not be used if the pattern is a field of a struct/tuple/variant.
+    fn from_single_pattern(pat: PatId) -> Self {
+        Fields::Vec(smallvec![pat])
+    }
+
+    /// Convenience; internal use.
+    fn wildcards_from_tys<'a>(
+        cx: &MatchCheckCtx<'_>,
+        tys: impl IntoIterator<Item = &'a Ty>,
+    ) -> Self {
+        let wilds = tys.into_iter().map(|ty| (Pat::Wild, ty));
+        let pats = wilds.map(|(pat, ty)| cx.alloc_pat(pat, ty)).collect();
+        Fields::Vec(pats)
+    }
+
+    pub(crate) fn wildcards(pcx: &PatCtxt<'_>, constructor: &Constructor) -> Self {
+        let ty = &pcx.ty;
+        let cx = pcx.cx;
+        let wildcard_from_ty = |ty| cx.alloc_pat(Pat::Wild, ty);
+
+        let ret = match constructor {
+            Single | Variant(_) => match ty.kind(&Interner) {
+                TyKind::Tuple(_, substs) => {
+                    let tys = substs.iter(&Interner).map(|ty| ty.assert_ty_ref(&Interner));
+                    Fields::wildcards_from_tys(cx, tys)
+                }
+                TyKind::Ref(.., rty) => Fields::from_single_pattern(wildcard_from_ty(rty)),
+                TyKind::Adt(AdtId(adt), substs) => {
+                    let adt_is_box = false; // TODO(iDawer): handle box patterns
+                    if adt_is_box {
+                        // Use T as the sub pattern type of Box<T>.
+                        let ty = substs.at(&Interner, 0).assert_ty_ref(&Interner);
+                        Fields::from_single_pattern(wildcard_from_ty(ty))
+                    } else {
+                        let variant_id = constructor.variant_id_for_adt(*adt, cx);
+                        let variant = variant_id.variant_data(cx.db.upcast());
+                        let adt_is_local = variant_id.module(cx.db.upcast()).krate() == cx.krate;
+                        // Whether we must not match the fields of this variant exhaustively.
+                        let is_non_exhaustive =
+                            is_field_list_non_exhaustive(variant_id, cx) && !adt_is_local;
+                        let field_ty_arena = cx.db.field_types(variant_id);
+                        let field_tys =
+                            || field_ty_arena.iter().map(|(_, binders)| binders.skip_binders());
+                        // In the following cases, we don't need to filter out any fields. This is
+                        // the vast majority of real cases, since uninhabited fields are uncommon.
+                        let has_no_hidden_fields = (matches!(adt, hir_def::AdtId::EnumId(_))
+                            && !is_non_exhaustive)
+                            || !field_tys().any(|ty| cx.is_uninhabited(ty));
+
+                        if has_no_hidden_fields {
+                            Fields::wildcards_from_tys(cx, field_tys())
+                        } else {
+                            //FIXME(iDawer): see MatchCheckCtx::is_uninhabited
+                            unimplemented!("exhaustive_patterns feature")
+                        }
+                    }
+                }
+                _ => panic!("Unexpected type for `Single` constructor: {:?}", ty),
+            },
+            Missing | Wildcard => Fields::Vec(Default::default()),
+            _ => todo!(),
+        };
+        ret
+    }
+
+    /// Apply a constructor to a list of patterns, yielding a new pattern. `self`
+    /// must have as many elements as this constructor's arity.
+    ///
+    /// This is roughly the inverse of `specialize_constructor`.
+    ///
+    /// Examples:
+    /// `ctor`: `Constructor::Single`
+    /// `ty`: `Foo(u32, u32, u32)`
+    /// `self`: `[10, 20, _]`
+    /// returns `Foo(10, 20, _)`
+    ///
+    /// `ctor`: `Constructor::Variant(Option::Some)`
+    /// `ty`: `Option<bool>`
+    /// `self`: `[false]`
+    /// returns `Some(false)`
+    pub(super) fn apply(self, pcx: &PatCtxt<'_>, ctor: &Constructor) -> Pat {
+        let subpatterns_and_indices = self.patterns_and_indices();
+        let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p);
+
+        match ctor {
+            Single | Variant(_) => match pcx.ty.kind(&Interner) {
+                TyKind::Adt(..) | TyKind::Tuple(..) => {
+                    // We want the real indices here.
+                    // TODO indices
+                    let subpatterns = subpatterns_and_indices.iter().map(|&(_, pat)| pat).collect();
+
+                    if let Some((adt, substs)) = pcx.ty.as_adt() {
+                        if let hir_def::AdtId::EnumId(_) = adt {
+                            todo!()
+                        } else {
+                            todo!()
+                        }
+                    } else {
+                        // TODO ellipsis
+                        Pat::Tuple { args: subpatterns, ellipsis: None }
+                    }
+                }
+
+                _ => todo!(),
+                // TyKind::AssociatedType(_, _) => {}
+                // TyKind::Scalar(_) => {}
+                // TyKind::Array(_, _) => {}
+                // TyKind::Slice(_) => {}
+                // TyKind::Raw(_, _) => {}
+                // TyKind::Ref(_, _, _) => {}
+                // TyKind::OpaqueType(_, _) => {}
+                // TyKind::FnDef(_, _) => {}
+                // TyKind::Str => {}
+                // TyKind::Never => {}
+                // TyKind::Closure(_, _) => {}
+                // TyKind::Generator(_, _) => {}
+                // TyKind::GeneratorWitness(_, _) => {}
+                // TyKind::Foreign(_) => {}
+                // TyKind::Error => {}
+                // TyKind::Placeholder(_) => {}
+                // TyKind::Dyn(_) => {}
+                // TyKind::Alias(_) => {}
+                // TyKind::Function(_) => {}
+                // TyKind::BoundVar(_) => {}
+                // TyKind::InferenceVar(_, _) => {}
+            },
+
+            _ => todo!(),
+            // Constructor::IntRange(_) => {}
+            // Constructor::Slice(_) => {}
+            // Missing => {}
+            // Wildcard => {}
+        }
+    }
+
+    /// Returns the number of patterns. This is the same as the arity of the constructor used to
+    /// construct `self`.
+    pub(super) fn len(&self) -> usize {
+        match self {
+            Fields::Vec(pats) => pats.len(),
+        }
+    }
+
+    /// Returns the list of patterns along with the corresponding field indices.
+    fn patterns_and_indices(&self) -> SmallVec<[(usize, PatId); 2]> {
+        match self {
+            Fields::Vec(pats) => pats.iter().copied().enumerate().collect(),
+        }
+    }
+
+    pub(super) fn into_patterns(self) -> SmallVec<[PatId; 2]> {
+        match self {
+            Fields::Vec(pats) => pats,
+        }
+    }
+
+    /// Overrides some of the fields with the provided patterns. Exactly like
+    /// `replace_fields_indexed`, except that it takes `FieldPat`s as input.
+    fn replace_with_fieldpats(&self, new_pats: impl IntoIterator<Item = PatId>) -> Self {
+        self.replace_fields_indexed(new_pats.into_iter().enumerate())
+    }
+
+    /// Overrides some of the fields with the provided patterns. This is used when a pattern
+    /// defines some fields but not all, for example `Foo { field1: Some(_), .. }`: here we start
+    /// with a `Fields` that is just one wildcard per field of the `Foo` struct, and override the
+    /// entry corresponding to `field1` with the pattern `Some(_)`. This is also used for slice
+    /// patterns for the same reason.
+    fn replace_fields_indexed(&self, new_pats: impl IntoIterator<Item = (usize, PatId)>) -> Self {
+        let mut fields = self.clone();
+
+        match &mut fields {
+            Fields::Vec(pats) => {
+                for (i, pat) in new_pats {
+                    if let Some(p) = pats.get_mut(i) {
+                        *p = pat;
+                    }
+                }
+            }
+        }
+        fields
+    }
+
+    /// Replaces contained fields with the given list of patterns. There must be `len()` patterns
+    /// in `pats`.
+    pub(super) fn replace_fields(
+        &self,
+        cx: &MatchCheckCtx<'_>,
+        pats: impl IntoIterator<Item = Pat>,
+    ) -> Self {
+        let pats = {
+            let mut arena = cx.pattern_arena.borrow_mut();
+            pats.into_iter().map(move |pat| /* arena.alloc(pat) */ todo!()).collect()
+        };
+
+        match self {
+            Fields::Vec(_) => Fields::Vec(pats),
+        }
+    }
+
+    /// Replaces contained fields with the arguments of the given pattern. Only use on a pattern
+    /// that is compatible with the constructor used to build `self`.
+    /// This is meant to be used on the result of `Fields::wildcards()`. The idea is that
+    /// `wildcards` constructs a list of fields where all entries are wildcards, and the pattern
+    /// provided to this function fills some of the fields with non-wildcards.
+    /// In the following example `Fields::wildcards` would return `[_, _, _, _]`. If we call
+    /// `replace_with_pattern_arguments` on it with the pattern, the result will be `[Some(0), _,
+    /// _, _]`.
+    /// ```rust
+    /// let x: [Option<u8>; 4] = foo();
+    /// match x {
+    ///     [Some(0), ..] => {}
+    /// }
+    /// ```
+    /// This is guaranteed to preserve the number of patterns in `self`.
+    pub(super) fn replace_with_pattern_arguments(
+        &self,
+        pat: PatId,
+        cx: &MatchCheckCtx<'_>,
+    ) -> Self {
+        match &cx.pattern_arena.borrow()[pat] {
+            Pat::Ref { pat: subpattern, .. } => {
+                assert_eq!(self.len(), 1);
+                Fields::from_single_pattern(*subpattern)
+            }
+            Pat::Tuple { args: subpatterns, ellipsis } => {
+                // FIXME(iDawer) handle ellipsis.
+                // XXX(iDawer): in rustc, this is handled by HIR->TypedHIR lowering
+                // rustc_mir_build::thir::pattern::PatCtxt::lower_tuple_subpats(..)
+                self.replace_with_fieldpats(subpatterns.iter().copied())
+            }
+
+            Pat::Wild => self.clone(),
+            pat => todo!("Fields::replace_with_pattern_arguments({:?})", pat),
+            // Pat::Missing => {}
+            // Pat::Or(_) => {}
+            // Pat::Record { path, args, ellipsis } => {}
+            // Pat::Range { start, end } => {}
+            // Pat::Slice { prefix, slice, suffix } => {}
+            // Pat::Path(_) => {}
+            // Pat::Lit(_) => {}
+            // Pat::Bind { mode, name, subpat } => {}
+            // Pat::TupleStruct { path, args, ellipsis } => {}
+            // Pat::Box { inner } => {}
+            // Pat::ConstBlock(_) => {}
+        }
+    }
+}
+
+fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_>) -> bool {
+    let attr_def_id = match variant_id {
+        VariantId::EnumVariantId(id) => id.into(),
+        VariantId::StructId(id) => id.into(),
+        VariantId::UnionId(id) => id.into(),
+    };
+    cx.db.attrs(attr_def_id).by_key("non_exhaustive").exists()
+}
+
+#[test]
+fn it_works() {}

@@ -62,7 +62,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
             match expr {
                 Expr::Match { expr, arms } => {
-                    self.validate_match(id, *expr, arms, db, self.infer.clone());
+                    self.validate_match2(id, *expr, arms, db, self.infer.clone());
                 }
                 Expr::Call { .. } | Expr::MethodCall { .. } => {
                     self.validate_call(db, id, expr);
@@ -277,6 +277,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
+    #[allow(dead_code)]
     fn validate_match(
         &mut self,
         id: ExprId,
@@ -353,6 +354,73 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                         match_expr: AstPtr::new(&match_expr),
                         arms: AstPtr::new(&arms),
                     })
+                }
+            }
+        }
+    }
+
+    fn validate_match2(
+        &mut self,
+        id: ExprId,
+        match_expr: ExprId,
+        arms: &[MatchArm],
+        db: &dyn HirDatabase,
+        infer: Arc<InferenceResult>,
+    ) {
+        use crate::diagnostics::pattern::usefulness;
+        use hir_def::HasModule;
+
+        let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
+            db.body_with_source_map(self.owner);
+
+        let match_expr_ty = if infer.type_of_expr[match_expr].is_unknown() {
+            return;
+        } else {
+            &infer.type_of_expr[match_expr]
+        };
+        eprintln!("ExprValidator::validate_match2({:?})", match_expr_ty.kind(&Interner));
+
+        let pattern_arena = usefulness::PatternArena::clone_from(&body.pats);
+        let cx = usefulness::MatchCheckCtx {
+            krate: self.owner.module(db.upcast()).krate(),
+            match_expr,
+            body,
+            infer: &infer,
+            db,
+            pattern_arena: &pattern_arena,
+        };
+
+        let m_arms: Vec<_> = arms
+            .iter()
+            .map(|arm| usefulness::MatchArm { pat: arm.pat, has_guard: arm.guard.is_some() })
+            .collect();
+
+        let report = usefulness::compute_match_usefulness(&cx, &m_arms);
+
+        // TODO Report unreacheble arms
+        // let mut catchall = None;
+        // for (arm_index, (arm, is_useful)) in report.arm_usefulness.iter().enumerate() {
+        //     match is_useful{
+        //         Unreachable => {
+        //         }
+        //         Reachable(_) => {}
+        //     }
+        // }
+
+        let witnesses = report.non_exhaustiveness_witnesses;
+        if !witnesses.is_empty() {
+            if let Ok(source_ptr) = source_map.expr_syntax(id) {
+                let root = source_ptr.file_syntax(db.upcast());
+                if let ast::Expr::MatchExpr(match_expr) = &source_ptr.value.to_node(&root) {
+                    if let (Some(match_expr), Some(arms)) =
+                        (match_expr.expr(), match_expr.match_arm_list())
+                    {
+                        self.sink.push(MissingMatchArms {
+                            file: source_ptr.file_id,
+                            match_expr: AstPtr::new(&match_expr),
+                            arms: AstPtr::new(&arms),
+                        })
+                    }
                 }
             }
         }
