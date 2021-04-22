@@ -3,7 +3,8 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sug
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{
-    is_else_clause, is_expn_of, match_def_path, match_qpath, method_calls, path_to_res, paths, run_lints, SpanlessEq,
+    is_else_clause, is_expn_of, is_expr_path_def_path, match_def_path, method_calls, path_to_res, paths, run_lints,
+    SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc_ast::ast::{Crate as AstCrate, ItemKind, LitKind, ModKind, NodeId};
@@ -578,8 +579,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
 
         if_chain! {
             if let ExprKind::Call(func, and_then_args) = expr.kind;
-            if let ExprKind::Path(ref path) = func.kind;
-            if match_qpath(path, &["span_lint_and_then"]);
+            if is_expr_path_def_path(cx, func, &["clippy_utils", "diagnostics", "span_lint_and_then"]);
             if and_then_args.len() == 5;
             if let ExprKind::Closure(_, _, body_id, _, _) = &and_then_args[4].kind;
             let body = cx.tcx.hir().body(*body_id);
@@ -761,8 +761,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
         if_chain! {
             // Check if this is a call to utils::match_type()
             if let ExprKind::Call(fn_path, [context, ty, ty_path]) = expr.kind;
-            if let ExprKind::Path(fn_qpath) = &fn_path.kind;
-            if match_qpath(fn_qpath, &["utils", "match_type"]);
+            if is_expr_path_def_path(cx, fn_path, &["clippy_utils", "ty", "match_type"]);
             // Extract the path to the matched type
             if let Some(segments) = path_to_matched_type(cx, ty_path);
             let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect();
@@ -771,6 +770,7 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
             let diag_items = cx.tcx.diagnostic_items(ty_did.krate);
             if let Some(item_name) = diag_items.iter().find_map(|(k, v)| if *v == ty_did { Some(k) } else { None });
             then {
+                // TODO: check paths constants from external crates.
                 let cx_snippet = snippet(cx, context.span, "_");
                 let ty_snippet = snippet(cx, ty.span, "_");
 
@@ -778,9 +778,9 @@ impl<'tcx> LateLintPass<'tcx> for MatchTypeOnDiagItem {
                     cx,
                     MATCH_TYPE_ON_DIAGNOSTIC_ITEM,
                     expr.span,
-                    "usage of `utils::match_type()` on a type diagnostic item",
+                    "usage of `clippy_utils::ty::match_type()` on a type diagnostic item",
                     "try",
-                    format!("utils::is_type_diagnostic_item({}, {}, sym::{})", cx_snippet, ty_snippet, item_name),
+                    format!("clippy_utils::ty::is_type_diagnostic_item({}, {}, sym::{})", cx_snippet, ty_snippet, item_name),
                     Applicability::MaybeIncorrect,
                 );
             }

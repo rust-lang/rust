@@ -42,6 +42,14 @@ declare_clippy_lint! {
     /// false positives in cases involving multiple lifetimes that are bounded by
     /// each other.
     ///
+    /// Also, it does not take account of other similar cases where getting memory addresses
+    /// matters; namely, returning the pointer to the argument in question,
+    /// and passing the argument, as both references and pointers,
+    /// to a function that needs the memory address. For further details, refer to
+    /// [this issue](https://github.com/rust-lang/rust-clippy/issues/5953)
+    /// that explains a real case in which this false positive
+    /// led to an **undefined behaviour** introduced with unsafe code.
+    ///
     /// **Example:**
     ///
     /// ```rust

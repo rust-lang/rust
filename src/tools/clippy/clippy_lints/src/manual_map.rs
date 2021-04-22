@@ -1,15 +1,14 @@
 use crate::{map_unit_fn::OPTION_MAP_UNIT_FN, matches::MATCH_AS_REF};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
-use clippy_utils::ty::{can_partially_move_ty, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
-use clippy_utils::{in_constant, is_allowed, is_else_clause, match_def_path, match_var, paths, peel_hir_expr_refs};
+use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
+use clippy_utils::{
+    can_move_expr_to_closure, in_constant, is_allowed, is_else_clause, is_lang_ctor, match_var, peel_hir_expr_refs,
+};
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    def::Res,
-    intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
-    Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind, Path, QPath,
-};
+use rustc_hir::LangItem::{OptionNone, OptionSome};
+use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -103,9 +102,15 @@ impl LateLintPass<'_> for ManualMap {
                 None => return,
             };
 
+            // These two lints will go back and forth with each other.
             if cx.typeck_results().expr_ty(some_expr) == cx.tcx.types.unit
                 && !is_allowed(cx, OPTION_MAP_UNIT_FN, expr.hir_id)
             {
+                return;
+            }
+
+            // `map` won't perform any adjustments.
+            if !cx.typeck_results().expr_adjustments(some_expr).is_empty() {
                 return;
             }
 
@@ -192,51 +197,6 @@ impl LateLintPass<'_> for ManualMap {
     }
 }
 
-// Checks if the expression can be moved into a closure as is.
-fn can_move_expr_to_closure(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    struct V<'cx, 'tcx> {
-        cx: &'cx LateContext<'tcx>,
-        make_closure: bool,
-    }
-    impl Visitor<'tcx> for V<'_, 'tcx> {
-        type Map = ErasedMap<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            match e.kind {
-                ExprKind::Break(..)
-                | ExprKind::Continue(_)
-                | ExprKind::Ret(_)
-                | ExprKind::Yield(..)
-                | ExprKind::InlineAsm(_)
-                | ExprKind::LlvmInlineAsm(_) => {
-                    self.make_closure = false;
-                },
-                // Accessing a field of a local value can only be done if the type isn't
-                // partially moved.
-                ExprKind::Field(base_expr, _)
-                    if matches!(
-                        base_expr.kind,
-                        ExprKind::Path(QPath::Resolved(_, Path { res: Res::Local(_), .. }))
-                    ) && can_partially_move_ty(self.cx, self.cx.typeck_results().expr_ty(base_expr)) =>
-                {
-                    // TODO: check if the local has been partially moved. Assume it has for now.
-                    self.make_closure = false;
-                    return;
-                }
-                _ => (),
-            };
-            walk_expr(self, e);
-        }
-    }
-
-    let mut v = V { cx, make_closure: true };
-    v.visit_expr(expr);
-    v.make_closure
-}
-
 // Checks whether the expression could be passed as a function, or whether a closure is needed.
 // Returns the function to be passed to `map` if it exists.
 fn can_pass_as_func(cx: &LateContext<'tcx>, binding: Ident, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
@@ -269,20 +229,9 @@ fn try_parse_pattern(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, ctxt: SyntaxCon
         match pat.kind {
             PatKind::Wild => Some(OptionPat::Wild),
             PatKind::Ref(pat, _) => f(cx, pat, ref_count + 1, ctxt),
-            PatKind::Path(QPath::Resolved(None, path))
-                if path
-                    .res
-                    .opt_def_id()
-                    .map_or(false, |id| match_def_path(cx, id, &paths::OPTION_NONE)) =>
-            {
-                Some(OptionPat::None)
-            },
-            PatKind::TupleStruct(QPath::Resolved(None, path), [pattern], _)
-                if path
-                    .res
-                    .opt_def_id()
-                    .map_or(false, |id| match_def_path(cx, id, &paths::OPTION_SOME))
-                    && pat.span.ctxt() == ctxt =>
+            PatKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone) => Some(OptionPat::None),
+            PatKind::TupleStruct(ref qpath, [pattern], _)
+                if is_lang_ctor(cx, qpath, OptionSome) && pat.span.ctxt() == ctxt =>
             {
                 Some(OptionPat::Some { pattern, ref_count })
             },
@@ -298,17 +247,11 @@ fn get_some_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ctxt: SyntaxConte
     match expr.kind {
         ExprKind::Call(
             Expr {
-                kind: ExprKind::Path(QPath::Resolved(None, path)),
+                kind: ExprKind::Path(ref qpath),
                 ..
             },
             [arg],
-        ) if ctxt == expr.span.ctxt() => {
-            if match_def_path(cx, path.res.opt_def_id()?, &paths::OPTION_SOME) {
-                Some(arg)
-            } else {
-                None
-            }
-        },
+        ) if ctxt == expr.span.ctxt() && is_lang_ctor(cx, qpath, OptionSome) => Some(arg),
         ExprKind::Block(
             Block {
                 stmts: [],
@@ -324,10 +267,7 @@ fn get_some_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ctxt: SyntaxConte
 // Checks for the `None` value.
 fn is_none_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
     match expr.kind {
-        ExprKind::Path(QPath::Resolved(None, path)) => path
-            .res
-            .opt_def_id()
-            .map_or(false, |id| match_def_path(cx, id, &paths::OPTION_NONE)),
+        ExprKind::Path(ref qpath) => is_lang_ctor(cx, qpath, OptionNone),
         ExprKind::Block(
             Block {
                 stmts: [],

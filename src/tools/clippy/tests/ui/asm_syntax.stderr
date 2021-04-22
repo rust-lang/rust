@@ -1,5 +1,5 @@
 error: Intel x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:7:9
+  --> $DIR/asm_syntax.rs:9:9
    |
 LL |         asm!("");
    |         ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |         asm!("");
    = help: use AT&T x86 assembly syntax
 
 error: Intel x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:8:9
+  --> $DIR/asm_syntax.rs:10:9
    |
 LL |         asm!("", options());
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |         asm!("", options());
    = help: use AT&T x86 assembly syntax
 
 error: Intel x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:9:9
+  --> $DIR/asm_syntax.rs:11:9
    |
 LL |         asm!("", options(nostack));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |         asm!("", options(nostack));
    = help: use AT&T x86 assembly syntax
 
 error: AT&T x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:21:9
+  --> $DIR/asm_syntax.rs:23:9
    |
 LL |         asm!("", options(att_syntax));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |         asm!("", options(att_syntax));
    = help: use Intel x86 assembly syntax
 
 error: AT&T x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:22:9
+  --> $DIR/asm_syntax.rs:24:9
    |
 LL |         asm!("", options(nostack, att_syntax));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

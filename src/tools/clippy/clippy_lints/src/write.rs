@@ -573,7 +573,7 @@ impl Write {
                         diag.multipart_suggestion(
                             "try this",
                             iter::once((comma_span.to(token_expr.span), String::new()))
-                                .chain(fmt_spans.iter().cloned().zip(iter::repeat(replacement)))
+                                .chain(fmt_spans.iter().copied().zip(iter::repeat(replacement)))
                                 .collect(),
                             Applicability::MachineApplicable,
                         );
