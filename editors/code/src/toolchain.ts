@@ -129,6 +129,16 @@ export function getSysroot(dir: string): Promise<string> {
     return execute(`${rustcPath} --print sysroot`, { cwd: dir });
 }
 
+export async function getRustcId(dir: string): Promise<string> {
+    const rustcPath = getPathForExecutable("rustc");
+
+    // do not memoize the result because the toolchain may change between runs
+    const data = await execute(`${rustcPath} -V -v`, { cwd: dir });
+    const rx = /commit-hash:\s(.*)$/m.compile();
+
+    return rx.exec(data)![1];
+}
+
 /** Mirrors `toolchain::cargo()` implementation */
 export function cargoPath(): string {
     return getPathForExecutable("cargo");
