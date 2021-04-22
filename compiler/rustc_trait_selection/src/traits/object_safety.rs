@@ -439,8 +439,7 @@ fn virtual_call_violation_for_method<'tcx>(
         return Some(MethodViolationCode::WhereClauseReferencesSelf);
     }
 
-    let receiver_ty =
-        tcx.liberate_late_bound_regions(method.def_id, sig.map_bound(|sig| sig.inputs()[0]));
+    let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
 
     // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
     // However, this is already considered object-safe. We allow it as a special case here.
