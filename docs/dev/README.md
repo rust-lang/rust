@@ -229,7 +229,11 @@ If it fails because of something that needs to be fixed, remove the release tag 
 Make sure to remove the new changelog post created when running `cargo xtask release` a second time.
 
 We release "nightly" every night automatically and promote the latest nightly to "stable" manually, every week.
+
 We don't do "patch" releases, unless something truly egregious comes up.
+To do a patch release, cherry-pick the fix on top of the current `release` branch and push the branch.
+There's no need to write a changelog for a patch release, it's OK to include the notes about the fix into the next weekly one.
+Note: we tag releases by dates, releasing a patch release on the same day should work (by overwriting a tag), but I am not 100% sure.
 
 ## Permissions
 
