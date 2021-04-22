@@ -11,7 +11,7 @@ use rustc_apfloat::{ieee, Float, Round, Status};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir;
 use rustc_middle::ty::cast::{CastTy, IntTy};
-use rustc_middle::ty::layout::{HasTyCtxt, TyAndLayout};
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::sym;
@@ -385,10 +385,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx.inttoptr(usize_llval, ll_t_out)
                             }
                             (CastTy::Float, CastTy::Int(IntTy::I)) => {
-                                cast_float_to_int(&mut bx, true, llval, ll_t_in, ll_t_out, cast)
+                                cast_float_to_int(&mut bx, true, llval, ll_t_in, ll_t_out)
                             }
                             (CastTy::Float, CastTy::Int(_)) => {
-                                cast_float_to_int(&mut bx, false, llval, ll_t_in, ll_t_out, cast)
+                                cast_float_to_int(&mut bx, false, llval, ll_t_in, ll_t_out)
                             }
                             _ => bug!("unsupported cast: {:?} to {:?}", operand.layout.ty, cast.ty),
                         };
@@ -790,7 +790,6 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     x: Bx::Value,
     float_ty: Bx::Type,
     int_ty: Bx::Type,
-    int_layout: TyAndLayout<'tcx>,
 ) -> Bx::Value {
     if let Some(false) = bx.cx().sess().opts.debugging_opts.saturating_float_casts {
         return if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
@@ -891,134 +890,39 @@ fn cast_float_to_int<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let int_min = bx.cx().const_uint_big(int_ty, int_min(signed, int_width) as u128);
     let zero = bx.cx().const_uint(int_ty, 0);
 
-    // The codegen here differs quite a bit depending on whether our builder's
-    // `fptosi` and `fptoui` instructions may trap for out-of-bounds values. If
-    // they don't trap then we can start doing everything inline with a
-    // `select` instruction because it's ok to execute `fptosi` and `fptoui`
-    // even if we don't use the results.
-    if !bx.fptosui_may_trap(x, int_ty) {
-        // Step 1 ...
-        let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
-        let less_or_nan = bx.fcmp(RealPredicate::RealULT, x, f_min);
-        let greater = bx.fcmp(RealPredicate::RealOGT, x, f_max);
+    // Step 1 ...
+    let fptosui_result = if signed { bx.fptosi(x, int_ty) } else { bx.fptoui(x, int_ty) };
+    let less_or_nan = bx.fcmp(RealPredicate::RealULT, x, f_min);
+    let greater = bx.fcmp(RealPredicate::RealOGT, x, f_max);
 
-        // Step 2: We use two comparisons and two selects, with %s1 being the
-        // result:
-        //     %less_or_nan = fcmp ult %x, %f_min
-        //     %greater = fcmp olt %x, %f_max
-        //     %s0 = select %less_or_nan, int_ty::MIN, %fptosi_result
-        //     %s1 = select %greater, int_ty::MAX, %s0
-        // Note that %less_or_nan uses an *unordered* comparison. This
-        // comparison is true if the operands are not comparable (i.e., if x is
-        // NaN). The unordered comparison ensures that s1 becomes int_ty::MIN if
-        // x is NaN.
-        //
-        // Performance note: Unordered comparison can be lowered to a "flipped"
-        // comparison and a negation, and the negation can be merged into the
-        // select. Therefore, it not necessarily any more expensive than a
-        // ordered ("normal") comparison. Whether these optimizations will be
-        // performed is ultimately up to the backend, but at least x86 does
-        // perform them.
-        let s0 = bx.select(less_or_nan, int_min, fptosui_result);
-        let s1 = bx.select(greater, int_max, s0);
+    // Step 2: We use two comparisons and two selects, with %s1 being the
+    // result:
+    //     %less_or_nan = fcmp ult %x, %f_min
+    //     %greater = fcmp olt %x, %f_max
+    //     %s0 = select %less_or_nan, int_ty::MIN, %fptosi_result
+    //     %s1 = select %greater, int_ty::MAX, %s0
+    // Note that %less_or_nan uses an *unordered* comparison. This
+    // comparison is true if the operands are not comparable (i.e., if x is
+    // NaN). The unordered comparison ensures that s1 becomes int_ty::MIN if
+    // x is NaN.
+    //
+    // Performance note: Unordered comparison can be lowered to a "flipped"
+    // comparison and a negation, and the negation can be merged into the
+    // select. Therefore, it not necessarily any more expensive than a
+    // ordered ("normal") comparison. Whether these optimizations will be
+    // performed is ultimately up to the backend, but at least x86 does
+    // perform them.
+    let s0 = bx.select(less_or_nan, int_min, fptosui_result);
+    let s1 = bx.select(greater, int_max, s0);
 
-        // Step 3: NaN replacement.
-        // For unsigned types, the above step already yielded int_ty::MIN == 0 if x is NaN.
-        // Therefore we only need to execute this step for signed integer types.
-        if signed {
-            // LLVM has no isNaN predicate, so we use (x == x) instead
-            let cmp = bx.fcmp(RealPredicate::RealOEQ, x, x);
-            bx.select(cmp, s1, zero)
-        } else {
-            s1
-        }
+    // Step 3: NaN replacement.
+    // For unsigned types, the above step already yielded int_ty::MIN == 0 if x is NaN.
+    // Therefore we only need to execute this step for signed integer types.
+    if signed {
+        // LLVM has no isNaN predicate, so we use (x == x) instead
+        let cmp = bx.fcmp(RealPredicate::RealOEQ, x, x);
+        bx.select(cmp, s1, zero)
     } else {
-        // In this case we cannot execute `fptosi` or `fptoui` and then later
-        // discard the result. The builder is telling us that these instructions
-        // will trap on out-of-bounds values, so we need to use basic blocks and
-        // control flow to avoid executing the `fptosi` and `fptoui`
-        // instructions.
-        //
-        // The general idea of what we're constructing here is, for f64 -> i32:
-        //
-        //      ;; block so far... %0 is the argument
-        //      %result = alloca i32, align 4
-        //      %inbound_lower = fcmp oge double %0, 0xC1E0000000000000
-        //      %inbound_upper = fcmp ole double %0, 0x41DFFFFFFFC00000
-        //      ;; match (inbound_lower, inbound_upper) {
-        //      ;;     (true, true) => %0 can be converted without trapping
-        //      ;;     (false, false) => %0 is a NaN
-        //      ;;     (true, false) => %0 is too large
-        //      ;;     (false, true) => %0 is too small
-        //      ;; }
-        //      ;;
-        //      ;; The (true, true) check, go to %convert if so.
-        //      %inbounds = and i1 %inbound_lower, %inbound_upper
-        //      br i1 %inbounds, label %convert, label %specialcase
-        //
-        //  convert:
-        //      %cvt = call i32 @llvm.wasm.trunc.signed.i32.f64(double %0)
-        //      store i32 %cvt, i32* %result, align 4
-        //      br label %done
-        //
-        //  specialcase:
-        //      ;; Handle the cases where the number is NaN, too large or too small
-        //
-        //      ;; Either (true, false) or (false, true)
-        //      %is_not_nan = or i1 %inbound_lower, %inbound_upper
-        //      ;; Figure out which saturated value we are interested in if not `NaN`
-        //      %saturated = select i1 %inbound_lower, i32 2147483647, i32 -2147483648
-        //      ;; Figure out between saturated and NaN representations
-        //      %result_nan = select i1 %is_not_nan, i32 %saturated, i32 0
-        //      store i32 %result_nan, i32* %result, align 4
-        //      br label %done
-        //
-        //  done:
-        //      %r = load i32, i32* %result, align 4
-        //      ;; ...
-        let done = bx.build_sibling_block("float_cast_done");
-        let mut convert = bx.build_sibling_block("float_cast_convert");
-        let mut specialcase = bx.build_sibling_block("float_cast_specialcase");
-
-        let result = PlaceRef::alloca(bx, int_layout);
-        result.storage_live(bx);
-
-        // Use control flow to figure out whether we can execute `fptosi` in a
-        // basic block, or whether we go to a different basic block to implement
-        // the saturating logic.
-        let inbound_lower = bx.fcmp(RealPredicate::RealOGE, x, f_min);
-        let inbound_upper = bx.fcmp(RealPredicate::RealOLE, x, f_max);
-        let inbounds = bx.and(inbound_lower, inbound_upper);
-        bx.cond_br(inbounds, convert.llbb(), specialcase.llbb());
-
-        // Translation of the `convert` basic block
-        let cvt = if signed { convert.fptosi(x, int_ty) } else { convert.fptoui(x, int_ty) };
-        convert.store(cvt, result.llval, result.align);
-        convert.br(done.llbb());
-
-        // Translation of the `specialcase` basic block. Note that like above
-        // we try to be a bit clever here for unsigned conversions. In those
-        // cases the `int_min` is zero so we don't need two select instructions,
-        // just one to choose whether we need `int_max` or not. If
-        // `inbound_lower` is true then we're guaranteed to not be `NaN` and
-        // since we're greater than zero we must be saturating to `int_max`. If
-        // `inbound_lower` is false then we're either NaN or less than zero, so
-        // we saturate to zero.
-        let result_nan = if signed {
-            let is_not_nan = specialcase.or(inbound_lower, inbound_upper);
-            let saturated = specialcase.select(inbound_lower, int_max, int_min);
-            specialcase.select(is_not_nan, saturated, zero)
-        } else {
-            specialcase.select(inbound_lower, int_max, int_min)
-        };
-        specialcase.store(result_nan, result.llval, result.align);
-        specialcase.br(done.llbb());
-
-        // Translation of the `done` basic block, positioning ourselves to
-        // continue from that point as well.
-        *bx = done;
-        let ret = bx.load(result.llval, result.align);
-        result.storage_dead(bx);
-        ret
+        s1
     }
 }

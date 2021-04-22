@@ -503,14 +503,6 @@ impl CodegenCx<'b, 'tcx> {
         let t_f32 = self.type_f32();
         let t_f64 = self.type_f64();
 
-        ifn!("llvm.wasm.trunc.saturate.unsigned.i32.f32", fn(t_f32) -> t_i32);
-        ifn!("llvm.wasm.trunc.saturate.unsigned.i32.f64", fn(t_f64) -> t_i32);
-        ifn!("llvm.wasm.trunc.saturate.unsigned.i64.f32", fn(t_f32) -> t_i64);
-        ifn!("llvm.wasm.trunc.saturate.unsigned.i64.f64", fn(t_f64) -> t_i64);
-        ifn!("llvm.wasm.trunc.saturate.signed.i32.f32", fn(t_f32) -> t_i32);
-        ifn!("llvm.wasm.trunc.saturate.signed.i32.f64", fn(t_f64) -> t_i32);
-        ifn!("llvm.wasm.trunc.saturate.signed.i64.f32", fn(t_f32) -> t_i64);
-        ifn!("llvm.wasm.trunc.saturate.signed.i64.f64", fn(t_f64) -> t_i64);
         ifn!("llvm.wasm.trunc.unsigned.i32.f32", fn(t_f32) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i32.f64", fn(t_f64) -> t_i32);
         ifn!("llvm.wasm.trunc.unsigned.i64.f32", fn(t_f32) -> t_i64);
@@ -519,6 +511,28 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.wasm.trunc.signed.i32.f64", fn(t_f64) -> t_i32);
         ifn!("llvm.wasm.trunc.signed.i64.f32", fn(t_f32) -> t_i64);
         ifn!("llvm.wasm.trunc.signed.i64.f64", fn(t_f64) -> t_i64);
+
+        ifn!("llvm.fptosi.sat.i8.f32", fn(t_f32) -> t_i8);
+        ifn!("llvm.fptosi.sat.i16.f32", fn(t_f32) -> t_i16);
+        ifn!("llvm.fptosi.sat.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.fptosi.sat.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.fptosi.sat.i128.f32", fn(t_f32) -> t_i128);
+        ifn!("llvm.fptosi.sat.i8.f64", fn(t_f64) -> t_i8);
+        ifn!("llvm.fptosi.sat.i16.f64", fn(t_f64) -> t_i16);
+        ifn!("llvm.fptosi.sat.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.fptosi.sat.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.fptosi.sat.i128.f64", fn(t_f64) -> t_i128);
+
+        ifn!("llvm.fptoui.sat.i8.f32", fn(t_f32) -> t_i8);
+        ifn!("llvm.fptoui.sat.i16.f32", fn(t_f32) -> t_i16);
+        ifn!("llvm.fptoui.sat.i32.f32", fn(t_f32) -> t_i32);
+        ifn!("llvm.fptoui.sat.i64.f32", fn(t_f32) -> t_i64);
+        ifn!("llvm.fptoui.sat.i128.f32", fn(t_f32) -> t_i128);
+        ifn!("llvm.fptoui.sat.i8.f64", fn(t_f64) -> t_i8);
+        ifn!("llvm.fptoui.sat.i16.f64", fn(t_f64) -> t_i16);
+        ifn!("llvm.fptoui.sat.i32.f64", fn(t_f64) -> t_i32);
+        ifn!("llvm.fptoui.sat.i64.f64", fn(t_f64) -> t_i64);
+        ifn!("llvm.fptoui.sat.i128.f64", fn(t_f64) -> t_i128);
 
         ifn!("llvm.trap", fn() -> void);
         ifn!("llvm.debugtrap", fn() -> void);
