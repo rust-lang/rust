@@ -43,10 +43,17 @@ fn testrust() {
     should_have_aborted();
 }
 
+fn test_always_abort() {
+    panic::always_abort();
+    let _ = panic::catch_unwind(|| { panic!(); });
+    should_have_aborted();
+}
+
 fn main() {
     let tests: &[(_, fn())] = &[
         ("test", test),
         ("testrust", testrust),
+        ("test_always_abort", test_always_abort),
     ];
 
     let args: Vec<String> = env::args().collect();
