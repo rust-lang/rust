@@ -710,17 +710,12 @@ pub enum NonterminalKind {
 }
 
 impl NonterminalKind {
-    /// The `edition` closure is used to get the edition for the given symbol. Doing
-    /// `span.edition()` is expensive, so we do it lazily.
-    pub fn from_symbol(
-        symbol: Symbol,
-        edition: impl FnOnce() -> Edition,
-    ) -> Option<NonterminalKind> {
+    pub fn from_symbol(symbol: Symbol, edition: Edition) -> Option<NonterminalKind> {
         Some(match symbol {
             sym::item => NonterminalKind::Item,
             sym::block => NonterminalKind::Block,
             sym::stmt => NonterminalKind::Stmt,
-            sym::pat => match edition() {
+            sym::pat => match edition {
                 Edition::Edition2015 | Edition::Edition2018 => {
                     NonterminalKind::Pat2015 { inferred: true }
                 }

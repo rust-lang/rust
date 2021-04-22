@@ -467,6 +467,7 @@ pub fn compile_declarative_macro(
                             &sess.parse_sess,
                             def.id,
                             features,
+                            edition,
                         )
                         .pop()
                         .unwrap();
@@ -492,6 +493,7 @@ pub fn compile_declarative_macro(
                             &sess.parse_sess,
                             def.id,
                             features,
+                            edition,
                         )
                         .pop()
                         .unwrap();
