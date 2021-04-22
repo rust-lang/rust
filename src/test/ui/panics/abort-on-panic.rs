@@ -28,6 +28,11 @@ fn should_have_aborted() {
     let _ = io::stdout().flush();
 }
 
+fn bomb_out_but_not_abort(msg: &str) {
+    eprintln!("bombing out: {}", msg);
+    exit(1);
+}
+
 fn test() {
     let _ = panic::catch_unwind(|| { panic_in_ffi(); });
     should_have_aborted();
@@ -50,7 +55,7 @@ fn main() {
         for (a,f) in tests {
             if &args[1] == a { return f() }
         }
-        panic!("bad test");
+        bomb_out_but_not_abort("bad test");
     }
 
     let execute_self_expecting_abort = |arg| {
@@ -58,7 +63,11 @@ fn main() {
                             .stdout(Stdio::piped())
                             .stdin(Stdio::piped())
                             .arg(arg).spawn().unwrap();
-        assert!(!p.wait().unwrap().success());
+        let status = p.wait().unwrap();
+        assert!(!status.success());
+        // Any reasonable platform can distinguish a process which
+        // called exit(1) from one which panicked.
+        assert_ne!(status.code(), Some(1));
     };
 
     for (a,_f) in tests {
