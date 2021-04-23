@@ -6,8 +6,8 @@ use crate::fmt;
 use crate::mem;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
+use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
 use crate::sys_common::mutex as sys;
-use crate::sys_common::poison::{self, LockResult, TryLockError, TryLockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///

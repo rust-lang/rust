@@ -59,7 +59,6 @@ pub mod mutex;
 // when generating documentation.
 #[cfg(any(doc, not(windows)))]
 pub mod os_str_bytes;
-pub mod poison;
 pub mod process;
 pub mod remutex;
 pub mod rwlock;
