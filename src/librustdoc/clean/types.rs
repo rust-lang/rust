@@ -1442,59 +1442,6 @@ crate enum PrimitiveType {
     Never,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
-crate enum TypeKind {
-    Enum,
-    Function,
-    Module,
-    Const,
-    Static,
-    Struct,
-    Union,
-    Trait,
-    Typedef,
-    Foreign,
-    Macro,
-    TraitAlias,
-}
-
-impl From<hir::def::DefKind> for TypeKind {
-    fn from(other: hir::def::DefKind) -> Self {
-        match other {
-            hir::def::DefKind::Enum => Self::Enum,
-            hir::def::DefKind::Fn => Self::Function,
-            hir::def::DefKind::Mod => Self::Module,
-            hir::def::DefKind::Const => Self::Const,
-            hir::def::DefKind::Static => Self::Static,
-            hir::def::DefKind::Struct => Self::Struct,
-            hir::def::DefKind::Union => Self::Union,
-            hir::def::DefKind::Trait => Self::Trait,
-            hir::def::DefKind::TyAlias => Self::Typedef,
-            hir::def::DefKind::TraitAlias => Self::TraitAlias,
-            hir::def::DefKind::Macro(_) => Self::Macro,
-            hir::def::DefKind::ForeignTy
-            | hir::def::DefKind::Variant
-            | hir::def::DefKind::AssocTy
-            | hir::def::DefKind::TyParam
-            | hir::def::DefKind::ConstParam
-            | hir::def::DefKind::Ctor(..)
-            | hir::def::DefKind::AssocFn
-            | hir::def::DefKind::AssocConst
-            | hir::def::DefKind::ExternCrate
-            | hir::def::DefKind::Use
-            | hir::def::DefKind::ForeignMod
-            | hir::def::DefKind::AnonConst
-            | hir::def::DefKind::OpaqueTy
-            | hir::def::DefKind::Field
-            | hir::def::DefKind::LifetimeParam
-            | hir::def::DefKind::GlobalAsm
-            | hir::def::DefKind::Impl
-            | hir::def::DefKind::Closure
-            | hir::def::DefKind::Generator => Self::Foreign,
-        }
-    }
-}
-
 crate trait GetDefId {
     /// Use this method to get the [`DefId`] of a [`clean`] AST node.
     /// This will return [`None`] when called on a primitive [`clean::Type`].
