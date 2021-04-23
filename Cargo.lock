@@ -275,7 +275,7 @@ dependencies = [
  "cargo-util",
  "clap",
  "crates-io",
- "crossbeam-utils 0.8.0",
+ "crossbeam-utils 0.8.3",
  "curl",
  "curl-sys",
  "env_logger 0.8.1",
@@ -707,12 +707,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "const_fn"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c478836e029dcef17fb47c89023448c64f781a046e0300e257ad8225ae59afab"
-
-[[package]]
 name = "core"
 version = "0.0.0"
 dependencies = [
@@ -773,7 +767,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dca26ee1f8d361640700bde38b2c37d8c22b3ce2d360e1fc1c74ea4b0aa7d775"
 dependencies = [
  "cfg-if 1.0.0",
- "crossbeam-utils 0.8.0",
+ "crossbeam-utils 0.8.3",
 ]
 
 [[package]]
@@ -826,13 +820,12 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.0"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec91540d98355f690a86367e566ecad2e9e579f230230eb7c21398372be73ea5"
+checksum = "e7e9d99fa91428effe99c5c6d4634cdeba32b8cf784fc428a2a687f61a952c49"
 dependencies = [
  "autocfg",
  "cfg-if 1.0.0",
- "const_fn",
  "lazy_static",
 ]
 
@@ -1623,11 +1616,11 @@ checksum = "c3360c7b59e5ffa2653671fb74b4741a5d343c03f331c0a4aeda42b5c2b0ec7d"
 
 [[package]]
 name = "ignore"
-version = "0.4.16"
+version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22dcbf2a4a289528dbef21686354904e1c694ac642610a9bff9e7df730d9ec72"
+checksum = "b287fb45c60bb826a0dc68ff08742b9d88a2fea13d6e0c286b3172065aaf878c"
 dependencies = [
- "crossbeam-utils 0.7.2",
+ "crossbeam-utils 0.8.3",
  "globset",
  "lazy_static",
  "log",
@@ -3604,7 +3597,7 @@ name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
  "byteorder",
- "crossbeam-utils 0.7.2",
+ "crossbeam-utils 0.8.3",
  "libc",
  "libz-sys",
  "proc-macro2",
@@ -3796,7 +3789,7 @@ dependencies = [
  "arrayvec 0.7.0",
  "bitflags",
  "cfg-if 0.1.10",
- "crossbeam-utils 0.7.2",
+ "crossbeam-utils 0.8.3",
  "ena",
  "indexmap",
  "jobserver",
@@ -5255,7 +5248,7 @@ name = "tidy"
 version = "0.1.0"
 dependencies = [
  "cargo_metadata 0.11.1",
- "crossbeam-utils 0.8.0",
+ "crossbeam-utils 0.8.3",
  "lazy_static",
  "regex",
  "walkdir",
