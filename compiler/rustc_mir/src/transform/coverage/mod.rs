@@ -111,7 +111,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let body_span = hir_body.value.span;
         let source_file = source_map.lookup_source_file(body_span.lo());
         let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
-            Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.hi()))
+            fn_sig.span.ctxt() == body_span.ctxt()
+                && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.hi()))
         }) {
             Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
             None => body_span.shrink_to_lo(),
