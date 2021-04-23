@@ -914,12 +914,6 @@ impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
     }
 }
 
-impl Clean<ItemType> for hir::def::DefKind {
-    fn clean(&self, _: &mut DocContext<'_>) -> ItemType {
-        (*self).into()
-    }
-}
-
 impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let local_did = self.def_id.to_def_id();
