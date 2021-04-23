@@ -1495,7 +1495,12 @@ pub trait Iterator {
     /// [`Some(T)`] again. `fuse()` adapts an iterator, ensuring that after a
     /// [`None`] is given, it will always return [`None`] forever.
     ///
+    /// Note that the [`Fuse`] wrapper is a no-op on iterators that implement
+    /// the [`FusedIterator`] trait. `fuse()` may therefore behave incorrectly
+    /// if the [`FusedIterator`] trait is improperly implemented.
+    ///
     /// [`Some(T)`]: Some
+    /// [`FusedIterator`]: crate::iter::FusedIterator
     ///
     /// # Examples
     ///
