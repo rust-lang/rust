@@ -1,0 +1,18 @@
+error: constant expression depends on a generic parameter
+  --> $DIR/complex-generic-default-expr.rs:6:34
+   |
+LL | struct Foo<const N: usize, const M: usize = { N + 1 }>;
+   |                                  ^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: constant expression depends on a generic parameter
+  --> $DIR/complex-generic-default-expr.rs:10:21
+   |
+LL | struct Bar<T, const TYPE_SIZE: usize = { std::mem::size_of::<T>() }>(T);
+   |                     ^^^^^^^^^
+   |
+   = note: this may fail depending on what value the parameter takes
+
+error: aborting due to 2 previous errors
+
