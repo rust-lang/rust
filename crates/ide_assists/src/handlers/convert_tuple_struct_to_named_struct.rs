@@ -420,6 +420,46 @@ impl Outer {
     }
 }"#,
         );
+
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+struct Inner(u32);
+struct Outer$0(Inner);
+
+impl Outer {
+    fn new() -> Self {
+        Self(Inner(42))
+    }
+
+    fn into_inner(self) -> u32 {
+        (self.0).0
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer(Inner(x)) = self;
+        x
+    }
+}"#,
+            r#"
+struct Inner(u32);
+struct Outer { field1: Inner }
+
+impl Outer {
+    fn new() -> Self {
+        Self { field1: Inner(42) }
+    }
+
+    fn into_inner(self) -> u32 {
+        (self.field1).0
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer { field1: Inner(x) } = self;
+        x
+    }
+}"#,
+        );
     }
 
     #[test]
