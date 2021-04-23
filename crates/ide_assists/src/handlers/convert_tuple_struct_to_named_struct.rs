@@ -160,7 +160,7 @@ fn edit_struct_references(
                         .to_string(),
                     );
                 },
-                _ => ()
+                _ => return None,
             }
         }
         Some(())
@@ -170,7 +170,9 @@ fn edit_struct_references(
         edit.edit_file(file_id);
         for r in refs {
             for node in r.name.syntax().ancestors() {
-                edit_node(edit, node);
+                if edit_node(edit, node).is_some() {
+                    break;
+                }
             }
         }
     }
@@ -372,6 +374,49 @@ impl A {
 
     fn into_second(self) -> u64 {
         self.field2
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_struct_with_wrapped_references() {
+        check_assist(
+            convert_tuple_struct_to_named_struct,
+            r#"
+struct Inner$0(u32);
+struct Outer(Inner);
+
+impl Outer {
+    fn new() -> Self {
+        Self(Inner(42))
+    }
+
+    fn into_inner(self) -> u32 {
+        (self.0).0
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer(Inner(x)) = self;
+        x
+    }
+}"#,
+            r#"
+struct Inner { field1: u32 }
+struct Outer(Inner);
+
+impl Outer {
+    fn new() -> Self {
+        Self(Inner { field1: 42 })
+    }
+
+    fn into_inner(self) -> u32 {
+        (self.0).field1
+    }
+
+    fn into_inner_destructed(self) -> u32 {
+        let Outer(Inner { field1: x }) = self;
+        x
     }
 }"#,
         );
