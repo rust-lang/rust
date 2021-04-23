@@ -9,8 +9,8 @@ LL | fn foo<T,U>() where T: ExtraCopy<U>
    |
 help: consider further restricting type parameter `U`
    |
-LL | fn foo<T,U>() where T: ExtraCopy<U>, U: Copy
-   |                                    ^^^^^^^^^
+LL | fn foo<T,U>() where T: ExtraCopy<U>, U: std::marker::Copy
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `(dyn Copy + 'static)` cannot be known at compilation time
   --> $DIR/wf-fn-where-clause.rs:12:16
@@ -28,7 +28,7 @@ help: you could relax the implicit `Sized` bound on `T` if it were used through 
 LL | struct Vec<T> {
    |            ^ this could be changed to `T: ?Sized`...
 LL |     t: T,
-   |        - ...if indirection was used here: `Box<T>`
+   |        - ...if indirection were used here: `Box<T>`
 
 error[E0038]: the trait `Copy` cannot be made into an object
   --> $DIR/wf-fn-where-clause.rs:12:16

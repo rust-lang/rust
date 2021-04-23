@@ -9,8 +9,8 @@ LL |         f: IsCopy<A>
    |
 help: consider restricting type parameter `A`
    |
-LL | enum AnotherEnum<A: Copy> {
-   |                   ^^^^^^
+LL | enum AnotherEnum<A: std::marker::Copy> {
+   |                   ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

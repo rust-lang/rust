@@ -8,8 +8,8 @@ LL | fn f(f: dyn FnOnce()) {}
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn f(&f: dyn FnOnce()) {}
-   |      ^
+LL | fn f(f: &dyn FnOnce()) {}
+   |         ^
 
 error: aborting due to previous error
 

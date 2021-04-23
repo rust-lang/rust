@@ -1,7 +1,6 @@
-use crate::utils::{
-    implements_trait, is_entrypoint_fn, is_type_diagnostic_item, match_panic_def_id, method_chain_args, return_ty,
-    span_lint, span_lint_and_note,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{Async, AttrKind, Attribute, FnKind, FnRetTy, ItemKind};
@@ -12,7 +11,7 @@ use rustc_errors::emitter::EmitterWriter;
 use rustc_errors::Handler;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{AnonConst, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
@@ -208,26 +207,33 @@ impl_lint_pass!(DocMarkdown =>
 );
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
-    fn check_crate(&mut self, cx: &LateContext<'tcx>, krate: &'tcx hir::Crate<'_>) {
-        check_attrs(cx, &self.valid_idents, &krate.item.attrs);
+    fn check_crate(&mut self, cx: &LateContext<'tcx>, _: &'tcx hir::Crate<'_>) {
+        let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
+        check_attrs(cx, &self.valid_idents, attrs);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let headers = check_attrs(cx, &self.valid_idents, attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, cx.tcx.hir().local_def_id(item.hir_id).to_def_id())
-                    || in_external_macro(cx.tcx.sess, item.span))
-                {
+                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
                     let body = cx.tcx.hir().body(body_id);
-                    let impl_item_def_id = cx.tcx.hir().local_def_id(item.hir_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
-                        typeck_results: cx.tcx.typeck(impl_item_def_id),
+                        typeck_results: cx.tcx.typeck(item.def_id),
                         panic_span: None,
                     };
                     fpu.visit_expr(&body.value);
-                    lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+                    lint_for_missing_headers(
+                        cx,
+                        item.hir_id(),
+                        item.span,
+                        sig,
+                        headers,
+                        Some(body_id),
+                        fpu.panic_span,
+                    );
                 }
             },
             hir::ItemKind::Impl(ref impl_) => {
@@ -244,29 +250,38 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
-        let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let headers = check_attrs(cx, &self.valid_idents, attrs);
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.hir_id(), item.span, sig, headers, None, None);
             }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
-        let headers = check_attrs(cx, &self.valid_idents, &item.attrs);
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let headers = check_attrs(cx, &self.valid_idents, attrs);
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
         if let hir::ImplItemKind::Fn(ref sig, body_id) = item.kind {
             let body = cx.tcx.hir().body(body_id);
-            let impl_item_def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(impl_item_def_id),
+                typeck_results: cx.tcx.typeck(item.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(&body.value);
-            lint_for_missing_headers(cx, item.hir_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(
+                cx,
+                item.hir_id(),
+                item.span,
+                sig,
+                headers,
+                Some(body_id),
+                fpu.panic_span,
+            );
         }
     }
 }
@@ -313,9 +328,9 @@ fn lint_for_missing_headers<'tcx>(
             if_chain! {
                 if let Some(body_id) = body_id;
                 if let Some(future) = cx.tcx.lang_items().future_trait();
-                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-                let mir = cx.tcx.optimized_mir(def_id.to_def_id());
-                let ret_ty = mir.return_ty();
+                let typeck = cx.tcx.typeck_body(body_id);
+                let body = cx.tcx.hir().body(body_id);
+                let ret_ty = typeck.expr_ty(&body.value);
                 if implements_trait(cx, ret_ty, future, &[]);
                 if let ty::Opaque(_, subs) = ret_ty.kind();
                 if let Some(gen) = subs.types().next();
@@ -563,14 +578,12 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                             | ItemKind::ExternCrate(..)
                             | ItemKind::ForeignMod(..) => return false,
                             // We found a main function ...
-                            ItemKind::Fn(box FnKind(_, sig, _, Some(block)))
-                                if item.ident.name == sym::main =>
-                            {
+                            ItemKind::Fn(box FnKind(_, sig, _, Some(block))) if item.ident.name == sym::main => {
                                 let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
                                     FnRetTy::Ty(ty) if ty.kind.is_unit() => true,
-                                    _ => false,
+                                    FnRetTy::Ty(_) => false,
                                 };
 
                                 if returns_nothing && !is_async && !block.stmts.is_empty() {
@@ -697,13 +710,20 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
 
         // check for `begin_panic`
         if_chain! {
-            if let ExprKind::Call(ref func_expr, _) = expr.kind;
-            if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.kind;
+            if let ExprKind::Call(func_expr, _) = expr.kind;
+            if let ExprKind::Path(QPath::Resolved(_, path)) = func_expr.kind;
             if let Some(path_def_id) = path.res.opt_def_id();
             if match_panic_def_id(self.cx, path_def_id);
+            if is_expn_of(expr.span, "unreachable").is_none();
+            if !is_expn_of_debug_assertions(expr.span);
             then {
                 self.panic_span = Some(expr.span);
             }
+        }
+
+        // check for `assert_eq` or `assert_ne`
+        if is_expn_of(expr.span, "assert_eq").is_some() || is_expn_of(expr.span, "assert_ne").is_some() {
+            self.panic_span = Some(expr.span);
         }
 
         // check for `unwrap`
@@ -720,7 +740,15 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
+    // Panics in const blocks will cause compilation to fail.
+    fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
+
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
     }
+}
+
+fn is_expn_of_debug_assertions(span: Span) -> bool {
+    const MACRO_NAMES: &[&str] = &["debug_assert", "debug_assert_eq", "debug_assert_ne"];
+    MACRO_NAMES.iter().any(|name| is_expn_of(span, name).is_some())
 }

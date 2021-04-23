@@ -1,4 +1,6 @@
-use crate::utils;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
@@ -40,24 +42,24 @@ static LINT_MSG: &str = "use `std::ptr::eq` when comparing raw pointers";
 
 impl LateLintPass<'_> for PtrEq {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if utils::in_macro(expr.span) {
+        if in_macro(expr.span) {
             return;
         }
 
-        if let ExprKind::Binary(ref op, ref left, ref right) = expr.kind {
+        if let ExprKind::Binary(ref op, left, right) = expr.kind {
             if BinOpKind::Eq == op.node {
                 let (left, right) = match (expr_as_cast_to_usize(cx, left), expr_as_cast_to_usize(cx, right)) {
                     (Some(lhs), Some(rhs)) => (lhs, rhs),
-                    _ => (&**left, &**right),
+                    _ => (left, right),
                 };
 
                 if_chain! {
                     if let Some(left_var) = expr_as_cast_to_raw_pointer(cx, left);
                     if let Some(right_var) = expr_as_cast_to_raw_pointer(cx, right);
-                    if let Some(left_snip) = utils::snippet_opt(cx, left_var.span);
-                    if let Some(right_snip) = utils::snippet_opt(cx, right_var.span);
+                    if let Some(left_snip) = snippet_opt(cx, left_var.span);
+                    if let Some(right_snip) = snippet_opt(cx, right_var.span);
                     then {
-                        utils::span_lint_and_sugg(
+                        span_lint_and_sugg(
                             cx,
                             PTR_EQ,
                             expr.span,
@@ -77,7 +79,7 @@ impl LateLintPass<'_> for PtrEq {
 // E.g., `foo as *const _ as usize` returns `foo as *const _`.
 fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize {
-        if let ExprKind::Cast(ref expr, _) = cast_expr.kind {
+        if let ExprKind::Cast(expr, _) = cast_expr.kind {
             return Some(expr);
         }
     }
@@ -88,7 +90,7 @@ fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>
 // E.g., `foo as *const _` returns `foo`.
 fn expr_as_cast_to_raw_pointer<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if cx.typeck_results().expr_ty(cast_expr).is_unsafe_ptr() {
-        if let ExprKind::Cast(ref expr, _) = cast_expr.kind {
+        if let ExprKind::Cast(expr, _) = cast_expr.kind {
             return Some(expr);
         }
     }

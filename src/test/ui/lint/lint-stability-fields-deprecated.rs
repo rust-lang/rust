@@ -17,33 +17,38 @@ mod cross_crate {
             override1: 2,
             override2: 3,
             //~^ ERROR use of deprecated field
+            override3: 4,
         };
 
         let _ = x.inherit;
         let _ = x.override1;
         let _ = x.override2;
         //~^ ERROR use of deprecated field
+        let _ = x.override3;
 
         let Stable {
             inherit: _,
             override1: _,
-            override2: _
+            override2: _,
             //~^ ERROR use of deprecated field
+            override3: _,
         } = x;
         // all fine
         let Stable { .. } = x;
 
-        let x = Stable2(1, 2, 3);
+        let x = Stable2(1, 2, 3, 4);
 
         let _ = x.0;
         let _ = x.1;
         let _ = x.2;
         //~^ ERROR use of deprecated field
+        let _ = x.3;
 
         let Stable2(_,
                    _,
+                   _,
+                   //~^ ERROR use of deprecated field
                    _)
-            //~^ ERROR use of deprecated field
             = x;
         // all fine
         let Stable2(..) = x;

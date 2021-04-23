@@ -45,6 +45,8 @@ extern "platform-intrinsic" {
     fn simd_and<T>(x: T, y: T) -> T;
     fn simd_or<T>(x: T, y: T) -> T;
     fn simd_xor<T>(x: T, y: T) -> T;
+
+    fn simd_neg<T>(x: T) -> T;
 }
 
 fn main() {
@@ -124,6 +126,11 @@ fn main() {
         all_eq!(simd_xor(x2, x1), i32x4(3, 1, 7, 1));
         all_eq_!(simd_xor(y1, y2), U32::<4>([3, 1, 7, 1]));
         all_eq_!(simd_xor(y2, y1), U32::<4>([3, 1, 7, 1]));
+
+        all_eq!(simd_neg(x1), i32x4(-1, -2, -3, -4));
+        all_eq!(simd_neg(x2), i32x4(-2, -3, -4, -5));
+        all_eq!(simd_neg(z1), f32x4(-1.0, -2.0, -3.0, -4.0));
+        all_eq!(simd_neg(z2), f32x4(-2.0, -3.0, -4.0, -5.0));
 
     }
 }

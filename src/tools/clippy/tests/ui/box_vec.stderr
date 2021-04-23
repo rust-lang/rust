@@ -5,7 +5,7 @@ LL | pub fn test(foo: Box<Vec<bool>>) {
    |                  ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::box-vec` implied by `-D warnings`
-   = help: `Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.
+   = help: `Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation
 
 error: aborting due to previous error
 

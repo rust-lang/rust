@@ -14,7 +14,7 @@ use super::Utf8Error;
 /// UTF-8, and then does the conversion.
 ///
 /// [`&str`]: str
-/// [byteslice]: ../../std/primitive.slice.html
+/// [byteslice]: slice
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
 /// incur the overhead of the validity check, there is an unsafe version of
@@ -31,7 +31,7 @@ use super::Utf8Error;
 /// stack-allocated string. There is an example of this in the
 /// examples section below.
 ///
-/// [byteslice]: ../../std/primitive.slice.html
+/// [byteslice]: slice
 ///
 /// # Errors
 ///

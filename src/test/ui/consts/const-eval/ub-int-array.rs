@@ -1,5 +1,5 @@
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
-
+// stderr-per-bitwidth
 //! Test the "array of int" fast path in validity checking, and in particular whether it
 //! points at the right array element.
 

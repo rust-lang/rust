@@ -4,30 +4,30 @@
 #![crate_type = "lib"]
 #![no_std]
 
-// CHECK: define void @a()
+// CHECK: define{{( dso_local)?}} void @a()
 #[no_mangle]
 fn a() {}
 
-// CHECK: define void @b()
+// CHECK: define{{( dso_local)?}} void @b()
 #[no_mangle]
 pub fn b() {}
 
 mod private {
-    // CHECK: define void @c()
+    // CHECK: define{{( dso_local)?}} void @c()
     #[no_mangle]
     fn c() {}
 
-    // CHECK: define void @d()
+    // CHECK: define{{( dso_local)?}} void @d()
     #[no_mangle]
     pub fn d() {}
 }
 
 const HIDDEN: () = {
-    // CHECK: define void @e()
+    // CHECK: define{{( dso_local)?}} void @e()
     #[no_mangle]
     fn e() {}
 
-    // CHECK: define void @f()
+    // CHECK: define{{( dso_local)?}} void @f()
     #[no_mangle]
     pub fn f() {}
 };
@@ -38,13 +38,13 @@ const HIDDEN: () = {
 // CHECK-NEXT: define internal
 #[inline(never)]
 fn x() {
-    // CHECK: define void @g()
+    // CHECK: define{{( dso_local)?}} void @g()
     #[no_mangle]
     fn g() {
         x();
     }
 
-    // CHECK: define void @h()
+    // CHECK: define{{( dso_local)?}} void @h()
     #[no_mangle]
     pub fn h() {}
 
@@ -54,22 +54,22 @@ fn x() {
     }
 }
 
-// CHECK: define void @i()
+// CHECK: define{{( dso_local)?}} void @i()
 #[no_mangle]
 #[inline]
 fn i() {}
 
-// CHECK: define void @j()
+// CHECK: define{{( dso_local)?}} void @j()
 #[no_mangle]
 #[inline]
 pub fn j() {}
 
-// CHECK: define void @k()
+// CHECK: define{{( dso_local)?}} void @k()
 #[no_mangle]
 #[inline(always)]
 fn k() {}
 
-// CHECK: define void @l()
+// CHECK: define{{( dso_local)?}} void @l()
 #[no_mangle]
 #[inline(always)]
 pub fn l() {}

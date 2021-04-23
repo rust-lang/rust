@@ -1,7 +1,10 @@
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::contains_ty;
 use rustc_hir::intravisit;
 use rustc_hir::{self, AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -9,8 +12,6 @@ use rustc_span::symbol::kw;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
-
-use crate::utils::{contains_ty, span_lint};
 
 #[derive(Copy, Clone)]
 pub struct BoxedLocal {
@@ -87,11 +88,11 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             // find `self` ty for this trait if relevant
             if let ItemKind::Trait(_, _, _, _, items) = item.kind {
                 for trait_item in items {
-                    if trait_item.id.hir_id == hir_id {
+                    if trait_item.id.hir_id() == hir_id {
                         // be sure we have `self` parameter in this function
                         if let AssocItemKind::Fn { has_self: true } = trait_item.kind {
                             trait_self_ty =
-                                Some(TraitRef::identity(cx.tcx, trait_item.id.hir_id.owner.to_def_id()).self_ty());
+                                Some(TraitRef::identity(cx.tcx, trait_item.id.def_id.to_def_id()).self_ty());
                         }
                     }
                 }
@@ -184,6 +185,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             }
         }
     }
+
+    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {

@@ -117,7 +117,7 @@ impl Add for Bar {
     type Output = Bar;
 
     fn add(self, other: Self) -> Self {
-        Bar(self.0 & !other.0) // OK: UnNot part of BiExpr as child node
+        Bar(self.0 & !other.0) // OK: Not part of BiExpr as child node
     }
 }
 
@@ -126,7 +126,7 @@ impl Sub for Bar {
 
     fn sub(self, other: Self) -> Self {
         if self.0 <= other.0 {
-            Bar(-(self.0 & other.0)) // OK: UnNeg part of BiExpr as parent node
+            Bar(-(self.0 & other.0)) // OK: Neg part of BiExpr as parent node
         } else {
             Bar(0)
         }

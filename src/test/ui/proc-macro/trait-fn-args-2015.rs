@@ -3,6 +3,8 @@
 // check-pass
 // aux-build:test-macros.rs
 
+#![allow(anonymous_parameters)]
+
 #[macro_use]
 extern crate test_macros;
 

@@ -1,24 +1,35 @@
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
 crate fn provide(p: &mut Providers) {
-    *p = Providers { normalize_generic_arg_after_erasing_regions, ..*p };
+    *p = Providers {
+        normalize_generic_arg_after_erasing_regions: |tcx, goal| {
+            debug!("normalize_generic_arg_after_erasing_regions(goal={:#?})", goal);
+
+            tcx.sess
+                .perf_stats
+                .normalize_generic_arg_after_erasing_regions
+                .fetch_add(1, Ordering::Relaxed);
+            normalize_after_erasing_regions(tcx, goal)
+        },
+        normalize_mir_const_after_erasing_regions: |tcx, goal| {
+            normalize_after_erasing_regions(tcx, goal)
+        },
+        ..*p
+    };
 }
 
-fn normalize_generic_arg_after_erasing_regions<'tcx>(
+#[instrument(level = "debug", skip(tcx))]
+fn normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
-    goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>,
-) -> GenericArg<'tcx> {
-    debug!("normalize_generic_arg_after_erasing_regions(goal={:#?})", goal);
-
+    goal: ParamEnvAnd<'tcx, T>,
+) -> T {
     let ParamEnvAnd { param_env, value } = goal;
-    tcx.sess.perf_stats.normalize_generic_arg_after_erasing_regions.fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::dummy();
         match infcx.at(&cause, param_env).normalize(value) {

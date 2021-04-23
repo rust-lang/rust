@@ -145,36 +145,36 @@ impl IntoRawFd for fs::File {
 
 impl AsRawFd for io::Stdin {
     fn as_raw_fd(&self) -> RawFd {
-        sys::stdio::Stdin.as_raw_fd()
+        libc::STDIN_FILENO as RawFd
     }
 }
 
 impl AsRawFd for io::Stdout {
     fn as_raw_fd(&self) -> RawFd {
-        sys::stdio::Stdout.as_raw_fd()
+        libc::STDOUT_FILENO as RawFd
     }
 }
 
 impl AsRawFd for io::Stderr {
     fn as_raw_fd(&self) -> RawFd {
-        sys::stdio::Stderr.as_raw_fd()
+        libc::STDERR_FILENO as RawFd
     }
 }
 
 impl<'a> AsRawFd for io::StdinLock<'a> {
     fn as_raw_fd(&self) -> RawFd {
-        sys::stdio::Stdin.as_raw_fd()
+        libc::STDIN_FILENO as RawFd
     }
 }
 
 impl<'a> AsRawFd for io::StdoutLock<'a> {
     fn as_raw_fd(&self) -> RawFd {
-        sys::stdio::Stdout.as_raw_fd()
+        libc::STDOUT_FILENO as RawFd
     }
 }
 
 impl<'a> AsRawFd for io::StderrLock<'a> {
     fn as_raw_fd(&self) -> RawFd {
-        sys::stdio::Stderr.as_raw_fd()
+        libc::STDERR_FILENO as RawFd
     }
 }

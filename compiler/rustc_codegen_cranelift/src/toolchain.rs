@@ -71,12 +71,9 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 flavor,
             )),
             (Some(linker), None) => {
-                let stem = linker
-                    .file_stem()
-                    .and_then(|stem| stem.to_str())
-                    .unwrap_or_else(|| {
-                        sess.fatal("couldn't extract file stem from specified linker")
-                    });
+                let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
+                    sess.fatal("couldn't extract file stem from specified linker")
+                });
 
                 let flavor = if stem == "emcc" {
                     LinkerFlavor::Em
@@ -105,11 +102,7 @@ fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    if let Some(ret) = infer_from(
-        sess,
-        sess.opts.cg.linker.clone(),
-        sess.opts.cg.linker_flavor,
-    ) {
+    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), sess.opts.cg.linker_flavor) {
         return ret;
     }
 

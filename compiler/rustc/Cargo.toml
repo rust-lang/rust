@@ -11,12 +11,16 @@ rustc_driver = { path = "../rustc_driver" }
 # crate is intended to be used by codegen backends, which may not be in-tree.
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 
-[dependencies.jemalloc-sys]
-version = '0.3.0'
+[dependencies.tikv-jemalloc-sys]
+version = '0.4.0'
 optional = true
 features = ['unprefixed_malloc_on_supported_platforms']
 
+[dependencies.tikv-jemallocator]
+version = '0.4.0'
+optional = true
+
 [features]
-jemalloc = ['jemalloc-sys']
+jemalloc = ['tikv-jemalloc-sys', 'tikv-jemallocator']
 llvm = ['rustc_driver/llvm']
 max_level_info = ['rustc_driver/max_level_info']

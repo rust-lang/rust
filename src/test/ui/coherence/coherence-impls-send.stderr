@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `std::marker::Send` for type `&[NotSync]`:
+error[E0119]: conflicting implementations of trait `std::marker::Send` for type `&[NotSync]`
   --> $DIR/coherence-impls-send.rs:25:1
    |
 LL | unsafe impl Send for &'static [NotSync] {}

@@ -1,0 +1,14 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/alloc.rs:8:1
+   |
+LL | const LAYOUT_INVALID: Layout = unsafe { Layout::from_size_align_unchecked(0x1000, 0x00) };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0 at .align_, but expected something greater or equal to 1
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 16, align: 8) {
+               00 10 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
+           }
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

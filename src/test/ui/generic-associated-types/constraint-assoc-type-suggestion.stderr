@@ -1,0 +1,27 @@
+warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/constraint-assoc-type-suggestion.rs:3:12
+   |
+LL | #![feature(generic_associated_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
+
+error[E0308]: mismatched types
+  --> $DIR/constraint-assoc-type-suggestion.rs:13:23
+   |
+LL |     let b: Vec<i32> = a;
+   |            --------   ^ expected struct `Vec`, found associated type
+   |            |
+   |            expected due to this
+   |
+   = note:       expected struct `Vec<i32>`
+           found associated type `<T as X>::Y<i32>`
+help: consider constraining the associated type `<T as X>::Y<i32>` to `Vec<i32>`
+   |
+LL | fn f<T: X<Y<i32> = Vec<i32>>>(a: T::Y<i32>) {
+   |          ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

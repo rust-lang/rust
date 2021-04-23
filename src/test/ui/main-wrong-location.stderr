@@ -3,7 +3,7 @@ error[E0601]: `main` function not found in crate `main_wrong_location`
    |
 LL | / mod m {
 LL | |
-LL | |     // An inferred main entry point (that doesn't use #[main])
+LL | |     // An inferred main entry point
 LL | |     // must appear at the top of the crate
 LL | |     fn main() { }
 LL | | }
@@ -15,7 +15,7 @@ note: here is a function named `main`
 LL |     fn main() { }
    |     ^^^^^^^^^^^^^
    = note: you have one or more functions named `main` not defined at the crate level
-   = help: either move the `main` function definitions or attach the `#[main]` attribute to one of them
+   = help: consider moving the `main` function definitions
 
 error: aborting due to previous error
 

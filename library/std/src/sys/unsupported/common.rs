@@ -18,7 +18,10 @@ pub fn unsupported<T>() -> std_io::Result<T> {
 }
 
 pub fn unsupported_err() -> std_io::Error {
-    std_io::Error::new(std_io::ErrorKind::Other, "operation not supported on this platform")
+    std_io::Error::new_const(
+        std_io::ErrorKind::Unsupported,
+        &"operation not supported on this platform",
+    )
 }
 
 pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
@@ -32,11 +35,6 @@ pub fn abort_internal() -> ! {
 pub fn hashmap_random_keys() -> (u64, u64) {
     (1, 2)
 }
-
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
 
 pub unsafe fn strlen(mut s: *const c_char) -> usize {
     // SAFETY: The caller must guarantee `s` points to a valid 0-terminated string.

@@ -28,7 +28,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
         _1 = const false;                // scope 0 at $DIR/basic_assignment.rs:11:20: 11:25
-        FakeRead(ForLet, _1);            // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
+        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
         StorageLive(_2);                 // scope 1 at $DIR/basic_assignment.rs:12:9: 12:17
         StorageLive(_3);                 // scope 2 at $DIR/basic_assignment.rs:16:16: 16:24
         _3 = _1;                         // scope 2 at $DIR/basic_assignment.rs:16:16: 16:24
@@ -36,7 +36,7 @@ fn main() -> () {
         StorageDead(_3);                 // scope 2 at $DIR/basic_assignment.rs:16:23: 16:24
         StorageLive(_4);                 // scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
         _4 = Option::<Box<u32>>::None;   // scope 2 at $DIR/basic_assignment.rs:18:36: 18:40
-        FakeRead(ForLet, _4);            // scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
+        FakeRead(ForLet(None), _4);      // scope 2 at $DIR/basic_assignment.rs:18:9: 18:15
         AscribeUserType(_4, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 2 at $DIR/basic_assignment.rs:18:17: 18:33
         StorageLive(_5);                 // scope 3 at $DIR/basic_assignment.rs:19:9: 19:15
         StorageLive(_6);                 // scope 4 at $DIR/basic_assignment.rs:23:14: 23:20

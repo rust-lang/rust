@@ -1,9 +1,17 @@
-error[E0202]: associated types are not yet supported in inherent impls (see #8995)
-  --> $DIR/assoc-inherent.rs:6:5
+error: associated type in `impl` without body
+  --> $DIR/assoc-inherent.rs:14:5
    |
-LL |     type Bar = isize;
-   |     ^^^^^^^^^^^^^^^^^
+LL |     type Baz;
+   |     ^^^^^^^^-
+   |             |
+   |             help: provide a definition for the type: `= <type>;`
 
-error: aborting due to previous error
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-inherent.rs:18:13
+   |
+LL |     let x : Foo::Bar;
+   |             ^^^^^^^^ help: use fully-qualified syntax: `<Foo as Trait>::Bar`
 
-For more information about this error, try `rustc --explain E0202`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0223`.

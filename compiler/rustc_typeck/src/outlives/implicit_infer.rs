@@ -2,7 +2,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::Node;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
@@ -53,15 +52,9 @@ pub struct InferVisitor<'cx, 'tcx> {
 
 impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let item_did = self.tcx.hir().local_def_id(item.hir_id);
+        let item_did = item.def_id;
 
         debug!("InferVisitor::visit_item(item={:?})", item_did);
-
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(item_did);
-        let item = match self.tcx.hir().get(hir_id) {
-            Node::Item(item) => item,
-            _ => bug!(),
-        };
 
         let mut item_required_predicates = RequiredPredicates::default();
         match item.kind {

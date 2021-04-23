@@ -1,0 +1,184 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refers_to_static_cross_crate.rs:12:1
+   |
+LL | / const SLICE_MUT: &[u8; 1] = {
+LL | |
+LL | |
+LL | |
+LL | |     unsafe { &static_cross_crate::ZERO }
+LL | | };
+   | |__^ type validation failed: encountered a reference pointing to a static variable
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc0────────╼                         │ ╾──────╼
+           }
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:47:9
+   |
+LL |         SLICE_MUT => true,
+   |         ^^^^^^^^^
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refers_to_static_cross_crate.rs:19:1
+   |
+LL | / const U8_MUT: &u8 = {
+LL | |
+LL | |
+LL | |
+LL | |     unsafe { &static_cross_crate::ZERO[0] }
+LL | | };
+   | |__^ type validation failed: encountered a reference pointing to a static variable
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc0────────╼                         │ ╾──────╼
+           }
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:56:9
+   |
+LL |         U8_MUT => true,
+   |         ^^^^^^
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static_cross_crate.rs:29:15
+   |
+LL | / const U8_MUT2: &u8 = {
+LL | |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
+   | |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses static
+LL | |
+LL | |
+LL | |
+LL | |
+LL | | };
+   | |__-
+   |
+note: the lint level is defined here
+  --> $DIR/const_refers_to_static_cross_crate.rs:27:8
+   |
+LL | #[warn(const_err)]
+   |        ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:67:9
+   |
+LL |         U8_MUT2 => true,
+   |         ^^^^^^^
+
+warning: any use of this value will cause an error
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:51
+   |
+LL | / const U8_MUT3: &u8 = {
+LL | |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   | |                                                   ^^^^^^^^^^^ constant accesses static
+LL | |
+LL | |
+...  |
+LL | |
+LL | | };
+   | |__-
+   |
+note: the lint level is defined here
+  --> $DIR/const_refers_to_static_cross_crate.rs:35:8
+   |
+LL | #[warn(const_err)]
+   |        ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:75:9
+   |
+LL |         U8_MUT3 => true,
+   |         ^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:47:9
+   |
+LL |         SLICE_MUT => true,
+   |         ^^^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:56:9
+   |
+LL |         U8_MUT => true,
+   |         ^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:67:9
+   |
+LL |         U8_MUT2 => true,
+   |         ^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refers_to_static_cross_crate.rs:75:9
+   |
+LL |         U8_MUT3 => true,
+   |         ^^^^^^^
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:16:15
+   |
+LL |     unsafe { &static_cross_crate::ZERO }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:16:15
+   |
+LL |     unsafe { &static_cross_crate::ZERO }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:23:15
+   |
+LL |     unsafe { &static_cross_crate::ZERO[0] }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:23:15
+   |
+LL |     unsafe { &static_cross_crate::ZERO[0] }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:23:15
+   |
+LL |     unsafe { &static_cross_crate::ZERO[0] }
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:29:17
+   |
+LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:20
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:20
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:20
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: skipping check for `const_panic` feature
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:77
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                                                                             ^^^^^^^^
+help: skipping check that does not even have a feature gate
+  --> $DIR/const_refers_to_static_cross_crate.rs:37:20
+   |
+LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 10 previous errors; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0080`.

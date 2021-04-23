@@ -1,4 +1,4 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 #![feature(intra_doc_pointers)]
 // These are links that could reasonably expected to work, but don't.
 

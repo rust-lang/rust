@@ -32,7 +32,6 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("fuchsia-zircon", "BSD-3-Clause"), // rustdoc, rustc, cargo (jobserver & tempdir)
     ("colored", "MPL-2.0"),             // rustfmt
     ("ordslice", "Apache-2.0"),         // rls
-    ("cloudabi", "BSD-2-Clause"),       // (rls -> crossbeam-channel 0.2 -> rand 0.5)
     ("ryu", "Apache-2.0 OR BSL-1.0"),   // rls/cargo/... (because of serde)
     ("bytesize", "Apache-2.0"),         // cargo
     ("im-rc", "MPL-2.0+"),              // cargo
@@ -67,7 +66,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "arrayvec",
     "atty",
     "autocfg",
-    "backtrace",
     "bitflags",
     "block-buffer",
     "block-padding",
@@ -77,7 +75,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "cfg-if",
     "chalk-derive",
     "chalk-ir",
-    "cloudabi",
     "cmake",
     "compiler_builtins",
     "cpuid-bool",
@@ -86,6 +83,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "crossbeam-epoch",
     "crossbeam-queue",
     "crossbeam-utils",
+    "cstr",
     "datafrog",
     "difference",
     "digest",
@@ -123,6 +121,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "measureme",
     "memchr",
     "memmap",
+    "memmap2",
     "memoffset",
     "miniz_oxide",
     "num_cpus",
@@ -132,6 +131,8 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "parking_lot",
     "parking_lot_core",
     "pathdiff",
+    "perf-event-open-sys",
+    "pin-project-lite",
     "pkg-config",
     "polonius-engine",
     "ppv-lite86",

@@ -9,10 +9,6 @@ struct i32x2(i32, i32);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
-struct i32x3(i32, i32, i32);
-#[repr(simd)]
-#[derive(Copy, Clone)]
-#[allow(non_camel_case_types)]
 struct i32x4(i32, i32, i32, i32);
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -24,10 +20,6 @@ struct i32x8(i32, i32, i32, i32,
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
 struct f32x2(f32, f32);
-#[repr(simd)]
-#[derive(Copy, Clone)]
-#[allow(non_camel_case_types)]
-struct f32x3(f32, f32, f32);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
@@ -43,7 +35,6 @@ extern "platform-intrinsic" {
     fn simd_extract<T, E>(x: T, idx: u32) -> E;
 
     fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> U;
-    fn simd_shuffle3<T, U>(x: T, y: T, idx: [u32; 3]) -> U;
     fn simd_shuffle4<T, U>(x: T, y: T, idx: [u32; 4]) -> U;
     fn simd_shuffle8<T, U>(x: T, y: T, idx: [u32; 8]) -> U;
 }
@@ -61,8 +52,6 @@ fn main() {
 
         simd_shuffle2::<i32, i32>(0, 0, [0; 2]);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
-        simd_shuffle3::<i32, i32>(0, 0, [0; 3]);
-        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shuffle4::<i32, i32>(0, 0, [0; 4]);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shuffle8::<i32, i32>(0, 0, [0; 8]);
@@ -70,8 +59,6 @@ fn main() {
 
         simd_shuffle2::<_, f32x2>(x, x, [0; 2]);
 //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x2` with element type `f32`
-        simd_shuffle3::<_, f32x3>(x, x, [0; 3]);
-//~^ ERROR element type `i32` (element of input `i32x4`), found `f32x3` with element type `f32`
         simd_shuffle4::<_, f32x4>(x, x, [0; 4]);
 //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x4` with element type `f32`
         simd_shuffle8::<_, f32x8>(x, x, [0; 8]);
@@ -79,10 +66,8 @@ fn main() {
 
         simd_shuffle2::<_, i32x8>(x, x, [0; 2]);
         //~^ ERROR expected return type of length 2, found `i32x8` with length 8
-        simd_shuffle3::<_, i32x4>(x, x, [0; 3]);
-        //~^ ERROR expected return type of length 3, found `i32x4` with length 4
-        simd_shuffle4::<_, i32x3>(x, x, [0; 4]);
-        //~^ ERROR expected return type of length 4, found `i32x3` with length 3
+        simd_shuffle4::<_, i32x8>(x, x, [0; 4]);
+        //~^ ERROR expected return type of length 4, found `i32x8` with length 8
         simd_shuffle8::<_, i32x2>(x, x, [0; 8]);
         //~^ ERROR expected return type of length 8, found `i32x2` with length 2
     }

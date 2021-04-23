@@ -12,7 +12,6 @@
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 #![feature(unboxed_closures)]
-#![feature(link_args)]
 #![crate_type = "rlib"]
 
 // Change function name --------------------------------------------------------
@@ -146,21 +145,6 @@ extern "C" {
     pub fn add_function2();
 }
 
-// Change link-args ------------------------------------------------------------
-#[cfg(cfail1)]
-#[link_args = "-foo -bar"]
-extern "C" {
-    pub fn change_link_args(c: i32);
-}
-
-#[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
-#[rustc_clean(cfg = "cfail3")]
-#[link_args = "-foo -bar -baz"]
-extern "C" {
-    pub fn change_link_args(c: i32);
-}
-
 // Change link-name ------------------------------------------------------------
 #[cfg(cfail1)]
 #[link(name = "foo")]
@@ -169,7 +153,7 @@ extern "C" {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_dirty(cfg = "cfail2", except = "hir_owner_nodes")]
+#[rustc_dirty(cfg = "cfail2", except = "hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg = "cfail3")]
 #[link(name = "bar")]
 extern "C" {

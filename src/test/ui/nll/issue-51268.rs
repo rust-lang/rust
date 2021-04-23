@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 struct Bar;
 
 impl Bar {

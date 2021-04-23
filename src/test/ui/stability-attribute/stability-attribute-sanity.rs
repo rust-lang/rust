@@ -57,17 +57,16 @@ fn multiple2() { }
 #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
 fn multiple3() { }
 
-#[stable(feature = "a", since = "b")]
+#[stable(feature = "a", since = "b")] //~ ERROR invalid stability version found
 #[rustc_deprecated(since = "b", reason = "text")]
 #[rustc_deprecated(since = "b", reason = "text")] //~ ERROR multiple deprecated attributes
 #[rustc_const_unstable(feature = "c", issue = "none")]
 #[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
 pub const fn multiple4() { }
-//~^ ERROR Invalid stability version found
 
-#[stable(feature = "a", since = "1.0.0")]
+#[stable(feature = "a", since = "1.0.0")] //~ ERROR invalid deprecation version found
 #[rustc_deprecated(since = "invalid", reason = "text")]
-fn invalid_deprecation_version() {} //~ ERROR Invalid deprecation version found
+fn invalid_deprecation_version() {}
 
 #[rustc_deprecated(since = "a", reason = "text")]
 fn deprecated_without_unstable_or_stable() { }

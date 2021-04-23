@@ -1,3 +1,5 @@
+// compile-flags: --document-private-items
+
 #![feature(decl_macro)]
 
 // @has decl_macro/macro.my_macro.html //pre 'pub macro my_macro() {'
@@ -36,4 +38,19 @@ pub macro my_macro_multi {
 // @has - //pre '}'
 pub macro by_example_single {
     ($foo:expr) => {}
+}
+
+mod a {
+    mod b {
+        // @has decl_macro/a/b/macro.by_example_vis.html //pre 'pub(super) macro by_example_vis($foo:expr) {'
+        pub(in super) macro by_example_vis {
+            ($foo:expr) => {}
+        }
+        mod c {
+            // @has decl_macro/a/b/c/macro.by_example_vis_named.html //pre 'pub(in a) macro by_example_vis_named($foo:expr) {'
+            pub(in a) macro by_example_vis_named {
+                ($foo:expr) => {}
+            }
+        }
+    }
 }

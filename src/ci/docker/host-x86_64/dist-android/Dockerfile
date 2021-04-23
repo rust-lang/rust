@@ -9,6 +9,8 @@ RUN . /scripts/android-ndk.sh && \
     download_ndk android-ndk-r15c-linux-x86_64.zip && \
     make_standalone_toolchain arm 14 && \
     make_standalone_toolchain x86 14 && \
+    make_standalone_toolchain arm 21 && \
+    make_standalone_toolchain x86 21 && \
     make_standalone_toolchain arm64 21 && \
     make_standalone_toolchain x86_64 21 && \
     remove_ndk
@@ -36,3 +38,6 @@ ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
+
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh

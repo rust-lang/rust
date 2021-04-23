@@ -1,0 +1,30 @@
+warning: the feature `capture_disjoint_fields` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/destructure-pattern-closure-within-closure.rs:2:12
+   |
+LL | #![feature(capture_disjoint_fields)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
+
+warning: unused variable: `t2`
+  --> $DIR/destructure-pattern-closure-within-closure.rs:14:21
+   |
+LL |             let (_, t2) = t;
+   |                     ^^ help: if this is intentional, prefix it with an underscore: `_t2`
+   |
+note: the lint level is defined here
+  --> $DIR/destructure-pattern-closure-within-closure.rs:4:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
+warning: unused variable: `g2`
+  --> $DIR/destructure-pattern-closure-within-closure.rs:11:17
+   |
+LL |         let (_, g2) = g;
+   |                 ^^ help: if this is intentional, prefix it with an underscore: `_g2`
+
+warning: 3 warnings emitted
+

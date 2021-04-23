@@ -56,7 +56,7 @@ LL | struct Inline<T>
    |               - required by this bound in `Inline`
 ...
 LL |     let dst = Inline::<dyn Debug>::new(0);
-   |               ^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |               ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `dyn Debug`
 help: consider relaxing the implicit `Sized` restriction

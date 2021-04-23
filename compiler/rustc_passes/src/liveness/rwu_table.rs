@@ -1,4 +1,5 @@
 use crate::liveness::{LiveNode, Variable};
+use std::iter;
 
 #[derive(Clone, Copy)]
 pub(super) struct RWU {
@@ -91,7 +92,7 @@ impl RWUTable {
 
         let mut changed = false;
         let (dst_row, src_row) = self.pick2_rows_mut(dst, src);
-        for (dst_word, src_word) in dst_row.iter_mut().zip(src_row.iter()) {
+        for (dst_word, src_word) in iter::zip(dst_row, &*src_row) {
             let old = *dst_word;
             let new = *dst_word | src_word;
             *dst_word = new;

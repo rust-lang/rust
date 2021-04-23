@@ -32,6 +32,12 @@ pub fn is_dylib(name: &str) -> bool {
     name.ends_with(".dylib") || name.ends_with(".so") || name.ends_with(".dll")
 }
 
+/// Returns `true` if the file name given looks like a debug info file
+pub fn is_debug_info(name: &str) -> bool {
+    // FIXME: consider split debug info on other platforms (e.g., Linux, macOS)
+    name.ends_with(".pdb")
+}
+
 /// Returns the corresponding relative library directory that the compiler's
 /// dylibs will be found in.
 pub fn libdir(target: TargetSelection) -> &'static str {

@@ -1,3 +1,27 @@
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+  --> $DIR/builtin-std-paths-fail.rs:2:11
+   |
+LL |     core::RustcDecodable,
+   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+  --> $DIR/builtin-std-paths-fail.rs:4:11
+   |
+LL |     core::RustcDecodable,
+   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+  --> $DIR/builtin-std-paths-fail.rs:2:11
+   |
+LL |     core::RustcDecodable,
+   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
+  --> $DIR/builtin-std-paths-fail.rs:4:11
+   |
+LL |     core::RustcDecodable,
+   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+
 error[E0433]: failed to resolve: could not find `bench` in `core`
   --> $DIR/builtin-std-paths-fail.rs:7:9
    |
@@ -22,29 +46,29 @@ error[E0433]: failed to resolve: could not find `test` in `core`
 LL | #[core::test]
    |         ^^^^ could not find `test` in `core`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
-  --> $DIR/builtin-std-paths-fail.rs:2:11
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+  --> $DIR/builtin-std-paths-fail.rs:14:10
    |
-LL |     core::RustcDecodable,
-   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+LL |     std::RustcDecodable,
+   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
-  --> $DIR/builtin-std-paths-fail.rs:4:11
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+  --> $DIR/builtin-std-paths-fail.rs:16:10
    |
-LL |     core::RustcDecodable,
-   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+LL |     std::RustcDecodable,
+   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
-  --> $DIR/builtin-std-paths-fail.rs:4:11
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+  --> $DIR/builtin-std-paths-fail.rs:14:10
    |
-LL |     core::RustcDecodable,
-   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+LL |     std::RustcDecodable,
+   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
 
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `core`
-  --> $DIR/builtin-std-paths-fail.rs:2:11
+error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
+  --> $DIR/builtin-std-paths-fail.rs:16:10
    |
-LL |     core::RustcDecodable,
-   |           ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `core`
+LL |     std::RustcDecodable,
+   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
 
 error[E0433]: failed to resolve: could not find `bench` in `std`
   --> $DIR/builtin-std-paths-fail.rs:19:8
@@ -69,30 +93,6 @@ error[E0433]: failed to resolve: could not find `test` in `std`
    |
 LL | #[std::test]
    |        ^^^^ could not find `test` in `std`
-
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
-  --> $DIR/builtin-std-paths-fail.rs:14:10
-   |
-LL |     std::RustcDecodable,
-   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
-
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
-  --> $DIR/builtin-std-paths-fail.rs:16:10
-   |
-LL |     std::RustcDecodable,
-   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
-
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
-  --> $DIR/builtin-std-paths-fail.rs:16:10
-   |
-LL |     std::RustcDecodable,
-   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
-
-error[E0433]: failed to resolve: could not find `RustcDecodable` in `std`
-  --> $DIR/builtin-std-paths-fail.rs:14:10
-   |
-LL |     std::RustcDecodable,
-   |          ^^^^^^^^^^^^^^ could not find `RustcDecodable` in `std`
 
 error: aborting due to 16 previous errors
 

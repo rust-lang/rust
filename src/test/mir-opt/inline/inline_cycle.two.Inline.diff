@@ -37,7 +37,6 @@
 +         StorageDead(_5);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageDead(_4);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageDead(_3);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
-+         _1 = const ();                   // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageDead(_2);                 // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
           StorageDead(_1);                 // scope 0 at $DIR/inline-cycle.rs:49:12: 49:13
           _0 = const ();                   // scope 0 at $DIR/inline-cycle.rs:48:10: 50:2

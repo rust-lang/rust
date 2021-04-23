@@ -1,0 +1,26 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ref_to_int_match.rs:26:1
+   |
+LL | const BAR: Int = unsafe { Foo { r: &42 }.f };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc2, but expected initialized plain (non-pointer) bytes
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾───────alloc2────────╼                         │ ╾──────╼
+           }
+
+error: could not evaluate constant pattern
+  --> $DIR/ref_to_int_match.rs:8:14
+   |
+LL |         10..=BAR => {},
+   |              ^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/ref_to_int_match.rs:8:14
+   |
+LL |         10..=BAR => {},
+   |              ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

@@ -43,7 +43,7 @@ LL | |     }
    |
 help: try this
    |
-LL | impl Default for LtKo<'c> {
+LL | impl<'c> Default for LtKo<'c> {
 LL |     fn default() -> Self {
 LL |         Self::new()
 LL |     }
@@ -67,5 +67,39 @@ LL |     }
 LL | }
    |
 
-error: aborting due to 4 previous errors
+error: you should consider adding a `Default` implementation for `FooGenerics<T>`
+  --> $DIR/new_without_default.rs:165:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self(Default::default())
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL | impl<T> Default for FooGenerics<T> {
+LL |     fn default() -> Self {
+LL |         Self::new()
+LL |     }
+LL | }
+   |
+
+error: you should consider adding a `Default` implementation for `BarGenerics<T>`
+  --> $DIR/new_without_default.rs:172:5
+   |
+LL | /     pub fn new() -> Self {
+LL | |         Self(Default::default())
+LL | |     }
+   | |_____^
+   |
+help: try this
+   |
+LL | impl<T: Copy> Default for BarGenerics<T> {
+LL |     fn default() -> Self {
+LL |         Self::new()
+LL |     }
+LL | }
+   |
+
+error: aborting due to 6 previous errors
 

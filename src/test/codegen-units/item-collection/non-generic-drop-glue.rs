@@ -1,11 +1,11 @@
-// ignore-tidy-linelength
+//
 // compile-flags:-Zprint-mono-items=eager
 // compile-flags:-Zinline-in-all-cgus
 
 #![deny(dead_code)]
 #![feature(start)]
 
-//~ MONO_ITEM fn std::intrinsics::drop_in_place::<StructWithDrop> - shim(Some(StructWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn std::ptr::drop_in_place::<StructWithDrop> - shim(Some(StructWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
 struct StructWithDrop {
     x: i32
 }
@@ -19,7 +19,7 @@ struct StructNoDrop {
     x: i32
 }
 
-//~ MONO_ITEM fn std::intrinsics::drop_in_place::<EnumWithDrop> - shim(Some(EnumWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
+//~ MONO_ITEM fn std::ptr::drop_in_place::<EnumWithDrop> - shim(Some(EnumWithDrop)) @@ non_generic_drop_glue-cgu.0[Internal]
 enum EnumWithDrop {
     A(i32)
 }

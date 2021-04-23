@@ -1,4 +1,4 @@
-error: type parameters with a default must be trailing
+error: generic parameters with a default must be trailing
   --> $DIR/params-in-ct-in-ty-param-lazy-norm.rs:11:12
    |
 LL | struct Bar<T = [u8; N], const N: usize>(T);

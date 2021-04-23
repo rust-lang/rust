@@ -11,7 +11,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             env: "eabihf".to_string(),
             features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
-            cpu: "generic".to_string(),
             max_atomic_width: Some(64),
             unsupported_abis: super::arm_base::unsupported_abis(),
             mcount: "__mcount".to_string(),

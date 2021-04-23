@@ -45,7 +45,7 @@ impl NonConstExpr {
                 return None;
             }
 
-            Self::Match(IfLetGuardDesugar) => bug!("if-let guard outside a `match` expression"),
+            Self::Match(IfLetGuardDesugar) => bug!("`if let` guard outside a `match` expression"),
 
             // All other expressions are allowed.
             Self::Loop(Loop | While | WhileLet)
@@ -106,7 +106,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // However, we cannot allow stable `const fn`s to use unstable features without an explicit
             // opt-in via `rustc_allow_const_fn_unstable`.
             attr::rustc_allow_const_fn_unstable(&tcx.sess, &tcx.get_attrs(def_id))
-                .map_or(false, |mut features| features.any(|name| name == feature_gate))
+                .any(|name| name == feature_gate)
         };
 
         match required_gates {

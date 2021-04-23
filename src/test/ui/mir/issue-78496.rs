@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -Z mir-opt-level=2 -C opt-level=0
+// compile-flags: -Z mir-opt-level=3 -C opt-level=0
 
 // example from #78496
 pub enum E<'a> {

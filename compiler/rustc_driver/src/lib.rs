@@ -27,7 +27,6 @@ use rustc_interface::{interface, Queries};
 use rustc_lint::LintStore;
 use rustc_metadata::locator;
 use rustc_middle::middle::cstore::MetadataLoader;
-use rustc_middle::ty::TyCtxt;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_serialize::json::{self, ToJson};
@@ -55,7 +54,7 @@ use std::process::{self, Command, Stdio};
 use std::str;
 use std::time::Instant;
 
-mod args;
+pub mod args;
 pub mod pretty;
 
 /// Exit status code used for successful compilation and help output.
@@ -147,6 +146,7 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
     pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
         Self { at_args, callbacks, file_loader: None, emitter: None, make_codegen_backend: None }
     }
+    /// Used by cg_clif.
     pub fn set_make_codegen_backend(
         &mut self,
         make_codegen_backend: Option<
@@ -156,10 +156,12 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self.make_codegen_backend = make_codegen_backend;
         self
     }
+    /// Used by RLS.
     pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
         self.emitter = emitter;
         self
     }
+    /// Used by RLS.
     pub fn set_file_loader(
         &mut self,
         file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
@@ -188,16 +190,8 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
-    let mut args = Vec::new();
-    for arg in at_args {
-        match args::arg_expand(arg.clone()) {
-            Ok(arg) => args.extend(arg),
-            Err(err) => early_error(
-                ErrorOutputType::default(),
-                &format!("Failed to load argument file: {}", err),
-            ),
-        }
-    }
+    let args = args::arg_expand_all(at_args);
+
     let diagnostic_output = emitter.map_or(DiagnosticOutput::Default, DiagnosticOutput::Raw);
     let matches = match handle_options(&args) {
         Some(matches) => matches,
@@ -224,6 +218,7 @@ fn run_compiler(
             diagnostic_output,
             stderr: None,
             lint_caps: Default::default(),
+            parse_sess_created: None,
             register_lints: None,
             override_queries: None,
             make_codegen_backend: make_codegen_backend.take().unwrap(),
@@ -307,6 +302,7 @@ fn run_compiler(
         diagnostic_output,
         stderr: None,
         lint_caps: Default::default(),
+        parse_sess_created: None,
         register_lints: None,
         override_queries: None,
         make_codegen_backend: make_codegen_backend.unwrap(),
@@ -799,7 +795,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(util::release_str()));
         if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend("llvm")().print_version();
+            get_builtin_codegen_backend(&None, "llvm")().print_version();
         }
     }
 }
@@ -821,7 +817,7 @@ fn usage(verbose: bool, include_unstable_options: bool, nightly_build: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    let at_path = if verbose && nightly_build {
+    let at_path = if verbose {
         "    @path               Read newline separated options from `path`\n"
     } else {
         ""
@@ -849,7 +845,8 @@ the command line flag directly.
     );
 }
 
-fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
+/// Write to stdout lint command options, together with a list of all available lints
+pub fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_plugins: bool) {
     println!(
         "
 Available lint options:
@@ -902,7 +899,12 @@ Available lint options:
     let print_lints = |lints: Vec<&Lint>| {
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
-            println!("    {}  {:7.7}  {}", padded(&name), lint.default_level.as_str(), lint.desc);
+            println!(
+                "    {}  {:7.7}  {}",
+                padded(&name),
+                lint.default_level(sess.edition()).as_str(),
+                lint.desc
+            );
         }
         println!("\n");
     };
@@ -1088,7 +1090,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         if cfg!(feature = "llvm") {
-            get_builtin_codegen_backend("llvm")().print_passes();
+            get_builtin_codegen_backend(&None, "llvm")().print_passes();
         }
         return None;
     }
@@ -1240,7 +1242,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    TyCtxt::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames);
 
     #[cfg(windows)]
     unsafe {

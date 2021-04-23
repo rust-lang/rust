@@ -10,7 +10,7 @@ error: generic arguments in macro path
 LL |     foo::<>!();
    |          ^^
 
-error: generic arguments in macro path
+error: unexpected generic arguments in path
   --> $DIR/macro-ty-params.rs:12:15
    |
 LL |     m!(Default<>);

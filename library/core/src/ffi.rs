@@ -21,7 +21,6 @@ use crate::ops::{Deref, DerefMut};
 /// compiler down to 1.1.0. After Rust 1.30.0, it was re-exported by
 /// this definition. For more information, please read [RFC 2521].
 ///
-/// [pointer]: ../../std/primitive.pointer.html
 /// [Nomicon]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
 /// [RFC 2521]: https://github.com/rust-lang/rfcs/blob/master/text/2521-c_void-reunification.md
 // N.B., for LLVM to recognize the void pointer type and by extension
@@ -54,7 +53,7 @@ pub enum c_void {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for c_void {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("c_void")
+        f.debug_struct("c_void").finish()
     }
 }
 

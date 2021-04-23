@@ -11,7 +11,7 @@ use crate::traits::{self, Normalized, Obligation, ObligationCause, SelectionCont
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, fast_reject, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::iter;
@@ -67,6 +67,33 @@ where
            impl2_def_id={:?})",
         impl1_def_id, impl2_def_id,
     );
+    // Before doing expensive operations like entering an inference context, do
+    // a quick check via fast_reject to tell if the impl headers could possibly
+    // unify.
+    let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
+    let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
+
+    // Check if any of the input types definitely do not unify.
+    if iter::zip(
+        impl1_ref.iter().flat_map(|tref| tref.substs.types()),
+        impl2_ref.iter().flat_map(|tref| tref.substs.types()),
+    )
+    .any(|(ty1, ty2)| {
+        let t1 = fast_reject::simplify_type(tcx, ty1, false);
+        let t2 = fast_reject::simplify_type(tcx, ty2, false);
+        if let (Some(t1), Some(t2)) = (t1, t2) {
+            // Simplified successfully
+            // Types cannot unify if they differ in their reference mutability or simplify to different types
+            t1 != t2 || ty1.ref_mutability() != ty2.ref_mutability()
+        } else {
+            // Types might unify
+            false
+        }
+    }) {
+        // Some types involved are definitely different, so the impls couldn't possibly overlap.
+        debug!("overlapping_impls: fast_reject early-exit");
+        return no_overlap();
+    }
 
     let overlaps = tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx);
@@ -559,6 +586,11 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
             false
         }
 
+        ty::Closure(..) => {
+            // Similar to the `Opaque` case (#83613).
+            false
+        }
+
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
                 def_id_is_local(principal.def_id(), in_crate)
@@ -569,7 +601,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
 
         ty::Error(_) => true,
 
-        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
+        ty::Generator(..) | ty::GeneratorWitness(..) => {
             bug!("ty_is_local invoked on unexpected type: {:?}", ty)
         }
     }

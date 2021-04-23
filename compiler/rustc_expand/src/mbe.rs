@@ -69,7 +69,7 @@ enum KleeneOp {
     ZeroOrMore,
     /// Kleene plus (`+`) for one or more repetitions
     OneOrMore,
-    /// Kleene optional (`?`) for zero or one reptitions
+    /// Kleene optional (`?`) for zero or one repetitions
     ZeroOrOne,
 }
 

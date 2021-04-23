@@ -13,4 +13,6 @@ impl X for () {
     type Y<T> where Self: Sized = u32;
 }
 
+fn f<T: X<Y<()> = i32>>() {}
+
 fn main() { }

@@ -1,0 +1,61 @@
+error: this could be simplified with `bool::then`
+  --> $DIR/if_then_some_else_none.rs:6:13
+   |
+LL |       let _ = if foo() {
+   |  _____________^
+LL | |         println!("true!");
+LL | |         Some("foo")
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^
+   |
+   = note: `-D clippy::if-then-some-else-none` implied by `-D warnings`
+   = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ "foo" })`
+
+error: this could be simplified with `bool::then`
+  --> $DIR/if_then_some_else_none.rs:14:13
+   |
+LL |       let _ = if matches!(true, true) {
+   |  _____________^
+LL | |         println!("true!");
+LL | |         Some(matches!(true, false))
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^
+   |
+   = help: consider using `bool::then` like: `matches!(true, true).then(|| { /* snippet */ matches!(true, false) })`
+
+error: this could be simplified with `bool::then`
+  --> $DIR/if_then_some_else_none.rs:23:28
+   |
+LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `bool::then` like: `(o < 32).then(|| o)`
+
+error: this could be simplified with `bool::then`
+  --> $DIR/if_then_some_else_none.rs:27:13
+   |
+LL |     let _ = if !x { Some(0) } else { None };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `bool::then` like: `(!x).then(|| 0)`
+
+error: this could be simplified with `bool::then`
+  --> $DIR/if_then_some_else_none.rs:82:13
+   |
+LL |       let _ = if foo() {
+   |  _____________^
+LL | |         println!("true!");
+LL | |         Some(150)
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^
+   |
+   = help: consider using `bool::then` like: `foo().then(|| { /* snippet */ 150 })`
+
+error: aborting due to 5 previous errors
+

@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+//
 
 // compile-flags: -C no-prepopulate-passes
 

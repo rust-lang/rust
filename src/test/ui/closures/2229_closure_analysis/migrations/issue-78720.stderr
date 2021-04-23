@@ -1,0 +1,15 @@
+warning: irrefutable `if let` pattern
+  --> $DIR/issue-78720.rs:6:5
+   |
+LL | /     if let a = "" {
+LL | |
+LL | |         drop(|_: ()| drop(a));
+LL | |     }
+   | |_____^
+   |
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+   = note: this pattern will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+warning: 1 warning emitted
+

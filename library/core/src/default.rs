@@ -80,6 +80,7 @@
 ///     bar: f32,
 /// }
 /// ```
+#[cfg_attr(not(test), rustc_diagnostic_item = "Default")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.

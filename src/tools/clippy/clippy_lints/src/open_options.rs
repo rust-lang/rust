@@ -1,4 +1,6 @@
-use crate::utils::{match_type, paths, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::paths;
+use clippy_utils::ty::match_type;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -29,7 +31,7 @@ declare_lint_pass!(OpenOptions => [NONSENSICAL_OPEN_OPTIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for OpenOptions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::MethodCall(ref path, _, ref arguments, _) = e.kind {
+        if let ExprKind::MethodCall(path, _, arguments, _) = e.kind {
             let obj_ty = cx.typeck_results().expr_ty(&arguments[0]).peel_refs();
             if path.ident.name == sym!(open) && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
@@ -57,7 +59,7 @@ enum OpenOption {
 }
 
 fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument)>) {
-    if let ExprKind::MethodCall(ref path, _, ref arguments, _) = argument.kind {
+    if let ExprKind::MethodCall(path, _, arguments, _) = argument.kind {
         let obj_ty = cx.typeck_results().expr_ty(&arguments[0]).peel_refs();
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
@@ -69,15 +71,11 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
                         ..
                     } = *span
                     {
-                        if lit {
-                            Argument::True
-                        } else {
-                            Argument::False
-                        }
+                        if lit { Argument::True } else { Argument::False }
                     } else {
-                        return; // The function is called with a literal
-                                // which is not a boolean literal. This is theoretically
-                                // possible, but not very likely.
+                        // The function is called with a literal which is not a boolean literal.
+                        // This is theoretically possible, but not very likely.
+                        return;
                     }
                 },
                 _ => Argument::Unknown,

@@ -258,16 +258,16 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 Ok(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)))
             }
             ast::VisibilityKind::Inherited => {
-                if matches!(self.parent_scope.module.kind, ModuleKind::Def(DefKind::Enum, _, _)) {
-                    // Any inherited visibility resolved directly inside an enum
-                    // (e.g. variants or fields) inherits from the visibility of the enum.
-                    let parent_enum = self.parent_scope.module.def_id().unwrap().expect_local();
-                    Ok(self.r.visibilities[&parent_enum])
-                } else {
-                    // If it's not in an enum, its visibility is restricted to the `mod` item
-                    // that it's defined in.
-                    Ok(ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod))
-                }
+                Ok(match self.parent_scope.module.kind {
+                    // Any inherited visibility resolved directly inside an enum or trait
+                    // (i.e. variants, fields, and trait items) inherits from the visibility
+                    // of the enum or trait.
+                    ModuleKind::Def(DefKind::Enum | DefKind::Trait, def_id, _) => {
+                        self.r.visibilities[&def_id.expect_local()]
+                    }
+                    // Otherwise, the visibility is restricted to the nearest parent `mod` item.
+                    _ => ty::Visibility::Restricted(self.parent_scope.module.nearest_parent_mod),
+                })
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // For visibilities we are not ready to provide correct implementation of "uniform
@@ -1230,13 +1230,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         };
 
         let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id.to_def_id());
+        let is_macro_export = self.r.session.contains_name(&item.attrs, sym::macro_export);
         self.r.macro_map.insert(def_id.to_def_id(), ext);
         self.r.local_macro_def_scopes.insert(def_id, parent_scope.module);
 
-        if macro_rules {
+        if macro_rules && matches!(item.vis.kind, ast::VisibilityKind::Inherited) {
             let ident = ident.normalize_to_macros_2_0();
             self.r.macro_names.insert(ident);
-            let is_macro_export = self.r.session.contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
@@ -1261,6 +1261,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 }),
             ))
         } else {
+            if is_macro_export {
+                let what = if macro_rules { "`macro_rules` with `pub`" } else { "`macro` items" };
+                let msg = format!("`#[macro_export]` cannot be used on {what}");
+                self.r.session.span_err(item.span, &msg);
+            }
             let module = parent_scope.module;
             let vis = match item.kind {
                 // Visibilities must not be resolved non-speculatively twice
@@ -1365,58 +1370,40 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
             return;
         }
 
+        let vis = self.resolve_visibility(&item.vis);
         let local_def_id = self.r.local_def_id(item.id);
         let def_id = local_def_id.to_def_id();
-        let vis = match ctxt {
-            AssocCtxt::Trait => {
-                let (def_kind, ns) = match item.kind {
-                    AssocItemKind::Const(..) => (DefKind::AssocConst, ValueNS),
-                    AssocItemKind::Fn(box FnKind(_, ref sig, _, _)) => {
-                        if sig.decl.has_self() {
-                            self.r.has_self.insert(def_id);
-                        }
-                        (DefKind::AssocFn, ValueNS)
-                    }
-                    AssocItemKind::TyAlias(..) => (DefKind::AssocTy, TypeNS),
-                    AssocItemKind::MacCall(_) => bug!(), // handled above
-                };
 
-                let parent = self.parent_scope.module;
-                let expansion = self.parent_scope.expansion;
-                let res = Res::Def(def_kind, def_id);
-                // Trait item visibility is inherited from its trait when not specified explicitly.
-                let vis = match &item.vis.kind {
-                    ast::VisibilityKind::Inherited => {
-                        self.r.visibilities[&parent.def_id().unwrap().expect_local()]
-                    }
-                    _ => self.resolve_visibility(&item.vis),
-                };
-                // FIXME: For historical reasons the binding visibility is set to public,
-                // use actual visibility here instead, using enum variants as an example.
-                let vis_hack = ty::Visibility::Public;
-                self.r.define(parent, item.ident, ns, (res, vis_hack, item.span, expansion));
-                Some(vis)
-            }
-            AssocCtxt::Impl => {
-                // Trait impl item visibility is inherited from its trait when not specified
-                // explicitly. In that case we cannot determine it here in early resolve,
-                // so we leave a hole in the visibility table to be filled later.
-                // Inherent impl item visibility is never inherited from other items.
-                if matches!(item.vis.kind, ast::VisibilityKind::Inherited)
-                    && self
-                        .r
-                        .trait_impl_items
-                        .contains(&ty::DefIdTree::parent(&*self.r, def_id).unwrap().expect_local())
-                {
-                    None
-                } else {
-                    Some(self.resolve_visibility(&item.vis))
-                }
-            }
-        };
-
-        if let Some(vis) = vis {
+        if !(ctxt == AssocCtxt::Impl
+            && matches!(item.vis.kind, ast::VisibilityKind::Inherited)
+            && self
+                .r
+                .trait_impl_items
+                .contains(&ty::DefIdTree::parent(&*self.r, def_id).unwrap().expect_local()))
+        {
+            // Trait impl item visibility is inherited from its trait when not specified
+            // explicitly. In that case we cannot determine it here in early resolve,
+            // so we leave a hole in the visibility table to be filled later.
             self.r.visibilities.insert(local_def_id, vis);
+        }
+
+        if ctxt == AssocCtxt::Trait {
+            let (def_kind, ns) = match item.kind {
+                AssocItemKind::Const(..) => (DefKind::AssocConst, ValueNS),
+                AssocItemKind::Fn(box FnKind(_, ref sig, _, _)) => {
+                    if sig.decl.has_self() {
+                        self.r.has_self.insert(def_id);
+                    }
+                    (DefKind::AssocFn, ValueNS)
+                }
+                AssocItemKind::TyAlias(..) => (DefKind::AssocTy, TypeNS),
+                AssocItemKind::MacCall(_) => bug!(), // handled above
+            };
+
+            let parent = self.parent_scope.module;
+            let expansion = self.parent_scope.expansion;
+            let res = Res::Def(def_kind, def_id);
+            self.r.define(parent, item.ident, ns, (res, vis, item.span, expansion));
         }
 
         visit::walk_assoc_item(self, item, ctxt);
@@ -1439,19 +1426,19 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_field(&mut self, f: &'b ast::Field) {
+    fn visit_expr_field(&mut self, f: &'b ast::ExprField) {
         if f.is_placeholder {
             self.visit_invoc(f.id);
         } else {
-            visit::walk_field(self, f);
+            visit::walk_expr_field(self, f);
         }
     }
 
-    fn visit_field_pattern(&mut self, fp: &'b ast::FieldPat) {
+    fn visit_pat_field(&mut self, fp: &'b ast::PatField) {
         if fp.is_placeholder {
             self.visit_invoc(fp.id);
         } else {
-            visit::walk_field_pattern(self, fp);
+            visit::walk_pat_field(self, fp);
         }
     }
 
@@ -1471,13 +1458,13 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
-    fn visit_struct_field(&mut self, sf: &'b ast::StructField) {
+    fn visit_field_def(&mut self, sf: &'b ast::FieldDef) {
         if sf.is_placeholder {
             self.visit_invoc(sf.id);
         } else {
             let vis = self.resolve_visibility(&sf.vis);
             self.r.visibilities.insert(self.r.local_def_id(sf.id), vis);
-            visit::walk_struct_field(self, sf);
+            visit::walk_field_def(self, sf);
         }
     }
 
@@ -1490,19 +1477,13 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         }
 
         let parent = self.parent_scope.module;
-        let vis = match variant.vis.kind {
-            // Variant visibility is inherited from its enum when not specified explicitly.
-            ast::VisibilityKind::Inherited => {
-                self.r.visibilities[&parent.def_id().unwrap().expect_local()]
-            }
-            _ => self.resolve_visibility(&variant.vis),
-        };
         let expn_id = self.parent_scope.expansion;
         let ident = variant.ident;
 
         // Define a name in the type namespace.
         let def_id = self.r.local_def_id(variant.id);
         let res = Res::Def(DefKind::Variant, def_id.to_def_id());
+        let vis = self.resolve_visibility(&variant.vis);
         self.r.define(parent, ident, TypeNS, (res, vis, variant.span, expn_id));
         self.r.visibilities.insert(def_id, vis);
 

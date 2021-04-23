@@ -1,13 +1,12 @@
 error: any use of this value will cause an error
-  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-LL |     unsafe { copy_nonoverlapping(src, dst, count) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |              |
-   |              memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
-   |              inside `copy_nonoverlapping::<u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |              inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |              inside `_READ` at $DIR/out_of_bounds_read.rs:13:33
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
+   |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |         inside `_READ` at $DIR/out_of_bounds_read.rs:13:33
    | 
   ::: $DIR/out_of_bounds_read.rs:13:5
    |
@@ -19,16 +18,15 @@ LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-LL |     unsafe { copy_nonoverlapping(src, dst, count) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |              |
-   |              memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
-   |              inside `copy_nonoverlapping::<u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |              inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |              inside `ptr::const_ptr::<impl *const u32>::read` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |              inside `_CONST_READ` at $DIR/out_of_bounds_read.rs:14:39
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
+   |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |         inside `ptr::const_ptr::<impl *const u32>::read` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
+   |         inside `_CONST_READ` at $DIR/out_of_bounds_read.rs:14:39
    | 
   ::: $DIR/out_of_bounds_read.rs:14:5
    |
@@ -39,16 +37,15 @@ LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
-LL |     unsafe { copy_nonoverlapping(src, dst, count) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |              |
-   |              memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
-   |              inside `copy_nonoverlapping::<u32>` at $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |              inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |              inside `ptr::mut_ptr::<impl *mut u32>::read` at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-   |              inside `_MUT_READ` at $DIR/out_of_bounds_read.rs:15:37
+LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         memory access failed: pointer must be in-bounds at offset 8, but is outside bounds of alloc6 which has size 4
+   |         inside `std::ptr::read::<u32>` at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |         inside `ptr::mut_ptr::<impl *mut u32>::read` at $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+   |         inside `_MUT_READ` at $DIR/out_of_bounds_read.rs:15:37
    | 
   ::: $DIR/out_of_bounds_read.rs:15:5
    |

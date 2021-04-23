@@ -545,7 +545,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a generic argument in a path segment.
     /// This does not include constraints, e.g., `Item = u8`, which is handled in `parse_angle_arg`.
-    fn parse_generic_arg(&mut self) -> PResult<'a, Option<GenericArg>> {
+    pub(super) fn parse_generic_arg(&mut self) -> PResult<'a, Option<GenericArg>> {
         let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.

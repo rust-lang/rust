@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // #26207: Show all methods reachable via Deref impls, recursing through multiple dereferencing
 // levels if needed.
 

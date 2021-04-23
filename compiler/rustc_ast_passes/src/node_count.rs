@@ -20,10 +20,6 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_ident(self, ident);
     }
-    fn visit_mod(&mut self, m: &Mod, _s: Span, _a: &[Attribute], _n: NodeId) {
-        self.count += 1;
-        walk_mod(self, m)
-    }
     fn visit_foreign_item(&mut self, i: &ForeignItem) {
         self.count += 1;
         walk_foreign_item(self, i)
@@ -92,9 +88,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_struct_def(self, s)
     }
-    fn visit_struct_field(&mut self, s: &StructField) {
+    fn visit_field_def(&mut self, s: &FieldDef) {
         self.count += 1;
-        walk_struct_field(self, s)
+        walk_field_def(self, s)
     }
     fn visit_enum_def(
         &mut self,

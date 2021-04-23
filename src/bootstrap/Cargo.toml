@@ -53,7 +53,7 @@ merge = "0.1.0"
 
 [target.'cfg(windows)'.dependencies.winapi]
 version = "0.3"
-features = ["fileapi", "ioapiset", "jobapi2", "handleapi", "winioctl"]
+features = ["fileapi", "ioapiset", "jobapi2", "handleapi", "winioctl", "psapi", "impl-default"]
 
 [dev-dependencies]
 pretty_assertions = "0.6"

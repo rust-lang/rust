@@ -48,7 +48,7 @@ fn move_out_from_end() -> () {
 
     bb4: {
         StorageDead(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:5:26: 5:27
-        FakeRead(ForLet, _1);            // scope 0 at $DIR/uniform_array_move_out.rs:5:9: 5:10
+        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/uniform_array_move_out.rs:5:9: 5:10
         StorageLive(_6);                 // scope 1 at $DIR/uniform_array_move_out.rs:6:14: 6:16
         _6 = move _1[1 of 2];            // scope 1 at $DIR/uniform_array_move_out.rs:6:14: 6:16
         _0 = const ();                   // scope 0 at $DIR/uniform_array_move_out.rs:4:24: 7:2

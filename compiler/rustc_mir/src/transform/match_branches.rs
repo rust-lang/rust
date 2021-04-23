@@ -1,6 +1,9 @@
 use crate::transform::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+use std::iter;
+
+use super::simplify::simplify_cfg;
 
 pub struct MatchBranchSimplification;
 
@@ -38,13 +41,15 @@ pub struct MatchBranchSimplification;
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.opts.debugging_opts.mir_opt_level <= 1 {
+        if tcx.sess.mir_opt_level() < 3 {
             return;
         }
 
-        let param_env = tcx.param_env(body.source.def_id());
         let def_id = body.source.def_id();
+        let param_env = tcx.param_env(def_id);
+
         let (bbs, local_decls) = body.basic_blocks_and_local_decls_mut();
+        let mut should_cleanup = false;
         'outer: for bb_idx in bbs.indices() {
             if !tcx.consider_optimizing(|| format!("MatchBranchSimplification {:?} ", def_id)) {
                 continue;
@@ -79,7 +84,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             if first_stmts.len() != scnd_stmts.len() {
                 continue;
             }
-            for (f, s) in first_stmts.iter().zip(scnd_stmts.iter()) {
+            for (f, s) in iter::zip(first_stmts, scnd_stmts) {
                 match (&f.kind, &s.kind) {
                     // If two statements are exactly the same, we can optimize.
                     (f_s, s_s) if f_s == s_s => {}
@@ -89,8 +94,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                         StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
                         StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
                     ) if lhs_f == lhs_s
-                        && f_c.literal.ty.is_bool()
-                        && s_c.literal.ty.is_bool()
+                        && f_c.literal.ty().is_bool()
+                        && s_c.literal.ty().is_bool()
                         && f_c.literal.try_eval_bool(tcx, param_env).is_some()
                         && s_c.literal.try_eval_bool(tcx, param_env).is_some() => {}
 
@@ -109,7 +114,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             // and bb_idx has a different terminator from both of them.
             let (from, first, second) = bbs.pick3_mut(bb_idx, first, second);
 
-            let new_stmts = first.statements.iter().zip(second.statements.iter()).map(|(f, s)| {
+            let new_stmts = iter::zip(&first.statements, &second.statements).map(|(f, s)| {
                 match (&f.kind, &s.kind) {
                     (f_s, s_s) if f_s == s_s => (*f).clone(),
 
@@ -135,8 +140,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                             let op = if f_b { BinOp::Eq } else { BinOp::Ne };
                             let rhs = Rvalue::BinaryOp(
                                 op,
-                                Operand::Copy(Place::from(discr_local)),
-                                const_cmp,
+                                box (Operand::Copy(Place::from(discr_local)), const_cmp),
                             );
                             Statement {
                                 source_info: f.source_info,
@@ -159,6 +163,11 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
             from.statements
                 .push(Statement { source_info, kind: StatementKind::StorageDead(discr_local) });
             from.terminator_mut().kind = first.terminator().kind.clone();
+            should_cleanup = true;
+        }
+
+        if should_cleanup {
+            simplify_cfg(body);
         }
     }
 }

@@ -1,0 +1,2 @@
+error: unknown location type `missing-loc-type`: use `raw` or `json`
+

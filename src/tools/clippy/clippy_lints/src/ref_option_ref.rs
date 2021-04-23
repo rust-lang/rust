@@ -1,11 +1,12 @@
-use crate::utils::{last_path_segment, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::last_path_segment;
+use clippy_utils::source::snippet;
+use if_chain::if_chain;
+use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
-
-use if_chain::if_chain;
-use rustc_errors::Applicability;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `&Option<&T>`.
@@ -43,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
             if let Some(def_id) = res.opt_def_id();
 
             if cx.tcx.is_diagnostic_item(sym::option_type, def_id);
-            if let Some(ref params) = last_path_segment(qpath).args ;
+            if let Some(params) = last_path_segment(qpath).args ;
             if !params.parenthesized;
             if let Some(inner_ty) = params.args.iter().find_map(|arg| match arg {
                 GenericArg::Type(inner_ty) => Some(inner_ty),

@@ -1,4 +1,3 @@
-//
 // no-system-llvm
 // compile-flags: -O
 
@@ -15,7 +14,7 @@ impl Drop for A {
 
 #[no_mangle]
 pub fn a(a: Box<i32>) {
-    // CHECK-LABEL: define void @a
+    // CHECK-LABEL: define{{.*}}void @a
     // CHECK: call void @__rust_dealloc
     // CHECK-NEXT: call void @foo
     let _a = A;

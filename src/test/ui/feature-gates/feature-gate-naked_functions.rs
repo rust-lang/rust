@@ -1,3 +1,4 @@
+// needs-asm-support
 #![feature(asm)]
 
 #[naked]

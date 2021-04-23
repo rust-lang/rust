@@ -23,9 +23,9 @@ impl Foo {
 }
 
 impl Bar for Foo {
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#associatedtype.Bar"]' 'Bar'
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#associatedconstant.Baz"]' 'Baz'
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#tymethod.bar"]' 'bar'
+    // @has - '//*[@href="trait.Bar.html#associatedtype.Bar"]' 'Bar'
+    // @has - '//*[@href="trait.Bar.html#associatedconstant.Baz"]' 'Baz'
+    // @has - '//*[@href="trait.Bar.html#tymethod.bar"]' 'bar'
     fn bar() {}
-    // @has - '//*[@href="../issue_28478/trait.Bar.html#method.baz"]' 'baz'
+    // @has - '//*[@href="trait.Bar.html#method.baz"]' 'baz'
 }

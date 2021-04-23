@@ -1,17 +1,10 @@
-error[E0774]: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-36617.rs:1:1
+error: cannot determine resolution for the attribute macro `derive`
+  --> $DIR/issue-36617.rs:1:4
    |
 LL | #![derive(Copy)]
-   | ^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Copy)]`
-
-error: cannot determine resolution for the derive macro `Copy`
-  --> $DIR/issue-36617.rs:1:11
-   |
-LL | #![derive(Copy)]
-   |           ^^^^
+   |    ^^^^^^
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0774`.

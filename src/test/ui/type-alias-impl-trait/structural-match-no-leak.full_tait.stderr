@@ -1,0 +1,25 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/structural-match-no-leak.rs:4:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait, impl_trait_in_bindings))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+warning: the feature `impl_trait_in_bindings` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/structural-match-no-leak.rs:4:55
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait, impl_trait_in_bindings))]
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+
+error: `impl Send` cannot be used in patterns
+  --> $DIR/structural-match-no-leak.rs:19:9
+   |
+LL |         LEAK_FREE => (),
+   |         ^^^^^^^^^
+
+error: aborting due to previous error; 2 warnings emitted
+

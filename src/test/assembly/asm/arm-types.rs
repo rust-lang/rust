@@ -1,4 +1,4 @@
-// no-system-llvm
+// min-llvm-version: 10.0.1
 // assembly-output: emit-asm
 // compile-flags: --target armv7-unknown-linux-gnueabihf
 // compile-flags: -C target-feature=+neon
@@ -89,6 +89,15 @@ pub unsafe fn sym_fn() {
 #[no_mangle]
 pub unsafe fn sym_static() {
     asm!("adr r0, {}", sym extern_static);
+}
+
+// Regression test for #82052.
+// CHECK-LABEL: issue_82052
+// CHECK: push {{.*}}lr
+// CHECK: @APP
+// CHECK: @NO_APP
+pub unsafe fn issue_82052() {
+    asm!("", out("r14") _);
 }
 
 macro_rules! check {

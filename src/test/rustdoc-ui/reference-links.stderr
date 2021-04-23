@@ -7,8 +7,8 @@ LL | //! [a]: std::process::Comman
 note: the lint level is defined here
   --> $DIR/reference-links.rs:2:9
    |
-LL | #![deny(broken_intra_doc_links)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

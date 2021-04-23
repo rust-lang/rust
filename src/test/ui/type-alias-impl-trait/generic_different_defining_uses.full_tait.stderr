@@ -1,0 +1,23 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/generic_different_defining_uses.rs:3:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/generic_different_defining_uses.rs:14:1
+   |
+LL | fn my_iter2<T>(t: T) -> MyIter<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `std::iter::Once<T>`, got `std::option::IntoIter<T>`
+   |
+note: previous use here
+  --> $DIR/generic_different_defining_uses.rs:10:1
+   |
+LL | fn my_iter<T>(t: T) -> MyIter<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+

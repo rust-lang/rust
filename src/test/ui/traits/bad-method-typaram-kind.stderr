@@ -1,0 +1,14 @@
+error[E0277]: `T` cannot be sent between threads safely
+  --> $DIR/bad-method-typaram-kind.rs:2:7
+   |
+LL |     1.bar::<T>();
+   |       ^^^ `T` cannot be sent between threads safely
+   |
+help: consider further restricting this bound
+   |
+LL | fn foo<T:'static + std::marker::Send>() {
+   |                  ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

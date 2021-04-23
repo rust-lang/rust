@@ -1,0 +1,35 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/different_defining_uses_never_type.rs:3:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/different_defining_uses_never_type.rs:15:1
+   |
+LL | fn bar() -> Foo {
+   | ^^^^^^^^^^^^^^^ expected `&'static str`, got `()`
+   |
+note: previous use here
+  --> $DIR/different_defining_uses_never_type.rs:11:1
+   |
+LL | fn foo() -> Foo {
+   | ^^^^^^^^^^^^^^^
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/different_defining_uses_never_type.rs:19:1
+   |
+LL | fn boo() -> Foo {
+   | ^^^^^^^^^^^^^^^ expected `&'static str`, got `()`
+   |
+note: previous use here
+  --> $DIR/different_defining_uses_never_type.rs:11:1
+   |
+LL | fn foo() -> Foo {
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

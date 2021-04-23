@@ -368,6 +368,10 @@ fn test_render_long_html() {
             "This is supported on <strong>macOS</strong> only."
         );
         assert_eq!(
+            name_value_cfg("target_os", "wasi").render_long_html(),
+            "This is supported on <strong>WASI</strong> only."
+        );
+        assert_eq!(
             name_value_cfg("target_pointer_width", "16").render_long_html(),
             "This is supported on <strong>16-bit</strong> only."
         );

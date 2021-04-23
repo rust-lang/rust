@@ -1,0 +1,10 @@
+// MIR for `foo` before PreCodegen
+
+fn foo(_1: Option<()>) -> () {
+    debug bar => _1;                     // in scope 0 at $DIR/matches_reduce_branches.rs:7:8: 7:11
+    let mut _0: ();                      // return place in scope 0 at $DIR/matches_reduce_branches.rs:7:25: 7:25
+
+    bb0: {
+        return;                          // scope 0 at $DIR/matches_reduce_branches.rs:11:2: 11:2
+    }
+}

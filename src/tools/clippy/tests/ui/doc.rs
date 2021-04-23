@@ -1,8 +1,8 @@
 //! This file tests for the `DOC_MARKDOWN` lint.
 
-#![allow(dead_code)]
+#![allow(dead_code, incomplete_features)]
 #![warn(clippy::doc_markdown)]
-#![feature(custom_inner_attributes)]
+#![feature(custom_inner_attributes, const_generics, const_evaluatable_checked, const_option)]
 #![rustfmt::skip]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
@@ -50,11 +50,23 @@ fn test_units() {
 }
 
 /// This tests allowed identifiers.
+/// KiB MiB GiB TiB PiB EiB
 /// DirectX
 /// ECMAScript
+/// GPLv2 GPLv3
+/// GitHub GitLab
+/// IPv4 IPv6
+/// ClojureScript CoffeeScript JavaScript PureScript TypeScript
+/// NaN NaNs
 /// OAuth GraphQL
+/// OCaml
+/// OpenGL OpenMP OpenSSH OpenSSL OpenStreetMap OpenDNS
 /// WebGL
+/// TensorFlow
+/// TrueType
+/// iOS macOS
 /// TeX LaTeX BibTeX BibLaTeX
+/// MinGW
 /// CamelCase (see also #2395)
 /// be_sure_we_got_to_the_end_of_it
 fn test_allowed() {
@@ -190,3 +202,20 @@ fn issue_2343() {}
 /// This should not cause an ICE:
 /// __|_ _|__||_|
 fn pulldown_cmark_crash() {}
+
+// issue #7033 - const_evaluatable_checked ICE
+struct S<T, const N: usize>
+where [(); N.checked_next_power_of_two().unwrap()]: {
+    arr: [T; N.checked_next_power_of_two().unwrap()],
+    n: usize,
+}
+
+impl<T: Copy + Default, const N: usize> S<T, N>
+where [(); N.checked_next_power_of_two().unwrap()]: {
+    fn new() -> Self {
+        Self {
+            arr: [T::default(); N.checked_next_power_of_two().unwrap()],
+            n: 0,
+        }
+    }
+}

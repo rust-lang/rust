@@ -32,6 +32,7 @@ pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod path;
+#[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
@@ -54,13 +55,11 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new(crate::io::ErrorKind::Other, "operation not supported on HermitCore yet")
+    crate::io::Error::new_const(
+        crate::io::ErrorKind::Unsupported,
+        &"operation not supported on HermitCore yet",
+    )
 }
-
-// This enum is used as the storage for a bunch of types which can't actually
-// exist.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub enum Void {}
 
 pub unsafe fn strlen(start: *const c_char) -> usize {
     let mut str = start;

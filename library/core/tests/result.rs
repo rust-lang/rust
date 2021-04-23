@@ -96,6 +96,15 @@ fn test_unwrap_or() {
 }
 
 #[test]
+fn test_ok_or_err() {
+    let ok: Result<isize, isize> = Ok(100);
+    let err: Result<isize, isize> = Err(200);
+
+    assert_eq!(ok.into_ok_or_err(), 100);
+    assert_eq!(err.into_ok_or_err(), 200);
+}
+
+#[test]
 fn test_unwrap_or_else() {
     fn handler(msg: &'static str) -> isize {
         if msg == "I got this." { 50 } else { panic!("BadBad") }
@@ -214,6 +223,28 @@ pub fn test_into_ok() {
     }
 
     assert_eq!(infallible_op2().into_ok(), 667);
+}
+
+#[test]
+pub fn test_into_err() {
+    fn until_error_op() -> Result<!, isize> {
+        Err(666)
+    }
+
+    assert_eq!(until_error_op().into_err(), 666);
+
+    enum MyNeverToken {}
+    impl From<MyNeverToken> for ! {
+        fn from(never: MyNeverToken) -> ! {
+            match never {}
+        }
+    }
+
+    fn until_error_op2() -> Result<MyNeverToken, isize> {
+        Err(667)
+    }
+
+    assert_eq!(until_error_op2().into_err(), 667);
 }
 
 #[test]

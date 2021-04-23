@@ -65,6 +65,24 @@ fn copy_specialization() -> Result<()> {
     result.and(rm1).and(rm2)
 }
 
+#[test]
+fn copies_append_mode_sink() -> Result<()> {
+    let tmp_path = tmpdir();
+    let source_path = tmp_path.join("copies_append_mode.source");
+    let sink_path = tmp_path.join("copies_append_mode.sink");
+    let mut source =
+        OpenOptions::new().create(true).truncate(true).write(true).read(true).open(&source_path)?;
+    write!(source, "not empty")?;
+    source.seek(SeekFrom::Start(0))?;
+    let mut sink = OpenOptions::new().create(true).append(true).open(&sink_path)?;
+
+    let copied = crate::io::copy(&mut source, &mut sink)?;
+
+    assert_eq!(copied, 9);
+
+    Ok(())
+}
+
 #[bench]
 fn bench_file_to_file_copy(b: &mut test::Bencher) {
     const BYTES: usize = 128 * 1024;

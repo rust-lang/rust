@@ -24,8 +24,8 @@ impl InherentOverlapChecker<'tcx> {
     /// namespace.
     fn impls_have_common_items(
         &self,
-        impl_items1: &ty::AssociatedItems<'_>,
-        impl_items2: &ty::AssociatedItems<'_>,
+        impl_items1: &ty::AssocItems<'_>,
+        impl_items2: &ty::AssocItems<'_>,
     ) -> bool {
         let mut impl_items1 = &impl_items1;
         let mut impl_items2 = &impl_items2;
@@ -123,8 +123,7 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Trait(..)
             | hir::ItemKind::Union(..) => {
-                let ty_def_id = self.tcx.hir().local_def_id(item.hir_id);
-                let impls = self.tcx.inherent_impls(ty_def_id);
+                let impls = self.tcx.inherent_impls(item.def_id);
 
                 // If there is only one inherent impl block,
                 // there is nothing to overlap check it with

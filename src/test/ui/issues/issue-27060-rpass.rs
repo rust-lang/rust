@@ -8,14 +8,12 @@ pub struct Good {
 }
 
 // kill this test when that turns to a hard error
-#[allow(safe_packed_borrows)]
+#[allow(unaligned_references)]
 fn main() {
     let good = Good { data: &0, data2: [&0, &0], aligned: [0; 32] };
 
-    unsafe {
-        let _ = &good.data; // ok
-        let _ = &good.data2[0]; // ok
-    }
+    let _ = &good.data; // ok
+    let _ = &good.data2[0]; // ok
 
     let _ = &good.data;
     let _ = &good.data2[0];

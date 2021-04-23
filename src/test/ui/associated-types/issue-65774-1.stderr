@@ -13,7 +13,11 @@ error[E0277]: the trait bound `T: MyDisplay` is not satisfied
 LL |         let closure = |config: &mut <S as MPU>::MpuConfig| writer.my_write(&config);
    |                                                                            ^^^^^^^ the trait `MyDisplay` is not implemented for `T`
    |
-   = note: required because of the requirements on the impl of `MyDisplay` for `&mut T`
+note: required because of the requirements on the impl of `MyDisplay` for `&mut T`
+  --> $DIR/issue-65774-1.rs:5:24
+   |
+LL | impl<'a, T: MyDisplay> MyDisplay for &'a mut T { }
+   |                        ^^^^^^^^^     ^^^^^^^^^
    = note: required for the cast to the object type `dyn MyDisplay`
 
 error: aborting due to 2 previous errors

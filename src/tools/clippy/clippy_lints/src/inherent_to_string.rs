@@ -1,13 +1,11 @@
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::{get_trait_def_id, paths, return_ty, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc_hir::{ImplItem, ImplItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-
-use crate::utils::{
-    get_trait_def_id, implements_trait, is_type_diagnostic_item, paths, return_ty, span_lint_and_help,
-    trait_ref_of_method,
-};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for the definition of inherent methods with a signature of `to_string(&self) -> String`.
@@ -106,12 +104,13 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             let decl = &signature.decl;
             if decl.implicit_self.has_implicit_self();
             if decl.inputs.len() == 1;
+            if impl_item.generics.params.is_empty();
 
             // Check if return type is String
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym::string_type);
+            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::string_type);
 
             // Filters instances of to_string which are required by a trait
-            if trait_ref_of_method(cx, impl_item.hir_id).is_none();
+            if trait_ref_of_method(cx, impl_item.hir_id()).is_none();
 
             then {
                 show_lint(cx, impl_item);
@@ -124,8 +123,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
     let display_trait_id = get_trait_def_id(cx, &paths::DISPLAY_TRAIT).expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
-    let fn_def_id = cx.tcx.hir().local_def_id(item.hir_id);
-    let self_type = cx.tcx.fn_sig(fn_def_id).input(0);
+    let self_type = cx.tcx.fn_sig(item.def_id).input(0);
     let self_type = self_type.skip_binder().peel_refs();
 
     // Emit either a warning or an error
@@ -139,7 +137,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
                 self_type.to_string()
             ),
             None,
-            &format!("remove the inherent method from type `{}`", self_type.to_string())
+            &format!("remove the inherent method from type `{}`", self_type.to_string()),
         );
     } else {
         span_lint_and_help(

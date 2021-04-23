@@ -20,7 +20,7 @@ fn main() {
     // Negative examples: behavior changes if made unstable
     let mut vec = vec![1, 3, 2];
     vec.sort_by_key(|i| i / 2);
-    vec.sort_by(|a, b| (a + b).cmp(&b));
+    vec.sort_by(|&a, &b| (a + b).cmp(&b));
     // negative examples - Not of a primitive type
     let mut vec_of_complex = vec![String::from("hello"), String::from("world!")];
     vec_of_complex.sort();

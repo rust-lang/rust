@@ -547,7 +547,7 @@ impl Build {
     fn std_features(&self, target: TargetSelection) -> String {
         let mut features = "panic-unwind".to_string();
 
-        match self.config.llvm_libunwind.unwrap_or_default() {
+        match self.config.llvm_libunwind {
             LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
             LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
             LlvmLibunwind::No => {}
@@ -635,6 +635,10 @@ impl Build {
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("doc")
+    }
+
+    fn test_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("test")
     }
 
     /// Output directory for all documentation for a target

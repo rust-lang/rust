@@ -154,7 +154,7 @@ impl Iterator for Vars {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Vars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Vars { .. }")
+        f.debug_struct("Vars").finish_non_exhaustive()
     }
 }
 
@@ -172,7 +172,7 @@ impl Iterator for VarsOs {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for VarsOs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("VarsOs { .. }")
+        f.debug_struct("VarOs").finish_non_exhaustive()
     }
 }
 
@@ -419,7 +419,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for SplitPaths<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("SplitPaths { .. }")
+        f.debug_struct("SplitPaths").finish_non_exhaustive()
     }
 }
 
@@ -799,7 +799,7 @@ impl DoubleEndedIterator for Args {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Args").field("inner", &self.inner.inner.inner_debug()).finish()
+        f.debug_struct("Args").field("inner", &self.inner.inner).finish()
     }
 }
 
@@ -840,7 +840,7 @@ impl DoubleEndedIterator for ArgsOs {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ArgsOs").field("inner", &self.inner.inner_debug()).finish()
+        f.debug_struct("ArgsOs").field("inner", &self.inner).finish()
     }
 }
 

@@ -1,11 +1,10 @@
 // check-only
-// run-rustfix
 
 fn main() {
     match 3 {
         4 => 1,
         3 => {
-            2 //~ ERROR mismatched types
+            foo() //~ ERROR mismatched types
         }
         _ => 2
     }
@@ -15,4 +14,8 @@ fn main() {
         _ => 2
     }
     let _ = ();
+}
+
+fn foo() -> i32 {
+    42
 }

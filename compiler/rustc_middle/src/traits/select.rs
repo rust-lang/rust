@@ -125,6 +125,9 @@ pub enum SelectionCandidate<'tcx> {
     /// Builtin implementation of `DiscriminantKind`.
     DiscriminantKindCandidate,
 
+    /// Builtin implementation of `Pointee`.
+    PointeeCandidate,
+
     TraitAliasCandidate(DefId),
 
     /// Matching `dyn Trait` with a supertrait of `Trait`. The index is the

@@ -18,7 +18,7 @@ x86_64)
         exit 1
 esac
 
-BUILD_TARGET="$ARCH-sun-solaris2.10"
+BUILD_TARGET="$ARCH-pc-solaris2.10"
 
 #
 # The illumos and the Solaris build both use the same GCC-level host triple,

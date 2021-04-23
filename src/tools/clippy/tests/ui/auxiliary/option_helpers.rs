@@ -48,4 +48,8 @@ impl IteratorFalsePositives {
     pub fn skip_while(self) -> IteratorFalsePositives {
         self
     }
+
+    pub fn count(self) -> usize {
+        self.foo as usize
+    }
 }

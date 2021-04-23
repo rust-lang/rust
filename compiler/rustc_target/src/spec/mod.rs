@@ -37,6 +37,7 @@
 use crate::abi::Endian;
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
 use std::collections::BTreeMap;
@@ -78,7 +79,7 @@ mod solaris_base;
 mod thumb_base;
 mod uefi_msvc_base;
 mod vxworks_base;
-mod wasm32_base;
+mod wasm_base;
 mod windows_gnu_base;
 mod windows_msvc_base;
 mod windows_uwp_gnu_base;
@@ -511,38 +512,6 @@ impl fmt::Display for SplitDebuginfo {
     }
 }
 
-macro_rules! supported_targets {
-    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
-        $(mod $module;)+
-
-        /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($($triple),+),+];
-
-        fn load_builtin(target: &str) -> Option<Target> {
-            let mut t = match target {
-                $( $($triple)|+ => $module::target(), )+
-                _ => return None,
-            };
-            t.is_builtin = true;
-            debug!("got builtin target: {:?}", t);
-            Some(t)
-        }
-
-        #[cfg(test)]
-        mod tests {
-            mod tests_impl;
-
-            // Cannot put this into a separate file without duplication, make an exception.
-            $(
-                #[test] // `#[test]`
-                fn $module() {
-                    tests_impl::test_target(super::$module::target());
-                }
-            )+
-        }
-    };
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StackProbeType {
     /// Don't emit any stack probes.
@@ -589,7 +558,7 @@ impl StackProbeType {
                 Ok(StackProbeType::InlineOrCall { min_llvm_version_for_inline })
             }
             _ => Err(String::from(
-                "`kind` expected to be one of `inline-or-none`, `call` or `inline-or-call`",
+                "`kind` expected to be one of `none`, `inline`, `call` or `inline-or-call`",
             )),
         }
     }
@@ -620,6 +589,117 @@ impl ToJson for StackProbeType {
     }
 }
 
+bitflags::bitflags! {
+    #[derive(Default, Encodable, Decodable)]
+    pub struct SanitizerSet: u8 {
+        const ADDRESS = 1 << 0;
+        const LEAK    = 1 << 1;
+        const MEMORY  = 1 << 2;
+        const THREAD  = 1 << 3;
+        const HWADDRESS = 1 << 4;
+    }
+}
+
+impl SanitizerSet {
+    /// Return sanitizer's name
+    ///
+    /// Returns none if the flags is a set of sanitizers numbering not exactly one.
+    fn as_str(self) -> Option<&'static str> {
+        Some(match self {
+            SanitizerSet::ADDRESS => "address",
+            SanitizerSet::LEAK => "leak",
+            SanitizerSet::MEMORY => "memory",
+            SanitizerSet::THREAD => "thread",
+            SanitizerSet::HWADDRESS => "hwaddress",
+            _ => return None,
+        })
+    }
+}
+
+/// Formats a sanitizer set as a comma separated list of sanitizers' names.
+impl fmt::Display for SanitizerSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first = true;
+        for s in *self {
+            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {:?}", s));
+            if !first {
+                f.write_str(", ")?;
+            }
+            f.write_str(name)?;
+            first = false;
+        }
+        Ok(())
+    }
+}
+
+impl IntoIterator for SanitizerSet {
+    type Item = SanitizerSet;
+    type IntoIter = std::vec::IntoIter<SanitizerSet>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        [
+            SanitizerSet::ADDRESS,
+            SanitizerSet::LEAK,
+            SanitizerSet::MEMORY,
+            SanitizerSet::THREAD,
+            SanitizerSet::HWADDRESS,
+        ]
+        .iter()
+        .copied()
+        .filter(|&s| self.contains(s))
+        .collect::<Vec<_>>()
+        .into_iter()
+    }
+}
+
+impl<CTX> HashStable<CTX> for SanitizerSet {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.bits().hash_stable(ctx, hasher);
+    }
+}
+
+impl ToJson for SanitizerSet {
+    fn to_json(&self) -> Json {
+        self.into_iter()
+            .map(|v| Some(v.as_str()?.to_json()))
+            .collect::<Option<Vec<_>>>()
+            .unwrap_or(Vec::new())
+            .to_json()
+    }
+}
+
+macro_rules! supported_targets {
+    ( $(($( $triple:literal, )+ $module:ident ),)+ ) => {
+        $(mod $module;)+
+
+        /// List of supported targets
+        pub const TARGETS: &[&str] = &[$($($triple),+),+];
+
+        fn load_builtin(target: &str) -> Option<Target> {
+            let mut t = match target {
+                $( $($triple)|+ => $module::target(), )+
+                _ => return None,
+            };
+            t.is_builtin = true;
+            debug!("got builtin target: {:?}", t);
+            Some(t)
+        }
+
+        #[cfg(test)]
+        mod tests {
+            mod tests_impl;
+
+            // Cannot put this into a separate file without duplication, make an exception.
+            $(
+                #[test] // `#[test]`
+                fn $module() {
+                    tests_impl::test_target(super::$module::target());
+                }
+            )+
+        }
+    };
+}
+
 supported_targets! {
     ("x86_64-unknown-linux-gnu", x86_64_unknown_linux_gnu),
     ("x86_64-unknown-linux-gnux32", x86_64_unknown_linux_gnux32),
@@ -641,6 +721,7 @@ supported_targets! {
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-musl", powerpc64le_unknown_linux_musl),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("s390x-unknown-linux-musl", s390x_unknown_linux_musl),
     ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
@@ -678,7 +759,7 @@ supported_targets! {
     ("thumbv7neon-linux-androideabi", thumbv7neon_linux_androideabi),
     ("aarch64-linux-android", aarch64_linux_android),
 
-    ("x86_64-linux-kernel", x86_64_linux_kernel),
+    ("x86_64-unknown-none-linuxkernel", x86_64_unknown_none_linuxkernel),
 
     ("aarch64-unknown-freebsd", aarch64_unknown_freebsd),
     ("armv6-unknown-freebsd", armv6_unknown_freebsd),
@@ -693,6 +774,7 @@ supported_targets! {
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("sparc64-unknown-openbsd", sparc64_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
+    ("powerpc-unknown-openbsd", powerpc_unknown_openbsd),
 
     ("aarch64-unknown-netbsd", aarch64_unknown_netbsd),
     ("armv6-unknown-netbsd-eabihf", armv6_unknown_netbsd_eabihf),
@@ -701,7 +783,6 @@ supported_targets! {
     ("powerpc-unknown-netbsd", powerpc_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
-    ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
 
     ("i686-unknown-haiku", i686_unknown_haiku),
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
@@ -727,6 +808,7 @@ supported_targets! {
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
+    ("aarch64-apple-ios-sim", aarch64_apple_ios_sim),
     ("aarch64-apple-tvos", aarch64_apple_tvos),
     ("x86_64-apple-tvos", x86_64_apple_tvos),
 
@@ -735,9 +817,8 @@ supported_targets! {
     ("armv7r-none-eabi", armv7r_none_eabi),
     ("armv7r-none-eabihf", armv7r_none_eabihf),
 
-    // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
-    // (See <https://github.com/rust-lang/rust/issues/40531>.)
-    ("x86_64-sun-solaris", "x86_64-pc-solaris", x86_64_sun_solaris),
+    ("x86_64-pc-solaris", x86_64_pc_solaris),
+    ("x86_64-sun-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
@@ -761,6 +842,7 @@ supported_targets! {
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
+    ("wasm64-unknown-unknown", wasm64_unknown_unknown),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
     ("thumbv7m-none-eabi", thumbv7m_none_eabi),
@@ -777,15 +859,18 @@ supported_targets! {
 
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
-    ("x86_64-unknown-hermit-kernel", x86_64_unknown_hermit_kernel),
+
+    ("x86_64-unknown-none-hermitkernel", x86_64_unknown_none_hermitkernel),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
+    ("riscv32gc-unknown-linux-musl", riscv32gc_unknown_linux_musl),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
+    ("riscv64gc-unknown-linux-musl", riscv64gc_unknown_linux_musl),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
@@ -992,6 +1077,8 @@ pub struct TargetOptions {
     pub is_like_emscripten: bool,
     /// Whether the target toolchain is like Fuchsia's.
     pub is_like_fuchsia: bool,
+    /// Whether a target toolchain is like WASM.
+    pub is_like_wasm: bool,
     /// Version of DWARF to use if not using the default.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub dwarf_version: Option<u32>,
@@ -1107,6 +1194,10 @@ pub struct TargetOptions {
     /// unwinders.
     pub requires_uwtable: bool,
 
+    /// Whether or not to emit `uwtable` attributes on functions if `-C force-unwind-tables`
+    /// is not specified and `uwtable` is not required on this target.
+    pub default_uwtable: bool,
+
     /// Whether or not SIMD types are passed by reference in the Rust ABI,
     /// typically required if a target can be compiled with a mixed set of
     /// target features. This is `true` by default, and `false` for targets like
@@ -1156,6 +1247,16 @@ pub struct TargetOptions {
     /// How to handle split debug information, if at all. Specifying `None` has
     /// target-specific meaning.
     pub split_debuginfo: SplitDebuginfo,
+
+    /// The sanitizers supported by this target
+    ///
+    /// Note that the support here is at a codegen level. If the machine code with sanitizer
+    /// enabled can generated on this target, but the necessary supporting libraries are not
+    /// distributed with the target, the sanitizer should still appear in this list for the target.
+    pub supported_sanitizers: SanitizerSet,
+
+    /// If present it's a default value to use for adjusting the C ABI.
+    pub default_adjusted_cabi: Option<Abi>,
 }
 
 impl Default for TargetOptions {
@@ -1200,6 +1301,7 @@ impl Default for TargetOptions {
             is_like_emscripten: false,
             is_like_msvc: false,
             is_like_fuchsia: false,
+            is_like_wasm: false,
             dwarf_version: None,
             linker_is_gnu: false,
             allows_weak_linkage: true,
@@ -1244,6 +1346,7 @@ impl Default for TargetOptions {
             default_hidden_visibility: false,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
+            default_uwtable: false,
             simd_types_indirect: true,
             limit_rdylib_exports: true,
             override_export_symbols: None,
@@ -1256,6 +1359,8 @@ impl Default for TargetOptions {
             eh_frame_header: true,
             has_thumb_interworking: false,
             split_debuginfo: SplitDebuginfo::Off,
+            supported_sanitizers: SanitizerSet::empty(),
+            default_adjusted_cabi: None,
         }
     }
 }
@@ -1280,26 +1385,36 @@ impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
-            Abi::System => {
+            Abi::System { unwind } => {
                 if self.is_like_windows && self.arch == "x86" {
-                    Abi::Stdcall
+                    Abi::Stdcall { unwind }
                 } else {
-                    Abi::C
+                    Abi::C { unwind }
                 }
             }
             // These ABI kinds are ignored on non-x86 Windows targets.
             // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
             // and the individual pages for __stdcall et al.
-            Abi::Stdcall | Abi::Fastcall | Abi::Vectorcall | Abi::Thiscall => {
-                if self.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
+            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => {
+                if self.is_like_windows && self.arch != "x86" { Abi::C { unwind } } else { abi }
+            }
+            Abi::Fastcall | Abi::Vectorcall => {
+                if self.is_like_windows && self.arch != "x86" {
+                    Abi::C { unwind: false }
+                } else {
+                    abi
+                }
             }
             Abi::EfiApi => {
                 if self.arch == "x86_64" {
                     Abi::Win64
                 } else {
-                    Abi::C
+                    Abi::C { unwind: false }
                 }
             }
+
+            Abi::C { unwind } => self.default_adjusted_cabi.unwrap_or(Abi::C { unwind }),
+
             abi => abi,
         }
     }
@@ -1331,8 +1446,8 @@ impl Target {
 
         let get_req_field = |name: &str| {
             obj.find(name)
-                .map(|s| s.as_string())
-                .and_then(|os| os.map(|s| s.to_string()))
+                .and_then(Json::as_string)
+                .map(str::to_string)
                 .ok_or_else(|| format!("Field {} in target specification is required", name))
         };
 
@@ -1492,7 +1607,7 @@ impl Target {
             } );
             ($key_name:ident = $json_name:expr, optional) => ( {
                 let name = $json_name;
-                if let Some(o) = obj.find(&name[..]) {
+                if let Some(o) = obj.find(name) {
                     base.$key_name = o
                         .as_string()
                         .map(|s| s.to_string() );
@@ -1535,6 +1650,24 @@ impl Target {
                     )),
                 }).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, SanitizerSet) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_array()).and_then(|a| {
+                    for s in a {
+                        base.$key_name |= match s.as_string() {
+                            Some("address") => SanitizerSet::ADDRESS,
+                            Some("leak") => SanitizerSet::LEAK,
+                            Some("memory") => SanitizerSet::MEMORY,
+                            Some("thread") => SanitizerSet::THREAD,
+                            Some("hwaddress") => SanitizerSet::HWADDRESS,
+                            Some(s) => return Some(Err(format!("unknown sanitizer {}", s))),
+                            _ => return Some(Err(format!("not a string: {:?}", s))),
+                        };
+                    }
+                    Some(Ok(()))
+                }).unwrap_or(Ok(()))
+            } );
+
             ($key_name:ident, crt_objects_fallback) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1616,6 +1749,16 @@ impl Target {
                     }
                 }
             } );
+            ($key_name:ident, Option<Abi>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                    match lookup_abi(s) {
+                        Some(abi) => base.$key_name = Some(abi),
+                        _ => return Some(Err(format!("'{}' is not a valid value for abi", s))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
         }
 
         if let Some(s) = obj.find("target-endian").and_then(Json::as_string) {
@@ -1667,6 +1810,7 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_emscripten, bool);
         key!(is_like_fuchsia, bool);
+        key!(is_like_wasm, bool);
         key!(dwarf_version, Option<u32>);
         key!(linker_is_gnu, bool);
         key!(allows_weak_linkage, bool);
@@ -1700,6 +1844,7 @@ impl Target {
         key!(default_hidden_visibility, bool);
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
+        key!(default_uwtable, bool);
         key!(simd_types_indirect, bool);
         key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
@@ -1712,6 +1857,8 @@ impl Target {
         key!(eh_frame_header, bool);
         key!(has_thumb_interworking, bool);
         key!(split_debuginfo, SplitDebuginfo)?;
+        key!(supported_sanitizers, SanitizerSet)?;
+        key!(default_adjusted_cabi, Option<Abi>)?;
 
         // NB: The old name is deprecated, but support for it is retained for
         // compatibility.
@@ -1903,6 +2050,7 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_emscripten);
         target_option_val!(is_like_fuchsia);
+        target_option_val!(is_like_wasm);
         target_option_val!(dwarf_version);
         target_option_val!(linker_is_gnu);
         target_option_val!(allows_weak_linkage);
@@ -1936,6 +2084,7 @@ impl ToJson for Target {
         target_option_val!(default_hidden_visibility);
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
+        target_option_val!(default_uwtable);
         target_option_val!(simd_types_indirect);
         target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
@@ -1948,6 +2097,11 @@ impl ToJson for Target {
         target_option_val!(eh_frame_header);
         target_option_val!(has_thumb_interworking);
         target_option_val!(split_debuginfo);
+        target_option_val!(supported_sanitizers);
+
+        if let Some(abi) = self.default_adjusted_cabi {
+            d.insert("default-adjusted-cabi".to_string(), Abi::name(abi).to_json());
+        }
 
         if default.unsupported_abis != self.unsupported_abis {
             d.insert(
@@ -1981,24 +2135,6 @@ impl TargetTriple {
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
         let canonicalized_path = path.canonicalize()?;
         Ok(TargetTriple::TargetPath(canonicalized_path))
-    }
-
-    /// Creates a target triple from its alias
-    pub fn from_alias(triple: String) -> Self {
-        macro_rules! target_aliases {
-            ( $(($alias:literal, $target:literal ),)+ ) => {
-                match triple.as_str() {
-                    $( $alias => TargetTriple::from_triple($target), )+
-                    _ => TargetTriple::TargetTriple(triple),
-                }
-            }
-        }
-
-        target_aliases! {
-            // `x86_64-pc-solaris` is an alias for `x86_64_sun_solaris` for backwards compatibility reasons.
-            // (See <https://github.com/rust-lang/rust/issues/40531>.)
-            ("x86_64-pc-solaris", "x86_64-sun-solaris"),
-        }
     }
 
     /// Returns a string triple for this target.

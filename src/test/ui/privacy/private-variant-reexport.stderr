@@ -1,29 +1,48 @@
-error: variant `V` is private and cannot be re-exported
+error[E0364]: `V` is private, and cannot be re-exported
   --> $DIR/private-variant-reexport.rs:2:13
    |
 LL |     pub use ::E::V;
    |             ^^^^^^
-...
-LL | enum E { V }
-   | ------ help: consider making the enum public: `pub enum E`
+   |
+note: consider marking `V` as `pub` in the imported module
+  --> $DIR/private-variant-reexport.rs:2:13
+   |
+LL |     pub use ::E::V;
+   |             ^^^^^^
 
-error: variant `V` is private and cannot be re-exported
+error[E0364]: `V` is private, and cannot be re-exported
+  --> $DIR/private-variant-reexport.rs:6:19
+   |
+LL |     pub use ::E::{V};
+   |                   ^
+   |
+note: consider marking `V` as `pub` in the imported module
   --> $DIR/private-variant-reexport.rs:6:19
    |
 LL |     pub use ::E::{V};
    |                   ^
 
-error: variant `V` is private and cannot be re-exported
+error[E0365]: `V` is private, and cannot be re-exported
   --> $DIR/private-variant-reexport.rs:10:22
    |
 LL |     pub use ::E::V::{self};
-   |                      ^^^^
+   |                      ^^^^ re-export of private `V`
+   |
+   = note: consider declaring type or module `V` with `pub`
 
-error: enum is private and its variants cannot be re-exported
-  --> $DIR/private-variant-reexport.rs:14:13
+error: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/private-variant-reexport.rs:15:13
    |
 LL |     pub use ::E::*;
    |             ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/private-variant-reexport.rs:13:8
+   |
+LL | #[deny(unused_imports)]
+   |        ^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 
+Some errors have detailed explanations: E0364, E0365.
+For more information about an error, try `rustc --explain E0364`.

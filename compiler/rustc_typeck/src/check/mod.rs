@@ -121,9 +121,9 @@ use rustc_middle::ty::{self, RegionKind, Ty, TyCtxt, UserType};
 use rustc_session::config;
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
-use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
+use rustc_span::{source_map::DUMMY_SP, sym};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -495,12 +495,14 @@ fn typeck_with_fallback<'tcx>(
         let fcx = if let (Some(header), Some(decl)) = (fn_header, fn_decl) {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-                AstConv::ty_of_fn(
+                <dyn AstConv<'_>>::ty_of_fn(
                     &fcx,
+                    id,
                     header.unsafety,
                     header.abi,
                     decl,
                     &hir::Generics::empty(),
+                    None,
                     None,
                 )
             } else {
@@ -526,7 +528,7 @@ fn typeck_with_fallback<'tcx>(
             let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
             let expected_type = body_ty
                 .and_then(|ty| match ty.kind {
-                    hir::TyKind::Infer => Some(AstConv::ast_ty_to_ty(&fcx, ty)),
+                    hir::TyKind::Infer => Some(<dyn AstConv<'_>>::ast_ty_to_ty(&fcx, ty)),
                     _ => None,
                 })
                 .unwrap_or_else(|| match tcx.hir().get(id) {
@@ -538,6 +540,19 @@ fn typeck_with_fallback<'tcx>(
                             kind: TypeVariableOriginKind::TypeInference,
                             span,
                         }),
+                        Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(ia), .. })
+                            if ia.operands.iter().any(|(op, _op_sp)| match op {
+                                hir::InlineAsmOperand::Const { anon_const } => {
+                                    anon_const.hir_id == id
+                                }
+                                _ => false,
+                            }) =>
+                        {
+                            fcx.next_ty_var(TypeVariableOrigin {
+                                kind: TypeVariableOriginKind::MiscVariable,
+                                span,
+                            })
+                        }
                         _ => fallback(),
                     },
                     _ => fallback(),
@@ -546,11 +561,12 @@ fn typeck_with_fallback<'tcx>(
             let expected_type = fcx.normalize_associated_types_in(body.value.span, expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
-            let revealed_ty = if tcx.features().impl_trait_in_bindings {
-                fcx.instantiate_opaque_types_from_value(id, expected_type, body.value.span)
-            } else {
-                expected_type
-            };
+            let revealed_ty = fcx.instantiate_opaque_types_from_value(
+                id,
+                expected_type,
+                body.value.span,
+                Some(sym::impl_trait_in_bindings),
+            );
 
             // Gather locals in statics (because of block expressions).
             GatherLocalsVisitor::new(&fcx, id).visit_body(body);
@@ -838,7 +854,7 @@ fn missing_items_err(
     // Obtain the level of indentation ending in `sugg_sp`.
     let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
     // Make the whitespace that will make the suggestion have the right indentation.
-    let padding: String = (0..indentation).map(|_| " ").collect();
+    let padding: String = std::iter::repeat(" ").take(indentation).collect();
 
     for trait_item in missing_items {
         let snippet = suggestion_signature(&trait_item, tcx);
@@ -1061,7 +1077,10 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
         E0533,
         "expected unit struct, unit variant or constant, found {}{}",
         res.descr(),
-        tcx.sess.source_map().span_to_snippet(span).map_or(String::new(), |s| format!(" `{}`", s)),
+        tcx.sess
+            .source_map()
+            .span_to_snippet(span)
+            .map_or_else(|_| String::new(), |s| format!(" `{}`", s)),
     )
     .emit();
 }

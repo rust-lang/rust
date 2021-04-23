@@ -28,11 +28,7 @@ impl<'tcx> UnwindContext<'tcx> {
             None
         };
 
-        UnwindContext {
-            tcx,
-            frame_table,
-            cie_id,
-        }
+        UnwindContext { tcx, frame_table, cie_id }
     }
 
     pub(crate) fn add_function(&mut self, func_id: FuncId, context: &Context, isa: &dyn TargetIsa) {
@@ -46,10 +42,8 @@ impl<'tcx> UnwindContext<'tcx> {
             UnwindInfo::SystemV(unwind_info) => {
                 self.frame_table.add_fde(
                     self.cie_id.unwrap(),
-                    unwind_info.to_fde(Address::Symbol {
-                        symbol: func_id.as_u32() as usize,
-                        addend: 0,
-                    }),
+                    unwind_info
+                        .to_fde(Address::Symbol { symbol: func_id.as_u32() as usize, addend: 0 }),
                 );
             }
             UnwindInfo::WindowsX64(_) => {
@@ -60,9 +54,8 @@ impl<'tcx> UnwindContext<'tcx> {
     }
 
     pub(crate) fn emit<P: WriteDebugInfo>(self, product: &mut P) {
-        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(
-            self.tcx,
-        )));
+        let mut eh_frame =
+            EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if !eh_frame.0.writer.slice().is_empty() {
@@ -82,9 +75,8 @@ impl<'tcx> UnwindContext<'tcx> {
         self,
         jit_module: &cranelift_jit::JITModule,
     ) -> Option<UnwindRegistry> {
-        let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(
-            self.tcx,
-        )));
+        let mut eh_frame =
+            EhFrame::from(super::emit::WriterRelocate::new(super::target_endian(self.tcx)));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
 
         if eh_frame.0.writer.slice().is_empty() {
@@ -130,10 +122,7 @@ impl<'tcx> UnwindContext<'tcx> {
             registrations.push(ptr as usize);
         }
 
-        Some(UnwindRegistry {
-            _frame_table: eh_frame,
-            registrations,
-        })
+        Some(UnwindRegistry { _frame_table: eh_frame, registrations })
     }
 }
 

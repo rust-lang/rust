@@ -36,5 +36,8 @@ ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target $TARGETS
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 COPY scripts/android-start-emulator.sh /scripts/
 ENTRYPOINT ["/scripts/android-start-emulator.sh"]

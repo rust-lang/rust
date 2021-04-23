@@ -287,6 +287,7 @@ pub struct InferenceDiagnosticsData {
 pub struct InferenceDiagnosticsParentData {
     pub prefix: &'static str,
     pub name: String,
+    pub def_id: DefId,
 }
 
 pub enum UnderspecifiedArgKind {
@@ -328,6 +329,7 @@ impl InferenceDiagnosticsParentData {
         Some(InferenceDiagnosticsParentData {
             prefix: tcx.def_kind(parent_def_id).descr(parent_def_id),
             name: parent_name,
+            def_id: parent_def_id,
         })
     }
 }
@@ -383,7 +385,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 InferenceDiagnosticsData {
                     name: s,
                     span: None,
-                    kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string() },
+                    kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string(self.tcx) },
                     parent: None,
                 }
             }
@@ -671,7 +673,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !impl_candidates.is_empty() && e.span.contains(span) {
                     if let Some(expr) = exprs.first() {
                         if let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind {
-                            if let [path_segment] = &path.segments[..] {
+                            if let [path_segment] = path.segments {
                                 let candidate_len = impl_candidates.len();
                                 let suggestions = impl_candidates.iter().map(|candidate| {
                                     format!(
@@ -754,12 +756,30 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             if let (UnderspecifiedArgKind::Const { .. }, Some(parent_data)) =
                 (&arg_data.kind, &arg_data.parent)
             {
-                err.span_suggestion_verbose(
-                    span,
-                    "consider specifying the const argument",
-                    format!("{}::<{}>", parent_data.name, arg_data.name),
-                    Applicability::MaybeIncorrect,
-                );
+                let has_impl_trait =
+                    self.tcx.generics_of(parent_data.def_id).params.iter().any(|param| {
+                        matches!(
+                            param.kind,
+                            ty::GenericParamDefKind::Type {
+                                synthetic: Some(
+                                    hir::SyntheticTyParamKind::ImplTrait
+                                        | hir::SyntheticTyParamKind::FromAttr,
+                                ),
+                                ..
+                            }
+                        )
+                    });
+
+                // (#83606): Do not emit a suggestion if the parent has an `impl Trait`
+                // as an argument otherwise it will cause the E0282 error.
+                if !has_impl_trait {
+                    err.span_suggestion_verbose(
+                        span,
+                        "consider specifying the const argument",
+                        format!("{}::<{}>", parent_data.name, arg_data.name),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
 
             err.span_label(

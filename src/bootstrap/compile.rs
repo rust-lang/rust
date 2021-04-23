@@ -27,7 +27,7 @@ use crate::config::TargetSelection;
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
-use crate::util::{exe, is_dylib, symlink_dir};
+use crate::util::{exe, is_debug_info, is_dylib, symlink_dir};
 use crate::{Compiler, DependencyType, GitRepo, Mode};
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
@@ -41,7 +41,10 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("test")
+        // When downloading stage1, the standard library has already been copied to the sysroot, so
+        // there's no need to rebuild it.
+        let download_rustc = run.builder.config.download_rustc;
+        run.all_krates("test").default_condition(!download_rustc)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -59,6 +62,14 @@ impl Step for Std {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
+
+        // These artifacts were already copied (in `impl Step for Sysroot`).
+        // Don't recompile them.
+        // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
+        // so its artifacts can't be reused.
+        if builder.config.download_rustc && compiler.stage != 0 {
+            return;
+        }
 
         if builder.config.keep_stage.contains(&compiler.stage)
             || builder.config.keep_stage_std.contains(&compiler.stage)
@@ -175,7 +186,9 @@ fn copy_self_contained_objects(
     // To do that we have to distribute musl startup objects as a part of Rust toolchain
     // and link with them manually in the self-contained mode.
     if target.contains("musl") {
-        let srcdir = builder.musl_libdir(target).unwrap();
+        let srcdir = builder.musl_libdir(target).unwrap_or_else(|| {
+            panic!("Target {:?} does not have a \"musl-libdir\" key", target.triple)
+        });
         for &obj in &["crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
             copy_and_stamp(
                 builder,
@@ -186,9 +199,20 @@ fn copy_self_contained_objects(
                 DependencyType::TargetSelfContained,
             );
         }
+        for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
+            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let target = libdir_self_contained.join(obj);
+            builder.copy(&src, &target);
+            target_deps.push((target, DependencyType::TargetSelfContained));
+        }
     } else if target.ends_with("-wasi") {
-        let srcdir = builder.wasi_root(target).unwrap().join("lib/wasm32-wasi");
-        for &obj in &["crt1.o", "crt1-reactor.o"] {
+        let srcdir = builder
+            .wasi_root(target)
+            .unwrap_or_else(|| {
+                panic!("Target {:?} does not have a \"wasi-root\" key", target.triple)
+            })
+            .join("lib/wasm32-wasi");
+        for &obj in &["crt1-command.o", "crt1-reactor.o"] {
             copy_and_stamp(
                 builder,
                 &libdir_self_contained,
@@ -438,11 +462,13 @@ impl Step for StartupObjects {
             let dst_file = &dst_dir.join(file.to_string() + ".o");
             if !up_to_date(src_file, dst_file) {
                 let mut cmd = Command::new(&builder.initial_rustc);
+                cmd.env("RUSTC_BOOTSTRAP", "1");
+                if !builder.local_rebuild {
+                    // a local_rebuild compiler already has stage1 features
+                    cmd.arg("--cfg").arg("bootstrap");
+                }
                 builder.run(
-                    cmd.env("RUSTC_BOOTSTRAP", "1")
-                        .arg("--cfg")
-                        .arg("bootstrap")
-                        .arg("--target")
+                    cmd.arg("--target")
                         .arg(target.rustc_target_arg())
                         .arg("--emit=obj")
                         .arg("-o")
@@ -490,6 +516,15 @@ impl Step for Rustc {
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
         let target = self.target;
+
+        // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
+        // so its artifacts can't be reused.
+        if builder.config.download_rustc && compiler.stage != 0 {
+            // Copy the existing artifacts instead of rebuilding them.
+            // NOTE: this path is only taken for tools linking to rustc-dev.
+            builder.ensure(Sysroot { compiler });
+            return;
+        }
 
         builder.ensure(Std { compiler, target });
 
@@ -904,6 +939,19 @@ impl Step for Sysroot {
         let _ = fs::remove_dir_all(&sysroot);
         t!(fs::create_dir_all(&sysroot));
 
+        // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
+        if builder.config.download_rustc && compiler.stage != 0 {
+            assert_eq!(
+                builder.config.build, compiler.host,
+                "Cross-compiling is not yet supported with `download-rustc`",
+            );
+            // Copy the compiler into the correct sysroot.
+            let ci_rustc_dir =
+                builder.config.out.join(&*builder.config.build.triple).join("ci-rustc");
+            builder.cp_r(&ci_rustc_dir, &sysroot);
+            return INTERNER.intern_path(sysroot);
+        }
+
         // Symlink the source root into the same location inside the sysroot,
         // where `rust-src` component would go (`$sysroot/lib/rustlib/src/rust`),
         // so that any tools relying on `rust-src` also work for local builds,
@@ -975,12 +1023,15 @@ impl Step for Assemble {
         // produce some other architecture compiler we need to start from
         // `build` to get there.
         //
-        // FIXME: Perhaps we should download those libraries?
-        //        It would make builds faster...
-        //
         // FIXME: It may be faster if we build just a stage 1 compiler and then
         //        use that to bootstrap this compiler forward.
         let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
+
+        // If we're downloading a compiler from CI, we can use the same compiler for all stages other than 0.
+        if builder.config.download_rustc {
+            builder.ensure(Sysroot { compiler: target_compiler });
+            return target_compiler;
+        }
 
         // Build the libraries for this compiler to link to (i.e., the libraries
         // it uses at runtime). NOTE: Crates the target compiler compiles don't
@@ -1031,7 +1082,8 @@ impl Step for Assemble {
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
-            if is_dylib(&filename) && !proc_macros.contains(&filename) {
+            if (is_dylib(&filename) || is_debug_info(&filename)) && !proc_macros.contains(&filename)
+            {
                 builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }
         }
@@ -1057,8 +1109,11 @@ impl Step for Assemble {
             let src_exe = exe("llvm-dwp", target_compiler.host);
             let dst_exe = exe("rust-llvm-dwp", target_compiler.host);
             let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
-            let llvm_bin_dir = llvm_config_bin.parent().unwrap();
-            builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
+            if !builder.config.dry_run {
+                let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
+                let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
+                builder.copy(&llvm_bin_dir.join(&src_exe), &libdir_bin.join(&dst_exe));
+            }
         }
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
@@ -1145,6 +1200,7 @@ pub fn run_cargo(
             if !(filename.ends_with(".rlib")
                 || filename.ends_with(".lib")
                 || filename.ends_with(".a")
+                || is_debug_info(&filename)
                 || is_dylib(&filename)
                 || (is_check && filename.ends_with(".rmeta")))
             {

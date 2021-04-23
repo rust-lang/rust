@@ -11,6 +11,6 @@ pub mod bar {
 
 // NOTE: we re-exported both `Foo` and `Bar` here,
 // NOTE: so they are inlined and therefore we link to the current module.
-// @has 'submodule_outer/trait.Foo.html' '//a[@href="../submodule_outer/bar/trait.Bar.html"]' 'Bar'
-// @has 'submodule_outer/trait.Foo.html' '//a[@href="../submodule_outer/trait.Baz.html"]' 'Baz'
+// @has 'submodule_outer/trait.Foo.html' '//a[@href="bar/trait.Bar.html"]' 'Bar'
+// @has 'submodule_outer/trait.Foo.html' '//a[@href="trait.Baz.html"]' 'Baz'
 pub use ::bar_::{Foo, Baz};

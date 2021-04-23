@@ -1,7 +1,7 @@
-use crate::utils::{get_parent_expr, span_lint, span_lint_and_note};
-use if_chain::if_chain;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
+use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{def, BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, QPath, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty;
@@ -71,21 +71,15 @@ impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Find a write to a local variable.
         match expr.kind {
-            ExprKind::Assign(ref lhs, ..) | ExprKind::AssignOp(_, ref lhs, _) => {
-                if let ExprKind::Path(ref qpath) = lhs.kind {
-                    if let QPath::Resolved(_, ref path) = *qpath {
-                        if path.segments.len() == 1 {
-                            if let def::Res::Local(var) = cx.qpath_res(qpath, lhs.hir_id) {
-                                let mut visitor = ReadVisitor {
-                                    cx,
-                                    var,
-                                    write_expr: expr,
-                                    last_expr: expr,
-                                };
-                                check_for_unsequenced_reads(&mut visitor);
-                            }
-                        }
-                    }
+            ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) => {
+                if let Some(var) = path_to_local(lhs) {
+                    let mut visitor = ReadVisitor {
+                        cx,
+                        var,
+                        write_expr: expr,
+                        last_expr: expr,
+                    };
+                    check_for_unsequenced_reads(&mut visitor);
                 }
             },
             _ => {},
@@ -93,12 +87,12 @@ impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     }
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
-            StmtKind::Local(ref local) => {
-                if let Local { init: Some(ref e), .. } = **local {
+            StmtKind::Local(local) => {
+                if let Local { init: Some(e), .. } = local {
                     DivergenceVisitor { cx }.visit_expr(e);
                 }
             },
-            StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => DivergenceVisitor { cx }.maybe_walk_expr(e),
+            StmtKind::Expr(e) | StmtKind::Semi(e) => DivergenceVisitor { cx }.maybe_walk_expr(e),
             StmtKind::Item(..) => {},
         }
     }
@@ -112,7 +106,7 @@ impl<'a, 'tcx> DivergenceVisitor<'a, 'tcx> {
     fn maybe_walk_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Closure(..) => {},
-            ExprKind::Match(ref e, arms, _) => {
+            ExprKind::Match(e, arms, _) => {
                 self.visit_expr(e);
                 for arm in arms {
                     if let Some(Guard::If(if_expr)) = arm.guard {
@@ -136,7 +130,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
         match e.kind {
             ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => self.report_diverging_sub_expr(e),
-            ExprKind::Call(ref func, _) => {
+            ExprKind::Call(func, _) => {
                 let typ = self.cx.typeck_results().expr_ty(func);
                 match typ.kind() {
                     ty::FnDef(..) | ty::FnPtr(_) => {
@@ -272,14 +266,14 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr<'_>) -
 
 fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt<'_>) -> StopEarly {
     match stmt.kind {
-        StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => check_expr(vis, expr),
+        StmtKind::Expr(expr) | StmtKind::Semi(expr) => check_expr(vis, expr),
         // If the declaration is of a local variable, check its initializer
         // expression if it has one. Otherwise, keep going.
-        StmtKind::Local(ref local) => local
+        StmtKind::Local(local) => local
             .init
             .as_ref()
             .map_or(StopEarly::KeepGoing, |expr| check_expr(vis, expr)),
-        _ => StopEarly::KeepGoing,
+        StmtKind::Item(..) => StopEarly::KeepGoing,
     }
 }
 
@@ -304,27 +298,20 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             return;
         }
 
-        match expr.kind {
-            ExprKind::Path(ref qpath) => {
-                if_chain! {
-                    if let QPath::Resolved(None, ref path) = *qpath;
-                    if path.segments.len() == 1;
-                    if let def::Res::Local(local_id) = self.cx.qpath_res(qpath, expr.hir_id);
-                    if local_id == self.var;
-                    // Check that this is a read, not a write.
-                    if !is_in_assignment_position(self.cx, expr);
-                    then {
-                        span_lint_and_note(
-                            self.cx,
-                            EVAL_ORDER_DEPENDENCE,
-                            expr.span,
-                            "unsequenced read of a variable",
-                            Some(self.write_expr.span),
-                            "whether read occurs before this write depends on evaluation order"
-                        );
-                    }
-                }
+        if path_to_local_id(expr, self.var) {
+            // Check that this is a read, not a write.
+            if !is_in_assignment_position(self.cx, expr) {
+                span_lint_and_note(
+                    self.cx,
+                    EVAL_ORDER_DEPENDENCE,
+                    expr.span,
+                    "unsequenced read of a variable",
+                    Some(self.write_expr.span),
+                    "whether read occurs before this write depends on evaluation order",
+                );
             }
+        }
+        match expr.kind {
             // We're about to descend a closure. Since we don't know when (or
             // if) the closure will be evaluated, any reads in it might not
             // occur here (or ever). Like above, bail to avoid false positives.
@@ -356,7 +343,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprKind::Assign(ref lhs, ..) = parent.kind {
+        if let ExprKind::Assign(lhs, ..) = parent.kind {
             return lhs.hir_id == expr.hir_id;
         }
     }

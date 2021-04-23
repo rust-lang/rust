@@ -90,7 +90,7 @@ error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:30:13
    |
 LL |     let _ = (1.0 + (std::f32::consts::E - 1.0)).ln();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `((std::f32::consts::E - 1.0)).ln_1p()`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(std::f32::consts::E - 1.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
   --> $DIR/floating_point_log.rs:31:13

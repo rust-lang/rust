@@ -1798,7 +1798,7 @@ fn subslice_patterns() {
 
     macro_rules! c {
         ($inp:expr, $typ:ty, $out:expr $(,)?) => {
-            assert_eq!($out, identity::<$typ>($inp));
+            assert_eq!($out, identity::<$typ>($inp))
         };
     }
 

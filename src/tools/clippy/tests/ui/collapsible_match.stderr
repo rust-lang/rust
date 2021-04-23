@@ -1,4 +1,4 @@
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:7:20
    |
 LL |           Ok(val) => match val {
@@ -9,15 +9,15 @@ LL | |         },
    | |_________^
    |
    = note: `-D clippy::collapsible-match` implied by `-D warnings`
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:7:12
    |
 LL |         Ok(val) => match val {
-   |            ^^^ Replace this binding
+   |            ^^^ replace this binding
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:16:20
    |
 LL |           Ok(val) => match val {
@@ -27,15 +27,15 @@ LL | |             _ => return,
 LL | |         },
    | |_________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:16:12
    |
 LL |         Ok(val) => match val {
-   |            ^^^ Replace this binding
+   |            ^^^ replace this binding
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:25:9
    |
 LL | /         if let Some(n) = val {
@@ -43,15 +43,15 @@ LL | |             take(n);
 LL | |         }
    | |_________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:24:15
    |
 LL |     if let Ok(val) = res_opt {
-   |               ^^^ Replace this binding
+   |               ^^^ replace this binding
 LL |         if let Some(n) = val {
    |                ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:32:9
    |
 LL | /         if let Some(n) = val {
@@ -61,15 +61,15 @@ LL | |             return;
 LL | |         }
    | |_________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:31:15
    |
 LL |     if let Ok(val) = res_opt {
-   |               ^^^ Replace this binding
+   |               ^^^ replace this binding
 LL |         if let Some(n) = val {
    |                ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:43:9
    |
 LL | /         match val {
@@ -78,16 +78,16 @@ LL | |             _ => (),
 LL | |         }
    | |_________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:42:15
    |
 LL |     if let Ok(val) = res_opt {
-   |               ^^^ Replace this binding
+   |               ^^^ replace this binding
 LL |         match val {
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:52:13
    |
 LL | /             if let Some(n) = val {
@@ -95,15 +95,15 @@ LL | |                 take(n);
 LL | |             }
    | |_____________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:51:12
    |
 LL |         Ok(val) => {
-   |            ^^^ Replace this binding
+   |            ^^^ replace this binding
 LL |             if let Some(n) = val {
    |                    ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:61:9
    |
 LL | /         match val {
@@ -112,16 +112,16 @@ LL | |             _ => return,
 LL | |         }
    | |_________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:60:15
    |
 LL |     if let Ok(val) = res_opt {
-   |               ^^^ Replace this binding
+   |               ^^^ replace this binding
 LL |         match val {
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:72:13
    |
 LL | /             if let Some(n) = val {
@@ -131,15 +131,15 @@ LL | |                 return;
 LL | |             }
    | |_____________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:71:12
    |
 LL |         Ok(val) => {
-   |            ^^^ Replace this binding
+   |            ^^^ replace this binding
 LL |             if let Some(n) = val {
    |                    ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:83:20
    |
 LL |           Ok(val) => match val {
@@ -149,15 +149,15 @@ LL | |             None => return,
 LL | |         },
    | |_________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:83:12
    |
 LL |         Ok(val) => match val {
-   |            ^^^ Replace this binding
+   |            ^^^ replace this binding
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 
-error: Unnecessary nested match
+error: unnecessary nested match
   --> $DIR/collapsible_match.rs:92:22
    |
 LL |           Some(val) => match val {
@@ -167,11 +167,11 @@ LL | |             _ => return,
 LL | |         },
    | |_________^
    |
-help: The outer pattern can be modified to include the inner pattern.
+help: the outer pattern can be modified to include the inner pattern
   --> $DIR/collapsible_match.rs:92:14
    |
 LL |         Some(val) => match val {
-   |              ^^^ Replace this binding
+   |              ^^^ replace this binding
 LL |             Some(n) => foo(n),
    |             ^^^^^^^ with this pattern
 

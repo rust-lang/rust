@@ -9,6 +9,7 @@ use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, DefIdTree};
 use rustc_session::Session;
@@ -449,12 +450,12 @@ impl<'a> Resolver<'a> {
                     self.session,
                     span,
                     E0128,
-                    "type parameters with a default cannot use \
+                    "generic parameters with a default cannot use \
                                                 forward declared identifiers"
                 );
                 err.span_label(
                     span,
-                    "defaulted type parameters cannot be forward declared".to_string(),
+                    "defaulted generic parameters cannot be forward declared".to_string(),
                 );
                 err
             }
@@ -605,7 +606,7 @@ impl<'a> Resolver<'a> {
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
         &mut self,
-        scope_set: ScopeSet,
+        scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
         filter_fn: &impl Fn(Res) -> bool,
@@ -661,7 +662,7 @@ impl<'a> Resolver<'a> {
                     let root_module = this.resolve_crate_root(root_ident);
                     this.add_module_candidates(root_module, &mut suggestions, filter_fn);
                 }
-                Scope::Module(module) => {
+                Scope::Module(module, _) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
                 Scope::RegisteredAttrs => {
@@ -718,10 +719,9 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::BuiltinTypes => {
-                    let primitive_types = &this.primitive_type_table.primitive_types;
-                    suggestions.extend(primitive_types.iter().flat_map(|(name, prim_ty)| {
+                    suggestions.extend(PrimTy::ALL.iter().filter_map(|prim_ty| {
                         let res = Res::PrimTy(*prim_ty);
-                        filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
+                        filter_fn(res).then_some(TypoSuggestion::from_res(prim_ty.name(), res))
                     }))
                 }
             }
@@ -758,17 +758,14 @@ impl<'a> Resolver<'a> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let not_local_module = crate_name.name != kw::Crate;
-        let mut worklist =
-            vec![(start_module, Vec::<ast::PathSegment>::new(), true, not_local_module)];
+        let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), true)];
         let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible, in_module_is_extern)) =
-            match worklist.pop() {
-                None => worklist_via_import.pop(),
-                Some(x) => Some(x),
-            }
-        {
+        while let Some((in_module, path_segments, accessible)) = match worklist.pop() {
+            None => worklist_via_import.pop(),
+            Some(x) => Some(x),
+        } {
+            let in_module_is_extern = !in_module.def_id().unwrap().is_local();
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
@@ -850,11 +847,10 @@ impl<'a> Resolver<'a> {
                         name_binding.is_extern_crate() && lookup_ident.span.rust_2018();
 
                     if !is_extern_crate_that_also_appears_in_prelude {
-                        let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }
-                                .push((module, path_segments, child_accessible, is_extern));
+                                .push((module, path_segments, child_accessible));
                         }
                     }
                 }
@@ -1111,10 +1107,9 @@ impl<'a> Resolver<'a> {
             _,
         ) = binding.kind
         {
-            let def_id = (&*self).parent(ctor_def_id).expect("no parent for a constructor");
+            let def_id = self.parent(ctor_def_id).expect("no parent for a constructor");
             let fields = self.field_names.get(&def_id)?;
-            let first_field = fields.first()?; // Handle `struct Foo()`
-            return Some(fields.iter().fold(first_field.span, |acc, field| acc.to(field.span)));
+            return fields.iter().map(|name| name.span).reduce(Span::to); // None for `struct Foo()`
         }
         None
     }

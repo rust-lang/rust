@@ -5,8 +5,10 @@ LL |   fn b<C:Clone,D>(&self, x: C) -> C;
    |                             - type in trait
 ...
 LL |   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
-   |        -       -             ^ expected type parameter `F`, found type parameter `G`
-   |        |       |
+   |        -       -             ^
+   |        |       |             |
+   |        |       |             expected type parameter `F`, found type parameter `G`
+   |        |       |             help: change the parameter type to match the trait: `F`
    |        |       found type parameter
    |        expected type parameter
    |

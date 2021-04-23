@@ -3,18 +3,24 @@ error: can't reassign to an uninitialized variable
    |
 LL |     let a: i8 *= 1;
    |               ^^ help: initialize the variable
+   |
+   = help: if you meant to overwrite, remove the `let` binding
 
 error: can't reassign to an uninitialized variable
   --> $DIR/let-binop.rs:6:11
    |
 LL |     let b += 1;
    |           ^^ help: initialize the variable
+   |
+   = help: if you meant to overwrite, remove the `let` binding
 
 error: can't reassign to an uninitialized variable
   --> $DIR/let-binop.rs:8:11
    |
 LL |     let c *= 1;
    |           ^^ help: initialize the variable
+   |
+   = help: if you meant to overwrite, remove the `let` binding
 
 error: aborting due to 3 previous errors
 

@@ -128,7 +128,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Turns simple `rustc_lexer::TokenKind` enum into a rich
-    /// `librustc_ast::TokenKind`. This turns strings into interned
+    /// `rustc_ast::TokenKind`. This turns strings into interned
     /// symbols and runs additional validation.
     fn cook_lexer_token(&self, token: rustc_lexer::TokenKind, start: BytePos) -> Option<TokenKind> {
         Some(match token {
@@ -268,6 +268,9 @@ impl<'a> StringReader<'a> {
                 // tokens like `<<` from `rustc_lexer`, and then add fancier error recovery to it,
                 // as there will be less overall work to do this way.
                 let token = unicode_chars::check_for_substitution(self, start, c, &mut err);
+                if c == '\x00' {
+                    err.help("source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used");
+                }
                 err.emit();
                 token?
             }

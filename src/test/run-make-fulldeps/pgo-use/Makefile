@@ -12,12 +12,11 @@
 # `else` branch. Accordingly, we expect the function that is never called to
 # be marked as cold.
 #
-# The program is compiled with `-Copt-level=s` because this setting disables
-# LLVM's pre-inlining pass (i.e. a pass that does some inlining before it adds
-# the profiling instrumentation). Disabling this pass leads to rather
-# predictable IR which we need for this test to be stable.
+# Disable the pre-inlining pass (i.e. a pass that does some inlining before
+# it adds the profiling instrumentation). Disabling this pass leads to
+# rather predictable IR which we need for this test to be stable.
 
-COMMON_FLAGS=-Copt-level=s -Ccodegen-units=1
+COMMON_FLAGS=-Copt-level=2 -Ccodegen-units=1 -Cllvm-args=-disable-preinline
 
 # LLVM doesn't support instrumenting binaries that use SEH:
 # https://github.com/rust-lang/rust/issues/61002

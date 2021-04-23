@@ -25,6 +25,8 @@ extern "platform-intrinsic" {
     fn simd_and<T>(x: T, y: T) -> T;
     fn simd_or<T>(x: T, y: T) -> T;
     fn simd_xor<T>(x: T, y: T) -> T;
+
+    fn simd_neg<T>(x: T) -> T;
 }
 
 fn main() {
@@ -60,6 +62,9 @@ fn main() {
         simd_xor(x, x);
         simd_xor(y, y);
 
+        simd_neg(x);
+        simd_neg(z);
+
 
         simd_add(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
@@ -78,6 +83,9 @@ fn main() {
         simd_or(0, 0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_xor(0, 0);
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
+
+        simd_neg(0);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
 

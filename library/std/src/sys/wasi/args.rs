@@ -1,6 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use crate::ffi::{CStr, OsStr, OsString};
+use crate::fmt;
 use crate::marker::PhantomData;
 use crate::os::wasi::ffi::OsStrExt;
 use crate::vec;
@@ -38,9 +39,9 @@ fn maybe_args() -> Option<Vec<OsString>> {
     }
 }
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        self.iter.as_slice()
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.iter.as_slice().fmt(f)
     }
 }
 

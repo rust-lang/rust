@@ -505,7 +505,7 @@ impl f64 {
         unsafe { cmath::fdim(self, other) }
     }
 
-    /// Returns the cubic root of a number.
+    /// Returns the cube root of a number.
     ///
     /// # Examples
     ///

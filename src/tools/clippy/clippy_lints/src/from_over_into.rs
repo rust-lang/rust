@@ -1,5 +1,6 @@
-use crate::utils::paths::INTO;
-use crate::utils::{match_def_path, meets_msrv, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::paths::INTO;
+use clippy_utils::{match_def_path, meets_msrv};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -60,10 +61,9 @@ impl LateLintPass<'_> for FromOverInto {
             return;
         }
 
-        let impl_def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if_chain! {
             if let hir::ItemKind::Impl{ .. } = &item.kind;
-            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
+            if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.def_id);
             if match_def_path(cx, impl_trait_ref.def_id, &INTO);
 
             then {

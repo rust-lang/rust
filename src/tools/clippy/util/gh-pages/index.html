@@ -8,6 +8,12 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/styles/github.min.css"/>
+
+    <!-- The files are not copied over into the Clippy project since they use the MPL-2.0 License -->
+    <link rel="stylesheet" href="https://rust-lang.github.io/mdBook/css/variables.css"/>
+    <link id="styleHighlight" rel="stylesheet" href="https://rust-lang.github.io/mdBook/highlight.css">
+    <link id="styleNight" rel="stylesheet" href="https://rust-lang.github.io/mdBook/tomorrow-night.css" disabled="true">
+    <link id="styleAyu" rel="stylesheet" href="https://rust-lang.github.io/mdBook/ayu-highlight.css" disabled="true">
     <style>
         blockquote { font-size: 1em; }
         [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
@@ -15,7 +21,6 @@
         .form-inline .checkbox { margin-right: 0.6em }
 
         .panel-heading { cursor: pointer; }
-        .panel-heading:hover { background-color: #eee; }
 
         .panel-title { display: flex; }
         .panel-title .label { display: inline-block; }
@@ -24,10 +29,134 @@
         .panel-title-name span { vertical-align: bottom; }
 
         .panel .panel-title-name .anchor { display: none; }
-        .panel:hover .panel-title-name .anchor { display: inline; color: #fff; }
+        .panel:hover .panel-title-name .anchor { display: inline;}
+
+    </style>
+    <style>
+        /* Expanding the mdBoom theme*/
+        .light {
+            --inline-code-bg: #f6f7f6;
+        }
+        .rust {
+            --inline-code-bg: #f6f7f6;
+        }
+        .coal {
+            --inline-code-bg: #1d1f21;
+        }
+        .navy {
+            --inline-code-bg: #1d1f21;
+        }
+        .ayu {
+            --inline-code-bg: #191f26;
+        }
+
+        /* Applying the mdBook theme */
+        .theme-icon {
+            position: absolute;
+            text-align: center;
+            width: 2em;
+            height: 2em;
+            margin: 0.7em;
+            line-height: 2em;
+            border: solid 1px var(--icons);
+            border-radius: 5px;
+            user-select: none;
+            cursor: pointer;
+        }
+        .theme-icon:hover {
+            background: var(--theme-hover);
+        }
+        .theme-choice {
+            position: absolute;
+            margin-top: calc(2em + 0.7em);
+            margin-left: 0.7em;
+            list-style: none;
+            border: 1px solid var(--theme-popup-border);
+            border-radius: 5px;
+            color: var(--fg);
+            background: var(--theme-popup-bg);
+            padding: 0 0;
+        }
+        .theme-choice > li {
+            padding: 5px 10px;
+            font-size: 0.8em;
+            user-select: none;
+            cursor: pointer;
+        }
+        .theme-choice > li:hover {
+            background: var(--theme-hover);
+        }
+
+        .alert {
+            color: var(--fg);
+            background: var(--theme-hover);
+            border: 1px solid var(--theme-popup-border);
+        }
+        .page-header {
+            border-color: var(--theme-popup-border);
+        }
+        .panel-default > .panel-heading {
+            background: var(--theme-hover);
+            color: var(--fg);
+            border: 1px solid var(--theme-popup-border);
+        }
+        .panel-default > .panel-heading:hover {
+            filter: brightness(90%);
+        }
+        .list-group-item {
+            background: 0%;
+            border: 1px solid var(--theme-popup-border);
+        }
+        .panel, pre, hr {
+            background: var(--bg);
+            border: 1px solid var(--theme-popup-border);
+        }
+
+        #filter-label, #filter-clear {
+            background: var(--searchbar-bg);
+            color: var(--searchbar-fg);
+            border-color: var(--theme-popup-border);
+            filter: brightness(95%);
+        }
+        #filter-label:hover, #filter-clear:hover {
+            filter: brightness(90%);
+        }
+        #filter-input {
+            background: var(--searchbar-bg);
+            color: var(--searchbar-fg);
+            border-color: var(--theme-popup-border);
+        }
+
+        #filter-input::-webkit-input-placeholder,
+        #filter-input::-moz-placeholder {
+            color: var(--searchbar-fg);
+            opacity: 30%;
+        }
+
+        p > code {
+            color: var(--inline-code-color);
+            background-color: var(--inline-code-bg);
+        }
+        html {
+            scrollbar-color: var(--scrollbar) var(--bg);
+        }
+        body {
+            background: var(--bg);
+            color: var(--fg);
+        }
+
     </style>
 </head>
 <body>
+    <div id="theme-icon" class="theme-icon">&#128396;</div>
+    <ul id="theme-menu" class="theme-choice" style="display: none;">
+        <li id="light">Light</li>
+        <li id="rust">Rust</li>
+        <li id="coal">Coal</li>
+        <li id="navy">Navy</li>
+        <li id="ayu">Ayu</li>
+    </ul>
+
     <div class="container" ng-app="clippy" ng-controller="lintList">
         <div class="page-header">
             <h1>ALL the Clippy Lints</h1>
@@ -49,7 +178,7 @@
             </div>
 
             <div class="panel panel-default" ng-show="data">
-                <div class="panel-body row">
+                <div class="panel-body row filter-panel">
                     <div class="col-md-6 form-inline">
                         <div class="form-group form-group-lg">
                             <p class="h4">Lint levels</p>
@@ -79,7 +208,7 @@
                             <label class="input-group-addon" id="filter-label" for="filter-input">Filter:</label>
                             <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" ng-model-options="{debounce: 50}"/>
                             <span class="input-group-btn">
-                                <button class="btn btn-default" type="button" ng-click="search = ''">
+                                <button id="filter-clear" class="btn" type="button" ng-click="search = ''">
                                     Clear
                                 </button>
                             </span>
@@ -320,6 +449,60 @@
             }
         }
     }
+
+    function setupListeners() {
+        let themeIcon = document.getElementById("theme-icon");
+        let themeMenu = document.getElementById("theme-menu");
+        themeIcon.addEventListener("click", function(e) {
+            if (themeMenu.style.display == "none") {
+                themeMenu.style.display = "block";
+            } else {
+                themeMenu.style.display = "none";
+            }
+        });
+
+        let children = themeMenu.children;
+        for (let index = 0; index < children.length; index++) {
+            let child = children[index]; 
+            child.addEventListener("click", function(e) {
+                setTheme(child.id, true);
+            });
+        }
+    }
+
+    setupListeners();
+
+    function setTheme(theme, store) {
+        let enableHighlight = false;
+        let enableNight = false;
+        let enableAyu = false;
+        
+        if (theme == "ayu") {
+            enableAyu = true;
+        } else if (theme == "coal" || theme == "navy") {
+            enableNight = true;
+        } else if (theme == "rust") {
+            enableHighlight = true;
+        } else {
+            enableHighlight = true;
+            // this makes sure that an unknown theme request gets set to a known one
+            theme = "light";
+        }
+        document.getElementsByTagName("body")[0].className = theme;
+
+        document.getElementById("styleHighlight").disabled = !enableHighlight;
+        document.getElementById("styleNight").disabled = !enableNight;
+        document.getElementById("styleAyu").disabled = !enableAyu;
+
+        if (store) {
+            try {
+                localStorage.setItem('clippy-lint-list-theme', theme);
+            } catch (e) { }
+        }
+    }
+
+    // loading the theme after the initial load
+    setTheme(localStorage.getItem('clippy-lint-list-theme'), false);
     </script>
 </body>
 </html>

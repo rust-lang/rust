@@ -10,6 +10,7 @@ note: the lint level is defined here
 LL | #![deny(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
    = note: the literal `128` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `u8` instead
 
 error: literal out of range for `f32`
   --> $DIR/lint-type-overflow2.rs:9:14

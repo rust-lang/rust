@@ -204,7 +204,8 @@ out a longer explanation of a given error.
 ## `--test`: build a test harness
 
 When compiling this crate, `rustc` will ignore your `main` function
-and instead produce a test harness.
+and instead produce a test harness. See the [Tests chapter](tests/index.md)
+for more information about tests.
 
 <a id="option-target"></a>
 ## `--target`: select a target triple to build
@@ -300,7 +301,7 @@ flag][prefer-dynamic] may be used to influence which is used.
 If the same crate name is specified with and without a path, the one with the
 path is used and the pathless flag has no effect.
 
-[extern prelude]: ../reference/items/extern-crates.html#extern-prelude
+[extern prelude]: ../reference/names/preludes.html#extern-prelude
 [prefer-dynamic]: codegen-options/index.md#prefer-dynamic
 
 <a id="option-sysroot"></a>

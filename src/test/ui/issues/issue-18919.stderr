@@ -14,7 +14,7 @@ help: you could relax the implicit `Sized` bound on `T` if it were used through 
 LL | enum Option<T> {
    |             ^ this could be changed to `T: ?Sized`...
 LL |     Some(T),
-   |          - ...if indirection was used here: `Box<T>`
+   |          - ...if indirection were used here: `Box<T>`
 
 error: aborting due to previous error
 

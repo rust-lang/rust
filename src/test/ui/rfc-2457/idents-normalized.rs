@@ -1,5 +1,4 @@
 // check-pass
-#![feature(non_ascii_idents)]
 
 struct Résumé; // ['LATIN SMALL LETTER E WITH ACUTE']
 

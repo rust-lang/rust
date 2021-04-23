@@ -1,27 +1,17 @@
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
-LL | / trait Foo<X> {
-LL | |     fn foo(&self, x: X) { }
-LL | | }
-   | |_- trait `Foo` defined here
-...
-LL |       want_hrtb::<StaticInt>()
-   |       ^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+LL |     want_hrtb::<StaticInt>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |
    = note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
-   = note: ...but `StaticInt` actually implements `Foo<&'1 isize>`, for some specific lifetime `'1`
+   = note: ...but it actually implements `Foo<&'static isize>`
 
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:30:5
    |
-LL | / trait Foo<X> {
-LL | |     fn foo(&self, x: X) { }
-LL | | }
-   | |_- trait `Foo` defined here
-...
-LL |       want_hrtb::<&'a u32>()
-   |       ^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+LL |     want_hrtb::<&'a u32>()
+   |     ^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |
    = note: `Foo<&'0 isize>` would have to be implemented for the type `&'a u32`, for any lifetime `'0`...
    = note: ...but `Foo<&'1 isize>` is actually implemented for the type `&'1 u32`, for some specific lifetime `'1`

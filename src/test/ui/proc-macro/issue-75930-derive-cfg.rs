@@ -10,10 +10,14 @@
 // (a pretty-printed struct may cause a line to start with '{' )
 // FIXME: We currently lose spans here (see issue #43081)
 
+#![no_std] // Don't load unnecessary hygiene information from std
+extern crate std;
+
 #[macro_use]
 extern crate test_macros;
 
-#[print_helper(a)]
+#[print_helper(a)] //~ WARN derive helper attribute is used before it is introduced
+                   //~| WARN this was previously accepted
 #[cfg_attr(not(FALSE), allow(dead_code))]
 #[print_attr]
 #[derive(Print)]
@@ -56,6 +60,10 @@ struct Foo<#[cfg(FALSE)] A, B> {
             #[cfg(FALSE)] bool,
             u8
         );
+
+        fn plain_removed_fn() {
+            #![cfg_attr(not(FALSE), cfg(FALSE))]
+        }
 
         0
     }],

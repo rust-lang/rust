@@ -1,5 +1,6 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{match_def_path, paths, span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_data_structures::fx::FxHashSet;
@@ -35,14 +36,16 @@ declare_clippy_lint! {
     /// `str::starts_with`, `str::ends_with` or `std::contains` or other `str`
     /// methods.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** If the same regex is going to be applied to multiple
+    /// inputs, the precomputations done by `Regex` construction can give
+    /// significantly better performance than any of the `str`-based methods.
     ///
     /// **Example:**
     /// ```ignore
     /// Regex::new("^foobar")
     /// ```
     pub TRIVIAL_REGEX,
-    style,
+    nursery,
     "trivial regular expressions"
 }
 
@@ -57,7 +60,7 @@ impl_lint_pass!(Regex => [INVALID_REGEX, TRIVIAL_REGEX]);
 impl<'tcx> LateLintPass<'tcx> for Regex {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(ref fun, ref args) = expr.kind;
+            if let ExprKind::Call(fun, args) = expr.kind;
             if let ExprKind::Path(ref qpath) = fun.kind;
             if args.len() == 1;
             if let Some(def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
@@ -131,7 +134,7 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
 
 fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
     if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) = expr.kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind;
         if let ExprKind::Array(exprs) = expr.kind;
         then {
             for expr in exprs {

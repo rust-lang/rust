@@ -1,10 +1,13 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-const-eval-field.rs:28:5
+  --> $DIR/union-const-eval-field.rs:29:5
    |
 LL |     const FIELD3: Field3 = unsafe { UNION.field3 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               __ __ __ __ __ __ __ __                         │ ░░░░░░░░
+           }
 
 error: aborting due to previous error
 

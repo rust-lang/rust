@@ -79,4 +79,13 @@ fn main() {
             println!("!")
         }
     }
+
+    if x == "hello" {
+        print!("Hello ");
+    } else {
+        #[cfg(not(roflol))]
+        if y == "world" {
+            println!("world!")
+        }
+    }
 }

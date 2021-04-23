@@ -3,6 +3,7 @@
 
 use crate::prelude::*;
 
+use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_span::symbol::sym;
 
@@ -66,13 +67,9 @@ fn codegen_inner(
         let callee_name = kind.fn_name(method.name);
         //eprintln!("Codegen allocator shim {} -> {} ({:?} -> {:?})", caller_name, callee_name, sig.params, sig.returns);
 
-        let func_id = module
-            .declare_function(&caller_name, Linkage::Export, &sig)
-            .unwrap();
+        let func_id = module.declare_function(&caller_name, Linkage::Export, &sig).unwrap();
 
-        let callee_func_id = module
-            .declare_function(&callee_name, Linkage::Import, &sig)
-            .unwrap();
+        let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
 
         let mut ctx = Context::new();
         ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig.clone());
@@ -96,11 +93,7 @@ fn codegen_inner(
             bcx.finalize();
         }
         module
-            .define_function(
-                func_id,
-                &mut ctx,
-                &mut cranelift_codegen::binemit::NullTrapSink {},
-            )
+            .define_function(func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
             .unwrap();
         unwind_context.add_function(func_id, &ctx, module.isa());
     }
@@ -114,13 +107,10 @@ fn codegen_inner(
     let callee_name = kind.fn_name(sym::oom);
     //eprintln!("Codegen allocator shim {} -> {} ({:?} -> {:?})", caller_name, callee_name, sig.params, sig.returns);
 
-    let func_id = module
-        .declare_function("__rust_alloc_error_handler", Linkage::Export, &sig)
-        .unwrap();
+    let func_id =
+        module.declare_function("__rust_alloc_error_handler", Linkage::Export, &sig).unwrap();
 
-    let callee_func_id = module
-        .declare_function(&callee_name, Linkage::Import, &sig)
-        .unwrap();
+    let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
 
     let mut ctx = Context::new();
     ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig);
@@ -143,11 +133,7 @@ fn codegen_inner(
         bcx.finalize();
     }
     module
-        .define_function(
-            func_id,
-            &mut ctx,
-            &mut cranelift_codegen::binemit::NullTrapSink {},
-        )
+        .define_function(func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
         .unwrap();
     unwind_context.add_function(func_id, &ctx, module.isa());
 }

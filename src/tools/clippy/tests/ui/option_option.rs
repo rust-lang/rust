@@ -1,6 +1,9 @@
 #![deny(clippy::option_option)]
 #![allow(clippy::unnecessary_wraps)]
 
+const C: Option<Option<i32>> = None;
+static S: Option<Option<i32>> = None;
+
 fn input(_: Option<Option<u8>>) {}
 
 fn output() -> Option<Option<u8>> {

@@ -139,7 +139,7 @@ mod stdlib {
 
     mod result {
         type A = Result;
-        //~^ ERROR missing generics for enum `std::result::Result`
+        //~^ ERROR missing generics for enum `Result`
         //~| HELP use angle brackets
 
         type B = Result<String>;

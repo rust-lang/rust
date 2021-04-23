@@ -7,8 +7,8 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItemGroup;
 use rustc_hir::GeneratorKind;
 use rustc_middle::mir::{
-    AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
+    Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
@@ -18,6 +18,7 @@ use rustc_span::{
     Span,
 };
 use rustc_target::abi::VariantIdx;
+use std::iter;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -81,12 +82,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func: Operand::Constant(box Constant { literal: ty::Const { ty: const_ty, .. }, .. }),
+            func: Operand::Constant(box Constant { literal, .. }),
             args,
             ..
         } = &terminator.kind
         {
-            if let ty::FnDef(id, _) = *const_ty.kind() {
+            if let ty::FnDef(id, _) = *literal.ty().kind() {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if self.infcx.tcx.parent(id) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
@@ -388,10 +389,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // so it's safe to call `expect_local`.
                     //
                     // We know the field exists so it's safe to call operator[] and `unwrap` here.
-                    let (&var_id, _) =
-                        self.infcx.tcx.typeck(def_id.expect_local()).closure_captures[&def_id]
-                            .get_index(field.index())
-                            .unwrap();
+                    let var_id = self
+                        .infcx
+                        .tcx
+                        .typeck(def_id.expect_local())
+                        .closure_min_captures_flattened(def_id)
+                        .nth(field.index())
+                        .unwrap()
+                        .get_root_variable();
 
                     self.infcx.tcx.hir().name(var_id).to_string()
                 }
@@ -497,7 +502,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         match ty.kind() {
             ty::Ref(
-                ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
+                ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
@@ -518,7 +523,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let region = match ty.kind() {
             ty::Ref(region, _, _) => {
                 match region {
-                    ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br })
+                    ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br, .. })
                     | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                         printer.region_highlight_mode.highlighting_bound_region(*br, counter)
                     }
@@ -568,7 +573,13 @@ pub(super) enum UseSpans<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub(super) enum FnSelfUseKind<'tcx> {
     /// A normal method call of the form `receiver.foo(a, b, c)`
-    Normal { self_arg: Ident, implicit_into_iter: bool },
+    Normal {
+        self_arg: Ident,
+        implicit_into_iter: bool,
+        /// Whether the self type of the method call has an `.as_ref()` method.
+        /// Used for better diagnostics.
+        is_option_or_result: bool,
+    },
     /// A call to `FnOnce::call_once`, desugared from `my_closure(a, b, c)`
     FnOnceCall,
     /// A call to an operator trait, desuraged from operator syntax (e.g. `a << b`)
@@ -790,6 +801,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
+        // StatementKind::FakeRead only contains a def_id if they are introduced as a result
+        // of pattern matching within a closure.
+        if let StatementKind::FakeRead(box (cause, ref place)) = stmt.kind {
+            match cause {
+                FakeReadCause::ForMatchedPlace(Some(closure_def_id))
+                | FakeReadCause::ForLet(Some(closure_def_id)) => {
+                    debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
+                    let places = &[Operand::Move(*place)];
+                    if let Some((args_span, generator_kind, var_span)) =
+                        self.closure_span(closure_def_id, moved_place, places)
+                    {
+                        return ClosureUse { generator_kind, args_span, var_span };
+                    }
+                }
+                _ => {}
+            }
+        }
+
         let normal_ret =
             if moved_place.projection.iter().any(|p| matches!(p, ProjectionElem::Downcast(..))) {
                 PatUse(stmt.source_info.span)
@@ -877,7 +906,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     fn_call_span.desugaring_kind(),
                     Some(DesugaringKind::ForLoop(ForLoopLoc::IntoIter))
                 );
-                FnSelfUseKind::Normal { self_arg, implicit_into_iter }
+                let parent_self_ty = parent
+                    .filter(|did| tcx.def_kind(*did) == rustc_hir::def::DefKind::Impl)
+                    .and_then(|did| match tcx.type_of(did).kind() {
+                        ty::Adt(def, ..) => Some(def.did),
+                        _ => None,
+                    });
+                let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
+                    tcx.is_diagnostic_item(sym::option_type, def_id)
+                        || tcx.is_diagnostic_item(sym::result_type, def_id)
+                });
+                FnSelfUseKind::Normal { self_arg, implicit_into_iter, is_option_or_result }
             });
 
             return FnSelfUse {
@@ -966,12 +1005,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for (upvar_hir_id, place) in
-                self.infcx.tcx.typeck(def_id.expect_local()).closure_captures[&def_id]
-                    .keys()
-                    .zip(places)
-            {
-                let span = self.infcx.tcx.upvars_mentioned(local_did)?[upvar_hir_id].span;
+            for (captured_place, place) in iter::zip(
+                self.infcx.tcx.typeck(def_id.expect_local()).closure_min_captures_flattened(def_id),
+                places,
+            ) {
+                let upvar_hir_id = captured_place.get_root_variable();
+                //FIXME(project-rfc-2229#8): Use better span from captured_place
+                let span = self.infcx.tcx.upvars_mentioned(local_did)?[&upvar_hir_id].span;
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
                         if target_place == place.as_ref() =>
@@ -979,10 +1019,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         debug!("closure_span: found captured local {:?}", place);
                         let body = self.infcx.tcx.hir().body(*body_id);
                         let generator_kind = body.generator_kind();
-                        let upvar_id = ty::UpvarId {
-                            var_path: ty::UpvarPath { hir_id: *upvar_hir_id },
-                            closure_expr_id: local_did,
-                        };
 
                         // If we have a more specific span available, point to that.
                         // We do this even though this span might be part of a borrow error
@@ -990,11 +1026,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // to a span that shows why the upvar is used in the closure,
                         // so a move-related span is as good as any (and potentially better,
                         // if the overall error is due to a move of the upvar).
-                        let usage_span =
-                            match self.infcx.tcx.typeck(local_did).upvar_capture(upvar_id) {
-                                ty::UpvarCapture::ByValue(Some(span)) => span,
-                                _ => span,
-                            };
+
+                        let usage_span = match captured_place.info.capture_kind {
+                            ty::UpvarCapture::ByValue(Some(span)) => span,
+                            _ => span,
+                        };
                         return Some((*args_span, generator_kind, usage_span));
                     }
                     _ => {}

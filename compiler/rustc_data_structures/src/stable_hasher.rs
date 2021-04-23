@@ -35,6 +35,7 @@ impl StableHasher {
         StableHasher { state: SipHasher128::new_with_keys(0, 0) }
     }
 
+    #[inline]
     pub fn finish<W: StableHasherResult>(self) -> W {
         W::finish(self)
     }

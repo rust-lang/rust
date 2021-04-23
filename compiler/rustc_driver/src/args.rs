@@ -3,7 +3,7 @@ use std::fmt;
 use std::fs;
 use std::io;
 
-pub fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
+fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
     if let Some(path) = arg.strip_prefix('@') {
         let file = match fs::read_to_string(path) {
             Ok(file) => file,
@@ -16,6 +16,20 @@ pub fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
     } else {
         Ok(vec![arg])
     }
+}
+
+pub fn arg_expand_all(at_args: &[String]) -> Vec<String> {
+    let mut args = Vec::new();
+    for arg in at_args {
+        match arg_expand(arg.clone()) {
+            Ok(arg) => args.extend(arg),
+            Err(err) => rustc_session::early_error(
+                rustc_session::config::ErrorOutputType::default(),
+                &format!("Failed to load argument file: {}", err),
+            ),
+        }
+    }
+    args
 }
 
 #[derive(Debug)]

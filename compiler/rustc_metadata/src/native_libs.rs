@@ -44,7 +44,8 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
         // Process all of the #[link(..)]-style arguments
         let sess = &self.tcx.sess;
-        for m in it.attrs.iter().filter(|a| sess.check_name(a, sym::link)) {
+        for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| sess.check_name(a, sym::link))
+        {
             let items = match m.meta_item_list() {
                 Some(item) => item,
                 None => continue,
@@ -53,7 +54,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 name: None,
                 kind: NativeLibKind::Unspecified,
                 cfg: None,
-                foreign_module: Some(self.tcx.hir().local_def_id(it.hir_id).to_def_id()),
+                foreign_module: Some(it.def_id.to_def_id()),
                 wasm_import_module: None,
             };
             let mut kind_specified = false;

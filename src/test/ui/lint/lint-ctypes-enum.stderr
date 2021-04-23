@@ -97,7 +97,7 @@ LL |    fn repr_rust(x: Option<Rust<num::NonZeroU8>>);
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-error: `extern` block uses type `std::result::Result<(), NonZeroI32>`, which is not FFI-safe
+error: `extern` block uses type `Result<(), NonZeroI32>`, which is not FFI-safe
   --> $DIR/lint-ctypes-enum.rs:90:20
    |
 LL |    fn no_result(x: Result<(), num::NonZeroI32>);

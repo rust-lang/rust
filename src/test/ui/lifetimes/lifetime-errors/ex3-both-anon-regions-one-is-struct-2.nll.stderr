@@ -12,7 +12,7 @@ error[E0384]: cannot assign to immutable argument `y`
   --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:4:5
    |
 LL | fn foo(mut x: Ref, y: &u32) {
-   |                    - help: make this binding mutable: `mut y`
+   |                    - help: consider making this binding mutable: `mut y`
 LL |     y = x.b;
    |     ^^^^^^^ cannot assign to immutable argument
 

@@ -26,11 +26,11 @@ error[E0063]: missing field `bat` in initializer of `Foo`
 LL |     let _ = Foo { bar: .5, baz: 42 };
    |             ^^^ missing `bat`
 
-error[E0063]: missing fields `bar`, `baz` in initializer of `Foo`
+error[E0063]: missing fields `bar` and `baz` in initializer of `Foo`
   --> $DIR/issue-52496.rs:8:13
    |
 LL |     let _ = Foo { bar.into(), bat: -1, . };
-   |             ^^^ missing `bar`, `baz`
+   |             ^^^ missing `bar` and `baz`
 
 error: aborting due to 5 previous errors
 

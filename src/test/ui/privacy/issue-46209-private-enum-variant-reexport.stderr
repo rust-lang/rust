@@ -1,44 +1,51 @@
-error: variant `JuniorGrade` is private and cannot be re-exported
-  --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:32
+error[E0364]: `JuniorGrade` is private, and cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:32
    |
 LL |     pub use self::Lieutenant::{JuniorGrade, Full};
    |                                ^^^^^^^^^^^
-...
-LL |     enum Lieutenant {
-   |     --------------- help: consider making the enum public: `pub enum Lieutenant`
+   |
+note: consider marking `JuniorGrade` as `pub` in the imported module
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:32
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                ^^^^^^^^^^^
 
-error: variant `Full` is private and cannot be re-exported
-  --> $DIR/issue-46209-private-enum-variant-reexport.rs:6:45
+error[E0364]: `Full` is private, and cannot be re-exported
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:45
+   |
+LL |     pub use self::Lieutenant::{JuniorGrade, Full};
+   |                                             ^^^^
+   |
+note: consider marking `Full` as `pub` in the imported module
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:7:45
    |
 LL |     pub use self::Lieutenant::{JuniorGrade, Full};
    |                                             ^^^^
 
-error: enum is private and its variants cannot be re-exported
-  --> $DIR/issue-46209-private-enum-variant-reexport.rs:4:13
+error: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:5:13
    |
 LL |     pub use self::Professor::*;
    |             ^^^^^^^^^^^^^^^^^^
-...
-LL |     enum Professor {
-   |     -------------- help: consider making the enum public: `pub enum Professor`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:3:8
+   |
+LL | #[deny(unused_imports)]
+   |        ^^^^^^^^^^^^^^
 
-error: enum is private and its variants cannot be re-exported
-  --> $DIR/issue-46209-private-enum-variant-reexport.rs:9:13
+error: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:10:13
    |
 LL |     pub use self::PettyOfficer::*;
    |             ^^^^^^^^^^^^^^^^^^^^^
-...
-LL |     pub(in rank) enum PettyOfficer {
-   |     ------------------------------ help: consider making the enum public: `pub enum PettyOfficer`
 
-error: enum is private and its variants cannot be re-exported
-  --> $DIR/issue-46209-private-enum-variant-reexport.rs:11:13
+error: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/issue-46209-private-enum-variant-reexport.rs:12:13
    |
 LL |     pub use self::Crewman::*;
    |             ^^^^^^^^^^^^^^^^
-...
-LL |     crate enum Crewman {
-   |     ------------------ help: consider making the enum public: `pub enum Crewman`
 
 error: aborting due to 5 previous errors
 
+For more information about this error, try `rustc --explain E0364`.

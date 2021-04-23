@@ -1,7 +1,3 @@
-#![feature(never_type)]
-#![feature(const_panic)]
-#![feature(control_flow_enum)]
-
 #[macro_use]
 extern crate bitflags;
 #[macro_use]
@@ -427,7 +423,7 @@ impl UnifyKey for FloatVid {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Decodable, Encodable)]
+#[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell

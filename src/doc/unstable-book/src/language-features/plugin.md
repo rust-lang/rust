@@ -38,7 +38,7 @@ additional checks for code style, safety, etc. Now let's write a plugin
 [`lint-plugin-test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/lint-plugin-test.rs)
 that warns about any item named `lintme`.
 
-```rust,ignore
+```rust,ignore (requires-stage-2)
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
@@ -77,7 +77,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 Then code like
 
-```rust,ignore
+```rust,ignore (requires-plugin)
 #![feature(plugin)]
 #![plugin(lint_plugin_test)]
 

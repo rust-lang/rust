@@ -1,5 +1,7 @@
 use crate::stable_hasher::{HashStable, StableHasher};
 
+use std::iter::FromIterator;
+
 /// A vector type optimized for cases where this size is usually 0 (cf. `SmallVector`).
 /// The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`,
 /// which uses only a single (null) pointer.
@@ -9,6 +11,14 @@ pub struct ThinVec<T>(Option<Box<Vec<T>>>);
 impl<T> ThinVec<T> {
     pub fn new() -> Self {
         ThinVec(None)
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, T> {
+        self.into_iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
+        self.into_iter()
     }
 }
 
@@ -46,6 +56,42 @@ impl<T> ::std::ops::DerefMut for ThinVec<T> {
     }
 }
 
+impl<T> FromIterator<T> for ThinVec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        // `Vec::from_iter()` should not allocate if the iterator is empty.
+        let vec: Vec<_> = iter.into_iter().collect();
+        if vec.is_empty() { ThinVec(None) } else { ThinVec(Some(Box::new(vec))) }
+    }
+}
+
+impl<T> IntoIterator for ThinVec<T> {
+    type Item = T;
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // This is still performant because `Vec::new()` does not allocate.
+        self.0.map_or_else(Vec::new, |ptr| *ptr).into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a ThinVec<T> {
+    type Item = &'a T;
+    type IntoIter = std::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_ref().iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut ThinVec<T> {
+    type Item = &'a mut T;
+    type IntoIter = std::slice::IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.as_mut().iter_mut()
+    }
+}
+
 impl<T> Extend<T> for ThinVec<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         match *self {
@@ -80,3 +126,6 @@ impl<T> Default for ThinVec<T> {
         Self(None)
     }
 }
+
+#[cfg(test)]
+mod tests;

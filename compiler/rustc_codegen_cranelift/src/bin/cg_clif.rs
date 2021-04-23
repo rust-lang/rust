@@ -27,13 +27,7 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
         config.opts.cg.panic = Some(PanicStrategy::Abort);
         config.opts.debugging_opts.panic_abort_tests = true;
         config.opts.maybe_sysroot = Some(config.opts.maybe_sysroot.clone().unwrap_or_else(|| {
-            std::env::current_exe()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .to_owned()
+            std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_owned()
         }));
     }
 }

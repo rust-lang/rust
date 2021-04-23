@@ -6,8 +6,8 @@ use std::io::{self, Write};
 pub struct GraphvizWriter<
     'a,
     G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes,
-    NodeContentFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
-    EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
+    NodeContentFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
+    EdgeLabelsFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
 > {
     graph: &'a G,
     is_subgraph: bool,
@@ -20,8 +20,8 @@ pub struct GraphvizWriter<
 impl<
     'a,
     G: graph::DirectedGraph + graph::WithSuccessors + graph::WithStartNode + graph::WithNumNodes,
-    NodeContentFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
-    EdgeLabelsFn: Fn(<G as rustc_data_structures::graph::DirectedGraph>::Node) -> Vec<String>,
+    NodeContentFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
+    EdgeLabelsFn: Fn(<G as graph::DirectedGraph>::Node) -> Vec<String>,
 > GraphvizWriter<'a, G, NodeContentFn, EdgeLabelsFn>
 {
     pub fn new(
@@ -33,22 +33,6 @@ impl<
         Self {
             graph,
             is_subgraph: false,
-            graphviz_name: graphviz_name.to_owned(),
-            graph_label: None,
-            node_content_fn,
-            edge_labels_fn,
-        }
-    }
-
-    pub fn new_subgraph(
-        graph: &'a G,
-        graphviz_name: &str,
-        node_content_fn: NodeContentFn,
-        edge_labels_fn: EdgeLabelsFn,
-    ) -> Self {
-        Self {
-            graph,
-            is_subgraph: true,
             graphviz_name: graphviz_name.to_owned(),
             graph_label: None,
             node_content_fn,

@@ -1,8 +1,8 @@
-error[E0599]: the method `as_deref_mut` exists for enum `std::result::Result<{integer}, _>`, but its trait bounds were not satisfied
+error[E0599]: the method `as_deref_mut` exists for enum `Result<{integer}, _>`, but its trait bounds were not satisfied
   --> $DIR/result-as_deref_mut.rs:2:31
    |
 LL |     let _result = &mut Ok(42).as_deref_mut();
-   |                               ^^^^^^^^^^^^ method cannot be called on `std::result::Result<{integer}, _>` due to unsatisfied trait bounds
+   |                               ^^^^^^^^^^^^ method cannot be called on `Result<{integer}, _>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
            `{integer}: DerefMut`

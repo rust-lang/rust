@@ -78,7 +78,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
         // Make all const parameters invariant.
         for param in generics.params.iter() {
-            if let ty::GenericParamDefKind::Const = param.kind {
+            if let ty::GenericParamDefKind::Const { .. } = param.kind {
                 variances[param.index as usize] = ty::Invariant;
             }
         }

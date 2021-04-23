@@ -13,12 +13,12 @@ error[E0308]: mismatched types
   --> $DIR/unclosed-delimiter-in-dep.rs:4:20
    |
 LL |     let _: usize = unclosed_delim_mod::new();
-   |            -----   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found enum `std::result::Result`
+   |            -----   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found enum `Result`
    |            |
    |            expected due to this
    |
    = note: expected type `usize`
-              found enum `std::result::Result<Value, ()>`
+              found enum `Result<Value, ()>`
 
 error: aborting due to 2 previous errors
 

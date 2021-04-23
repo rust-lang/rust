@@ -124,10 +124,7 @@ unsafe impl<I> TrustedRandomAccess for Cloned<I>
 where
     I: TrustedRandomAccess,
 {
-    #[inline]
-    fn may_have_side_effect() -> bool {
-        true
-    }
+    const MAY_HAVE_SIDE_EFFECT: bool = true;
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]

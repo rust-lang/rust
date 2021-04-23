@@ -10,6 +10,8 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
+#[cfg(parallel_compiler)]
+use rustc_middle::ty::tls;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::{self, CrateType};
@@ -29,11 +31,12 @@ use std::io;
 use std::lazy::SyncOnceCell;
 use std::mem;
 use std::ops::DerefMut;
+#[cfg(not(parallel_compiler))]
+use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, Once};
-#[cfg(not(parallel_compiler))]
-use std::{panic, thread};
+use std::thread;
 use tracing::info;
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
@@ -156,6 +159,28 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     scoped_thread(cfg, main_handler)
 }
 
+/// Creates a new thread and forwards information in thread locals to it.
+/// The new thread runs the deadlock handler.
+/// Must only be called when a deadlock is about to happen.
+#[cfg(parallel_compiler)]
+unsafe fn handle_deadlock() {
+    let registry = rustc_rayon_core::Registry::current();
+
+    let context = tls::get_tlv();
+    assert!(context != 0);
+    rustc_data_structures::sync::assert_sync::<tls::ImplicitCtxt<'_, '_>>();
+    let icx: &tls::ImplicitCtxt<'_, '_> = &*(context as *const tls::ImplicitCtxt<'_, '_>);
+
+    let session_globals = rustc_span::SESSION_GLOBALS.with(|sg| sg as *const _);
+    let session_globals = &*session_globals;
+    thread::spawn(move || {
+        tls::enter_context(icx, |_| {
+            rustc_span::SESSION_GLOBALS
+                .set(session_globals, || tls::with(|tcx| tcx.queries.deadlock(tcx, &registry)))
+        });
+    });
+}
+
 #[cfg(parallel_compiler)]
 pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
@@ -163,7 +188,6 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
-    use rustc_middle::ty;
     crate::callbacks::setup_callbacks();
 
     let mut config = rayon::ThreadPoolBuilder::new()
@@ -171,7 +195,7 @@ pub fn setup_callbacks_and_run_in_thread_pool_with_globals<F: FnOnce() -> R + Se
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
-        .deadlock_handler(|| unsafe { ty::query::handle_deadlock() });
+        .deadlock_handler(|| unsafe { handle_deadlock() });
 
     if let Some(size) = get_stack_size() {
         config = config.stack_size(size);
@@ -241,7 +265,7 @@ pub fn get_codegen_backend(sopts: &config::Options) -> Box<dyn CodegenBackend> {
 
         let backend = match codegen_name {
             filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
-            codegen_name => get_builtin_codegen_backend(codegen_name),
+            codegen_name => get_builtin_codegen_backend(&sopts.maybe_sysroot, codegen_name),
         };
 
         unsafe {
@@ -366,15 +390,21 @@ fn sysroot_candidates() -> Vec<PathBuf> {
     }
 }
 
-pub fn get_builtin_codegen_backend(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
+pub fn get_builtin_codegen_backend(
+    maybe_sysroot: &Option<PathBuf>,
+    backend_name: &str,
+) -> fn() -> Box<dyn CodegenBackend> {
     match backend_name {
         #[cfg(feature = "llvm")]
         "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
-        _ => get_codegen_sysroot(backend_name),
+        _ => get_codegen_sysroot(maybe_sysroot, backend_name),
     }
 }
 
-pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend> {
+pub fn get_codegen_sysroot(
+    maybe_sysroot: &Option<PathBuf>,
+    backend_name: &str,
+) -> fn() -> Box<dyn CodegenBackend> {
     // For now we only allow this function to be called once as it'll dlopen a
     // few things, which seems to work best if we only do that once. In
     // general this assertion never trips due to the once guard in `get_codegen_backend`,
@@ -389,8 +419,9 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
     let target = session::config::host_triple();
     let sysroot_candidates = sysroot_candidates();
 
-    let sysroot = sysroot_candidates
+    let sysroot = maybe_sysroot
         .iter()
+        .chain(sysroot_candidates.iter())
         .map(|sysroot| {
             let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
             sysroot.join(libdir).with_file_name("codegen-backends")
@@ -426,8 +457,10 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
 
     let mut file: Option<PathBuf> = None;
 
-    let expected_name =
-        format!("rustc_codegen_{}-{}", backend_name, release_str().expect("CFG_RELEASE"));
+    let expected_names = &[
+        format!("rustc_codegen_{}-{}", backend_name, release_str().expect("CFG_RELEASE")),
+        format!("rustc_codegen_{}", backend_name),
+    ];
     for entry in d.filter_map(|e| e.ok()) {
         let path = entry.path();
         let filename = match path.file_name().and_then(|s| s.to_str()) {
@@ -438,7 +471,7 @@ pub fn get_codegen_sysroot(backend_name: &str) -> fn() -> Box<dyn CodegenBackend
             continue;
         }
         let name = &filename[DLL_PREFIX.len()..filename.len() - DLL_SUFFIX.len()];
-        if name != expected_name {
+        if !expected_names.iter().any(|expected| expected == name) {
             continue;
         }
         if let Some(ref prev) = file {
@@ -670,16 +703,42 @@ pub fn build_output_filenames(
     }
 }
 
-// Note: Also used by librustdoc, see PR #43348. Consider moving this struct elsewhere.
-//
-// FIXME: Currently the `everybody_loops` transformation is not applied to:
-//  * `const fn`, due to issue #43636 that `loop` is not supported for const evaluation. We are
-//    waiting for miri to fix that.
-//  * `impl Trait`, due to issue #43869 that functions returning impl Trait cannot be diverging.
-//    Solving this may require `!` to implement every trait, which relies on the an even more
-//    ambitious form of the closed RFC #1637. See also [#34511].
-//
-// [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
+#[cfg(not(target_os = "linux"))]
+pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::rename(src, dst)
+}
+
+/// This function attempts to bypass the auto_da_alloc heuristic implemented by some filesystems
+/// such as btrfs and ext4. When renaming over a file that already exists then they will "helpfully"
+/// write back the source file before committing the rename in case a developer forgot some of
+/// the fsyncs in the open/write/fsync(file)/rename/fsync(dir) dance for atomic file updates.
+///
+/// To avoid triggering this heuristic we delete the destination first, if it exists.
+/// The cost of an extra syscall is much lower than getting descheduled for the sync IO.
+#[cfg(target_os = "linux")]
+pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
+    let _ = std::fs::remove_file(dst);
+    std::fs::rename(src, dst)
+}
+
+/// Replaces function bodies with `loop {}` (an infinite loop). This gets rid of
+/// all semantic errors in the body while still satisfying the return type,
+/// except in certain cases, see below for more.
+///
+/// This pass is known as `everybody_loops`. Very punny.
+///
+/// As of March 2021, `everybody_loops` is only used for the
+/// `-Z unpretty=everybody_loops` debugging option.
+///
+/// FIXME: Currently the `everybody_loops` transformation is not applied to:
+///  * `const fn`; support could be added, but hasn't. Originally `const fn`
+///    was skipped due to issue #43636 that `loop` was not supported for
+///    const evaluation.
+///  * `impl Trait`, due to issue #43869 that functions returning impl Trait cannot be diverging.
+///    Solving this may require `!` to implement every trait, which relies on the an even more
+///    ambitious form of the closed RFC #1637. See also [#34511].
+///
+/// [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
 pub struct ReplaceBodyWithLoop<'a, 'b> {
     within_static_or_const: bool,
     nested_blocks: Option<Vec<ast::Block>>,

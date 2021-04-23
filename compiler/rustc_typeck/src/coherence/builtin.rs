@@ -38,8 +38,7 @@ impl<'tcx> Checker<'tcx> {
         F: FnMut(TyCtxt<'tcx>, LocalDefId),
     {
         if Some(self.trait_def_id) == trait_def_id {
-            for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
-                let impl_def_id = self.tcx.hir().local_def_id(impl_id);
+            for &impl_def_id in self.tcx.hir().trait_impls(self.trait_def_id) {
                 f(self.tcx, impl_def_id);
             }
         }
@@ -247,7 +246,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     ))
                     .emit();
                 } else {
-                    let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+                    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
                     for field in coerced_fields {
                         let predicate = predicate_for_trait_def(
@@ -507,7 +506,7 @@ pub fn coerce_unsized_info(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedI
             }
         };
 
-        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_hir_id);

@@ -1,0 +1,3 @@
+goto: file://|DOC_PATH|/index.html
+click: ".srclink"
+assert: (".line-numbers", 1)

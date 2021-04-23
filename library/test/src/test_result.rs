@@ -24,8 +24,6 @@ pub enum TestResult {
     TrTimedFail,
 }
 
-unsafe impl Send for TestResult {}
-
 /// Creates a `TestResult` depending on the raw result of test execution
 /// and associated data.
 pub fn calc_result<'a>(

@@ -21,7 +21,6 @@
 #![feature(negative_impls)]
 #![feature(nll)]
 #![feature(min_specialization)]
-#![feature(option_expect_none)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -46,6 +45,8 @@ use def_id::{CrateNum, DefId, LOCAL_CRATE};
 pub mod lev_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
+
+pub mod crate_disambiguator;
 
 pub mod symbol;
 pub use symbol::{sym, Symbol};
@@ -509,11 +510,10 @@ impl Span {
     /// items can be used (that is, a macro marked with
     /// `#[allow_internal_unstable]`).
     pub fn allows_unstable(&self, feature: Symbol) -> bool {
-        self.ctxt().outer_expn_data().allow_internal_unstable.map_or(false, |features| {
-            features
-                .iter()
-                .any(|&f| f == feature || f == sym::allow_internal_unstable_backcompat_hack)
-        })
+        self.ctxt()
+            .outer_expn_data()
+            .allow_internal_unstable
+            .map_or(false, |features| features.iter().any(|&f| f == feature))
     }
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.
@@ -1037,10 +1037,6 @@ pub enum ExternalSourceKind {
 }
 
 impl ExternalSource {
-    pub fn is_absent(&self) -> bool {
-        !matches!(self, ExternalSource::Foreign { kind: ExternalSourceKind::Present(_), .. })
-    }
-
     pub fn get_source(&self) -> Option<&Lrc<String>> {
         match self {
             ExternalSource::Foreign { kind: ExternalSourceKind::Present(ref src), .. } => Some(src),
@@ -1433,9 +1429,6 @@ impl SourceFile {
         self.src.is_none()
     }
 
-    pub fn byte_length(&self) -> u32 {
-        self.end_pos.0 - self.start_pos.0
-    }
     pub fn count_lines(&self) -> usize {
         self.lines.len()
     }
@@ -1873,10 +1866,6 @@ pub trait HashStableContext {
     fn expn_id_cache() -> &'static LocalKey<ExpnIdCache>;
     fn hash_crate_num(&mut self, _: CrateNum, hasher: &mut StableHasher);
     fn hash_spans(&self) -> bool;
-    fn byte_pos_to_line_and_col(
-        &mut self,
-        byte: BytePos,
-    ) -> Option<(Lrc<SourceFile>, usize, BytePos)>;
     fn span_data_to_lines_and_cols(
         &mut self,
         span: &SpanData,
@@ -1905,9 +1894,10 @@ where
             return;
         }
 
+        self.ctxt().hash_stable(ctx, hasher);
+
         if self.is_dummy() {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
-            self.ctxt().hash_stable(ctx, hasher);
             return;
         }
 
@@ -1920,7 +1910,6 @@ where
             Some(pos) => pos,
             None => {
                 Hash::hash(&TAG_INVALID_SPAN, hasher);
-                span.ctxt.hash_stable(ctx, hasher);
                 return;
             }
         };
@@ -1947,7 +1936,6 @@ where
         let len = (span.hi - span.lo).0;
         Hash::hash(&col_line, hasher);
         Hash::hash(&len, hasher);
-        span.ctxt.hash_stable(ctx, hasher);
     }
 }
 
@@ -2000,7 +1988,8 @@ impl<CTX: HashStableContext> HashStable<CTX> for ExpnId {
                 if cache.len() < new_len {
                     cache.resize(new_len, None);
                 }
-                cache[index].replace(sub_hash).expect_none("Cache slot was filled");
+                let prev = cache[index].replace(sub_hash);
+                assert_eq!(prev, None, "Cache slot was filled");
             });
             sub_hash.hash_stable(ctx, hasher);
         }

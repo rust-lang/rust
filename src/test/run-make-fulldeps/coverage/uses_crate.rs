@@ -1,5 +1,5 @@
 #![allow(unused_assignments, unused_variables)]
-
+// compile-flags: -C opt-level=3 # validates coverage now works with optimizations
 extern crate used_crate;
 
 fn main() {

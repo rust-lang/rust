@@ -31,7 +31,7 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 rustc_apfloat = { path = "../rustc_apfloat" }
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 
 [dev-dependencies]
 coverage_test_macros = { path = "src/transform/coverage/test_macros" }

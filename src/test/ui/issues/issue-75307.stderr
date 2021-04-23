@@ -1,8 +1,8 @@
 error: invalid reference to positional arguments 1 and 2 (there is 1 argument)
-  --> $DIR/issue-75307.rs:2:13
+  --> $DIR/issue-75307.rs:2:17
    |
 LL |     format!(r"{}{}{}", named_arg=1);
-   |             ^^^^^^^^^
+   |                 ^^^^
    |
    = note: positional arguments are zero-based
 

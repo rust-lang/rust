@@ -32,7 +32,7 @@ $ rustdoc src/lib.rs
 This will create a new directory, `doc`, with a website inside! In our case,
 the main page is located in `doc/lib/index.html`. If you open that up in
 a web browser, you will see a page with a search bar, and "Crate lib" at the
-top, with no contents. 
+top, with no contents.
 
 ## Configuring rustdoc
 
@@ -89,18 +89,18 @@ dependency=<path>/docs/target/debug/deps
 You can see this with `cargo doc --verbose`.
 
 It generates the correct `--crate-name` for us, as well as pointing to
-`src/lib.rs`. But what about those other arguments? 
- - `-o` controls the *o*utput of our docs. Instead of a top-level 
- `doc` directory, notice that Cargo puts generated documentation under 
+`src/lib.rs`. But what about those other arguments?
+ - `-o` controls the *o*utput of our docs. Instead of a top-level
+ `doc` directory, notice that Cargo puts generated documentation under
  `target`. That is the idiomatic place for generated files in Cargo projects.
- - `-L` flag helps rustdoc find the dependencies your code relies on. 
+ - `-L` flag helps rustdoc find the dependencies your code relies on.
  If our project used dependencies, we would get documentation for them as well!
 
 ## Outer and inner documentation
 
 The `///` syntax is used to document the item present after it.
 That's why it is called an outer documentation.
-There is another syntax: `//!`, which is used to document the 
+There is another syntax: `//!`, which is used to document the
 item it is present inside. It is called an inner documentation.
 It is often used when documenting the entire crate,
 because nothing comes before it: it is the root of the crate.

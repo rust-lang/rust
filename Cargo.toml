@@ -45,6 +45,8 @@ exclude = [
   # not all `Cargo.toml` files are available, so we exclude the `x` binary,
   # so it can be invoked before the current checkout is set up.
   "src/tools/x",
+  # stdarch has its own Cargo workspace
+  "library/stdarch",
 ]
 
 [profile.release.package.compiler_builtins]
@@ -88,6 +90,7 @@ object.debug = 0
 # vendored copy.
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "src/tools/cargo" }
+cargo-util = { path = "src/tools/cargo/crates/cargo-util" }
 
 [patch."https://github.com/rust-lang/rustfmt"]
 # Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
@@ -105,12 +108,6 @@ rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }
 rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
 rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
-
-# This crate's integration with libstd is a bit wonky, so we use a submodule
-# instead of a crates.io dependency. Make sure everything else in the repo is
-# also using the submodule, however, so we can avoid duplicate copies of the
-# source code for this crate.
-backtrace = { path = "library/backtrace" }
 
 [patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }

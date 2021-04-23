@@ -74,6 +74,7 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
     s.bound_impl(
         quote!(::rustc_data_structures::stable_hasher::HashStable<__CTX>),
         quote! {
+            #[inline]
             fn hash_stable(
                 &self,
                 __hcx: &mut __CTX,
@@ -119,6 +120,7 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
             >
         ),
         quote! {
+            #[inline]
             fn hash_stable(
                 &self,
                 __hcx: &mut ::rustc_middle::ich::StableHashingContext<'__ctx>,

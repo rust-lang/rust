@@ -8,7 +8,7 @@
 // aux-build:helper.rs
 // gate-test-default_alloc_error_handler
 
-#![feature(start, rustc_private, new_uninit, panic_info_message)]
+#![feature(start, rustc_private, new_uninit, panic_info_message, lang_items)]
 #![feature(default_alloc_error_handler)]
 #![no_std]
 
@@ -70,6 +70,13 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
         libc::exit(0)
     }
 }
+
+// Because we are compiling this code with `-C panic=abort`, this wouldn't normally be needed.
+// However, `core` and `alloc` are both compiled with `-C panic=unwind`, which means that functions
+// in these libaries will refer to `rust_eh_personality` if LLVM can not *prove* the contents won't
+// unwind. So, for this test case we will define the symbol.
+#[lang = "eh_personality"]
+extern fn rust_eh_personality() {}
 
 #[derive(Debug)]
 struct Page([[u64; 32]; 16]);

@@ -16,4 +16,12 @@ fn main() {
     let _ = Box::new(());
     let _ = Droppable;
     let _ = Some(Droppable);
+
+    // no lint for reference
+    let _ = droppable_ref();
+}
+
+#[must_use]
+fn droppable_ref() -> &'static mut Droppable {
+    unimplemented!()
 }

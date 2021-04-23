@@ -83,5 +83,29 @@ note: consider initializing the variable with `C { i: vec![1], ..Default::defaul
 LL |     let mut a: C = C::default();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> $DIR/field_reassign_with_default.rs:142:5
+   |
+LL |     a.i = true;
+   |     ^^^^^^^^^^^
+   |
+note: consider initializing the variable with `Wrapper::<bool> { i: true }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:141:5
+   |
+LL |     let mut a: Wrapper<bool> = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: field assignment outside of initializer for an instance created with Default::default()
+  --> $DIR/field_reassign_with_default.rs:145:5
+   |
+LL |     a.i = 42;
+   |     ^^^^^^^^^
+   |
+note: consider initializing the variable with `WrapperMulti::<i32, i64> { i: 42, ..Default::default() }` and removing relevant reassignments
+  --> $DIR/field_reassign_with_default.rs:144:5
+   |
+LL |     let mut a: WrapperMulti<i32, i64> = Default::default();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
 

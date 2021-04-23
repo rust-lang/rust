@@ -1,0 +1,23 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/bound_reduction2.rs:3:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/bound_reduction2.rs:18:46
+   |
+LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
+   |                                              ^^^^^^^^^^^^^
+   |
+note: used non-generic type `<T as TraitWithAssoc>::Assoc` for generic parameter
+  --> $DIR/bound_reduction2.rs:12:10
+   |
+LL | type Foo<V> = impl Trait<V>;
+   |          ^
+
+error: aborting due to previous error; 1 warning emitted
+

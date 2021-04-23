@@ -1,0 +1,15 @@
+warning: external crate `bar` unused in `extern_loc_raw`: remove the dependency or add `use bar as _;`
+  --> $DIR/extern-loc-raw.rs:7:1
+   |
+LL | #![warn(unused_crate_dependencies)]
+   | ^
+   |
+note: the lint level is defined here
+  --> $DIR/extern-loc-raw.rs:7:9
+   |
+LL | #![warn(unused_crate_dependencies)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: remove unnecessary dependency `bar` at `in-the-test-file`
+
+warning: 1 warning emitted
+

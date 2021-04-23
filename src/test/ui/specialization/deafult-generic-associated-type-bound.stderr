@@ -28,8 +28,8 @@ LL |     default type U<'a> = &'a T;
    = note: required because of the requirements on the impl of `PartialEq` for `&'a T`
 help: consider further restricting this bound
    |
-LL | impl<T: 'static + PartialEq> X for T {
-   |                 ^^^^^^^^^^^
+LL | impl<T: 'static + std::cmp::PartialEq> X for T {
+   |                 ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 2 warnings emitted
 

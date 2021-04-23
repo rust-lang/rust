@@ -34,6 +34,7 @@ impl AlwaysLiveLocals {
 impl std::ops::Deref for AlwaysLiveLocals {
     type Target = BitSet<Local>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }

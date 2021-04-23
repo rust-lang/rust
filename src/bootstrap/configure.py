@@ -51,7 +51,7 @@ o("option-checking", None, "complain about unrecognized options in this configur
 o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
 o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")
 o("vendor", "build.vendor", "enable usage of vendored Rust crates")
-o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, lsan, msan, tsan)")
+o("sanitizers", "build.sanitizers", "build the sanitizer runtimes (asan, lsan, msan, tsan, hwasan)")
 o("dist-src", "rust.dist-src", "when building tarballs enables building a source tarball")
 o("cargo-native-static", "build.cargo-native-static", "static native libraries in cargo")
 o("profiler", "build.profiler", "build the profiler runtime")
@@ -439,7 +439,12 @@ def configure_section(lines, config):
             lines[i] = "{} = {}".format(key, to_toml(value))
             break
         if not found:
-            raise RuntimeError("failed to find config line for {}".format(key))
+            # These are used by rpm, but aren't accepted by x.py.
+            # Give a warning that they're ignored, but not a hard error.
+            if key in ["infodir", "localstatedir"]:
+                print("warning: {} will be ignored".format(key))
+            else:
+                raise RuntimeError("failed to find config line for {}".format(key))
 
 
 for section_key in config:

@@ -80,14 +80,14 @@ impl<'tcx> MirPass<'tcx> for SimplifyComparisonIntegral {
                 // we convert the move in the comparison statement to a copy.
 
                 // unwrap is safe as we know this statement is an assign
-                let box (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
+                let (_, rhs) = bb.statements[opt.bin_op_stmt_idx].kind.as_assign_mut().unwrap();
 
                 use Operand::*;
                 match rhs {
-                    Rvalue::BinaryOp(_, ref mut left @ Move(_), Constant(_)) => {
+                    Rvalue::BinaryOp(_, box (ref mut left @ Move(_), Constant(_))) => {
                         *left = Copy(opt.to_switch_on);
                     }
-                    Rvalue::BinaryOp(_, Constant(_), ref mut right @ Move(_)) => {
+                    Rvalue::BinaryOp(_, box (Constant(_), ref mut right @ Move(_))) => {
                         *right = Copy(opt.to_switch_on);
                     }
                     _ => (),
@@ -166,7 +166,10 @@ impl<'a, 'tcx> OptimizationFinder<'a, 'tcx> {
                             if *lhs == place_switched_on =>
                         {
                             match rhs {
-                                Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), left, right) => {
+                                Rvalue::BinaryOp(
+                                    op @ (BinOp::Eq | BinOp::Ne),
+                                    box (left, right),
+                                ) => {
                                     let (branch_value_scalar, branch_value_ty, to_switch_on) =
                                         find_branch_value_info(left, right)?;
 
@@ -202,12 +205,12 @@ fn find_branch_value_info<'tcx>(
     match (left, right) {
         (Constant(branch_value), Copy(to_switch_on) | Move(to_switch_on))
         | (Copy(to_switch_on) | Move(to_switch_on), Constant(branch_value)) => {
-            let branch_value_ty = branch_value.literal.ty;
+            let branch_value_ty = branch_value.literal.ty();
             // we only want to apply this optimization if we are matching on integrals (and chars), as it is not possible to switch on floats
             if !branch_value_ty.is_integral() && !branch_value_ty.is_char() {
                 return None;
             };
-            let branch_value_scalar = branch_value.literal.val.try_to_scalar()?;
+            let branch_value_scalar = branch_value.literal.try_to_scalar()?;
             Some((branch_value_scalar, branch_value_ty, *to_switch_on))
         }
         _ => None,

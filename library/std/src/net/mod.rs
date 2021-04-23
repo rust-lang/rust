@@ -88,6 +88,6 @@ where
         }
     }
     Err(last_err.unwrap_or_else(|| {
-        Error::new(ErrorKind::InvalidInput, "could not resolve to any addresses")
+        Error::new_const(ErrorKind::InvalidInput, &"could not resolve to any addresses")
     }))
 }

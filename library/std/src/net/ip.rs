@@ -67,7 +67,9 @@ pub enum IpAddr {
 ///
 /// `Ipv4Addr` provides a [`FromStr`] implementation. The four octets are in decimal
 /// notation, divided by `.` (this is called "dot-decimal notation").
+/// Notably, octal numbers and hexadecimal numbers are not allowed per [IETF RFC 6943].
 ///
+/// [IETF RFC 6943]: https://tools.ietf.org/html/rfc6943#section-3.1.1
 /// [`FromStr`]: crate::str::FromStr
 ///
 /// # Examples
@@ -332,6 +334,8 @@ impl Ipv4Addr {
 
     /// An IPv4 address representing an unspecified address: 0.0.0.0
     ///
+    /// This corresponds to the constant `INADDR_ANY` in other languages.
+    ///
     /// # Examples
     ///
     /// ```
@@ -340,6 +344,7 @@ impl Ipv4Addr {
     /// let addr = Ipv4Addr::UNSPECIFIED;
     /// assert_eq!(addr, Ipv4Addr::new(0, 0, 0, 0));
     /// ```
+    #[doc(alias = "INADDR_ANY")]
     #[stable(feature = "ip_constructors", since = "1.30.0")]
     pub const UNSPECIFIED: Self = Ipv4Addr::new(0, 0, 0, 0);
 
@@ -991,6 +996,7 @@ impl Ord for Ipv4Addr {
 }
 
 impl IntoInner<c::in_addr> for Ipv4Addr {
+    #[inline]
     fn into_inner(self) -> c::in_addr {
         self.inner
     }
@@ -1798,11 +1804,13 @@ impl Ord for Ipv6Addr {
 }
 
 impl AsInner<c::in6_addr> for Ipv6Addr {
+    #[inline]
     fn as_inner(&self) -> &c::in6_addr {
         &self.inner
     }
 }
 impl FromInner<c::in6_addr> for Ipv6Addr {
+    #[inline]
     fn from_inner(addr: c::in6_addr) -> Ipv6Addr {
         Ipv6Addr { inner: addr }
     }

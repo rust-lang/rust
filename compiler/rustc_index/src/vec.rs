@@ -111,6 +111,7 @@ macro_rules! newtype_index {
         }
 
         impl Clone for $type {
+            #[inline]
             fn clone(&self) -> Self {
                 *self
             }
@@ -123,7 +124,8 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const fn from_usize(value: usize) -> Self {
-                assert!(value <= ($max as usize));
+                // FIXME: replace with `assert!(value <= ($max as usize));` once `const_panic` is stable
+                [()][(value > ($max as usize)) as usize];
                 unsafe {
                     Self::from_u32_unchecked(value as u32)
                 }
@@ -131,7 +133,8 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const fn from_u32(value: u32) -> Self {
-                assert!(value <= $max);
+                // FIXME: replace with `assert!(value <= $max);` once `const_panic` is stable
+                [()][(value > $max) as usize];
                 unsafe {
                     Self::from_u32_unchecked(value)
                 }
@@ -694,9 +697,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
         IndexVec { raw: self.raw, _marker: PhantomData }
     }
-}
 
-impl<I: Idx, T: Clone> IndexVec<I, T> {
     /// Grows the index vector so that it contains an entry for
     /// `elem`; if that is already true, then has no
     /// effect. Otherwise, inserts new values as needed by invoking
@@ -710,14 +711,16 @@ impl<I: Idx, T: Clone> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        self.raw.resize(new_len, value)
-    }
-
-    #[inline]
     pub fn resize_to_elem(&mut self, elem: I, fill_value: impl FnMut() -> T) {
         let min_new_len = elem.index() + 1;
         self.raw.resize_with(min_new_len, fill_value);
+    }
+}
+
+impl<I: Idx, T: Clone> IndexVec<I, T> {
+    #[inline]
+    pub fn resize(&mut self, new_len: usize, value: T) {
+        self.raw.resize(new_len, value)
     }
 }
 

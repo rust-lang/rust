@@ -106,7 +106,7 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
                     Ok(0) => return Ok(len), // EOF reached
                     Ok(bytes_read) => {
                         assert!(bytes_read <= spare_cap.len());
-                        // Safety: The initializer contract guarantees that either it or `read`
+                        // SAFETY: The initializer contract guarantees that either it or `read`
                         // will have initialized these bytes. And we just checked that the number
                         // of bytes is within the buffer capacity.
                         unsafe { buf.set_len(buf.len() + bytes_read) };

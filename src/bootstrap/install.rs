@@ -29,7 +29,7 @@ fn install_sh(
     let prefix = default_path(&builder.config.prefix, "/usr/local");
     let sysconfdir = prefix.join(default_path(&builder.config.sysconfdir, "/etc"));
     let datadir = prefix.join(default_path(&builder.config.datadir, "share"));
-    let docdir = prefix.join(default_path(&builder.config.docdir, "share/doc"));
+    let docdir = prefix.join(default_path(&builder.config.docdir, "share/doc/rust"));
     let mandir = prefix.join(default_path(&builder.config.mandir, "share/man"));
     let libdir = prefix.join(default_path(&builder.config.libdir, "lib"));
     let bindir = prefix.join(&builder.config.bindir); // Default in config.rs
@@ -53,7 +53,7 @@ fn install_sh(
 }
 
 fn default_path(config: &Option<PathBuf>, default: &str) -> PathBuf {
-    PathBuf::from(config.as_ref().cloned().unwrap_or_else(|| PathBuf::from(default)))
+    config.as_ref().cloned().unwrap_or_else(|| PathBuf::from(default))
 }
 
 fn prepare_dir(mut path: PathBuf) -> String {
@@ -187,6 +187,22 @@ install!((self, builder, _config),
         } else {
             builder.info(
                 &format!("skipping Install Rustfmt stage{} ({})", self.compiler.stage, self.target),
+            );
+        }
+    };
+    RustDemangler, "rust-demangler", Self::should_build(_config), only_hosts: true, {
+        // Note: Even though `should_build` may return true for `extended` default tools,
+        // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
+        // is also true, or the `tools` array explicitly includes "rust-demangler".
+        if let Some(tarball) = builder.ensure(dist::RustDemangler {
+            compiler: self.compiler,
+            target: self.target
+        }) {
+            install_sh(builder, "rust-demangler", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            builder.info(
+                &format!("skipping Install RustDemangler stage{} ({})",
+                         self.compiler.stage, self.target),
             );
         }
     };

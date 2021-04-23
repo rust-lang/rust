@@ -44,10 +44,12 @@ impl EarlyProps {
         let mut props = EarlyProps::default();
         let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
         let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
+        let has_asm_support = util::has_asm_support(&config.target);
         let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
         let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
+        let has_hwasan = util::HWASAN_SUPPORTED_TARGETS.contains(&&*config.target);
 
         iter_header(testfile, None, rdr, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -72,6 +74,10 @@ impl EarlyProps {
                 if config.run_clang_based_tests_with.is_none()
                     && config.parse_needs_matching_clang(ln)
                 {
+                    props.ignore = true;
+                }
+
+                if !has_asm_support && config.parse_name_directive(ln, "needs-asm-support") {
                     props.ignore = true;
                 }
 
@@ -101,6 +107,10 @@ impl EarlyProps {
                     props.ignore = true;
                 }
 
+                if !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress") {
+                    props.ignore = true;
+                }
+
                 if config.target == "wasm32-unknown-unknown" && config.parse_check_run_results(ln) {
                     props.ignore = true;
                 }
@@ -126,9 +136,7 @@ impl EarlyProps {
                 props.aux_crate.push(ac);
             }
 
-            if let Some(r) = config.parse_revisions(ln) {
-                props.revisions.extend(r);
-            }
+            config.parse_and_update_revisions(ln, &mut props.revisions);
 
             props.should_fail = props.should_fail || config.parse_name_directive(ln, "should-fail");
         });
@@ -333,6 +341,8 @@ pub struct TestProps {
     pub assembly_output: Option<String>,
     // If true, the test is expected to ICE
     pub should_ice: bool,
+    // If true, the stderr is expected to be different across bit-widths.
+    pub stderr_per_bitwidth: bool,
 }
 
 impl TestProps {
@@ -372,6 +382,7 @@ impl TestProps {
             rustfix_only_machine_applicable: false,
             assembly_output: None,
             should_ice: false,
+            stderr_per_bitwidth: false,
         }
     }
 
@@ -419,9 +430,7 @@ impl TestProps {
                     self.compile_flags.push(format!("--edition={}", edition));
                 }
 
-                if let Some(r) = config.parse_revisions(ln) {
-                    self.revisions.extend(r);
-                }
+                config.parse_and_update_revisions(ln, &mut self.revisions);
 
                 if self.run_flags.is_none() {
                     self.run_flags = config.parse_run_flags(ln);
@@ -537,6 +546,10 @@ impl TestProps {
 
                 if self.assembly_output.is_none() {
                     self.assembly_output = config.parse_assembly_output(ln);
+                }
+
+                if !self.stderr_per_bitwidth {
+                    self.stderr_per_bitwidth = config.parse_stderr_per_bitwidth(ln);
                 }
             });
         }
@@ -696,8 +709,8 @@ impl Config {
         self.parse_name_value_directive(line, "aux-crate").map(|r| {
             let mut parts = r.trim().splitn(2, '=');
             (
-                parts.next().expect("aux-crate name").to_string(),
-                parts.next().expect("aux-crate value").to_string(),
+                parts.next().expect("missing aux-crate name (e.g. log=log.rs)").to_string(),
+                parts.next().expect("missing aux-crate value (e.g. log=log.rs)").to_string(),
             )
         })
     }
@@ -706,9 +719,16 @@ impl Config {
         self.parse_name_value_directive(line, "compile-flags")
     }
 
-    fn parse_revisions(&self, line: &str) -> Option<Vec<String>> {
-        self.parse_name_value_directive(line, "revisions")
-            .map(|r| r.split_whitespace().map(|t| t.to_string()).collect())
+    fn parse_and_update_revisions(&self, line: &str, existing: &mut Vec<String>) {
+        if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
+            let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
+            for revision in raw.split_whitespace().map(|r| r.to_string()) {
+                if !duplicates.insert(revision.clone()) {
+                    panic!("Duplicate revision: `{}` in line `{}`", revision, raw);
+                }
+                existing.push(revision);
+            }
+        }
     }
 
     fn parse_run_flags(&self, line: &str) -> Option<String> {
@@ -772,6 +792,10 @@ impl Config {
 
     fn parse_ignore_pass(&self, line: &str) -> bool {
         self.parse_name_directive(line, "ignore-pass")
+    }
+
+    fn parse_stderr_per_bitwidth(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "stderr-per-bitwidth")
     }
 
     fn parse_assembly_output(&self, line: &str) -> Option<String> {
@@ -957,7 +981,11 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
 }
 
 pub fn extract_llvm_version(version: &str) -> Option<u32> {
-    let version_without_suffix = version.trim_end_matches("git").split('-').next().unwrap();
+    let pat = |c: char| !c.is_ascii_digit() && c != '.';
+    let version_without_suffix = match version.find(pat) {
+        Some(pos) => &version[..pos],
+        None => version,
+    };
     let components: Vec<u32> = version_without_suffix
         .split('.')
         .map(|s| s.parse().expect("Malformed version component"))

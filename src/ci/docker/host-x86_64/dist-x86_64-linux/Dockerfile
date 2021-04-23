@@ -68,11 +68,13 @@ RUN ./build-binutils.sh
 COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
 RUN ./build-gcc.sh && apt-get remove -y gcc g++
 
-# Debian 6 has Python 2.6 by default, but LLVM needs 2.7+
 COPY host-x86_64/dist-x86_64-linux/build-python.sh /tmp/
-RUN ./build-python.sh
+# Build Python 2.7 needed for Clang 10.
+RUN ./build-python.sh 2.7.12
+# Build Python 3 needed for LLVM 12.
+RUN ./build-python.sh 3.9.1
 
-# LLVM needs cmake 3.4.3 or higher, and is planning to raise to 3.13.4.
+# LLVM needs cmake 3.13.4 or higher.
 COPY host-x86_64/dist-x86_64-linux/build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 

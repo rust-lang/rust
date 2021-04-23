@@ -1,0 +1,25 @@
+[package]
+name = "lintcheck"
+version = "0.0.1"
+authors = ["The Rust Clippy Developers"]
+description = "tool to monitor impact of changes in Clippys lints on a part of the ecosystem"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust-clippy"
+categories = ["development-tools"]
+edition = "2018"
+publish = false
+
+[dependencies]
+clap = "2.33"
+flate2 = {version = "1.0.19"}
+fs_extra = {version = "1.2.0"}
+rayon = {version = "1.5.0"}
+serde = {version = "1.0", features = ["derive"]}
+serde_json = {version = "1.0"}
+tar = {version = "0.4.30"}
+toml = {version = "0.5"}
+ureq = {version = "2.0.0-rc3"}
+
+[features]
+deny-warnings = []

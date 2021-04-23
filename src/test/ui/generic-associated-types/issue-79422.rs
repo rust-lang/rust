@@ -19,7 +19,7 @@ impl<'a, T> RefCont<'a, T> for Box<T> {
 
 trait MapLike<K, V> {
     type VRefCont<'a>: RefCont<'a, V>;
-      //~^ ERROR missing generics
+    //~^ ERROR missing generics
     fn get<'a>(&'a self, key: &K) -> Option<Self::VRefCont<'a>>;
 }
 
@@ -42,6 +42,5 @@ impl<K, V: Default> MapLike<K, V> for Source {
 fn main() {
     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
-      //~^ ERROR the trait
-      //~^^^ ERROR the trait
+    //~^^ ERROR type mismatch resolving
 }

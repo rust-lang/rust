@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::match_def_path;
 use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind};
@@ -84,7 +85,7 @@ fn match_ordering_def_path(cx: &LateContext<'_>, did: DefId, orderings: &[&str])
 
 fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
+        if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind;
         let method = method_path.ident.name.as_str();
         if type_is_atomic(cx, &args[0]);
         if method == "load" || method == "store";
@@ -119,7 +120,7 @@ fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn check_memory_fence(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let ExprKind::Call(ref func, ref args) = expr.kind;
+        if let ExprKind::Call(func, args) = expr.kind;
         if let ExprKind::Path(ref func_qpath) = func.kind;
         if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
         if ["fence", "compiler_fence"]
@@ -151,7 +152,7 @@ fn opt_ordering_defid(cx: &LateContext<'_>, ord_arg: &Expr<'_>) -> Option<DefId>
 
 fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
-        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
+        if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind;
         let method = method_path.ident.name.as_str();
         if type_is_atomic(cx, &args[0]);
         if method == "compare_exchange" || method == "compare_exchange_weak" || method == "fetch_update";

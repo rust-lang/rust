@@ -296,11 +296,6 @@ fn fat_val_map(n: usize) -> BTreeMap<usize, [usize; FAT]> {
     (0..n).map(|i| (i, [i; FAT])).collect::<BTreeMap<_, _>>()
 }
 
-// The returned map has large keys and values.
-fn fat_map(n: usize) -> BTreeMap<[usize; FAT], [usize; FAT]> {
-    (0..n).map(|i| ([i; FAT], [i; FAT])).collect::<BTreeMap<_, _>>()
-}
-
 #[bench]
 pub fn clone_slim_100(b: &mut Bencher) {
     let src = slim_map(100);
@@ -507,77 +502,6 @@ pub fn clone_fat_val_100_and_remove_half(b: &mut Bencher) {
         let mut map = src.clone();
         for i in (0..100).step_by(2) {
             let v = map.remove(&i);
-            debug_assert!(v.is_some());
-        }
-        assert_eq!(map.len(), 100 / 2);
-        map
-    })
-}
-
-#[bench]
-pub fn clone_fat_100(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| src.clone())
-}
-
-#[bench]
-pub fn clone_fat_100_and_clear(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| src.clone().clear())
-}
-
-#[bench]
-pub fn clone_fat_100_and_drain_all(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| src.clone().drain_filter(|_, _| true).count())
-}
-
-#[bench]
-pub fn clone_fat_100_and_drain_half(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| {
-        let mut map = src.clone();
-        assert_eq!(map.drain_filter(|i, _| i[0] % 2 == 0).count(), 100 / 2);
-        assert_eq!(map.len(), 100 / 2);
-    })
-}
-
-#[bench]
-pub fn clone_fat_100_and_into_iter(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| src.clone().into_iter().count())
-}
-
-#[bench]
-pub fn clone_fat_100_and_pop_all(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| {
-        let mut map = src.clone();
-        while map.pop_first().is_some() {}
-        map
-    });
-}
-
-#[bench]
-pub fn clone_fat_100_and_remove_all(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| {
-        let mut map = src.clone();
-        while let Some(elt) = map.iter().map(|(&i, _)| i).next() {
-            let v = map.remove(&elt);
-            debug_assert!(v.is_some());
-        }
-        map
-    });
-}
-
-#[bench]
-pub fn clone_fat_100_and_remove_half(b: &mut Bencher) {
-    let src = fat_map(100);
-    b.iter(|| {
-        let mut map = src.clone();
-        for i in (0..100).step_by(2) {
-            let v = map.remove(&[i; FAT]);
             debug_assert!(v.is_some());
         }
         assert_eq!(map.len(), 100 / 2);

@@ -78,6 +78,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         | c::ERROR_IPSEC_IKE_TIMED_OUT
         | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
         | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return ErrorKind::TimedOut,
+        c::ERROR_CALL_NOT_IMPLEMENTED => return ErrorKind::Unsupported,
         _ => {}
     }
 
@@ -130,9 +131,9 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
         let mut maybe_result: Vec<u16> = s.encode_wide().collect();
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::Error::new(
+            return Err(crate::io::Error::new_const(
                 ErrorKind::InvalidInput,
-                "strings passed to WinAPI cannot contain NULs",
+                &"strings passed to WinAPI cannot contain NULs",
             ));
         }
         maybe_result.push(0);

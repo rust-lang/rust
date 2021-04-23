@@ -14,9 +14,11 @@ crate const COLLECT_TRAIT_IMPLS: Pass = Pass {
     description: "retrieves trait impls for items in the crate",
 };
 
-crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
-    let mut synth = SyntheticImplCollector::new(cx);
-    let mut krate = cx.sess().time("collect_synthetic_impls", || synth.fold_crate(krate));
+crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    let (mut krate, synth_impls) = cx.sess().time("collect_synthetic_impls", || {
+        let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
+        (synth.fold_crate(krate), synth.impls)
+    });
 
     let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
 
@@ -44,13 +46,10 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
                 // FIXME(eddyb) is this `doc(hidden)` check needed?
                 if !cx.tcx.get_attrs(def_id).lists(sym::doc).has_word(sym::hidden) {
-                    let self_ty = cx.tcx.type_of(def_id);
-                    let impls = get_auto_trait_and_blanket_impls(cx, self_ty, def_id);
-                    let mut renderinfo = cx.renderinfo.borrow_mut();
-
-                    new_items.extend(impls.filter(|i| renderinfo.inlined.insert(i.def_id)));
+                    let impls = get_auto_trait_and_blanket_impls(cx, def_id);
+                    new_items.extend(impls.filter(|i| cx.inlined.insert(i.def_id)));
                 }
-            })
+            });
         }
     }
 
@@ -58,8 +57,8 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
     // doesn't work with it anyway, so pull them from the HIR map instead
     let mut extra_attrs = Vec::new();
     for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
-        for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
-            let impl_did = cx.tcx.hir().local_def_id(impl_node).to_def_id();
+        for &impl_did in cx.tcx.hir().trait_impls(trait_did) {
+            let impl_did = impl_did.to_def_id();
             cx.tcx.sess.prof.generic_activity("build_local_trait_impl").run(|| {
                 let mut parent = cx.tcx.parent(impl_did);
                 while let Some(did) = parent {
@@ -132,17 +131,13 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         }
     }
 
-    let items = if let Some(ref mut it) = krate.module {
-        if let ModuleItem(Module { ref mut items, .. }) = *it.kind {
-            items
-        } else {
-            panic!("collect-trait-impls can't run");
-        }
+    let items = if let ModuleItem(Module { ref mut items, .. }) = *krate.module.kind {
+        items
     } else {
         panic!("collect-trait-impls can't run");
     };
 
-    items.extend(synth.impls);
+    items.extend(synth_impls);
     for it in new_items.drain(..) {
         if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
             if !(cleaner.keep_impl(for_)
@@ -160,14 +155,8 @@ crate fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 }
 
 struct SyntheticImplCollector<'a, 'tcx> {
-    cx: &'a DocContext<'tcx>,
+    cx: &'a mut DocContext<'tcx>,
     impls: Vec<Item>,
-}
-
-impl<'a, 'tcx> SyntheticImplCollector<'a, 'tcx> {
-    fn new(cx: &'a DocContext<'tcx>) -> Self {
-        SyntheticImplCollector { cx, impls: Vec::new() }
-    }
 }
 
 impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
@@ -175,11 +164,7 @@ impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
             if !self.cx.tcx.get_attrs(i.def_id).lists(sym::doc).has_word(sym::hidden) {
-                self.impls.extend(get_auto_trait_and_blanket_impls(
-                    self.cx,
-                    self.cx.tcx.type_of(i.def_id),
-                    i.def_id,
-                ));
+                self.impls.extend(get_auto_trait_and_blanket_impls(self.cx, i.def_id));
             }
         }
 

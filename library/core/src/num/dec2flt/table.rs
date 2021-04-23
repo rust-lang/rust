@@ -5,7 +5,7 @@ pub const MIN_E: i16 = -305;
 pub const MAX_E: i16 = 305;
 
 #[rustfmt::skip]
-pub const POWERS: ([u64; 611], [i16; 611]) = (
+pub static POWERS: ([u64; 611], [i16; 611]) = (
     [
         0xe0b62e2929aba83c,
         0x8c71dcd9ba0b4926,

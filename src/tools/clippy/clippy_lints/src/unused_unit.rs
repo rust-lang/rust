@@ -1,3 +1,5 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::position_before_rarrow;
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_ast::visit::FnKind;
@@ -6,8 +8,6 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::BytePos;
-
-use crate::utils::{position_before_rarrow, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unit (`()`) expressions that can be removed.
@@ -45,7 +45,7 @@ impl EarlyLintPass for UnusedUnit {
 
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         if_chain! {
-            if let Some(ref stmt) = block.stmts.last();
+            if let Some(stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.kind;
             if is_unit_expr(expr) && !stmt.span.from_expansion();
             then {

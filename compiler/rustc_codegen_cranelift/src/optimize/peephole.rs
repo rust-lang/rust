@@ -10,10 +10,7 @@ use cranelift_frontend::FunctionBuilder;
 pub(crate) fn maybe_unwrap_bint(bcx: &mut FunctionBuilder<'_>, arg: Value) -> Value {
     if let ValueDef::Result(arg_inst, 0) = bcx.func.dfg.value_def(arg) {
         match bcx.func.dfg[arg_inst] {
-            InstructionData::Unary {
-                opcode: Opcode::Bint,
-                arg,
-            } => arg,
+            InstructionData::Unary { opcode: Opcode::Bint, arg } => arg,
             _ => arg,
         }
     } else {
@@ -54,12 +51,7 @@ pub(crate) fn make_branchable_value(bcx: &mut FunctionBuilder<'_>, arg: Value) -
 
         match bcx.func.dfg[arg_inst] {
             // This is the lowering of Rvalue::Not
-            InstructionData::Load {
-                opcode: Opcode::Load,
-                arg: ptr,
-                flags,
-                offset,
-            } => {
+            InstructionData::Load { opcode: Opcode::Load, arg: ptr, flags, offset } => {
                 // Using `load.i8 + uextend.i32` would legalize to `uload8 + ireduce.i8 +
                 // uextend.i32`. Just `uload8` is much faster.
                 match bcx.func.dfg.ctrl_typevar(arg_inst) {
@@ -95,20 +87,14 @@ pub(crate) fn maybe_known_branch_taken(
     };
 
     match bcx.func.dfg[arg_inst] {
-        InstructionData::UnaryBool {
-            opcode: Opcode::Bconst,
-            imm,
-        } => {
+        InstructionData::UnaryBool { opcode: Opcode::Bconst, imm } => {
             if test_zero {
                 Some(!imm)
             } else {
                 Some(imm)
             }
         }
-        InstructionData::UnaryImm {
-            opcode: Opcode::Iconst,
-            imm,
-        } => {
+        InstructionData::UnaryImm { opcode: Opcode::Iconst, imm } => {
             if test_zero {
                 Some(imm.bits() == 0)
             } else {

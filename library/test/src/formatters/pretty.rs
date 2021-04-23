@@ -222,10 +222,6 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
-        if self.is_multithreaded {
-            self.write_test_name(desc)?;
-        }
-
         self.write_plain(&format!(
             "test {} has been running for over {} seconds\n",
             desc.name,

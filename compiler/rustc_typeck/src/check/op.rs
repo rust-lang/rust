@@ -681,7 +681,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
                     match actual.kind() {
-                        Uint(_) if op == hir::UnOp::UnNeg => {
+                        Uint(_) if op == hir::UnOp::Neg => {
                             err.note("unsigned values cannot be negated");
 
                             if let hir::ExprKind::Unary(
@@ -711,9 +711,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         Ref(_, ref lty, _) if *lty.kind() == Str => {}
                         _ => {
                             let missing_trait = match op {
-                                hir::UnOp::UnNeg => "std::ops::Neg",
-                                hir::UnOp::UnNot => "std::ops::Not",
-                                hir::UnOp::UnDeref => "std::ops::UnDerf",
+                                hir::UnOp::Neg => "std::ops::Neg",
+                                hir::UnOp::Not => "std::ops::Not",
+                                hir::UnOp::Deref => "std::ops::UnDerf",
                             };
                             suggest_impl_missing(&mut err, operand_ty, &missing_trait);
                         }
@@ -782,9 +782,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span_bug!(span, "&& and || are not overloadable")
                 }
             }
-        } else if let Op::Unary(hir::UnOp::UnNot, _) = op {
+        } else if let Op::Unary(hir::UnOp::Not, _) = op {
             (sym::not, lang.not_trait())
-        } else if let Op::Unary(hir::UnOp::UnNeg, _) = op {
+        } else if let Op::Unary(hir::UnOp::Neg, _) = op {
             (sym::neg, lang.neg_trait())
         } else {
             bug!("lookup_op_method: op not supported: {:?}", op)

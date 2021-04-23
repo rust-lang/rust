@@ -100,7 +100,7 @@ pub struct LocalKey<T: 'static> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: 'static> fmt::Debug for LocalKey<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("LocalKey { .. }")
+        f.debug_struct("LocalKey").finish_non_exhaustive()
     }
 }
 
@@ -133,6 +133,15 @@ macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
 
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const { $init:expr }; $($rest:tt)*) => (
+        $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
+        $crate::thread_local!($($rest)*);
+    );
+
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = const { $init:expr }) => (
+        $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, const $init);
+    );
+
     // process multiple declarations
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
         $crate::__thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
@@ -151,6 +160,101 @@ macro_rules! thread_local {
 #[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
 #[allow_internal_unsafe]
 macro_rules! __thread_local_inner {
+    // used to generate the `LocalKey` value for const-initialized thread locals
+    (@key $t:ty, const $init:expr) => {{
+        unsafe fn __getit() -> $crate::option::Option<&'static $t> {
+            const _REQUIRE_UNSTABLE: () = $crate::thread::require_unstable_const_init_thread_local();
+
+            // wasm without atomics maps directly to `static mut`, and dtors
+            // aren't implemented because thread dtors aren't really a thing
+            // on wasm right now
+            //
+            // FIXME(#84224) this should come after the `target_thread_local`
+            // block.
+            #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+            {
+                static mut VAL: $t = $init;
+                Some(&VAL)
+            }
+
+            // If the platform has support for `#[thread_local]`, use it.
+            #[cfg(all(
+                target_thread_local,
+                not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+            ))]
+            {
+                // If a dtor isn't needed we can do something "very raw" and
+                // just get going.
+                if !$crate::mem::needs_drop::<$t>() {
+                    #[thread_local]
+                    static mut VAL: $t = $init;
+                    unsafe {
+                        return Some(&VAL)
+                    }
+                }
+
+                #[thread_local]
+                static mut VAL: $t = $init;
+                // 0 == dtor not registered
+                // 1 == dtor registered, dtor not run
+                // 2 == dtor registered and is running or has run
+                #[thread_local]
+                static mut STATE: u8 = 0;
+
+                unsafe extern "C" fn destroy(ptr: *mut u8) {
+                    let ptr = ptr as *mut $t;
+
+                    unsafe {
+                        debug_assert_eq!(STATE, 1);
+                        STATE = 2;
+                        $crate::ptr::drop_in_place(ptr);
+                    }
+                }
+
+                unsafe {
+                    match STATE {
+                        // 0 == we haven't registered a destructor, so do
+                        //   so now.
+                        0 => {
+                            $crate::thread::__FastLocalKeyInner::<$t>::register_dtor(
+                                $crate::ptr::addr_of_mut!(VAL) as *mut u8,
+                                destroy,
+                            );
+                            STATE = 1;
+                            Some(&VAL)
+                        }
+                        // 1 == the destructor is registered and the value
+                        //   is valid, so return the pointer.
+                        1 => Some(&VAL),
+                        // otherwise the destructor has already run, so we
+                        // can't give access.
+                        _ => None,
+                    }
+                }
+            }
+
+            // On platforms without `#[thread_local]` we fall back to the
+            // same implementation as below for os thread locals.
+            #[cfg(all(
+                not(target_thread_local),
+                not(all(target_arch = "wasm32", not(target_feature = "atomics"))),
+            ))]
+            {
+                #[inline]
+                const fn __init() -> $t { $init }
+                static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
+                    $crate::thread::__OsLocalKeyInner::new();
+                #[allow(unused_unsafe)]
+                unsafe { __KEY.get(__init) }
+            }
+        }
+
+        unsafe {
+            $crate::thread::LocalKey::new(__getit)
+        }
+    }};
+
+    // used to generate the `LocalKey` value for `thread_local!`
     (@key $t:ty, $init:expr) => {
         {
             #[inline]
@@ -188,9 +292,9 @@ macro_rules! __thread_local_inner {
             }
         }
     };
-    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $($init:tt)*) => {
         $(#[$attr])* $vis const $name: $crate::thread::LocalKey<$t> =
-            $crate::__thread_local_inner!(@key $t, $init);
+            $crate::__thread_local_inner!(@key $t, $($init)*);
     }
 }
 
@@ -368,7 +472,7 @@ pub mod statik {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 
@@ -433,13 +537,22 @@ pub mod fast {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 
     impl<T> Key<T> {
         pub const fn new() -> Key<T> {
             Key { inner: LazyKeyInner::new(), dtor_state: Cell::new(DtorState::Unregistered) }
+        }
+
+        // note that this is just a publically-callable function only for the
+        // const-initialized form of thread locals, basically a way to call the
+        // free `register_dtor` function defined elsewhere in libstd.
+        pub unsafe fn register_dtor(a: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+            unsafe {
+                register_dtor(a, dtor);
+            }
         }
 
         pub unsafe fn get<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
@@ -538,7 +651,7 @@ pub mod os {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 

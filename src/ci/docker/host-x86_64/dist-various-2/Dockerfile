@@ -39,16 +39,16 @@ ENV \
     AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
     CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
     CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
-    AR_x86_64_sun_solaris=x86_64-sun-solaris2.10-ar \
-    CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
-    CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++ \
+    AR_x86_64_pc_solaris=x86_64-pc-solaris2.10-ar \
+    CC_x86_64_pc_solaris=x86_64-pc-solaris2.10-gcc \
+    CXX_x86_64_pc_solaris=x86_64-pc-solaris2.10-g++ \
     CC_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-8 \
     CXX_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-g++-8 \
     AR_x86_64_fortanix_unknown_sgx=ar \
-    CC_x86_64_fortanix_unknown_sgx=x86_64-fortanix-unknown-sgx-clang-11 \
-    CFLAGS_x86_64_fortanix_unknown_sgx="-mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
-    CXX_x86_64_fortanix_unknown_sgx=x86_64-fortanix-unknown-sgx-clang++-11 \
-    CXXFLAGS_x86_64_fortanix_unknown_sgx="-mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
+    CC_x86_64_fortanix_unknown_sgx=clang-11 \
+    CFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
+    CXX_x86_64_fortanix_unknown_sgx=clang++-11 \
+    CXXFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
     AR_i686_unknown_freebsd=i686-unknown-freebsd11-ar \
     CC_i686_unknown_freebsd=i686-unknown-freebsd11-clang \
     CXX_i686_unknown_freebsd=i686-unknown-freebsd11-clang++ \
@@ -71,8 +71,6 @@ COPY host-x86_64/dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386
 RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
-COPY host-x86_64/dist-various-2/x86_64-fortanix-unknown-sgx-clang-wrap.sh /usr/bin/x86_64-fortanix-unknown-sgx-clang-11
-RUN ln -s /usr/bin/x86_64-fortanix-unknown-sgx-clang-11 /usr/bin/x86_64-fortanix-unknown-sgx-clang++-11
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
 COPY host-x86_64/dist-various-2/build-wasi-toolchain.sh /tmp/
@@ -100,7 +98,7 @@ ENV TARGETS=$TARGETS,aarch64-fuchsia
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
-ENV TARGETS=$TARGETS,x86_64-sun-solaris
+ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
 ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda

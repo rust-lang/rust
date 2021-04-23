@@ -14,7 +14,7 @@ error[E0071]: expected struct, variant or union type, found associated type
   --> $DIR/struct-path-associated-type.rs:14:13
    |
 LL |     let z = T::A::<u8> {};
-   |             ^^^^^^^^^^ not a struct
+   |             ^^^^ not a struct
 
 error[E0071]: expected struct, variant or union type, found associated type
   --> $DIR/struct-path-associated-type.rs:18:9
@@ -38,7 +38,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:33:13
    |
 LL |     let z = S::A::<u8> {};
-   |             ^^^^^^^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
+   |             ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error[E0223]: ambiguous associated type
   --> $DIR/struct-path-associated-type.rs:35:9

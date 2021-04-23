@@ -80,6 +80,11 @@ declare_features! (
      Some("subsumed by `#![feature(allocator_internals)]`")),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None, None),
+    /// Allows `#[doc(spotlight)]`.
+    /// The attribute was renamed to `#[doc(notable_trait)]`
+    /// and the feature to `doc_notable_trait`.
+    (removed, doc_spotlight, "1.22.0", Some(45040), None,
+     Some("renamed to `doc_notable_trait`")),
     (removed, proc_macro_mod, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
@@ -106,7 +111,7 @@ declare_features! (
      Some("subsumed by `.await` syntax")),
     /// Allows defining `existential type`s.
     (removed, existential_type, "1.38.0", Some(63063), None,
-     Some("removed in favor of `#![feature(type_alias_impl_trait)]`")),
+     Some("removed in favor of `#![feature(min_type_alias_impl_trait)]`")),
     /// Allows using the macros:
     /// + `__diagnostic_used`
     /// + `__register_diagnostic`
@@ -123,6 +128,12 @@ declare_features! (
     /// Allows comparing raw pointers during const eval.
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
      Some("cannot be allowed in const eval in any meaningful way")),
+    /// Allows using the `#[link_args]` attribute.
+    (removed, link_args, "1.53.0", Some(29596), None,
+     Some("removed in favor of using `-C link-arg=ARG` on command line, \
+           which is available from cargo build scripts with `cargo:rustc-link-arg` now")),
+    /// Allows using `#[main]` to replace the entrypoint `#[lang = "start"]` calls.
+    (removed, main, "1.53.0", Some(29634), None, None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

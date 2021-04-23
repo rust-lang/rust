@@ -1,6 +1,6 @@
 // Check that DestinationPropagation does not propagate an assignment to a function argument
 // (doing so can break usages of the original argument value)
-
+// compile-flags: -Zunsound-mir-opts
 fn dummy(x: u8) -> u8 {
     x
 }

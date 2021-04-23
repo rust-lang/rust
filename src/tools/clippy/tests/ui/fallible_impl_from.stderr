@@ -13,7 +13,7 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::fallible_impl_from)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
   --> $DIR/fallible_impl_from.rs:7:13
    |
@@ -32,7 +32,7 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
   --> $DIR/fallible_impl_from.rs:29:13
    |
@@ -52,7 +52,7 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
   --> $DIR/fallible_impl_from.rs:37:17
    |
@@ -79,7 +79,7 @@ LL | |     }
 LL | | }
    | |_^
    |
-   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail.
+   = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
   --> $DIR/fallible_impl_from.rs:55:12
    |

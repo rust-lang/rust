@@ -204,6 +204,13 @@ pub use self::local::os::Key as __OsLocalKeyInner;
 #[doc(hidden)]
 pub use self::local::statik::Key as __StaticLocalKeyInner;
 
+// This is only used to make thread locals with `const { .. }` initialization
+// expressions unstable. If and/or when that syntax is stabilized with thread
+// locals this will simply be removed.
+#[doc(hidden)]
+#[unstable(feature = "thread_local_const_init", issue = "84223")]
+pub const fn require_unstable_const_init_thread_local() {}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
 ////////////////////////////////////////////////////////////////////////////////
@@ -775,6 +782,15 @@ pub fn sleep_ms(ms: u32) {
 /// Platforms which do not support nanosecond precision for sleeping will
 /// have `dur` rounded up to the nearest granularity of time they can sleep for.
 ///
+/// Currently, specifying a zero duration on Unix platforms returns immediately
+/// without invoking the underlying [`nanosleep`] syscall, whereas on Windows
+/// platforms the underlying [`Sleep`] syscall is always invoked.
+/// If the intention is to yield the current time-slice you may want to use
+/// [`yield_now`] instead.
+///
+/// [`nanosleep`]: https://linux.die.net/man/2/nanosleep
+/// [`Sleep`]: https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleep
+///
 /// # Examples
 ///
 /// ```no_run
@@ -1167,7 +1183,10 @@ impl Thread {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Thread").field("id", &self.id()).field("name", &self.name()).finish()
+        f.debug_struct("Thread")
+            .field("id", &self.id())
+            .field("name", &self.name())
+            .finish_non_exhaustive()
     }
 }
 
@@ -1394,7 +1413,7 @@ impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T> fmt::Debug for JoinHandle<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("JoinHandle { .. }")
+        f.debug_struct("JoinHandle").finish_non_exhaustive()
     }
 }
 

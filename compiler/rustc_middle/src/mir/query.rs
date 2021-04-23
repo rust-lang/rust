@@ -23,17 +23,9 @@ pub enum UnsafetyViolationKind {
     General,
     /// Permitted both in `const fn`s and regular `fn`s.
     GeneralAndConstFn,
-    /// Borrow of packed field.
-    /// Has to be handled as a lint for backwards compatibility.
-    BorrowPacked,
     /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
     /// Has to be handled as a lint for backwards compatibility.
-    /// Should stay gated under `#![feature(unsafe_block_in_unsafe_fn)]`.
     UnsafeFn,
-    /// Borrow of packed field in an `unsafe fn` but outside an `unsafe` block.
-    /// Has to be handled as a lint for backwards compatibility.
-    /// Should stay gated under `#![feature(unsafe_block_in_unsafe_fn)]`.
-    UnsafeFnBorrowPacked,
 }
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -435,18 +427,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.promoted_mir_of_const_arg((did, param_did))
         } else {
             self.promoted_mir(def.did)
-        }
-    }
-
-    #[inline]
-    pub fn optimized_mir_or_const_arg_mir(
-        self,
-        def: ty::WithOptConstParam<DefId>,
-    ) -> &'tcx Body<'tcx> {
-        if let Some((did, param_did)) = def.as_const_arg() {
-            self.mir_for_ctfe_of_const_arg((did, param_did))
-        } else {
-            self.optimized_mir(def.did)
         }
     }
 

@@ -10,7 +10,7 @@
 //! fixpoint solution to your dataflow problem, or implement the `ResultsVisitor` interface and use
 //! `visit_results`. The following example uses the `ResultsCursor` approach.
 //!
-//! ```ignore(cross-crate-imports)
+//! ```ignore (cross-crate-imports)
 //! use rustc_mir::dataflow::Analysis; // Makes `into_engine` available.
 //!
 //! fn do_my_analysis(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
@@ -211,7 +211,7 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     /// default impl and the one for all `A: GenKillAnalysis` will do the right thing.
     /// Its purpose is to enable method chaining like so:
     ///
-    /// ```ignore(cross-crate-imports)
+    /// ```ignore (cross-crate-imports)
     /// let results = MyAnalysis::new(tcx, body)
     ///     .into_engine(tcx, body, def_id)
     ///     .iterate_to_fixpoint()
@@ -510,7 +510,7 @@ impl EffectIndex {
         }
     }
 
-    /// Returns `true` if the effect at `self` should be applied eariler than the effect at `other`
+    /// Returns `true` if the effect at `self` should be applied earlier than the effect at `other`
     /// in forward order.
     fn precedes_in_forward_order(self, other: Self) -> bool {
         let ord = self

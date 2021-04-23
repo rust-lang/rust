@@ -5,7 +5,8 @@
     clippy::never_loop,
     clippy::no_effect,
     clippy::unused_unit,
-    clippy::zero_divided_by_zero
+    clippy::zero_divided_by_zero,
+    clippy::branches_sharing_code
 )]
 
 struct Foo {

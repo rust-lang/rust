@@ -85,6 +85,10 @@ pub struct Dominators<N: Idx> {
 }
 
 impl<Node: Idx> Dominators<Node> {
+    pub fn dummy() -> Self {
+        Self { post_order_rank: IndexVec::new(), immediate_dominators: IndexVec::new() }
+    }
+
     pub fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }

@@ -233,7 +233,6 @@ impl<I: Iterator> Peekable<I> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(peekable_peek_mut)]
     /// let mut iter = [1, 2, 3].iter().peekable();
     ///
     /// // Like with `peek()`, we can see into the future without advancing the iterator.
@@ -251,7 +250,7 @@ impl<I: Iterator> Peekable<I> {
     /// assert_eq!(iter.collect::<Vec<_>>(), vec![&5, &3]);
     /// ```
     #[inline]
-    #[unstable(feature = "peekable_peek_mut", issue = "78302")]
+    #[stable(feature = "peekable_peek_mut", since = "1.53.0")]
     pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
         let iter = &mut self.iter;
         self.peeked.get_or_insert_with(|| iter.next()).as_mut()
@@ -265,7 +264,6 @@ impl<I: Iterator> Peekable<I> {
     /// # Examples
     /// Consume a number if it's equal to 0.
     /// ```
-    /// #![feature(peekable_next_if)]
     /// let mut iter = (0..5).peekable();
     /// // The first item of the iterator is 0; consume it.
     /// assert_eq!(iter.next_if(|&x| x == 0), Some(0));
@@ -277,14 +275,13 @@ impl<I: Iterator> Peekable<I> {
     ///
     /// Consume any number less than 10.
     /// ```
-    /// #![feature(peekable_next_if)]
     /// let mut iter = (1..20).peekable();
     /// // Consume all numbers less than 10
     /// while iter.next_if(|&x| x < 10).is_some() {}
     /// // The next value returned will be 10
     /// assert_eq!(iter.next(), Some(10));
     /// ```
-    #[unstable(feature = "peekable_next_if", issue = "72480")]
+    #[stable(feature = "peekable_next_if", since = "1.51.0")]
     pub fn next_if(&mut self, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item> {
         match self.next() {
             Some(matched) if func(&matched) => Some(matched),
@@ -302,7 +299,6 @@ impl<I: Iterator> Peekable<I> {
     /// # Example
     /// Consume a number if it's equal to 0.
     /// ```
-    /// #![feature(peekable_next_if)]
     /// let mut iter = (0..5).peekable();
     /// // The first item of the iterator is 0; consume it.
     /// assert_eq!(iter.next_if_eq(&0), Some(0));
@@ -311,7 +307,7 @@ impl<I: Iterator> Peekable<I> {
     /// // `next_if_eq` saves the value of the next item if it was not equal to `expected`.
     /// assert_eq!(iter.next(), Some(1));
     /// ```
-    #[unstable(feature = "peekable_next_if", issue = "72480")]
+    #[stable(feature = "peekable_next_if", since = "1.51.0")]
     pub fn next_if_eq<T>(&mut self, expected: &T) -> Option<I::Item>
     where
         T: ?Sized,

@@ -1,6 +1,5 @@
 // check-pass
 
-// ignore-tidy-linelength
 
 // Issue #21633: reject duplicate loop labels in function bodies.
 //

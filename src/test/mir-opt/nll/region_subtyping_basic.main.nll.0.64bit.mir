@@ -46,7 +46,7 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // bb0[0]: scope 0 at $DIR/region-subtyping-basic.rs:17:9: 17:14
         _1 = [const Const(Value(Scalar(0x0000000000000001)): usize), const Const(Value(Scalar(0x0000000000000002)): usize), const Const(Value(Scalar(0x0000000000000003)): usize)]; // bb0[1]: scope 0 at $DIR/region-subtyping-basic.rs:17:17: 17:26
-        FakeRead(ForLet, _1);            // bb0[2]: scope 0 at $DIR/region-subtyping-basic.rs:17:9: 17:14
+        FakeRead(ForLet(None), _1);      // bb0[2]: scope 0 at $DIR/region-subtyping-basic.rs:17:9: 17:14
         StorageLive(_2);                 // bb0[3]: scope 1 at $DIR/region-subtyping-basic.rs:18:9: 18:10
         StorageLive(_3);                 // bb0[4]: scope 1 at $DIR/region-subtyping-basic.rs:18:16: 18:17
         _3 = const Const(Value(Scalar(0x0000000000000000)): usize); // bb0[5]: scope 1 at $DIR/region-subtyping-basic.rs:18:16: 18:17
@@ -57,10 +57,10 @@ fn main() -> () {
 
     bb1: {
         _2 = &'_#3r _1[_3];              // bb1[0]: scope 1 at $DIR/region-subtyping-basic.rs:18:13: 18:18
-        FakeRead(ForLet, _2);            // bb1[1]: scope 1 at $DIR/region-subtyping-basic.rs:18:9: 18:10
+        FakeRead(ForLet(None), _2);      // bb1[1]: scope 1 at $DIR/region-subtyping-basic.rs:18:9: 18:10
         StorageLive(_6);                 // bb1[2]: scope 2 at $DIR/region-subtyping-basic.rs:19:9: 19:10
         _6 = _2;                         // bb1[3]: scope 2 at $DIR/region-subtyping-basic.rs:19:13: 19:14
-        FakeRead(ForLet, _6);            // bb1[4]: scope 2 at $DIR/region-subtyping-basic.rs:19:9: 19:10
+        FakeRead(ForLet(None), _6);      // bb1[4]: scope 2 at $DIR/region-subtyping-basic.rs:19:9: 19:10
         StorageLive(_7);                 // bb1[5]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
         _7 = const Const(Value(Scalar(0x01)): bool); // bb1[6]: scope 3 at $DIR/region-subtyping-basic.rs:20:8: 20:12
         switchInt(move _7) -> [Const(Value(Scalar(0x00)): bool): bb3, otherwise: bb2]; // bb1[7]: scope 3 at $DIR/region-subtyping-basic.rs:20:5: 24:6

@@ -7,7 +7,7 @@ LL |     V1(i32),
 LL |     Enum::V1 { x }
    |     --------   ^ field does not exist
    |     |
-   |     `Enum::V1` is a tuple variant, use the appropriate syntax: `Enum::V1(/* fields */)`
+   |     help: `Enum::V1` is a tuple variant, use the appropriate syntax: `Enum::V1(/* fields */)`
 
 error: aborting due to previous error
 

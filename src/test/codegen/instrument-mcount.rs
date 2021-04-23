@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+//
 // compile-flags: -Z instrument-mcount
 
 #![crate_type = "lib"]

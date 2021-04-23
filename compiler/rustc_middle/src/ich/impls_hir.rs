@@ -55,8 +55,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
         let item_ids_hash = item_ids
             .iter()
             .map(|id| {
-                let (def_path_hash, local_id) = id.id.to_stable_hash_key(hcx);
-                debug_assert_eq!(local_id, hir::ItemLocalId::from_u32(0));
+                let def_path_hash = id.to_stable_hash_key(hcx);
                 def_path_hash.0
             })
             .fold(Fingerprint::ZERO, |a, b| a.combine_commutative(b));
@@ -67,11 +66,10 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
 
     fn hash_hir_expr(&mut self, expr: &hir::Expr<'_>, hasher: &mut StableHasher) {
         self.while_hashing_hir_bodies(true, |hcx| {
-            let hir::Expr { hir_id: _, ref span, ref kind, ref attrs } = *expr;
+            let hir::Expr { hir_id: _, ref span, ref kind } = *expr;
 
             span.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
-            attrs.hash_stable(hcx, hasher);
         })
     }
 

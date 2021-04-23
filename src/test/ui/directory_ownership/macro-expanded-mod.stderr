@@ -1,4 +1,4 @@
-error: Cannot declare a non-inline module inside a block unless it has a path attribute
+error: cannot declare a non-inline module inside a block unless it has a path attribute
   --> $DIR/macro-expanded-mod.rs:5:9
    |
 LL |         mod $i;

@@ -58,7 +58,7 @@ pub trait CodegenMethods<'tcx>:
     + MiscMethods<'tcx>
     + ConstMethods<'tcx>
     + StaticMethods
-    + CoverageInfoMethods
+    + CoverageInfoMethods<'tcx>
     + DebugInfoMethods<'tcx>
     + AsmMethods
     + PreDefineMethods<'tcx>
@@ -74,7 +74,7 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + MiscMethods<'tcx>
         + ConstMethods<'tcx>
         + StaticMethods
-        + CoverageInfoMethods
+        + CoverageInfoMethods<'tcx>
         + DebugInfoMethods<'tcx>
         + AsmMethods
         + PreDefineMethods<'tcx>

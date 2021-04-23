@@ -1,4 +1,5 @@
 use std::fmt::{self, Display};
+use std::iter;
 
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
@@ -536,7 +537,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
                 (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
-                    search_stack.extend(elem_tys.iter().map(|k| k.expect_ty()).zip(*elem_hir_tys));
+                    search_stack
+                        .extend(iter::zip(elem_tys.iter().map(|k| k.expect_ty()), *elem_hir_tys));
                 }
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
@@ -611,7 +613,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         args: &'hir hir::GenericArgs<'hir>,
         search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
-        for (kind, hir_arg) in substs.iter().zip(args.args) {
+        for (kind, hir_arg) in iter::zip(substs, args.args) {
             match (kind.unpack(), hir_arg) {
                 (GenericArgKind::Lifetime(r), hir::GenericArg::Lifetime(lt)) => {
                     if r.to_region_vid() == needle_fr {
@@ -634,14 +636,11 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     | GenericArgKind::Const(_),
                     _,
                 ) => {
-                    // I *think* that HIR lowering should ensure this
-                    // doesn't happen, even in erroneous
-                    // programs. Else we should use delay-span-bug.
-                    span_bug!(
+                    // HIR lowering sometimes doesn't catch this in erroneous
+                    // programs, so we need to use delay_span_bug here. See #82126.
+                    self.infcx.tcx.sess.delay_span_bug(
                         hir_arg.span(),
-                        "unmatched subst and hir arg: found {:?} vs {:?}",
-                        kind,
-                        hir_arg,
+                        &format!("unmatched subst and hir arg: found {:?} vs {:?}", kind, hir_arg),
                     );
                 }
             }
@@ -767,7 +766,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let hir = self.infcx.tcx.hir();
 
         if let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind {
-            let opaque_ty = hir.item(id.id);
+            let opaque_ty = hir.item(id);
             if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
                 bounds:
                     [hir::GenericBound::LangItemTrait(

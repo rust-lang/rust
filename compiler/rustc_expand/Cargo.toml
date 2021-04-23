@@ -23,5 +23,5 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }

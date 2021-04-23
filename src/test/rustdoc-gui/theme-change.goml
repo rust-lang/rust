@@ -1,0 +1,10 @@
+goto: file://|DOC_PATH|/index.html
+click: "#theme-picker"
+click: "#theme-choices > button:first-child"
+wait-for: 500
+// should be the ayu theme so let's check the color
+assert: ("body", { "background-color": "rgb(15, 20, 25)" })
+click: "#theme-choices > button:last-child"
+wait-for: 500
+// should be the light theme so let's check the color
+assert: ("body", { "background-color": "rgb(255, 255, 255)" })

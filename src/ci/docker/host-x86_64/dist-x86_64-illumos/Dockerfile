@@ -22,6 +22,9 @@ RUN bash /tmp/illumos-toolchain.sh x86_64 gcc
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV \
     AR_x86_64_unknown_illumos=x86_64-illumos-ar \
     CC_x86_64_unknown_illumos=x86_64-illumos-gcc \

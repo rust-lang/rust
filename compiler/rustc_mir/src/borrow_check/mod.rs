@@ -25,6 +25,7 @@ use either::Either;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::iter;
 use std::mem;
 use std::rc::Rc;
 
@@ -243,7 +244,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let regioncx = Rc::new(regioncx);
 
-    let flow_borrows = Borrows::new(tcx, &body, regioncx.clone(), &borrow_set)
+    let flow_borrows = Borrows::new(tcx, &body, &regioncx, &borrow_set)
         .into_engine(tcx, &body)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
@@ -266,7 +267,6 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     for (idx, move_data_results) in promoted_errors {
         let promoted_body = &promoted[idx];
-        let dominators = promoted_body.dominators();
 
         if let Err((move_data, move_errors)) = move_data_results {
             let mut promoted_mbcx = MirBorrowckCtxt {
@@ -274,7 +274,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 param_env,
                 body: promoted_body,
                 move_data: &move_data,
-                location_table: &LocationTable::new(promoted_body),
+                location_table, // no need to create a real one for the promoted, it is not used
                 movable_generator,
                 fn_self_span_reported: Default::default(),
                 locals_are_invalidated_at_exit,
@@ -287,8 +287,8 @@ fn do_mir_borrowck<'a, 'tcx>(
                 regioncx: regioncx.clone(),
                 used_mut: Default::default(),
                 used_mut_upvars: SmallVec::new(),
-                borrow_set: borrow_set.clone(),
-                dominators,
+                borrow_set: Rc::clone(&borrow_set),
+                dominators: Dominators::dummy(), // not used
                 upvars: Vec::new(),
                 local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
                 region_names: RefCell::default(),
@@ -317,10 +317,10 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
-        regioncx,
+        regioncx: Rc::clone(&regioncx),
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
-        borrow_set,
+        borrow_set: Rc::clone(&borrow_set),
         dominators,
         upvars,
         local_names,
@@ -574,7 +574,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
 
                 self.mutate_place(location, (*lhs, span), Shallow(None), JustWrite, flow_state);
             }
-            StatementKind::FakeRead(_, box ref place) => {
+            StatementKind::FakeRead(box (_, ref place)) => {
                 // Read for match doesn't access any memory and is used to
                 // assert that a place is safe and live. So we don't have to
                 // do any checks here.
@@ -596,7 +596,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 self.mutate_place(location, (**place, span), Shallow(None), JustWrite, flow_state);
             }
             StatementKind::LlvmInlineAsm(ref asm) => {
-                for (o, output) in asm.asm.outputs.iter().zip(asm.outputs.iter()) {
+                for (o, output) in iter::zip(&asm.asm.outputs, &*asm.outputs) {
                     if o.is_indirect {
                         // FIXME(eddyb) indirect inline asm outputs should
                         // be encoded through MIR place derefs instead.
@@ -626,6 +626,15 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                 for (_, input) in asm.inputs.iter() {
                     self.consume_operand(location, (input, span), flow_state);
                 }
+            }
+
+            StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
+                ..
+            }) => {
+                span_bug!(
+                    span,
+                    "Unexpected CopyNonOverlapping, should only appear after lower_intrinsics",
+                )
             }
             StatementKind::Nop
             | StatementKind::Coverage(..)
@@ -725,8 +734,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
             } => {
                 for op in operands {
                     match *op {
-                        InlineAsmOperand::In { reg: _, ref value }
-                        | InlineAsmOperand::Const { ref value } => {
+                        InlineAsmOperand::In { reg: _, ref value } => {
                             self.consume_operand(loc, (value, span), flow_state);
                         }
                         InlineAsmOperand::Out { reg: _, late: _, place, .. } => {
@@ -752,7 +760,8 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                                 );
                             }
                         }
-                        InlineAsmOperand::SymFn { value: _ }
+                        InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }
                 }
@@ -1317,8 +1326,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            Rvalue::BinaryOp(_bin_op, ref operand1, ref operand2)
-            | Rvalue::CheckedBinaryOp(_bin_op, ref operand1, ref operand2) => {
+            Rvalue::BinaryOp(_bin_op, box (ref operand1, ref operand2))
+            | Rvalue::CheckedBinaryOp(_bin_op, box (ref operand1, ref operand2)) => {
                 self.consume_operand(location, (operand1, span), flow_state);
                 self.consume_operand(location, (operand2, span), flow_state);
             }

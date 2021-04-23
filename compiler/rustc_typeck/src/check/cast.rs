@@ -359,6 +359,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     {
                         sugg = Some(format!("&{}", mutbl.prefix_str()));
                     }
+                } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind() {
+                    if fcx
+                        .try_coerce(
+                            self.expr,
+                            fcx.tcx.mk_ref(
+                                &ty::RegionKind::ReErased,
+                                TypeAndMut { ty: self.expr_ty, mutbl },
+                            ),
+                            self.cast_ty,
+                            AllowTwoPhase::No,
+                        )
+                        .is_ok()
+                    {
+                        sugg = Some(format!("&{}", mutbl.prefix_str()));
+                    }
                 }
                 if let Some(sugg) = sugg {
                     err.span_label(self.span, "invalid cast");
@@ -765,9 +780,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         m_expr: ty::TypeAndMut<'tcx>,
         m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
-        // array-ptr-cast.
-
-        if m_expr.mutbl == hir::Mutability::Not && m_cast.mutbl == hir::Mutability::Not {
+        // array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
+        if m_expr.mutbl == hir::Mutability::Mut || m_cast.mutbl == hir::Mutability::Not {
             if let ty::Array(ety, _) = m_expr.ty.kind() {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of

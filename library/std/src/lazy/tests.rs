@@ -48,6 +48,7 @@ fn spawn_and_wait<R: Send + 'static>(f: impl FnOnce() -> R + Send + 'static) -> 
 }
 
 #[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn sync_once_cell() {
     static ONCE_CELL: SyncOnceCell<i32> = SyncOnceCell::new();
 
@@ -81,6 +82,7 @@ fn sync_once_cell_get_unchecked() {
 }
 
 #[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn sync_once_cell_drop() {
     static DROP_CNT: AtomicUsize = AtomicUsize::new(0);
     struct Dropper;
@@ -158,6 +160,7 @@ fn into_inner() {
 }
 
 #[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn sync_lazy_new() {
     static CALLED: AtomicUsize = AtomicUsize::new(0);
     static SYNC_LAZY: SyncLazy<i32> = SyncLazy::new(|| {
@@ -204,6 +207,7 @@ fn sync_lazy_default() {
 }
 
 #[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn static_sync_lazy() {
     static XS: SyncLazy<Vec<i32>> = SyncLazy::new(|| {
         let mut xs = Vec::new();
@@ -279,6 +283,7 @@ fn eval_once_macro() {
 }
 
 #[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn sync_once_cell_does_not_leak_partially_constructed_boxes() {
     static ONCE_CELL: SyncOnceCell<String> = SyncOnceCell::new();
 

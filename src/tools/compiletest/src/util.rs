@@ -110,6 +110,9 @@ pub const TSAN_SUPPORTED_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnu",
 ];
 
+pub const HWASAN_SUPPORTED_TARGETS: &[&str] =
+    &["aarch64-linux-android", "aarch64-unknown-linux-gnu"];
+
 const BIG_ENDIAN: &[&str] = &[
     "aarch64_be",
     "armebv7r",
@@ -124,6 +127,15 @@ const BIG_ENDIAN: &[&str] = &[
     "sparc64",
     "sparcv9",
 ];
+
+static ASM_SUPPORTED_ARCHS: &[&str] = &[
+    "x86", "x86_64", "arm", "aarch64", "riscv32", "riscv64", "nvptx64", "hexagon", "mips",
+    "mips64", "spirv", "wasm32",
+];
+
+pub fn has_asm_support(triple: &str) -> bool {
+    ASM_SUPPORTED_ARCHS.contains(&get_arch(triple))
+}
 
 pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten

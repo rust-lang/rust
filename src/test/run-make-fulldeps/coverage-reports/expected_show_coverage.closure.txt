@@ -1,5 +1,5 @@
     1|       |#![allow(unused_assignments, unused_variables)]
-    2|       |
+    2|       |// compile-flags: -C opt-level=2 # fix described in rustc_middle/mir/mono.rs
     3|      1|fn main() {
     4|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
     5|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from

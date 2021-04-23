@@ -2,8 +2,6 @@
 
 // run-pass
 
-#![feature(or_patterns)]
-
 fn search(target: (bool, bool, bool)) -> u32 {
     let x = ((false, true), (false, true), (false, true));
     let mut guard_count = 0;

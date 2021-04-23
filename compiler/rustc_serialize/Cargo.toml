@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 indexmap = "1"
-smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 
 [dev-dependencies]
 rustc_macros = { path = "../rustc_macros" }

@@ -1,11 +1,11 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use super::fd::WasiFd;
 use crate::convert::TryFrom;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use crate::sys::fd::WasiFd;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sys_common::FromInner;
 use crate::time::Duration;
 
@@ -343,18 +343,18 @@ impl fmt::Debug for UdpSocket {
     }
 }
 
-pub struct LookupHost(Void);
+pub struct LookupHost(!);
 
 impl LookupHost {
     pub fn port(&self) -> u16 {
-        match self.0 {}
+        self.0
     }
 }
 
 impl Iterator for LookupHost {
     type Item = SocketAddr;
     fn next(&mut self) -> Option<SocketAddr> {
-        match self.0 {}
+        self.0
     }
 }
 

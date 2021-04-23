@@ -15,7 +15,7 @@ named `__rustc_codegen_backend` with a signature of `fn() -> Box<dyn rustc_codeg
 See also the [`hotplug_codegen_backend`](https://github.com/rust-lang/rust/tree/master/src/test/run-make-fulldeps/hotplug_codegen_backend) test
 for a full example.
 
-```rust,ignore
+```rust,ignore (partial-example)
 use rustc_codegen_ssa::traits::CodegenBackend;
 
 struct MyBackend;

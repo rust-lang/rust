@@ -1,9 +1,0 @@
-error[E0224]: at least one trait is required for an object type
-  --> $DIR/trait-object-vs-lifetime-2.rs:7:5
-   |
-LL |     dyn 'static +: 'static + Copy,
-   |     ^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0224`.

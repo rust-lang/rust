@@ -1,6 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
-use rustc_middle::dep_graph::{DepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{DepGraph, PreviousDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encodable as RustcEncodable;
@@ -15,6 +15,9 @@ use super::file_format;
 use super::fs::*;
 use super::work_product;
 
+/// Save and dump the DepGraph.
+///
+/// No query must be invoked after this function.
 pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
@@ -29,6 +32,14 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
 
         let query_cache_path = query_cache_path(sess);
         let dep_graph_path = dep_graph_path(sess);
+        let staging_dep_graph_path = staging_dep_graph_path(sess);
+
+        sess.time("assert_dep_graph", || crate::assert_dep_graph(tcx));
+        sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx));
+
+        if sess.opts.debugging_opts.incremental_info {
+            tcx.dep_graph.print_incremental_info()
+        }
 
         join(
             move || {
@@ -36,16 +47,26 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
                     save_in(sess, query_cache_path, "query cache", |e| encode_query_cache(tcx, e));
                 });
             },
-            || {
+            move || {
                 sess.time("incr_comp_persist_dep_graph", || {
-                    save_in(sess, dep_graph_path, "dependency graph", |e| {
-                        sess.time("incr_comp_encode_dep_graph", || encode_dep_graph(tcx, e))
-                    });
+                    if let Err(err) = tcx.dep_graph.encode(&tcx.sess.prof) {
+                        sess.err(&format!(
+                            "failed to write dependency graph to `{}`: {}",
+                            staging_dep_graph_path.display(),
+                            err
+                        ));
+                    }
+                    if let Err(err) = fs::rename(&staging_dep_graph_path, &dep_graph_path) {
+                        sess.err(&format!(
+                            "failed to move dependency graph from `{}` to `{}`: {}",
+                            staging_dep_graph_path.display(),
+                            dep_graph_path.display(),
+                            err
+                        ));
+                    }
                 });
             },
         );
-
-        dirty_clean::check_dirty_clean_annotations(tcx);
     })
 }
 
@@ -92,7 +113,7 @@ pub fn save_work_product_index(
     });
 }
 
-fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
+pub(crate) fn save_in<F>(sess: &Session, path_buf: PathBuf, name: &str, encode: F)
 where
     F: FnOnce(&mut FileEncoder) -> FileEncodeResult,
 {
@@ -144,21 +165,6 @@ where
     debug!("save: data written to disk successfully");
 }
 
-fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeResult {
-    // First encode the commandline arguments hash
-    tcx.sess.opts.dep_tracking_hash().encode(encoder)?;
-
-    if tcx.sess.opts.debugging_opts.incremental_info {
-        tcx.dep_graph.print_incremental_info();
-    }
-
-    // There is a tiny window between printing the incremental info above and encoding the dep
-    // graph below in which the dep graph could change, thus making the printed incremental info
-    // slightly out of date. If this matters to you, please feel free to submit a patch. :)
-
-    tcx.sess.time("incr_comp_encode_serialized_dep_graph", || tcx.dep_graph.encode(encoder))
-}
-
 fn encode_work_product_index(
     work_products: &FxHashMap<WorkProductId, WorkProduct>,
     encoder: &mut FileEncoder,
@@ -176,4 +182,57 @@ fn encode_work_product_index(
 
 fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeResult {
     tcx.sess.time("incr_comp_serialize_result_cache", || tcx.serialize_query_result_cache(encoder))
+}
+
+pub fn build_dep_graph(
+    sess: &Session,
+    prev_graph: PreviousDepGraph,
+    prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
+) -> Option<DepGraph> {
+    if sess.opts.incremental.is_none() {
+        // No incremental compilation.
+        return None;
+    }
+
+    // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
+    let path_buf = staging_dep_graph_path(sess);
+
+    let mut encoder = match FileEncoder::new(&path_buf) {
+        Ok(encoder) => encoder,
+        Err(err) => {
+            sess.err(&format!(
+                "failed to create dependency graph at `{}`: {}",
+                path_buf.display(),
+                err
+            ));
+            return None;
+        }
+    };
+
+    if let Err(err) = file_format::write_file_header(&mut encoder, sess.is_nightly_build()) {
+        sess.err(&format!(
+            "failed to write dependency graph header to `{}`: {}",
+            path_buf.display(),
+            err
+        ));
+        return None;
+    }
+
+    // First encode the commandline arguments hash
+    if let Err(err) = sess.opts.dep_tracking_hash().encode(&mut encoder) {
+        sess.err(&format!(
+            "failed to write dependency graph hash `{}`: {}",
+            path_buf.display(),
+            err
+        ));
+        return None;
+    }
+
+    Some(DepGraph::new(
+        prev_graph,
+        prev_work_products,
+        encoder,
+        sess.opts.debugging_opts.query_dep_graph,
+        sess.opts.debugging_opts.incremental_info,
+    ))
 }

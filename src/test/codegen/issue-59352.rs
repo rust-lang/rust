@@ -5,8 +5,8 @@
 // Once the optimizer can do that, mir-opt/issues/issue-59352.rs will need to be updated and this
 // test case should be removed as it will become redundant.
 
-// mir-opt-level=2 enables inlining and enables LLVM to optimize away the unreachable panic call.
-// compile-flags: -O -Z mir-opt-level=2
+// mir-opt-level=3 enables inlining and enables LLVM to optimize away the unreachable panic call.
+// compile-flags: -O -Z mir-opt-level=3
 
 #![crate_type = "rlib"]
 

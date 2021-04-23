@@ -2,7 +2,7 @@ use gsgdt::GraphvizSettings;
 use rustc_graphviz as dot;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 use std::fmt::Debug;
 use std::io::{self, Write};
 
@@ -16,14 +16,27 @@ where
 {
     let def_ids = dump_mir_def_ids(tcx, single);
 
-    let use_subgraphs = def_ids.len() > 1;
+    let mirs =
+        def_ids
+            .iter()
+            .flat_map(|def_id| {
+                if tcx.is_const_fn_raw(*def_id) {
+                    vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
+                } else {
+                    vec![tcx.instance_mir(ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
+                        *def_id,
+                    )))]
+                }
+            })
+            .collect::<Vec<_>>();
+
+    let use_subgraphs = mirs.len() > 1;
     if use_subgraphs {
         writeln!(w, "digraph __crate__ {{")?;
     }
 
-    for def_id in def_ids {
-        let body = &tcx.optimized_mir(def_id);
-        write_mir_fn_graphviz(tcx, body, use_subgraphs, w)?;
+    for mir in mirs {
+        write_mir_fn_graphviz(tcx, mir, use_subgraphs, w)?;
     }
 
     if use_subgraphs {

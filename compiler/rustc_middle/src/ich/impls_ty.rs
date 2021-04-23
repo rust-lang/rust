@@ -70,16 +70,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
             ty::ReEmpty(universe) => {
                 universe.hash_stable(hcx, hasher);
             }
-            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrAnon(i) }) => {
+            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrAnon(i), .. }) => {
                 db.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);
             }
-            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrNamed(def_id, name) }) => {
+            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrNamed(def_id, name), .. }) => {
                 db.hash_stable(hcx, hasher);
                 def_id.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
-            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrEnv }) => {
+            ty::ReLateBound(db, ty::BoundRegion { kind: ty::BrEnv, .. }) => {
                 db.hash_stable(hcx, hasher);
             }
             ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, index, name }) => {
@@ -118,12 +118,13 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for ty::BoundVar {
     }
 }
 
-impl<'a, T> HashStable<StableHashingContext<'a>> for ty::Binder<T>
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a>> for ty::Binder<'tcx, T>
 where
     T: HashStable<StableHashingContext<'a>>,
 {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_ref().skip_binder().hash_stable(hcx, hasher);
+        self.bound_vars().hash_stable(hcx, hasher);
     }
 }
 

@@ -1,0 +1,85 @@
+error: this `if` can be part of the inner `if_chain!`
+  --> $DIR/if_chain_style.rs:9:5
+   |
+LL | /     if true {
+LL | |         let x = "";
+LL | |         // `if_chain!` inside `if`
+LL | |         if_chain! {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::if-chain-style` implied by `-D warnings`
+help: this `let` statement can also be in the `if_chain!`
+  --> $DIR/if_chain_style.rs:10:9
+   |
+LL |         let x = "";
+   |         ^^^^^^^^^^^
+
+error: `if a && b;` should be `if a; if b;`
+  --> $DIR/if_chain_style.rs:19:12
+   |
+LL |           if true
+   |  ____________^
+LL | |             // multi-line AND'ed conditions
+LL | |             && false;
+   | |____________________^
+
+error: `let` expression should be inside `then { .. }`
+  --> $DIR/if_chain_style.rs:24:9
+   |
+LL |         let x = "";
+   |         ^^^^^^^^^^^
+
+error: this `if` can be part of the outer `if_chain!`
+  --> $DIR/if_chain_style.rs:35:13
+   |
+LL |             if true {}
+   |             ^^^^^^^^^^
+   |
+help: this `let` statement can also be in the `if_chain!`
+  --> $DIR/if_chain_style.rs:33:13
+   |
+LL |             let x = "";
+   |             ^^^^^^^^^^^
+
+error: `if_chain!` only has one `if`
+  --> $DIR/if_chain_style.rs:29:5
+   |
+LL | /     if_chain! {
+LL | |         // single `if` condition
+LL | |         if true;
+LL | |         then {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: `let` expression should be above the `if_chain!`
+  --> $DIR/if_chain_style.rs:40:9
+   |
+LL |         let x = "";
+   |         ^^^^^^^^^^^
+
+error: this `if_chain!` can be merged with the outer `if_chain!`
+  --> $DIR/if_chain_style.rs:46:13
+   |
+LL | /             if_chain! {
+LL | |                 if true;
+LL | |                 if true;
+LL | |                 then {}
+LL | |             }
+   | |_____________^
+   |
+help: these `let` statements can also be in the `if_chain!`
+  --> $DIR/if_chain_style.rs:43:13
+   |
+LL | /             let x = "";
+LL | |             let x = "";
+   | |_______________________^
+
+error: aborting due to 7 previous errors
+

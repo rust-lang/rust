@@ -1,4 +1,7 @@
-use super::*;
+use std::cmp::Ordering;
+
+use super::print_item::compare_names;
+use super::{AllTypes, Buffer};
 
 #[test]
 fn test_compare_names() {
@@ -37,4 +40,15 @@ fn test_name_sorting() {
     let mut sorted = names.to_owned();
     sorted.sort_by(|&l, r| compare_names(l, r));
     assert_eq!(names, sorted);
+}
+
+#[test]
+fn test_all_types_prints_header_once() {
+    // Regression test for #82477
+    let all_types = AllTypes::new();
+
+    let mut buffer = Buffer::new();
+    all_types.print(&mut buffer);
+
+    assert_eq!(1, buffer.into_inner().matches("List of all items").count());
 }

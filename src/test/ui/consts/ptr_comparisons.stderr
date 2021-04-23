@@ -36,7 +36,7 @@ error: any use of this value will cause an error
 LL | const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
-   |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |                           cannot cast pointer to integer because it was not created by cast from integer
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -47,7 +47,7 @@ error: any use of this value will cause an error
 LL | const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
    | --------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                           |
-   |                           "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |                           cannot cast pointer to integer because it was not created by cast from integer
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>

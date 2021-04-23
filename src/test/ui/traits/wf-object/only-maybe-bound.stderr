@@ -1,0 +1,15 @@
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/only-maybe-bound.rs:3:15
+   |
+LL | type _0 = dyn ?Sized;
+   |               ^^^^^^
+
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/only-maybe-bound.rs:3:11
+   |
+LL | type _0 = dyn ?Sized;
+   |           ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0224`.

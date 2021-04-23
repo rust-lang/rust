@@ -9,8 +9,6 @@ pub fn opts() -> TargetOptions {
             // Tell GCC to avoid linker plugins, because we are not bundling
             // them with Windows installer, and Rust does its own LTO anyways.
             "-fno-use-linker-plugin".to_string(),
-            // Always enable DEP (NX bit) when it is available
-            "-Wl,--nxcompat".to_string(),
             // Enable ASLR
             "-Wl,--dynamicbase".to_string(),
             // ASLR will rebase it anyway so leaving that option enabled only leads to confusion
@@ -73,8 +71,6 @@ pub fn opts() -> TargetOptions {
         dll_prefix: String::new(),
         dll_suffix: ".dll".to_string(),
         exe_suffix: ".exe".to_string(),
-        staticlib_prefix: "lib".to_string(),
-        staticlib_suffix: ".a".to_string(),
         os_family: Some("windows".to_string()),
         is_like_windows: true,
         allows_weak_linkage: false,

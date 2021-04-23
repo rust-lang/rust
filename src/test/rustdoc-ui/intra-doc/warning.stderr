@@ -4,7 +4,7 @@ warning: unresolved link to `Foo::baz`
 LL |        //! Test with [Foo::baz], [Bar::foo], ...
    |                       ^^^^^^^^ the struct `Foo` has no field or associated item named `baz`
    |
-   = note: `#[warn(broken_intra_doc_links)]` on by default
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 
 warning: unresolved link to `Bar::foo`
   --> $DIR/warning.rs:3:35

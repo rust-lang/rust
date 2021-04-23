@@ -1,0 +1,9 @@
+error[E0636]: the feature `box_syntax` has already been declared
+  --> $DIR/rustc-check-passes.rs:2:12
+   |
+LL | #![feature(box_syntax)]
+   |            ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0636`.

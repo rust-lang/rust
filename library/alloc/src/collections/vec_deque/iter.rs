@@ -1,5 +1,5 @@
 use core::fmt;
-use core::iter::FusedIterator;
+use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess};
 use core::ops::Try;
 
 use super::{count, wrap_index, RingSlices};
@@ -101,6 +101,19 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn last(mut self) -> Option<&'a T> {
         self.next_back()
     }
+
+    #[inline]
+    unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
+    where
+        Self: TrustedRandomAccess,
+    {
+        // Safety: The TrustedRandomAccess contract requires that callers only  pass an index
+        // that is in bounds.
+        unsafe {
+            let idx = wrap_index(self.tail.wrapping_add(idx), self.ring.len());
+            self.ring.get_unchecked(idx)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -157,3 +170,12 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Iter<'_, T> {}
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Iter<'_, T> {}
+
+#[doc(hidden)]
+#[unstable(feature = "trusted_random_access", issue = "none")]
+unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {
+    const MAY_HAVE_SIDE_EFFECT: bool = false;
+}

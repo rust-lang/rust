@@ -9,6 +9,7 @@ note: the lint level is defined here
    |
 LL | #![warn(unused_crate_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: remove unnecessary dependency `barbar`
 
 warning: 1 warning emitted
 

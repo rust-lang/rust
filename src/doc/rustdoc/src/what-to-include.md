@@ -38,10 +38,10 @@ warning: 1 warning emitted
 
 As a library author, adding the lint `#![deny(missing_docs)]` is a great way to
 ensure the project does not drift away from being documented well, and
-`#![warn(missing_docs)]` is a good way to move towards comprehensive 
+`#![warn(missing_docs)]` is a good way to move towards comprehensive
 documentation.  In addition to docs, `#![deny(missing_doc_code_examples)]`
 ensures each function contains a usage example.  In our example above, the
-warning is resolved by adding crate level documentation. 
+warning is resolved by adding crate level documentation.
 
 There are more lints in the upcoming chapter [Lints][rustdoc-lints].
 
@@ -58,7 +58,7 @@ users to figure out how to put the `async` code into their own runtime.
 
 It is preferred that `unwrap()` not be used inside an example, and some of the
 error handling components be hidden if they make the example too difficult to
-follow.  
+follow.
 
 ``````text
 /// Example
@@ -66,9 +66,9 @@ follow.
 /// let fourtytwo = "42".parse::<u32>()?;
 /// println!("{} + 10 = {}", fourtytwo, fourtytwo+10);
 /// ```
-``````  
+``````
 
-When rustdoc wraps that in a main function, it will fail to compile because the 
+When rustdoc wraps that in a main function, it will fail to compile because the
 `ParseIntError` trait is not implemented.  In order to help both your audience
 and your test suite, this example needs some additional code:
 
@@ -81,17 +81,17 @@ and your test suite, this example needs some additional code:
 /// #     Ok(())
 /// # }
 /// ```
-``````  
+``````
 
 The example is the same on the doc page, but has that extra information
-available to anyone trying to use your crate.  More about tests in the 
-upcoming [Documentation tests] chapter.  
+available to anyone trying to use your crate.  More about tests in the
+upcoming [Documentation tests] chapter.
 
 ## What to Exclude
 
 Certain parts of your public interface may be included by default in the output
 of rustdoc.  The attribute `#[doc(hidden)]` can hide implementation details
-to encourage idiomatic use of the crate.  
+to encourage idiomatic use of the crate.
 
 For example, an internal `macro!` that makes the crate easier to implement can
 become a footgun for users when it appears in the public documentation.  An
@@ -101,11 +101,11 @@ detailed in the [API Guidelines].
 ## Customizing the output
 
 It is possible to pass a custom css file to `rustdoc` and style the
-documentation.  
+documentation.
 
 ```bash
 rustdoc --extend-css custom.css src/lib.rs
-``` 
+```
 
 A good example of using this feature to create a dark theme is documented [on
 this blog].  Just remember, dark theme is already included in the rustdoc output

@@ -1,3 +1,5 @@
+// edition:2018
+
 #![warn(clippy::len_without_is_empty)]
 #![allow(dead_code, unused)]
 
@@ -34,6 +36,24 @@ impl PubAllowed {
     }
 }
 
+pub struct PubAllowedFn;
+
+impl PubAllowedFn {
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> isize {
+        1
+    }
+}
+
+#[allow(clippy::len_without_is_empty)]
+pub struct PubAllowedStruct;
+
+impl PubAllowedStruct {
+    pub fn len(&self) -> isize {
+        1
+    }
+}
+
 pub trait PubTraitsToo {
     fn len(&self) -> isize;
 }
@@ -64,6 +84,18 @@ impl HasWrongIsEmpty {
     }
 
     pub fn is_empty(&self, x: u32) -> bool {
+        false
+    }
+}
+
+pub struct MismatchedSelf;
+
+impl MismatchedSelf {
+    pub fn len(self) -> isize {
+        1
+    }
+
+    pub fn is_empty(&self) -> bool {
         false
     }
 }
@@ -140,6 +172,116 @@ pub trait Foo: Sized {}
 
 pub trait DependsOnFoo: Foo {
     fn len(&mut self) -> usize;
+}
+
+// issue #1562
+pub struct MultipleImpls;
+
+impl MultipleImpls {
+    pub fn len(&self) -> usize {
+        1
+    }
+}
+
+impl MultipleImpls {
+    pub fn is_empty(&self) -> bool {
+        false
+    }
+}
+
+// issue #6958
+pub struct OptionalLen;
+
+impl OptionalLen {
+    pub fn len(&self) -> Option<usize> {
+        Some(0)
+    }
+
+    pub fn is_empty(&self) -> Option<bool> {
+        Some(true)
+    }
+}
+
+pub struct OptionalLen2;
+impl OptionalLen2 {
+    pub fn len(&self) -> Option<usize> {
+        Some(0)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        true
+    }
+}
+
+pub struct OptionalLen3;
+impl OptionalLen3 {
+    pub fn len(&self) -> usize {
+        0
+    }
+
+    // should lint, len is not an option
+    pub fn is_empty(&self) -> Option<bool> {
+        None
+    }
+}
+
+pub struct ResultLen;
+impl ResultLen {
+    pub fn len(&self) -> Result<usize, ()> {
+        Ok(0)
+    }
+
+    // Differing result types
+    pub fn is_empty(&self) -> Option<bool> {
+        Some(true)
+    }
+}
+
+pub struct ResultLen2;
+impl ResultLen2 {
+    pub fn len(&self) -> Result<usize, ()> {
+        Ok(0)
+    }
+
+    pub fn is_empty(&self) -> Result<bool, ()> {
+        Ok(true)
+    }
+}
+
+pub struct ResultLen3;
+impl ResultLen3 {
+    pub fn len(&self) -> Result<usize, ()> {
+        Ok(0)
+    }
+
+    // Non-fallible result is ok.
+    pub fn is_empty(&self) -> bool {
+        true
+    }
+}
+
+pub struct OddLenSig;
+impl OddLenSig {
+    // don't lint
+    pub fn len(&self) -> bool {
+        true
+    }
+}
+
+// issue #6958
+pub struct AsyncLen;
+impl AsyncLen {
+    async fn async_task(&self) -> bool {
+        true
+    }
+
+    pub async fn len(&self) -> usize {
+        if self.async_task().await { 0 } else { 1 }
+    }
+
+    pub async fn is_empty(&self) -> bool {
+        self.len().await == 0
+    }
 }
 
 fn main() {}

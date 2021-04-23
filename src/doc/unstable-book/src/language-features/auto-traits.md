@@ -1,6 +1,6 @@
 # `auto_traits`
 
-The tracking issue for this feature is [#13231] 
+The tracking issue for this feature is [#13231]
 
 [#13231]: https://github.com/rust-lang/rust/issues/13231
 
@@ -9,15 +9,15 @@ The tracking issue for this feature is [#13231]
 The `auto_traits` feature gate allows you to define auto traits.
 
 Auto traits, like [`Send`] or [`Sync`] in the standard library, are marker traits
-that are automatically implemented for every type, unless the type, or a type it contains, 
+that are automatically implemented for every type, unless the type, or a type it contains,
 has explicitly opted out via a negative impl. (Negative impls are separately controlled
 by the `negative_impls` feature.)
 
 [`Send`]: https://doc.rust-lang.org/std/marker/trait.Send.html
 [`Sync`]: https://doc.rust-lang.org/std/marker/trait.Sync.html
 
-```rust,ignore
-impl !Trait for Type
+```rust,ignore (partial-example)
+impl !Trait for Type {}
 ```
 
 Example:
@@ -40,7 +40,7 @@ fn must_be_valid<T: Valid>(_t: T) { }
 fn main() {
     // works
     must_be_valid( MaybeValid(True) );
-                
+
     // compiler error - trait bound not satisfied
     // must_be_valid( MaybeValid(False) );
 }
@@ -80,7 +80,7 @@ where
 
 Explicit impls may be either positive or negative. They take the form:
 
-```rust,ignore
+```rust,ignore (partial-example)
 impl<...> AutoTrait for StructName<..> { }
 impl<...> !AutoTrait for StructName<..> { }
 ```
@@ -104,4 +104,3 @@ Auto traits cannot have any trait items, such as methods or associated types. Th
 ## Supertraits
 
 Auto traits cannot have supertraits. This is for soundness reasons, as the interaction of coinduction with implied bounds is difficult to reconcile.
-

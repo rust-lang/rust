@@ -68,9 +68,9 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
     let utf8 = match str::from_utf8(&data[..len]) {
         Ok(s) => s,
         Err(ref e) if e.valid_up_to() == 0 => {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidData,
-                "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+                &"Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
             ));
         }
         Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
@@ -149,9 +149,9 @@ impl io::Read for Stdin {
         if buf.len() == 0 {
             return Ok(0);
         } else if buf.len() < 4 {
-            return Err(io::Error::new(
+            return Err(io::Error::new_const(
                 io::ErrorKind::InvalidInput,
-                "Windows stdin in console mode does not support a buffer too small to \
+                &"Windows stdin in console mode does not support a buffer too small to \
                  guarantee holding one arbitrary UTF-8 character (4 bytes)",
             ));
         }
@@ -243,9 +243,9 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
             }
             Err(_) => {
                 // We can't really do any better than forget all data and return an error.
-                return Err(io::Error::new(
+                return Err(io::Error::new_const(
                     io::ErrorKind::InvalidData,
-                    "Windows stdin in console mode does not support non-UTF-16 input; \
+                    &"Windows stdin in console mode does not support non-UTF-16 input; \
                      encountered unpaired surrogate",
                 ));
             }

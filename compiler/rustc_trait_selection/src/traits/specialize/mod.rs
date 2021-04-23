@@ -349,7 +349,7 @@ fn report_negative_positive_conflict(
         E0751,
         "found both positive and negative implementation of trait `{}`{}:",
         overlap.trait_desc,
-        overlap.self_desc.clone().map_or(String::new(), |ty| format!(" for type `{}`", ty))
+        overlap.self_desc.clone().map_or_else(String::new, |ty| format!(" for type `{}`", ty))
     );
 
     match tcx.span_of_impl(negative_impl_def_id) {
@@ -395,11 +395,14 @@ fn report_conflicting_impls(
     // that's passed in.
     let decorate = |err: LintDiagnosticBuilder<'_>| {
         let msg = format!(
-            "conflicting implementations of trait `{}`{}:{}",
+            "conflicting implementations of trait `{}`{}{}",
             overlap.trait_desc,
-            overlap.self_desc.clone().map_or(String::new(), |ty| { format!(" for type `{}`", ty) }),
+            overlap
+                .self_desc
+                .clone()
+                .map_or_else(String::new, |ty| { format!(" for type `{}`", ty) }),
             match used_to_be_allowed {
-                Some(FutureCompatOverlapErrorKind::Issue33140) => " (E0119)",
+                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
                 _ => "",
             }
         );
@@ -415,7 +418,7 @@ fn report_conflicting_impls(
                     impl_span,
                     format!(
                         "conflicting implementation{}",
-                        overlap.self_desc.map_or(String::new(), |ty| format!(" for `{}`", ty))
+                        overlap.self_desc.map_or_else(String::new, |ty| format!(" for `{}`", ty))
                     ),
                 );
             }

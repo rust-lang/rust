@@ -1,11 +1,12 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_errors::Handler;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::cstore::{EncodedMetadata, LibSource};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_session::config::{self, CFGuard, CrateType, DebugInfo};
-use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SanitizerSet};
+use rustc_session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
@@ -15,7 +16,7 @@ use rustc_session::{filesearch, Session};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
-use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, Target};
+use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
 
 use super::archive::ArchiveBuilder;
 use super::command::Command;
@@ -34,9 +35,11 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
 
-pub fn remove(sess: &Session, path: &Path) {
+pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
-        sess.err(&format!("failed to remove {}: {}", path.display(), e));
+        if e.kind() != io::ErrorKind::NotFound {
+            diag_handler.err(&format!("failed to remove {}: {}", path.display(), e));
+        }
     }
 }
 
@@ -112,11 +115,11 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
         if !sess.opts.cg.save_temps {
             let remove_temps_from_module = |module: &CompiledModule| {
                 if let Some(ref obj) = module.object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
 
                 if let Some(ref obj) = module.dwarf_object {
-                    remove(sess, obj);
+                    ensure_removed(sess.diagnostic(), obj);
                 }
             };
 
@@ -178,16 +181,16 @@ fn get_linker(
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
                 let arch = match t.arch.as_str() {
-                    "x86_64" => Some("x64".to_string()),
-                    "x86" => Some("x86".to_string()),
-                    "aarch64" => Some("arm64".to_string()),
-                    "arm" => Some("arm".to_string()),
+                    "x86_64" => Some("x64"),
+                    "x86" => Some("x86"),
+                    "aarch64" => Some("arm64"),
+                    "arm" => Some("arm"),
                     _ => None,
                 };
                 if let Some(ref a) = arch {
                     // FIXME: Move this to `fn linker_with_args`.
                     let mut arg = OsString::from("/LIBPATH:");
-                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a.to_string()));
+                    arg.push(format!("{}\\lib\\{}\\store", root_lib_path.display(), a));
                     cmd.arg(&arg);
                 } else {
                     warn!("arch is not supported");
@@ -708,7 +711,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
             status.signal() == Some(libc::SIGILL)
         }
 
-        #[cfg(windows)]
+        #[cfg(not(unix))]
         fn is_illegal_instruction(_status: &ExitStatus) -> bool {
             false
         }
@@ -893,6 +896,9 @@ fn link_sanitizers(sess: &Session, crate_type: CrateType, linker: &mut dyn Linke
     if sanitizer.contains(SanitizerSet::THREAD) {
         link_sanitizer_runtime(sess, linker, "tsan");
     }
+    if sanitizer.contains(SanitizerSet::HWADDRESS) {
+        link_sanitizer_runtime(sess, linker, "hwasan");
+    }
 }
 
 fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
@@ -916,28 +922,20 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         .map(|channel| format!("-{}", channel))
         .unwrap_or_default();
 
-    match sess.opts.target_triple.triple() {
-        "aarch64-apple-darwin" | "x86_64-apple-darwin" => {
-            // On Apple platforms, the sanitizer is always built as a dylib, and
-            // LLVM will link to `@rpath/*.dylib`, so we need to specify an
-            // rpath to the library as well (the rpath should be absolute, see
-            // PR #41352 for details).
-            let filename = format!("rustc{}_rt.{}", channel, name);
-            let path = find_sanitizer_runtime(&sess, &filename);
-            let rpath = path.to_str().expect("non-utf8 component in path");
-            linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-            linker.link_dylib(Symbol::intern(&filename));
-        }
-        "aarch64-fuchsia"
-        | "aarch64-unknown-linux-gnu"
-        | "x86_64-fuchsia"
-        | "x86_64-unknown-freebsd"
-        | "x86_64-unknown-linux-gnu" => {
-            let filename = format!("librustc{}_rt.{}.a", channel, name);
-            let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
-            linker.link_whole_rlib(&path);
-        }
-        _ => {}
+    if sess.target.is_like_osx {
+        // On Apple platforms, the sanitizer is always built as a dylib, and
+        // LLVM will link to `@rpath/*.dylib`, so we need to specify an
+        // rpath to the library as well (the rpath should be absolute, see
+        // PR #41352 for details).
+        let filename = format!("rustc{}_rt.{}", channel, name);
+        let path = find_sanitizer_runtime(&sess, &filename);
+        let rpath = path.to_str().expect("non-utf8 component in path");
+        linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
+        linker.link_dylib(Symbol::intern(&filename));
+    } else {
+        let filename = format!("librustc{}_rt.{}.a", channel, name);
+        let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
+        linker.link_whole_rlib(&path);
     }
 }
 
@@ -1192,7 +1190,7 @@ fn exec_linker(
     flush_linked_file(&output, out_filename)?;
     return output;
 
-    #[cfg(unix)]
+    #[cfg(not(windows))]
     fn flush_linked_file(_: &io::Result<Output>, _: &Path) -> io::Result<()> {
         Ok(())
     }
@@ -1230,6 +1228,11 @@ fn exec_linker(
     fn command_line_too_big(err: &io::Error) -> bool {
         const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
         err.raw_os_error() == Some(ERROR_FILENAME_EXCED_RANGE)
+    }
+
+    #[cfg(not(any(unix, windows)))]
+    fn command_line_too_big(_: &io::Error) -> bool {
+        false
     }
 
     struct Escape<'a> {
@@ -1408,15 +1411,10 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
     }
 }
 
-/// Add arbitrary "user defined" args defined from command line and by `#[link_args]` attributes.
+/// Add arbitrary "user defined" args defined from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
-fn add_user_defined_link_args(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    codegen_results: &CodegenResults,
-) {
+fn add_user_defined_link_args(cmd: &mut dyn Linker, sess: &Session) {
     cmd.args(&sess.opts.cg.link_args);
-    cmd.args(&*codegen_results.crate_info.link_args);
 }
 
 /// Add arbitrary "late link" args defined by the target spec.
@@ -1640,6 +1638,16 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.add_eh_frame_header();
     }
 
+    // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
+    // Make the binary compatible with data execution prevention schemes.
+    cmd.add_no_exec();
+
+    // NO-OPT-OUT, OBJECT-FILES-NO
+    // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
+    // at the point at which they are specified on the command line.
+    // Must be passed before any dynamic libraries.
+    cmd.add_as_needed();
+
     // NO-OPT-OUT, OBJECT-FILES-NO
     if crt_objects_fallback {
         cmd.no_crt_objects();
@@ -1735,7 +1743,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     );
 
     // OBJECT-FILES-NO, AUDIT-ORDER
-    if sess.opts.cg.profile_generate.enabled() || sess.opts.debugging_opts.instrument_coverage {
+    if sess.opts.cg.profile_generate.enabled() || sess.instrument_coverage() {
         cmd.pgo_gen();
     }
 
@@ -1748,7 +1756,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 
     // OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
-    add_user_defined_link_args(cmd, sess, codegen_results);
+    add_user_defined_link_args(cmd, sess);
 
     // NO-OPT-OUT, OBJECT-FILES-NO, AUDIT-ORDER
     cmd.finalize();
@@ -2076,7 +2084,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(
             Symbol::intern(&unlib(&sess.target, filestem)),
-            parent.unwrap_or(Path::new("")),
+            parent.unwrap_or_else(|| Path::new("")),
         );
     }
 }
@@ -2187,6 +2195,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",
         ("aarch64", "ios") if llvm_target.contains("macabi") => "macosx",
+        ("aarch64", "ios") if llvm_target.contains("sim") => "iphonesimulator",
         ("aarch64", "ios") => "iphoneos",
         ("x86", "ios") => "iphonesimulator",
         ("x86_64", "ios") if llvm_target.contains("macabi") => "macosx",

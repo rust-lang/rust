@@ -1,6 +1,5 @@
 use crate::iter;
 use crate::num::Wrapping;
-use crate::ops::{Add, Mul};
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///
@@ -37,34 +36,49 @@ pub trait Product<A = Self>: Sized {
     fn product<I: Iterator<Item = A>>(iter: I) -> Self;
 }
 
-// N.B., explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
     (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
         #[$attr]
         impl Sum for $a {
             fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
-                iter.fold($zero, Add::add)
+                iter.fold(
+                    $zero,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a + b,
+                )
             }
         }
 
         #[$attr]
         impl Product for $a {
             fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
-                iter.fold($one, Mul::mul)
+                iter.fold(
+                    $one,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a * b,
+                )
             }
         }
 
         #[$attr]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
-                iter.fold($zero, Add::add)
+                iter.fold(
+                    $zero,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a + b,
+                )
             }
         }
 
         #[$attr]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
-                iter.fold($one, Mul::mul)
+                iter.fold(
+                    $one,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a * b,
+                )
             }
         }
     )*);
@@ -83,28 +97,44 @@ macro_rules! float_sum_product {
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Sum for $a {
             fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
-                iter.fold(0.0, Add::add)
+                iter.fold(
+                    0.0,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a + b,
+                )
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Product for $a {
             fn product<I: Iterator<Item=Self>>(iter: I) -> Self {
-                iter.fold(1.0, Mul::mul)
+                iter.fold(
+                    1.0,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a * b,
+                )
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
-                iter.fold(0.0, Add::add)
+                iter.fold(
+                    0.0,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a + b,
+                )
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a Self>>(iter: I) -> Self {
-                iter.fold(1.0, Mul::mul)
+                iter.fold(
+                    1.0,
+                    #[rustc_inherit_overflow_checks]
+                    |a, b| a * b,
+                )
             }
         }
     )*)

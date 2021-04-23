@@ -11,7 +11,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 
 use rustc_span::source_map::original_sp;
-use rustc_span::{BytePos, Span, SyntaxContext};
+use rustc_span::{BytePos, Span};
 
 use std::cmp::Ordering;
 
@@ -246,7 +246,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     ) -> Vec<CoverageSpan> {
         let mut coverage_spans = CoverageSpans {
             mir_body,
-            fn_sig_span,
+            fn_sig_span: fn_sig_source_span(fn_sig_span, body_span),
             body_span,
             basic_coverage_blocks,
             sorted_spans_iter: None,
@@ -683,10 +683,11 @@ pub(super) fn filtered_statement_span(
         // and `_1` is the `Place` for `somenum`.
         //
         // If and when the Issue is resolved, remove this special case match pattern:
-        StatementKind::FakeRead(cause, _) if cause == FakeReadCause::ForGuardBinding => None,
+        StatementKind::FakeRead(box (cause, _)) if cause == FakeReadCause::ForGuardBinding => None,
 
         // Retain spans from all other statements
-        StatementKind::FakeRead(_, _) // Not including `ForGuardBinding`
+        StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
+        | StatementKind::CopyNonOverlapping(..)
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::LlvmInlineAsm(_)
@@ -731,7 +732,12 @@ pub(super) fn filtered_terminator_span(
 }
 
 #[inline]
+fn fn_sig_source_span(fn_sig_span: Span, body_span: Span) -> Span {
+    original_sp(fn_sig_span, body_span).with_ctxt(body_span.ctxt())
+}
+
+#[inline]
 fn function_source_span(span: Span, body_span: Span) -> Span {
-    let span = original_sp(span, body_span).with_ctxt(SyntaxContext::root());
+    let span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
     if body_span.contains(span) { span } else { body_span }
 }

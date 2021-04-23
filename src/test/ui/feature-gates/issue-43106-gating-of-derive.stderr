@@ -4,30 +4,40 @@ error[E0774]: `derive` may only be applied to structs, enums and unions
 LL | #[derive(Debug)]
    | ^^^^^^^^^^^^^^^^
 
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/issue-43106-gating-of-derive.rs:7:20
+   |
+LL |     mod inner { #![derive(Debug)] }
+   |                    ^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+
 error[E0774]: `derive` may only be applied to structs, enums and unions
   --> $DIR/issue-43106-gating-of-derive.rs:7:17
    |
 LL |     mod inner { #![derive(Debug)] }
-   |                 ^^^^^^^^^^^^^^^^^ help: try an outer attribute: `#[derive(Debug)]`
+   |                 ^^^^^^^^^^^^^^^^^
 
 error[E0774]: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:10:5
+  --> $DIR/issue-43106-gating-of-derive.rs:11:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
 error[E0774]: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:23:5
+  --> $DIR/issue-43106-gating-of-derive.rs:24:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
 error[E0774]: `derive` may only be applied to structs, enums and unions
-  --> $DIR/issue-43106-gating-of-derive.rs:27:5
+  --> $DIR/issue-43106-gating-of-derive.rs:28:5
    |
 LL |     #[derive(Debug)]
    |     ^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0774`.
+Some errors have detailed explanations: E0658, E0774.
+For more information about an error, try `rustc --explain E0658`.

@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `std::result::Result<(), _>: Future` is not satisfied
+error[E0277]: the trait bound `Result<(), _>: Future` is not satisfied
   --> $DIR/lifetime-elision-return-type-trait.rs:8:13
    |
 LL | fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Future` is not implemented for `std::result::Result<(), _>`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Future` is not implemented for `Result<(), _>`
 
 error: aborting due to previous error
 

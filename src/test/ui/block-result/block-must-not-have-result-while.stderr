@@ -14,9 +14,7 @@ LL | |         true
    | |         ^^^^ expected `()`, found `bool`
 LL | |
 LL | |     }
-   | |     -- help: consider using a semicolon here
-   | |_____|
-   |       expected this to be `()`
+   | |_____- expected this to be `()`
 
 error: aborting due to previous error; 1 warning emitted
 

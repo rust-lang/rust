@@ -85,8 +85,6 @@ pub trait Wake {
     }
 }
 
-#[cfg_attr(bootstrap, allow(rustc::ineffective_unstable_trait_impl))]
-#[cfg_attr(not(bootstrap), allow(ineffective_unstable_trait_impl))]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     fn from(waker: Arc<W>) -> Waker {
@@ -96,8 +94,6 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     }
 }
 
-#[cfg_attr(bootstrap, allow(rustc::ineffective_unstable_trait_impl))]
-#[cfg_attr(not(bootstrap), allow(ineffective_unstable_trait_impl))]
 #[stable(feature = "wake_trait", since = "1.51.0")]
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     fn from(waker: Arc<W>) -> RawWaker {

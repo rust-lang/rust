@@ -303,7 +303,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         let expr_ty = self.expr_ty(expr)?;
         match expr.kind {
-            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref e_base) => {
+            hir::ExprKind::Unary(hir::UnOp::Deref, ref e_base) => {
                 if self.typeck_results.is_method_call(expr) {
                     self.cat_overloaded_place(expr, e_base)
                 } else {

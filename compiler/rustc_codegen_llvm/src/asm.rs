@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug};
-use rustc_span::{Pos, Span};
+use rustc_span::{Pos, Span, Symbol};
 use rustc_target::abi::*;
 use rustc_target::asm::*;
 
@@ -61,9 +61,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         // Default per-arch clobbers
         // Basically what clang does
         let arch_clobbers = match &self.sess().target.arch[..] {
-            "x86" | "x86_64" => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
-            "mips" | "mips64" => vec!["~{$1}"],
-            _ => Vec::new(),
+            "x86" | "x86_64" => &["~{dirflag}", "~{fpsr}", "~{flags}"][..],
+            "mips" | "mips64" => &["~{$1}"],
+            _ => &[],
         };
 
         let all_constraints = ia
@@ -125,15 +125,39 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
         // Collect the types of output operands
         let mut constraints = vec![];
+        let mut clobbers = vec![];
         let mut output_types = vec![];
         let mut op_idx = FxHashMap::default();
         for (idx, op) in operands.iter().enumerate() {
             match *op {
                 InlineAsmOperandRef::Out { reg, late, place } => {
+                    let is_target_supported = |reg_class: InlineAsmRegClass| {
+                        for &(_, feature) in reg_class.supported_types(asm_arch) {
+                            if let Some(feature) = feature {
+                                if self.tcx.sess.target_features.contains(&Symbol::intern(feature))
+                                {
+                                    return true;
+                                }
+                            } else {
+                                // Register class is unconditionally supported
+                                return true;
+                            }
+                        }
+                        false
+                    };
+
                     let mut layout = None;
                     let ty = if let Some(ref place) = place {
                         layout = Some(&place.layout);
                         llvm_fixup_output_type(self.cx, reg.reg_class(), &place.layout)
+                    } else if !is_target_supported(reg.reg_class()) {
+                        // We turn discarded outputs into clobber constraints
+                        // if the target feature needed by the register class is
+                        // disabled. This is necessary otherwise LLVM will try
+                        // to actually allocate a register for the dummy output.
+                        assert!(matches!(reg, InlineAsmRegOrRegClass::Reg(_)));
+                        clobbers.push(format!("~{}", reg_to_llvm(reg, None)));
+                        continue;
                     } else {
                         // If the output is discarded, we don't really care what
                         // type is used. We're just using this to tell LLVM to
@@ -244,6 +268,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
 
+        constraints.append(&mut clobbers);
         if !options.contains(InlineAsmOptions::PRESERVES_FLAGS) {
             match asm_arch {
                 InlineAsmArch::AArch64 | InlineAsmArch::Arm => {
@@ -304,6 +329,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             } else if options.contains(InlineAsmOptions::READONLY) {
                 llvm::Attribute::ReadOnly.apply_callsite(llvm::AttributePlace::Function, result);
             }
+            llvm::Attribute::WillReturn.apply_callsite(llvm::AttributePlace::Function, result);
         } else if options.contains(InlineAsmOptions::NOMEM) {
             llvm::Attribute::InaccessibleMemOnly
                 .apply_callsite(llvm::AttributePlace::Function, result);
@@ -487,6 +513,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             } else if reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
                 // LLVM doesn't recognize x30
                 "{lr}".to_string()
+            } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
+                // LLVM doesn't recognize r14
+                "{lr}".to_string()
             } else {
                 format!("{{{}}}", reg.name())
             }
@@ -524,6 +553,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("LLVM backend does not support SPIR-V")
             }
+            InlineAsmRegClass::Err => unreachable!(),
         }
         .to_string(),
     }
@@ -590,6 +620,7 @@ fn modifier_to_llvm(
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Err => unreachable!(),
     }
 }
 
@@ -633,6 +664,7 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
+        InlineAsmRegClass::Err => unreachable!(),
     }
 }
 

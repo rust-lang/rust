@@ -61,12 +61,12 @@ pub fn some_derive(_item: TokenStream) -> TokenStream {
 // @has some_macros/foo/index.html
 mod foo {
     // @has - '//code' 'pub use some_proc_macro;'
-    // @has - '//a/@href' '../../some_macros/macro.some_proc_macro.html'
+    // @has - '//a/@href' '../macro.some_proc_macro.html'
     pub use some_proc_macro;
     // @has - '//code' 'pub use some_proc_attr;'
-    // @has - '//a/@href' '../../some_macros/attr.some_proc_attr.html'
+    // @has - '//a/@href' '../attr.some_proc_attr.html'
     pub use some_proc_attr;
     // @has - '//code' 'pub use some_derive;'
-    // @has - '//a/@href' '../../some_macros/derive.SomeDerive.html'
+    // @has - '//a/@href' '../derive.SomeDerive.html'
     pub use some_derive;
 }

@@ -148,4 +148,11 @@ fn main() {
         };
         vec.push(item);
     }
+
+    // Fix #6987
+    let mut vec = Vec::new();
+    for _ in 0..10 {
+        vec.push(1);
+        vec.extend(&[2]);
+    }
 }

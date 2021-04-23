@@ -41,8 +41,16 @@ rustc_index::newtype_index! {
 }
 
 impl CounterValueReference {
-    // Counters start at 1 to reserve 0 for ExpressionOperandId::ZERO.
+    /// Counters start at 1 to reserve 0 for ExpressionOperandId::ZERO.
     pub const START: Self = Self::from_u32(1);
+
+    /// Returns explicitly-requested zero-based version of the counter id, used
+    /// during codegen. LLVM expects zero-based indexes.
+    pub fn zero_based_index(&self) -> u32 {
+        let one_based_index = self.as_u32();
+        debug_assert!(one_based_index > 0);
+        one_based_index - 1
+    }
 }
 
 rustc_index::newtype_index! {
@@ -92,7 +100,7 @@ impl From<InjectedExpressionId> for ExpressionOperandId {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum CoverageKind {
     Counter {
         function_source_hash: u64,
@@ -117,16 +125,8 @@ impl CoverageKind {
         }
     }
 
-    pub fn is_counter(&self) -> bool {
-        matches!(self, Self::Counter { .. })
-    }
-
     pub fn is_expression(&self) -> bool {
         matches!(self, Self::Expression { .. })
-    }
-
-    pub fn is_unreachable(&self) -> bool {
-        *self == Self::Unreachable
     }
 }
 
@@ -148,7 +148,18 @@ impl Debug for CoverageKind {
     }
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone,
+    TyEncodable,
+    TyDecodable,
+    Hash,
+    HashStable,
+    TypeFoldable,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord
+)]
 pub struct CodeRegion {
     pub file_name: Symbol,
     pub start_line: u32,
@@ -167,8 +178,18 @@ impl Debug for CodeRegion {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum Op {
     Subtract,
     Add,
+}
+
+impl Op {
+    pub fn is_add(&self) -> bool {
+        matches!(self, Self::Add)
+    }
+
+    pub fn is_subtract(&self) -> bool {
+        matches!(self, Self::Subtract)
+    }
 }

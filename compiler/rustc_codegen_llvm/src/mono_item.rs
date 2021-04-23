@@ -10,7 +10,9 @@ pub use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::layout::FnAbiExt;
 use rustc_middle::ty::{self, Instance, TypeFoldable};
+use rustc_session::config::CrateType;
 use rustc_target::abi::LayoutOf;
+use rustc_target::spec::RelocModel;
 use tracing::debug;
 
 impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -35,6 +37,9 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe {
             llvm::LLVMRustSetLinkage(g, base::linkage_to_llvm(linkage));
             llvm::LLVMRustSetVisibility(g, base::visibility_to_llvm(visibility));
+            if self.should_assume_dso_local(linkage, visibility) {
+                llvm::LLVMRustSetDSOLocal(g, true);
+            }
         }
 
         self.instances.borrow_mut().insert(instance, g);
@@ -79,6 +84,42 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         attributes::from_fn_attrs(self, lldecl, instance);
 
+        unsafe {
+            if self.should_assume_dso_local(linkage, visibility) {
+                llvm::LLVMRustSetDSOLocal(lldecl, true);
+            }
+        }
+
         self.instances.borrow_mut().insert(instance, lldecl);
+    }
+}
+
+impl CodegenCx<'ll, 'tcx> {
+    /// Whether a definition (NB: not declaration!) can be assumed to be local to a group of
+    /// libraries that form a single DSO or executable.
+    pub(crate) unsafe fn should_assume_dso_local(
+        &self,
+        linkage: Linkage,
+        visibility: Visibility,
+    ) -> bool {
+        if matches!(linkage, Linkage::Internal | Linkage::Private) {
+            return true;
+        }
+
+        if visibility != Visibility::Default && linkage != Linkage::ExternalWeak {
+            return true;
+        }
+
+        // Static relocation model should force copy relocations everywhere.
+        if self.tcx.sess.relocation_model() == RelocModel::Static {
+            return true;
+        }
+
+        // Symbols from executables can't really be imported any further.
+        if self.tcx.sess.crate_types().iter().all(|ty| *ty == CrateType::Executable) {
+            return true;
+        }
+
+        return false;
     }
 }

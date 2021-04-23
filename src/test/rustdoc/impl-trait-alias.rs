@@ -1,4 +1,4 @@
-#![feature(type_alias_impl_trait)]
+#![feature(min_type_alias_impl_trait)]
 
 trait MyTrait {}
 impl MyTrait for i32 {}

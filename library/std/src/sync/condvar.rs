@@ -548,7 +548,7 @@ impl Condvar {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Condvar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Condvar { .. }")
+        f.debug_struct("Condvar").finish_non_exhaustive()
     }
 }
 

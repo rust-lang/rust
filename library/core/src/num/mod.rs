@@ -2,6 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::ascii;
 use crate::intrinsics;
 use crate::mem;
 use crate::str::FromStr;
@@ -152,6 +153,9 @@ impl isize {
      usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
+/// If 6th bit set ascii is upper case.
+const ASCII_CASE_MASK: u8 = 0b0010_0000;
+
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8, 255, 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
@@ -190,12 +194,13 @@ impl u8 {
     /// assert_eq!(65, lowercase_a.to_ascii_uppercase());
     /// ```
     ///
-    /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
+    /// [`make_ascii_uppercase`]: Self::make_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn to_ascii_uppercase(&self) -> u8 {
+    pub const fn to_ascii_uppercase(&self) -> u8 {
         // Unset the fifth bit if this is a lowercase letter
-        *self & !((self.is_ascii_lowercase() as u8) << 5)
+        *self & !((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -213,12 +218,19 @@ impl u8 {
     /// assert_eq!(97, uppercase_a.to_ascii_lowercase());
     /// ```
     ///
-    /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
+    /// [`make_ascii_lowercase`]: Self::make_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn to_ascii_lowercase(&self) -> u8 {
+    pub const fn to_ascii_lowercase(&self) -> u8 {
         // Set the fifth bit if this is an uppercase letter
-        *self | ((self.is_ascii_uppercase() as u8) << 5)
+        *self | (self.is_ascii_uppercase() as u8 * ASCII_CASE_MASK)
+    }
+
+    /// Assumes self is ascii
+    #[inline]
+    pub(crate) const fn ascii_change_case_unchecked(&self) -> u8 {
+        *self ^ ASCII_CASE_MASK
     }
 
     /// Checks that two values are an ASCII case-insensitive match.
@@ -234,8 +246,9 @@ impl u8 {
     /// assert!(lowercase_a.eq_ignore_ascii_case(&uppercase_a));
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
+    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
+    pub const fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
 
@@ -257,7 +270,7 @@ impl u8 {
     /// assert_eq!(b'A', byte);
     /// ```
     ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
+    /// [`to_ascii_uppercase`]: Self::to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
@@ -282,7 +295,7 @@ impl u8 {
     /// assert_eq!(b'a', byte);
     /// ```
     ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
+    /// [`to_ascii_lowercase`]: Self::to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
@@ -649,6 +662,31 @@ impl u8 {
     pub const fn is_ascii_control(&self) -> bool {
         matches!(*self, b'\0'..=b'\x1F' | b'\x7F')
     }
+
+    /// Returns an iterator that produces an escaped version of a `u8`,
+    /// treating it as an ASCII character.
+    ///
+    /// The behavior is identical to [`ascii::escape_default`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inherent_ascii_escape)]
+    ///
+    /// assert_eq!("0", b'0'.escape_ascii().to_string());
+    /// assert_eq!("\\t", b'\t'.escape_ascii().to_string());
+    /// assert_eq!("\\r", b'\r'.escape_ascii().to_string());
+    /// assert_eq!("\\n", b'\n'.escape_ascii().to_string());
+    /// assert_eq!("\\'", b'\''.escape_ascii().to_string());
+    /// assert_eq!("\\\"", b'"'.escape_ascii().to_string());
+    /// assert_eq!("\\\\", b'\\'.escape_ascii().to_string());
+    /// assert_eq!("\\x9d", b'\x9d'.escape_ascii().to_string());
+    /// ```
+    #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+    #[inline]
+    pub fn escape_ascii(&self) -> ascii::EscapeDefault {
+        ascii::escape_default(*self)
+    }
 }
 
 #[lang = "u16"]
@@ -713,9 +751,6 @@ impl usize {
 ///
 /// This `enum` is used as the return type for [`f32::classify`] and [`f64::classify`]. See
 /// their documentation for more.
-///
-/// [`f32::classify`]: ../../std/primitive.f32.html#method.classify
-/// [`f64::classify`]: ../../std/primitive.f64.html#method.classify
 ///
 /// # Examples
 ///

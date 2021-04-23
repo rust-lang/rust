@@ -1,4 +1,6 @@
-use crate::utils::{implements_trait, snippet, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{AsyncGeneratorKind, Body, BodyId, ExprKind, GeneratorKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -50,8 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                 let body_id = BodyId {
                     hir_id: body.value.hir_id,
                 };
-                let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-                let typeck_results = cx.tcx.typeck(def_id);
+                let typeck_results = cx.tcx.typeck_body(body_id);
                 let expr_ty = typeck_results.expr_ty(&body.value);
 
                 if implements_trait(cx, expr_ty, future_trait_def_id, &[]) {

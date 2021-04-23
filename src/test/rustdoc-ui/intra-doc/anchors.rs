@@ -1,4 +1,4 @@
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 // A few tests on anchors.
 
@@ -43,3 +43,7 @@ pub fn enum_link() {}
 /// [u32#hello]
 //~^ ERROR `u32#hello` contains an anchor
 pub fn x() {}
+
+/// [prim@usize#x]
+//~^ ERROR `prim@usize#x` contains an anchor
+pub mod usize {}

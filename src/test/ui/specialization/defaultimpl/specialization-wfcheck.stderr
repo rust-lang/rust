@@ -19,8 +19,8 @@ LL | default impl<U> Foo<'static, U> for () {}
    |
 help: consider restricting type parameter `U`
    |
-LL | default impl<U: Eq> Foo<'static, U> for () {}
-   |               ^^^^
+LL | default impl<U: std::cmp::Eq> Foo<'static, U> for () {}
+   |               ^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

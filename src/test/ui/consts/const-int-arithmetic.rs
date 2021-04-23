@@ -1,10 +1,5 @@
 // run-pass
 
-#![feature(const_checked_int_methods)]
-#![feature(const_euclidean_int_methods)]
-#![feature(const_overflowing_int_methods)]
-#![feature(const_wrapping_int_methods)]
-
 macro_rules! suite {
     ($(
         $fn:ident -> $ty:ty { $( $label:ident : $expr:expr, $result:expr; )* }

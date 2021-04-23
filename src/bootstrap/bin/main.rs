@@ -22,7 +22,10 @@ fn main() {
     let suggest_setup = !config.config.exists() && !matches!(config.cmd, Subcommand::Setup { .. });
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
-        println!("help: consider running `x.py setup` or copying `config.toml.example`");
+        println!(
+            "help: consider running `./x.py setup` or copying `config.toml.example` by running \
+            `cp config.toml.example config.toml`"
+        );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);
     }
@@ -31,7 +34,10 @@ fn main() {
 
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
-        println!("help: consider running `x.py setup` or copying `config.toml.example`");
+        println!(
+            "help: consider running `./x.py setup` or copying `config.toml.example` by running \
+            `cp config.toml.example config.toml`"
+        );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);
     }

@@ -167,7 +167,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
 
     fn visit_aggregate(
         &mut self,
-        mplace: MPlaceTy<'tcx>,
+        mplace: &MPlaceTy<'tcx>,
         fields: impl Iterator<Item = InterpResult<'tcx, Self::V>>,
     ) -> InterpResult<'tcx> {
         // ZSTs cannot contain pointers, so we can skip them.
@@ -191,14 +191,14 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         self.walk_aggregate(mplace, fields)
     }
 
-    fn visit_value(&mut self, mplace: MPlaceTy<'tcx>) -> InterpResult<'tcx> {
+    fn visit_value(&mut self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx> {
         // Handle Reference types, as these are the only relocations supported by const eval.
         // Raw pointers (and boxes) are handled by the `leftover_relocations` logic.
         let tcx = self.ecx.tcx;
         let ty = mplace.layout.ty;
         if let ty::Ref(_, referenced_ty, ref_mutability) = *ty.kind() {
-            let value = self.ecx.read_immediate(mplace.into())?;
-            let mplace = self.ecx.ref_to_mplace(value)?;
+            let value = self.ecx.read_immediate(&(*mplace).into())?;
+            let mplace = self.ecx.ref_to_mplace(&value)?;
             assert_eq!(mplace.layout.ty, referenced_ty);
             // Handle trait object vtables.
             if let ty::Dynamic(..) =
@@ -292,11 +292,11 @@ pub enum InternKind {
 /// tracks where in the value we are and thus can show much better error messages.
 /// Any errors here would anyway be turned into `const_err` lints, whereas validation failures
 /// are hard errors.
-#[tracing::instrument(skip(ecx))]
+#[tracing::instrument(level = "debug", skip(ecx))]
 pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx, const_eval::MemoryKind>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     intern_kind: InternKind,
-    ret: MPlaceTy<'tcx>,
+    ret: &MPlaceTy<'tcx>,
 ) -> Result<(), ErrorReported>
 where
     'tcx: 'mir,
@@ -328,7 +328,7 @@ where
         Some(ret.layout.ty),
     );
 
-    ref_tracking.track((ret, base_intern_mode), || ());
+    ref_tracking.track((*ret, base_intern_mode), || ());
 
     while let Some(((mplace, mode), _)) = ref_tracking.todo.pop() {
         let res = InternVisitor {
@@ -338,7 +338,7 @@ where
             leftover_allocations,
             inside_unsafe_cell: false,
         }
-        .visit_value(mplace);
+        .visit_value(&mplace);
         // We deliberately *ignore* interpreter errors here.  When there is a problem, the remaining
         // references are "leftover"-interned, and later validation will show a proper error
         // and point at the right part of the value causing the problem.
@@ -351,14 +351,6 @@ where
                         "error during interning should later cause validation failure: {}",
                         error
                     ),
-                );
-                // Some errors shouldn't come up because creating them causes
-                // an allocation, which we should avoid. When that happens,
-                // dedicated error variants should be introduced instead.
-                assert!(
-                    !error.kind.allocates(),
-                    "interning encountered allocating error: {}",
-                    error
                 );
             }
         }
@@ -435,11 +427,11 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
         layout: TyAndLayout<'tcx>,
         f: impl FnOnce(
             &mut InterpCx<'mir, 'tcx, M>,
-            MPlaceTy<'tcx, M::PointerTag>,
+            &MPlaceTy<'tcx, M::PointerTag>,
         ) -> InterpResult<'tcx, ()>,
     ) -> InterpResult<'tcx, &'tcx Allocation> {
         let dest = self.allocate(layout, MemoryKind::Stack);
-        f(self, dest)?;
+        f(self, &dest)?;
         let ptr = dest.ptr.assert_ptr();
         assert_eq!(ptr.offset, Size::ZERO);
         let mut alloc = self.memory.alloc_map.remove(&ptr.alloc_id).unwrap().1;

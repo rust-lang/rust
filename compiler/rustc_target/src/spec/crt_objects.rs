@@ -64,17 +64,24 @@ pub(super) fn all(obj: &str) -> CrtObjects {
 
 pub(super) fn pre_musl_fallback() -> CrtObjects {
     new(&[
-        (LinkOutputKind::DynamicNoPicExe, &["crt1.o", "crti.o"]),
-        (LinkOutputKind::DynamicPicExe, &["Scrt1.o", "crti.o"]),
-        (LinkOutputKind::StaticNoPicExe, &["crt1.o", "crti.o"]),
-        (LinkOutputKind::StaticPicExe, &["rcrt1.o", "crti.o"]),
-        (LinkOutputKind::DynamicDylib, &["crti.o"]),
-        (LinkOutputKind::StaticDylib, &["crti.o"]),
+        (LinkOutputKind::DynamicNoPicExe, &["crt1.o", "crti.o", "crtbegin.o"]),
+        (LinkOutputKind::DynamicPicExe, &["Scrt1.o", "crti.o", "crtbeginS.o"]),
+        (LinkOutputKind::StaticNoPicExe, &["crt1.o", "crti.o", "crtbegin.o"]),
+        (LinkOutputKind::StaticPicExe, &["rcrt1.o", "crti.o", "crtbeginS.o"]),
+        (LinkOutputKind::DynamicDylib, &["crti.o", "crtbeginS.o"]),
+        (LinkOutputKind::StaticDylib, &["crti.o", "crtbeginS.o"]),
     ])
 }
 
 pub(super) fn post_musl_fallback() -> CrtObjects {
-    all("crtn.o")
+    new(&[
+        (LinkOutputKind::DynamicNoPicExe, &["crtend.o", "crtn.o"]),
+        (LinkOutputKind::DynamicPicExe, &["crtendS.o", "crtn.o"]),
+        (LinkOutputKind::StaticNoPicExe, &["crtend.o", "crtn.o"]),
+        (LinkOutputKind::StaticPicExe, &["crtendS.o", "crtn.o"]),
+        (LinkOutputKind::DynamicDylib, &["crtendS.o", "crtn.o"]),
+        (LinkOutputKind::StaticDylib, &["crtendS.o", "crtn.o"]),
+    ])
 }
 
 pub(super) fn pre_mingw_fallback() -> CrtObjects {
@@ -101,11 +108,13 @@ pub(super) fn post_mingw() -> CrtObjects {
 }
 
 pub(super) fn pre_wasi_fallback() -> CrtObjects {
+    // Use crt1-command.o instead of crt1.o to enable support for new-style
+    // commands. See https://reviews.llvm.org/D81689 for more info.
     new(&[
-        (LinkOutputKind::DynamicNoPicExe, &["crt1.o"]),
-        (LinkOutputKind::DynamicPicExe, &["crt1.o"]),
-        (LinkOutputKind::StaticNoPicExe, &["crt1.o"]),
-        (LinkOutputKind::StaticPicExe, &["crt1.o"]),
+        (LinkOutputKind::DynamicNoPicExe, &["crt1-command.o"]),
+        (LinkOutputKind::DynamicPicExe, &["crt1-command.o"]),
+        (LinkOutputKind::StaticNoPicExe, &["crt1-command.o"]),
+        (LinkOutputKind::StaticPicExe, &["crt1-command.o"]),
         (LinkOutputKind::WasiReactorExe, &["crt1-reactor.o"]),
     ])
 }

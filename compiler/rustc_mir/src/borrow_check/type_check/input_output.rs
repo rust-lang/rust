@@ -70,6 +70,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         // Equate expected input tys with those in the MIR.
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
+            if argument_index + 1 >= body.local_decls.len() {
+                self.tcx()
+                    .sess
+                    .delay_span_bug(body.span, "found more normalized_input_ty than local_decls");
+                break;
+            }
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
 
@@ -103,11 +109,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         }
 
-        assert!(
-            body.yield_ty.is_some() && universal_regions.yield_ty.is_some()
-                || body.yield_ty.is_none() && universal_regions.yield_ty.is_none()
-        );
-        if let Some(mir_yield_ty) = body.yield_ty {
+        assert!(body.yield_ty().is_some() == universal_regions.yield_ty.is_some());
+        if let Some(mir_yield_ty) = body.yield_ty() {
             let ur_yield_ty = universal_regions.yield_ty.unwrap();
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
             self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);

@@ -19,7 +19,11 @@ LL |     is_sync::<MyTypeWUnsafe>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ `UnsafeCell<u8>` cannot be shared between threads safely
    |
    = help: within `MyTypeWUnsafe`, the trait `Sync` is not implemented for `UnsafeCell<u8>`
-   = note: required because it appears within the type `MyTypeWUnsafe`
+note: required because it appears within the type `MyTypeWUnsafe`
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:21:8
+   |
+LL | struct MyTypeWUnsafe {
+   |        ^^^^^^^^^^^^^
 
 error[E0277]: `Managed` cannot be shared between threads safely
   --> $DIR/typeck-default-trait-impl-negation-sync.rs:39:5
@@ -31,7 +35,11 @@ LL |     is_sync::<MyTypeManaged>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ `Managed` cannot be shared between threads safely
    |
    = help: within `MyTypeManaged`, the trait `Sync` is not implemented for `Managed`
-   = note: required because it appears within the type `MyTypeManaged`
+note: required because it appears within the type `MyTypeManaged`
+  --> $DIR/typeck-default-trait-impl-negation-sync.rs:25:8
+   |
+LL | struct MyTypeManaged {
+   |        ^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

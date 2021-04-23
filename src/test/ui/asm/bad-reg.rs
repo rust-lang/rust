@@ -37,6 +37,8 @@ fn main() {
         //~^ ERROR invalid register `mm0`: MMX registers are not currently supported as operands
         asm!("", in("k0") foo);
         //~^ ERROR invalid register `k0`: the k0 AVX mask register cannot be used as an operand
+        asm!("", in("ah") foo);
+        //~^ ERROR invalid register `ah`: high byte registers cannot be used as an operand
 
         // Explicit register conflicts
         // (except in/lateout which don't conflict)

@@ -48,6 +48,17 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 ///
 /// let ten_millis = Duration::from_millis(10);
 /// ```
+///
+/// # Formatting `Duration` values
+///
+/// `Duration` intentionally does not have a `Display` impl, as there are a
+/// variety of ways to format spans of time for human readability. `Duration`
+/// provides a `Debug` impl that shows the full precision of the value.
+///
+/// The `Debug` output uses the non-ASCII "µs" suffix for microseconds. If your
+/// program output may appear in contexts that cannot rely on full Unicode
+/// compatibility, you may wish to format `Duration` objects yourself or use a
+/// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Duration {
@@ -113,14 +124,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::ZERO;
     /// assert!(duration.is_zero());
     /// assert_eq!(duration.as_nanos(), 0);
     /// ```
-    #[unstable(feature = "duration_zero", issue = "73544")]
+    #[stable(feature = "duration_zero", since = "1.53.0")]
     pub const ZERO: Duration = Duration::from_nanos(0);
 
     /// The maximum duration.
@@ -258,7 +268,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert!(Duration::ZERO.is_zero());
@@ -270,7 +279,8 @@ impl Duration {
     /// assert!(!Duration::from_nanos(1).is_zero());
     /// assert!(!Duration::from_secs(1).is_zero());
     /// ```
-    #[unstable(feature = "duration_zero", issue = "73544")]
+    #[stable(feature = "duration_zero", since = "1.53.0")]
+    #[rustc_const_stable(feature = "duration_zero", since = "1.53.0")]
     #[inline]
     pub const fn is_zero(&self) -> bool {
         self.secs == 0 && self.nanos == 0
@@ -468,14 +478,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
     /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 0).saturating_add(Duration::new(0, 1)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(1, 0).saturating_add(Duration::new(u64::MAX, 0)), Duration::MAX);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_add(self, rhs: Duration) -> Duration {
@@ -526,14 +535,12 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
-    /// #![feature(duration_zero)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 1).saturating_sub(Duration::new(0, 0)), Duration::new(0, 1));
     /// assert_eq!(Duration::new(0, 0).saturating_sub(Duration::new(0, 1)), Duration::ZERO);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_sub(self, rhs: Duration) -> Duration {
@@ -579,14 +586,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_saturating_ops)]
     /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(0, 500_000_001).saturating_mul(2), Duration::new(1, 2));
     /// assert_eq!(Duration::new(u64::MAX - 1, 0).saturating_mul(2), Duration::MAX);
     /// ```
-    #[unstable(feature = "duration_saturating_ops", issue = "76416")]
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     #[inline]
     #[rustc_const_unstable(feature = "duration_consts_2", issue = "72440")]
     pub const fn saturating_mul(self, rhs: u32) -> Duration {

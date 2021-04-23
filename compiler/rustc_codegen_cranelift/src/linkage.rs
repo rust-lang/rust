@@ -6,8 +6,10 @@ pub(crate) fn get_clif_linkage(
     mono_item: MonoItem<'_>,
     linkage: RLinkage,
     visibility: Visibility,
+    is_compiler_builtins: bool,
 ) -> Linkage {
     match (linkage, visibility) {
+        (RLinkage::External, Visibility::Default) if is_compiler_builtins => Linkage::Hidden,
         (RLinkage::External, Visibility::Default) => Linkage::Export,
         (RLinkage::Internal, Visibility::Default) => Linkage::Local,
         (RLinkage::External, Visibility::Hidden) => Linkage::Hidden,

@@ -1,9 +1,8 @@
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
 use rustc_session::Session;
-use rustc_span::edition::Edition;
+use rustc_span::edition::Edition::*;
 use rustc_span::hygiene::AstPass;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
@@ -14,7 +13,7 @@ pub fn inject(
     sess: &Session,
     alt_std_name: Option<Symbol>,
 ) -> ast::Crate {
-    let rust_2018 = sess.parse_sess.edition >= Edition::Edition2018;
+    let edition = sess.parse_sess.edition;
 
     // the first name in this list is the crate name of the crate with the prelude
     let names: &[Symbol] = if sess.contains_name(&krate.attrs, sym::no_core) {
@@ -43,8 +42,12 @@ pub fn inject(
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {
-        let ident = if rust_2018 { Ident::new(name, span) } else { Ident::new(name, call_site) };
-        krate.module.items.insert(
+        let ident = if edition >= Edition2018 {
+            Ident::new(name, span)
+        } else {
+            Ident::new(name, call_site)
+        };
+        krate.items.insert(
             0,
             cx.item(
                 span,
@@ -59,27 +62,31 @@ pub fn inject(
     // the one with the prelude.
     let name = names[0];
 
-    let import_path = if rust_2018 {
-        [name, sym::prelude, sym::v1].iter().map(|symbol| Ident::new(*symbol, span)).collect()
-    } else {
-        [kw::PathRoot, name, sym::prelude, sym::v1]
-            .iter()
-            .map(|symbol| Ident::new(*symbol, span))
-            .collect()
-    };
+    let root = (edition == Edition2015).then(|| kw::PathRoot);
+
+    let import_path = root
+        .iter()
+        .chain(&[name, sym::prelude])
+        .chain(&[match edition {
+            Edition2015 => sym::rust_2015,
+            Edition2018 => sym::rust_2018,
+            Edition2021 => sym::rust_2021,
+        }])
+        .map(|&symbol| Ident::new(symbol, span))
+        .collect();
 
     let use_item = cx.item(
         span,
         Ident::invalid(),
         vec![cx.attribute(cx.meta_word(span, sym::prelude_import))],
-        ast::ItemKind::Use(P(ast::UseTree {
+        ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, import_path),
             kind: ast::UseTreeKind::Glob,
             span,
-        })),
+        }),
     );
 
-    krate.module.items.insert(0, use_item);
+    krate.items.insert(0, use_item);
 
     krate
 }

@@ -19,6 +19,9 @@ USER root
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
+
 ENV PATH=$PATH:/x-tools/armv7-unknown-linux-gnueabihf/bin
 
 ENV CC_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-gcc \

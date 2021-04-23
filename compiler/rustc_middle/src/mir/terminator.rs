@@ -17,7 +17,7 @@ use std::slice;
 
 pub use super::query::*;
 
-#[derive(Debug, Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
 pub struct SwitchTargets {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.
@@ -67,7 +67,7 @@ impl SwitchTargets {
     ///
     /// Note that this may yield 0 elements. Only the `otherwise` branch is mandatory.
     pub fn iter(&self) -> SwitchTargetsIter<'_> {
-        SwitchTargetsIter { inner: self.values.iter().zip(self.targets.iter()) }
+        SwitchTargetsIter { inner: iter::zip(&self.values, &self.targets) }
     }
 
     /// Returns a slice with all possible jump targets (including the fallback target).
@@ -98,7 +98,7 @@ impl<'a> Iterator for SwitchTargetsIter<'a> {
 
 impl<'a> ExactSizeIterator for SwitchTargetsIter<'a> {}
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, PartialEq)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
 pub enum TerminatorKind<'tcx> {
     /// Block should have one successor in the graph; we jump there.
     Goto { target: BasicBlock },
@@ -405,6 +405,22 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::DropAndReplace { ref mut unwind, .. }
             | TerminatorKind::Drop { ref mut unwind, .. }
             | TerminatorKind::FalseUnwind { ref mut unwind, .. } => Some(unwind),
+        }
+    }
+
+    pub fn as_switch(&self) -> Option<(&Operand<'tcx>, Ty<'tcx>, &SwitchTargets)> {
+        match self {
+            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
+                Some((discr, switch_ty, targets))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_goto(&self) -> Option<BasicBlock> {
+        match self {
+            TerminatorKind::Goto { target } => Some(*target),
+            _ => None,
         }
     }
 }

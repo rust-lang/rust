@@ -1,0 +1,7 @@
+goto: file://|DOC_PATH|/index.html
+click: "#toggle-all-docs"
+wait-for: 5000
+assert: ("#main > div.docblock.hidden-by-usual-hider")
+click: "#toggle-all-docs"
+wait-for: 5000
+assert: ("#main > div.docblock.hidden-by-usual-hider", 0)

@@ -20,12 +20,12 @@ LL | fn dent<C:BoxCar>(c: C, color: C::Color) {
    |
 help: use fully qualified syntax to disambiguate
    |
-LL | fn dent<C:BoxCar>(c: C, color: <C as Box>::Color) {
-   |                                ^^^^^^^^^^^^^^^^^
-help: use fully qualified syntax to disambiguate
-   |
 LL | fn dent<C:BoxCar>(c: C, color: <C as Vehicle>::Color) {
    |                                ^^^^^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn dent<C:BoxCar>(c: C, color: <C as Box>::Color) {
+   |                                ^^^^^^^^^^^^^^^^^
 
 error[E0222]: ambiguous associated type `Color` in bounds of `BoxCar`
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:37
@@ -42,8 +42,8 @@ LL | fn dent_object<COLOR>(c: dyn BoxCar<Color=COLOR>) {
    = help: consider introducing a new type parameter `T` and adding `where` constraints:
                where
                    T: BoxCar,
-                   T: Box::Color = COLOR,
-                   T: Vehicle::Color = COLOR
+                   T: Vehicle::Color = COLOR,
+                   T: Box::Color = COLOR
 
 error[E0191]: the value of the associated types `Color` (from trait `Box`), `Color` (from trait `Vehicle`) must be specified
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:23:30
@@ -73,12 +73,12 @@ LL | fn paint<C:BoxCar>(c: C, d: C::Color) {
    |
 help: use fully qualified syntax to disambiguate
    |
-LL | fn paint<C:BoxCar>(c: C, d: <C as Box>::Color) {
-   |                             ^^^^^^^^^^^^^^^^^
-help: use fully qualified syntax to disambiguate
-   |
 LL | fn paint<C:BoxCar>(c: C, d: <C as Vehicle>::Color) {
    |                             ^^^^^^^^^^^^^^^^^^^^^
+help: use fully qualified syntax to disambiguate
+   |
+LL | fn paint<C:BoxCar>(c: C, d: <C as Box>::Color) {
+   |                             ^^^^^^^^^^^^^^^^^
 
 error[E0191]: the value of the associated types `Color` (from trait `Box`), `Color` (from trait `Vehicle`) must be specified
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:32:32

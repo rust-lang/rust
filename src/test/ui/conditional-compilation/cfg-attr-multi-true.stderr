@@ -10,7 +10,7 @@ warning: use of deprecated struct `MustUseDeprecated`
   --> $DIR/cfg-attr-multi-true.rs:19:5
    |
 LL |     MustUseDeprecated::new();
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^
 
 warning: use of deprecated struct `MustUseDeprecated`
   --> $DIR/cfg-attr-multi-true.rs:13:17

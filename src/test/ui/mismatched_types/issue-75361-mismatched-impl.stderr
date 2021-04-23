@@ -13,7 +13,7 @@ help: the lifetime requirements from the `impl` do not correspond to the require
   --> $DIR/issue-75361-mismatched-impl.rs:12:55
    |
 LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType>>;
-   |                                                       ^^^^^^^^^^^^^^ consider borrowing this type parameter in the trait
+   |                                                       ^^^^ consider borrowing this type parameter in the trait
 
 error: aborting due to previous error
 

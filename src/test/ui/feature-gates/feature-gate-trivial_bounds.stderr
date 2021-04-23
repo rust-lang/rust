@@ -107,7 +107,11 @@ LL | | }
    | |_^ doesn't have a size known at compile-time
    |
    = help: within `Dst<(dyn A + 'static)>`, the trait `Sized` is not implemented for `(dyn A + 'static)`
-   = note: required because it appears within the type `Dst<(dyn A + 'static)>`
+note: required because it appears within the type `Dst<(dyn A + 'static)>`
+  --> $DIR/feature-gate-trivial_bounds.rs:48:8
+   |
+LL | struct Dst<X: ?Sized> {
+   |        ^^^
    = help: see issue #48214
    = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
 

@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `go_trait::GoMut` for type `MyThingy`:
+error[E0119]: conflicting implementations of trait `go_trait::GoMut` for type `MyThingy`
   --> $DIR/coherence-blanket-conflicts-with-specific-cross-crate.rs:15:1
    |
 LL | impl GoMut for MyThingy {

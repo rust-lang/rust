@@ -195,6 +195,9 @@ pub trait Emitter {
 
     fn emit_future_breakage_report(&mut self, _diags: Vec<(FutureBreakage, Diagnostic)>) {}
 
+    /// Emit list of unused externs
+    fn emit_unused_externs(&mut self, _lint_level: &str, _unused_externs: &[&str]) {}
+
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
         true
@@ -434,9 +437,15 @@ pub trait Emitter {
         span: &mut MultiSpan,
         children: &mut Vec<SubDiagnostic>,
     ) {
+        let source_map = if let Some(ref sm) = source_map {
+            sm
+        } else {
+            return;
+        };
         debug!("fix_multispans_in_extern_macros: before: span={:?} children={:?}", span, children);
-        for span in iter::once(&mut *span).chain(children.iter_mut().map(|child| &mut child.span)) {
-            self.fix_multispan_in_extern_macros(source_map, span);
+        self.fix_multispan_in_extern_macros(source_map, span);
+        for child in children.iter_mut() {
+            self.fix_multispan_in_extern_macros(source_map, &mut child.span);
         }
         debug!("fix_multispans_in_extern_macros: after: span={:?} children={:?}", span, children);
     }
@@ -444,16 +453,7 @@ pub trait Emitter {
     // This "fixes" MultiSpans that contain `Span`s pointing to locations inside of external macros.
     // Since these locations are often difficult to read,
     // we move these spans from the external macros to their corresponding use site.
-    fn fix_multispan_in_extern_macros(
-        &self,
-        source_map: &Option<Lrc<SourceMap>>,
-        span: &mut MultiSpan,
-    ) {
-        let sm = match source_map {
-            Some(ref sm) => sm,
-            None => return,
-        };
-
+    fn fix_multispan_in_extern_macros(&self, source_map: &Lrc<SourceMap>, span: &mut MultiSpan) {
         // First, find all the spans in external macros and point instead at their use site.
         let replacements: Vec<(Span, Span)> = span
             .primary_spans()
@@ -461,7 +461,7 @@ pub trait Emitter {
             .copied()
             .chain(span.span_labels().iter().map(|sp_label| sp_label.span))
             .filter_map(|sp| {
-                if !sp.is_dummy() && sm.is_imported(sp) {
+                if !sp.is_dummy() && source_map.is_imported(sp) {
                     let maybe_callsite = sp.source_callsite();
                     if sp != maybe_callsite {
                         return Some((sp, maybe_callsite));
@@ -1232,7 +1232,6 @@ impl EmitterWriter {
         is_secondary: bool,
     ) -> io::Result<()> {
         let mut buffer = StyledBuffer::new();
-        let header_style = if is_secondary { Style::HeaderMsg } else { Style::MainHeaderMsg };
 
         if !msp.has_primary_spans() && !msp.has_span_labels() && is_secondary && !self.short_message
         {
@@ -1257,11 +1256,12 @@ impl EmitterWriter {
                 buffer.append(0, &code, Style::Level(*level));
                 buffer.append(0, "]", Style::Level(*level));
             }
+            let header_style = if is_secondary { Style::HeaderMsg } else { Style::MainHeaderMsg };
             if *level != Level::FailureNote {
                 buffer.append(0, ": ", header_style);
             }
             for &(ref text, _) in msg.iter() {
-                buffer.append(0, text, header_style);
+                buffer.append(0, &replace_tabs(text), header_style);
             }
         }
 
@@ -1470,9 +1470,7 @@ impl EmitterWriter {
                     let mut to_add = FxHashMap::default();
 
                     for (depth, style) in depths {
-                        if multilines.get(&depth).is_some() {
-                            multilines.remove(&depth);
-                        } else {
+                        if multilines.remove(&depth).is_none() {
                             to_add.insert(depth, style);
                         }
                     }
@@ -1713,7 +1711,8 @@ impl EmitterWriter {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
         } else {
-            self.get_max_line_num(span, children).to_string().len()
+            let n = self.get_max_line_num(span, children);
+            num_decimal_digits(n)
         };
 
         match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
@@ -1725,14 +1724,13 @@ impl EmitterWriter {
                     if !self.short_message {
                         draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
                     }
-                    match emit_to_destination(
+                    if let Err(e) = emit_to_destination(
                         &buffer.render(),
                         level,
                         &mut self.dst,
                         self.short_message,
                     ) {
-                        Ok(()) => (),
-                        Err(e) => panic!("failed to emit error: {}", e),
+                        panic!("failed to emit error: {}", e)
                     }
                 }
                 if !self.short_message {
@@ -1939,6 +1937,30 @@ impl FileWithAnnotatedLines {
         }
         output
     }
+}
+
+// instead of taking the String length or dividing by 10 while > 0, we multiply a limit by 10 until
+// we're higher. If the loop isn't exited by the `return`, the last multiplication will wrap, which
+// is OK, because while we cannot fit a higher power of 10 in a usize, the loop will end anyway.
+// This is also why we need the max number of decimal digits within a `usize`.
+fn num_decimal_digits(num: usize) -> usize {
+    #[cfg(target_pointer_width = "64")]
+    const MAX_DIGITS: usize = 20;
+
+    #[cfg(target_pointer_width = "32")]
+    const MAX_DIGITS: usize = 10;
+
+    #[cfg(target_pointer_width = "16")]
+    const MAX_DIGITS: usize = 5;
+
+    let mut lim = 10;
+    for num_digits in 1..MAX_DIGITS {
+        if num < lim {
+            return num_digits;
+        }
+        lim = lim.wrapping_mul(10);
+    }
+    MAX_DIGITS
 }
 
 fn replace_tabs(str: &str) -> String {
@@ -2195,9 +2217,7 @@ pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     };
     let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];
     // All the chars that differ in capitalization are confusable (above):
-    let confusable = found
-        .chars()
-        .zip(suggested.chars())
+    let confusable = iter::zip(found.chars(), suggested.chars())
         .filter(|(f, s)| f != s)
         .all(|(f, s)| (ascii_confusables.contains(&f) || ascii_confusables.contains(&s)));
     confusable && found.to_lowercase() == suggested.to_lowercase()

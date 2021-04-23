@@ -9,8 +9,8 @@ LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
    |
 help: consider further restricting this bound
    |
-LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static + Send {
-   |                                                       ^^^^^^
+LL | fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static + std::marker::Send {
+   |                                                       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

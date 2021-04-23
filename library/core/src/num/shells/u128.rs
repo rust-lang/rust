@@ -1,6 +1,6 @@
 //! Constants for the 128-bit unsigned integer type.
 //!
-//! *[See also the `u128` primitive type](../../std/primitive.u128.html).*
+//! *[See also the `u128` primitive type][u128].*
 //!
 //! New code should use the associated constants directly on the primitive type.
 

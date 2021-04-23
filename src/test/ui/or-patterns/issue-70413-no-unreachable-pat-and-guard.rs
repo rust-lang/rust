@@ -2,7 +2,6 @@
 
 #![deny(unreachable_patterns)]
 
-#![feature(or_patterns)]
 fn main() {
     match (3,42) {
         (a,_) | (_,a) if a > 10 => {println!("{}", a)}

@@ -1,4 +1,4 @@
-error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
+error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
   --> $DIR/ptr_arg.rs:7:14
    |
 LL | fn do_vec(x: &Vec<i64>) {
@@ -6,25 +6,25 @@ LL | fn do_vec(x: &Vec<i64>) {
    |
    = note: `-D clippy::ptr-arg` implied by `-D warnings`
 
-error: writing `&String` instead of `&str` involves a new object where a slice will do.
+error: writing `&String` instead of `&str` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:16:14
    |
 LL | fn do_str(x: &String) {
    |              ^^^^^^^ help: change this to: `&str`
 
-error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do.
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:25:15
    |
 LL | fn do_path(x: &PathBuf) {
    |               ^^^^^^^^ help: change this to: `&Path`
 
-error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
+error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
   --> $DIR/ptr_arg.rs:38:18
    |
 LL |     fn do_vec(x: &Vec<i64>);
    |                  ^^^^^^^^^ help: change this to: `&[i64]`
 
-error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
+error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
   --> $DIR/ptr_arg.rs:51:14
    |
 LL | fn cloned(x: &Vec<u8>) -> Vec<u8> {
@@ -43,7 +43,7 @@ help: change `x.clone()` to
 LL |     x.to_owned()
    |
 
-error: writing `&String` instead of `&str` involves a new object where a slice will do.
+error: writing `&String` instead of `&str` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:60:18
    |
 LL | fn str_cloned(x: &String) -> String {
@@ -66,7 +66,7 @@ help: change `x.clone()` to
 LL |     x.to_string()
    |
 
-error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do.
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:68:19
    |
 LL | fn path_cloned(x: &PathBuf) -> PathBuf {
@@ -89,7 +89,7 @@ help: change `x.clone()` to
 LL |     x.to_path_buf()
    |
 
-error: writing `&String` instead of `&str` involves a new object where a slice will do.
+error: writing `&String` instead of `&str` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:76:44
    |
 LL | fn false_positive_capacity(x: &Vec<u8>, y: &String) {
@@ -108,13 +108,13 @@ help: change `y.as_str()` to
 LL |     let c = y;
    |             ^
 
-error: using a reference to `Cow` is not recommended.
+error: using a reference to `Cow` is not recommended
   --> $DIR/ptr_arg.rs:90:25
    |
 LL | fn test_cow_with_ref(c: &Cow<[i32]>) {}
    |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
 
-error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices.
+error: writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used with non-Vec-based slices
   --> $DIR/ptr_arg.rs:143:21
    |
 LL |     fn foo_vec(vec: &Vec<u8>) {
@@ -133,7 +133,7 @@ help: change `vec.clone()` to
 LL |         let _ = vec.to_owned().clone();
    |                 ^^^^^^^^^^^^^^
 
-error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do.
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:148:23
    |
 LL |     fn foo_path(path: &PathBuf) {
@@ -152,7 +152,7 @@ help: change `path.clone()` to
 LL |         let _ = path.to_path_buf().clone();
    |                 ^^^^^^^^^^^^^^^^^^
 
-error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do.
+error: writing `&PathBuf` instead of `&Path` involves a new object where a slice will do
   --> $DIR/ptr_arg.rs:153:21
    |
 LL |     fn foo_str(str: &PathBuf) {

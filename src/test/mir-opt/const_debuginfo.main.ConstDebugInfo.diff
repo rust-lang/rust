@@ -99,7 +99,6 @@
           _13 = const 64_u32;              // scope 8 at $DIR/const_debuginfo.rs:21:13: 21:22
           StorageDead(_15);                // scope 8 at $DIR/const_debuginfo.rs:21:21: 21:22
           StorageDead(_14);                // scope 8 at $DIR/const_debuginfo.rs:21:21: 21:22
-          _0 = const ();                   // scope 0 at $DIR/const_debuginfo.rs:8:11: 22:2
           StorageDead(_13);                // scope 8 at $DIR/const_debuginfo.rs:22:1: 22:2
           StorageDead(_12);                // scope 7 at $DIR/const_debuginfo.rs:22:1: 22:2
           StorageDead(_11);                // scope 6 at $DIR/const_debuginfo.rs:22:1: 22:2

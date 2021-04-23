@@ -28,7 +28,7 @@
       bb1: {
           StorageDead(_2);                 // scope 0 at $DIR/issue-67019.rs:11:19: 11:20
           StorageDead(_1);                 // scope 0 at $DIR/issue-67019.rs:11:20: 11:21
-          _0 = const ();                   // scope 0 at $DIR/issue-67019.rs:10:11: 12:2
+          nop;                             // scope 0 at $DIR/issue-67019.rs:10:11: 12:2
           return;                          // scope 0 at $DIR/issue-67019.rs:12:2: 12:2
       }
   }

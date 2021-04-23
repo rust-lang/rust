@@ -13,6 +13,7 @@ pub enum Profile {
     Compiler,
     Codegen,
     Library,
+    Tools,
     User,
 }
 
@@ -24,15 +25,16 @@ impl Profile {
     pub fn all() -> impl Iterator<Item = Self> {
         use Profile::*;
         // N.B. these are ordered by how they are displayed, not alphabetically
-        [Library, Compiler, Codegen, User].iter().copied()
+        [Library, Compiler, Codegen, Tools, User].iter().copied()
     }
 
     pub fn purpose(&self) -> String {
         use Profile::*;
         match self {
             Library => "Contribute to the standard library",
-            Compiler => "Contribute to the compiler or rustdoc",
+            Compiler => "Contribute to the compiler itself",
             Codegen => "Contribute to the compiler, and also modify LLVM or codegen",
+            Tools => "Contribute to tools which depend on the compiler, but do not modify it directly (e.g. rustdoc, clippy, miri)",
             User => "Install Rust from source",
         }
         .to_string()
@@ -53,9 +55,12 @@ impl FromStr for Profile {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "lib" | "library" => Ok(Profile::Library),
-            "compiler" | "rustdoc" => Ok(Profile::Compiler),
+            "compiler" => Ok(Profile::Compiler),
             "llvm" | "codegen" => Ok(Profile::Codegen),
             "maintainer" | "user" => Ok(Profile::User),
+            "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" | "rls" => {
+                Ok(Profile::Tools)
+            }
             _ => Err(format!("unknown profile: '{}'", s)),
         }
     }
@@ -68,6 +73,7 @@ impl fmt::Display for Profile {
             Profile::Codegen => write!(f, "codegen"),
             Profile::Library => write!(f, "library"),
             Profile::User => write!(f, "user"),
+            Profile::Tools => write!(f, "tools"),
         }
     }
 }
@@ -103,6 +109,14 @@ pub fn setup(src_path: &Path, profile: Profile) {
 
     let suggestions = match profile {
         Profile::Codegen | Profile::Compiler => &["check", "build", "test"][..],
+        Profile::Tools => &[
+            "check",
+            "build",
+            "test src/test/rustdoc*",
+            "test src/tools/clippy",
+            "test src/tools/miri",
+            "test src/tools/rustfmt",
+        ],
         Profile::Library => &["check", "build", "test library/std", "doc"],
         Profile::User => &["dist", "build"],
     };

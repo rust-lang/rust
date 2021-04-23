@@ -1,5 +1,5 @@
 //! This module contains `HashStable` implementations for various data types
-//! from librustc_ast in no particular order.
+//! from `rustc_ast` in no particular order.
 
 use crate::ich::StableHashingContext;
 
@@ -45,7 +45,11 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
             item.hash_stable(self, hasher);
             style.hash_stable(self, hasher);
             span.hash_stable(self, hasher);
-            tokens.as_ref().expect_none("Tokens should have been removed during lowering!");
+            assert_matches!(
+                tokens.as_ref(),
+                None,
+                "Tokens should have been removed during lowering!"
+            );
         } else {
             unreachable!();
         }
