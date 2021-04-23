@@ -1456,7 +1456,6 @@ crate enum TypeKind {
     Foreign,
     Macro,
     TraitAlias,
-    Primitive,
 }
 
 impl From<hir::def::DefKind> for TypeKind {
