@@ -88,6 +88,11 @@ rustc.main.002-006.NoLandingPads.before.mir
 (Here, the `main-promoted[0]` files refer to the MIR for "promoted constants"
 that appeared within the `main` function.)
 
+The `-Z unpretty=mir-cfg` flag can be used to create a graphviz MIR
+control-flow diagram for the whole crate:
+
+![A control-flow diagram](mir_cfg.svg)
+
 TODO: anything else?
 
 [dataflow state]: ./dataflow.html#graphviz-diagrams
