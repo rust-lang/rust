@@ -140,7 +140,8 @@ pub fn add_trait_assoc_items_to_impl(
 
     let items = items
         .into_iter()
-        .map(|it| ast_transform::apply(&*ast_transform, it))
+        .map(|it| it.clone_for_update())
+        .inspect(|it| ast_transform::apply(&*ast_transform, it))
         .map(|it| match it {
             ast::AssocItem::Fn(def) => ast::AssocItem::Fn(add_body(def)),
             ast::AssocItem::TypeAlias(def) => ast::AssocItem::TypeAlias(def.remove_bounds()),
