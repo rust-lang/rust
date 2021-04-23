@@ -379,7 +379,7 @@ impl FromWithTcx<clean::Type> for Type {
                     .unwrap_or_default(),
             },
             Generic(s) => Type::Generic(s.to_string()),
-            Primitive(p) => Type::Primitive(p.as_str().to_string()),
+            Primitive(p) => Type::Primitive(p.as_sym().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
             Tuple(t) => Type::Tuple(t.into_iter().map(|x| x.into_tcx(tcx)).collect()),
             Slice(t) => Type::Slice(Box::new((*t).into_tcx(tcx))),
