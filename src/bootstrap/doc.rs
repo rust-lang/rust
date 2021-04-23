@@ -501,8 +501,8 @@ impl Step for Std {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustc {
-    stage: u32,
-    target: TargetSelection,
+    pub stage: u32,
+    pub target: TargetSelection,
 }
 
 impl Step for Rustc {
