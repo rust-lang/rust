@@ -155,19 +155,20 @@ impl Cache {
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
         for &(n, ref e) in &krate.externs {
-            let src_root = match e.src {
+            let src_root = match e.src(tcx) {
                 FileName::Real(ref p) => match p.local_path().parent() {
                     Some(p) => p.to_path_buf(),
                     None => PathBuf::new(),
                 },
                 _ => PathBuf::new(),
             };
-            let extern_url = extern_html_root_urls.get(&*e.name.as_str()).map(|u| &**u);
+            let name = e.name(tcx);
+            let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
             self.extern_locations
-                .insert(n, (e.name, src_root, extern_location(e, extern_url, &dst)));
+                .insert(n, (name, src_root, extern_location(e, extern_url, &dst, tcx)));
 
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
-            self.external_paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
+            self.external_paths.insert(did, (vec![name.to_string()], ItemType::Module));
         }
 
         // Cache where all known primitives have their documentation located.
@@ -175,7 +176,7 @@ impl Cache {
         // Favor linking to as local extern as possible, so iterate all crates in
         // reverse topological order.
         for &(_, ref e) in krate.externs.iter().rev() {
-            for &(def_id, prim) in &e.primitives {
+            for &(def_id, prim) in &e.primitives(tcx) {
                 self.primitive_locations.insert(prim, def_id);
             }
         }
