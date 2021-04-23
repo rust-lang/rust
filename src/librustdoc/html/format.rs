@@ -574,7 +574,7 @@ fn primitive_link(
                     f,
                     "<a class=\"primitive\" href=\"{}primitive.{}.html\">",
                     "../".repeat(len),
-                    prim.to_url_str()
+                    prim.as_str()
                 )?;
                 needs_termination = true;
             }
@@ -603,7 +603,7 @@ fn primitive_link(
                         f,
                         "<a class=\"primitive\" href=\"{}/primitive.{}.html\">",
                         loc.join("/"),
-                        prim.to_url_str()
+                        prim.as_str()
                     )?;
                     needs_termination = true;
                 }

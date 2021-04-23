@@ -1860,10 +1860,6 @@ impl PrimitiveType {
         })
     }
 
-    crate fn to_url_str(&self) -> &'static str {
-        self.as_str()
-    }
-
     crate fn as_sym(&self) -> Symbol {
         use PrimitiveType::*;
         match self {
