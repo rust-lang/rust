@@ -116,7 +116,11 @@ impl From<DefKind> for ItemType {
             DefKind::Trait => Self::Trait,
             DefKind::TyAlias => Self::Typedef,
             DefKind::TraitAlias => Self::TraitAlias,
-            DefKind::Macro(_) => Self::Macro,
+            DefKind::Macro(kind) => match kind {
+                MacroKind::Bang => ItemType::Macro,
+                MacroKind::Attr => ItemType::ProcAttribute,
+                MacroKind::Derive => ItemType::ProcDerive,
+            },
             DefKind::ForeignTy
             | DefKind::Variant
             | DefKind::AssocTy
