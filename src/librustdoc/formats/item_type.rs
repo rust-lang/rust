@@ -4,6 +4,7 @@ use std::fmt;
 
 use serde::{Serialize, Serializer};
 
+use rustc_hir::def::DefKind;
 use rustc_span::hygiene::MacroKind;
 
 use crate::clean;
@@ -19,7 +20,7 @@ use crate::clean;
 /// module headings. If you are adding to this enum and want to ensure that the sidebar also prints
 /// a heading, edit the listing in `html/render.rs`, function `sidebar_module`. This uses an
 /// ordering based on a helper function inside `item_module`, in the same file.
-#[derive(Copy, PartialEq, Eq, Clone, Debug, PartialOrd, Ord)]
+#[derive(Copy, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 crate enum ItemType {
     Module = 0,
     ExternCrate = 1,
@@ -102,24 +103,43 @@ impl<'a> From<&'a clean::Item> for ItemType {
     }
 }
 
-impl From<clean::TypeKind> for ItemType {
-    fn from(kind: clean::TypeKind) -> ItemType {
-        match kind {
-            clean::TypeKind::Struct => ItemType::Struct,
-            clean::TypeKind::Union => ItemType::Union,
-            clean::TypeKind::Enum => ItemType::Enum,
-            clean::TypeKind::Function => ItemType::Function,
-            clean::TypeKind::Trait => ItemType::Trait,
-            clean::TypeKind::Module => ItemType::Module,
-            clean::TypeKind::Static => ItemType::Static,
-            clean::TypeKind::Const => ItemType::Constant,
-            clean::TypeKind::Typedef => ItemType::Typedef,
-            clean::TypeKind::Foreign => ItemType::ForeignType,
-            clean::TypeKind::Macro => ItemType::Macro,
-            clean::TypeKind::Attr => ItemType::ProcAttribute,
-            clean::TypeKind::Derive => ItemType::ProcDerive,
-            clean::TypeKind::TraitAlias => ItemType::TraitAlias,
-            clean::TypeKind::Primitive => ItemType::Primitive,
+impl From<DefKind> for ItemType {
+    fn from(other: DefKind) -> Self {
+        match other {
+            DefKind::Enum => Self::Enum,
+            DefKind::Fn => Self::Function,
+            DefKind::Mod => Self::Module,
+            DefKind::Const => Self::Constant,
+            DefKind::Static => Self::Static,
+            DefKind::Struct => Self::Struct,
+            DefKind::Union => Self::Union,
+            DefKind::Trait => Self::Trait,
+            DefKind::TyAlias => Self::Typedef,
+            DefKind::TraitAlias => Self::TraitAlias,
+            DefKind::Macro(kind) => match kind {
+                MacroKind::Bang => ItemType::Macro,
+                MacroKind::Attr => ItemType::ProcAttribute,
+                MacroKind::Derive => ItemType::ProcDerive,
+            },
+            DefKind::ForeignTy
+            | DefKind::Variant
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::ConstParam
+            | DefKind::Ctor(..)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::OpaqueTy
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::Impl
+            | DefKind::Closure
+            | DefKind::Generator => Self::ForeignType,
         }
     }
 }
