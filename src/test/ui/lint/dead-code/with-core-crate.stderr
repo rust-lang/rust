@@ -2,8 +2,9 @@ error: function is never used: `foo`
   --> $DIR/with-core-crate.rs:7:4
    |
 LL | fn foo() {
-   |    ^^^
+   |    ^^^ help: if this is intentional, prefix it with an underscore: `_foo`
    |
+   = note: the leading underscore signals that this function serves some other purpose even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/with-core-crate.rs:1:9
    |
