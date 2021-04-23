@@ -12,7 +12,7 @@
 //! * `powerpc64`: [`is_powerpc64_feature_detected`]
 
 #![unstable(feature = "stdsimd", issue = "27731")]
-#![feature(const_fn, staged_api, stdsimd, doc_cfg, allow_internal_unstable)]
+#![feature(staged_api, stdsimd, doc_cfg, allow_internal_unstable)]
 #![deny(rust_2018_idioms)]
 #![allow(clippy::shadow_reuse)]
 #![deny(clippy::missing_inline_in_public_items)]
