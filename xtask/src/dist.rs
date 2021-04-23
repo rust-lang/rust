@@ -39,7 +39,9 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
 
     patch
         .replace(r#""version": "0.4.0-dev""#, &format!(r#""version": "{}""#, version))
-        .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag));
+        .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag))
+        .replace(r#""$generated-start": false,"#, "")
+        .replace(r#""$generated-end": false"#, "");
 
     if nightly {
         patch.replace(
