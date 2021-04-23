@@ -306,6 +306,7 @@ dependencies = [
  "cranelift-frontend",
  "cranelift-jit",
  "cranelift-module",
+ "cranelift-native",
  "cranelift-object",
  "gimli",
  "indexmap",
