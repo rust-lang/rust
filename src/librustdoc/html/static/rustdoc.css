@@ -117,8 +117,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.notable),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
+h1, h2, h3:not(.notable), h4 {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -135,30 +134,38 @@ h1.fqn {
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
+h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant, h4.associatedtype {
+div[aria-level="3"].impl, div[aria-level="3"].method, div[aria-level="4"].method,
+div[aria-level="3"].type, div[aria-level="4"].type, div[aria-level="4"].associatedconstant,
+div[aria-level="4"].associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
 	margin-bottom: 10px;
 	position: relative;
 }
-h3.impl, h3.method, h4.method.trait-impl, h3.type,
-h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-impl {
+div[aria-level="3"].impl, div[aria-level="3"].method, div[aria-level="4"].method.trait-impl,
+div[aria-level="3"].type, div[aria-level="4"].type.trait-impl,
+div[aria-level="4"].associatedconstant.trait-impl,
+div[aria-level="4"].associatedtype.trait-impl {
 	padding-left: 15px;
+}
+
+div.impl-items > div {
+	padding-left: 0;
 }
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .search-results .result-name,
 .content table td:first-child > a,
-div.item-list .out-of-band,
+.collapse-toggle, div.item-list .out-of-band, span.since,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
 details.undocumented > summary::before,
-.content ul.crate a.crate,
+div.impl-items > div:not(.docblock):not(.item-info),
+.content ul.crate a.crate, a.srclink,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, sans-serif;
@@ -313,8 +320,6 @@ nav.sub {
 	margin-bottom: 14px;
 }
 .block h2, .block h3 {
-	margin-top: 0;
-	margin-bottom: 8px;
 	text-align: center;
 }
 .block ul, .block li {
@@ -462,15 +467,15 @@ nav.sub {
 	font-weight: normal;
 }
 
-h3.impl > .out-of-band {
+div[aria-level="3"].impl > .out-of-band {
 	font-size: 21px;
 }
 
-h4.method > .out-of-band {
+div[aria-level="4"].method > .out-of-band {
 	font-size: 19px;
 }
 
-h4 > code, h3 > code, .invisible > code {
+div[aria-level="3"] > code, div[aria-level="4"] > code, .invisible > code {
 	max-width: calc(100% - 41px);
 	display: block;
 }
@@ -543,7 +548,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 .content .multi-column li { width: 100%; display: inline-block; }
 
-.content .method {
+.content > div.methods > div.method {
 	font-size: 1em;
 	position: relative;
 }
@@ -555,7 +560,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.notable-traits):not(.methods) {
+.content .methods > div:not(.notable-traits):not(.method) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
@@ -564,7 +569,7 @@ h4 > code, h3 > code, .invisible > code {
 	margin-left: 20px;
 	margin-top: -34px;
 }
-.content .docblock > .impl-items > h4 {
+.content .docblock > .impl-items > div[aria-level="4"] {
 	border-bottom: 0;
 }
 .content .docblock >.impl-items .table-display {
@@ -688,7 +693,8 @@ a {
 	text-decoration: underline;
 }
 
-.invisible > .srclink, h4 > code + .srclink, h3 > code + .srclink {
+.invisible > .srclink,
+div[aria-level="3"] > code + .srclink, div[aria-level="4"] > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -923,7 +929,8 @@ body.blur > :not(#help) {
 	flex-grow: 1;
 }
 
-.impl-items h4, h4.impl, h3.impl, .methods h3 {
+.impl-items div[aria-level="4"], div[aria-level="4"].impl, div[aria-level="3"].impl,
+.methods div[aria-level="3"] {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
@@ -983,6 +990,45 @@ a.test-arrow:hover{
 
 .code-attribute {
 	font-weight: 300;
+}
+
+.collapse-toggle {
+	font-weight: 300;
+	position: absolute;
+	left: -23px;
+	top: 0;
+}
+
+div[aria-level="3"] > .collapse-toggle, div[aria-level="4"] > .collapse-toggle {
+	font-size: 0.8em;
+	top: 5px;
+}
+
+.toggle-wrapper > .collapse-toggle {
+	left: -24px;
+	margin-top: 0px;
+}
+
+.toggle-wrapper {
+	position: relative;
+	margin-top: 0;
+}
+
+.toggle-wrapper.collapsed {
+	height: 25px;
+	transition: height .2s;
+	margin-bottom: .6em;
+}
+
+.collapse-toggle > .inner {
+	display: inline-block;
+	width: 1.2ch;
+	text-align: center;
+}
+
+.collapse-toggle.hidden-default {
+	position: relative;
+	margin-left: 20px;
 }
 
 .since + .srclink {
@@ -1197,7 +1243,7 @@ pre.rust {
 	margin-left: 5px;
 }
 
-h4 > .notable-traits {
+div[aria-level="4"] > .notable-traits {
 	position: absolute;
 	left: -44px;
 	top: 2px;
@@ -1615,7 +1661,7 @@ details.undocumented[open] > summary::before {
 		padding: 0;
 	}
 
-	.content h4 > .out-of-band {
+	.content div[aria-level="4"] > .out-of-band {
 		position: inherit;
 	}
 
@@ -1638,7 +1684,7 @@ details.undocumented[open] > summary::before {
 		z-index: 1;
 	}
 
-	h4 > .notable-traits {
+	div[aria-level="4"] > .notable-traits {
 		position: absolute;
 		left: -22px;
 		top: 24px;

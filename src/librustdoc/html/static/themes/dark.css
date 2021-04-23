@@ -3,15 +3,13 @@ body {
 	color: #ddd;
 }
 
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3:not(.notable), h4 {
 	color: #ddd;
 }
 h1.fqn {
 	border-bottom-color: #d2d2d2;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod) {
+h2, h3, h4 {
 	border-bottom-color: #d2d2d2;
 }
 
