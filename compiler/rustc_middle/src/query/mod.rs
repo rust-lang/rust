@@ -1315,6 +1315,7 @@ rustc_queries! {
         desc { "fetching what a crate is named" }
     }
     query item_children(def_id: DefId) -> &'tcx [Export<hir::HirId>] {
+        eval_always
         desc { |tcx| "collecting child items of `{}`", tcx.def_path_str(def_id) }
     }
     query extern_mod_stmt_cnum(def_id: LocalDefId) -> Option<CrateNum> {
