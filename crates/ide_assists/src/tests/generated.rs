@@ -292,6 +292,47 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_tuple_struct_to_named_struct() {
+    check_doc_test(
+        "convert_tuple_struct_to_named_struct",
+        r#####"
+struct Point$0(f32, f32);
+
+impl Point {
+    pub fn new(x: f32, y: f32) -> Self {
+        Point(x, y)
+    }
+
+    pub fn x(&self) -> f32 {
+        self.0
+    }
+
+    pub fn y(&self) -> f32 {
+        self.1
+    }
+}
+"#####,
+        r#####"
+struct Point { field1: f32, field2: f32 }
+
+impl Point {
+    pub fn new(x: f32, y: f32) -> Self {
+        Point { field1: x, field2: y }
+    }
+
+    pub fn x(&self) -> f32 {
+        self.field1
+    }
+
+    pub fn y(&self) -> f32 {
+        self.field2
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_expand_glob_import() {
     check_doc_test(
         "expand_glob_import",

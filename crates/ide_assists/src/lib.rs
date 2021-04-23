@@ -120,6 +120,7 @@ mod handlers {
     mod convert_comment_block;
     mod convert_iter_for_each_to_for;
     mod convert_into_to_from;
+    mod convert_tuple_struct_to_named_struct;
     mod early_return;
     mod expand_glob_import;
     mod extract_function;
@@ -190,6 +191,7 @@ mod handlers {
             convert_comment_block::convert_comment_block,
             convert_iter_for_each_to_for::convert_iter_for_each_to_for,
             convert_into_to_from::convert_into_to_from,
+            convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
             early_return::convert_to_guarded_return,
             expand_glob_import::expand_glob_import,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,

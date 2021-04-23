@@ -7,7 +7,9 @@
 use std::{convert::TryInto, mem};
 
 use base_db::{FileId, FileRange, SourceDatabase, SourceDatabaseExt};
-use hir::{DefWithBody, HasAttrs, HasSource, InFile, ModuleSource, Semantics, Visibility};
+use hir::{
+    DefWithBody, HasAttrs, HasSource, InFile, ModuleDef, ModuleSource, Semantics, Visibility,
+};
 use once_cell::unsync::Lazy;
 use rustc_hash::FxHashMap;
 use syntax::{ast, match_ast, AstNode, TextRange, TextSize};
@@ -295,7 +297,7 @@ impl Definition {
     }
 
     pub fn usages<'a>(&'a self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
-        FindUsages { def: self, sema, scope: None }
+        FindUsages { def: self, sema, scope: None, include_self_kw_refs: false }
     }
 }
 
@@ -303,9 +305,15 @@ pub struct FindUsages<'a> {
     def: &'a Definition,
     sema: &'a Semantics<'a, RootDatabase>,
     scope: Option<SearchScope>,
+    include_self_kw_refs: bool,
 }
 
 impl<'a> FindUsages<'a> {
+    pub fn include_self_kw_refs(mut self, include: bool) -> FindUsages<'a> {
+        self.include_self_kw_refs = include;
+        self
+    }
+
     pub fn in_scope(self, scope: SearchScope) -> FindUsages<'a> {
         self.set_scope(Some(scope))
     }
@@ -352,6 +360,8 @@ impl<'a> FindUsages<'a> {
         };
 
         let pat = name.as_str();
+        let search_for_self = self.include_self_kw_refs;
+
         for (file_id, search_range) in search_scope {
             let text = sema.db.file_text(file_id);
             let search_range =
@@ -359,29 +369,45 @@ impl<'a> FindUsages<'a> {
 
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
-            for (idx, _) in text.match_indices(pat) {
+            let mut handle_match = |idx: usize| -> bool {
                 let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
-                    continue;
+                    return false;
                 }
 
                 if let Some(name) = sema.find_node_at_offset_with_descend(&tree, offset) {
                     match name {
                         ast::NameLike::NameRef(name_ref) => {
                             if self.found_name_ref(&name_ref, sink) {
-                                return;
+                                return true;
                             }
                         }
                         ast::NameLike::Name(name) => {
                             if self.found_name(&name, sink) {
-                                return;
+                                return true;
                             }
                         }
                         ast::NameLike::Lifetime(lifetime) => {
                             if self.found_lifetime(&lifetime, sink) {
-                                return;
+                                return true;
                             }
                         }
+                    }
+                }
+
+                return false;
+            };
+
+            for (idx, _) in text.match_indices(pat) {
+                if handle_match(idx) {
+                    return;
+                }
+            }
+
+            if search_for_self {
+                for (idx, _) in text.match_indices("Self") {
+                    if handle_match(idx) {
+                        return;
                     }
                 }
             }
@@ -421,6 +447,24 @@ impl<'a> FindUsages<'a> {
                     access: reference_access(&def, &name_ref),
                 };
                 sink(file_id, reference)
+            }
+            Some(NameRefClass::Definition(Definition::SelfType(impl_))) => {
+                let ty = impl_.self_ty(self.sema.db);
+
+                if let Some(adt) = ty.as_adt() {
+                    if &Definition::ModuleDef(ModuleDef::Adt(adt)) == self.def {
+                        let FileRange { file_id, range } =
+                            self.sema.original_range(name_ref.syntax());
+                        let reference = FileReference {
+                            range,
+                            name: ast::NameLike::NameRef(name_ref.clone()),
+                            access: None,
+                        };
+                        return sink(file_id, reference);
+                    }
+                }
+
+                false
             }
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
