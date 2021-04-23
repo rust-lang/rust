@@ -3,20 +3,27 @@ use hir::{HirDisplay, PathResolution, SemanticsScope};
 use ide_db::helpers::mod_path_to_ast;
 use rustc_hash::FxHashMap;
 use syntax::{
-    algo::SyntaxRewriter,
     ast::{self, AstNode},
-    SyntaxNode,
+    ted, SyntaxNode,
 };
 
-pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: N) -> N {
-    SyntaxRewriter::from_fn(|element| match element {
-        syntax::SyntaxElement::Node(n) => {
-            let replacement = transformer.get_substitution(&n, transformer)?;
-            Some(replacement.into())
+pub fn apply<'a, N: AstNode>(transformer: &dyn AstTransform<'a>, node: &N) {
+    let mut skip_to = None;
+    for event in node.syntax().preorder() {
+        match event {
+            syntax::WalkEvent::Enter(node) if skip_to.is_none() => {
+                skip_to = transformer.get_substitution(&node, transformer).zip(Some(node));
+            }
+            syntax::WalkEvent::Enter(_) => (),
+            syntax::WalkEvent::Leave(node) => match &skip_to {
+                Some((replacement, skip_target)) if *skip_target == node => {
+                    ted::replace(node, replacement.clone_for_update());
+                    skip_to.take();
+                }
+                _ => (),
+            },
         }
-        _ => None,
-    })
-    .rewrite_ast(&node)
+    }
 }
 
 /// `AstTransform` helps with applying bulk transformations to syntax nodes.
@@ -191,11 +198,9 @@ impl<'a> AstTransform<'a> for QualifyPaths<'a> {
                 let found_path = from.find_use_path(self.source_scope.db.upcast(), def)?;
                 let mut path = mod_path_to_ast(&found_path);
 
-                let type_args = p
-                    .segment()
-                    .and_then(|s| s.generic_arg_list())
-                    .map(|arg_list| apply(recur, arg_list));
+                let type_args = p.segment().and_then(|s| s.generic_arg_list());
                 if let Some(type_args) = type_args {
+                    apply(recur, &type_args);
                     let last_segment = path.segment().unwrap();
                     path = path.with_segment(last_segment.with_generic_args(type_args))
                 }

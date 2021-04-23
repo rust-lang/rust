@@ -342,10 +342,10 @@ enum InsertPos {
 
 #[derive(Default)]
 pub struct SyntaxRewriter<'a> {
-    f: Option<Box<dyn Fn(&SyntaxElement) -> Option<SyntaxElement> + 'a>>,
     //FIXME: add debug_assertions that all elements are in fact from the same file.
     replacements: FxHashMap<SyntaxElement, Replacement>,
     insertions: IndexMap<InsertPos, Vec<SyntaxElement>>,
+    _pd: std::marker::PhantomData<&'a ()>,
 }
 
 impl fmt::Debug for SyntaxRewriter<'_> {
@@ -357,14 +357,7 @@ impl fmt::Debug for SyntaxRewriter<'_> {
     }
 }
 
-impl<'a> SyntaxRewriter<'a> {
-    pub fn from_fn(f: impl Fn(&SyntaxElement) -> Option<SyntaxElement> + 'a) -> SyntaxRewriter<'a> {
-        SyntaxRewriter {
-            f: Some(Box::new(f)),
-            replacements: FxHashMap::default(),
-            insertions: IndexMap::default(),
-        }
-    }
+impl SyntaxRewriter<'_> {
     pub fn delete<T: Clone + Into<SyntaxElement>>(&mut self, what: &T) {
         let what = what.clone().into();
         let replacement = Replacement::Delete;
@@ -470,7 +463,7 @@ impl<'a> SyntaxRewriter<'a> {
     pub fn rewrite(&self, node: &SyntaxNode) -> SyntaxNode {
         let _p = profile::span("rewrite");
 
-        if self.f.is_none() && self.replacements.is_empty() && self.insertions.is_empty() {
+        if self.replacements.is_empty() && self.insertions.is_empty() {
             return node.clone();
         }
         let green = self.rewrite_children(node);
@@ -495,7 +488,6 @@ impl<'a> SyntaxRewriter<'a> {
             }
         }
 
-        assert!(self.f.is_none());
         self.replacements
             .keys()
             .filter_map(element_to_node_or_parent)
@@ -510,10 +502,6 @@ impl<'a> SyntaxRewriter<'a> {
     }
 
     fn replacement(&self, element: &SyntaxElement) -> Option<Replacement> {
-        if let Some(f) = &self.f {
-            assert!(self.replacements.is_empty());
-            return f(element).map(Replacement::Single);
-        }
         self.replacements.get(element).cloned()
     }
 
@@ -574,7 +562,6 @@ fn element_to_green(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, row
 
 impl ops::AddAssign for SyntaxRewriter<'_> {
     fn add_assign(&mut self, rhs: SyntaxRewriter) {
-        assert!(rhs.f.is_none());
         self.replacements.extend(rhs.replacements);
         for (pos, insertions) in rhs.insertions.into_iter() {
             match self.insertions.entry(pos) {

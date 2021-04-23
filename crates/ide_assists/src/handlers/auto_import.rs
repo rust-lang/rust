@@ -93,7 +93,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
 
     let range = ctx.sema.original_range(&syntax_under_caret).range;
     let group_label = group_label(import_assets.import_candidate());
-    let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container_with_macros(&syntax_under_caret, &ctx.sema)?;
     for import in proposed_imports {
         acc.add_group(
             &group_label,
@@ -101,9 +101,11 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             format!("Import `{}`", import.import_path),
             range,
             |builder| {
-                let rewriter =
-                    insert_use(&scope, mod_path_to_ast(&import.import_path), ctx.config.insert_use);
-                builder.rewrite(rewriter);
+                let scope = match scope.clone() {
+                    ImportScope::File(it) => ImportScope::File(builder.make_ast_mut(it)),
+                    ImportScope::Module(it) => ImportScope::Module(builder.make_ast_mut(it)),
+                };
+                insert_use(&scope, mod_path_to_ast(&import.import_path), ctx.config.insert_use);
             },
         );
     }

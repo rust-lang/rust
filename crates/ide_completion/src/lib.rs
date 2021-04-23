@@ -179,7 +179,7 @@ pub fn resolve_completion_edits(
 ) -> Option<Vec<TextEdit>> {
     let ctx = CompletionContext::new(db, position, config)?;
     let position_for_import = position_for_import(&ctx, None)?;
-    let scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
+    let scope = ImportScope::find_insert_use_container_with_macros(position_for_import, &ctx.sema)?;
 
     let current_module = ctx.sema.scope(position_for_import).module()?;
     let current_crate = current_module.krate();

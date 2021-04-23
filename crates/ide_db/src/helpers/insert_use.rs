@@ -4,13 +4,9 @@ use std::{cmp::Ordering, iter::successors};
 use hir::Semantics;
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
-    algo::SyntaxRewriter,
-    ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make, AstNode, AttrsOwner, PathSegmentKind, VisibilityOwner,
-    },
-    AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
+    algo,
+    ast::{self, edit::AstNodeEdit, make, AstNode, AttrsOwner, PathSegmentKind, VisibilityOwner},
+    ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
 };
 
 use crate::RootDatabase;
@@ -42,11 +38,16 @@ impl ImportScope {
     }
 
     /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
-    pub fn find_insert_use_container(
+    pub fn find_insert_use_container_with_macros(
         position: &SyntaxNode,
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<Self> {
         sema.ancestors_with_macros(position.clone()).find_map(Self::from)
+    }
+
+    /// Determines the containing syntax node in which to insert a `use` statement affecting `position`.
+    pub fn find_insert_use_container(position: &SyntaxNode) -> Option<Self> {
+        std::iter::successors(Some(position.clone()), SyntaxNode::parent).find_map(Self::from)
     }
 
     pub fn as_syntax_node(&self) -> &SyntaxNode {
@@ -56,127 +57,32 @@ impl ImportScope {
         }
     }
 
-    fn indent_level(&self) -> IndentLevel {
+    pub fn clone_for_update(&self) -> Self {
         match self {
-            ImportScope::File(file) => file.indent_level(),
-            ImportScope::Module(item_list) => item_list.indent_level() + 1,
+            ImportScope::File(file) => ImportScope::File(file.clone_for_update()),
+            ImportScope::Module(item_list) => ImportScope::Module(item_list.clone_for_update()),
         }
     }
-
-    fn first_insert_pos(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
-        match self {
-            ImportScope::File(_) => (InsertPosition::First, AddBlankLine::AfterTwice),
-            // don't insert the imports before the item list's opening curly brace
-            ImportScope::Module(item_list) => item_list
-                .l_curly_token()
-                .map(|b| (InsertPosition::After(b.into()), AddBlankLine::Around))
-                .unwrap_or((InsertPosition::First, AddBlankLine::AfterTwice)),
-        }
-    }
-
-    fn insert_pos_after_last_inner_element(&self) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
-        self.as_syntax_node()
-            .children_with_tokens()
-            .filter(|child| match child {
-                NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
-                NodeOrToken::Token(token) => is_inner_comment(token.clone()),
-            })
-            .last()
-            .map(|last_inner_element| {
-                (InsertPosition::After(last_inner_element), AddBlankLine::BeforeTwice)
-            })
-            .unwrap_or_else(|| self.first_insert_pos())
-    }
-}
-
-fn is_inner_attribute(node: SyntaxNode) -> bool {
-    ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
-}
-
-fn is_inner_comment(token: SyntaxToken) -> bool {
-    ast::Comment::cast(token).and_then(|comment| comment.kind().doc)
-        == Some(ast::CommentPlacement::Inner)
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
-pub fn insert_use<'a>(
-    scope: &ImportScope,
-    path: ast::Path,
-    cfg: InsertUseConfig,
-) -> SyntaxRewriter<'a> {
+pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: InsertUseConfig) {
     let _p = profile::span("insert_use");
-    let mut rewriter = SyntaxRewriter::default();
-    let use_item = make::use_(None, make::use_tree(path.clone(), None, None, false));
+    let use_item =
+        make::use_(None, make::use_tree(path.clone(), None, None, false)).clone_for_update();
     // merge into existing imports if possible
     if let Some(mb) = cfg.merge {
         for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
-                rewriter.replace(existing_use.syntax(), merged.syntax());
-                return rewriter;
+                ted::replace(existing_use.syntax(), merged.syntax());
+                return;
             }
         }
     }
 
     // either we weren't allowed to merge or there is no import that fits the merge conditions
     // so look for the place we have to insert to
-    let (insert_position, add_blank) = find_insert_position(scope, path, cfg.group);
-
-    let indent = if let ident_level @ 1..=usize::MAX = scope.indent_level().0 as usize {
-        Some(make::tokens::whitespace(&" ".repeat(4 * ident_level)).into())
-    } else {
-        None
-    };
-
-    let to_insert: Vec<SyntaxElement> = {
-        let mut buf = Vec::new();
-
-        match add_blank {
-            AddBlankLine::Before | AddBlankLine::Around => {
-                buf.push(make::tokens::single_newline().into())
-            }
-            AddBlankLine::BeforeTwice => buf.push(make::tokens::blank_line().into()),
-            _ => (),
-        }
-
-        if add_blank.has_before() {
-            if let Some(indent) = indent.clone() {
-                cov_mark::hit!(insert_use_indent_before);
-                buf.push(indent);
-            }
-        }
-
-        buf.push(use_item.syntax().clone().into());
-
-        match add_blank {
-            AddBlankLine::After | AddBlankLine::Around => {
-                buf.push(make::tokens::single_newline().into())
-            }
-            AddBlankLine::AfterTwice => buf.push(make::tokens::blank_line().into()),
-            _ => (),
-        }
-
-        // only add indentation *after* our stuff if there's another node directly after it
-        if add_blank.has_after() && matches!(insert_position, InsertPosition::Before(_)) {
-            if let Some(indent) = indent {
-                cov_mark::hit!(insert_use_indent_after);
-                buf.push(indent);
-            }
-        } else if add_blank.has_after() && matches!(insert_position, InsertPosition::After(_)) {
-            cov_mark::hit!(insert_use_no_indent_after);
-        }
-
-        buf
-    };
-
-    match insert_position {
-        InsertPosition::First => {
-            rewriter.insert_many_as_first_children(scope.as_syntax_node(), to_insert)
-        }
-        InsertPosition::Last => return rewriter, // actually unreachable
-        InsertPosition::Before(anchor) => rewriter.insert_many_before(&anchor, to_insert),
-        InsertPosition::After(anchor) => rewriter.insert_many_after(&anchor, to_insert),
-    }
-    rewriter
+    insert_use_(scope, path, cfg.group, use_item);
 }
 
 fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
@@ -235,7 +141,7 @@ pub fn try_merge_trees(
     } else {
         (lhs.split_prefix(&lhs_prefix), rhs.split_prefix(&rhs_prefix))
     };
-    recursive_merge(&lhs, &rhs, merge).map(|it| it.clone_for_update())
+    recursive_merge(&lhs, &rhs, merge)
 }
 
 /// Recursively "zips" together lhs and rhs.
@@ -334,7 +240,12 @@ fn recursive_merge(
             }
         }
     }
-    Some(lhs.with_use_tree_list(make::use_tree_list(use_trees)))
+
+    Some(if let Some(old) = lhs.use_tree_list() {
+        lhs.replace_descendant(old, make::use_tree_list(use_trees)).clone_for_update()
+    } else {
+        lhs.clone()
+    })
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.
@@ -520,32 +431,15 @@ impl ImportGroup {
     }
 }
 
-#[derive(PartialEq, Eq)]
-enum AddBlankLine {
-    Before,
-    BeforeTwice,
-    Around,
-    After,
-    AfterTwice,
-}
-
-impl AddBlankLine {
-    fn has_before(&self) -> bool {
-        matches!(self, AddBlankLine::Before | AddBlankLine::BeforeTwice | AddBlankLine::Around)
-    }
-    fn has_after(&self) -> bool {
-        matches!(self, AddBlankLine::After | AddBlankLine::AfterTwice | AddBlankLine::Around)
-    }
-}
-
-fn find_insert_position(
+fn insert_use_(
     scope: &ImportScope,
     insert_path: ast::Path,
     group_imports: bool,
-) -> (InsertPosition<SyntaxElement>, AddBlankLine) {
+    use_item: ast::Use,
+) {
+    let scope_syntax = scope.as_syntax_node();
     let group = ImportGroup::new(&insert_path);
-    let path_node_iter = scope
-        .as_syntax_node()
+    let path_node_iter = scope_syntax
         .children()
         .filter_map(|node| ast::Use::cast(node.clone()).zip(Some(node)))
         .flat_map(|(use_, node)| {
@@ -557,9 +451,14 @@ fn find_insert_position(
 
     if !group_imports {
         if let Some((_, _, node)) = path_node_iter.last() {
-            return (InsertPosition::After(node.into()), AddBlankLine::Before);
+            cov_mark::hit!(insert_no_grouping_last);
+            ted::insert(ted::Position::after(node), use_item.syntax());
+        } else {
+            cov_mark::hit!(insert_no_grouping_last2);
+            ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
+            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
         }
-        return (InsertPosition::First, AddBlankLine::AfterTwice);
+        return;
     }
 
     // Iterator that discards anything thats not in the required grouping
@@ -572,43 +471,91 @@ fn find_insert_position(
     // track the last element we iterated over, if this is still None after the iteration then that means we never iterated in the first place
     let mut last = None;
     // find the element that would come directly after our new import
-    let post_insert = group_iter.inspect(|(.., node)| last = Some(node.clone())).find(
-        |&(ref path, has_tl, _)| {
+    let post_insert: Option<(_, _, SyntaxNode)> = group_iter
+        .inspect(|(.., node)| last = Some(node.clone()))
+        .find(|&(ref path, has_tl, _)| {
             use_tree_path_cmp(&insert_path, false, path, has_tl) != Ordering::Greater
-        },
-    );
+        });
 
-    match post_insert {
+    if let Some((.., node)) = post_insert {
+        cov_mark::hit!(insert_group);
         // insert our import before that element
-        Some((.., node)) => (InsertPosition::Before(node.into()), AddBlankLine::After),
+        return ted::insert(ted::Position::before(node), use_item.syntax());
+    }
+    if let Some(node) = last {
+        cov_mark::hit!(insert_group_last);
         // there is no element after our new import, so append it to the end of the group
-        None => match last {
-            Some(node) => (InsertPosition::After(node.into()), AddBlankLine::Before),
-            // the group we were looking for actually doesnt exist, so insert
+        return ted::insert(ted::Position::after(node), use_item.syntax());
+    }
+
+    // the group we were looking for actually doesn't exist, so insert
+
+    let mut last = None;
+    // find the group that comes after where we want to insert
+    let post_group = path_node_iter
+        .inspect(|(.., node)| last = Some(node.clone()))
+        .find(|(p, ..)| ImportGroup::new(p) > group);
+    if let Some((.., node)) = post_group {
+        cov_mark::hit!(insert_group_new_group);
+        ted::insert(ted::Position::before(&node), use_item.syntax());
+        if let Some(node) = algo::non_trivia_sibling(node.into(), Direction::Prev) {
+            ted::insert(ted::Position::after(node), make::tokens::single_newline());
+        }
+        return;
+    }
+    // there is no such group, so append after the last one
+    if let Some(node) = last {
+        cov_mark::hit!(insert_group_no_group);
+        ted::insert(ted::Position::after(&node), use_item.syntax());
+        ted::insert(ted::Position::after(node), make::tokens::single_newline());
+        return;
+    }
+    // there are no imports in this file at all
+    if let Some(last_inner_element) = scope_syntax
+        .children_with_tokens()
+        .filter(|child| match child {
+            NodeOrToken::Node(node) => is_inner_attribute(node.clone()),
+            NodeOrToken::Token(token) => is_inner_comment(token.clone()),
+        })
+        .last()
+    {
+        cov_mark::hit!(insert_group_empty_inner_attr);
+        ted::insert(ted::Position::after(&last_inner_element), use_item.syntax());
+        ted::insert(ted::Position::after(last_inner_element), make::tokens::single_newline());
+        return;
+    }
+    match scope {
+        ImportScope::File(_) => {
+            cov_mark::hit!(insert_group_empty_file);
+            ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
+            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax())
+        }
+        // don't insert the imports before the item list's opening curly brace
+        ImportScope::Module(item_list) => match item_list.l_curly_token() {
+            Some(b) => {
+                cov_mark::hit!(insert_group_empty_module);
+                ted::insert(ted::Position::after(&b), make::tokens::single_newline());
+                ted::insert(ted::Position::after(&b), use_item.syntax());
+            }
             None => {
-                // similar concept here to the `last` from above
-                let mut last = None;
-                // find the group that comes after where we want to insert
-                let post_group = path_node_iter
-                    .inspect(|(.., node)| last = Some(node.clone()))
-                    .find(|(p, ..)| ImportGroup::new(p) > group);
-                match post_group {
-                    Some((.., node)) => {
-                        (InsertPosition::Before(node.into()), AddBlankLine::AfterTwice)
-                    }
-                    // there is no such group, so append after the last one
-                    None => match last {
-                        Some(node) => {
-                            (InsertPosition::After(node.into()), AddBlankLine::BeforeTwice)
-                        }
-                        // there are no imports in this file at all
-                        None => scope.insert_pos_after_last_inner_element(),
-                    },
-                }
+                // This should never happens, broken module syntax node
+                ted::insert(
+                    ted::Position::first_child_of(scope_syntax),
+                    make::tokens::blank_line(),
+                );
+                ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
             }
         },
     }
 }
 
+fn is_inner_attribute(node: SyntaxNode) -> bool {
+    ast::Attr::cast(node).map(|attr| attr.kind()) == Some(ast::AttrKind::Inner)
+}
+
+fn is_inner_comment(token: SyntaxToken) -> bool {
+    ast::Comment::cast(token).and_then(|comment| comment.kind().doc)
+        == Some(ast::CommentPlacement::Inner)
+}
 #[cfg(test)]
 mod tests;

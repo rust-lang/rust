@@ -377,11 +377,11 @@ impl ImportEdit {
     pub fn to_text_edit(&self, cfg: InsertUseConfig) -> Option<TextEdit> {
         let _p = profile::span("ImportEdit::to_text_edit");
 
-        let rewriter =
-            insert_use::insert_use(&self.scope, mod_path_to_ast(&self.import.import_path), cfg);
-        let old_ast = rewriter.rewrite_root()?;
+        let new_ast = self.scope.clone_for_update();
+        insert_use::insert_use(&new_ast, mod_path_to_ast(&self.import.import_path), cfg);
         let mut import_insert = TextEdit::builder();
-        algo::diff(&old_ast, &rewriter.rewrite(&old_ast)).into_text_edit(&mut import_insert);
+        algo::diff(self.scope.as_syntax_node(), new_ast.as_syntax_node())
+            .into_text_edit(&mut import_insert);
 
         Some(import_insert.finish())
     }

@@ -5,6 +5,7 @@ use test_utils::assert_eq_text;
 
 #[test]
 fn insert_not_group() {
+    cov_mark::check!(insert_no_grouping_last);
     check(
         "use external_crate2::bar::A",
         r"
@@ -20,6 +21,21 @@ use crate::bar::A;
 use self::bar::A;
 use super::bar::A;
 use external_crate2::bar::A;",
+        None,
+        false,
+        false,
+    );
+}
+
+#[test]
+fn insert_not_group_empty() {
+    cov_mark::check!(insert_no_grouping_last2);
+    check(
+        "use external_crate2::bar::A",
+        r"",
+        r"use external_crate2::bar::A;
+
+",
         None,
         false,
         false,
@@ -51,21 +67,21 @@ use std::bar::G;",
 
 #[test]
 fn insert_start_indent() {
-    cov_mark::check!(insert_use_indent_after);
     check_none(
         "std::bar::AA",
         r"
     use std::bar::B;
-    use std::bar::D;",
+    use std::bar::C;",
         r"
     use std::bar::AA;
     use std::bar::B;
-    use std::bar::D;",
-    )
+    use std::bar::C;",
+    );
 }
 
 #[test]
 fn insert_middle() {
+    cov_mark::check!(insert_group);
     check_none(
         "std::bar::EE",
         r"
@@ -102,6 +118,7 @@ fn insert_middle_indent() {
 
 #[test]
 fn insert_end() {
+    cov_mark::check!(insert_group_last);
     check_none(
         "std::bar::ZZ",
         r"
@@ -120,7 +137,6 @@ use std::bar::ZZ;",
 
 #[test]
 fn insert_end_indent() {
-    cov_mark::check!(insert_use_indent_before);
     check_none(
         "std::bar::ZZ",
         r"
@@ -201,6 +217,7 @@ fn insert_first_matching_group() {
 
 #[test]
 fn insert_missing_group_std() {
+    cov_mark::check!(insert_group_new_group);
     check_none(
         "std::fmt",
         r"
@@ -216,6 +233,7 @@ fn insert_missing_group_std() {
 
 #[test]
 fn insert_missing_group_self() {
+    cov_mark::check!(insert_group_no_group);
     check_none(
         "self::fmt",
         r"
@@ -242,6 +260,7 @@ fn main() {}",
 
 #[test]
 fn insert_empty_file() {
+    cov_mark::check!(insert_group_empty_file);
     // empty files will get two trailing newlines
     // this is due to the test case insert_no_imports above
     check_full(
@@ -255,7 +274,7 @@ fn insert_empty_file() {
 
 #[test]
 fn insert_empty_module() {
-    cov_mark::check!(insert_use_no_indent_after);
+    cov_mark::check!(insert_group_empty_module);
     check(
         "foo::bar",
         "mod x {}",
@@ -270,6 +289,7 @@ fn insert_empty_module() {
 
 #[test]
 fn insert_after_inner_attr() {
+    cov_mark::check!(insert_group_empty_inner_attr);
     check_full(
         "foo::bar",
         r"#![allow(unused_imports)]",
@@ -615,7 +635,7 @@ fn check(
     if module {
         syntax = syntax.descendants().find_map(ast::Module::cast).unwrap().syntax().clone();
     }
-    let file = super::ImportScope::from(syntax).unwrap();
+    let file = super::ImportScope::from(syntax.clone_for_update()).unwrap();
     let path = ast::SourceFile::parse(&format!("use {};", path))
         .tree()
         .syntax()
@@ -623,12 +643,8 @@ fn check(
         .find_map(ast::Path::cast)
         .unwrap();
 
-    let rewriter = insert_use(
-        &file,
-        path,
-        InsertUseConfig { merge: mb, prefix_kind: PrefixKind::Plain, group },
-    );
-    let result = rewriter.rewrite(file.as_syntax_node()).to_string();
+    insert_use(&file, path, InsertUseConfig { merge: mb, prefix_kind: PrefixKind::Plain, group });
+    let result = file.as_syntax_node().to_string();
     assert_eq_text!(ra_fixture_after, &result);
 }
 
