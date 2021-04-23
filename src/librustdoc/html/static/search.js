@@ -935,6 +935,9 @@ window.initSearch = function(rawSearchIndex) {
                 });
                 current += 1;
             });
+            var SHIFT = 16;
+            var CTRL = 17;
+            var ALT = 18;
 
             var currentTab = searchState.currentTab;
             if (e.which === 38) { // up
@@ -967,10 +970,10 @@ window.initSearch = function(rawSearchIndex) {
                 e.preventDefault();
             } else if (e.which === 13) { // return
                 if (actives[currentTab].length) {
-                    document.location.href =
-                        actives[currentTab][0].getElementsByTagName("a")[0].href;
+                    var elem = actives[currentTab][0].getElementsByTagName("a")[0];
+                    document.location.href = elem.href;
                 }
-            } else if (e.which === 16) { // shift
+            } else if ([SHIFT, CTRL, ALT].indexOf(e.which) !== -1) {
                 // Does nothing, it's just to avoid losing "focus" on the highlighted element.
             } else if (actives[currentTab].length > 0) {
                 removeClass(actives[currentTab][0], "highlighted");
