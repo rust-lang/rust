@@ -391,12 +391,9 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        matches!(
-            *self.kind,
-            StrippedItem(box ModuleItem(Module { is_crate: true, .. }))
-                | ModuleItem(Module { is_crate: true, .. })
-        )
+        self.is_mod() && self.def_id.index == CRATE_DEF_INDEX
     }
+
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
     }
@@ -608,7 +605,6 @@ impl ItemKind {
 #[derive(Clone, Debug)]
 crate struct Module {
     crate items: Vec<Item>,
-    crate is_crate: bool,
 }
 
 crate struct ListAttributesIter<'a> {
@@ -1983,7 +1979,7 @@ crate enum Variant {
 
 /// Small wrapper around [`rustc_span::Span]` that adds helper methods
 /// and enforces calling [`rustc_span::Span::source_callsite()`].
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 crate struct Span(rustc_span::Span);
 
 impl Span {
