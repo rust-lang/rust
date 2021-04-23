@@ -903,6 +903,7 @@ symbols! {
         ptr_null,
         ptr_null_mut,
         ptr_offset_from,
+        pub_macro_rules,
         pub_restricted,
         pure,
         pushpop_unsafe,
