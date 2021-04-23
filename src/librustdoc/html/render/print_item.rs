@@ -1550,7 +1550,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             writeln!(
                 w,
                 "<div class=\"warning\"><p><strong>Note:</strong> Most layout information is \
-                 completely unstable and may be different between compiler versions. \
+                 completely unstable and may be different between compiler versions and platforms. \
                  The only exception is types with certain <code>repr(...)</code> attributes. \
                  Please see the Rust Reference’s \
                  <a href=\"https://doc.rust-lang.org/reference/type-layout.html\">“Type Layout”</a> \
@@ -1559,11 +1559,12 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             if ty_layout.layout.abi.is_unsized() {
                 writeln!(w, "<p><strong>Size:</strong> (unsized)</p>");
             } else {
+                let bytes = ty_layout.layout.size.bytes();
                 writeln!(
                     w,
                     "<p><strong>Size:</strong> {size} byte{pl}</p>",
-                    size = ty_layout.layout.size.bytes(),
-                    pl = if ty_layout.layout.size.bytes() == 1 { "" } else { "s" },
+                    size = bytes,
+                    pl = if bytes == 1 { "" } else { "s" },
                 );
             }
             writeln!(w, "</div>");
