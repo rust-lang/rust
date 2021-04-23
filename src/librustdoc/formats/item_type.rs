@@ -20,7 +20,7 @@ use crate::clean;
 /// module headings. If you are adding to this enum and want to ensure that the sidebar also prints
 /// a heading, edit the listing in `html/render.rs`, function `sidebar_module`. This uses an
 /// ordering based on a helper function inside `item_module`, in the same file.
-#[derive(Copy, PartialEq, Eq, Clone, Debug, PartialOrd, Ord)]
+#[derive(Copy, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
 crate enum ItemType {
     Module = 0,
     ExternCrate = 1,
@@ -99,26 +99,6 @@ impl<'a> From<&'a clean::Item> for ItemType {
                 MacroKind::Derive => ItemType::ProcDerive,
             },
             clean::StrippedItem(..) => unreachable!(),
-        }
-    }
-}
-
-impl From<clean::TypeKind> for ItemType {
-    fn from(kind: clean::TypeKind) -> ItemType {
-        match kind {
-            clean::TypeKind::Struct => ItemType::Struct,
-            clean::TypeKind::Union => ItemType::Union,
-            clean::TypeKind::Enum => ItemType::Enum,
-            clean::TypeKind::Function => ItemType::Function,
-            clean::TypeKind::Trait => ItemType::Trait,
-            clean::TypeKind::Module => ItemType::Module,
-            clean::TypeKind::Static => ItemType::Static,
-            clean::TypeKind::Const => ItemType::Constant,
-            clean::TypeKind::Typedef => ItemType::Typedef,
-            clean::TypeKind::Foreign => ItemType::ForeignType,
-            clean::TypeKind::Macro => ItemType::Macro,
-            clean::TypeKind::TraitAlias => ItemType::TraitAlias,
-            clean::TypeKind::Primitive => ItemType::Primitive,
         }
     }
 }
