@@ -234,6 +234,24 @@ impl From<HlTag> for Highlight {
     }
 }
 
+impl From<HlOperator> for Highlight {
+    fn from(op: HlOperator) -> Highlight {
+        Highlight::new(HlTag::Operator(op))
+    }
+}
+
+impl From<HlPunct> for Highlight {
+    fn from(punct: HlPunct) -> Highlight {
+        Highlight::new(HlTag::Punctuation(punct))
+    }
+}
+
+impl From<SymbolKind> for Highlight {
+    fn from(sym: SymbolKind) -> Highlight {
+        Highlight::new(HlTag::Symbol(sym))
+    }
+}
+
 impl Highlight {
     pub(crate) fn new(tag: HlTag) -> Highlight {
         Highlight { tag, mods: HlMods::default() }
