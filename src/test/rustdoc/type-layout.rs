@@ -27,7 +27,7 @@ pub union Baz {
 pub struct X(usize);
 
 // @has type_layout/struct.Y.html 'Size: '
-// @has - ' byte'
+// @has - '1 byte'
 // @!has - ' bytes'
 pub struct Y(u8);
 
