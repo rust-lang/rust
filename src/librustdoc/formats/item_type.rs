@@ -4,6 +4,7 @@ use std::fmt;
 
 use serde::{Serialize, Serializer};
 
+use rustc_hir as hir;
 use rustc_span::hygiene::MacroKind;
 
 use crate::clean;
@@ -116,10 +117,45 @@ impl From<clean::TypeKind> for ItemType {
             clean::TypeKind::Typedef => ItemType::Typedef,
             clean::TypeKind::Foreign => ItemType::ForeignType,
             clean::TypeKind::Macro => ItemType::Macro,
-            clean::TypeKind::Attr => ItemType::ProcAttribute,
-            clean::TypeKind::Derive => ItemType::ProcDerive,
             clean::TypeKind::TraitAlias => ItemType::TraitAlias,
             clean::TypeKind::Primitive => ItemType::Primitive,
+        }
+    }
+}
+
+impl From<hir::def::DefKind> for ItemType {
+    fn from(other: hir::def::DefKind) -> Self {
+        match other {
+            hir::def::DefKind::Enum => Self::Enum,
+            hir::def::DefKind::Fn => Self::Function,
+            hir::def::DefKind::Mod => Self::Module,
+            hir::def::DefKind::Const => Self::Constant,
+            hir::def::DefKind::Static => Self::Static,
+            hir::def::DefKind::Struct => Self::Struct,
+            hir::def::DefKind::Union => Self::Union,
+            hir::def::DefKind::Trait => Self::Trait,
+            hir::def::DefKind::TyAlias => Self::Typedef,
+            hir::def::DefKind::TraitAlias => Self::TraitAlias,
+            hir::def::DefKind::Macro(_) => Self::Macro,
+            hir::def::DefKind::ForeignTy
+            | hir::def::DefKind::Variant
+            | hir::def::DefKind::AssocTy
+            | hir::def::DefKind::TyParam
+            | hir::def::DefKind::ConstParam
+            | hir::def::DefKind::Ctor(..)
+            | hir::def::DefKind::AssocFn
+            | hir::def::DefKind::AssocConst
+            | hir::def::DefKind::ExternCrate
+            | hir::def::DefKind::Use
+            | hir::def::DefKind::ForeignMod
+            | hir::def::DefKind::AnonConst
+            | hir::def::DefKind::OpaqueTy
+            | hir::def::DefKind::Field
+            | hir::def::DefKind::LifetimeParam
+            | hir::def::DefKind::GlobalAsm
+            | hir::def::DefKind::Impl
+            | hir::def::DefKind::Closure
+            | hir::def::DefKind::Generator => Self::ForeignType,
         }
     }
 }

@@ -1103,7 +1103,7 @@ impl GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
-        inline::record_extern_fqn(cx, did, TypeKind::Trait);
+        inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
             PolyTrait {
                 trait_: ResolvedPath { path, param_names: None, did, is_generic: false },
@@ -1455,8 +1455,6 @@ crate enum TypeKind {
     Typedef,
     Foreign,
     Macro,
-    Attr,
-    Derive,
     TraitAlias,
     Primitive,
 }

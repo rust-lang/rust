@@ -36,6 +36,7 @@ use std::{mem, vec};
 
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::doctree;
+use crate::formats::item_type::ItemType;
 
 use utils::*;
 
@@ -158,7 +159,7 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
 impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Type {
         let (trait_ref, bounds) = *self;
-        inline::record_extern_fqn(cx, trait_ref.def_id, TypeKind::Trait);
+        inline::record_extern_fqn(cx, trait_ref.def_id, ItemType::Trait);
         let path = external_path(
             cx,
             cx.tcx.item_name(trait_ref.def_id),
@@ -913,8 +914,8 @@ impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
     }
 }
 
-impl Clean<TypeKind> for hir::def::DefKind {
-    fn clean(&self, _: &mut DocContext<'_>) -> TypeKind {
+impl Clean<ItemType> for hir::def::DefKind {
+    fn clean(&self, _: &mut DocContext<'_>) -> ItemType {
         (*self).into()
     }
 }
@@ -1453,16 +1454,16 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Adt(def, substs) => {
                 let did = def.did;
                 let kind = match def.adt_kind() {
-                    AdtKind::Struct => TypeKind::Struct,
-                    AdtKind::Union => TypeKind::Union,
-                    AdtKind::Enum => TypeKind::Enum,
+                    AdtKind::Struct => ItemType::Struct,
+                    AdtKind::Union => ItemType::Union,
+                    AdtKind::Enum => ItemType::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
                 let path = external_path(cx, cx.tcx.item_name(did), None, false, vec![], substs);
                 ResolvedPath { path, param_names: None, did, is_generic: false }
             }
             ty::Foreign(did) => {
-                inline::record_extern_fqn(cx, did, TypeKind::Foreign);
+                inline::record_extern_fqn(cx, did, ItemType::ForeignType);
                 let path = external_path(
                     cx,
                     cx.tcx.item_name(did),
@@ -1487,7 +1488,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     _ => cx.tcx.intern_substs(&[]),
                 };
 
-                inline::record_extern_fqn(cx, did, TypeKind::Trait);
+                inline::record_extern_fqn(cx, did, ItemType::Trait);
 
                 let mut param_names = vec![];
                 if let Some(b) = reg.clean(cx) {
@@ -1497,7 +1498,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     let empty = cx.tcx.intern_substs(&[]);
                     let path =
                         external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
-                    inline::record_extern_fqn(cx, did, TypeKind::Trait);
+                    inline::record_extern_fqn(cx, did, ItemType::Trait);
                     let bound = GenericBound::TraitBound(
                         PolyTrait {
                             trait_: ResolvedPath {
