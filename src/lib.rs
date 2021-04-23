@@ -273,9 +273,14 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
 
     let variant = cranelift_codegen::isa::BackendVariant::MachInst;
     let mut isa_builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
-    // Don't use "haswell", as it implies `has_lzcnt`.macOS CI is still at Ivy Bridge EP, so `lzcnt`
-    // is interpreted as `bsr`.
-    isa_builder.enable("nehalem").unwrap();
+    
+    if let Some(target_cpu) = sess.opts.cg.target_cpu.as_ref() {
+        isa_builder.enable(target_cpu).unwrap();
+    } else {
+        // Don't use "haswell" as the default, as it implies `has_lzcnt`.
+        // macOS CI is still at Ivy Bridge EP, so `lzcnt` is interpreted as `bsr`.
+        isa_builder.enable("nehalem").unwrap();
+    }
     isa_builder.finish(flags)
 }
 
