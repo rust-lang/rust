@@ -92,14 +92,12 @@ attributes #4 = { nounwind }
 ; CHECK: define internal void @diffe_Z19gpu_square_elem_mulPfS_S_m(float* nocapture readonly %arg, float* nocapture %"arg'", float* nocapture readonly %arg1, float* nocapture %"arg1'", float* nocapture %arg2, float* nocapture %"arg2'", i64 %arg3)
 ; CHECK: bb:
 ; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:   %1 = icmp eq i32 %0, 0
-; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.tid.y()
-; CHECK-NEXT:   %3 = icmp eq i32 %2, 0
-; CHECK-NEXT:   %4 = call i32 @llvm.nvvm.read.ptx.sreg.tid.z()
+; CHECK-NEXT:   %1 = call i32 @llvm.nvvm.read.ptx.sreg.tid.y()
+; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.tid.z()
+; CHECK-NEXT:   %3 = and i32 %0, %1
+; CHECK-NEXT:   %4 = and i32 %3, %2
 ; CHECK-NEXT:   %5 = icmp eq i32 %4, 0
-; CHECK-NEXT:   %6 = and i1 %1, %3
-; CHECK-NEXT:   %7 = and i1 %6, %5
-; CHECK-NEXT:   br i1 %7, label %shblock, label %invertbb
+; CHECK-NEXT:   br i1 %5, label %shblock, label %invertbb
 
 ; CHECK: shblock:                                          ; preds = %bb
 ; CHECK-NEXT:   store float 0.000000e+00, float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow, align 32
@@ -131,16 +129,16 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"tmp20'ipg" = getelementptr inbounds float, float* %"arg2'", i64 %tmp12
 ; CHECK-NEXT:   %tmp20 = getelementptr inbounds float, float* %arg2, i64 %tmp12
 ; CHECK-NEXT:   store float %tmp19, float* %tmp20, align 4, !tbaa !15
-; CHECK-NEXT:   %8 = load float, float* %"tmp20'ipg", align 4
+; CHECK-NEXT:   %[[tload:.+]] = load float, float* %"tmp20'ipg", align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"tmp20'ipg", align 4
-; CHECK-NEXT:   %m0diffetmp17 = fmul fast float %8, %tmp18
-; CHECK-NEXT:   %m1diffetmp18 = fmul fast float %8, %tmp17
-; CHECK-NEXT:   %9 = atomicrmw fadd float* addrspacecast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to float*), float %m1diffetmp18 monotonic
+; CHECK-NEXT:   %m0diffetmp17 = fmul fast float %[[tload]], %tmp18
+; CHECK-NEXT:   %m1diffetmp18 = fmul fast float %[[tload]], %tmp17
+; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* addrspacecast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to float*), float %m1diffetmp18 monotonic
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
-; CHECK-NEXT:   %10 = atomicrmw fadd float* %"tmp16'ipg", float %m0diffetmp17 monotonic
-; CHECK-NEXT:   %11 = load i32, i32* addrspacecast (i32 addrspace(3)* bitcast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to i32 addrspace(3)*) to i32*), align 4
+; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"tmp16'ipg", float %m0diffetmp17 monotonic
+; CHECK-NEXT:   %[[shload:.+]] = load i32, i32* addrspacecast (i32 addrspace(3)* bitcast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to i32 addrspace(3)*) to i32*), align 4
 ; CHECK-NEXT:   store i32 0, i32* addrspacecast (i32 addrspace(3)* bitcast (float addrspace(3)* @_ZZ19gpu_square_elem_mulPfS_S_mE6tile_a_shadow to i32 addrspace(3)*) to i32*), align 4
-; CHECK-NEXT:   %12 = bitcast i32 %11 to float
-; CHECK-NEXT:   %13 = atomicrmw fadd float* %"tmp13'ipg", float %12 monotonic
+; CHECK-NEXT:   %[[bc:.+]] = bitcast i32 %[[shload]] to float
+; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"tmp13'ipg", float %[[bc]] monotonic
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

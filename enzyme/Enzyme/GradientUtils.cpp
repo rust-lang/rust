@@ -41,6 +41,7 @@
 
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/Support/AMDGPUMetadata.h"
 #include "llvm/Transforms/Utils/SimplifyIndVar.h"
 
 std::map<std::string, std::function<llvm::Value *(IRBuilder<> &, CallInst *,
@@ -2045,11 +2046,16 @@ Value *GradientUtils::invertPointerM(Value *oval, IRBuilder<> &BuilderM) {
         }
       }
 
-      if ((llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-               Triple::nvptx ||
-           llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch() ==
-               Triple::nvptx64) &&
-          cast<PointerType>(arg->getType())->getAddressSpace() == 3) {
+      auto Arch =
+          llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch();
+      int SharedAddrSpace =
+          Arch == Triple::amdgcn
+              ? (int)AMDGPU::HSAMD::AddressSpaceQualifier::Local
+              : 3;
+      int AddrSpace = cast<PointerType>(arg->getType())->getAddressSpace();
+      if ((Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
+           Arch == Triple::amdgcn) &&
+          AddrSpace == SharedAddrSpace) {
         llvm::errs() << "warning found shared memory\n";
         //#if LLVM_VERSION_MAJOR >= 11
         Type *type = cast<PointerType>(arg->getType())->getElementType();
@@ -2537,8 +2543,14 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       }
     }
     if (auto LI = dyn_cast<LoadInst>(inst)) {
+      auto Arch =
+          llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch();
+      unsigned int SharedAddrSpace =
+          Arch == Triple::amdgcn
+              ? (int)AMDGPU::HSAMD::AddressSpaceQualifier::Local
+              : 3;
       if (cast<PointerType>(LI->getPointerOperand()->getType())
-              ->getAddressSpace() == 3) {
+              ->getAddressSpace() == SharedAddrSpace) {
         reduceRegister |= tryLegalRecomputeCheck &&
                           legalRecompute(LI, incoming_available, &BuilderM) &&
                           shouldRecompute(LI, incoming_available, &BuilderM);
@@ -2850,8 +2862,16 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
         }
 
         auto scev1 = OrigSE.getSCEV(origInst->getPointerOperand());
+
+        auto Arch =
+            llvm::Triple(newFunc->getParent()->getTargetTriple()).getArch();
+        unsigned int SharedAddrSpace =
+            Arch == Triple::amdgcn
+                ? (int)AMDGPU::HSAMD::AddressSpaceQualifier::Local
+                : 3;
         if (EnzymeSharedForward && scev1 != OrigSE.getCouldNotCompute() &&
-            cast<PointerType>(orig_liobj->getType())->getAddressSpace() == 3) {
+            cast<PointerType>(orig_liobj->getType())->getAddressSpace() ==
+                SharedAddrSpace) {
           Value *resultValue = nullptr;
           ValueToValueMapTy newavail;
           for (const auto &pair : available) {
@@ -2882,7 +2902,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                       return false;
 
                     if (auto II = dyn_cast<IntrinsicInst>(potentialAlias)) {
-                      if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0) {
+                      if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0 ||
+                          II->getIntrinsicID() == Intrinsic::amdgcn_s_barrier) {
                         interveningSync =
                             DT.dominates(SI, II) && DT.dominates(II, origInst);
                         allUnsyncdPredecessorsOf(
@@ -2995,20 +3016,22 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                         }
                         if (ls != ss) {
                           if (auto II = dyn_cast<IntrinsicInst>(svals[i])) {
-                            if (II->getIntrinsicID() ==
-                                    Intrinsic::nvvm_read_ptx_sreg_tid_x ||
-                                II->getIntrinsicID() ==
-                                    Intrinsic::nvvm_read_ptx_sreg_tid_y ||
-                                II->getIntrinsicID() ==
-                                    Intrinsic::nvvm_read_ptx_sreg_tid_z) {
+                            switch (II->getIntrinsicID()) {
+                            case Intrinsic::nvvm_read_ptx_sreg_tid_x:
+                            case Intrinsic::nvvm_read_ptx_sreg_tid_y:
+                            case Intrinsic::nvvm_read_ptx_sreg_tid_z:
+                            case Intrinsic::amdgcn_workitem_id_x:
+                            case Intrinsic::amdgcn_workitem_id_y:
+                            case Intrinsic::amdgcn_workitem_id_z:
                               ThreadLookup[getNewFromOriginal(II)] =
                                   BuilderM.CreateZExtOrTrunc(
                                       lookupM(getNewFromOriginal(lvals[i]),
                                               BuilderM, available),
                                       II->getType());
-                            } else {
-                              ;
+                              break;
+                            default:
                               legal = false;
+                              break;
                             }
                           } else {
                             legal = false;

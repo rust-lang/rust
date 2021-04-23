@@ -139,13 +139,13 @@ public:
     unsigned truei = 0;
     IRBuilder<> Builder(CI);
 
-    bool AtomicAdd =
+    auto Arch =
         llvm::Triple(
             CI->getParent()->getParent()->getParent()->getTargetTriple())
-                .getArch() == Triple::nvptx ||
-        llvm::Triple(
-            CI->getParent()->getParent()->getParent()->getTargetTriple())
-                .getArch() == Triple::nvptx64;
+            .getArch();
+
+    bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
+                     Arch == Triple::amdgcn;
 
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);

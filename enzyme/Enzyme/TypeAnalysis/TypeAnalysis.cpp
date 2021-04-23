@@ -2172,6 +2172,9 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
   case Intrinsic::nvvm_read_ptx_sreg_nctaid_y:
   case Intrinsic::nvvm_read_ptx_sreg_nctaid_z:
   case Intrinsic::nvvm_read_ptx_sreg_warpsize:
+  case Intrinsic::amdgcn_workitem_id_x:
+  case Intrinsic::amdgcn_workitem_id_y:
+  case Intrinsic::amdgcn_workitem_id_z:
     // No direction check as always valid
     updateAnalysis(&I, TypeTree(BaseType::Integer).Only(-1), &I);
     return;
@@ -3598,6 +3601,9 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
     case Intrinsic::nvvm_read_ptx_sreg_ctaid_x:
     case Intrinsic::nvvm_read_ptx_sreg_ctaid_y:
     case Intrinsic::nvvm_read_ptx_sreg_ctaid_z:
+    case Intrinsic::amdgcn_workitem_id_x:
+    case Intrinsic::amdgcn_workitem_id_y:
+    case Intrinsic::amdgcn_workitem_id_z:
       insert(0);
       break;
     default:

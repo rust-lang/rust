@@ -180,51 +180,49 @@ attributes #6 = { nounwind }
 ; CHECK: define internal void @diffe_Z22gpu_square_matrix_multPfS_S_m(float* noalias nocapture readonly %d_a, float* nocapture %"d_a'", float* noalias nocapture readonly %d_b, float* nocapture %"d_b'", float* noalias nocapture %d_result, float* nocapture %"d_result'", i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:   %1 = icmp eq i32 %0, 0
-; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.tid.y()
-; CHECK-NEXT:   %3 = icmp eq i32 %2, 0
-; CHECK-NEXT:   %4 = call i32 @llvm.nvvm.read.ptx.sreg.tid.z()
+; CHECK-NEXT:   %1 = call i32 @llvm.nvvm.read.ptx.sreg.tid.y()
+; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.tid.z()
+; CHECK-NEXT:   %3 = and i32 %0, %1
+; CHECK-NEXT:   %4 = and i32 %3, %2
 ; CHECK-NEXT:   %5 = icmp eq i32 %4, 0
-; CHECK-NEXT:   %6 = and i1 %1, %3
-; CHECK-NEXT:   %7 = and i1 %6, %5
-; CHECK-NEXT:   br i1 %7, label %shblock, label %8
+; CHECK-NEXT:   br i1 %5, label %shblock, label %[[blk:.+]]
 
 ; CHECK: shblock:                                          ; preds = %entry
 ; CHECK-NEXT:   store [16 x [16 x float]] zeroinitializer, [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a_shadow, align 4
 ; CHECK-NEXT:   store [16 x [16 x float]] zeroinitializer, [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_b_shadow, align 4
-; CHECK-NEXT:   br label %8
+; CHECK-NEXT:   br label %[[blk]]
 
-; CHECK: 8:                                                ; preds = %shblock, %entry
+; CHECK: [[blk]]:                                                ; preds = %shblock, %entry
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
-; CHECK-NEXT:   %9 = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.y()
-; CHECK-NEXT:   %mul = shl i32 %9, 4
-; CHECK-NEXT:   %10 = call i32 @llvm.nvvm.read.ptx.sreg.tid.y()
-; CHECK-NEXT:   %add = add i32 %mul, %10
+; CHECK-NEXT:   %[[v9:.+]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.y()
+; CHECK-NEXT:   %mul = shl i32 %[[v9]], 4
+; CHECK-NEXT:   %[[v10:.+]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.y()
+; CHECK-NEXT:   %add = add i32 %mul, %[[v10]]
 ; CHECK-NEXT:   %conv = zext i32 %add to i64
-; CHECK-NEXT:   %11 = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
-; CHECK-NEXT:   %mul3 = shl i32 %11, 4
-; CHECK-NEXT:   %12 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
-; CHECK-NEXT:   %add5 = add i32 %mul3, %12
+; CHECK-NEXT:   %[[v11:.+]] = call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x()
+; CHECK-NEXT:   %mul3 = shl i32 %[[v11]], 4
+; CHECK-NEXT:   %[[v12:.+]] = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
+; CHECK-NEXT:   %add5 = add i32 %mul3, %[[v12]]
 ; CHECK-NEXT:   %conv6 = zext i32 %add5 to i64
-; CHECK-NEXT:   %13 = call i32 @llvm.nvvm.read.ptx.sreg.nctaid.x()
-; CHECK-NEXT:   %conv8 = zext i32 %13 to i64
-; CHECK-NEXT:   %cmp104.not = icmp eq i32 %13, 0
+; CHECK-NEXT:   %[[v13:.+]] = call i32 @llvm.nvvm.read.ptx.sreg.nctaid.x()
+; CHECK-NEXT:   %conv8 = zext i32 %[[v13]] to i64
+; CHECK-NEXT:   %cmp104.not = icmp eq i32 %[[v13]], 0
 ; CHECK-NEXT:   br i1 %cmp104.not, label %for.cond.cleanup, label %for.body.lr.ph
 
-; CHECK: for.body.lr.ph:                                   ; preds = %8
+; CHECK: for.body.lr.ph:
 ; CHECK-NEXT:   %mul9 = mul i64 %conv, %n
-; CHECK-NEXT:   %conv13 = zext i32 %12 to i64
+; CHECK-NEXT:   %conv13 = zext i32 %[[v12]] to i64
 ; CHECK-NEXT:   %add11 = add i64 %mul9, %conv13
 ; CHECK-NEXT:   %mul15 = mul i64 %n, %n
-; CHECK-NEXT:   %idxprom = zext i32 %10 to i64
+; CHECK-NEXT:   %idxprom = zext i32 %[[v10]] to i64
 ; CHECK-NEXT:   %arrayidx2195 = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a, i64 0, i64 %idxprom, i64 %conv13
 ; CHECK-NEXT:   %arrayidx21 = addrspacecast float addrspace(3)* %arrayidx2195 to float*
 ; CHECK-NEXT:   %arrayidx4097 = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_b, i64 0, i64 %idxprom, i64 %conv13
 ; CHECK-NEXT:   %arrayidx40 = addrspacecast float addrspace(3)* %arrayidx4097 to float*
 ; CHECK-NEXT:   br label %for.body
 
-; CHECK: for.cond.cleanup:                                 ; preds = %for.cond.cleanup43, %8
-; CHECK-NEXT:   %tmp.0.lcssa = phi float [ 0.000000e+00, %8 ], [ %add56, %for.cond.cleanup43 ]
+; CHECK: for.cond.cleanup:
+; CHECK-NEXT:   %tmp.0.lcssa = phi float [ 0.000000e+00, %[[blk]] ], [ %add56, %for.cond.cleanup43 ]
 ; CHECK-NEXT:   %cmp60 = icmp ult i64 %conv, %n
 ; CHECK-NEXT:   %cmp61 = icmp ult i64 %conv6, %n
 ; CHECK-NEXT:   %or.cond = and i1 %cmp60, %cmp61
@@ -241,11 +239,11 @@ attributes #6 = { nounwind }
 
 ; CHECK: cond.false:                                       ; preds = %for.body
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds float, float* %d_a, i64 %add14
-; CHECK-NEXT:   %14 = load float, float* %arrayidx, align 4, !tbaa !9
+; CHECK-NEXT:   %[[v14:.+]] = load float, float* %arrayidx, align 4, !tbaa !9
 ; CHECK-NEXT:   br label %cond.end
 
 ; CHECK: cond.end:                                         ; preds = %cond.false, %for.body
-; CHECK-NEXT:   %cond = phi {{(contract )?}}float [ %14, %cond.false ], [ 0.000000e+00, %for.body ]
+; CHECK-NEXT:   %cond = phi {{(contract )?}}float [ %[[v14]], %cond.false ], [ 0.000000e+00, %for.body ]
 ; CHECK-NEXT:   store float %cond, float* %arrayidx21, align 4, !tbaa !9
 ; CHECK-NEXT:   %add25 = add nuw nsw i64 %mul10, %idxprom
 ; CHECK-NEXT:   %mul26 = mul i64 %add25, %n
@@ -255,11 +253,11 @@ attributes #6 = { nounwind }
 
 ; CHECK: cond.false31:                                     ; preds = %cond.end
 ; CHECK-NEXT:   %arrayidx32 = getelementptr inbounds float, float* %d_b, i64 %add27
-; CHECK-NEXT:   %15 = load float, float* %arrayidx32, align 4, !tbaa !9
+; CHECK-NEXT:   %[[v15:.+]] = load float, float* %arrayidx32, align 4, !tbaa !9
 ; CHECK-NEXT:   br label %cond.end33
 
 ; CHECK: cond.end33:                                       ; preds = %cond.false31, %cond.end
-; CHECK-NEXT:   %cond34 = phi {{(contract )?}}float [ %15, %cond.false31 ], [ 0.000000e+00, %cond.end ]
+; CHECK-NEXT:   %cond34 = phi {{(contract )?}}float [ %[[v15]], %cond.false31 ], [ 0.000000e+00, %cond.end ]
 ; CHECK-NEXT:   store float %cond34, float* %arrayidx40, align 4, !tbaa !9
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
 ; CHECK-NEXT:   br label %for.body44
@@ -267,23 +265,23 @@ attributes #6 = { nounwind }
 ; CHECK: for.cond.cleanup43:                               ; preds = %for.body44
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
 ; CHECK-NEXT:   %exitcond107.not = icmp eq i64 %iv.next, %conv8
-; CHECK-NEXT:   br i1 %exitcond107.not, label %for.cond.cleanup, label %for.body, !llvm.loop !13
+; CHECK-NEXT:   br i1 %exitcond107.not, label %for.cond.cleanup, label %for.body
 
 ; CHECK: for.body44:                                       ; preds = %for.body44, %cond.end33
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body44 ], [ 0, %cond.end33 ]
 ; CHECK-NEXT:   %tmp.1102 = phi float [ %tmp.0105, %cond.end33 ], [ %add56, %for.body44 ]
-; CHECK-NEXT:   %16 = trunc i64 %iv1 to i32
+; CHECK-NEXT:   %[[v16:.+]] = trunc i64 %iv1 to i32
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
-; CHECK-NEXT:   %idxprom48 = zext i32 %16 to i64
+; CHECK-NEXT:   %idxprom48 = zext i32 %[[v16]] to i64
 ; CHECK-NEXT:   %arrayidx4999 = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a, i64 0, i64 %idxprom, i64 %idxprom48
 ; CHECK-NEXT:   %arrayidx49 = addrspacecast float addrspace(3)* %arrayidx4999 to float*
-; CHECK-NEXT:   %17 = load float, float* %arrayidx49, align 4, !tbaa !9
+; CHECK-NEXT:   %[[v17:.+]] = load float, float* %arrayidx49, align 4, !tbaa !9
 ; CHECK-NEXT:   %arrayidx54101 = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_b, i64 0, i64 %idxprom48, i64 %conv13
 ; CHECK-NEXT:   %arrayidx54 = addrspacecast float addrspace(3)* %arrayidx54101 to float*
-; CHECK-NEXT:   %18 = load float, float* %arrayidx54, align 4, !tbaa !9
-; CHECK-NEXT:   %mul55 = fmul contract float %17, %18
+; CHECK-NEXT:   %[[v18:.+]] = load float, float* %arrayidx54, align 4, !tbaa !9
+; CHECK-NEXT:   %mul55 = fmul contract float %[[v17]], %[[v18]]
 ; CHECK-NEXT:   %add56 = fadd contract float %tmp.1102, %mul55
-; CHECK-NEXT:   %inc = add nuw nsw i32 %16, 1
+; CHECK-NEXT:   %inc = add nuw nsw i32 %[[v16]], 1
 ; CHECK-NEXT:   %exitcond.not = icmp eq i32 %inc, 16
 ; CHECK-NEXT:   br i1 %exitcond.not, label %for.cond.cleanup43, label %for.body44, !llvm.loop !16
 
@@ -308,70 +306,70 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup43
 
 ; CHECK: invertfor.cond.cleanup:                           ; preds = %if.end, %invertif.then
-; CHECK-NEXT:   %"tmp.0.lcssa'de.0" = phi float [ %41, %invertif.then ], [ 0.000000e+00, %if.end ]
-; CHECK-NEXT:   %19 = select fast i1 %cmp104.not, float 0.000000e+00, float %"tmp.0.lcssa'de.0"
+; CHECK-NEXT:   %"tmp.0.lcssa'de.0" = phi float [ %[[v41:.+]], %invertif.then ], [ 0.000000e+00, %if.end ]
+; CHECK-NEXT:   %[[v19:.+]] = select fast i1 %cmp104.not, float 0.000000e+00, float %"tmp.0.lcssa'de.0"
 ; CHECK-NEXT:   br i1 %cmp104.not, label %invertentry, label %invertfor.cond.cleanup.loopexit
 
 ; CHECK: invertfor.body:                                   ; preds = %invertcond.end, %invertcond.false
-; CHECK-NEXT:   %"'de.0" = phi float [ 0.000000e+00, %invertcond.false ], [ %27, %invertcond.end ]
-; CHECK-NEXT:   %20 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %21 = fadd fast float %37, %39
-; CHECK-NEXT:   %22 = select fast i1 %20, float %37, float %21
-; CHECK-NEXT:   br i1 %20, label %invertentry, label %incinvertfor.body
+; CHECK-NEXT:   %"'de.0" = phi float [ 0.000000e+00, %invertcond.false ], [ %[[v27:.+]], %invertcond.end ]
+; CHECK-NEXT:   %[[v20:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   %[[v21:.+]] = fadd fast float %[[v37:.+]], %[[v39:.+]]
+; CHECK-NEXT:   %[[v22:.+]] = select fast i1 %[[v20]], float %[[v37]], float %[[v21]]
+; CHECK-NEXT:   br i1 %[[v20]], label %invertentry, label %incinvertfor.body
 
 ; CHECK: incinvertfor.body:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %23 = add nsw i64 %"iv'ac.0", -1
+; CHECK-NEXT:   %[[v23:.+]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup43
 
 ; CHECK: invertcond.false:                                 ; preds = %invertcond.end
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds float, float* %"d_a'", i64 %add14_unwrap7
-; CHECK-NEXT:   %24 = atomicrmw fadd float* %"arrayidx'ipg_unwrap", float %27 monotonic
+; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx'ipg_unwrap", float %[[v27]] monotonic
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertcond.end:                                   ; preds = %invertcond.end33, %invertcond.false31
-; CHECK-NEXT:   %"'de8.0" = phi float [ 0.000000e+00, %invertcond.false31 ], [ %31, %invertcond.end33 ]
+; CHECK-NEXT:   %"'de8.0" = phi float [ 0.000000e+00, %invertcond.false31 ], [ %[[v31:.+]], %invertcond.end33 ]
 ; CHECK-NEXT:   %"arrayidx2195'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a_shadow, i64 0, i64 %idxprom_unwrap54, i64 %conv13_unwrap53
 ; CHECK-NEXT:   %"arrayidx21'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx2195'ipg_unwrap" to float*
-; CHECK-NEXT:   %25 = load float, float* %"arrayidx21'ipc_unwrap", align 4
+; CHECK-NEXT:   %[[v25:.+]] = load float, float* %"arrayidx21'ipc_unwrap", align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"arrayidx21'ipc_unwrap", align 4
 ; CHECK-NEXT:   %add11_unwrap5 = add i64 %mul9_unwrap35, %conv13_unwrap53
 ; CHECK-NEXT:   %add14_unwrap7 = add i64 %add11_unwrap5, %mul10_unwrap19
 ; CHECK-NEXT:   %cmp16.not_unwrap = icmp ult i64 %add14_unwrap7, %mul15_unwrap24
-; CHECK-NEXT:   %26 = fadd fast float %"'de.1", %25
-; CHECK-NEXT:   %27 = select fast i1 %cmp16.not_unwrap, float %26, float %"'de.1"
+; CHECK-NEXT:   %[[v26:.+]] = fadd fast float %"'de.1", %[[v25]]
+; CHECK-NEXT:   %[[v27]] = select fast i1 %cmp16.not_unwrap, float %[[v26]], float %"'de.1"
 ; CHECK-NEXT:   br i1 %cmp16.not_unwrap, label %invertcond.false, label %invertfor.body
 
 ; CHECK: invertcond.false31:                               ; preds = %invertcond.end33
 ; CHECK-NEXT:   %"arrayidx32'ipg_unwrap" = getelementptr inbounds float, float* %"d_b'", i64 %add27_unwrap16
-; CHECK-NEXT:   %28 = atomicrmw fadd float* %"arrayidx32'ipg_unwrap", float %31 monotonic
+; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx32'ipg_unwrap", float %[[v31]] monotonic
 ; CHECK-NEXT:   br label %invertcond.end
 
 ; CHECK: invertcond.end33:                                 ; preds = %invertfor.body44
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
 ; CHECK-NEXT:   %"arrayidx4097'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_b_shadow, i64 0, i64 %idxprom_unwrap54, i64 %conv13_unwrap53
 ; CHECK-NEXT:   %"arrayidx40'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx4097'ipg_unwrap" to float*
-; CHECK-NEXT:   %29 = load float, float* %"arrayidx40'ipc_unwrap", align 4
+; CHECK-NEXT:   %[[v29:.+]] = load float, float* %"arrayidx40'ipc_unwrap", align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"arrayidx40'ipc_unwrap", align 4
 ; CHECK-NEXT:   %add25_unwrap14 = add nuw nsw i64 %mul10_unwrap19, %idxprom_unwrap54
 ; CHECK-NEXT:   %mul26_unwrap15 = mul i64 %add25_unwrap14, %n
 ; CHECK-NEXT:   %add27_unwrap16 = add i64 %mul26_unwrap15, %conv6
 ; CHECK-NEXT:   %cmp29.not_unwrap = icmp ult i64 %add27_unwrap16, %mul15_unwrap24
-; CHECK-NEXT:   %30 = fadd fast float %"'de8.1", %29
-; CHECK-NEXT:   %31 = select fast i1 %cmp29.not_unwrap, float %30, float %"'de8.1"
+; CHECK-NEXT:   %[[v30:.+]] = fadd fast float %"'de8.1", %[[v29]]
+; CHECK-NEXT:   %[[v31]] = select fast i1 %cmp29.not_unwrap, float %[[v30]], float %"'de8.1"
 ; CHECK-NEXT:   br i1 %cmp29.not_unwrap, label %invertcond.false31, label %invertcond.end
 
 ; CHECK: invertfor.cond.cleanup43:                         ; preds = %incinvertfor.body, %invertfor.cond.cleanup.loopexit
 ; CHECK-NEXT:   %"'de8.1" = phi float [ 0.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %"'de8.0", %incinvertfor.body ]
 ; CHECK-NEXT:   %"'de.1" = phi float [ 0.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %"'de.0", %incinvertfor.body ]
-; CHECK-NEXT:   %"add56'de.0" = phi float [ %19, %invertfor.cond.cleanup.loopexit ], [ %22, %incinvertfor.body ]
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap, %invertfor.cond.cleanup.loopexit ], [ %23, %incinvertfor.body ]
+; CHECK-NEXT:   %"add56'de.0" = phi float [ %[[v19]], %invertfor.cond.cleanup.loopexit ], [ %[[v22]], %incinvertfor.body ]
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap, %invertfor.cond.cleanup.loopexit ], [ %[[v23]], %incinvertfor.body ]
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
 ; CHECK-NEXT:   br label %invertfor.body44
 
 ; CHECK: invertfor.body44:                                 ; preds = %incinvertfor.body44, %invertfor.cond.cleanup43
-; CHECK-NEXT:   %"tmp.0105'de.1" = phi float [ 0.000000e+00, %invertfor.cond.cleanup43 ], [ %39, %incinvertfor.body44 ]
-; CHECK-NEXT:   %"add56'de.1" = phi float [ %"add56'de.0", %invertfor.cond.cleanup43 ], [ %37, %incinvertfor.body44 ]
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 15, %invertfor.cond.cleanup43 ], [ %40, %incinvertfor.body44 ]
+; CHECK-NEXT:   %"tmp.0105'de.1" = phi float [ 0.000000e+00, %invertfor.cond.cleanup43 ], [ %[[v39]], %incinvertfor.body44 ]
+; CHECK-NEXT:   %"add56'de.1" = phi float [ %"add56'de.0", %invertfor.cond.cleanup43 ], [ %[[v37]], %incinvertfor.body44 ]
+; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 15, %invertfor.cond.cleanup43 ], [ %[[v40:.+]], %incinvertfor.body44 ]
 ; CHECK-NEXT:   %_unwrap18 = trunc i64 %"iv1'ac.0" to i32
 ; CHECK-NEXT:   %mul10_unwrap19 = shl i64 %"iv'ac.0", 4
 ; CHECK-NEXT:   %idxprom_unwrap20 = zext i32 %_unwrap18 to i64
@@ -382,39 +380,39 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %cmp29.not_unwrap25 = icmp ult i64 %add27_unwrap23, %mul15_unwrap24
 ; CHECK-NEXT:   %arrayidx32_unwrap = getelementptr inbounds float, float* %d_b, i64 %add27_unwrap23
 ; CHECK-NEXT:   %_unwrap34 = load float, float* %arrayidx32_unwrap, align 4, !tbaa !9
-; CHECK-NEXT:   %32 = select fast i1 %cmp29.not_unwrap25, float %_unwrap34, float 0.000000e+00
-; CHECK-NEXT:   %m0diffe = fmul fast float %"add56'de.1", %32
+; CHECK-NEXT:   %[[v32:.+]] = select fast i1 %cmp29.not_unwrap25, float %_unwrap34, float 0.000000e+00
+; CHECK-NEXT:   %m0diffe = fmul fast float %"add56'de.1", %[[v32]]
 ; CHECK-NEXT:   %mul9_unwrap35 = mul i64 %conv, %n
 ; CHECK-NEXT:   %add11_unwrap37 = add i64 %mul9_unwrap35, %idxprom_unwrap20
 ; CHECK-NEXT:   %add14_unwrap39 = add i64 %add11_unwrap37, %mul10_unwrap19
 ; CHECK-NEXT:   %cmp16.not_unwrap41 = icmp ult i64 %add14_unwrap39, %mul15_unwrap24
 ; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds float, float* %d_a, i64 %add14_unwrap39
 ; CHECK-NEXT:   %_unwrap50 = load float, float* %arrayidx_unwrap, align 4, !tbaa !9
-; CHECK-NEXT:   %33 = select fast i1 %cmp16.not_unwrap41, float %_unwrap50, float 0.000000e+00
-; CHECK-NEXT:   %m1diffe = fmul fast float %"add56'de.1", %33
-; CHECK-NEXT:   %conv13_unwrap53 = zext i32 %12 to i64
+; CHECK-NEXT:   %[[v33:.+]] = select fast i1 %cmp16.not_unwrap41, float %_unwrap50, float 0.000000e+00
+; CHECK-NEXT:   %m1diffe = fmul fast float %"add56'de.1", %[[v33]]
+; CHECK-NEXT:   %conv13_unwrap53 = zext i32 %[[v12]] to i64
 ; CHECK-NEXT:   %"arrayidx54101'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_b_shadow, i64 0, i64 %idxprom_unwrap20, i64 %conv13_unwrap53
 ; CHECK-NEXT:   %"arrayidx54'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx54101'ipg_unwrap" to float*
-; CHECK-NEXT:   %34 = atomicrmw fadd float* %"arrayidx54'ipc_unwrap", float %m1diffe monotonic
-; CHECK-NEXT:   %idxprom_unwrap54 = zext i32 %10 to i64
+; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx54'ipc_unwrap", float %m1diffe monotonic
+; CHECK-NEXT:   %idxprom_unwrap54 = zext i32 %[[v10]] to i64
 ; CHECK-NEXT:   %"arrayidx4999'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a_shadow, i64 0, i64 %idxprom_unwrap54, i64 %idxprom_unwrap20
 ; CHECK-NEXT:   %"arrayidx49'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx4999'ipg_unwrap" to float*
-; CHECK-NEXT:   %35 = atomicrmw fadd float* %"arrayidx49'ipc_unwrap", float %m0diffe monotonic
-; CHECK-NEXT:   %36 = icmp eq i64 %"iv1'ac.0", 0
-; CHECK-NEXT:   %37 = select fast i1 %36, float 0.000000e+00, float %"add56'de.1"
-; CHECK-NEXT:   %38 = fadd fast float %"tmp.0105'de.1", %"add56'de.1"
-; CHECK-NEXT:   %39 = select fast i1 %36, float %38, float %"tmp.0105'de.1"
-; CHECK-NEXT:   br i1 %36, label %invertcond.end33, label %incinvertfor.body44
+; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx49'ipc_unwrap", float %m0diffe monotonic
+; CHECK-NEXT:   %[[v36:.+]] = icmp eq i64 %"iv1'ac.0", 0
+; CHECK-NEXT:   %[[v37]] = select fast i1 %[[v36]], float 0.000000e+00, float %"add56'de.1"
+; CHECK-NEXT:   %[[v38:.+]] = fadd fast float %"tmp.0105'de.1", %"add56'de.1"
+; CHECK-NEXT:   %[[v39]] = select fast i1 %[[v36]], float %[[v38]], float %"tmp.0105'de.1"
+; CHECK-NEXT:   br i1 %[[v36]], label %invertcond.end33, label %incinvertfor.body44
 
 ; CHECK: incinvertfor.body44:                              ; preds = %invertfor.body44
-; CHECK-NEXT:   %40 = add nsw i64 %"iv1'ac.0", -1
+; CHECK-NEXT:   %[[v40]] = add nsw i64 %"iv1'ac.0", -1
 ; CHECK-NEXT:   br label %invertfor.body44
 
 ; CHECK: invertif.then:                                    ; preds = %if.end
 ; CHECK-NEXT:   %mul62_unwrap = mul i64 %conv, %n
 ; CHECK-NEXT:   %add63_unwrap = add i64 %mul62_unwrap, %conv6
 ; CHECK-NEXT:   %"arrayidx64'ipg_unwrap" = getelementptr inbounds float, float* %"d_result'", i64 %add63_unwrap
-; CHECK-NEXT:   %41 = load float, float* %"arrayidx64'ipg_unwrap", align 4
+; CHECK-NEXT:   %[[v41]] = load float, float* %"arrayidx64'ipg_unwrap", align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"arrayidx64'ipg_unwrap", align 4
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup
 ; CHECK-NEXT: }

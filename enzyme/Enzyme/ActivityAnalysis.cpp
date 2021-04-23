@@ -332,6 +332,7 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     case Intrinsic::nvvm_membar_cta:
     case Intrinsic::nvvm_membar_gl:
     case Intrinsic::nvvm_membar_sys:
+    case Intrinsic::amdgcn_s_barrier:
     case Intrinsic::assume:
     case Intrinsic::stacksave:
     case Intrinsic::stackrestore:
@@ -548,6 +549,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     case Intrinsic::nvvm_membar_cta:
     case Intrinsic::nvvm_membar_gl:
     case Intrinsic::nvvm_membar_sys:
+    case Intrinsic::amdgcn_s_barrier:
     case Intrinsic::assume:
     case Intrinsic::stacksave:
     case Intrinsic::stackrestore:
@@ -1060,6 +1062,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
             case Intrinsic::nvvm_membar_cta:
             case Intrinsic::nvvm_membar_gl:
             case Intrinsic::nvvm_membar_sys:
+            case Intrinsic::amdgcn_s_barrier:
             case Intrinsic::assume:
             case Intrinsic::stacksave:
             case Intrinsic::stackrestore:
@@ -1532,6 +1535,7 @@ bool ActivityAnalyzer::isInstructionInactiveFromOrigin(TypeResults &TR,
     case Intrinsic::nvvm_membar_cta:
     case Intrinsic::nvvm_membar_gl:
     case Intrinsic::nvvm_membar_sys:
+    case Intrinsic::amdgcn_s_barrier:
     case Intrinsic::assume:
     case Intrinsic::stacksave:
     case Intrinsic::stackrestore:

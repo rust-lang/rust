@@ -46,6 +46,7 @@
 #include "llvm/IR/Dominators.h"
 
 #if LLVM_VERSION_MAJOR >= 10
+#include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsNVPTX.h"
 #endif
 
@@ -653,7 +654,8 @@ allUnsyncdPredecessorsOf(llvm::Instruction *inst,
   for (auto uinst = inst->getPrevNode(); uinst != nullptr;
        uinst = uinst->getPrevNode()) {
     if (auto II = llvm::dyn_cast<llvm::IntrinsicInst>(uinst)) {
-      if (II->getIntrinsicID() == llvm::Intrinsic::nvvm_barrier0) {
+      if (II->getIntrinsicID() == llvm::Intrinsic::nvvm_barrier0 ||
+          II->getIntrinsicID() == llvm::Intrinsic::amdgcn_s_barrier) {
         return;
       }
     }
@@ -677,7 +679,8 @@ allUnsyncdPredecessorsOf(llvm::Instruction *inst,
     llvm::BasicBlock::reverse_iterator I = BB->rbegin(), E = BB->rend();
     for (; I != E; ++I) {
       if (auto II = llvm::dyn_cast<llvm::IntrinsicInst>(&*I)) {
-        if (II->getIntrinsicID() == llvm::Intrinsic::nvvm_barrier0) {
+        if (II->getIntrinsicID() == llvm::Intrinsic::nvvm_barrier0 ||
+            II->getIntrinsicID() == llvm::Intrinsic::amdgcn_s_barrier) {
           syncd = true;
           break;
         }
