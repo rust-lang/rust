@@ -453,10 +453,10 @@ impl FromWithTcx<clean::Trait> for Trait {
 
 impl FromWithTcx<clean::Impl> for Impl {
     fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
+        let provided_trait_methods = impl_.provided_trait_methods(tcx);
         let clean::Impl {
             unsafety,
             generics,
-            provided_trait_methods,
             trait_,
             for_,
             items,

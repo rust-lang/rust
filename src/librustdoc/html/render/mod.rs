@@ -726,7 +726,8 @@ fn render_impls(
         .iter()
         .map(|i| {
             let did = i.trait_did_full(cache).unwrap();
-            let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
+            let provided_trait_methods = i.inner_impl().provided_trait_methods(tcx);
+            let assoc_link = AssocItemLink::GotoSource(did, &provided_trait_methods);
             let mut buffer = if w.is_for_html() { Buffer::html() } else { Buffer::new() };
             render_impl(
                 &mut buffer,
@@ -1490,7 +1491,8 @@ fn render_impl(
                 continue;
             }
             let did = i.trait_.as_ref().unwrap().def_id_full(cx.cache()).unwrap();
-            let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
+            let provided_methods = i.provided_trait_methods(cx.tcx());
+            let assoc_link = AssocItemLink::GotoSource(did, &provided_methods);
 
             doc_impl_item(
                 w,

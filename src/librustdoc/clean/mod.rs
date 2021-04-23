@@ -1930,11 +1930,6 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
         build_deref_target_impls(cx, &items, &mut ret);
     }
 
-    let provided: FxHashSet<Symbol> = trait_
-        .def_id()
-        .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
-        .unwrap_or_default();
-
     let for_ = impl_.self_ty.clean(cx);
     let type_alias = for_.def_id().and_then(|did| match tcx.def_kind(did) {
         DefKind::TyAlias => Some(tcx.type_of(did).clean(cx)),
@@ -1945,7 +1940,6 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
             span: types::rustc_span(tcx.hir().local_def_id(hir_id).to_def_id(), tcx),
             unsafety: impl_.unsafety,
             generics: impl_.generics.clean(cx),
-            provided_trait_methods: provided.clone(),
             trait_,
             for_,
             items,
