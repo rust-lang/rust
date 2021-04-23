@@ -45,8 +45,10 @@ impl_float_to_int!(f64 => u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize);
 macro_rules! impl_from {
     ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
         #[$attr]
-        #[doc = $doc]
         impl From<$Small> for $Large {
+            // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
+            // Rustdocs on functions do not.
+            #[doc = $doc]
             #[inline]
             fn from(small: $Small) -> Self {
                 small as Self
@@ -383,8 +385,10 @@ use crate::num::NonZeroUsize;
 macro_rules! nzint_impl_from {
     ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
         #[$attr]
-        #[doc = $doc]
         impl From<$Small> for $Large {
+            // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
+            // Rustdocs on functions do not.
+            #[doc = $doc]
             #[inline]
             fn from(small: $Small) -> Self {
                 // SAFETY: input type guarantees the value is non-zero
@@ -450,10 +454,12 @@ nzint_impl_from! { NonZeroU64, NonZeroI128, #[stable(feature = "nz_int_conv", si
 macro_rules! nzint_impl_try_from_int {
     ($Int: ty, $NonZeroInt: ty, #[$attr:meta], $doc: expr) => {
         #[$attr]
-        #[doc = $doc]
         impl TryFrom<$Int> for $NonZeroInt {
             type Error = TryFromIntError;
 
+            // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
+            // Rustdocs on functions do not.
+            #[doc = $doc]
             #[inline]
             fn try_from(value: $Int) -> Result<Self, Self::Error> {
                 Self::new(value).ok_or(TryFromIntError(()))
@@ -489,10 +495,12 @@ nzint_impl_try_from_int! { isize, NonZeroIsize, #[stable(feature = "nzint_try_fr
 macro_rules! nzint_impl_try_from_nzint {
     ($From:ty => $To:ty, $doc: expr) => {
         #[stable(feature = "nzint_try_from_nzint_conv", since = "1.49.0")]
-        #[doc = $doc]
         impl TryFrom<$From> for $To {
             type Error = TryFromIntError;
 
+            // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
+            // Rustdocs on functions do not.
+            #[doc = $doc]
             #[inline]
             fn try_from(value: $From) -> Result<Self, Self::Error> {
                 TryFrom::try_from(value.get()).map(|v| {
