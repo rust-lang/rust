@@ -1046,10 +1046,11 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 }
 
 .sub-variant, .sub-variant > h3 {
-	margin-top: 1px !important;
+	margin-top: 0px !important;
+	padding-top: 1px;
 }
 
-#main > .sub-variant > h3 {
+#main > details > .sub-variant > h3 {
 	font-size: 15px;
 	margin-left: 25px;
 	margin-bottom: 5px;

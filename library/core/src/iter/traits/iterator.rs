@@ -1646,31 +1646,16 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let mut words = vec!["hello", "world", "of", "Rust"].into_iter();
     ///
-    /// let iter = a.iter();
+    /// // Take the first two words.
+    /// let hello_world: Vec<_> = words.by_ref().take(2).collect();
+    /// assert_eq!(hello_world, vec!["hello", "world"]);
     ///
-    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i);
-    ///
-    /// assert_eq!(sum, 6);
-    ///
-    /// // if we try to use iter again, it won't work. The following line
-    /// // gives "error: use of moved value: `iter`
-    /// // assert_eq!(iter.next(), None);
-    ///
-    /// // let's try that again
-    /// let a = [1, 2, 3];
-    ///
-    /// let mut iter = a.iter();
-    ///
-    /// // instead, we add in a .by_ref()
-    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i);
-    ///
-    /// assert_eq!(sum, 3);
-    ///
-    /// // now this is just fine:
-    /// assert_eq!(iter.next(), Some(&3));
-    /// assert_eq!(iter.next(), None);
+    /// // Collect the rest of the words.
+    /// // We can only do this because we used `by_ref` earlier.
+    /// let of_rust: Vec<_> = words.collect();
+    /// assert_eq!(of_rust, vec!["of", "Rust"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self

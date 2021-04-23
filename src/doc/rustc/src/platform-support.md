@@ -179,7 +179,7 @@ target | std | host | notes
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS
 `i686-apple-darwin` | ✓ | ✓ | 32-bit macOS (10.7+, Lion+)
 `i686-pc-windows-msvc` | ✓ |  | 32-bit Windows XP support
-`i686-unknown-uefi` | ? |  | 32-bit UEFI
+`i686-unknown-uefi` | * |  | 32-bit UEFI
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku
 `i686-unknown-netbsd` | ✓ | ✓ | NetBSD/i386 with SSE2
 `i686-unknown-openbsd` | ✓ | ✓ | 32-bit OpenBSD
@@ -228,7 +228,7 @@ target | std | host | notes
 `x86_64-unknown-none-hermitkernel` | ? |  | HermitCore kernel
 `x86_64-unknown-l4re-uclibc` | ? |  |
 `x86_64-unknown-openbsd` | ✓ | ✓ | 64-bit OpenBSD
-`x86_64-unknown-uefi` | ? |  |
+`x86_64-unknown-uefi` | * |  | 64-bit UEFI
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
 `x86_64-wrs-vxworks` | ? |  |

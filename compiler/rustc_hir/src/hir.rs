@@ -2201,7 +2201,7 @@ impl PrimTy {
 
     /// Like [`PrimTy::name`], but returns a &str instead of a symbol.
     ///
-    /// Used by rustdoc.
+    /// Used by clippy.
     pub fn name_str(self) -> &'static str {
         match self {
             PrimTy::Int(i) => i.name_str(),

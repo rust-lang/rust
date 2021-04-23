@@ -240,13 +240,13 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// to be).
     pub(super) fn generate_coverage_spans(
         mir_body: &'a mir::Body<'tcx>,
-        fn_sig_span: Span,
+        fn_sig_span: Span, // Ensured to be same SourceFile and SyntaxContext as `body_span`
         body_span: Span,
         basic_coverage_blocks: &'a CoverageGraph,
     ) -> Vec<CoverageSpan> {
         let mut coverage_spans = CoverageSpans {
             mir_body,
-            fn_sig_span: fn_sig_source_span(fn_sig_span, body_span),
+            fn_sig_span,
             body_span,
             basic_coverage_blocks,
             sorted_spans_iter: None,
@@ -729,11 +729,6 @@ pub(super) fn filtered_terminator_span(
             Some(function_source_span(terminator.source_info.span, body_span))
         }
     }
-}
-
-#[inline]
-fn fn_sig_source_span(fn_sig_span: Span, body_span: Span) -> Span {
-    original_sp(fn_sig_span, body_span).with_ctxt(body_span.ctxt())
 }
 
 #[inline]

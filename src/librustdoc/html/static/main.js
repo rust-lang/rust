@@ -455,6 +455,15 @@ function hideThemeButtonState() {
         handleHashes(ev);
     }
 
+    function openParentDetails(elem) {
+        while (elem) {
+            if (elem.tagName === "DETAILS") {
+                elem.open = true;
+            }
+            elem = elem.parentNode;
+        }
+    }
+
     function expandSection(id) {
         var elem = document.getElementById(id);
         if (elem && isHidden(elem)) {
@@ -469,6 +478,8 @@ function hideThemeButtonState() {
                     // The element is not visible, we need to make it appear!
                     collapseDocs(collapses[0], "show");
                 }
+                // Open all ancestor <details> to make this element visible.
+                openParentDetails(h3.parentNode);
             }
         }
     }
@@ -1009,7 +1020,7 @@ function hideThemeButtonState() {
             if (hasClass(relatedDoc, "item-info")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
-            if (hasClass(relatedDoc, "docblock") || hasClass(relatedDoc, "sub-variant")) {
+            if (hasClass(relatedDoc, "docblock")) {
                 if (mode === "toggle") {
                     if (hasClass(relatedDoc, "hidden-by-usual-hider")) {
                         action = "show";
@@ -1318,8 +1329,6 @@ function hideThemeButtonState() {
                 if (hasClass(e, "type-decl")) {
                     // We do something special for these
                     return;
-                } else if (hasClass(e, "sub-variant")) {
-                    otherMessage = "&nbsp;Show&nbsp;fields";
                 } else if (hasClass(e, "non-exhaustive")) {
                     otherMessage = "&nbsp;This&nbsp;";
                     if (hasClass(e, "non-exhaustive-struct")) {
@@ -1351,7 +1360,6 @@ function hideThemeButtonState() {
         }
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
-        onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
 
         autoCollapse(getSettingValue("collapse") === "true");
 
