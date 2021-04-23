@@ -2,9 +2,8 @@
 mod tests;
 
 use crate::fmt;
-use crate::sync::{mutex, MutexGuard, PoisonError};
+use crate::sync::{mutex, poison, LockResult, MutexGuard, PoisonError};
 use crate::sys_common::condvar as sys;
-use crate::sys_common::poison::{self, LockResult};
 use crate::time::{Duration, Instant};
 
 /// A type indicating whether a timed wait on a condition variable returned
