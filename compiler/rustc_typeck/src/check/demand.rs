@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_note(
                         sp,
                         &format!(
-                            "return type inferred to be `{}` here",
+                            "type inferred to be `{}` here",
                             self.resolve_vars_if_possible(expected)
                         ),
                     );
