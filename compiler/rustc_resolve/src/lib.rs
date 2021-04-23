@@ -239,8 +239,6 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam, // FIXME(const_generics_defaults)
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
     ParamInTyOfConstParam(Symbol),
-    /// constant values inside of type parameter defaults must not depend on generic parameters.
-    ParamInAnonConstInTyDefault(Symbol),
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
@@ -2672,26 +2670,18 @@ impl<'a> Resolver<'a> {
                 }
             }
             Res::Def(DefKind::TyParam, _) | Res::SelfTy(..) => {
-                let mut in_ty_param_default = false;
                 for rib in ribs {
-                    let has_generic_params = match rib.kind {
+                    let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
                         | AssocItemRibKind
                         | ModuleRibKind(..)
-                        | MacroDefinition(..) => {
+                        | MacroDefinition(..)
+                        | ForwardGenericParamBanRibKind => {
                             // Nothing to do. Continue.
                             continue;
                         }
 
-                        // We only forbid constant items if we are inside of type defaults,
-                        // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
-                        ForwardGenericParamBanRibKind => {
-                            // FIXME(const_generic_defaults): we may need to distinguish between
-                            // being in type parameter defaults and const parameter defaults
-                            in_ty_param_default = true;
-                            continue;
-                        }
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
@@ -2720,19 +2710,7 @@ impl<'a> Resolver<'a> {
                                 }
                             }
 
-                            if in_ty_param_default {
-                                if record_used {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInAnonConstInTyDefault(
-                                            rib_ident.name,
-                                        ),
-                                    );
-                                }
-                                return Res::Err;
-                            } else {
-                                continue;
-                            }
+                            continue;
                         }
 
                         // This was an attempt to use a type parameter outside its scope.
@@ -2770,23 +2748,15 @@ impl<'a> Resolver<'a> {
                     ribs.next();
                 }
 
-                let mut in_ty_param_default = false;
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         NormalRibKind
                         | ClosureOrAsyncRibKind
                         | AssocItemRibKind
                         | ModuleRibKind(..)
-                        | MacroDefinition(..) => continue,
+                        | MacroDefinition(..)
+                        | ForwardGenericParamBanRibKind => continue,
 
-                        // We only forbid constant items if we are inside of type defaults,
-                        // for example `struct Foo<T, U = [u8; std::mem::size_of::<T>()]>`
-                        ForwardGenericParamBanRibKind => {
-                            // FIXME(const_generic_defaults): we may need to distinguish between
-                            // being in type parameter defaults and const parameter defaults
-                            in_ty_param_default = true;
-                            continue;
-                        }
                         ConstantItemRibKind(trivial, _) => {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
@@ -2808,19 +2778,7 @@ impl<'a> Resolver<'a> {
                                 return Res::Err;
                             }
 
-                            if in_ty_param_default {
-                                if record_used {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInAnonConstInTyDefault(
-                                            rib_ident.name,
-                                        ),
-                                    );
-                                }
-                                return Res::Err;
-                            } else {
-                                continue;
-                            }
+                            continue;
                         }
 
                         ItemRibKind(has_generic_params) => has_generic_params,
