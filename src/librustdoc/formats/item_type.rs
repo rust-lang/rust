@@ -4,7 +4,7 @@ use std::fmt;
 
 use serde::{Serialize, Serializer};
 
-use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_span::hygiene::MacroKind;
 
 use crate::clean;
@@ -103,39 +103,39 @@ impl<'a> From<&'a clean::Item> for ItemType {
     }
 }
 
-impl From<hir::def::DefKind> for ItemType {
-    fn from(other: hir::def::DefKind) -> Self {
+impl From<DefKind> for ItemType {
+    fn from(other: DefKind) -> Self {
         match other {
-            hir::def::DefKind::Enum => Self::Enum,
-            hir::def::DefKind::Fn => Self::Function,
-            hir::def::DefKind::Mod => Self::Module,
-            hir::def::DefKind::Const => Self::Constant,
-            hir::def::DefKind::Static => Self::Static,
-            hir::def::DefKind::Struct => Self::Struct,
-            hir::def::DefKind::Union => Self::Union,
-            hir::def::DefKind::Trait => Self::Trait,
-            hir::def::DefKind::TyAlias => Self::Typedef,
-            hir::def::DefKind::TraitAlias => Self::TraitAlias,
-            hir::def::DefKind::Macro(_) => Self::Macro,
-            hir::def::DefKind::ForeignTy
-            | hir::def::DefKind::Variant
-            | hir::def::DefKind::AssocTy
-            | hir::def::DefKind::TyParam
-            | hir::def::DefKind::ConstParam
-            | hir::def::DefKind::Ctor(..)
-            | hir::def::DefKind::AssocFn
-            | hir::def::DefKind::AssocConst
-            | hir::def::DefKind::ExternCrate
-            | hir::def::DefKind::Use
-            | hir::def::DefKind::ForeignMod
-            | hir::def::DefKind::AnonConst
-            | hir::def::DefKind::OpaqueTy
-            | hir::def::DefKind::Field
-            | hir::def::DefKind::LifetimeParam
-            | hir::def::DefKind::GlobalAsm
-            | hir::def::DefKind::Impl
-            | hir::def::DefKind::Closure
-            | hir::def::DefKind::Generator => Self::ForeignType,
+            DefKind::Enum => Self::Enum,
+            DefKind::Fn => Self::Function,
+            DefKind::Mod => Self::Module,
+            DefKind::Const => Self::Constant,
+            DefKind::Static => Self::Static,
+            DefKind::Struct => Self::Struct,
+            DefKind::Union => Self::Union,
+            DefKind::Trait => Self::Trait,
+            DefKind::TyAlias => Self::Typedef,
+            DefKind::TraitAlias => Self::TraitAlias,
+            DefKind::Macro(_) => Self::Macro,
+            DefKind::ForeignTy
+            | DefKind::Variant
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::ConstParam
+            | DefKind::Ctor(..)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::ExternCrate
+            | DefKind::Use
+            | DefKind::ForeignMod
+            | DefKind::AnonConst
+            | DefKind::OpaqueTy
+            | DefKind::Field
+            | DefKind::LifetimeParam
+            | DefKind::GlobalAsm
+            | DefKind::Impl
+            | DefKind::Closure
+            | DefKind::Generator => Self::ForeignType,
         }
     }
 }
