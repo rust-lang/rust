@@ -254,15 +254,17 @@ pub(super) fn element(
         k if k.is_keyword() => {
             let h = Highlight::new(HlTag::Keyword);
             match k {
-                T![break]
+                T![await]
+                | T![break]
                 | T![continue]
                 | T![else]
                 | T![if]
+                | T![in]
                 | T![loop]
                 | T![match]
                 | T![return]
                 | T![while]
-                | T![in] => h | HlMod::ControlFlow,
+                | T![yield] => h | HlMod::ControlFlow,
                 T![for] if !is_child_of_impl(&element) => h | HlMod::ControlFlow,
                 T![unsafe] => h | HlMod::Unsafe,
                 T![true] | T![false] => HlTag::BoolLiteral.into(),

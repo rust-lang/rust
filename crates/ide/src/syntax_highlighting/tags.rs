@@ -47,21 +47,27 @@ pub enum HlMod {
     /// `foo` in `fn foo(x: i32)` is a definition, `foo` in `foo(90 + 2)` is
     /// not.
     Definition,
+    /// Doc-strings like this one.
     Documentation,
+    /// Highlighting injection like rust code in doc strings or ra_fixture.
     Injected,
+    /// Mutable binding.
     Mutable,
+    /// Value that is being consumed in a function call
     Consuming,
+    /// Callable item or value.
     Callable,
-    /// Used for associated functions
+    /// Used for associated functions.
     Static,
-    /// Used for items in impls&traits.
+    /// Used for items in traits and impls.
     Associated,
     /// Used for intra doc links in doc injection.
     IntraDocLink,
     /// Used for items in traits and trait impls.
     Trait,
 
-    /// Keep this last!
+    // Keep this last!
+    /// Used for unsafe functions, mutable statics, union accesses and unsafe operations.
     Unsafe,
 }
 
