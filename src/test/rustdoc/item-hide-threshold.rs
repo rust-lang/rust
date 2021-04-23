@@ -62,7 +62,8 @@ pub struct PrivStruct {
 }
 
 // @has 'item_hide_threshold/enum.Enum.html'
-// @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 0
+// @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 1
+// @has - '//details[@class="rustdoc-toggle type-contents-toggle"]' 'Show fields'
 pub enum Enum {
     A, B, C,
     D {

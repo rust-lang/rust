@@ -963,6 +963,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
 
             use crate::clean::Variant;
             if let clean::VariantItem(Variant::Struct(ref s)) = *variant.kind {
+                toggle_open(w, "fields");
                 let variant_id = cx.derive_id(format!(
                     "{}.{}.fields",
                     ItemType::Variant,
@@ -996,6 +997,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     }
                 }
                 w.write_str("</div></div>");
+                toggle_close(w);
             }
             render_stability_since(w, variant, it, cx.tcx());
         }
