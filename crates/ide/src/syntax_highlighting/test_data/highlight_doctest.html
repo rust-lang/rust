@@ -50,7 +50,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment">//    KILLER WHALE</span>
     <span class="comment documentation">/// </span><span class="string_literal injected">    Ishmael."</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="constant declaration associated">bar</span><span class="colon">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="bool_literal">true</span><span class="semicolon">;</span>
+    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="constant associated declaration">bar</span><span class="colon">:</span> <span class="builtin_type">bool</span> <span class="operator">=</span> <span class="bool_literal">true</span><span class="semicolon">;</span>
 
     <span class="comment documentation">/// Constructs a new `Foo`.</span>
     <span class="comment documentation">///</span>
@@ -60,7 +60,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// #</span><span class="none injected"> </span><span class="attribute attribute injected">#</span><span class="attribute attribute injected">!</span><span class="attribute attribute injected">[</span><span class="function attribute injected">allow</span><span class="parenthesis attribute injected">(</span><span class="attribute attribute injected">unused_mut</span><span class="parenthesis attribute injected">)</span><span class="attribute attribute injected">]</span>
     <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="keyword injected">mut</span><span class="none injected"> </span><span class="variable declaration injected mutable">foo</span><span class="colon injected">:</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="struct injected">Foo</span><span class="operator injected">::</span><span class="function injected">new</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="semicolon injected">;</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function declaration static associated">new</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="struct">Foo</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function associated declaration static">new</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="struct">Foo</span> <span class="brace">{</span>
         <span class="struct">Foo</span> <span class="brace">{</span> <span class="field">bar</span><span class="colon">:</span> <span class="bool_literal">true</span> <span class="brace">}</span>
     <span class="brace">}</span>
 
@@ -94,15 +94,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">/// ```sh</span>
     <span class="comment documentation">/// echo 1</span>
     <span class="comment documentation">/// ```</span>
-    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function declaration associated">foo</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
+    <span class="keyword">pub</span> <span class="keyword">fn</span> <span class="function associated declaration">foo</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
         <span class="bool_literal">true</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="comment documentation">/// </span><span class="struct documentation intra_doc_link injected">[`Foo`](Foo)</span><span class="comment documentation"> is a struct</span>
-<span class="comment documentation">/// This function is &gt; </span><span class="function documentation intra_doc_link injected">[`all_the_links`](all_the_links)</span><span class="comment documentation"> &lt;</span>
+<span class="comment documentation">/// </span><span class="struct documentation injected intra_doc_link">[`Foo`](Foo)</span><span class="comment documentation"> is a struct</span>
+<span class="comment documentation">/// This function is &gt; </span><span class="function documentation injected intra_doc_link">[`all_the_links`](all_the_links)</span><span class="comment documentation"> &lt;</span>
 <span class="comment documentation">/// [`noop`](noop) is a macro below</span>
-<span class="comment documentation">/// </span><span class="struct documentation intra_doc_link injected">[`Item`]</span><span class="comment documentation"> is a struct in the module </span><span class="module documentation intra_doc_link injected">[`module`]</span>
+<span class="comment documentation">/// </span><span class="struct documentation injected intra_doc_link">[`Item`]</span><span class="comment documentation"> is a struct in the module </span><span class="module documentation injected intra_doc_link">[`module`]</span>
 <span class="comment documentation">///</span>
 <span class="comment documentation">/// [`Item`]: module::Item</span>
 <span class="comment documentation">/// [mix_and_match]: ThisShouldntResolve</span>
