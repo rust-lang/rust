@@ -264,8 +264,12 @@ impl Item {
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
+        let kind = match &*self.kind {
+            ItemKind::StrippedItem(k) => k,
+            _ => &*self.kind,
+        };
         if let ItemKind::ModuleItem(Module { span, .. }) | ItemKind::ImplItem(Impl { span, .. }) =
-            &*self.kind
+            kind
         {
             *span
         } else if self.is_fake() {
