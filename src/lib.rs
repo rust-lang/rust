@@ -281,7 +281,7 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         Some(value) => {
             let mut builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
             if let Err(_) = builder.enable(value) {
-                sess.fatal("The target cpu isn't currently supported by Cranelift.");
+                sess.fatal("The specified target cpu isn't currently supported by Cranelift.");
             }
             builder
         }
