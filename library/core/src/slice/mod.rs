@@ -2136,6 +2136,7 @@ impl<T> [T] {
     /// assert_eq!(s, [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias("bsearch", "bisect"))]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
     where
         T: Ord,
@@ -2295,6 +2296,7 @@ impl<T> [T] {
     /// [pdqsort]: https://github.com/orlp/pdqsort
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
+    #[doc(alias("qsort", "quicksort"))]
     pub fn sort_unstable(&mut self)
     where
         T: Ord,
