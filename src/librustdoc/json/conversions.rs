@@ -421,7 +421,7 @@ impl FromWithTcx<clean::BareFunctionDecl> for FunctionPointer {
 
 impl FromWithTcx<clean::FnDecl> for FnDecl {
     fn from_tcx(decl: clean::FnDecl, tcx: TyCtxt<'_>) -> Self {
-        let clean::FnDecl { inputs, output, c_variadic, attrs: _ } = decl;
+        let clean::FnDecl { inputs, output, c_variadic } = decl;
         FnDecl {
             inputs: inputs
                 .values

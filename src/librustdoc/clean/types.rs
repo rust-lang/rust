@@ -73,7 +73,6 @@ crate struct TraitWithExtraInfo {
 #[derive(Clone, Debug)]
 crate struct ExternalCrate {
     crate crate_num: CrateNum,
-    crate attrs: Attributes,
 }
 
 impl ExternalCrate {
@@ -663,11 +662,34 @@ impl<'a> Iterator for ListAttributesIter<'a> {
 crate trait AttributesExt {
     /// Finds an attribute as List and returns the list of attributes nested inside.
     fn lists(&self, name: Symbol) -> ListAttributesIter<'_>;
+
+    fn span(&self) -> Option<rustc_span::Span>;
+
+    fn inner_docs(&self) -> bool;
+
+    fn other_attrs(&self) -> Vec<ast::Attribute>;
 }
 
 impl AttributesExt for [ast::Attribute] {
     fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
         ListAttributesIter { attrs: self.iter(), current_list: Vec::new().into_iter(), name }
+    }
+
+    /// Return the span of the first doc-comment, if it exists.
+    fn span(&self) -> Option<rustc_span::Span> {
+        self.iter().find(|attr| attr.doc_str().is_some()).map(|attr| attr.span)
+    }
+
+    /// Returns whether the first doc-comment is an inner attribute.
+    ///
+    //// If there are no doc-comments, return true.
+    /// FIXME(#78591): Support both inner and outer attributes on the same item.
+    fn inner_docs(&self) -> bool {
+        self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
+    }
+
+    fn other_attrs(&self) -> Vec<ast::Attribute> {
+        self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
     }
 }
 
@@ -778,8 +800,6 @@ crate struct Attributes {
     crate doc_strings: Vec<DocFragment>,
     crate other_attrs: Vec<ast::Attribute>,
     crate cfg: Option<Arc<Cfg>>,
-    crate span: Option<rustc_span::Span>,
-    crate inner_docs: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -811,6 +831,10 @@ pub struct RenderedLink {
 }
 
 impl Attributes {
+    crate fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
+        self.other_attrs.lists(name)
+    }
+
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     crate fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
         use rustc_ast::NestedMetaItem::MetaItem;
@@ -895,7 +919,6 @@ impl Attributes {
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
-        let mut sp = None;
         let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
@@ -940,9 +963,6 @@ impl Attributes {
 
                 doc_strings.push(frag);
 
-                if sp.is_none() {
-                    sp = Some(attr.span);
-                }
                 None
             } else {
                 if attr.has_name(sym::doc) {
@@ -1001,17 +1021,10 @@ impl Attributes {
             }
         }
 
-        let inner_docs = attrs
-            .iter()
-            .find(|a| a.doc_str().is_some())
-            .map_or(true, |a| a.style == AttrStyle::Inner);
-
         Attributes {
             doc_strings,
             other_attrs,
             cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
-            span: sp,
-            inner_docs,
         }
     }
 
@@ -1079,7 +1092,6 @@ impl PartialEq for Attributes {
     fn eq(&self, rhs: &Self) -> bool {
         self.doc_strings == rhs.doc_strings
             && self.cfg == rhs.cfg
-            && self.span == rhs.span
             && self
                 .other_attrs
                 .iter()
@@ -1094,16 +1106,9 @@ impl Hash for Attributes {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.doc_strings.hash(hasher);
         self.cfg.hash(hasher);
-        self.span.hash(hasher);
         for attr in &self.other_attrs {
             attr.id.hash(hasher);
         }
-    }
-}
-
-impl AttributesExt for Attributes {
-    fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
-        self.other_attrs.lists(name)
     }
 }
 
@@ -1269,7 +1274,6 @@ crate struct FnDecl {
     crate inputs: Arguments,
     crate output: FnRetTy,
     crate c_variadic: bool,
-    crate attrs: Attributes,
 }
 
 impl FnDecl {

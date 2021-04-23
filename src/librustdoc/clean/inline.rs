@@ -124,8 +124,7 @@ crate fn try_inline(
     let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
 
     cx.inlined.insert(did);
-    let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
-    ret.push(clean::Item { attrs, ..what_rustc_thinks });
+    ret.push(clean::Item::from_def_id_and_attrs_and_parts(did, Some(name), kind, attrs, cx));
     Some(ret)
 }
 

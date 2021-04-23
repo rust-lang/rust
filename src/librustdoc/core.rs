@@ -32,7 +32,7 @@ use std::rc::Rc;
 
 use crate::clean;
 use crate::clean::inline::build_external_trait;
-use crate::clean::{AttributesExt, TraitWithExtraInfo, MAX_DEF_IDX};
+use crate::clean::{TraitWithExtraInfo, MAX_DEF_IDX};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::{self, Condition::*, ConditionalPass};
