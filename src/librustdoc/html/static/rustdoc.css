@@ -1573,6 +1573,10 @@ h4 > .notable-traits {
 		left: -10px;
 	}
 
+	.item-list > details.rustdoc-toggle > summary:not(.hideme)::before {
+		left: -10px;
+	}
+
 	#all-types {
 		margin: 10px;
 	}
@@ -1787,6 +1791,7 @@ details.rustdoc-toggle > summary::before {
 	font-weight: 300;
 	font-size: 0.8em;
 	letter-spacing: 1px;
+	cursor: pointer;
 }
 
 details.rustdoc-toggle > summary.hideme::before {
@@ -1794,7 +1799,8 @@ details.rustdoc-toggle > summary.hideme::before {
 }
 
 details.rustdoc-toggle > summary:not(.hideme)::before {
-	float: left;
+	position: absolute;
+	left: -23px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show
