@@ -6,8 +6,7 @@
 #![allow(dead_code)] // runtime init functions not used during testing
 
 use crate::ffi::OsString;
-use crate::fmt;
-use crate::vec;
+use crate::vec::IntoIter;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
@@ -24,40 +23,7 @@ pub fn args() -> Args {
     imp::args()
 }
 
-pub struct Args {
-    iter: vec::IntoIter<OsString>,
-}
-
-impl !Send for Args {}
-impl !Sync for Args {}
-
-impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.iter.as_slice().fmt(f)
-    }
-}
-
-impl Iterator for Args {
-    type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.iter.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.iter.len()
-    }
-}
-
-impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> {
-        self.iter.next_back()
-    }
-}
+pub type Args = IntoIter<OsString>;
 
 #[cfg(any(
     target_os = "linux",
@@ -134,7 +100,7 @@ mod imp {
     }
 
     pub fn args() -> Args {
-        Args { iter: clone().into_iter() }
+        clone().into_iter()
     }
 
     fn clone() -> Vec<OsString> {
@@ -180,7 +146,7 @@ mod imp {
                 })
                 .collect::<Vec<_>>()
         };
-        Args { iter: vec.into_iter() }
+        vec.into_iter()
     }
 
     // As _NSGetArgc and _NSGetArgv aren't mentioned in iOS docs
@@ -247,6 +213,6 @@ mod imp {
             }
         }
 
-        Args { iter: res.into_iter() }
+        res.into_iter()
     }
 }

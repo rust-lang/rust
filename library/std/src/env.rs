@@ -817,7 +817,8 @@ impl DoubleEndedIterator for Args {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Args").field("inner", &self.inner.inner).finish()
+        let args = &AsRef::<[OsString]>::as_ref(&self.inner.inner);
+        f.debug_struct("Args").field("inner", args).finish()
     }
 }
 
@@ -858,7 +859,8 @@ impl DoubleEndedIterator for ArgsOs {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ArgsOs").field("inner", &self.inner).finish()
+        let args = &AsRef::<[OsString]>::as_ref(&self.inner);
+        f.debug_struct("ArgsOs").field("inner", args).finish()
     }
 }
 
