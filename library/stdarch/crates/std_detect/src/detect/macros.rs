@@ -14,7 +14,8 @@ macro_rules! features {
         macro_rules! $macro_name {
             $(
                 ($feature_lit) => {
-                    $crate::detect::__is_feature_detected::$feature()
+                    cfg!(target_feature = $feature_lit) ||
+                        $crate::detect::__is_feature_detected::$feature()
                 };
             )*
             $(
@@ -94,8 +95,7 @@ macro_rules! features {
                 #[doc(hidden)]
                 #[$stability_attr]
                 pub fn $feature() -> bool {
-                    cfg!(target_feature = $feature_lit) ||
-                        $crate::detect::check_for($crate::detect::Feature::$feature)
+                    $crate::detect::check_for($crate::detect::Feature::$feature)
                 }
             )*
         }
