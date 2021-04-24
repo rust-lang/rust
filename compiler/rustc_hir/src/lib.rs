@@ -3,7 +3,6 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
 
 #![feature(crate_visibility_modifier)]
-#![feature(const_fn)] // For the unsizing cast on `&[]`
 #![feature(const_panic)]
 #![feature(extended_key_value_attributes)]
 #![feature(in_band_lifetimes)]

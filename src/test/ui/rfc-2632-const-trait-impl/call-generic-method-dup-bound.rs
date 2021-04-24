@@ -1,8 +1,8 @@
 // check-pass
 
-#![feature(const_fn)]
 #![feature(const_trait_impl)]
 #![feature(const_trait_bound_opt_out)]
+#![feature(const_fn_trait_bound)]
 #![allow(incomplete_features)]
 
 struct S;
