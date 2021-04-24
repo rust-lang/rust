@@ -129,7 +129,7 @@ impl SourceCollector<'_, 'tcx> {
             &self.scx.layout,
             &page,
             "",
-            |buf: &mut _| print_src(buf, contents, self.scx.edition),
+            |buf: &mut _| print_src(buf, contents, self.scx.edition()),
             &self.scx.style_files,
         );
         self.scx.fs.write(&cur, v.as_bytes())?;

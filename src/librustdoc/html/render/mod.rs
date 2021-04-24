@@ -530,7 +530,7 @@ fn render_markdown(
             &links,
             &mut ids,
             cx.shared.codes,
-            cx.shared.edition,
+            cx.shared.edition(),
             &cx.shared.playground
         )
         .into_string()
@@ -660,7 +660,7 @@ fn short_item_info(
                 &note,
                 &mut ids,
                 error_codes,
-                cx.shared.edition,
+                cx.shared.edition(),
                 &cx.shared.playground,
             );
             message.push_str(&format!(": {}", html.into_string()));
@@ -702,7 +702,7 @@ fn short_item_info(
                     &unstable_reason.as_str(),
                     &mut ids,
                     error_codes,
-                    cx.shared.edition,
+                    cx.shared.edition(),
                     &cx.shared.playground,
                 )
                 .into_string()
@@ -1366,7 +1366,7 @@ fn render_impl(
                     &i.impl_item.links(cx),
                     &mut ids,
                     cx.shared.codes,
-                    cx.shared.edition,
+                    cx.shared.edition(),
                     &cx.shared.playground
                 )
                 .into_string()

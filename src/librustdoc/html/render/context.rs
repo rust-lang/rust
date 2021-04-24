@@ -11,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
-use rustc_span::{symbol::sym, Symbol};
+use rustc_span::symbol::sym;
 
 use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
@@ -111,8 +111,6 @@ crate struct SharedContext<'tcx> {
     crate static_root_path: Option<String>,
     /// The fs handle we are working with.
     crate fs: DocFS,
-    /// The default edition used to parse doctests.
-    crate edition: Edition,
     pub(super) codes: ErrorCodes,
     pub(super) playground: Option<markdown::Playground>,
     all: RefCell<AllTypes>,
@@ -140,6 +138,10 @@ impl SharedContext<'_> {
     /// `collapsed_doc_value` of the given item.
     crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
         if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
+    }
+
+    crate fn edition(&self) -> Edition {
+        self.tcx.sess.edition()
     }
 }
 
@@ -346,7 +348,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
     fn init(
         mut krate: clean::Crate,
         options: RenderOptions,
-        edition: Edition,
         mut cache: Cache,
         tcx: TyCtxt<'tcx>,
     ) -> Result<(Self, clean::Crate), Error> {
@@ -435,7 +436,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             resource_suffix,
             static_root_path,
             fs: DocFS::new(sender),
-            edition,
             codes: ErrorCodes::from(unstable_features.is_nightly_build()),
             playground,
             all: RefCell::new(AllTypes::new()),
@@ -494,11 +494,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
     }
 
-    fn after_krate(
-        &mut self,
-        crate_name: Symbol,
-        diag: &rustc_errors::Handler,
-    ) -> Result<(), Error> {
+    fn after_krate(&mut self) -> Result<(), Error> {
+        let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(&*crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
 
@@ -572,7 +569,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
-        let nb_errors = self.shared.errors.iter().map(|err| diag.struct_err(&err).emit()).count();
+        let nb_errors =
+            self.shared.errors.iter().map(|err| self.tcx().sess.struct_err(&err).emit()).count();
         if nb_errors > 0 {
             Err(Error::new(io::Error::new(io::ErrorKind::Other, "I/O error"), ""))
         } else {
@@ -580,7 +578,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         }
     }
 
-    fn mod_item_in(&mut self, item: &clean::Item, item_name: &str) -> Result<(), Error> {
+    fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error> {
         // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
         // contain items such as publicly re-exported structures.
@@ -592,8 +590,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             self.render_redirect_pages = item.is_stripped();
         }
         let scx = &self.shared;
-        self.dst.push(item_name);
-        self.current.push(item_name.to_owned());
+        let item_name = item.name.as_ref().unwrap().to_string();
+        self.dst.push(&item_name);
+        self.current.push(item_name);
 
         info!("Recursing into {}", self.dst.display());
 
@@ -619,7 +618,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         Ok(())
     }
 
-    fn mod_item_out(&mut self, _item_name: &str) -> Result<(), Error> {
+    fn mod_item_out(&mut self) -> Result<(), Error> {
         info!("Recursed; leaving {}", self.dst.display());
 
         // Go back to where we were at
