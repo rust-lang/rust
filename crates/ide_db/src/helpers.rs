@@ -1,6 +1,7 @@
 //! A module with ide helpers for high-level ide features.
-pub mod insert_use;
 pub mod import_assets;
+pub mod insert_use;
+pub mod merge_imports;
 pub mod rust_doc;
 
 use std::collections::VecDeque;

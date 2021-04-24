@@ -3,10 +3,7 @@
 use hir::{PrefixKind, Semantics};
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
-    helpers::{
-        insert_use::{InsertUseConfig, MergeBehavior},
-        SnippetCap,
-    },
+    helpers::{insert_use::InsertUseConfig, merge_imports::MergeBehavior, SnippetCap},
     RootDatabase,
 };
 use itertools::Itertools;
