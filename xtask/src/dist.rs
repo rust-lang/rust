@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 use flate2::{write::GzEncoder, Compression};
-use xshell::{cmd, cp, mkdir_p, pushd, read_file, rm_rf, write_file};
+use xshell::{cmd, cp, mkdir_p, pushd, pushenv, read_file, rm_rf, write_file};
 
 use crate::{date_iso, project_root};
 
@@ -26,7 +26,8 @@ impl DistCmd {
             let release_tag = if self.nightly { "nightly".to_string() } else { date_iso()? };
             dist_client(&version, &release_tag)?;
         }
-        dist_server()?;
+        let release_channel = if self.nightly { "nightly" } else { "stable" };
+        dist_server(release_channel)?;
         Ok(())
     }
 }
@@ -59,7 +60,8 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
     Ok(())
 }
 
-fn dist_server() -> Result<()> {
+fn dist_server(release_channel: &str) -> Result<()> {
+    let _e = pushenv("RUST_ANALYZER_CHANNEL", release_channel);
     let target = get_target();
     if target.contains("-linux-gnu") || target.contains("-linux-musl") {
         env::set_var("CC", "clang");
