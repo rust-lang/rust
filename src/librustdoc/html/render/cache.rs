@@ -7,7 +7,7 @@ use rustc_span::symbol::{sym, Symbol};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean::types::{
-    FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, TypeKind, WherePredicate,
+    FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
 };
 use crate::clean::{self, AttributesExt};
 use crate::formats::cache::Cache;
@@ -316,15 +316,15 @@ crate fn get_real_types<'tcx>(
     arg: &Type,
     tcx: TyCtxt<'tcx>,
     recurse: i32,
-    res: &mut FxHashSet<(Type, TypeKind)>,
+    res: &mut FxHashSet<(Type, ItemType)>,
 ) -> usize {
-    fn insert(res: &mut FxHashSet<(Type, TypeKind)>, tcx: TyCtxt<'_>, ty: Type) -> usize {
+    fn insert(res: &mut FxHashSet<(Type, ItemType)>, tcx: TyCtxt<'_>, ty: Type) -> usize {
         if let Some(kind) = ty.def_id().map(|did| tcx.def_kind(did).into()) {
             res.insert((ty, kind));
             1
         } else if ty.is_primitive() {
             // This is a primitive, let's store it as such.
-            res.insert((ty, TypeKind::Primitive));
+            res.insert((ty, ItemType::Primitive));
             1
         } else {
             0
@@ -394,7 +394,7 @@ crate fn get_all_types<'tcx>(
     generics: &Generics,
     decl: &FnDecl,
     tcx: TyCtxt<'tcx>,
-) -> (Vec<(Type, TypeKind)>, Vec<(Type, TypeKind)>) {
+) -> (Vec<(Type, ItemType)>, Vec<(Type, ItemType)>) {
     let mut all_types = FxHashSet::default();
     for arg in decl.inputs.values.iter() {
         if arg.type_.is_self_type() {
