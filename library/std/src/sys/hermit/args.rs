@@ -58,22 +58,24 @@ mod imp {
     use crate::ptr;
     use crate::sys_common::os_str_bytes::*;
 
-    use crate::sys_common::mutex::StaticMutex;
+    use crate::sys::mutex::Mutex;
 
     static mut ARGC: isize = 0;
     static mut ARGV: *const *const u8 = ptr::null();
-    static LOCK: StaticMutex = StaticMutex::new();
+    static LOCK: Mutex = Mutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
-        let _guard = LOCK.lock();
+        LOCK.lock();
         ARGC = argc;
         ARGV = argv;
+        LOCK.unlock();
     }
 
     pub unsafe fn cleanup() {
-        let _guard = LOCK.lock();
+        LOCK.lock();
         ARGC = 0;
         ARGV = ptr::null();
+        LOCK.unlock();
     }
 
     pub fn args() -> Args {
@@ -82,10 +84,14 @@ mod imp {
 
     fn clone() -> Vec<OsString> {
         unsafe {
-            let _guard = LOCK.lock();
-            (0..ARGC)
+            LOCK.lock();
+            let argc = ARGC;
+            let argv = ARGV;
+            LOCK.unlock();
+
+            (0..argc)
                 .map(|i| {
-                    let cstr = CStr::from_ptr(*ARGV.offset(i) as *const i8);
+                    let cstr = CStr::from_ptr(*argv.offset(i) as *const i8);
                     OsStringExt::from_vec(cstr.to_bytes().to_vec())
                 })
                 .collect()

@@ -82,18 +82,19 @@ mod imp {
     use crate::ptr;
     use crate::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
 
-    use crate::sys_common::mutex::StaticMutex;
+    use crate::sys::mutex::Mutex;
 
     static ARGC: AtomicIsize = AtomicIsize::new(0);
     static ARGV: AtomicPtr<*const u8> = AtomicPtr::new(ptr::null_mut());
-    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
+    // We never call `LOCK.init()`, so it is UB to attempt to
     // acquire this mutex reentrantly!
-    static LOCK: StaticMutex = StaticMutex::new();
+    static LOCK: Mutex = Mutex::new();
 
     unsafe fn really_init(argc: isize, argv: *const *const u8) {
-        let _guard = LOCK.lock();
+        LOCK.lock();
         ARGC.store(argc, Ordering::Relaxed);
         ARGV.store(argv as *mut _, Ordering::Relaxed);
+        LOCK.unlock();
     }
 
     #[inline(always)]
@@ -128,9 +129,10 @@ mod imp {
     };
 
     pub unsafe fn cleanup() {
-        let _guard = LOCK.lock();
+        LOCK.lock();
         ARGC.store(0, Ordering::Relaxed);
         ARGV.store(ptr::null_mut(), Ordering::Relaxed);
+        LOCK.unlock();
     }
 
     pub fn args() -> Args {
@@ -139,9 +141,11 @@ mod imp {
 
     fn clone() -> Vec<OsString> {
         unsafe {
-            let _guard = LOCK.lock();
+            LOCK.lock();
             let argc = ARGC.load(Ordering::Relaxed);
             let argv = ARGV.load(Ordering::Relaxed);
+            LOCK.unlock();
+
             (0..argc)
                 .map(|i| {
                     let cstr = CStr::from_ptr(*argv.offset(i) as *const libc::c_char);
