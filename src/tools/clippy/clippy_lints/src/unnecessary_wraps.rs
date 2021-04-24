@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{contains_return, in_macro, match_qpath, paths, return_ty, visitors::find_all_ret_expressions};
+use clippy_utils::{contains_return, in_macro, is_lang_ctor, return_ty, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
+use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::{Body, ExprKind, FnDecl, HirId, Impl, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -85,11 +86,11 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         }
 
         // Get the wrapper and inner types, if can't, abort.
-        let (return_type_label, path, inner_type) = if let ty::Adt(adt_def, subst) = return_ty(cx, hir_id).kind() {
+        let (return_type_label, lang_item, inner_type) = if let ty::Adt(adt_def, subst) = return_ty(cx, hir_id).kind() {
             if cx.tcx.is_diagnostic_item(sym::option_type, adt_def.did) {
-                ("Option", &paths::OPTION_SOME, subst.type_at(0))
+                ("Option", OptionSome, subst.type_at(0))
             } else if cx.tcx.is_diagnostic_item(sym::result_type, adt_def.did) {
-                ("Result", &paths::RESULT_OK, subst.type_at(0))
+                ("Result", ResultOk, subst.type_at(0))
             } else {
                 return;
             }
@@ -103,14 +104,12 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             if_chain! {
                 if !in_macro(ret_expr.span);
                 // Check if a function call.
-                if let ExprKind::Call(func, args) = ret_expr.kind;
-                // Get the Path of the function call.
-                if let ExprKind::Path(ref qpath) = func.kind;
+                if let ExprKind::Call(func, [arg]) = ret_expr.kind;
                 // Check if OPTION_SOME or RESULT_OK, depending on return type.
-                if match_qpath(qpath, path);
-                if args.len() == 1;
+                if let ExprKind::Path(qpath) = &func.kind;
+                if is_lang_ctor(cx, qpath, lang_item);
                 // Make sure the function argument does not contain a return expression.
-                if !contains_return(&args[0]);
+                if !contains_return(arg);
                 then {
                     suggs.push(
                         (
@@ -118,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                             if inner_type.is_unit() {
                                 "".to_string()
                             } else {
-                                snippet(cx, args[0].span.source_callsite(), "..").to_string()
+                                snippet(cx, arg.span.source_callsite(), "..").to_string()
                             }
                         )
                     );

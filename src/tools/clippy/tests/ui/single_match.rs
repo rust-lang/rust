@@ -135,6 +135,14 @@ fn if_suggestion() {
         Bar::A => println!(),
         _ => (),
     }
+
+    // issue #7038
+    struct X;
+    let x = Some(X);
+    match x {
+        None => println!(),
+        _ => (),
+    };
 }
 
 macro_rules! single_match {

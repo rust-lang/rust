@@ -1,3 +1,8 @@
+// This code used to be a part of `rustc` but moved to Clippy as a result of
+// https://github.com/rust-lang/rust/issues/76618. Because of that, it contains unused code and some
+// of terminologies might not be relevant in the context of Clippy. Note that its behavior might
+// differ from the time of `rustc` even if the name stays the same.
+
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{
@@ -6,6 +11,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, adjustment::PointerCast, Ty, TyCtxt};
+use rustc_semver::RustcVersion;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi::RustIntrinsic;
@@ -13,7 +19,7 @@ use std::borrow::Cow;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
-pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> McfResult {
+pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: Option<&RustcVersion>) -> McfResult {
     let def_id = body.source.def_id();
     let mut current = def_id;
     loop {
@@ -70,7 +76,7 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>) -> McfResult {
     )?;
 
     for bb in body.basic_blocks() {
-        check_terminator(tcx, body, bb.terminator())?;
+        check_terminator(tcx, body, bb.terminator(), msrv)?;
         for stmt in &bb.statements {
             check_statement(tcx, body, def_id, stmt)?;
         }
@@ -268,7 +274,12 @@ fn check_place(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'t
     Ok(())
 }
 
-fn check_terminator(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, terminator: &Terminator<'tcx>) -> McfResult {
+fn check_terminator(
+    tcx: TyCtxt<'tcx>,
+    body: &'a Body<'tcx>,
+    terminator: &Terminator<'tcx>,
+    msrv: Option<&RustcVersion>,
+) -> McfResult {
     let span = terminator.source_info.span;
     match &terminator.kind {
         TerminatorKind::FalseEdge { .. }
@@ -305,7 +316,7 @@ fn check_terminator(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, terminator: &Termin
         } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
-                if !rustc_mir::const_eval::is_min_const_fn(tcx, fn_def_id) {
+                if !is_const_fn(tcx, fn_def_id, msrv) {
                     return Err((
                         span,
                         format!(
@@ -349,4 +360,25 @@ fn check_terminator(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, terminator: &Termin
 
         TerminatorKind::InlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
     }
+}
+
+fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: Option<&RustcVersion>) -> bool {
+    rustc_mir::const_eval::is_const_fn(tcx, def_id)
+        && if let Some(const_stab) = tcx.lookup_const_stability(def_id) {
+            if let rustc_attr::StabilityLevel::Stable { since } = const_stab.level {
+                // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
+                // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
+                // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
+                crate::meets_msrv(
+                    msrv,
+                    &RustcVersion::parse(&since.as_str())
+                        .expect("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted"),
+                )
+            } else {
+                // `rustc_mir::const_eval::is_const_fn` should return false for unstably const functions.
+                unreachable!();
+            }
+        } else {
+            true
+        }
 }
