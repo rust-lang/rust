@@ -1,0 +1,23 @@
+error: import ending with `::{self}`
+  --> $DIR/unnecessary_self_imports.rs:6:1
+   |
+LL | use std::fs::{self as alias};
+   | ^^^^^^^^^--------------------
+   |          |
+   |          help: consider omitting `::{self}`: `fs as alias;`
+   |
+   = note: `-D clippy::unnecessary-self-imports` implied by `-D warnings`
+   = note: this will slightly change semantics; any non-module items at the same path will also be imported
+
+error: import ending with `::{self}`
+  --> $DIR/unnecessary_self_imports.rs:8:1
+   |
+LL | use std::rc::{self};
+   | ^^^^^^^^^-----------
+   |          |
+   |          help: consider omitting `::{self}`: `rc;`
+   |
+   = note: this will slightly change semantics; any non-module items at the same path will also be imported
+
+error: aborting due to 2 previous errors
+

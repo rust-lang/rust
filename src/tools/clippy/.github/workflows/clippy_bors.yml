@@ -34,15 +34,16 @@ jobs:
       run: |
         MESSAGE=$(git log --format=%B -n 1)
         PR=$(echo "$MESSAGE" | grep -o "#[0-9]*" | head -1 | sed -e 's/^#//')
-        output=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$PR" | \
-          python -c "import sys, json; print(json.load(sys.stdin)['body'])" | \
-          grep "^changelog: " | \
-          sed "s/changelog: //g")
-        if [[ -z "$output" ]]; then
+        body=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$PR" | \
+          python -c "import sys, json; print(json.load(sys.stdin)['body'])")
+        output=$(grep "^changelog:\s*\S" <<< "$body" | sed "s/changelog:\s*//g") || {
           echo "ERROR: PR body must contain 'changelog: ...'"
           exit 1
-        elif [[ "$output" = "none" ]]; then
+        }
+        if [[ "$output" = "none" ]]; then
           echo "WARNING: changelog is 'none'"
+        else
+          echo "changelog: $output"
         fi
       env:
         PYTHONIOENCODING: 'utf-8'

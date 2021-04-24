@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, in_macro, match_def_path, match_qpath, paths};
+use clippy_utils::{differing_macro_contexts, get_parent_expr, in_macro, is_lang_ctor, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
+use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
@@ -68,7 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
             if let ExprKind::Call(err_fun, err_args) = try_arg.kind;
             if let Some(err_arg) = err_args.get(0);
             if let ExprKind::Path(ref err_fun_path) = err_fun.kind;
-            if match_qpath(err_fun_path, &paths::RESULT_ERR);
+            if is_lang_ctor(cx, err_fun_path, ResultErr);
             if let Some(return_ty) = find_return_type(cx, &expr.kind);
             then {
                 let prefix;
@@ -101,10 +102,15 @@ impl<'tcx> LateLintPass<'tcx> for TryErr {
                 } else {
                     snippet(cx, err_arg.span, "_")
                 };
-                let suggestion = if err_ty == expr_err_ty {
-                    format!("return {}{}{}", prefix, origin_snippet, suffix)
+                let ret_prefix = if get_parent_expr(cx, expr).map_or(false, |e| matches!(e.kind, ExprKind::Ret(_))) {
+                    "" // already returns
                 } else {
-                    format!("return {}{}.into(){}", prefix, origin_snippet, suffix)
+                    "return "
+                };
+                let suggestion = if err_ty == expr_err_ty {
+                    format!("{}{}{}{}", ret_prefix, prefix, origin_snippet, suffix)
+                } else {
+                    format!("{}{}{}.into(){}", ret_prefix, prefix, origin_snippet, suffix)
                 };
 
                 span_lint_and_sugg(

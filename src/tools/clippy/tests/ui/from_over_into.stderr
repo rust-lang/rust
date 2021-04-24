@@ -5,7 +5,7 @@ LL | impl Into<StringWrapper> for String {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::from-over-into` implied by `-D warnings`
-   = help: consider to implement `From` instead
+   = help: consider to implement `From<std::string::String>` instead
 
 error: aborting due to previous error
 
