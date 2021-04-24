@@ -143,11 +143,11 @@ impl MetadataExt for Metadata {
     fn st_flags(&self) -> u32 {
         self.as_inner().as_inner().st_flags as u32
     }
-    #[cfg(freebsd12)]
+    #[cfg(not(freebsd11))]
     fn st_lspare(&self) -> u32 {
-        panic!("st_lspare not supported with FreeBSD 12 ABI");
+        panic!("st_lspare not supported with FreeBSD 12+ ABI");
     }
-    #[cfg(not(freebsd12))]
+    #[cfg(freebsd11)]
     fn st_lspare(&self) -> u32 {
         self.as_inner().as_inner().st_lspare as u32
     }
