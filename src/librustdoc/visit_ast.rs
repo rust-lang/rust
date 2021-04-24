@@ -79,7 +79,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             &krate.item,
             self.cx.tcx.crate_name,
         );
-        top_level_module.is_crate = true;
         // Attach the crate's exported macros to the top-level module.
         // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
         // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by

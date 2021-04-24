@@ -28,8 +28,8 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer)
     // Write the breadcrumb trail header for the top
     buf.write_str("<h1 class=\"fqn\"><span class=\"in-band\">");
     let name = match *item.kind {
-        clean::ModuleItem(ref m) => {
-            if m.is_crate {
+        clean::ModuleItem(_) => {
+            if item.is_crate() {
                 "Crate "
             } else {
                 "Module "
