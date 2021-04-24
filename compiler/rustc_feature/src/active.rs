@@ -645,6 +645,12 @@ declare_features! (
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
 
+    /// Allows trait bounds in `const fn`.
+    (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
+
+    /// Allows unsizing coercions in `const fn`.
+    (active, const_fn_unsize, "1.53.0", Some(64992), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------

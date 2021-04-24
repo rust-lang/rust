@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorReported};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_index::bit_set::BitSet;
@@ -234,13 +234,11 @@ impl Validator<'mir, 'tcx> {
             if self.is_const_stable_const_fn() {
                 let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 if crate::const_eval::is_parent_const_impl_raw(tcx, hir_id) {
-                    struct_span_err!(
-                        self.ccx.tcx.sess,
-                        self.span,
-                        E0723,
-                        "trait methods cannot be stable const fn"
-                    )
-                    .emit();
+                    self.ccx
+                        .tcx
+                        .sess
+                        .struct_span_err(self.span, "trait methods cannot be stable const fn")
+                        .emit();
                 }
             }
 
