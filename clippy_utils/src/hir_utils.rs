@@ -885,7 +885,15 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     pub fn hash_ty(&mut self, ty: &Ty<'_>) {
         std::mem::discriminant(&ty.kind).hash(&mut self.s);
-        match ty.kind {
+        self.hash_tykind(&ty.kind);
+    }
+
+    pub fn hash_infer(&mut self) {
+        "_".hash(&mut self.s);
+    }
+
+    pub fn hash_tykind(&mut self, ty: &TyKind<'_>) {
+        match ty {
             TyKind::Slice(ty) => {
                 self.hash_ty(ty);
             },
@@ -949,6 +957,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
                 GenericArg::Type(ref ty) => self.hash_ty(ty),
                 GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
+                GenericArg::Infer(ref _inf) => self.hash_infer(),
             }
         }
     }
