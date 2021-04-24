@@ -717,11 +717,21 @@ pub(super) fn filtered_terminator_span(
         | TerminatorKind::FalseEdge { .. }
         | TerminatorKind::Goto { .. } => None,
 
+        // Call `func` operand can have a more specific span when part of a chain of calls
+        | TerminatorKind::Call { ref func, .. } => {
+            let mut span = terminator.source_info.span;
+            if let mir::Operand::Constant(box constant) = func {
+                if constant.span.lo() > span.lo() {
+                    span = span.with_lo(constant.span.lo());
+                }
+            }
+            Some(function_source_span(span, body_span))
+        }
+
         // Retain spans from all other terminators
         TerminatorKind::Resume
         | TerminatorKind::Abort
         | TerminatorKind::Return
-        | TerminatorKind::Call { .. }
         | TerminatorKind::Yield { .. }
         | TerminatorKind::GeneratorDrop
         | TerminatorKind::FalseUnwind { .. }
