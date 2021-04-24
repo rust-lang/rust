@@ -72,6 +72,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # NOTE: If you modify this job, make sure you copy the changes to clippy.yml
     steps:
     # Setup
     - uses: rust-lang/simpleinfra/github-actions/cancel-outdated-builds@master
@@ -112,8 +113,16 @@ jobs:
     - name: Build
       run: cargo build --features deny-warnings,internal-lints
 
-    - name: Test Workspace
-      run: cargo test --all --features deny-warnings,internal-lints
+    - name: Test
+      run: cargo test --features deny-warnings,internal-lints
+
+    - name: Test clippy_lints
+      run: cargo test --features deny-warnings,internal-lints
+      working-directory: clippy_lints
+
+    - name: Test rustc_tools_util
+      run: cargo test --features deny-warnings
+      working-directory: rustc_tools_util
 
     - name: Test clippy_dev
       run: cargo test --features deny-warnings
@@ -123,10 +132,21 @@ jobs:
       run: ../target/debug/cargo-clippy
       working-directory: clippy_workspace_tests
 
+    - name: Test cargo-clippy --fix
+      run: ../target/debug/cargo-clippy clippy --fix -Zunstable-options
+      working-directory: clippy_workspace_tests
+
     - name: Test clippy-driver
       run: bash .github/driver.sh
       env:
         OS: ${{ runner.os }}
+
+    - name: Test cargo dev new lint
+      run: |
+        cargo dev new_lint --name new_early_pass --pass early
+        cargo dev new_lint --name new_late_pass --pass late
+        cargo check
+        git reset --hard HEAD
 
   integration_build:
     needs: changelog

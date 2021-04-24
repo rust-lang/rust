@@ -10,7 +10,7 @@ const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
 
 fn main() {
     println!("{}", FOO);
-    //~^ ERROR
+    //~^ ERROR evaluation of constant value failed
     //~| WARN erroneous constant used [const_err]
     //~| WARN this was previously accepted by the compiler but is being phased out
 }

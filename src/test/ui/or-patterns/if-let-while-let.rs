@@ -1,8 +1,6 @@
 // Check that or patterns are lowered correctly in `if let` and `while let` expressions.
 // run-pass
 
-#![feature(or_patterns)]
-
 fn main() {
     let mut opt = Some(3);
     let mut w = Vec::new();

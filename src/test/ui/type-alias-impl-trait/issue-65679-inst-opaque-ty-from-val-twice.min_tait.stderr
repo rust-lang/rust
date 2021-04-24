@@ -1,0 +1,21 @@
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/issue-65679-inst-opaque-ty-from-val-twice.rs:20:13
+   |
+LL |     take(|| {});
+   |             ^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: type alias impl trait is not permitted here
+  --> $DIR/issue-65679-inst-opaque-ty-from-val-twice.rs:22:13
+   |
+LL |     take(|| {});
+   |             ^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

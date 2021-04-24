@@ -1,4 +1,4 @@
-// no-system-llvm
+// min-llvm-version: 10.0.1
 // revisions: riscv64 riscv32
 // assembly-output: emit-asm
 //[riscv64] compile-flags: --target riscv64imac-unknown-none-elf

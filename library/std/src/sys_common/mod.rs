@@ -8,9 +8,11 @@
 //! rest of `std` is complex, with dependencies going in all
 //! directions: `std` depending on `sys_common`, `sys_common`
 //! depending on `sys`, and `sys` depending on `sys_common` and `std`.
-//! Ideally `sys_common` would be split into two and the dependencies
-//! between them all would form a dag, facilitating the extraction of
-//! `std::sys` from the standard library.
+//! This is because `sys_common` not only contains platform-independent code,
+//! but also code that is shared between the different platforms in `sys`.
+//! Ideally all that shared code should be moved to `sys::common`,
+//! and the dependencies between `std`, `sys_common` and `sys` all would form a dag.
+//! Progress on this is tracked in #84187.
 
 #![allow(missing_docs)]
 #![allow(missing_debug_implementations)]
@@ -46,7 +48,6 @@ macro_rules! rtunwrap {
     };
 }
 
-pub mod alloc;
 pub mod at_exit_imp;
 pub mod backtrace;
 pub mod bytestring;
@@ -58,7 +59,6 @@ pub mod mutex;
 // when generating documentation.
 #[cfg(any(doc, not(windows)))]
 pub mod os_str_bytes;
-pub mod poison;
 pub mod process;
 pub mod remutex;
 pub mod rwlock;

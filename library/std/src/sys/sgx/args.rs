@@ -1,5 +1,6 @@
 use super::abi::usercalls::{alloc, raw::ByteBuffer};
 use crate::ffi::OsString;
+use crate::fmt;
 use crate::slice;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::os_str::Buf;
@@ -31,9 +32,9 @@ pub fn args() -> Args {
 
 pub struct Args(slice::Iter<'static, OsString>);
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        self.0.as_slice()
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.as_slice().fmt(f)
     }
 }
 

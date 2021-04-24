@@ -5,7 +5,7 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 400 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 450 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
@@ -202,7 +202,6 @@ the lint(s) you are interested in:
 ```terminal
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
-Note that if you've run clippy before, this may only take effect after you've modified a file or ran `cargo clean`.
 
 ### Specifying the minimum supported Rust version
 

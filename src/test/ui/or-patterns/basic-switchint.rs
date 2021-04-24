@@ -3,8 +3,6 @@
 
 // run-pass
 
-#![feature(or_patterns)]
-
 #[derive(Debug, PartialEq)]
 enum MatchArm {
     Arm(usize),

@@ -9,8 +9,8 @@ LL |     fn foo(self) where T: ExtraCopy<U>
    |
 help: consider restricting type parameter `U`
    |
-LL | impl<T,U: Copy> Foo<T,U> {
-   |         ^^^^^^
+LL | impl<T,U: std::marker::Copy> Foo<T,U> {
+   |         ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

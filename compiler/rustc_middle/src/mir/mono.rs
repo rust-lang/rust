@@ -181,6 +181,11 @@ impl<'tcx> MonoItem<'tcx> {
         }
         .map(|hir_id| tcx.hir().span(hir_id))
     }
+
+    // Only used by rustc_codegen_cranelift
+    pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
+        crate::dep_graph::make_compile_mono_item(tcx, self)
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {

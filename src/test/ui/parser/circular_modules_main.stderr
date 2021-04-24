@@ -1,18 +1,18 @@
-error: circular modules: $DIR/circular_modules_hello.rs -> $DIR/circular_modules_main.rs -> $DIR/circular_modules_hello.rs
-  --> $DIR/circular_modules_main.rs:2:1
+error: circular modules: $DIR/circular_modules_main.rs -> $DIR/circular_modules_hello.rs -> $DIR/circular_modules_main.rs
+  --> $DIR/circular_modules_hello.rs:4:1
    |
-LL | mod circular_modules_hello;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | mod circular_modules_main;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0425]: cannot find function `say_hello` in module `circular_modules_hello`
-  --> $DIR/circular_modules_main.rs:9:29
+error[E0425]: cannot find function `hi_str` in module `circular_modules_main`
+  --> $DIR/circular_modules_hello.rs:7:43
    |
-LL |     circular_modules_hello::say_hello();
-   |                             ^^^^^^^^^ not found in `circular_modules_hello`
+LL |     println!("{}", circular_modules_main::hi_str());
+   |                                           ^^^^^^ not found in `circular_modules_main`
    |
 help: consider importing this function
    |
-LL | use circular_modules_hello::say_hello;
+LL | use hi_str;
    |
 
 error: aborting due to 2 previous errors

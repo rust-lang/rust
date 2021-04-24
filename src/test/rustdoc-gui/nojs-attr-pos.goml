@@ -1,0 +1,5 @@
+// Check that the attributes are well positioned when javascript is disabled (since
+// there is no toggle to display)
+javascript: false
+goto: file://|DOC_PATH|/struct.Foo.html
+assert: (".attributes", {"margin-left": "0px"})

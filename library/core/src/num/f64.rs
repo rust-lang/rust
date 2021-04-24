@@ -499,7 +499,6 @@ impl f64 {
     /// Returns `true` if the number is [subnormal].
     ///
     /// ```
-    /// #![feature(is_subnormal)]
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308_f64
     /// let max = f64::MAX;
     /// let lower_than_min = 1.0e-308_f64;
@@ -515,7 +514,7 @@ impl f64 {
     /// assert!(lower_than_min.is_subnormal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-    #[unstable(feature = "is_subnormal", issue = "79288")]
+    #[stable(feature = "is_subnormal", since = "1.53.0")]
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     #[inline]
     pub const fn is_subnormal(self) -> bool {

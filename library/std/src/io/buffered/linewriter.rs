@@ -227,6 +227,6 @@ where
                 "buffer",
                 &format_args!("{}/{}", self.inner.buffer().len(), self.inner.capacity()),
             )
-            .finish()
+            .finish_non_exhaustive()
     }
 }

@@ -9,12 +9,14 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir::util::{write_mir_graphviz, write_mir_pretty};
+use rustc_mir_build::thir;
 use rustc_session::config::{Input, PpAstTreeMode, PpHirMode, PpMode, PpSourceMode};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::FileName;
 
 use std::cell::Cell;
+use std::fmt::Write;
 use std::path::Path;
 
 pub use self::PpMode::*;
@@ -106,13 +108,6 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn;
-
-    /// Computes an user-readable representation of a path, if possible.
-    fn node_path(&self, id: hir::HirId) -> Option<String> {
-        self.hir_map().and_then(|map| map.def_path_from_hir_id(id)).map(|path| {
-            path.data.into_iter().map(|elem| elem.data.to_string()).collect::<Vec<_>>().join("::")
-        })
-    }
 }
 
 struct NoAnn<'hir> {
@@ -325,10 +320,6 @@ impl<'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'tcx> {
     fn pp_ann(&self) -> &dyn pprust_hir::PpAnn {
         self
     }
-
-    fn node_path(&self, id: hir::HirId) -> Option<String> {
-        Some(self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()))
-    }
 }
 
 impl<'tcx> pprust_hir::PpAnn for TypedAnnotation<'tcx> {
@@ -484,18 +475,40 @@ fn print_with_analysis(
     ppm: PpMode,
     ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
-    let mut out = Vec::new();
-
     tcx.analysis(LOCAL_CRATE)?;
 
-    match ppm {
-        Mir => write_mir_pretty(tcx, None, &mut out).unwrap(),
-        MirCFG => write_mir_graphviz(tcx, None, &mut out).unwrap(),
-        _ => unreachable!(),
-    }
+    let out = match ppm {
+        Mir => {
+            let mut out = Vec::new();
+            write_mir_pretty(tcx, None, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        }
 
-    let out = std::str::from_utf8(&out).unwrap();
-    write_or_print(out, ofile);
+        MirCFG => {
+            let mut out = Vec::new();
+            write_mir_graphviz(tcx, None, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        }
+
+        ThirTree => {
+            let mut out = String::new();
+            abort_on_err(rustc_typeck::check_crate(tcx), tcx.sess);
+            debug!("pretty printing THIR tree");
+            for did in tcx.body_owners() {
+                let hir = tcx.hir();
+                let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(did)));
+                let arena = thir::Arena::default();
+                let thir =
+                    thir::build_thir(tcx, ty::WithOptConstParam::unknown(did), &arena, &body.value);
+                let _ = writeln!(out, "{:?}:\n{:#?}\n", did, thir);
+            }
+            out
+        }
+
+        _ => unreachable!(),
+    };
+
+    write_or_print(&out, ofile);
 
     Ok(())
 }

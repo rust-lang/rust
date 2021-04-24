@@ -58,7 +58,7 @@ mod tests;
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
 
-const MAXIMUM_ZST_CAPACITY: usize = 1 << (core::mem::size_of::<usize>() * 8 - 1); // Largest possible power of two
+const MAXIMUM_ZST_CAPACITY: usize = 1 << (usize::BITS - 1); // Largest possible power of two
 
 /// A double-ended queue implemented with a growable ring buffer.
 ///
@@ -2403,6 +2403,12 @@ impl<T> VecDeque<T> {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    /// [`partition_point`]: VecDeque::partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2457,6 +2463,12 @@ impl<T> VecDeque<T> {
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
+    /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    /// [`partition_point`]: VecDeque::partition_point
+    ///
     /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
@@ -2481,8 +2493,11 @@ impl<T> VecDeque<T> {
         F: FnMut(&'a T) -> Ordering,
     {
         let (front, back) = self.as_slices();
+        let cmp_back = back.first().map(|elem| f(elem));
 
-        if let Some(Ordering::Less | Ordering::Equal) = back.first().map(|elem| f(elem)) {
+        if let Some(Ordering::Equal) = cmp_back {
+            Ok(front.len())
+        } else if let Some(Ordering::Less) = cmp_back {
             back.binary_search_by(f).map(|idx| idx + front.len()).map_err(|idx| idx + front.len())
         } else {
             front.binary_search_by(f)
@@ -2492,14 +2507,20 @@ impl<T> VecDeque<T> {
     /// Binary searches this sorted `VecDeque` with a key extraction function.
     ///
     /// Assumes that the `VecDeque` is sorted by the key, for instance with
-    /// [`make_contiguous().sort_by_key()`](#method.make_contiguous) using the same
-    /// key extraction function.
+    /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
     /// one of the matches could be returned. If the value is not found then
     /// [`Result::Err`] is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
+    ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
+    ///
+    /// [`make_contiguous().sort_by_key()`]: VecDeque::make_contiguous
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`partition_point`]: VecDeque::partition_point
     ///
     /// # Examples
     ///
@@ -2530,6 +2551,51 @@ impl<T> VecDeque<T> {
         B: Ord,
     {
         self.binary_search_by(|k| f(k).cmp(b))
+    }
+
+    /// Returns the index of the partition point according to the given predicate
+    /// (the index of the first element of the second partition).
+    ///
+    /// The deque is assumed to be partitioned according to the given predicate.
+    /// This means that all elements for which the predicate returns true are at the start of the deque
+    /// and all elements for which the predicate returns false are at the end.
+    /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
+    /// (all odd numbers are at the start, all even at the end).
+    ///
+    /// If this deque is not partitioned, the returned result is unspecified and meaningless,
+    /// as this method performs a kind of binary search.
+    ///
+    /// See also [`binary_search`], [`binary_search_by`], and [`binary_search_by_key`].
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
+    /// [`binary_search_by`]: VecDeque::binary_search_by
+    /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vecdeque_binary_search)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let deque: VecDeque<_> = vec![1, 2, 3, 3, 5, 6, 7].into();
+    /// let i = deque.partition_point(|&x| x < 5);
+    ///
+    /// assert_eq!(i, 4);
+    /// assert!(deque.iter().take(i).all(|&x| x < 5));
+    /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
+    /// ```
+    #[unstable(feature = "vecdeque_binary_search", issue = "78021")]
+    pub fn partition_point<P>(&self, mut pred: P) -> usize
+    where
+        P: FnMut(&T) -> bool,
+    {
+        let (front, back) = self.as_slices();
+
+        if let Some(true) = back.first().map(|v| pred(v)) {
+            back.partition_point(pred) + front.len()
+        } else {
+            front.partition_point(pred)
+        }
     }
 }
 
@@ -2783,27 +2849,26 @@ impl<T> From<Vec<T>> for VecDeque<T> {
     /// This avoids reallocating where possible, but the conditions for that are
     /// strict, and subject to change, and so shouldn't be relied upon unless the
     /// `Vec<T>` came from `From<VecDeque<T>>` and hasn't been reallocated.
-    fn from(other: Vec<T>) -> Self {
-        unsafe {
-            let mut other = ManuallyDrop::new(other);
-            let other_buf = other.as_mut_ptr();
-            let mut buf = RawVec::from_raw_parts(other_buf, other.capacity());
-            let len = other.len();
-
-            // We need to extend the buf if it's not a power of two, too small
-            // or doesn't have at least one free space.
-            // We check if `T` is a ZST in the first condition,
-            // because `usize::MAX` (the capacity returned by `capacity()` for ZST)
-            // is not a power of two and thus it'll always try
-            // to reserve more memory which will panic for ZST (rust-lang/rust#78532)
-            if (!buf.capacity().is_power_of_two() && mem::size_of::<T>() != 0)
-                || (buf.capacity() < (MINIMUM_CAPACITY + 1))
-                || (buf.capacity() == len)
-            {
-                let cap = cmp::max(buf.capacity() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
-                buf.reserve_exact(len, cap - len);
+    fn from(mut other: Vec<T>) -> Self {
+        let len = other.len();
+        if mem::size_of::<T>() == 0 {
+            // There's no actual allocation for ZSTs to worry about capacity,
+            // but `VecDeque` can't handle as much length as `Vec`.
+            assert!(len < MAXIMUM_ZST_CAPACITY, "capacity overflow");
+        } else {
+            // We need to resize if the capacity is not a power of two, too small or
+            // doesn't have at least one free space. We do this while it's still in
+            // the `Vec` so the items will drop on panic.
+            let min_cap = cmp::max(MINIMUM_CAPACITY, len) + 1;
+            let cap = cmp::max(min_cap, other.capacity()).next_power_of_two();
+            if other.capacity() != cap {
+                other.reserve_exact(cap - len);
             }
+        }
 
+        unsafe {
+            let (other_buf, len, capacity) = other.into_raw_parts();
+            let buf = RawVec::from_raw_parts(other_buf, capacity);
             VecDeque { tail: 0, head: len, buf }
         }
     }

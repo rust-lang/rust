@@ -5,13 +5,6 @@ pub fn opts() -> TargetOptions {
         // Suppress the verbose logo and authorship debugging output, which would needlessly
         // clog any log files.
         "/NOLOGO".to_string(),
-        // Tell the compiler that non-code sections can be marked as non-executable,
-        // including stack pages.
-        // UEFI is fully compatible to non-executable data pages.
-        // In fact, firmware might enforce this, so we better let the linker know about this,
-        // so it will fail if the compiler ever tries placing code on the stack
-        // (e.g., trampoline constructs and alike).
-        "/NXCOMPAT".to_string(),
     ];
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(LinkerFlavor::Msvc, pre_link_args_msvc.clone());

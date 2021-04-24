@@ -2,7 +2,7 @@
 // did not check that the types matched up in the `Ok(r)` branch.
 //
 // run-pass
-// compile-flags: -Zmir-opt-level=2
+// compile-flags: -Zmir-opt-level=3
 
 #[derive(Debug, PartialEq, Eq)]
 enum SpecialsRes { Res(u64) }

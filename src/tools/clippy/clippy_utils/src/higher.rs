@@ -51,7 +51,7 @@ pub struct Range<'a> {
 pub fn range<'a>(expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
     /// Finds the field named `name` in the field. Always return `Some` for
     /// convenience.
-    fn get_field<'c>(name: &str, fields: &'c [hir::Field<'_>]) -> Option<&'c hir::Expr<'c>> {
+    fn get_field<'c>(name: &str, fields: &'c [hir::ExprField<'_>]) -> Option<&'c hir::Expr<'c>> {
         let expr = &fields.iter().find(|field| field.ident.name.as_str() == name)?.expr;
 
         Some(expr)

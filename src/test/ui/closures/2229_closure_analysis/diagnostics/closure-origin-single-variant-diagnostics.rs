@@ -13,12 +13,8 @@ fn main() {
     let mut point = SingleVariant::Point(10, -10);
 
     let c = || {
-        // FIXME(project-rfc-2229#24): Change this to be a destructure pattern
-        // once this is fixed, to remove the warning.
-        if let SingleVariant::Point(ref mut x, _) = point {
-            //~^ WARNING: irrefutable `if let` pattern
-            *x += 1;
-        }
+        let SingleVariant::Point(ref mut x, _) = point;
+        *x += 1;
     };
 
     let b = c;

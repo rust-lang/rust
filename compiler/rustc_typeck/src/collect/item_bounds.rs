@@ -25,7 +25,7 @@ fn associated_type_bounds<'tcx>(
         InternalSubsts::identity_for_item(tcx, assoc_item_def_id),
     );
 
-    let bounds = AstConv::compute_bounds(
+    let bounds = <dyn AstConv<'_>>::compute_bounds(
         &ItemCtxt::new(tcx, assoc_item_def_id),
         item_ty,
         &bounds,
@@ -66,7 +66,7 @@ fn opaque_type_bounds<'tcx>(
         let item_ty =
             tcx.mk_opaque(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
 
-        let bounds = AstConv::compute_bounds(
+        let bounds = <dyn AstConv<'_>>::compute_bounds(
             &ItemCtxt::new(tcx, opaque_def_id),
             item_ty,
             &bounds,

@@ -1,5 +1,6 @@
-use crate::utils::paths::INTO;
-use crate::utils::{match_def_path, meets_msrv, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::paths::INTO;
+use clippy_utils::{match_def_path, meets_msrv};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};

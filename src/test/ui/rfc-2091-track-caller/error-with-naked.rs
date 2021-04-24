@@ -1,3 +1,4 @@
+// needs-asm-support
 #![feature(asm, naked_functions)]
 
 #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`

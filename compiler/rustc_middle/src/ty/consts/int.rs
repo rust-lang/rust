@@ -5,6 +5,8 @@ use rustc_target::abi::{Size, TargetDataLayout};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
+use crate::ty::TyCtxt;
+
 #[derive(Copy, Clone)]
 /// A type for representing any integer. Only used for printing.
 pub struct ConstInt {
@@ -239,6 +241,11 @@ impl ScalarInt {
             Err(self.size())
         }
     }
+
+    #[inline]
+    pub fn try_to_machine_usize(&self, tcx: TyCtxt<'tcx>) -> Result<u64, Size> {
+        Ok(self.to_bits(tcx.data_layout.pointer_size)? as u64)
+    }
 }
 
 macro_rules! from {
@@ -276,6 +283,18 @@ macro_rules! try_from {
 
 from!(u8, u16, u32, u64, u128, bool);
 try_from!(u8, u16, u32, u64, u128);
+
+impl TryFrom<ScalarInt> for bool {
+    type Error = Size;
+    #[inline]
+    fn try_from(int: ScalarInt) -> Result<Self, Size> {
+        int.to_bits(Size::from_bytes(1)).and_then(|u| match u {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(Size::from_bytes(1)),
+        })
+    }
+}
 
 impl From<char> for ScalarInt {
     #[inline]

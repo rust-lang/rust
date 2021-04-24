@@ -1,7 +1,7 @@
 // compile-flags: -Z unstable-options --check
 
 #![deny(missing_docs)]
-#![deny(rustdoc)]
+#![deny(rustdoc::all)]
 
 //! ```rust,testharness
 //~^ ERROR

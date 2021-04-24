@@ -2,7 +2,7 @@ use rustc_ast::entry::EntryPointType;
 use rustc_errors::struct_span_err;
 use rustc_hir::def_id::{CrateNum, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem};
+use rustc_hir::{ForeignItem, HirId, ImplItem, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -60,7 +60,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
     }
 
     // If the user wants no main function at all, then stop here.
-    if tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_main) {
+    if tcx.sess.contains_name(&tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
         return None;
     }
 
@@ -80,10 +80,11 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(LocalDefId, EntryFnType)
 
 // Beware, this is duplicated in `librustc_builtin_macros/test_harness.rs`
 // (with `ast::Item`), so make sure to keep them in sync.
-fn entry_point_type(sess: &Session, item: &Item<'_>, at_root: bool) -> EntryPointType {
-    if sess.contains_name(&item.attrs, sym::start) {
+fn entry_point_type(ctxt: &EntryContext<'_, '_>, item: &Item<'_>, at_root: bool) -> EntryPointType {
+    let attrs = ctxt.map.attrs(item.hir_id());
+    if ctxt.session.contains_name(attrs, sym::start) {
         EntryPointType::Start
-    } else if sess.contains_name(&item.attrs, sym::main) {
+    } else if ctxt.session.contains_name(attrs, sym::rustc_main) {
         EntryPointType::MainAttr
     } else if item.ident.name == sym::main {
         if at_root {
@@ -103,14 +104,15 @@ fn throw_attr_err(sess: &Session, span: Span, attr: &str) {
 }
 
 fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
-    match entry_point_type(&ctxt.session, item, at_root) {
+    match entry_point_type(ctxt, item, at_root) {
         EntryPointType::None => (),
         _ if !matches!(item.kind, ItemKind::Fn(..)) => {
-            if let Some(attr) = ctxt.session.find_by_name(item.attrs, sym::start) {
+            let attrs = ctxt.map.attrs(item.hir_id());
+            if let Some(attr) = ctxt.session.find_by_name(attrs, sym::start) {
                 throw_attr_err(&ctxt.session, attr.span, "start");
             }
-            if let Some(attr) = ctxt.session.find_by_name(item.attrs, sym::main) {
-                throw_attr_err(&ctxt.session, attr.span, "main");
+            if let Some(attr) = ctxt.session.find_by_name(attrs, sym::rustc_main) {
+                throw_attr_err(&ctxt.session, attr.span, "rustc_main");
             }
         }
         EntryPointType::MainNamed => {
@@ -169,7 +171,7 @@ fn configure_main(
 }
 
 fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
-    let sp = tcx.hir().krate().item.span;
+    let sp = tcx.hir().krate().item.inner;
     if *tcx.sess.parse_sess.reached_eof.borrow() {
         // There's an unclosed brace that made the parser reach `Eof`, we shouldn't complain about
         // the missing `fn main()` then as it might have been hidden inside an unclosed block.
@@ -191,10 +193,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
             err.span_note(span, "here is a function named `main`");
         }
         err.note("you have one or more functions named `main` not defined at the crate level");
-        err.help(
-            "either move the `main` function definitions or attach the `#[main]` attribute \
-                  to one of them",
-        );
+        err.help("consider moving the `main` function definitions");
         // There were some functions named `main` though. Try to give the user a hint.
         format!(
             "the main function must be defined at the crate level{}",

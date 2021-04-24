@@ -115,7 +115,7 @@ fn resolve_associated_item<'tcx>(
     );
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)))?;
+    let vtbl = tcx.codegen_fulfill_obligation((param_env, ty::Binder::bind(trait_ref, tcx)))?;
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:

@@ -1,4 +1,3 @@
-#![feature(or_patterns)]
 #![deny(unreachable_patterns)]
 
 // We wrap patterns in a tuple because top-level or-patterns were special-cased.

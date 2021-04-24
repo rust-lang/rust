@@ -26,7 +26,9 @@ fn smeg() {
     foo(_x);
     //~^ ERROR the trait bound
     //~| NOTE the trait `ImplementedForUnitButNotNever` is not implemented
-    //~| NOTE the trait is implemented for `()`
+    //~| NOTE this trait is implemented for `()`
+    //~| NOTE this error might have been caused
+    //~| HELP did you intend
 }
 
 fn main() {

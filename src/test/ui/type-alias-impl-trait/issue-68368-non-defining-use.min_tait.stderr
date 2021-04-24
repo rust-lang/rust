@@ -1,0 +1,14 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/issue-68368-non-defining-use.rs:11:15
+   |
+LL | fn f<'a>() -> Alias<'a, ()> {}
+   |               ^^^^^^^^^^^^^
+   |
+note: used non-generic type `()` for generic parameter
+  --> $DIR/issue-68368-non-defining-use.rs:10:16
+   |
+LL | type Alias<'a, U> = impl Trait<U>;
+   |                ^
+
+error: aborting due to previous error
+

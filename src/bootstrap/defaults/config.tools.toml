@@ -1,0 +1,16 @@
+# These defaults are meant for contributors to tools which build on the
+# compiler, but do not modify it directly.
+[rust]
+# This enables `RUSTC_LOG=debug`, avoiding confusing situations
+# where adding `debug!()` appears to do nothing.
+# However, it makes running the compiler slightly slower.
+debug-logging = true
+# This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
+incremental = true
+# Download rustc from CI instead of building it from source.
+# This cuts compile times by almost 60x, but means you can't modify the compiler.
+download-rustc = "if-unchanged"
+
+[llvm]
+# Will download LLVM from CI if available on your platform.
+download-ci-llvm = "if-available"

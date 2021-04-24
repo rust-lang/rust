@@ -51,7 +51,6 @@ impl<T: ?Sized> *const T {
     /// Decompose a (possibly wide) pointer into is address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts`].
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "ptr_metadata", issue = "81513")]
     #[rustc_const_unstable(feature = "ptr_metadata", issue = "81513")]
     #[inline]
@@ -184,8 +183,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -210,6 +208,7 @@ impl<T: ?Sized> *const T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_offset`]: #method.wrapping_offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -227,7 +226,7 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn offset(self, count: isize) -> *const T
     where
         T: Sized,
@@ -245,9 +244,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -265,10 +263,8 @@ impl<T: ?Sized> *const T {
     /// `x.wrapping_offset(o).wrapping_offset(o.wrapping_neg())` is always the same as `x`. In other
     /// words, leaving the allocated object and then re-entering it later is permitted.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
-    ///
     /// [`offset`]: #method.offset
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -292,7 +288,7 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "ptr_wrapping_offset", since = "1.16.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const fn wrapping_offset(self, count: isize) -> *const T
     where
         T: Sized,
@@ -314,31 +310,37 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and other pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * Both pointers must be *derived from* a pointer to the same object.
     ///   (See below for an example.)
     ///
-    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
-    ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
     ///   of the size of `T`.
     ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
     /// * The distance being in bounds cannot rely on "wrapping around" the address space.
     ///
-    /// The compiler and standard library generally try to ensure allocations
-    /// never reach a size where an offset is a concern. For instance, `Vec`
-    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
-    /// `ptr_into_vec.offset_from(vec.as_ptr())` is always safe.
+    /// Rust types are never larger than `isize::MAX` and Rust allocations never wrap around the
+    /// address space, so two pointers within some value of any Rust type `T` will always satisfy
+    /// the last two conditions. The standard library also generally ensures that allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec` and `Box` ensure they
+    /// never allocate more than `isize::MAX` bytes, so `ptr_into_vec.offset_from(vec.as_ptr())`
+    /// always satisfies the last two conditions.
     ///
-    /// Most platforms fundamentally can't even construct such an allocation.
+    /// Most platforms fundamentally can't even construct such a large allocation.
     /// For instance, no known 64-bit platform can ever serve a request
     /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
     /// However, some 32-bit and 16-bit platforms may successfully serve a request for
     /// more than `isize::MAX` bytes with things like Physical Address
     /// Extension. As such, memory acquired directly from allocators or memory
     /// mapped files *may* be too large to handle with this function.
+    /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
+    /// such large allocations either.)
+    ///
+    /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Panics
     ///
@@ -462,8 +464,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset, **in bytes**, cannot overflow an `isize`.
     ///
@@ -488,6 +489,7 @@ impl<T: ?Sized> *const T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_add`]: #method.wrapping_add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -505,7 +507,7 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn add(self, count: usize) -> Self
     where
         T: Sized,
@@ -526,8 +528,7 @@ impl<T: ?Sized> *const T {
     /// Behavior:
     ///
     /// * Both the starting and resulting pointer must be either in bounds or one
-    ///   byte past the end of the same allocated object. Note that in Rust,
-    ///   every (stack-allocated) variable is considered a separate allocated object.
+    ///   byte past the end of the same [allocated object].
     ///
     /// * The computed offset cannot exceed `isize::MAX` **bytes**.
     ///
@@ -552,6 +553,7 @@ impl<T: ?Sized> *const T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_sub`]: #method.wrapping_sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -588,9 +590,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -608,10 +609,8 @@ impl<T: ?Sized> *const T {
     /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
     /// allocated object and then re-entering it later is permitted.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
-    ///
     /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -635,7 +634,7 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const fn wrapping_add(self, count: usize) -> Self
     where
         T: Sized,
@@ -653,9 +652,8 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer remains attached to the same allocated object that `self` points to.
-    /// It may *not* be used to access a different allocated object. Note that in Rust, every
-    /// (stack-allocated) variable is considered a separate allocated object.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it may not
+    /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
@@ -673,10 +671,8 @@ impl<T: ?Sized> *const T {
     /// `x.wrapping_add(o).wrapping_sub(o)` is always the same as `x`. In other words, leaving the
     /// allocated object and then re-entering it later is permitted.
     ///
-    /// If you need to cross object boundaries, cast the pointer to an integer and
-    /// do the arithmetic there.
-    ///
     /// [`sub`]: #method.sub
+    /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Examples
     ///
@@ -728,7 +724,7 @@ impl<T: ?Sized> *const T {
     /// #![feature(set_ptr_value)]
     /// # use core::fmt::Debug;
     /// let arr: [i32; 3] = [1, 2, 3];
-    /// let mut ptr = &arr[0] as *const dyn Debug;
+    /// let mut ptr = arr.as_ptr() as *const dyn Debug;
     /// let thin = ptr as *const u8;
     /// unsafe {
     ///     ptr = ptr.set_ptr_value(thin.add(8));
@@ -813,9 +809,10 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy`] for safety concerns and examples.
     ///
     /// [`ptr::copy`]: crate::ptr::copy()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_to(self, dest: *mut T, count: usize)
+    pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
         T: Sized,
     {
@@ -831,9 +828,10 @@ impl<T: ?Sized> *const T {
     /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
     ///
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
+    #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[inline]
-    pub unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
+    pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
         T: Sized,
     {
@@ -916,13 +914,6 @@ impl<T> *const [T] {
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
-        #[cfg(bootstrap)]
-        {
-            // SAFETY: this is safe because `*const [T]` and `FatPtr<T>` have the same layout.
-            // Only `std` can make this guarantee.
-            unsafe { Repr { rust: self }.raw }.len
-        }
-        #[cfg(not(bootstrap))]
         metadata(self)
     }
 
@@ -989,7 +980,7 @@ impl<T> *const [T] {
     /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
     ///   and it must be properly aligned. This means in particular:
     ///
-    ///     * The entire memory range of this slice must be contained within a single allocated object!
+    ///     * The entire memory range of this slice must be contained within a single [allocated object]!
     ///       Slices can never span across multiple allocated objects.
     ///
     ///     * The pointer must be aligned even for zero-length slices. One
@@ -1011,6 +1002,7 @@ impl<T> *const [T] {
     /// See also [`slice::from_raw_parts`][].
     ///
     /// [valid]: crate::ptr#safety
+    /// [allocated object]: crate::ptr#allocated-object
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     pub unsafe fn as_uninit_slice<'a>(self) -> Option<&'a [MaybeUninit<T>]> {

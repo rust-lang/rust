@@ -83,6 +83,8 @@ struct ProbeContext<'a, 'tcx> {
     unsatisfied_predicates: Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)>,
 
     is_suggestion: IsSuggestion,
+
+    scope_expr_id: hir::HirId,
 }
 
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
@@ -154,6 +156,42 @@ enum ProbeResult {
     Match,
 }
 
+/// When adjusting a receiver we often want to do one of
+///
+/// - Add a `&` (or `&mut`), converting the receiver from `T` to `&T` (or `&mut T`)
+/// - If the receiver has type `*mut T`, convert it to `*const T`
+///
+/// This type tells us which one to do.
+///
+/// Note that in principle we could do both at the same time. For example, when the receiver has
+/// type `T`, we could autoref it to `&T`, then convert to `*const T`. Or, when it has type `*mut
+/// T`, we could convert it to `*const T`, then autoref to `&*const T`. However, currently we do
+/// (at most) one of these. Either the receiver has type `T` and we convert it to `&T` (or with
+/// `mut`), or it has type `*mut T` and we convert it to `*const T`.
+#[derive(Debug, PartialEq, Clone)]
+pub enum AutorefOrPtrAdjustment<'tcx> {
+    /// Receiver has type `T`, add `&` or `&mut` (it `T` is `mut`), and maybe also "unsize" it.
+    /// Unsizing is used to convert a `[T; N]` to `[T]`, which only makes sense when autorefing.
+    Autoref {
+        mutbl: hir::Mutability,
+
+        /// Indicates that the source expression should be "unsized" to a target type. This should
+        /// probably eventually go away in favor of just coercing method receivers.
+        unsize: Option<Ty<'tcx>>,
+    },
+    /// Receiver has type `*mut T`, convert to `*const T`
+    ToConstPtr,
+}
+
+impl<'tcx> AutorefOrPtrAdjustment<'tcx> {
+    fn get_unsize(&self) -> Option<Ty<'tcx>> {
+        match self {
+            AutorefOrPtrAdjustment::Autoref { mutbl: _, unsize } => unsize.clone(),
+            AutorefOrPtrAdjustment::ToConstPtr => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Pick<'tcx> {
     pub item: ty::AssocItem,
@@ -165,17 +203,9 @@ pub struct Pick<'tcx> {
     ///     A = expr | *expr | **expr | ...
     pub autoderefs: usize,
 
-    /// Indicates that an autoref is applied after the optional autoderefs
-    ///
-    ///     B = A | &A | &mut A
-    pub autoref: Option<hir::Mutability>,
-
-    /// Indicates that the source expression should be "unsized" to a
-    /// target type. This should probably eventually go away in favor
-    /// of just coercing method receivers.
-    ///
-    ///     C = B | unsize(B)
-    pub unsize: Option<Ty<'tcx>>,
+    /// Indicates that we want to add an autoref (and maybe also unsize it), or if the receiver is
+    /// `*mut T`, convert it to `*const T`.
+    pub autoref_or_ptr_adjustment: Option<AutorefOrPtrAdjustment<'tcx>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -420,6 +450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 orig_values,
                 steps.steps,
                 is_suggestion,
+                scope_expr_id,
             );
 
             probe_cx.assemble_inherent_candidates();
@@ -519,6 +550,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         orig_steps_var_values: OriginalQueryValues<'tcx>,
         steps: Lrc<Vec<CandidateStep<'tcx>>>,
         is_suggestion: IsSuggestion,
+        scope_expr_id: hir::HirId,
     ) -> ProbeContext<'a, 'tcx> {
         ProbeContext {
             fcx,
@@ -536,6 +568,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
             is_suggestion,
+            scope_expr_id,
         }
     }
 
@@ -1086,6 +1119,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.pick_by_value_method(step, self_ty).or_else(|| {
                     self.pick_autorefd_method(step, self_ty, hir::Mutability::Not)
                         .or_else(|| self.pick_autorefd_method(step, self_ty, hir::Mutability::Mut))
+                        .or_else(|| self.pick_const_ptr_method(step, self_ty))
                 })
             })
             .next()
@@ -1113,7 +1147,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // Insert a `&*` or `&mut *` if this is a reference type:
                 if let ty::Ref(_, _, mutbl) = *step.self_ty.value.value.kind() {
                     pick.autoderefs += 1;
-                    pick.autoref = Some(mutbl);
+                    pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
+                        mutbl,
+                        unsize: pick.autoref_or_ptr_adjustment.and_then(|a| a.get_unsize()),
+                    })
                 }
 
                 pick
@@ -1136,8 +1173,39 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.pick_method(autoref_ty).map(|r| {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
-                pick.autoref = Some(mutbl);
-                pick.unsize = step.unsize.then_some(self_ty);
+                pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::Autoref {
+                    mutbl,
+                    unsize: step.unsize.then_some(self_ty),
+                });
+                pick
+            })
+        })
+    }
+
+    /// If `self_ty` is `*mut T` then this picks `*const T` methods. The reason why we have a
+    /// special case for this is because going from `*mut T` to `*const T` with autoderefs and
+    /// autorefs would require dereferencing the pointer, which is not safe.
+    fn pick_const_ptr_method(
+        &mut self,
+        step: &CandidateStep<'tcx>,
+        self_ty: Ty<'tcx>,
+    ) -> Option<PickResult<'tcx>> {
+        // Don't convert an unsized reference to ptr
+        if step.unsize {
+            return None;
+        }
+
+        let ty = match self_ty.kind() {
+            ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) => ty,
+            _ => return None,
+        };
+
+        let const_self_ty = ty::TypeAndMut { ty, mutbl: hir::Mutability::Not };
+        let const_ptr_ty = self.tcx.mk_ptr(const_self_ty);
+        self.pick_method(const_ptr_ty).map(|r| {
+            r.map(|mut pick| {
+                pick.autoderefs = step.autoderefs;
+                pick.autoref_or_ptr_adjustment = Some(AutorefOrPtrAdjustment::ToConstPtr);
                 pick
             })
         })
@@ -1249,7 +1317,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) {
         self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
-            self.fcx.body_id,
+            self.scope_expr_id,
             self.span,
             |lint| {
                 let def_kind = stable_pick.item.kind.as_def_kind();
@@ -1510,8 +1578,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             kind: TraitPick,
             import_ids: probes[0].0.import_ids.clone(),
             autoderefs: 0,
-            autoref: None,
-            unsize: None,
+            autoref_or_ptr_adjustment: None,
         })
     }
 
@@ -1532,6 +1599,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.orig_steps_var_values.clone(),
                 steps,
                 IsSuggestion(true),
+                self.scope_expr_id,
             );
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
@@ -1638,7 +1706,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             // In general, during probe we erase regions.
                             self.tcx.lifetimes.re_erased.into()
                         }
-                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                             self.var_for_def(self.span, param)
                         }
                     }
@@ -1691,7 +1759,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ///    region got replaced with the same variable, which requires a bit more coordination
     ///    and/or tracking the substitution and
     ///    so forth.
-    fn erase_late_bound_regions<T>(&self, value: ty::Binder<T>) -> T
+    fn erase_late_bound_regions<T>(&self, value: ty::Binder<'tcx, T>) -> T
     where
         T: TypeFoldable<'tcx>,
     {
@@ -1700,7 +1768,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     /// Finds the method with the appropriate name (or return type, as the case may be). If
     /// `allow_similar_names` is set, find methods with close-matching names.
-    fn impl_or_trait_item(&self, def_id: DefId) -> Vec<ty::AssocItem> {
+    // The length of the returned iterator is nearly always 0 or 1 and this
+    // method is fairly hot.
+    fn impl_or_trait_item(&self, def_id: DefId) -> SmallVec<[ty::AssocItem; 1]> {
         if let Some(name) = self.method_name {
             if self.allow_similar_names {
                 let max_dist = max(name.as_str().len(), 3) / 3;
@@ -1716,7 +1786,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             } else {
                 self.fcx
                     .associated_item(def_id, name, Namespace::ValueNS)
-                    .map_or_else(Vec::new, |x| vec![x])
+                    .map_or_else(SmallVec::new, |x| SmallVec::from_buf([x]))
             }
         } else {
             self.tcx.associated_items(def_id).in_definition_order().copied().collect()
@@ -1748,8 +1818,7 @@ impl<'tcx> Candidate<'tcx> {
             },
             import_ids: self.import_ids.clone(),
             autoderefs: 0,
-            autoref: None,
-            unsize: None,
+            autoref_or_ptr_adjustment: None,
         }
     }
 }

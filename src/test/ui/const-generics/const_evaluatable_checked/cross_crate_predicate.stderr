@@ -3,48 +3,52 @@ error: unconstrained generic constant
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: try adding a `where` bound using this expression: `where [u8; std::mem::size_of::<T>() - 1]: Sized`
-  --> $DIR/auxiliary/const_evaluatable_lib.rs:6:10
+   | 
+  ::: $DIR/auxiliary/const_evaluatable_lib.rs:6:10
    |
 LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ---------------------------- required by this bound in `test1`
+   |
+   = help: try adding a `where` bound using this expression: `where [(); std::mem::size_of::<T>() - 1]:`
 
 error: unconstrained generic constant
   --> $DIR/cross_crate_predicate.rs:7:13
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: try adding a `where` bound using this expression: `where [u8; std::mem::size_of::<T>() - 1]: Sized`
-  --> $DIR/auxiliary/const_evaluatable_lib.rs:4:27
+   | 
+  ::: $DIR/auxiliary/const_evaluatable_lib.rs:4:27
    |
 LL | pub fn test1<T>() -> [u8; std::mem::size_of::<T>() - 1]
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           ---------------------------- required by this bound in `test1`
+   |
+   = help: try adding a `where` bound using this expression: `where [(); std::mem::size_of::<T>() - 1]:`
 
 error: unconstrained generic constant
   --> $DIR/cross_crate_predicate.rs:7:13
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: try adding a `where` bound using this expression: `where [u8; std::mem::size_of::<T>() - 1]: Sized`
-  --> $DIR/auxiliary/const_evaluatable_lib.rs:6:10
+   | 
+  ::: $DIR/auxiliary/const_evaluatable_lib.rs:6:10
    |
 LL |     [u8; std::mem::size_of::<T>() - 1]: Sized,
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ---------------------------- required by this bound in `test1`
+   |
+   = help: try adding a `where` bound using this expression: `where [(); std::mem::size_of::<T>() - 1]:`
 
 error: unconstrained generic constant
   --> $DIR/cross_crate_predicate.rs:7:13
    |
 LL |     let _ = const_evaluatable_lib::test1::<T>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: try adding a `where` bound using this expression: `where [u8; std::mem::size_of::<T>() - 1]: Sized`
-  --> $DIR/auxiliary/const_evaluatable_lib.rs:4:27
+   | 
+  ::: $DIR/auxiliary/const_evaluatable_lib.rs:4:27
    |
 LL | pub fn test1<T>() -> [u8; std::mem::size_of::<T>() - 1]
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           ---------------------------- required by this bound in `test1`
+   |
+   = help: try adding a `where` bound using this expression: `where [(); std::mem::size_of::<T>() - 1]:`
 
 error: aborting due to 4 previous errors
 

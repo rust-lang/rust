@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+//
 // We specify -C incremental here because we want to test the partitioning for
 // incremental compilation
 // compile-flags:-Zprint-mono-items=lazy -Cincremental=tmp/partitioning-tests/local-inlining-but-not-all

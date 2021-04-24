@@ -75,13 +75,13 @@ mod lifetimes {
 
 mod issue2894 {
     trait IntoBytes {
-        fn to_bytes(&self) -> Vec<u8>;
+        fn to_bytes(self) -> Vec<u8>;
     }
 
     // This should not be linted
     impl IntoBytes for u8 {
-        fn to_bytes(&self) -> Vec<u8> {
-            vec![*self]
+        fn to_bytes(self) -> Vec<u8> {
+            vec![self]
         }
     }
 }
@@ -312,28 +312,25 @@ mod issue4140 {
         fn try_from(value: T) -> Result<Self, Error<Self::From, Self::To>>;
     }
 
-    impl<F, T> TryFrom<F> for T
-    where
-        T: From<F>,
-    {
-        type From = T::From;
-        type To = T::To;
+    // FIXME: Suggested fix results in infinite recursion.
+    // impl<F, T> TryFrom<F> for T
+    // where
+    //     T: From<F>,
+    // {
+    //     type From = Self::From;
+    //     type To = Self::To;
 
-        fn try_from(value: F) -> Result<Self, Error<Self::From, Self::To>> {
-            Ok(From::from(value))
-        }
-    }
+    //     fn try_from(value: F) -> Result<Self, Error<Self::From, Self::To>> {
+    //         Ok(From::from(value))
+    //     }
+    // }
 
     impl From<bool> for i64 {
         type From = bool;
         type To = Self;
 
         fn from(value: bool) -> Self {
-            if value {
-                100
-            } else {
-                0
-            }
+            if value { 100 } else { 0 }
         }
     }
 }
@@ -456,5 +453,12 @@ mod nested_paths {
         fn test() -> Self {
             A::new::<submod::B>(submod::B {})
         }
+    }
+}
+
+mod issue6818 {
+    #[derive(serde::Deserialize)]
+    struct A {
+        a: i32,
     }
 }

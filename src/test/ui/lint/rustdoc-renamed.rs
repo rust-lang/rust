@@ -11,4 +11,5 @@
 #![deny(intra_doc_link_resolution_failure)]
 //~^ ERROR removed: use `rustdoc::broken_intra_doc_links`
 #![deny(non_autolinks)]
-//~^ ERROR removed: use `rustdoc::non_autolinks`
+// FIXME: the old names for rustdoc lints should warn by default once `rustdoc::` makes it to the
+// stable channel.

@@ -1,8 +1,6 @@
-error: package `cargo_common_metadata` is missing `package.authors` metadata
+error: package `cargo_common_metadata` is missing `package.description` metadata
    |
    = note: `-D clippy::cargo-common-metadata` implied by `-D warnings`
-
-error: package `cargo_common_metadata` is missing `package.description` metadata
 
 error: package `cargo_common_metadata` is missing `either package.license or package.license_file` metadata
 
@@ -14,5 +12,5 @@ error: package `cargo_common_metadata` is missing `package.keywords` metadata
 
 error: package `cargo_common_metadata` is missing `package.categories` metadata
 
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 

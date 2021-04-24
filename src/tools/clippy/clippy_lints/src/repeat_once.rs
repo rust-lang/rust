@@ -1,5 +1,8 @@
 use crate::consts::{constant_context, Constant};
-use crate::utils::{in_macro, is_type_diagnostic_item, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::in_macro;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -42,10 +45,10 @@ impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
         if_chain! {
             if let ExprKind::MethodCall(path, _, [receiver, count], _) = &expr.kind;
             if path.ident.name == sym!(repeat);
-            if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(&count);
+            if let Some(Constant::Int(1)) = constant_context(cx, cx.typeck_results()).expr(count);
             if !in_macro(receiver.span);
             then {
-                let ty = cx.typeck_results().expr_ty(&receiver).peel_refs();
+                let ty = cx.typeck_results().expr_ty(receiver).peel_refs();
                 if ty.is_str() {
                     span_lint_and_sugg(
                         cx,

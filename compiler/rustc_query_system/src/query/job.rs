@@ -22,7 +22,7 @@ use {
     rustc_data_structures::{jobserver, OnDrop},
     rustc_rayon_core as rayon_core,
     rustc_span::DUMMY_SP,
-    std::iter::FromIterator,
+    std::iter::{self, FromIterator},
     std::{mem, process},
 };
 
@@ -463,7 +463,7 @@ fn remove_cycle<D: DepKind>(
         spans.rotate_right(1);
 
         // Zip them back together
-        let mut stack: Vec<_> = spans.into_iter().zip(queries).collect();
+        let mut stack: Vec<_> = iter::zip(spans, queries).collect();
 
         // Remove the queries in our cycle from the list of jobs to look at
         for r in &stack {

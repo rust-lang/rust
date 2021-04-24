@@ -16,7 +16,29 @@ enum Flags {
     FIN,
 }
 
-struct GCCLLVMSomething; // linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
-                         // `GccLlvmSomething`
+// linted with cfg option, beware that lint suggests `GccllvmSomething` instead of
+// `GccLlvmSomething`
+struct GCCLLVMSomething;
+
+// don't warn on public items
+pub struct MIXEDCapital;
+
+pub struct FULLCAPITAL;
+
+// enum variants should not be linted if the num is pub
+pub enum ParseError<T> {
+    FULLCAPITAL(u8),
+    MIXEDCapital(String),
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
+
+// private, do lint here
+enum ParseErrorPrivate<T> {
+    WASD(u8),
+    WASDMixed(String),
+    Utf8(std::string::FromUtf8Error),
+    Parse(T, String),
+}
 
 fn main() {}

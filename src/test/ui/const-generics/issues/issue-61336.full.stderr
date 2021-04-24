@@ -16,8 +16,8 @@ LL |     [x; N]
    = note: the `Copy` trait is required because the repeated element will be copied
 help: consider restricting type parameter `T`
    |
-LL | fn g<T: Copy, const N: usize>(x: T) -> [T; N] {
-   |       ^^^^^^
+LL | fn g<T: std::marker::Copy, const N: usize>(x: T) -> [T; N] {
+   |       ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

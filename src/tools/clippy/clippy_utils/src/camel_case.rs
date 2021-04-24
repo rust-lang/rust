@@ -25,11 +25,7 @@ pub fn until(s: &str) -> usize {
             return i;
         }
     }
-    if up {
-        last_i
-    } else {
-        s.len()
-    }
+    if up { last_i } else { s.len() }
 }
 
 /// Returns index of the last camel-case component of `s`.

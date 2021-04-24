@@ -1,6 +1,6 @@
 use crate::consts::{constant, Constant};
-use crate::utils::sugg::Sugg;
-use crate::utils::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;

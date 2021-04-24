@@ -108,6 +108,19 @@ impl Step for Linkcheck {
     /// documentation to ensure we don't have a bunch of dead ones.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
+        let hosts = &builder.hosts;
+        let targets = &builder.targets;
+
+        // if we have different hosts and targets, some things may be built for
+        // the host (e.g. rustc) and others for the target (e.g. std). The
+        // documentation built for each will contain broken links to
+        // docs built for the other platform (e.g. rustc linking to cargo)
+        if (hosts != targets) && !hosts.is_empty() && !targets.is_empty() {
+            panic!(
+                "Linkcheck currently does not support builds with different hosts and targets.
+You can skip linkcheck with --exclude src/tools/linkchecker"
+            );
+        }
 
         builder.info(&format!("Linkcheck ({})", host));
 
@@ -122,7 +135,8 @@ impl Step for Linkcheck {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/linkchecker").default_condition(builder.config.docs)
+        let run = run.path("src/tools/linkchecker");
+        run.default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -338,6 +352,57 @@ impl Step for Rustfmt {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustDemangler {
+    stage: u32,
+    host: TargetSelection,
+}
+
+impl Step for RustDemangler {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-demangler")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustDemangler { stage: run.builder.top_stage, host: run.target });
+    }
+
+    /// Runs `cargo test` for rust-demangler.
+    fn run(self, builder: &Builder<'_>) {
+        let stage = self.stage;
+        let host = self.host;
+        let compiler = builder.compiler(stage, host);
+
+        let rust_demangler = builder
+            .ensure(tool::RustDemangler { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            host,
+            "test",
+            "src/tools/rust-demangler",
+            SourceType::InTree,
+            &[],
+        );
+
+        let dir = testdir(builder, compiler.host);
+        t!(fs::create_dir_all(&dir));
+
+        cargo.env("RUST_DEMANGLER_DRIVER_PATH", rust_demangler);
+
+        cargo.arg("--").args(builder.config.cmd.test_args());
+
+        cargo.add_rustc_lib_path(builder, compiler);
+
+        builder.run(&mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
     stage: u32,
     host: TargetSelection,
@@ -452,7 +517,14 @@ impl Step for Miri {
 
             cargo.add_rustc_lib_path(builder, compiler);
 
-            if !try_run(builder, &mut cargo.into()) {
+            let mut cargo = Command::from(cargo);
+            if !try_run(builder, &mut cargo) {
+                return;
+            }
+
+            // # Run `cargo test` with `-Zmir-opt-level=4`.
+            cargo.env("MIRIFLAGS", "-O -Zmir-opt-level=4");
+            if !try_run(builder, &mut cargo) {
                 return;
             }
 
@@ -782,6 +854,7 @@ impl Step for Tidy {
         cmd.arg(&builder.src);
         cmd.arg(&builder.initial_cargo);
         cmd.arg(&builder.out);
+        cmd.arg(builder.jobs().to_string());
         if builder.is_verbose() {
             cmd.arg("--verbose");
         }
@@ -791,6 +864,19 @@ impl Step for Tidy {
 
         if builder.config.channel == "dev" || builder.config.channel == "nightly" {
             builder.info("fmt check");
+            if builder.config.initial_rustfmt.is_none() {
+                let inferred_rustfmt_dir = builder.config.initial_rustc.parent().unwrap();
+                eprintln!(
+                    "\
+error: no `rustfmt` binary found in {PATH}
+info: `rust.channel` is currently set to \"{CHAN}\"
+help: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
+help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` to `x.py test`",
+                    PATH = inferred_rustfmt_dir.display(),
+                    CHAN = builder.config.channel,
+                );
+                std::process::exit(1);
+            }
             crate::format::format(&builder.build, !builder.config.cmd.bless());
         }
     }
@@ -1076,7 +1162,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         // Avoid depending on rustdoc when we don't need it.
         if mode == "rustdoc"
-            || (mode == "run-make" && suite.ends_with("fulldeps"))
+            || mode == "run-make"
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
@@ -1092,7 +1178,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         if mode == "run-make" && suite.ends_with("fulldeps") {
-            cmd.arg("--rust-demangler-path").arg(builder.tool_exe(Tool::RustDemangler));
+            let rust_demangler = builder
+                .ensure(tool::RustDemangler { compiler, target, extra_features: Vec::new() })
+                .expect("in-tree tool");
+            cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
 
         cmd.arg("--src-base").arg(builder.src.join("src/test").join(suite));
@@ -1143,6 +1232,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
         if builder.is_fuse_ld_lld(compiler.host) {
             hostflags.push("-Clink-args=-fuse-ld=lld".to_string());
+            hostflags.push("-Clink-arg=-Wl,--threads=1".to_string());
         }
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
@@ -1150,6 +1240,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
         if builder.is_fuse_ld_lld(target) {
             targetflags.push("-Clink-args=-fuse-ld=lld".to_string());
+            targetflags.push("-Clink-arg=-Wl,--threads=1".to_string());
         }
         cmd.arg("--target-rustcflags").arg(targetflags.join(" "));
 
@@ -1914,6 +2005,77 @@ impl Step for CrateRustdoc {
 
         builder.info(&format!(
             "{} rustdoc stage{} ({} -> {})",
+            test_kind, compiler.stage, &compiler.host, target
+        ));
+        let _time = util::timeit(&builder);
+
+        try_run(builder, &mut cargo.into());
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CrateRustdocJsonTypes {
+    host: TargetSelection,
+    test_kind: TestKind,
+}
+
+impl Step for CrateRustdocJsonTypes {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/rustdoc-json-types")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+
+        let test_kind = builder.kind.into();
+
+        builder.ensure(CrateRustdocJsonTypes { host: run.target, test_kind });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let test_kind = self.test_kind;
+        let target = self.host;
+
+        // Use the previous stage compiler to reuse the artifacts that are
+        // created when running compiletest for src/test/rustdoc. If this used
+        // `compiler`, then it would cause rustdoc to be built *again*, which
+        // isn't really necessary.
+        let compiler = builder.compiler_for(builder.top_stage, target, target);
+        builder.ensure(compile::Rustc { compiler, target });
+
+        let mut cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolRustc,
+            target,
+            test_kind.subcommand(),
+            "src/rustdoc-json-types",
+            SourceType::InTree,
+            &[],
+        );
+        if test_kind.subcommand() == "test" && !builder.fail_fast {
+            cargo.arg("--no-fail-fast");
+        }
+
+        cargo.arg("-p").arg("rustdoc-json-types");
+
+        cargo.arg("--");
+        cargo.args(&builder.config.cmd.test_args());
+
+        if self.host.contains("musl") {
+            cargo.arg("'-Ctarget-feature=-crt-static'");
+        }
+
+        if !builder.config.verbose_tests {
+            cargo.arg("--quiet");
+        }
+
+        builder.info(&format!(
+            "{} rustdoc-json-types stage{} ({} -> {})",
             test_kind, compiler.stage, &compiler.host, target
         ));
         let _time = util::timeit(&builder);

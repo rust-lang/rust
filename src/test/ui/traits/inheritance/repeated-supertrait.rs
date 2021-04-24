@@ -31,7 +31,7 @@ fn with_trait<C:CompareToInts>(c: &C) -> bool {
 }
 
 fn with_ufcs1<C:CompareToInts>(c: &C) -> bool {
-    CompareToInts::same_as(c, 22_i64) && CompareToInts::same_as(c, 22_u64)
+    <dyn CompareToInts>::same_as(c, 22_i64) && <dyn CompareToInts>::same_as(c, 22_u64)
 }
 
 fn with_ufcs2<C:CompareToInts>(c: &C) -> bool {

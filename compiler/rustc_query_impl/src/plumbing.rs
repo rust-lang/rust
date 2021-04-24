@@ -390,13 +390,12 @@ macro_rules! define_queries {
 
             #[inline]
             fn compute(tcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
-                let provider = tcx.queries.providers.get(key.query_crate())
-                    // HACK(eddyb) it's possible crates may be loaded after
-                    // the query engine is created, and because crate loading
-                    // is not yet integrated with the query engine, such crates
-                    // would be missing appropriate entries in `providers`.
-                    .unwrap_or(&tcx.queries.fallback_extern_providers)
-                    .$name;
+                let is_local = key.query_crate() == LOCAL_CRATE;
+                let provider = if is_local {
+                    tcx.queries.local_providers.$name
+                } else {
+                    tcx.queries.extern_providers.$name
+                };
                 provider(*tcx, key)
             }
 
@@ -435,6 +434,11 @@ macro_rules! define_queries {
             };
 
             pub const CompileCodegenUnit: QueryStruct = QueryStruct {
+                force_from_dep_node: |_, _| false,
+                try_load_from_on_disk_cache: |_, _| {},
+            };
+
+            pub const CompileMonoItem: QueryStruct = QueryStruct {
                 force_from_dep_node: |_, _| false,
                 try_load_from_on_disk_cache: |_, _| {},
             };
@@ -478,10 +482,7 @@ macro_rules! define_queries {
                         return
                     }
 
-                    debug_assert!(tcx.dep_graph
-                                     .node_color(dep_node)
-                                     .map(|c| c.is_green())
-                                     .unwrap_or(false));
+                    debug_assert!(tcx.dep_graph.is_green(dep_node));
 
                     let key = recover(*tcx, dep_node).unwrap_or_else(|| panic!("Failed to recover key for {:?} with hash {}", dep_node, dep_node.hash));
                     if queries::$name::cache_on_disk(tcx, &key, None) {
@@ -507,8 +508,8 @@ macro_rules! define_queries_struct {
     (tcx: $tcx:tt,
      input: ($(([$($modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Queries<$tcx> {
-            providers: IndexVec<CrateNum, Providers>,
-            fallback_extern_providers: Box<Providers>,
+            local_providers: Box<Providers>,
+            extern_providers: Box<Providers>,
 
             $($(#[$attr])*  $name: QueryState<
                 crate::dep_graph::DepKind,
@@ -518,12 +519,12 @@ macro_rules! define_queries_struct {
 
         impl<$tcx> Queries<$tcx> {
             pub fn new(
-                providers: IndexVec<CrateNum, Providers>,
-                fallback_extern_providers: Providers,
+                local_providers: Providers,
+                extern_providers: Providers,
             ) -> Self {
                 Queries {
-                    providers,
-                    fallback_extern_providers: Box::new(fallback_extern_providers),
+                    local_providers: Box::new(local_providers),
+                    extern_providers: Box::new(extern_providers),
                     $($name: Default::default()),*
                 }
             }

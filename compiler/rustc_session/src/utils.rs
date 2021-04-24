@@ -1,6 +1,12 @@
+use crate::parse::ParseSess;
 use crate::session::Session;
+use rustc_ast::token::{self, DelimToken, Nonterminal, Token};
+use rustc_ast::tokenstream::CanSynthesizeMissingTokens;
+use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use std::path::{Path, PathBuf};
+
+pub type NtToTokenstream = fn(&Nonterminal, &ParseSess, CanSynthesizeMissingTokens) -> TokenStream;
 
 impl Session {
     pub fn timer<'a>(&'a self, what: &'static str) -> VerboseTimingGuard<'a> {
@@ -51,5 +57,54 @@ impl CanonicalizedPath {
 
     pub fn original(&self) -> &PathBuf {
         &self.original
+    }
+}
+
+// FIXME: Find a better spot for this - it needs to be accessible from `rustc_ast_lowering`,
+// and needs to access `ParseSess
+pub struct FlattenNonterminals<'a> {
+    pub parse_sess: &'a ParseSess,
+    pub synthesize_tokens: CanSynthesizeMissingTokens,
+    pub nt_to_tokenstream: NtToTokenstream,
+}
+
+impl<'a> FlattenNonterminals<'a> {
+    pub fn process_token_stream(&mut self, tokens: TokenStream) -> TokenStream {
+        fn can_skip(stream: &TokenStream) -> bool {
+            stream.trees().all(|tree| match tree {
+                TokenTree::Token(token) => !matches!(token.kind, token::Interpolated(_)),
+                TokenTree::Delimited(_, _, inner) => can_skip(&inner),
+            })
+        }
+
+        if can_skip(&tokens) {
+            return tokens;
+        }
+
+        tokens.into_trees().flat_map(|tree| self.process_token_tree(tree).into_trees()).collect()
+    }
+
+    pub fn process_token_tree(&mut self, tree: TokenTree) -> TokenStream {
+        match tree {
+            TokenTree::Token(token) => self.process_token(token),
+            TokenTree::Delimited(span, delim, tts) => {
+                TokenTree::Delimited(span, delim, self.process_token_stream(tts)).into()
+            }
+        }
+    }
+
+    pub fn process_token(&mut self, token: Token) -> TokenStream {
+        match token.kind {
+            token::Interpolated(nt) => {
+                let tts = (self.nt_to_tokenstream)(&nt, self.parse_sess, self.synthesize_tokens);
+                TokenTree::Delimited(
+                    DelimSpan::from_single(token.span),
+                    DelimToken::NoDelim,
+                    self.process_token_stream(tts),
+                )
+                .into()
+            }
+            _ => TokenTree::Token(token).into(),
+        }
     }
 }

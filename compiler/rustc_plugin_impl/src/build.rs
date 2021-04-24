@@ -16,7 +16,8 @@ struct RegistrarFinder<'tcx> {
 impl<'v, 'tcx> ItemLikeVisitor<'v> for RegistrarFinder<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Fn(..) = item.kind {
-            if self.tcx.sess.contains_name(&item.attrs, sym::plugin_registrar) {
+            let attrs = self.tcx.hir().attrs(item.hir_id());
+            if self.tcx.sess.contains_name(attrs, sym::plugin_registrar) {
                 self.registrars.push((item.def_id, item.span));
             }
         }

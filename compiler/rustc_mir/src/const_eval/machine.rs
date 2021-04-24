@@ -53,7 +53,7 @@ impl<'mir, 'tcx> InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>> {
 /// Extra machine state for CTFE, and the Machine instance
 pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// For now, the number of terminators that can be evaluated before we throw a resource
-    /// exhuastion error.
+    /// exhaustion error.
     ///
     /// Setting this to `0` disables the limit and allows the interpreter to run forever.
     pub steps_remaining: usize,

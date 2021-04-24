@@ -233,7 +233,6 @@ impl<I: Iterator> Peekable<I> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(peekable_peek_mut)]
     /// let mut iter = [1, 2, 3].iter().peekable();
     ///
     /// // Like with `peek()`, we can see into the future without advancing the iterator.
@@ -251,7 +250,7 @@ impl<I: Iterator> Peekable<I> {
     /// assert_eq!(iter.collect::<Vec<_>>(), vec![&5, &3]);
     /// ```
     #[inline]
-    #[unstable(feature = "peekable_peek_mut", issue = "78302")]
+    #[stable(feature = "peekable_peek_mut", since = "1.53.0")]
     pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
         let iter = &mut self.iter;
         self.peeked.get_or_insert_with(|| iter.next()).as_mut()

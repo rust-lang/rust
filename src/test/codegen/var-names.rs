@@ -2,7 +2,7 @@
 
 #![crate_type = "lib"]
 
-// CHECK-LABEL: define i32 @test(i32 %a, i32 %b)
+// CHECK-LABEL: define{{.*}}i32 @test(i32 %a, i32 %b)
 #[no_mangle]
 pub fn test(a: u32, b: u32) -> u32 {
     let c = a + b;

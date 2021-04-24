@@ -97,6 +97,9 @@ fn test_transmute_copy() {
     assert_eq!(1, unsafe { transmute_copy(&1) });
 }
 
+// Remove this test when `std::raw` is removed.
+// The replacement pointer metadata APIs are tested in library/core/tests/ptr.rs
+#[allow(deprecated)]
 #[test]
 fn test_transmute() {
     trait Foo {

@@ -1,10 +1,9 @@
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::visitors::LocalUsedVisitor;
 use if_chain::if_chain;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::span_lint_and_help;
-use crate::utils::visitors::LocalUsedVisitor;
 
 declare_clippy_lint! {
     /// **What it does:** Checks methods that contain a `self` argument but don't use it
@@ -50,21 +49,18 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             if assoc_item.fn_has_self_parameter;
             if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
             let body = cx.tcx.hir().body(*body_id);
-            if !body.params.is_empty();
+            if let [self_param, ..] = body.params;
+            let self_hir_id = self_param.pat.hir_id;
+            if !LocalUsedVisitor::new(cx, self_hir_id).check_body(body);
             then {
-                let self_param = &body.params[0];
-                let self_hir_id = self_param.pat.hir_id;
-                if !LocalUsedVisitor::new(cx, self_hir_id).check_body(body) {
-                    span_lint_and_help(
-                        cx,
-                        UNUSED_SELF,
-                        self_param.span,
-                        "unused `self` argument",
-                        None,
-                        "consider refactoring to a associated function",
-                    );
-                    return;
-                }
+                span_lint_and_help(
+                    cx,
+                    UNUSED_SELF,
+                    self_param.span,
+                    "unused `self` argument",
+                    None,
+                    "consider refactoring to a associated function",
+                );
             }
         }
     }

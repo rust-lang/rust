@@ -1,6 +1,5 @@
 use crate::creader::{CStore, LoadedMacro};
 use crate::foreign_modules;
-use crate::link_args;
 use crate::native_libs;
 use crate::rmeta::{self, encoder};
 
@@ -122,6 +121,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
     mir_abstract_const => { cdata.get_mir_abstract_const(tcx, def_id.index) }
     unused_generic_params => { cdata.get_unused_generic_params(def_id.index) }
+    const_param_default => { tcx.mk_const(cdata.get_const_param_default(tcx, def_id.index)) }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
@@ -293,10 +293,6 @@ pub fn provide(providers: &mut Providers) {
             let modules: FxHashMap<DefId, ForeignModule> =
                 foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect();
             Lrc::new(modules)
-        },
-        link_args: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(link_args::collect(tcx))
         },
 
         // Returns a map from a sufficiently visible external item (i.e., an

@@ -1,0 +1,103 @@
+From 894e07dfec2624ba539129b1c1d63e1d7d812bda Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Thu, 18 Feb 2021 18:45:28 +0100
+Subject: [PATCH] Disable 128bit atomic operations
+
+Cranelift doesn't support them yet
+---
+ library/core/src/sync/atomic.rs | 38 ---------------------------------
+ library/core/tests/atomic.rs    |  4 ----
+ library/std/src/panic.rs        |  6 ------
+ 3 files changed, 48 deletions(-)
+
+diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
+index 81c9e1d..65c9503 100644
+--- a/library/core/src/sync/atomic.rs
++++ b/library/core/src/sync/atomic.rs
+@@ -2228,44 +2228,6 @@ atomic_int! {
+     "AtomicU64::new(0)",
+     u64 AtomicU64 ATOMIC_U64_INIT
+ }
+-#[cfg(target_has_atomic_load_store = "128")]
+-atomic_int! {
+-    cfg(target_has_atomic = "128"),
+-    cfg(target_has_atomic_equal_alignment = "128"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    "i128",
+-    "#![feature(integer_atomics)]\n\n",
+-    atomic_min, atomic_max,
+-    16,
+-    "AtomicI128::new(0)",
+-    i128 AtomicI128 ATOMIC_I128_INIT
+-}
+-#[cfg(target_has_atomic_load_store = "128")]
+-atomic_int! {
+-    cfg(target_has_atomic = "128"),
+-    cfg(target_has_atomic_equal_alignment = "128"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    "u128",
+-    "#![feature(integer_atomics)]\n\n",
+-    atomic_umin, atomic_umax,
+-    16,
+-    "AtomicU128::new(0)",
+-    u128 AtomicU128 ATOMIC_U128_INIT
+-}
+ 
+ macro_rules! atomic_int_ptr_sized {
+     ( $($target_pointer_width:literal $align:literal)* ) => { $(
+diff --git a/library/core/tests/atomic.rs b/library/core/tests/atomic.rs
+index 2d1e449..cb6da5d 100644
+--- a/library/core/tests/atomic.rs
++++ b/library/core/tests/atomic.rs
+@@ -145,10 +145,6 @@ fn atomic_alignment() {
+     assert_eq!(align_of::<AtomicU64>(), size_of::<AtomicU64>());
+     #[cfg(target_has_atomic = "64")]
+     assert_eq!(align_of::<AtomicI64>(), size_of::<AtomicI64>());
+-    #[cfg(target_has_atomic = "128")]
+-    assert_eq!(align_of::<AtomicU128>(), size_of::<AtomicU128>());
+-    #[cfg(target_has_atomic = "128")]
+-    assert_eq!(align_of::<AtomicI128>(), size_of::<AtomicI128>());
+     #[cfg(target_has_atomic = "ptr")]
+     assert_eq!(align_of::<AtomicUsize>(), size_of::<AtomicUsize>());
+     #[cfg(target_has_atomic = "ptr")]
+diff --git a/library/std/src/panic.rs b/library/std/src/panic.rs
+index 89a822a..779fd88 100644
+--- a/library/std/src/panic.rs
++++ b/library/std/src/panic.rs
+@@ -279,9 +279,6 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
+ #[cfg(target_has_atomic_load_store = "64")]
+ #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
+ impl RefUnwindSafe for atomic::AtomicI64 {}
+-#[cfg(target_has_atomic_load_store = "128")]
+-#[unstable(feature = "integer_atomics", issue = "32976")]
+-impl RefUnwindSafe for atomic::AtomicI128 {}
+ 
+ #[cfg(target_has_atomic_load_store = "ptr")]
+ #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+@@ -298,9 +295,6 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
+ #[cfg(target_has_atomic_load_store = "64")]
+ #[stable(feature = "integer_atomics_stable", since = "1.34.0")]
+ impl RefUnwindSafe for atomic::AtomicU64 {}
+-#[cfg(target_has_atomic_load_store = "128")]
+-#[unstable(feature = "integer_atomics", issue = "32976")]
+-impl RefUnwindSafe for atomic::AtomicU128 {}
+ 
+ #[cfg(target_has_atomic_load_store = "8")]
+ #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+-- 
+2.26.2.7.g19db9cfb68
+

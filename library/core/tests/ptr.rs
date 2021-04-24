@@ -1,8 +1,6 @@
 use core::cell::RefCell;
-#[cfg(not(bootstrap))]
 use core::ptr;
 use core::ptr::*;
-#[cfg(not(bootstrap))]
 use std::fmt::{Debug, Display};
 
 #[test]
@@ -419,7 +417,6 @@ fn offset_from() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn ptr_metadata() {
     struct Unit;
     struct Pair<A, B: ?Sized>(A, B);
@@ -478,7 +475,6 @@ fn ptr_metadata() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn ptr_metadata_bounds() {
     fn metadata_eq_method_address<T: ?Sized>() -> usize {
         // The `Metadata` associated type has an `Ord` bound, so this is valid:
@@ -510,7 +506,6 @@ fn ptr_metadata_bounds() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn dyn_metadata() {
     #[derive(Debug)]
     #[repr(align(32))]
@@ -530,7 +525,6 @@ fn dyn_metadata() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn from_raw_parts() {
     let mut value = 5_u32;
     let address = &mut value as *mut _ as *mut ();
@@ -557,7 +551,6 @@ fn from_raw_parts() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn thin_box() {
     let foo = ThinBox::<dyn Display>::new(4);
     assert_eq!(foo.to_string(), "4");

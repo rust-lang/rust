@@ -1,36 +1,3 @@
-error[E0106]: missing lifetime specifier
-  --> $DIR/wrong-number-of-args.rs:44:14
-   |
-LL |     type A = Ty;
-   |              ^^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL |     type A<'a> = Ty<'a>;
-   |           ^^^^   ^^^^^^
-
-error[E0106]: missing lifetime specifier
-  --> $DIR/wrong-number-of-args.rs:54:17
-   |
-LL |     type C = Ty<usize>;
-   |                 ^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL |     type C<'a> = Ty<'a, usize>;
-   |           ^^^^      ^^^
-
-error[E0106]: missing lifetime specifier
-  --> $DIR/wrong-number-of-args.rs:100:22
-   |
-LL |     type B = Box<dyn GenericLifetime>;
-   |                      ^^^^^^^^^^^^^^^ expected named lifetime parameter
-   |
-help: consider introducing a named lifetime parameter
-   |
-LL |     type B<'a> = Box<dyn GenericLifetime<'a>>;
-   |           ^^^^           ^^^^^^^^^^^^^^^^^^^
-
 error[E0107]: this struct takes 0 lifetime arguments but 1 lifetime argument was supplied
   --> $DIR/wrong-number-of-args.rs:6:14
    |
@@ -165,6 +132,17 @@ help: use angle brackets to add missing type argument
 LL |     type A = Ty<T>;
    |                ^^^
 
+error[E0106]: missing lifetime specifier
+  --> $DIR/wrong-number-of-args.rs:44:14
+   |
+LL |     type A = Ty;
+   |              ^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type A<'a> = Ty<'a>;
+   |           ^^^^   ^^^^^^
+
 error[E0107]: this struct takes 1 type argument but 0 type arguments were supplied
   --> $DIR/wrong-number-of-args.rs:50:14
    |
@@ -180,6 +158,17 @@ help: add missing type argument
    |
 LL |     type B = Ty<'static, T>;
    |                        ^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/wrong-number-of-args.rs:54:17
+   |
+LL |     type C = Ty<usize>;
+   |                 ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type C<'a> = Ty<'a, usize>;
+   |           ^^^^      ^^^
 
 error[E0107]: missing generics for struct `type_and_type_and_type::Ty`
   --> $DIR/wrong-number-of-args.rs:64:14
@@ -242,6 +231,17 @@ note: trait defined here, with 0 type parameters
    |
 LL |     trait NonGeneric {
    |           ^^^^^^^^^^
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/wrong-number-of-args.rs:100:22
+   |
+LL |     type B = Box<dyn GenericLifetime>;
+   |                      ^^^^^^^^^^^^^^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL |     type B<'a> = Box<dyn GenericLifetime<'a>>;
+   |           ^^^^           ^^^^^^^^^^^^^^^^^^^
 
 error[E0107]: this trait takes 1 lifetime argument but 2 lifetime arguments were supplied
   --> $DIR/wrong-number-of-args.rs:104:22

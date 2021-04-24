@@ -29,12 +29,6 @@ pub enum StabilityLevel {
     Stable,
 }
 
-impl StabilityLevel {
-    pub fn from_attr_level(level: &attr::StabilityLevel) -> Self {
-        if level.is_stable() { Stable } else { Unstable }
-    }
-}
-
 /// An entry in the `depr_map`.
 #[derive(Clone, HashStable, Debug)]
 pub struct DeprecationEntry {

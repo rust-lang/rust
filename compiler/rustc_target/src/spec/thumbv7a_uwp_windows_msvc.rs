@@ -16,7 +16,6 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
         options: TargetOptions {
             features: "+vfp3,+neon".to_string(),
-            cpu: "generic".to_string(),
             unsupported_abis: super::arm_base::unsupported_abis(),
             ..base
         },

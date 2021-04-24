@@ -24,13 +24,11 @@ fn main() {
         "InstrProfilingPlatformLinux.c",
         "InstrProfilingPlatformOther.c",
         "InstrProfilingPlatformWindows.c",
+        "InstrProfilingRuntime.cpp",
         "InstrProfilingUtil.c",
         "InstrProfilingValue.c",
         "InstrProfilingVersionVar.c",
         "InstrProfilingWriter.c",
-        // This file was renamed in LLVM 10.
-        "InstrProfilingRuntime.cc",
-        "InstrProfilingRuntime.cpp",
         // These files were added in LLVM 11.
         "InstrProfilingInternal.c",
         "InstrProfilingBiasVar.c",

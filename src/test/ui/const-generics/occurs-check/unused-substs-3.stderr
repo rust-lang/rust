@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/unused-substs-3.rs:16:9
+   |
+LL |     t = foo;
+   |         ^^^
+   |         |
+   |         cyclic type of infinite size
+   |         help: try using a conversion method: `foo.to_vec()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,8 +1,8 @@
-error[E0128]: type parameters with a default cannot use forward declared identifiers
+error[E0128]: generic parameters with a default cannot use forward declared identifiers
   --> $DIR/issue-18183.rs:1:20
    |
 LL | pub struct Foo<Bar=Bar>(Bar);
-   |                    ^^^ defaulted type parameters cannot be forward declared
+   |                    ^^^ defaulted generic parameters cannot be forward declared
 
 error: aborting due to previous error
 

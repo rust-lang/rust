@@ -20,7 +20,7 @@ pub enum Edition {
     Edition2015,
     /// The 2018 edition
     Edition2018,
-    /// The 2021 ediiton
+    /// The 2021 edition
     Edition2021,
 }
 

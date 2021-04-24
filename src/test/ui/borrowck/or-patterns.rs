@@ -1,8 +1,6 @@
 // Test that borrow check considers all choices in an or pattern, even the
 // unreachable ones.
 
-#![feature(or_patterns)]
-
 fn or_pattern_moves_all(x: ((String, String),)) {
     match x {
         ((y, _) | (_, y),) => (),

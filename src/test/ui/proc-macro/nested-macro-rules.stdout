@@ -5,10 +5,32 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "FirstStruct",
-                span: $DIR/auxiliary/nested-macro-rules.rs:15:14: 15:25 (#7),
+                span: $DIR/auxiliary/nested-macro-rules.rs:16:14: 16:25 (#7),
             },
         ],
-        span: $DIR/auxiliary/nested-macro-rules.rs:9:27: 9:32 (#6),
+        span: $DIR/auxiliary/nested-macro-rules.rs:9:30: 9:35 (#6),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): struct FirstAttrStruct { }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:32: 10:38 (#6),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "FirstAttrStruct",
+                span: $DIR/auxiliary/nested-macro-rules.rs:16:27: 16:42 (#7),
+            },
+        ],
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:39: 10:56 (#6),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:57: 10:59 (#6),
     },
 ]
 PRINT-BANG INPUT (DISPLAY): SecondStruct
@@ -18,9 +40,31 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "SecondStruct",
-                span: $DIR/nested-macro-rules.rs:21:38: 21:50 (#13),
+                span: $DIR/nested-macro-rules.rs:21:38: 21:50 (#16),
             },
         ],
-        span: $DIR/auxiliary/nested-macro-rules.rs:9:27: 9:32 (#12),
+        span: $DIR/auxiliary/nested-macro-rules.rs:9:30: 9:35 (#15),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): struct SecondAttrStruct { }
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:32: 10:38 (#15),
+    },
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "SecondAttrStruct",
+                span: $DIR/nested-macro-rules.rs:21:52: 21:68 (#16),
+            },
+        ],
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:39: 10:56 (#15),
+    },
+    Group {
+        delimiter: Brace,
+        stream: TokenStream [],
+        span: $DIR/auxiliary/nested-macro-rules.rs:10:57: 10:59 (#15),
     },
 ]

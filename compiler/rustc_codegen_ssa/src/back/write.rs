@@ -10,6 +10,7 @@ use crate::{
 use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
@@ -27,12 +28,12 @@ use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
-use rustc_session::config::{Passes, SanitizerSet, SwitchWithOptPath};
+use rustc_session::config::{Passes, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
-use rustc_target::spec::{MergeFunctions, PanicStrategy};
+use rustc_target::spec::{MergeFunctions, PanicStrategy, SanitizerSet};
 
 use std::any::Any;
 use std::fs;
@@ -106,7 +107,7 @@ pub struct ModuleConfig {
     pub vectorize_loop: bool,
     pub vectorize_slp: bool,
     pub merge_functions: bool,
-    pub inline_threshold: Option<usize>,
+    pub inline_threshold: Option<u32>,
     pub new_llvm_pass_manager: bool,
     pub emit_lifetime_markers: bool,
 }
@@ -176,7 +177,7 @@ impl ModuleConfig {
 
                     // The rustc option `-Zinstrument_coverage` injects intrinsic calls to
                     // `llvm.instrprof.increment()`, which requires the LLVM `instrprof` pass.
-                    if sess.opts.debugging_opts.instrument_coverage {
+                    if sess.instrument_coverage() {
                         passes.push("instrprof".to_owned());
                     }
                     passes
@@ -433,12 +434,10 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let sess = tcx.sess;
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let no_builtins = tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::no_builtins);
-    let is_compiler_builtins =
-        tcx.sess.contains_name(&tcx.hir().krate().item.attrs, sym::compiler_builtins);
-    let subsystem = tcx
-        .sess
-        .first_attr_value_str_by_name(&tcx.hir().krate().item.attrs, sym::windows_subsystem);
+    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let no_builtins = tcx.sess.contains_name(crate_attrs, sym::no_builtins);
+    let is_compiler_builtins = tcx.sess.contains_name(crate_attrs, sym::compiler_builtins);
+    let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
         if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!(
@@ -1095,7 +1094,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     //   only place where we have access to the compiler `Session`.
     // - LLVM work can be done on any thread.
     // - Codegen can only happen on the main thread.
-    // - Each thread doing substantial work most be in possession of a `Token`
+    // - Each thread doing substantial work must be in possession of a `Token`
     //   from the `Jobserver`.
     // - The compiler process always holds one `Token`. Any additional `Tokens`
     //   have to be requested from the `Jobserver`.
@@ -1147,7 +1146,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     // if possible. These two goals are at odds with each other: If memory
     // consumption were not an issue, we could just let the main thread produce
     // LLVM WorkItems at full speed, assuring maximal utilization of
-    // Tokens/LLVM worker threads. However, since codegen usual is faster
+    // Tokens/LLVM worker threads. However, since codegen is usually faster
     // than LLVM processing, the queue of LLVM WorkItems would fill up and each
     // WorkItem potentially holds on to a substantial amount of memory.
     //
@@ -1960,7 +1959,7 @@ pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
         .unwrap_or_else(|e| panic!("failed to open bitcode file `{}`: {}", bc_path.display(), e));
 
     let mmap = unsafe {
-        memmap::Mmap::map(&file).unwrap_or_else(|e| {
+        Mmap::map(file).unwrap_or_else(|e| {
             panic!("failed to mmap bitcode file `{}`: {}", bc_path.display(), e)
         })
     };

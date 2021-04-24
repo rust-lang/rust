@@ -1,4 +1,7 @@
-use crate::utils::{is_type_diagnostic_item, method_chain_args, snippet_with_applicability, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::method_chain_args;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, PatKind, QPath};
@@ -41,9 +44,9 @@ declare_lint_pass!(OkIfLet => [IF_LET_SOME_RESULT]);
 impl<'tcx> LateLintPass<'tcx> for OkIfLet {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! { //begin checking variables
-            if let ExprKind::Match(ref op, ref body, MatchSource::IfLetDesugar { .. }) = expr.kind; //test if expr is if let
-            if let ExprKind::MethodCall(_, ok_span, ref result_types, _) = op.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
-            if let PatKind::TupleStruct(QPath::Resolved(_, ref x), ref y, _)  = body[0].pat.kind; //get operation
+            if let ExprKind::Match(op, body, MatchSource::IfLetDesugar { .. }) = expr.kind; //test if expr is if let
+            if let ExprKind::MethodCall(_, ok_span, result_types, _) = op.kind; //check is expr.ok() has type Result<T,E>.ok(, _)
+            if let PatKind::TupleStruct(QPath::Resolved(_, x), y, _)  = body[0].pat.kind; //get operation
             if method_chain_args(op, &["ok"]).is_some(); //test to see if using ok() methoduse std::marker::Sized;
             if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&result_types[0]), sym::result_type);
             if rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(x, false)) == "Some";

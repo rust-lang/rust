@@ -230,7 +230,7 @@ impl Printer<'tcx> for SymbolPrinter<'tcx> {
 
     fn print_dyn_existential(
         mut self,
-        predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
         let mut first = true;
         for p in predicates {

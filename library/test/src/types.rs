@@ -112,9 +112,13 @@ impl fmt::Debug for TestFn {
     }
 }
 
+// A unique integer associated with each test.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct TestId(pub usize);
+
 // The definition of a single test. A test runner will run a list of
 // these.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,

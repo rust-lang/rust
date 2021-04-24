@@ -1,4 +1,5 @@
 use rustc_ast::ast::{Lit, LitFloatType, LitIntType, LitKind};
+use std::iter;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Radix {
@@ -192,7 +193,7 @@ impl<'a> NumericLiteral<'a> {
             }
         }
 
-        for (c, i) in digits.zip((0..group_size).cycle()) {
+        for (c, i) in iter::zip(digits, (0..group_size).cycle()) {
             if i == 0 {
                 output.push('_');
             }

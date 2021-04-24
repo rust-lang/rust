@@ -1275,6 +1275,9 @@ fn confirm_discriminant_kind_candidate<'cx, 'tcx>(
     let tcx = selcx.tcx();
 
     let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
+    // We get here from `poly_project_and_unify_type` which replaces bound vars
+    // with placeholders
+    debug_assert!(!self_ty.has_escaping_bound_vars());
     let substs = tcx.mk_substs([self_ty.into()].iter());
 
     let discriminant_def_id = tcx.require_lang_item(LangItem::Discriminant, None);
@@ -1306,7 +1309,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
         ty: self_ty.ptr_metadata_ty(tcx),
     };
 
-    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate), false)
+    confirm_param_env_candidate(selcx, obligation, ty::Binder::bind(predicate, tcx), false)
 }
 
 fn confirm_fn_pointer_candidate<'cx, 'tcx>(

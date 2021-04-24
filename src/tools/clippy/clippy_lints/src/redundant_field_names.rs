@@ -1,4 +1,5 @@
-use crate::utils::{meets_msrv, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::meets_msrv;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -58,8 +59,8 @@ impl EarlyLintPass for RedundantFieldNames {
         if in_external_macro(cx.sess, expr.span) {
             return;
         }
-        if let ExprKind::Struct(_, ref fields, _) = expr.kind {
-            for field in fields {
+        if let ExprKind::Struct(ref se) = expr.kind {
+            for field in &se.fields {
                 if field.is_shorthand {
                     continue;
                 }

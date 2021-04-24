@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetOptions};
 
 // See https://developer.android.com/ndk/guides/abis.html#arm64-v8a
 // for target ABI requirements.
@@ -9,6 +9,7 @@ pub fn target() -> Target {
     // As documented in http://developer.android.com/ndk/guides/cpu-features.html
     // the neon (ASIMD) and FP must exist on all android aarch64 targets.
     base.features = "+neon,+fp-armv8".to_string();
+    base.supported_sanitizers = SanitizerSet::HWADDRESS;
     Target {
         llvm_target: "aarch64-linux-android".to_string(),
         pointer_width: 64,

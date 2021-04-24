@@ -4,7 +4,6 @@ use crate::mir::{self, interpret};
 use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
-use rustc_data_structures::fingerprint::{Fingerprint, FingerprintDecoder, FingerprintEncoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, OnceCell};
 use rustc_data_structures::thin_vec::ThinVec;
@@ -17,7 +16,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::dep_graph::DepContext;
 use rustc_query_system::query::QueryContext;
 use rustc_serialize::{
-    opaque::{self, FileEncodeResult, FileEncoder},
+    opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
     Decodable, Decoder, Encodable, Encoder,
 };
 use rustc_session::{CrateDisambiguator, Session};
@@ -526,7 +525,7 @@ impl<'sess> OnDiskCache<'sess> {
     ) {
         let mut current_diagnostics = self.current_diagnostics.borrow_mut();
 
-        let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
+        let x = current_diagnostics.entry(dep_node_index).or_default();
 
         x.extend(Into::<Vec<_>>::into(diagnostics));
     }
@@ -913,12 +912,6 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
     }
 }
 
-impl<'a, 'tcx> FingerprintDecoder for CacheDecoder<'a, 'tcx> {
-    fn decode_fingerprint(&mut self) -> Result<Fingerprint, Self::Error> {
-        Fingerprint::decode_opaque(&mut self.opaque)
-    }
-}
-
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashSet<LocalDefId> {
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
         RefDecodable::decode(d)
@@ -1011,12 +1004,6 @@ where
     }
 }
 
-impl<'a, 'tcx, E: OpaqueEncoder> FingerprintEncoder for CacheEncoder<'a, 'tcx, E> {
-    fn encode_fingerprint(&mut self, f: &Fingerprint) -> Result<(), E::Error> {
-        self.encoder.encode_fingerprint(f)
-    }
-}
-
 impl<'a, 'tcx, E> Encodable<CacheEncoder<'a, 'tcx, E>> for SyntaxContext
 where
     E: 'a + OpaqueEncoder,
@@ -1045,12 +1032,12 @@ where
     E: 'a + OpaqueEncoder,
 {
     fn encode(&self, s: &mut CacheEncoder<'a, 'tcx, E>) -> Result<(), E::Error> {
-        if *self == DUMMY_SP {
+        let span_data = self.data();
+        if self.is_dummy() {
             TAG_PARTIAL_SPAN.encode(s)?;
-            return SyntaxContext::root().encode(s);
+            return span_data.ctxt.encode(s);
         }
 
-        let span_data = self.data();
         let pos = s.source_map.byte_pos_to_line_and_col(span_data.lo);
         let partial_span = match &pos {
             Some((file_lo, _, _)) => !file_lo.contains(span_data.hi),
@@ -1167,6 +1154,7 @@ where
         emit_f32(f32);
         emit_char(char);
         emit_str(&str);
+        emit_raw_bytes(&[u8]);
     }
 }
 
@@ -1177,42 +1165,6 @@ where
 impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx, FileEncoder>> for [u8] {
     fn encode(&self, e: &mut CacheEncoder<'a, 'tcx, FileEncoder>) -> FileEncodeResult {
         self.encode(e.encoder)
-    }
-}
-
-// An integer that will always encode to 8 bytes.
-struct IntEncodedWithFixedSize(u64);
-
-impl IntEncodedWithFixedSize {
-    pub const ENCODED_SIZE: usize = 8;
-}
-
-impl<E: OpaqueEncoder> Encodable<E> for IntEncodedWithFixedSize {
-    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-        let start_pos = e.position();
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((self.0 >> (i * 8)) as u8).encode(e)?;
-        }
-        let end_pos = e.position();
-        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-        Ok(())
-    }
-}
-
-impl<'a> Decodable<opaque::Decoder<'a>> for IntEncodedWithFixedSize {
-    fn decode(decoder: &mut opaque::Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
-        let mut value: u64 = 0;
-        let start_pos = decoder.position();
-
-        for i in 0..IntEncodedWithFixedSize::ENCODED_SIZE {
-            let byte: u8 = Decodable::decode(decoder)?;
-            value |= (byte as u64) << (i * 8);
-        }
-
-        let end_pos = decoder.position();
-        assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-
-        Ok(IntEncodedWithFixedSize(value))
     }
 }
 

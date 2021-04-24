@@ -36,17 +36,23 @@ fn main() {
         //~^ ERROR expected one of
         asm!("{}", options(), const foo);
         //~^ ERROR arguments are not allowed after options
+        //~^^ ERROR attempt to use a non-constant value in a constant
         asm!("{a}", a = const foo, a = const bar);
         //~^ ERROR duplicate argument named `a`
         //~^^ ERROR argument never used
+        //~^^^ ERROR attempt to use a non-constant value in a constant
+        //~^^^^ ERROR attempt to use a non-constant value in a constant
         asm!("", a = in("eax") foo);
         //~^ ERROR explicit register arguments cannot have names
         asm!("{a}", in("eax") foo, a = const bar);
         //~^ ERROR named arguments cannot follow explicit register arguments
+        //~^^ ERROR attempt to use a non-constant value in a constant
         asm!("{a}", in("eax") foo, a = const bar);
         //~^ ERROR named arguments cannot follow explicit register arguments
+        //~^^ ERROR attempt to use a non-constant value in a constant
         asm!("{1}", in("eax") foo, const bar);
         //~^ ERROR positional arguments cannot follow named arguments or explicit register arguments
+        //~^^ ERROR attempt to use a non-constant value in a constant
         asm!("", options(), "");
         //~^ ERROR expected one of
         asm!("{}", in(reg) foo, "{}", out(reg) foo);

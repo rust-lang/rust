@@ -751,9 +751,10 @@ fn sanitize_witness<'tcx>(
             span_bug!(
                 body.span,
                 "Broken MIR: generator contains type {} in MIR, \
-                       but typeck only knows about {}",
-                decl.ty,
-                witness,
+                       but typeck only knows about {} and {:?}",
+                decl_ty,
+                allowed,
+                allowed_upvars
             );
         }
     }
@@ -989,7 +990,7 @@ fn insert_panic_block<'tcx>(
         cond: Operand::Constant(box Constant {
             span: body.span,
             user_ty: None,
-            literal: ty::Const::from_bool(tcx, false),
+            literal: ty::Const::from_bool(tcx, false).into(),
         }),
         expected: true,
         msg: message,
@@ -1454,6 +1455,7 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }

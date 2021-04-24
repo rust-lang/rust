@@ -1,18 +1,6 @@
-use crate::spec::{LinkArgs, LinkerFlavor, RelroLevel, TargetOptions};
+use crate::spec::{RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
-    let mut args = LinkArgs::new();
-    args.insert(
-        LinkerFlavor::Gcc,
-        vec![
-            // GNU-style linkers will use this to omit linking to libraries
-            // which don't actually fulfill any relocations, but only for
-            // libraries which follow this flag.  Thus, use it before
-            // specifying libraries to link to.
-            "-Wl,--as-needed".to_string(),
-        ],
-    );
-
     TargetOptions {
         os: "netbsd".to_string(),
         dynamic_linking: true,
@@ -21,7 +9,6 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         no_default_libraries: false,
         has_rpath: true,
-        pre_link_args: args,
         position_independent_executables: true,
         relro_level: RelroLevel::Full,
         use_ctors_section: true,

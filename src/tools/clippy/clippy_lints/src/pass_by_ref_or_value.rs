@@ -1,6 +1,10 @@
 use std::cmp;
+use std::iter;
 
-use crate::utils::{is_copy, is_self_ty, snippet, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_self_ty;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_copy;
 use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_errors::Applicability;
@@ -119,7 +123,7 @@ impl<'tcx> PassByRefOrValue {
 
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 
-        for (index, (input, &ty)) in decl.inputs.iter().zip(fn_sig.inputs()).enumerate() {
+        for (index, (input, &ty)) in iter::zip(decl.inputs, fn_sig.inputs()).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
             match span {
                 Some(s) if s == input.span => return,
@@ -138,11 +142,11 @@ impl<'tcx> PassByRefOrValue {
                     };
 
                     if_chain! {
-                        if !output_lts.contains(&input_lt);
+                        if !output_lts.contains(input_lt);
                         if is_copy(cx, ty);
                         if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
                         if size <= self.ref_min_size;
-                        if let hir::TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.kind;
+                        if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
                         then {
                             let value_type = if is_self_ty(decl_ty) {
                                 "self".into()
@@ -224,10 +228,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _, attrs) => {
+            FnKind::ItemFn(.., header, _) => {
                 if header.abi != Abi::Rust {
                     return;
                 }
+                let attrs = cx.tcx.hir().attrs(hir_id);
                 for a in attrs {
                     if let Some(meta_items) = a.meta_item_list() {
                         if a.has_name(sym::proc_macro_derive)
@@ -239,7 +244,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 }
             },
             FnKind::Method(..) => (),
-            FnKind::Closure(..) => return,
+            FnKind::Closure => return,
         }
 
         // Exclude non-inherent impls

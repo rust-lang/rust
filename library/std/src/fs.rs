@@ -265,8 +265,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// ```no_run
 /// use std::fs;
 /// use std::net::SocketAddr;
+/// use std::error::Error;
 ///
-/// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
+/// fn main() -> Result<(), Box<dyn Error>> {
 ///     let foo: SocketAddr = fs::read_to_string("address.txt")?.parse()?;
 ///     Ok(())
 /// }
@@ -1154,7 +1155,7 @@ impl fmt::Debug for Metadata {
             .field("modified", &self.modified())
             .field("accessed", &self.accessed())
             .field("created", &self.created())
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -1677,9 +1678,9 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// This function will return an error in the following situations, but is not
 /// limited to just these cases:
 ///
-/// * The `from` path is not a file.
-/// * The `from` file does not exist.
-/// * The current process does not have the permission rights to access
+/// * `from` is neither a regular file nor a symlink to a regular file.
+/// * `from` does not exist.
+/// * The current process does not have the permission rights to read
 ///   `from` or write `to`.
 ///
 /// # Examples
@@ -2188,7 +2189,10 @@ impl DirBuilder {
         match path.parent() {
             Some(p) => self.create_dir_all(p)?,
             None => {
-                return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree"));
+                return Err(io::Error::new_const(
+                    io::ErrorKind::Other,
+                    &"failed to create whole tree",
+                ));
             }
         }
         match self.inner.mkdir(path) {

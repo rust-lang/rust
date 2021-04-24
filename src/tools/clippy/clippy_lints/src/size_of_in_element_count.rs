@@ -1,7 +1,8 @@
 //! Lint on use of `size_of` or `size_of_val` of T in an expression
 //! expecting a count of T
 
-use crate::utils::{match_def_path, paths, span_lint_and_help};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_hir::BinOpKind;
 use rustc_hir::{Expr, ExprKind};

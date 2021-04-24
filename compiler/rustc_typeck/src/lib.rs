@@ -63,8 +63,9 @@ This API is completely unstable and subject to change.
 #![feature(format_args_capture)]
 #![feature(in_band_lifetimes)]
 #![feature(is_sorted)]
+#![feature(iter_zip)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![feature(slice_partition_dedup)]
@@ -118,14 +119,19 @@ use astconv::AstConv;
 use bounds::Bounds;
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
-    if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
-        let mut err = struct_span_err!(
-            tcx.sess,
-            span,
-            E0045,
-            "C-variadic function must have C or cdecl calling convention"
-        );
-        err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
+    match (decl.c_variadic, abi) {
+        // The function has the correct calling convention, or isn't a "C-variadic" function.
+        (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl) => {}
+        // The function is a "C-variadic" function with an incorrect calling convention.
+        (true, _) => {
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0045,
+                "C-variadic function must have C or cdecl calling convention"
+            );
+            err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
+        }
     }
 }
 
@@ -137,7 +143,7 @@ fn require_same_types<'tcx>(
 ) -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
-        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
         match infcx.at(&cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 fulfill_cx.register_predicate_obligations(infcx, obligations);
@@ -201,7 +207,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: LocalDefId) {
                         error = true;
                     }
 
-                    for attr in it.attrs {
+                    let attrs = tcx.hir().attrs(main_id);
+                    for attr in attrs {
                         if tcx.sess.check_name(attr, sym::track_caller) {
                             tcx.sess
                                 .struct_span_err(
@@ -300,7 +307,8 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: LocalDefId) {
                         error = true;
                     }
 
-                    for attr in it.attrs {
+                    let attrs = tcx.hir().attrs(start_id);
+                    for attr in attrs {
                         if tcx.sess.check_name(attr, sym::track_caller) {
                             tcx.sess
                                 .struct_span_err(
@@ -422,7 +430,7 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
     let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
-    item_cx.to_ty(hir_ty)
+    <dyn AstConv<'_>>::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
 pub fn hir_trait_to_predicates<'tcx>(
@@ -437,7 +445,7 @@ pub fn hir_trait_to_predicates<'tcx>(
     let env_def_id = tcx.hir().local_def_id(env_hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id.to_def_id());
     let mut bounds = Bounds::default();
-    let _ = AstConv::instantiate_poly_trait_ref_inner(
+    let _ = <dyn AstConv<'_>>::instantiate_poly_trait_ref(
         &item_cx,
         hir_trait,
         DUMMY_SP,

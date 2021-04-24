@@ -1,4 +1,7 @@
-#![feature(type_alias_impl_trait, const_generics)]
+#![feature(const_generics)]
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![cfg_attr(full_tait, feature(type_alias_impl_trait))]
 #![allow(incomplete_features)]
 
 use std::fmt::Debug;

@@ -227,8 +227,8 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"name = "...", /*opt*/ kind = "dylib|static|...", /*opt*/ wasm_import_module = "...""#),
     ),
     ungated!(link_name, AssumedUsed, template!(NameValueStr: "name")),
-    ungated!(no_link, Normal, template!(Word)),
-    ungated!(repr, Normal, template!(List: "C")),
+    ungated!(no_link, AssumedUsed, template!(Word)),
+    ungated!(repr, AssumedUsed, template!(List: "C")),
     ungated!(export_name, AssumedUsed, template!(NameValueStr: "name")),
     ungated!(link_section, AssumedUsed, template!(NameValueStr: "name")),
     ungated!(no_mangle, AssumedUsed, template!(Word)),
@@ -280,11 +280,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Linking:
     gated!(naked, AssumedUsed, template!(Word), naked_functions, experimental!(naked)),
     gated!(
-        link_args, Normal, template!(NameValueStr: "args"),
-        "the `link_args` attribute is experimental and not portable across platforms, \
-        it is recommended to use `#[link(name = \"foo\")] instead",
-    ),
-    gated!(
         link_ordinal, AssumedUsed, template!(List: "ordinal"), raw_dylib,
         experimental!(link_ordinal)
     ),
@@ -322,7 +317,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "custom test frameworks are an unstable feature",
     ),
     // RFC #1268
-    gated!(marker, Normal, template!(Word), marker_trait_attr, experimental!(marker)),
+    gated!(marker, AssumedUsed, template!(Word), marker_trait_attr, experimental!(marker)),
     gated!(
         thread_local, AssumedUsed, template!(Word),
         "`#[thread_local]` is an experimental feature, and does not currently handle destructors",
@@ -540,6 +535,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_specialization_trait, Normal, template!(Word),
         "the `#[rustc_specialization_trait]` attribute is used to check specializations"
+    ),
+    rustc_attr!(
+        rustc_main, Normal, template!(Word),
+        "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
 
     // ==========================================================================

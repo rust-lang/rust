@@ -172,7 +172,7 @@ fn check_rvalue(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, rvalue: &Rv
             }
         },
         // binops are fine on integers
-        Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
+        Rvalue::BinaryOp(_, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(_, box (lhs, rhs)) => {
             check_operand(tcx, lhs, span, body)?;
             check_operand(tcx, rhs, span, body)?;
             let ty = lhs.ty(body, tcx);
@@ -212,12 +212,17 @@ fn check_statement(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, def_id: DefId, statemen
             check_rvalue(tcx, body, def_id, rval, span)
         },
 
-        StatementKind::FakeRead(_, place) |
+        StatementKind::FakeRead(box (_, place)) => check_place(tcx, *place, span, body),
         // just an assignment
         StatementKind::SetDiscriminant { place, .. } => check_place(tcx, **place, span, body),
 
         StatementKind::LlvmInlineAsm { .. } => Err((span, "cannot use inline assembly in const fn".into())),
 
+        StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping { dst, src, count }) => {
+            check_operand(tcx, dst, span, body)?;
+            check_operand(tcx, src, span, body)?;
+            check_operand(tcx, count, span, body)
+        },
         // These are all NOPs
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)

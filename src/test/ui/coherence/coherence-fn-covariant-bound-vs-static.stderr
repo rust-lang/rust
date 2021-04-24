@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `Trait` for type `for<'r> fn(fn(&'r ()))`:
+error[E0119]: conflicting implementations of trait `Trait` for type `for<'r> fn(fn(&'r ()))`
   --> $DIR/coherence-fn-covariant-bound-vs-static.rs:17:1
    |
 LL | impl Trait for for<'r> fn(fn(&'r ())) {}

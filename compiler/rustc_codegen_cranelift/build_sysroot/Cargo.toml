@@ -9,8 +9,6 @@ alloc = { path = "./sysroot_src/library/alloc" }
 std = { path = "./sysroot_src/library/std", features = ["panic_unwind", "backtrace"] }
 test = { path = "./sysroot_src/library/test" }
 
-alloc_system = { path = "./alloc_system" }
-
 compiler_builtins = { version = "0.1.39", default-features = false, features = ["no-asm"] }
 
 [patch.crates-io]

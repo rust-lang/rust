@@ -1,3 +1,6 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind};
@@ -5,13 +8,10 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
 
-use if_chain::if_chain;
-
-use crate::utils::{snippet, span_lint_and_sugg};
-
 declare_clippy_lint! {
-    /// **What it does:** Checks for struct constructors where the order of the field init
-    /// shorthand in the constructor is inconsistent with the order in the struct definition.
+    /// **What it does:** Checks for struct constructors where all fields are shorthand and
+    /// the order of the field init shorthand in the constructor is inconsistent
+    /// with the order in the struct definition.
     ///
     /// **Why is this bad?** Since the order of fields in a constructor doesn't affect the
     /// resulted instance as the below example indicates,
@@ -25,11 +25,11 @@ declare_clippy_lint! {
     /// let x = 1;
     /// let y = 2;
     ///
-    /// // This assertion never fails.
+    /// // This assertion never fails:
     /// assert_eq!(Foo { x, y }, Foo { y, x });
     /// ```
     ///
-    /// inconsistent order means nothing and just decreases readability and consistency.
+    /// inconsistent order can be confusing and decreases readability and consistency.
     ///
     /// **Known problems:** None.
     ///
@@ -42,6 +42,7 @@ declare_clippy_lint! {
     /// }
     /// let x = 1;
     /// let y = 2;
+    ///
     /// Foo { y, x };
     /// ```
     ///
@@ -66,8 +67,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             if let ExprKind::Struct(qpath, fields, base) = expr.kind;
-            if let Some(def_id)  = cx.qpath_res(qpath, expr.hir_id).opt_def_id();
-            let ty = cx.tcx.type_of(def_id);
+            let ty = cx.typeck_results().expr_ty(expr);
             if let Some(adt_def) = ty.ty_adt_def();
             if adt_def.is_struct();
             if let Some(variant) = adt_def.variants.iter().next();
@@ -108,7 +108,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
                     cx,
                     INCONSISTENT_STRUCT_CONSTRUCTOR,
                     expr.span,
-                    "inconsistent struct constructor",
+                    "struct constructor field order is inconsistent with struct definition field order",
                     "try",
                     sugg,
                     Applicability::MachineApplicable,
@@ -120,7 +120,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
 
 // Check whether the order of the fields in the constructor is consistent with the order in the
 // definition.
-fn is_consistent_order<'tcx>(fields: &'tcx [hir::Field<'tcx>], def_order_map: &FxHashMap<Symbol, usize>) -> bool {
+fn is_consistent_order<'tcx>(fields: &'tcx [hir::ExprField<'tcx>], def_order_map: &FxHashMap<Symbol, usize>) -> bool {
     let mut cur_idx = usize::MIN;
     for f in fields {
         let next_idx = def_order_map[&f.ident.name];

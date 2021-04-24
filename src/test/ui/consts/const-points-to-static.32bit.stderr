@@ -1,0 +1,22 @@
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const-points-to-static.rs:6:1
+   |
+LL | const TEST: &u8 = &MY_STATIC;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a reference pointing to a static variable
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾─alloc0──╼                                     │ ╾──╼
+           }
+
+warning: skipping const checks
+   |
+help: skipping check that does not even have a feature gate
+  --> $DIR/const-points-to-static.rs:6:20
+   |
+LL | const TEST: &u8 = &MY_STATIC;
+   |                    ^^^^^^^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0080`.

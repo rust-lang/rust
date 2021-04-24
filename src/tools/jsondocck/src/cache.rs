@@ -1,8 +1,10 @@
 use crate::error::CkError;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::io;
 use std::path::{Path, PathBuf};
-use std::{fs, io};
+
+use fs_err as fs;
 
 #[derive(Debug)]
 pub struct Cache {
@@ -31,7 +33,11 @@ impl Cache {
             self.last_path = Some(resolve.clone());
             resolve
         } else {
-            self.last_path.as_ref().unwrap().clone()
+            self.last_path
+                .as_ref()
+                // FIXME: Point to a line number
+                .expect("No last path set. Make sure to specify a full path before using `-`")
+                .clone()
         }
     }
 

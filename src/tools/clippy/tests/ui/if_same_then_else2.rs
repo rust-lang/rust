@@ -5,7 +5,8 @@
     clippy::collapsible_if,
     clippy::ifs_same_cond,
     clippy::needless_return,
-    clippy::single_element_loop
+    clippy::single_element_loop,
+    clippy::branches_sharing_code
 )]
 
 fn if_same_then_else2() -> Result<&'static str, ()> {

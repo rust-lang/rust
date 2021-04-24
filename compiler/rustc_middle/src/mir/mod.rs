@@ -11,12 +11,12 @@ use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
-use crate::ty::{AdtDef, InstanceDef, Region, UserTypeAnnotationIndex};
+use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::{Size, VariantIdx};
 
 use polonius_engine::Atom;
 pub use rustc_ast::Mutability;
@@ -30,6 +30,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::borrow::Cow;
+use std::convert::TryInto;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{ControlFlow, Index, IndexMut};
 use std::slice;
@@ -376,24 +377,6 @@ impl<'tcx> Body<'tcx> {
         } else {
             LocalKind::Temp
         }
-    }
-
-    /// Returns an iterator over all temporaries.
-    #[inline]
-    pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
-        (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
-            let local = Local::new(index);
-            if self.local_decls[local].is_user_variable() { None } else { Some(local) }
-        })
-    }
-
-    /// Returns an iterator over all user-declared locals.
-    #[inline]
-    pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
-        (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
-            let local = Local::new(index);
-            self.local_decls[local].is_user_variable().then_some(local)
-        })
     }
 
     /// Returns an iterator over all user-declared mutable locals.
@@ -951,7 +934,7 @@ pub struct LocalDecl<'tcx> {
 }
 
 // `LocalDecl` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(LocalDecl<'_>, 56);
 
 /// Extra information about a some locals that's used for diagnostics and for
@@ -1230,7 +1213,7 @@ pub enum InlineAsmOperand<'tcx> {
         out_place: Option<Place<'tcx>>,
     },
     Const {
-        value: Operand<'tcx>,
+        value: Box<Constant<'tcx>>,
     },
     SymFn {
         value: Box<Constant<'tcx>>,
@@ -1468,7 +1451,7 @@ pub struct Statement<'tcx> {
 }
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(Statement<'_>, 32);
 
 impl Statement<'_> {
@@ -1499,7 +1482,7 @@ pub enum StatementKind<'tcx> {
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
-    FakeRead(FakeReadCause, Box<Place<'tcx>>),
+    FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
@@ -1536,10 +1519,16 @@ pub enum StatementKind<'tcx> {
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
     /// Marks the start of a "coverage region", injected with '-Zinstrument-coverage'. A
-    /// `CoverageInfo` statement carries metadata about the coverage region, used to inject a coverage
-    /// map into the binary. The `Counter` kind also generates executable code, to increment a
-    /// counter varible at runtime, each time the code region is executed.
+    /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage
+    /// map into the binary. If `Coverage::kind` is a `Counter`, the statement also generates
+    /// executable code, to increment a counter variable at runtime, each time the code region is
+    /// executed.
     Coverage(Box<Coverage>),
+
+    /// Denotes a call to the intrinsic function copy_overlapping, where `src_dst` denotes the
+    /// memory being read from and written to(one field to save memory), and size
+    /// indicates how many bytes are being copied over.
+    CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1586,7 +1575,12 @@ pub enum FakeReadCause {
 
     /// `let x: !; match x {}` doesn't generate any read of x so we need to
     /// generate a read of x to check that it is initialized and safe.
-    ForMatchedPlace,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForMatchedPlace(Option<DefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
     /// in a match guard to ensure that it's value hasn't change by the time
@@ -1605,7 +1599,12 @@ pub enum FakeReadCause {
     /// but in some cases it can affect the borrow checker, as in #53695.
     /// Therefore, we insert a "fake read" here to ensure that we get
     /// appropriate errors.
-    ForLet,
+    ///
+    /// If a closure pattern matches a Place starting with an Upvar, then we introduce a
+    /// FakeRead for that Place outside the closure, in such a case this option would be
+    /// Some(closure_def_id).
+    /// Otherwise, the value of the optional DefId will be None.
+    ForLet(Option<DefId>),
 
     /// If we have an index expression like
     ///
@@ -1629,7 +1628,9 @@ impl Debug for Statement<'_> {
         use self::StatementKind::*;
         match self.kind {
             Assign(box (ref place, ref rv)) => write!(fmt, "{:?} = {:?}", place, rv),
-            FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
+            FakeRead(box (ref cause, ref place)) => {
+                write!(fmt, "FakeRead({:?}, {:?})", cause, place)
+            }
             Retag(ref kind, ref place) => write!(
                 fmt,
                 "Retag({}{:?})",
@@ -1659,6 +1660,13 @@ impl Debug for Statement<'_> {
                     write!(fmt, "Coverage::{:?}", coverage.kind)
                 }
             }
+            CopyNonOverlapping(box crate::mir::CopyNonOverlapping {
+                ref src,
+                ref dst,
+                ref count,
+            }) => {
+                write!(fmt, "copy_nonoverlapping(src={:?}, dst={:?}, count={:?})", src, dst, count)
+            }
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1668,6 +1676,14 @@ impl Debug for Statement<'_> {
 pub struct Coverage {
     pub kind: CoverageKind,
     pub code_region: Option<CodeRegion>,
+}
+
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+pub struct CopyNonOverlapping<'tcx> {
+    pub src: Operand<'tcx>,
+    pub dst: Operand<'tcx>,
+    /// Number of elements to copy from src to dest, not bytes.
+    pub count: Operand<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1682,6 +1698,9 @@ pub struct Place<'tcx> {
     /// projection out of a place (access a field, deref a pointer, etc)
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Place<'_>, 16);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
@@ -1752,7 +1771,7 @@ impl<V, T> ProjectionElem<V, T> {
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
 // At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PlaceElem<'_>, 24);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
@@ -1981,6 +2000,9 @@ pub enum Operand<'tcx> {
     Constant(Box<Constant<'tcx>>),
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Operand<'_>, 24);
+
 impl<'tcx> Debug for Operand<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::Operand::*;
@@ -2006,7 +2028,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             user_ty: None,
-            literal: ty::Const::zero_sized(tcx, ty),
+            literal: ConstantKind::Ty(ty::Const::zero_sized(tcx, ty)),
         })
     }
 
@@ -2037,7 +2059,7 @@ impl<'tcx> Operand<'tcx> {
         Operand::Constant(box Constant {
             span,
             user_ty: None,
-            literal: ty::Const::from_scalar(tcx, val, ty),
+            literal: ConstantKind::Val(val.into(), ty),
         })
     }
 
@@ -2096,8 +2118,8 @@ pub enum Rvalue<'tcx> {
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
-    BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
-    CheckedBinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
+    BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
+    CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     NullaryOp(NullOp, Ty<'tcx>),
     UnaryOp(UnOp, Operand<'tcx>),
@@ -2115,6 +2137,9 @@ pub enum Rvalue<'tcx> {
     /// away after type-checking and before lowering.
     Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(Rvalue<'_>, 40);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum CastKind {
@@ -2138,6 +2163,9 @@ pub enum AggregateKind<'tcx> {
     Closure(DefId, SubstsRef<'tcx>),
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 }
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(AggregateKind<'_>, 48);
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum BinOp {
@@ -2215,8 +2243,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Cast(ref kind, ref place, ref ty) => {
                 write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
             }
-            BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
-            CheckedBinaryOp(ref op, ref a, ref b) => {
+            BinaryOp(ref op, box (ref a, ref b)) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            CheckedBinaryOp(ref op, box (ref a, ref b)) => {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
@@ -2295,7 +2323,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             CtorKind::Fn => fmt_tuple(fmt, &name),
                             CtorKind::Fictive => {
                                 let mut struct_fmt = fmt.debug_struct(&name);
-                                for (field, place) in variant_def.fields.iter().zip(places) {
+                                for (field, place) in iter::zip(&variant_def.fields, places) {
                                     struct_fmt.field(&field.ident.as_str(), place);
                                 }
                                 struct_fmt.finish()
@@ -2319,7 +2347,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
-                                for (&var_id, place) in upvars.keys().zip(places) {
+                                for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
@@ -2338,7 +2366,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
-                                for (&var_id, place) in upvars.keys().zip(places) {
+                                for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
@@ -2373,12 +2401,22 @@ pub struct Constant<'tcx> {
     /// Needed for NLL to impose user-given type constraints.
     pub user_ty: Option<UserTypeAnnotationIndex>,
 
-    pub literal: &'tcx ty::Const<'tcx>,
+    pub literal: ConstantKind<'tcx>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Lift)]
+pub enum ConstantKind<'tcx> {
+    /// This constant came from the type system
+    Ty(&'tcx ty::Const<'tcx>),
+    /// This constant cannot go back into the type system, as it represents
+    /// something the type system cannot handle (e.g. pointers).
+    Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
 }
 
 impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.val.try_to_scalar() {
+        match self.literal.const_for_ty()?.val.try_to_scalar() {
             Some(Scalar::Ptr(ptr)) => match tcx.global_alloc(ptr.alloc_id) {
                 GlobalAlloc::Static(def_id) => {
                     assert!(!tcx.is_thread_local_static(def_id));
@@ -2387,6 +2425,94 @@ impl Constant<'tcx> {
                 _ => None,
             },
             _ => None,
+        }
+    }
+    pub fn ty(&self) -> Ty<'tcx> {
+        self.literal.ty()
+    }
+}
+
+impl From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
+    fn from(ct: &'tcx ty::Const<'tcx>) -> Self {
+        Self::Ty(ct)
+    }
+}
+
+impl ConstantKind<'tcx> {
+    /// Returns `None` if the constant is not trivially safe for use in the type system.
+    pub fn const_for_ty(&self) -> Option<&'tcx ty::Const<'tcx>> {
+        match self {
+            ConstantKind::Ty(c) => Some(c),
+            ConstantKind::Val(..) => None,
+        }
+    }
+
+    pub fn ty(&self) -> Ty<'tcx> {
+        match self {
+            ConstantKind::Ty(c) => c.ty,
+            ConstantKind::Val(_, ty) => ty,
+        }
+    }
+
+    #[inline]
+    pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
+        match self {
+            ConstantKind::Ty(c) => c.val.try_to_value(),
+            ConstantKind::Val(val, _) => Some(val),
+        }
+    }
+
+    #[inline]
+    pub fn try_to_scalar(self) -> Option<Scalar> {
+        self.try_to_value()?.try_to_scalar()
+    }
+
+    #[inline]
+    pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
+        Some(self.try_to_value()?.try_to_scalar()?.assert_int())
+    }
+
+    #[inline]
+    pub fn try_to_bits(self, size: Size) -> Option<u128> {
+        self.try_to_scalar_int()?.to_bits(size).ok()
+    }
+
+    #[inline]
+    pub fn try_to_bool(self) -> Option<bool> {
+        self.try_to_scalar_int()?.try_into().ok()
+    }
+
+    #[inline]
+    pub fn try_eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        match self {
+            Self::Ty(ct) => ct.try_eval_bits(tcx, param_env, ty),
+            Self::Val(val, t) => {
+                assert_eq!(*t, ty);
+                let size =
+                    tcx.layout_of(param_env.with_reveal_all_normalized(tcx).and(ty)).ok()?.size;
+                val.try_to_bits(size)
+            }
+        }
+    }
+
+    #[inline]
+    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<bool> {
+        match self {
+            Self::Ty(ct) => ct.try_eval_bool(tcx, param_env),
+            Self::Val(val, _) => val.try_to_bool(),
+        }
+    }
+
+    #[inline]
+    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Option<u64> {
+        match self {
+            Self::Ty(ct) => ct.try_eval_usize(tcx, param_env),
+            Self::Val(val, _) => val.try_to_machine_usize(tcx),
         }
     }
 }
@@ -2574,11 +2700,20 @@ impl<'tcx> Debug for Constant<'tcx> {
 
 impl<'tcx> Display for Constant<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match self.literal.ty.kind() {
+        match self.ty().kind() {
             ty::FnDef(..) => {}
             _ => write!(fmt, "const ")?,
         }
-        pretty_print_const(self.literal, fmt, true)
+        Display::fmt(&self.literal, fmt)
+    }
+}
+
+impl<'tcx> Display for ConstantKind<'tcx> {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
+        match *self {
+            ConstantKind::Ty(c) => pretty_print_const(c, fmt, true),
+            ConstantKind::Val(val, ty) => pretty_print_const_value(val, ty, fmt, true),
+        }
     }
 }
 
@@ -2593,6 +2728,23 @@ fn pretty_print_const(
         let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
         cx.print_alloc_ids = true;
         cx.pretty_print_const(literal, print_types)?;
+        Ok(())
+    })
+}
+
+fn pretty_print_const_value(
+    val: interpret::ConstValue<'tcx>,
+    ty: Ty<'tcx>,
+    fmt: &mut Formatter<'_>,
+    print_types: bool,
+) -> fmt::Result {
+    use crate::ty::print::PrettyPrinter;
+    ty::tls::with(|tcx| {
+        let val = tcx.lift(val).unwrap();
+        let ty = tcx.lift(ty).unwrap();
+        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        cx.print_alloc_ids = true;
+        cx.pretty_print_const_value(val, ty, print_types)?;
         Ok(())
     })
 }

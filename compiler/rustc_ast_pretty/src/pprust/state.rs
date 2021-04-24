@@ -1711,7 +1711,7 @@ impl<'a> State<'a> {
     fn print_expr_struct(
         &mut self,
         path: &ast::Path,
-        fields: &[ast::Field],
+        fields: &[ast::ExprField],
         rest: &ast::StructRest,
         attrs: &[ast::Attribute],
     ) {
@@ -1873,8 +1873,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(element, count, attrs);
             }
-            ast::ExprKind::Struct(ref path, ref fields, ref rest) => {
-                self.print_expr_struct(path, &fields[..], rest, attrs);
+            ast::ExprKind::Struct(ref se) => {
+                self.print_expr_struct(&se.path, &se.fields, &se.rest, attrs);
             }
             ast::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(&exprs[..], attrs);
@@ -2149,10 +2149,10 @@ impl<'a> State<'a> {
                                     None => s.word("_"),
                                 }
                             }
-                            InlineAsmOperand::Const { expr } => {
+                            InlineAsmOperand::Const { anon_const } => {
                                 s.word("const");
                                 s.space();
-                                s.print_expr(expr);
+                                s.print_expr(&anon_const.value);
                             }
                             InlineAsmOperand::Sym { expr } => {
                                 s.word("sym");
@@ -2290,10 +2290,6 @@ impl<'a> State<'a> {
             self.word_space(":");
             self.print_type(ty);
         }
-    }
-
-    pub fn print_usize(&mut self, i: usize) {
-        self.s.word(i.to_string())
     }
 
     crate fn print_name(&mut self, name: Symbol) {
@@ -2659,8 +2655,10 @@ impl<'a> State<'a> {
                     s.word_space(":");
                     s.print_type(ty);
                     s.print_type_bounds(":", &param.bounds);
-                    if let Some(ref _default) = default {
-                        // FIXME(const_generics_defaults): print the `default` value here
+                    if let Some(ref default) = default {
+                        s.s.space();
+                        s.word_space("=");
+                        s.print_expr(&default.value);
                     }
                 }
             }

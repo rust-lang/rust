@@ -5,6 +5,7 @@ use rustc_hir as hir;
 use rustc_middle::mir::{Body, BorrowKind, Local, Place, PlaceElem, PlaceRef, ProjectionElem};
 use rustc_middle::ty::{self, TyCtxt};
 use std::cmp::max;
+use std::iter;
 
 /// When checking if a place conflicts with another place, this enum is used to influence decisions
 /// where a place might be equal or disjoint with another place, such as if `a[i] == a[j]`.
@@ -139,7 +140,7 @@ fn place_components_conflict<'tcx>(
 
     // loop invariant: borrow_c is always either equal to access_c or disjoint from it.
     for (i, (borrow_c, &access_c)) in
-        borrow_place.projection.iter().zip(access_place.projection.iter()).enumerate()
+        iter::zip(borrow_place.projection, access_place.projection).enumerate()
     {
         debug!("borrow_conflicts_with_place: borrow_c = {:?}", borrow_c);
         let borrow_proj_base = &borrow_place.projection[..i];

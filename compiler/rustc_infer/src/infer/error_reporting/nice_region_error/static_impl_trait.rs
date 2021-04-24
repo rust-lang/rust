@@ -292,7 +292,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         );
                     }
                 }
-                TyKind::TraitObject(_, lt) => match lt.name {
+                TyKind::TraitObject(_, lt, _) => match lt.name {
                     LifetimeName::ImplicitObjectLifetimeDefault => {
                         err.span_suggestion_verbose(
                             fn_return.span.shrink_to_hi(),
@@ -498,6 +498,7 @@ impl<'tcx> Visitor<'tcx> for HirTraitObjectVisitor {
         if let TyKind::TraitObject(
             poly_trait_refs,
             Lifetime { name: LifetimeName::ImplicitObjectLifetimeDefault, .. },
+            _,
         ) = t.kind
         {
             for ptr in poly_trait_refs {

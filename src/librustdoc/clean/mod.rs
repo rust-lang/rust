@@ -84,125 +84,8 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
 
 impl Clean<ExternalCrate> for CrateNum {
     fn clean(&self, cx: &mut DocContext<'_>) -> ExternalCrate {
-        let tcx = cx.tcx;
         let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
-        let krate_span = tcx.def_span(root);
-        let krate_src = cx.sess().source_map().span_to_filename(krate_span);
-
-        // Collect all inner modules which are tagged as implementations of
-        // primitives.
-        //
-        // Note that this loop only searches the top-level items of the crate,
-        // and this is intentional. If we were to search the entire crate for an
-        // item tagged with `#[doc(primitive)]` then we would also have to
-        // search the entirety of external modules for items tagged
-        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
-        // all that metadata unconditionally).
-        //
-        // In order to keep the metadata load under control, the
-        // `#[doc(primitive)]` feature is explicitly designed to only allow the
-        // primitive tags to show up as the top level items in a crate.
-        //
-        // Also note that this does not attempt to deal with modules tagged
-        // duplicately for the same primitive. This is handled later on when
-        // rendering by delegating everything to a hash map.
-        let mut as_primitive = |res: Res| {
-            if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = cx.tcx.get_attrs(def_id).clean(cx);
-                let mut prim = None;
-                for attr in attrs.lists(sym::doc) {
-                    if let Some(v) = attr.value_str() {
-                        if attr.has_name(sym::primitive) {
-                            prim = PrimitiveType::from_symbol(v);
-                            if prim.is_some() {
-                                break;
-                            }
-                            // FIXME: should warn on unknown primitives?
-                        }
-                    }
-                }
-                return prim.map(|p| (def_id, p));
-            }
-            None
-        };
-        let primitives = if root.is_local() {
-            tcx.hir()
-                .krate()
-                .item
-                .module
-                .item_ids
-                .iter()
-                .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
-                    match item.kind {
-                        hir::ItemKind::Mod(_) => {
-                            as_primitive(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
-                        }
-                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
-                            if item.vis.node.is_pub() =>
-                        {
-                            as_primitive(path.res).map(|(_, prim)| {
-                                // Pretend the primitive is local.
-                                (id.def_id.to_def_id(), prim)
-                            })
-                        }
-                        _ => None,
-                    }
-                })
-                .collect()
-        } else {
-            tcx.item_children(root).iter().map(|item| item.res).filter_map(as_primitive).collect()
-        };
-
-        let mut as_keyword = |res: Res| {
-            if let Res::Def(DefKind::Mod, def_id) = res {
-                let attrs = tcx.get_attrs(def_id).clean(cx);
-                let mut keyword = None;
-                for attr in attrs.lists(sym::doc) {
-                    if attr.has_name(sym::keyword) {
-                        if let Some(v) = attr.value_str() {
-                            keyword = Some(v);
-                            break;
-                        }
-                    }
-                }
-                return keyword.map(|p| (def_id, p));
-            }
-            None
-        };
-        let keywords = if root.is_local() {
-            tcx.hir()
-                .krate()
-                .item
-                .module
-                .item_ids
-                .iter()
-                .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
-                    match item.kind {
-                        hir::ItemKind::Mod(_) => {
-                            as_keyword(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
-                        }
-                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
-                            if item.vis.node.is_pub() =>
-                        {
-                            as_keyword(path.res).map(|(_, prim)| (id.def_id.to_def_id(), prim))
-                        }
-                        _ => None,
-                    }
-                })
-                .collect()
-        } else {
-            tcx.item_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
-        };
-
-        ExternalCrate {
-            name: tcx.crate_name(*self),
-            src: krate_src,
-            attrs: tcx.get_attrs(root).clean(cx),
-            primitives,
-            keywords,
-        }
+        ExternalCrate { crate_num: *self, attrs: cx.tcx.get_attrs(root).clean(cx) }
     }
 }
 
@@ -231,11 +114,11 @@ impl Clean<Item> for doctree::Module<'_> {
 
         let what_rustc_thinks = Item::from_hir_id_and_parts(
             self.id,
-            self.name,
+            Some(self.name),
             ModuleItem(Module { is_crate: self.is_crate, items }),
             cx,
         );
-        Item { source: span.clean(cx), ..what_rustc_thinks }
+        Item { span: span.clean(cx), ..what_rustc_thinks }
     }
 }
 
@@ -354,7 +237,7 @@ impl Clean<Lifetime> for hir::Lifetime {
         match def {
             Some(
                 rl::Region::EarlyBound(_, node_id, _)
-                | rl::Region::LateBound(_, node_id, _)
+                | rl::Region::LateBound(_, _, node_id, _)
                 | rl::Region::Free(_, node_id),
             ) => {
                 if let Some(lt) = cx.lt_substs.get(&node_id).cloned() {
@@ -398,9 +281,7 @@ impl Clean<Constant> for hir::ConstArg {
                 .tcx
                 .type_of(cx.tcx.hir().body_owner_def_id(self.value.body).to_def_id())
                 .clean(cx),
-            expr: print_const_expr(cx.tcx, self.value.body),
-            value: None,
-            is_literal: is_literal_expr(cx, self.value.body.hir_id),
+            kind: ConstantKind::Anonymous { body: self.value.body },
         }
     }
 }
@@ -415,7 +296,7 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
     fn clean(&self, _cx: &mut DocContext<'_>) -> Option<Lifetime> {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
-            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name) }) => {
+            ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
                 Some(Lifetime(name))
             }
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
@@ -863,7 +744,8 @@ fn clean_fn_or_proc_macro(
     name: &mut Symbol,
     cx: &mut DocContext<'_>,
 ) -> ItemKind {
-    let macro_kind = item.attrs.iter().find_map(|a| {
+    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let macro_kind = attrs.iter().find_map(|a| {
         if a.has_name(sym::proc_macro) {
             Some(MacroKind::Bang)
         } else if a.has_name(sym::proc_macro_derive) {
@@ -877,8 +759,7 @@ fn clean_fn_or_proc_macro(
     match macro_kind {
         Some(kind) => {
             if kind == MacroKind::Derive {
-                *name = item
-                    .attrs
+                *name = attrs
                     .lists(sym::proc_macro_derive)
                     .find_map(|mi| mi.ident())
                     .expect("proc-macro derives require a name")
@@ -886,7 +767,7 @@ fn clean_fn_or_proc_macro(
             }
 
             let mut helpers = Vec::new();
-            for mi in item.attrs.lists(sym::proc_macro_derive) {
+            for mi in attrs.lists(sym::proc_macro_derive) {
                 if !mi.has_name(sym::attributes) {
                     continue;
                 }
@@ -1135,7 +1016,7 @@ impl Clean<Item> for ty::AssocItem {
             ty::AssocKind::Const => {
                 let ty = tcx.type_of(self.def_id);
                 let default = if self.defaultness.has_value() {
-                    Some(inline::print_inlined_const(cx, self.def_id))
+                    Some(inline::print_inlined_const(tcx, self.def_id))
                 } else {
                     None
                 };
@@ -1477,7 +1358,7 @@ impl Clean<Type> for hir::Ty<'_> {
                 }
             }
             TyKind::Path(_) => clean_qpath(&self, cx),
-            TyKind::TraitObject(ref bounds, ref lifetime) => {
+            TyKind::TraitObject(ref bounds, ref lifetime, _) => {
                 match bounds[0].clean(cx).trait_ {
                     ResolvedPath { path, param_names: None, did, is_generic } => {
                         let mut bounds: Vec<self::GenericBound> = bounds[1..]
@@ -1745,16 +1626,15 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
 impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
+        // FIXME: instead of storing the stringified expression, store `self` directly instead.
         Constant {
             type_: self.ty.clean(cx),
-            expr: format!("{}", self),
-            value: None,
-            is_literal: false,
+            kind: ConstantKind::TyConst { expr: self.to_string() },
         }
     }
 }
 
-impl Clean<Item> for hir::StructField<'_> {
+impl Clean<Item> for hir::FieldDef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Item {
         let what_rustc_thinks = Item::from_hir_id_and_parts(
             self.hir_id,
@@ -1953,9 +1833,7 @@ impl Clean<Vec<Item>> for (&hir::Item<'_>, Option<Symbol>) {
                 }
                 ItemKind::Const(ty, body_id) => ConstantItem(Constant {
                     type_: ty.clean(cx),
-                    expr: print_const_expr(cx.tcx, body_id),
-                    value: print_evaluated_const(cx, def_id),
-                    is_literal: is_literal_expr(cx, body_id.hir_id),
+                    kind: ConstantKind::Local { body: body_id, def_id },
                 }),
                 ItemKind::OpaqueTy(ref ty) => OpaqueTyItem(OpaqueTy {
                     bounds: ty.bounds.clean(cx),
@@ -2102,8 +1980,9 @@ fn clean_extern_crate(
     let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+    let attrs = cx.tcx.hir().attrs(krate.hir_id());
     let please_inline = krate.vis.node.is_pub()
-        && krate.attrs.iter().any(|a| {
+        && attrs.iter().any(|a| {
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
                     Some(l) => attr::list_contains_name(&l, sym::inline),
@@ -2121,7 +2000,7 @@ fn clean_extern_crate(
             cx.tcx.parent_module(krate.hir_id()).to_def_id(),
             res,
             name,
-            Some(krate.attrs),
+            Some(attrs),
             &mut visited,
         ) {
             return items;
@@ -2129,12 +2008,12 @@ fn clean_extern_crate(
     }
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
-        name: None,
-        attrs: box krate.attrs.clean(cx),
-        source: krate.span.clean(cx),
+        name: Some(name),
+        attrs: box attrs.clean(cx),
+        span: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
-        kind: box ExternCrateItem(name, orig_name),
+        kind: box ExternCrateItem { src: orig_name },
     }]
 }
 
@@ -2152,7 +2031,8 @@ fn clean_use_statement(
         return Vec::new();
     }
 
-    let inline_attr = import.attrs.lists(sym::doc).get_word_attr(sym::inline);
+    let attrs = cx.tcx.hir().attrs(import.hir_id());
+    let inline_attr = attrs.lists(sym::doc).get_word_attr(sym::inline);
     let pub_underscore = import.vis.node.is_pub() && name == kw::Underscore;
 
     if pub_underscore {
@@ -2174,7 +2054,7 @@ fn clean_use_statement(
     // Don't inline doc(hidden) imports so they can be stripped at a later stage.
     let mut denied = !import.vis.node.is_pub()
         || pub_underscore
-        || import.attrs.iter().any(|a| {
+        || attrs.iter().any(|a| {
             a.has_name(sym::doc)
                 && match a.meta_item_list() {
                     Some(l) => {
@@ -2214,7 +2094,7 @@ fn clean_use_statement(
                 cx.tcx.parent_module(import.hir_id()).to_def_id(),
                 path.res,
                 name,
-                Some(import.attrs),
+                Some(attrs),
                 &mut visited,
             ) {
                 items.push(Item::from_def_id_and_parts(
@@ -2292,14 +2172,14 @@ impl Clean<Item> for (&hir::MacroDef<'_>, Option<Symbol>) {
             if matchers.len() <= 1 {
                 format!(
                     "{}macro {}{} {{\n    ...\n}}",
-                    vis.print_with_space(cx.tcx, def_id, &cx.cache),
+                    vis.to_src_with_space(cx.tcx, def_id),
                     name,
                     matchers.iter().map(|span| span.to_src(cx)).collect::<String>(),
                 )
             } else {
                 format!(
                     "{}macro {} {{\n{}}}",
-                    vis.print_with_space(cx.tcx, def_id, &cx.cache),
+                    vis.to_src_with_space(cx.tcx, def_id),
                     name,
                     matchers
                         .iter()

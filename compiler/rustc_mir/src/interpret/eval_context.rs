@@ -232,6 +232,8 @@ impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
     /// We basically abuse `Result` as `Either`.
+    ///
+    /// Used by priroda.
     pub fn current_loc(&self) -> Result<mir::Location, Span> {
         self.loc
     }
@@ -460,11 +462,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     #[inline]
-    pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_sized(self.tcx, self.param_env)
-    }
-
-    #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         ty.is_freeze(self.tcx, self.param_env)
     }
@@ -527,6 +524,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    #[inline(always)]
     pub fn layout_of_local(
         &self,
         frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
@@ -689,7 +687,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let span = const_.span;
             let const_ =
                 self.subst_from_current_frame_and_normalize_erasing_regions(const_.literal);
-            self.const_to_op(const_, None).map_err(|err| {
+            self.mir_const_to_op(&const_, None).map_err(|err| {
                 // If there was an error, set the span of the current frame to this constant.
                 // Avoiding doing this when evaluation succeeds.
                 self.frame_mut().loc = Err(span);

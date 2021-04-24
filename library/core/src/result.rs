@@ -1167,6 +1167,42 @@ impl<T, E: Into<!>> Result<T, E> {
     }
 }
 
+#[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
+impl<T: Into<!>, E> Result<T, E> {
+    /// Returns the contained [`Err`] value, but never panics.
+    ///
+    /// Unlike [`unwrap_err`], this method is known to never panic on the
+    /// result types it is implemented for. Therefore, it can be used
+    /// instead of `unwrap_err` as a maintainability safeguard that will fail
+    /// to compile if the ok type of the `Result` is later changed
+    /// to a type that can actually occur.
+    ///
+    /// [`unwrap_err`]: Result::unwrap_err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(never_type)]
+    /// # #![feature(unwrap_infallible)]
+    ///
+    /// fn only_bad_news() -> Result<!, String> {
+    ///     Err("Oops, it failed".into())
+    /// }
+    ///
+    /// let error: String = only_bad_news().into_err();
+    /// println!("{}", error);
+    /// ```
+    #[inline]
+    pub fn into_err(self) -> E {
+        match self {
+            Ok(x) => x.into(),
+            Err(e) => e,
+        }
+    }
+}
+
 impl<T: Deref, E> Result<T, E> {
     /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
     ///
@@ -1233,7 +1269,8 @@ impl<T, E> Result<Option<T>, E> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
-    pub fn transpose(self) -> Option<Result<T, E>> {
+    #[rustc_const_unstable(feature = "const_result", issue = "82814")]
+    pub const fn transpose(self) -> Option<Result<T, E>> {
         match self {
             Ok(Some(x)) => Some(Ok(x)),
             Ok(None) => None,

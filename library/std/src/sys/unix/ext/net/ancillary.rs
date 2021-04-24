@@ -5,9 +5,7 @@ use crate::marker::PhantomData;
 use crate::mem::{size_of, zeroed};
 use crate::os::unix::io::RawFd;
 use crate::path::Path;
-#[cfg(target_os = "android")]
-use crate::ptr::eq;
-use crate::ptr::read_unaligned;
+use crate::ptr::{eq, read_unaligned};
 use crate::slice::from_raw_parts;
 use crate::sys::net::Socket;
 
@@ -30,12 +28,10 @@ pub(super) fn recv_vectored_with_ancillary_from(
 ) -> io::Result<(usize, bool, io::Result<SocketAddr>)> {
     unsafe {
         let mut msg_name: libc::sockaddr_un = zeroed();
-
         let mut msg: libc::msghdr = zeroed();
         msg.msg_name = &mut msg_name as *mut _ as *mut _;
         msg.msg_namelen = size_of::<libc::sockaddr_un>() as libc::socklen_t;
         msg.msg_iov = bufs.as_mut_ptr().cast();
-        msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         cfg_if::cfg_if! {
             if #[cfg(any(target_os = "android", all(target_os = "linux", target_env = "gnu")))] {
                 msg.msg_iovlen = bufs.len() as libc::size_t;
@@ -45,12 +41,17 @@ pub(super) fn recv_vectored_with_ancillary_from(
                           target_os = "emscripten",
                           target_os = "freebsd",
                           all(target_os = "linux", target_env = "musl",),
+                          target_os = "macos",
                           target_os = "netbsd",
                           target_os = "openbsd",
                       ))] {
                 msg.msg_iovlen = bufs.len() as libc::c_int;
                 msg.msg_controllen = ancillary.buffer.len() as libc::socklen_t;
             }
+        }
+        // macos requires that the control pointer is NULL when the len is 0.
+        if msg.msg_controllen > 0 {
+            msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         }
 
         let count = socket.recv_msg(&mut msg)?;
@@ -79,7 +80,6 @@ pub(super) fn send_vectored_with_ancillary_to(
         msg.msg_name = &mut msg_name as *mut _ as *mut _;
         msg.msg_namelen = msg_namelen;
         msg.msg_iov = bufs.as_ptr() as *mut _;
-        msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         cfg_if::cfg_if! {
             if #[cfg(any(target_os = "android", all(target_os = "linux", target_env = "gnu")))] {
                 msg.msg_iovlen = bufs.len() as libc::size_t;
@@ -89,12 +89,17 @@ pub(super) fn send_vectored_with_ancillary_to(
                           target_os = "emscripten",
                           target_os = "freebsd",
                           all(target_os = "linux", target_env = "musl",),
+                          target_os = "macos",
                           target_os = "netbsd",
                           target_os = "openbsd",
                       ))] {
                 msg.msg_iovlen = bufs.len() as libc::c_int;
                 msg.msg_controllen = ancillary.length as libc::socklen_t;
             }
+        }
+        // macos requires that the control pointer is NULL when the len is 0.
+        if msg.msg_controllen > 0 {
+            msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         }
 
         ancillary.truncated = false;
@@ -147,6 +152,7 @@ fn add_to_ancillary_data<T>(
                           target_os = "emscripten",
                           target_os = "freebsd",
                           all(target_os = "linux", target_env = "musl",),
+                          target_os = "macos",
                           target_os = "netbsd",
                           target_os = "openbsd",
                       ))] {
@@ -159,14 +165,12 @@ fn add_to_ancillary_data<T>(
         while !cmsg.is_null() {
             previous_cmsg = cmsg;
             cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
-            cfg_if::cfg_if! {
-                // Android return the same pointer if it is the last cmsg.
-                // Therefore, check it if the previous pointer is the same as the current one.
-                if #[cfg(target_os = "android")] {
-                    if cmsg == previous_cmsg {
-                        break;
-                    }
-                }
+
+            // Most operating systems, but not Linux or emscripten, return the previous pointer
+            // when its length is zero. Therefore, check if the previous pointer is the same as
+            // the current one.
+            if eq(cmsg, previous_cmsg) {
+                break;
             }
         }
 
@@ -184,6 +188,7 @@ fn add_to_ancillary_data<T>(
                           target_os = "emscripten",
                           target_os = "freebsd",
                           all(target_os = "linux", target_env = "musl",),
+                          target_os = "macos",
                           target_os = "netbsd",
                           target_os = "openbsd",
                       ))] {
@@ -371,6 +376,7 @@ impl<'a> AncillaryData<'a> {
                               target_os = "emscripten",
                               target_os = "freebsd",
                               all(target_os = "linux", target_env = "musl",),
+                              target_os = "macos",
                               target_os = "netbsd",
                               target_os = "openbsd",
                           ))] {
@@ -421,6 +427,7 @@ impl<'a> Iterator for Messages<'a> {
                               target_os = "emscripten",
                               target_os = "freebsd",
                               all(target_os = "linux", target_env = "musl",),
+                              target_os = "macos",
                               target_os = "netbsd",
                               target_os = "openbsd",
                           ))] {
@@ -435,15 +442,13 @@ impl<'a> Iterator for Messages<'a> {
             };
 
             let cmsg = cmsg.as_ref()?;
-            cfg_if::cfg_if! {
-                // Android return the same pointer if it is the last cmsg.
-                // Therefore, check it if the previous pointer is the same as the current one.
-                if #[cfg(target_os = "android")] {
-                    if let Some(current) = self.current {
-                        if eq(current, cmsg) {
-                            return None;
-                        }
-                    }
+
+            // Most operating systems, but not Linux or emscripten, return the previous pointer
+            // when its length is zero. Therefore, check if the previous pointer is the same as
+            // the current one.
+            if let Some(current) = self.current {
+                if eq(current, cmsg) {
+                    return None;
                 }
             }
 
@@ -512,6 +517,12 @@ impl<'a> SocketAncillary<'a> {
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn capacity(&self) -> usize {
         self.buffer.len()
+    }
+
+    /// Returns `true` if the ancillary data is empty.
+    #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
     }
 
     /// Returns the number of used bytes.

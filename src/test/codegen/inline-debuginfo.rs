@@ -1,6 +1,6 @@
 #![crate_type="rlib"]
 // compile-flags: -Copt-level=3 -g
-// ignore-tidy-linelength
+//
 
 #[no_mangle]
 #[inline(always)]

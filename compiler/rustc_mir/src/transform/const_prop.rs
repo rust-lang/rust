@@ -13,9 +13,9 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::{
-    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, Local, LocalDecl, LocalKind,
-    Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData, Statement,
-    StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
+    AssertKind, BasicBlock, BinOp, Body, ClearCrossCrate, Constant, ConstantKind, Local, LocalDecl,
+    LocalKind, Location, Operand, Place, Rvalue, SourceInfo, SourceScope, SourceScopeData,
+    Statement, StatementKind, Terminator, TerminatorKind, UnOp, RETURN_PLACE,
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutError, TyAndLayout};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
@@ -482,18 +482,25 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        match self.ecx.const_to_op(c.literal, None) {
+        match self.ecx.mir_const_to_op(&c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
                 let tcx = self.ecx.tcx.at(c.span);
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
-                    let lint_only = match c.literal.val {
-                        // Promoteds must lint and not error as the user didn't ask for them
-                        ConstKind::Unevaluated(_, _, Some(_)) => true,
-                        // Out of backwards compatibility we cannot report hard errors in unused
-                        // generic functions using associated constants of the generic parameters.
-                        _ => c.literal.needs_subst(),
+                    let lint_only = match c.literal {
+                        ConstantKind::Ty(ct) => match ct.val {
+                            // Promoteds must lint and not error as the user didn't ask for them
+                            ConstKind::Unevaluated(ty::Unevaluated {
+                                def: _,
+                                substs: _,
+                                promoted: Some(_),
+                            }) => true,
+                            // Out of backwards compatibility we cannot report hard errors in unused
+                            // generic functions using associated constants of the generic parameters.
+                            _ => c.literal.needs_subst(),
+                        },
+                        ConstantKind::Val(_, ty) => ty.needs_subst(),
                     };
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
@@ -676,11 +683,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 trace!("checking UnaryOp(op = {:?}, arg = {:?})", op, arg);
                 self.check_unary_op(*op, arg, source_info)?;
             }
-            Rvalue::BinaryOp(op, left, right) => {
+            Rvalue::BinaryOp(op, box (left, right)) => {
                 trace!("checking BinaryOp(op = {:?}, left = {:?}, right = {:?})", op, left, right);
                 self.check_binary_op(*op, left, right, source_info)?;
             }
-            Rvalue::CheckedBinaryOp(op, left, right) => {
+            Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                 trace!(
                     "checking CheckedBinaryOp(op = {:?}, left = {:?}, right = {:?})",
                     op,
@@ -725,7 +732,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+        if self.tcx.sess.mir_opt_level() >= 4 {
             self.eval_rvalue_with_identities(rvalue, place)
         } else {
             self.use_ecx(|this| this.ecx.eval_rvalue_into_place(rvalue, place))
@@ -740,7 +747,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<()> {
         self.use_ecx(|this| {
             match rvalue {
-                Rvalue::BinaryOp(op, left, right) | Rvalue::CheckedBinaryOp(op, left, right) => {
+                Rvalue::BinaryOp(op, box (left, right))
+                | Rvalue::CheckedBinaryOp(op, box (left, right)) => {
                     let l = this.ecx.eval_operand(left, None);
                     let r = this.ecx.eval_operand(right, None);
 
@@ -772,7 +780,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         }
                         BinOp::Mul => {
                             if const_arg.layout.ty.is_integral() && arg_value == 0 {
-                                if let Rvalue::CheckedBinaryOp(_, _, _) = rvalue {
+                                if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
                                     let val = Immediate::ScalarPair(
                                         const_arg.to_scalar()?.into(),
                                         Scalar::from_bool(false).into(),
@@ -802,7 +810,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Operand::Constant(Box::new(Constant {
             span,
             user_ty: None,
-            literal: ty::Const::from_scalar(self.tcx, scalar, ty),
+            literal: ty::Const::from_scalar(self.tcx, scalar, ty).into(),
         }))
     }
 
@@ -813,9 +821,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         source_info: SourceInfo,
     ) {
         if let Rvalue::Use(Operand::Constant(c)) = rval {
-            if !matches!(c.literal.val, ConstKind::Unevaluated(..)) {
-                trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
-                return;
+            match c.literal {
+                ConstantKind::Ty(c) if matches!(c.val, ConstKind::Unevaluated(..)) => {}
+                _ => {
+                    trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
+                    return;
+                }
             }
         }
 
@@ -882,13 +893,17 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                 *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
                                     span: source_info.span,
                                     user_ty: None,
-                                    literal: self.ecx.tcx.mk_const(ty::Const {
-                                        ty,
-                                        val: ty::ConstKind::Value(ConstValue::ByRef {
-                                            alloc,
-                                            offset: Size::ZERO,
-                                        }),
-                                    }),
+                                    literal: self
+                                        .ecx
+                                        .tcx
+                                        .mk_const(ty::Const {
+                                            ty,
+                                            val: ty::ConstKind::Value(ConstValue::ByRef {
+                                                alloc,
+                                                offset: Size::ZERO,
+                                            }),
+                                        })
+                                        .into(),
                                 })));
                             }
                         }
@@ -903,7 +918,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns `true` if and only if this `op` should be const-propagated into.
     fn should_const_prop(&mut self, op: &OpTy<'tcx>) -> bool {
-        let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
+        let mir_opt_level = self.tcx.sess.mir_opt_level();
 
         if mir_opt_level == 0 {
             return false;
@@ -1071,9 +1086,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
 
-        // Only const prop copies and moves on `mir_opt_level=2` as doing so
+        // Only const prop copies and moves on `mir_opt_level=3` as doing so
         // currently slightly increases compile time in some cases.
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+        if self.tcx.sess.mir_opt_level() >= 3 {
             self.propagate_operand(operand)
         }
     }
@@ -1253,7 +1268,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             TerminatorKind::SwitchInt { ref mut discr, .. } => {
                 // FIXME: This is currently redundant with `visit_operand`, but sadly
                 // always visiting operands currently causes a perf regression in LLVM codegen, so
-                // `visit_operand` currently only runs for propagates places for `mir_opt_level=3`.
+                // `visit_operand` currently only runs for propagates places for `mir_opt_level=4`.
                 self.propagate_operand(discr)
             }
             // None of these have Operands to const-propagate.
@@ -1272,7 +1287,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
             // Every argument in our function calls have already been propagated in `visit_operand`.
             //
             // NOTE: because LLVM codegen gives slight performance regressions with it, so this is
-            // gated on `mir_opt_level=2`.
+            // gated on `mir_opt_level=3`.
             TerminatorKind::Call { .. } => {}
         }
 

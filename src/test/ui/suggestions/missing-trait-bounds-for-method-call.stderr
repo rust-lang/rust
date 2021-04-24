@@ -8,9 +8,9 @@ LL |         self.foo();
    |              ^^^ method cannot be called on `&Foo<T>` due to unsatisfied trait bounds
    |
    = note: the following trait bounds were not satisfied:
-           `T: Bar`
-           which is required by `Foo<T>: Bar`
            `T: Default`
+           which is required by `Foo<T>: Bar`
+           `T: Bar`
            which is required by `Foo<T>: Bar`
 help: consider restricting the type parameters to satisfy the trait bounds
    |

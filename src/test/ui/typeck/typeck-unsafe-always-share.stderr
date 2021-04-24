@@ -30,7 +30,11 @@ LL |     test(ms);
    |     ^^^^ `UnsafeCell<NoSync>` cannot be shared between threads safely
    |
    = help: within `MySync<NoSync>`, the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
-   = note: required because it appears within the type `MySync<NoSync>`
+note: required because it appears within the type `MySync<NoSync>`
+  --> $DIR/typeck-unsafe-always-share.rs:8:8
+   |
+LL | struct MySync<T> {
+   |        ^^^^^^
 
 error[E0277]: `NoSync` cannot be shared between threads safely
   --> $DIR/typeck-unsafe-always-share.rs:30:10

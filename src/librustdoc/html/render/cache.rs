@@ -4,7 +4,7 @@ use std::path::Path;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
-use serde::Serialize;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean::types::{
     FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, TypeKind, WherePredicate,
@@ -31,10 +31,11 @@ crate fn extern_location(
     e: &clean::ExternalCrate,
     extern_url: Option<&str>,
     dst: &Path,
+    tcx: TyCtxt<'_>,
 ) -> ExternalLocation {
     use ExternalLocation::*;
     // See if there's documentation generated into the local directory
-    let local_location = dst.join(&*e.name.as_str());
+    let local_location = dst.join(&*e.name(tcx).as_str());
     if local_location.is_dir() {
         return Local;
     }
@@ -82,18 +83,31 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item, cache, tcx),
+                aliases: item.attrs.get_doc_aliases(),
             });
-            for alias in item.attrs.get_doc_aliases() {
-                cache
-                    .aliases
-                    .entry(alias.to_lowercase())
-                    .or_insert(Vec::new())
-                    .push(cache.search_index.len() - 1);
-            }
         }
     }
 
-    let Cache { ref mut search_index, ref paths, ref mut aliases, .. } = *cache;
+    let Cache { ref mut search_index, ref paths, .. } = *cache;
+
+    // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
+    // we need the alias element to have an array of items.
+    let mut aliases: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+
+    // Sort search index items. This improves the compressibility of the search index.
+    search_index.sort_unstable_by(|k1, k2| {
+        // `sort_unstable_by_key` produces lifetime errors
+        let k1 = (&k1.path, &k1.name, &k1.ty, &k1.parent);
+        let k2 = (&k2.path, &k2.name, &k2.ty, &k2.parent);
+        std::cmp::Ord::cmp(&k1, &k2)
+    });
+
+    // Set up alias indexes.
+    for (i, item) in search_index.iter().enumerate() {
+        for alias in &item.aliases[..] {
+            aliases.entry(alias.to_lowercase()).or_insert(Vec::new()).push(i);
+        }
+    }
 
     // Reduce `DefId` in paths into smaller sequential numbers,
     // and prune the paths that do not appear in the index.
@@ -127,25 +141,70 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
         crate_items.push(&*item);
     }
 
-    let crate_doc = krate
-        .module
-        .as_ref()
-        .map(|module| module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)))
-        .unwrap_or_default();
+    let crate_doc =
+        krate.module.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s));
 
-    #[derive(Serialize)]
     struct CrateData<'a> {
         doc: String,
-        #[serde(rename = "i")]
         items: Vec<&'a IndexItem>,
-        #[serde(rename = "p")]
         paths: Vec<(ItemType, String)>,
         // The String is alias name and the vec is the list of the elements with this alias.
         //
         // To be noted: the `usize` elements are indexes to `items`.
-        #[serde(rename = "a")]
-        #[serde(skip_serializing_if = "BTreeMap::is_empty")]
         aliases: &'a BTreeMap<String, Vec<usize>>,
+    }
+
+    impl<'a> Serialize for CrateData<'a> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let has_aliases = !self.aliases.is_empty();
+            let mut crate_data =
+                serializer.serialize_struct("CrateData", if has_aliases { 9 } else { 8 })?;
+            crate_data.serialize_field("doc", &self.doc)?;
+            crate_data.serialize_field(
+                "t",
+                &self.items.iter().map(|item| &item.ty).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "n",
+                &self.items.iter().map(|item| &item.name).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "q",
+                &self.items.iter().map(|item| &item.path).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "d",
+                &self.items.iter().map(|item| &item.desc).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "i",
+                &self
+                    .items
+                    .iter()
+                    .map(|item| {
+                        assert_eq!(
+                            item.parent.is_some(),
+                            item.parent_idx.is_some(),
+                            "`{}` is missing idx",
+                            item.name
+                        );
+                        item.parent_idx.map(|x| x + 1).unwrap_or(0)
+                    })
+                    .collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field(
+                "f",
+                &self.items.iter().map(|item| &item.search_type).collect::<Vec<_>>(),
+            )?;
+            crate_data.serialize_field("p", &self.paths)?;
+            if has_aliases {
+                crate_data.serialize_field("a", &self.aliases)?;
+            }
+            crate_data.end()
+        }
     }
 
     // Collect the index into a string
@@ -156,7 +215,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
             doc: crate_doc,
             items: crate_items,
             paths: crate_paths,
-            aliases,
+            aliases: &aliases,
         })
         .expect("failed serde conversion")
         // All these `replace` calls are because we have to go through JS string for JSON content.

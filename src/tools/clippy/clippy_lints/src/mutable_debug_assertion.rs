@@ -1,4 +1,5 @@
-use crate::utils::{higher, is_direct_expn_of, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{higher, is_direct_expn_of};
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
@@ -73,11 +74,7 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
     }
 
     fn expr_span(&self) -> Option<Span> {
-        if self.found {
-            self.expr_span
-        } else {
-            None
-        }
+        if self.found { self.expr_span } else { None }
     }
 }
 

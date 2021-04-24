@@ -1,5 +1,5 @@
 error: static variable `τεχ` should have an upper case name
-  --> $DIR/lint-nonstandard-style-unicode-3.rs:18:8
+  --> $DIR/lint-nonstandard-style-unicode-3.rs:17:8
    |
 LL | static τεχ: f32 = 3.14159265;
    |        ^^^ help: convert the identifier to upper case: `ΤΕΧ`

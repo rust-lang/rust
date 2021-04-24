@@ -151,7 +151,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
-            span: self.span_from_span(krate.item.span),
+            span: self.span_from_span(krate.item.inner),
         };
 
         self.dumper.crate_prelude(data);
@@ -301,7 +301,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
     fn process_struct_field_def(
         &mut self,
-        field: &'tcx hir::StructField<'tcx>,
+        field: &'tcx hir::FieldDef<'tcx>,
         parent_id: hir::HirId,
     ) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
@@ -320,15 +320,6 @@ impl<'tcx> DumpVisitor<'tcx> {
         for param in generics.params {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
-                hir::GenericParamKind::Type {
-                    synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
-                    ..
-                } => {
-                    return self
-                        .nest_typeck_results(self.tcx.hir().local_def_id(param.hir_id), |this| {
-                            this.visit_generics(generics)
-                        });
-                }
                 hir::GenericParamKind::Type { .. } => {
                     let param_ss = param.name.ident().span;
                     let name = escape(self.span.snippet(param_ss));
@@ -496,6 +487,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         if !self.span.filter_generated(item.ident.span) {
             let span = self.span_from_span(item.ident.span);
+            let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
                 &access_from!(self.save_ctxt, item, item.hir_id()),
                 Def {
@@ -508,9 +500,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     parent: None,
                     children: fields,
                     decl_id: None,
-                    docs: self.save_ctxt.docs_for_attrs(&item.attrs),
+                    docs: self.save_ctxt.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, &self.save_ctxt),
-                    attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
+                    attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                 },
             );
         }
@@ -554,6 +546,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                         let span = self.span_from_span(name_span);
                         let id = id_from_hir_id(variant.id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.def_id.to_def_id()));
+                        let attrs = self.tcx.hir().attrs(variant.id);
 
                         self.dumper.dump_def(
                             &access,
@@ -567,12 +560,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 parent,
                                 children: vec![],
                                 decl_id: None,
-                                docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
+                                docs: self.save_ctxt.docs_for_attrs(attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
-                                attributes: lower_attributes(
-                                    variant.attrs.to_vec(),
-                                    &self.save_ctxt,
-                                ),
+                                attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                             },
                         );
                     }
@@ -594,6 +584,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                         let span = self.span_from_span(name_span);
                         let id = id_from_hir_id(variant.id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.def_id.to_def_id()));
+                        let attrs = self.tcx.hir().attrs(variant.id);
 
                         self.dumper.dump_def(
                             &access,
@@ -607,12 +598,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 parent,
                                 children: vec![],
                                 decl_id: None,
-                                docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
+                                docs: self.save_ctxt.docs_for_attrs(attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
-                                attributes: lower_attributes(
-                                    variant.attrs.to_vec(),
-                                    &self.save_ctxt,
-                                ),
+                                attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                             },
                         );
                     }
@@ -675,6 +663,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             let span = self.span_from_span(item.ident.span);
             let children =
                 methods.iter().map(|i| id_from_def_id(i.id.def_id.to_def_id())).collect();
+            let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
                 &access_from!(self.save_ctxt, item, item.hir_id()),
                 Def {
@@ -687,9 +676,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     parent: None,
                     children,
                     decl_id: None,
-                    docs: self.save_ctxt.docs_for_attrs(&item.attrs),
+                    docs: self.save_ctxt.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, &self.save_ctxt),
-                    attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
+                    attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                 },
             );
         }
@@ -795,7 +784,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         &mut self,
         ex: &'tcx hir::Expr<'tcx>,
         path: &'tcx hir::QPath<'tcx>,
-        fields: &'tcx [hir::Field<'tcx>],
+        fields: &'tcx [hir::ExprField<'tcx>],
         variant: &'tcx ty::VariantDef,
         rest: Option<&'tcx hir::Expr<'tcx>>,
     ) {
@@ -998,6 +987,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             hir::TraitItemKind::Const(ref ty, body) => {
                 let body = body.map(|b| &self.tcx.hir().body(b).value);
                 let respan = respan(vis_span, hir::VisibilityKind::Public);
+                let attrs = self.tcx.hir().attrs(trait_item.hir_id());
                 self.process_assoc_const(
                     trait_item.hir_id(),
                     trait_item.ident,
@@ -1005,7 +995,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     body,
                     trait_id,
                     &respan,
-                    &trait_item.attrs,
+                    attrs,
                 );
             }
             hir::TraitItemKind::Fn(ref sig, ref trait_fn) => {
@@ -1031,6 +1021,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 if !self.span.filter_generated(trait_item.ident.span) {
                     let span = self.span_from_span(trait_item.ident.span);
                     let id = id_from_def_id(trait_item.def_id.to_def_id());
+                    let attrs = self.tcx.hir().attrs(trait_item.hir_id());
 
                     self.dumper.dump_def(
                         &Access { public: true, reachable: true },
@@ -1044,7 +1035,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                             parent: Some(id_from_def_id(trait_id)),
                             children: vec![],
                             decl_id: None,
-                            docs: self.save_ctxt.docs_for_attrs(&trait_item.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(attrs),
                             sig: sig::assoc_type_signature(
                                 trait_item.hir_id(),
                                 trait_item.ident,
@@ -1052,10 +1043,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 default_ty.as_ref().map(|ty| &**ty),
                                 &self.save_ctxt,
                             ),
-                            attributes: lower_attributes(
-                                trait_item.attrs.to_vec(),
-                                &self.save_ctxt,
-                            ),
+                            attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                         },
                     );
                 }
@@ -1072,6 +1060,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         match impl_item.kind {
             hir::ImplItemKind::Const(ref ty, body) => {
                 let body = self.tcx.hir().body(body);
+                let attrs = self.tcx.hir().attrs(impl_item.hir_id());
                 self.process_assoc_const(
                     impl_item.hir_id(),
                     impl_item.ident,
@@ -1079,7 +1068,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     Some(&body.value),
                     impl_id,
                     &impl_item.vis,
-                    &impl_item.attrs,
+                    attrs,
                 );
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
@@ -1108,16 +1097,12 @@ impl<'tcx> DumpVisitor<'tcx> {
             format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
 
         let sm = self.tcx.sess.source_map();
-        let filename = sm.span_to_filename(krate.item.span);
+        let filename = sm.span_to_filename(krate.item.inner);
         let data_id = id_from_hir_id(id, &self.save_ctxt);
-        let children = krate
-            .item
-            .module
-            .item_ids
-            .iter()
-            .map(|i| id_from_def_id(i.def_id.to_def_id()))
-            .collect();
-        let span = self.span_from_span(krate.item.span);
+        let children =
+            krate.item.item_ids.iter().map(|i| id_from_def_id(i.def_id.to_def_id())).collect();
+        let span = self.span_from_span(krate.item.inner);
+        let attrs = self.tcx.hir().attrs(id);
 
         self.dumper.dump_def(
             &Access { public: true, reachable: true },
@@ -1131,9 +1116,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                 children,
                 parent: None,
                 decl_id: None,
-                docs: self.save_ctxt.docs_for_attrs(krate.item.attrs),
+                docs: self.save_ctxt.docs_for_attrs(attrs),
                 sig: None,
-                attributes: lower_attributes(krate.item.attrs.to_owned(), &self.save_ctxt),
+                attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
             },
         );
         intravisit::walk_crate(self, krate);
@@ -1263,6 +1248,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 if !self.span.filter_generated(item.ident.span) {
                     let span = self.span_from_span(item.ident.span);
                     let id = id_from_def_id(item.def_id.to_def_id());
+                    let attrs = self.tcx.hir().attrs(item.hir_id());
 
                     self.dumper.dump_def(
                         &access_from!(self.save_ctxt, item, item.hir_id()),
@@ -1276,9 +1262,9 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                             parent: None,
                             children: vec![],
                             decl_id: None,
-                            docs: self.save_ctxt.docs_for_attrs(&item.attrs),
+                            docs: self.save_ctxt.docs_for_attrs(attrs),
                             sig: sig::item_signature(item, &self.save_ctxt),
-                            attributes: lower_attributes(item.attrs.to_vec(), &self.save_ctxt),
+                            attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),
                         },
                     );
                 }

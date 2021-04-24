@@ -78,7 +78,7 @@
 //! ```
 //! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicUsize, Ordering};
-//! use std::thread;
+//! use std::{hint, thread};
 //!
 //! fn main() {
 //!     let spinlock = Arc::new(AtomicUsize::new(1));
@@ -89,7 +89,9 @@
 //!     });
 //!
 //!     // Wait for the other thread to release the lock
-//!     while spinlock.load(Ordering::SeqCst) != 0 {}
+//!     while spinlock.load(Ordering::SeqCst) != 0 {
+//!         hint::spin_loop();
+//!     }
 //!
 //!     if let Err(panic) = thread.join() {
 //!         println!("Thread had an error: {:?}", panic);
@@ -283,7 +285,7 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
     pub const fn new(v: bool) -> AtomicBool {
         AtomicBool { v: UnsafeCell::new(v as u8) }
     }
@@ -837,7 +839,6 @@ impl AtomicBool {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(atomic_fetch_update)]
     /// use std::sync::atomic::{AtomicBool, Ordering};
     ///
     /// let x = AtomicBool::new(false);
@@ -847,7 +848,7 @@ impl AtomicBool {
     /// assert_eq!(x.load(Ordering::SeqCst), false);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_fetch_update", reason = "recently added", issue = "78639")]
+    #[stable(feature = "atomic_fetch_update", since = "1.53.0")]
     #[cfg(target_has_atomic = "8")]
     pub fn fetch_update<F>(
         &self,
@@ -883,7 +884,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_atomic_new", since = "1.32.0")]
+    #[rustc_const_stable(feature = "const_atomic_new", since = "1.24.0")]
     pub const fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p: UnsafeCell::new(p) }
     }
@@ -898,8 +899,10 @@ impl<T> AtomicPtr<T> {
     /// ```
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
-    /// let mut atomic_ptr = AtomicPtr::new(&mut 10);
-    /// *atomic_ptr.get_mut() = &mut 5;
+    /// let mut data = 10;
+    /// let mut atomic_ptr = AtomicPtr::new(&mut data);
+    /// let mut other_data = 5;
+    /// *atomic_ptr.get_mut() = &mut other_data;
     /// assert_eq!(unsafe { *atomic_ptr.load(Ordering::SeqCst) }, 5);
     /// ```
     #[inline]
@@ -916,9 +919,11 @@ impl<T> AtomicPtr<T> {
     /// #![feature(atomic_from_mut)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
-    /// let mut some_ptr = &mut 123 as *mut i32;
+    /// let mut data = 123;
+    /// let mut some_ptr = &mut data as *mut i32;
     /// let a = AtomicPtr::from_mut(&mut some_ptr);
-    /// a.store(&mut 456, Ordering::Relaxed);
+    /// let mut other_data = 456;
+    /// a.store(&mut other_data, Ordering::Relaxed);
     /// assert_eq!(unsafe { *some_ptr }, 456);
     /// ```
     #[inline]
@@ -944,7 +949,8 @@ impl<T> AtomicPtr<T> {
     /// ```
     /// use std::sync::atomic::AtomicPtr;
     ///
-    /// let atomic_ptr = AtomicPtr::new(&mut 5);
+    /// let mut data = 5;
+    /// let atomic_ptr = AtomicPtr::new(&mut data);
     /// assert_eq!(unsafe { *atomic_ptr.into_inner() }, 5);
     /// ```
     #[inline]
@@ -1220,7 +1226,6 @@ impl<T> AtomicPtr<T> {
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(atomic_fetch_update)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let ptr: *mut _ = &mut 5;
@@ -1239,7 +1244,7 @@ impl<T> AtomicPtr<T> {
     /// assert_eq!(some_ptr.load(Ordering::SeqCst), new);
     /// ```
     #[inline]
-    #[unstable(feature = "atomic_fetch_update", reason = "recently added", issue = "78639")]
+    #[stable(feature = "atomic_fetch_update", since = "1.53.0")]
     #[cfg(target_has_atomic = "ptr")]
     pub fn fetch_update<F>(
         &self,
@@ -2276,7 +2281,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
             "isize",
             "",
@@ -2296,7 +2301,7 @@ macro_rules! atomic_int_ptr_sized {
             stable(feature = "atomic_access", since = "1.15.0"),
             stable(feature = "atomic_from", since = "1.23.0"),
             stable(feature = "atomic_nand", since = "1.27.0"),
-            rustc_const_stable(feature = "const_integer_atomics", since = "1.34.0"),
+            rustc_const_stable(feature = "const_integer_atomics", since = "1.24.0"),
             stable(feature = "rust1", since = "1.0.0"),
             "usize",
             "",

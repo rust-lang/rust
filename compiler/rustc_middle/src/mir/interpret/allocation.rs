@@ -339,7 +339,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         for dest in bytes {
             *dest = src.next().expect("iterator was shorter than it said it would be");
         }
-        src.next().expect_none("iterator was longer than it said it would be");
+        assert_matches!(src.next(), None, "iterator was longer than it said it would be");
         Ok(())
     }
 

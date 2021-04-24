@@ -14,18 +14,21 @@ use crate::lexer::UnmatchedBrace;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
-pub use pat::{GateOr, RecoverComma};
+pub use pat::RecoverComma;
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, DelimToken, Token, TokenKind};
+use rustc_ast::tokenstream::AttributesData;
 use rustc_ast::tokenstream::{self, DelimSpan, Spacing};
-use rustc_ast::tokenstream::{TokenStream, TokenTree, TreeAndSpacing};
+use rustc_ast::tokenstream::{TokenStream, TokenTree};
+use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AstLike, AttrStyle, AttrVec, Const, CrateSugar, Extern};
 use rustc_ast::{Async, Expr, ExprKind, MacArgs, MacDelimiter, Mutability, StrLit, Unsafe};
 use rustc_ast::{Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError};
@@ -34,6 +37,7 @@ use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use tracing::debug;
 
+use std::ops::Range;
 use std::{cmp, mem, slice};
 
 bitflags::bitflags! {
@@ -64,6 +68,7 @@ pub enum ForceCollect {
     No,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum TrailingToken {
     None,
     Semi,
@@ -111,6 +116,7 @@ pub struct Parser<'a> {
     pub token_spacing: Spacing,
     /// The previous token.
     pub prev_token: Token,
+    pub capture_cfg: bool,
     restrictions: Restrictions,
     expected_tokens: Vec<TokenType>,
     // Important: This must only be advanced from `next_tok`
@@ -134,6 +140,44 @@ pub struct Parser<'a> {
     pub last_type_ascription: Option<(Span, bool /* likely path typo */)>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
     subparser_name: Option<&'static str>,
+    capture_state: CaptureState,
+}
+
+/// Indicates a range of tokens that should be replaced by
+/// the tokens in the provided vector. This is used in two
+/// places during token collection:
+///
+/// 1. During the parsing of an AST node that may have a `#[derive]`
+/// attribute, we parse a nested AST node that has `#[cfg]` or `#[cfg_attr]`
+/// In this case, we use a `ReplaceRange` to replace the entire inner AST node
+/// with `FlatToken::AttrTarget`, allowing us to perform eager cfg-expansion
+/// on a `AttrAnnotatedTokenStream`
+///
+/// 2. When we parse an inner attribute while collecting tokens. We
+/// remove inner attributes from the token stream entirely, and
+/// instead track them through the `attrs` field on the AST node.
+/// This allows us to easily manipulate them (for example, removing
+/// the first macro inner attribute to invoke a proc-macro).
+/// When create a `TokenStream`, the inner attributes get inserted
+/// into the proper place in the token stream.
+pub type ReplaceRange = (Range<u32>, Vec<(FlatToken, Spacing)>);
+
+/// Controls how we capture tokens. Capturing can be expensive,
+/// so we try to avoid performing capturing in cases where
+/// we will never need a `AttrAnnotatedTokenStream`
+#[derive(Copy, Clone)]
+pub enum Capturing {
+    /// We aren't performing any capturing - this is the default mode.
+    No,
+    /// We are capturing tokens
+    Yes,
+}
+
+#[derive(Clone)]
+struct CaptureState {
+    capturing: Capturing,
+    replace_ranges: Vec<ReplaceRange>,
+    inner_attr_ranges: FxHashMap<AttrId, ReplaceRange>,
 }
 
 impl<'a> Drop for Parser<'a> {
@@ -167,11 +211,11 @@ struct TokenCursor {
     // want to capture just the first 'unglued' token.
     // For example, capturing the `Vec<u8>`
     // in `Option<Vec<u8>>` requires us to unglue
-    // the trailing `>>` token. The `append_unglued_token`
+    // the trailing `>>` token. The `break_last_token`
     // field is used to track this token - it gets
     // appended to the captured stream when
     // we evaluate a `LazyTokenStream`
-    append_unglued_token: Option<TreeAndSpacing>,
+    break_last_token: bool,
 }
 
 #[derive(Clone)]
@@ -188,9 +232,9 @@ impl TokenCursorFrame {
         TokenCursorFrame {
             delim,
             span,
-            open_delim: delim == token::NoDelim,
+            open_delim: false,
             tree_cursor: tts.into_trees(),
-            close_delim: delim == token::NoDelim,
+            close_delim: false,
         }
     }
 }
@@ -364,19 +408,24 @@ impl<'a> Parser<'a> {
         desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
     ) -> Self {
+        let mut start_frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens);
+        start_frame.open_delim = true;
+        start_frame.close_delim = true;
+
         let mut parser = Parser {
             sess,
             token: Token::dummy(),
             token_spacing: Spacing::Alone,
             prev_token: Token::dummy(),
+            capture_cfg: false,
             restrictions: Restrictions::empty(),
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
-                frame: TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens),
+                frame: start_frame,
                 stack: Vec::new(),
                 num_next_calls: 0,
                 desugar_doc_comments,
-                append_unglued_token: None,
+                break_last_token: false,
             },
             desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
@@ -385,6 +434,11 @@ impl<'a> Parser<'a> {
             last_unexpected_token_span: None,
             last_type_ascription: None,
             subparser_name,
+            capture_state: CaptureState {
+                capturing: Capturing::No,
+                replace_ranges: Vec::new(),
+                inner_attr_ranges: Default::default(),
+            },
         };
 
         // Make parser point to the first token.
@@ -394,21 +448,29 @@ impl<'a> Parser<'a> {
     }
 
     fn next_tok(&mut self, fallback_span: Span) -> (Token, Spacing) {
-        let (mut next, spacing) = if self.desugar_doc_comments {
-            self.token_cursor.next_desugared()
-        } else {
-            self.token_cursor.next()
-        };
-        self.token_cursor.num_next_calls += 1;
-        // We've retrieved an token from the underlying
-        // cursor, so we no longer need to worry about
-        // an unglued token. See `break_and_eat` for more details
-        self.token_cursor.append_unglued_token = None;
-        if next.span.is_dummy() {
-            // Tweak the location for better diagnostics, but keep syntactic context intact.
-            next.span = fallback_span.with_ctxt(next.span.ctxt());
+        loop {
+            let (mut next, spacing) = if self.desugar_doc_comments {
+                self.token_cursor.next_desugared()
+            } else {
+                self.token_cursor.next()
+            };
+            self.token_cursor.num_next_calls += 1;
+            // We've retrieved an token from the underlying
+            // cursor, so we no longer need to worry about
+            // an unglued token. See `break_and_eat` for more details
+            self.token_cursor.break_last_token = false;
+            if next.span.is_dummy() {
+                // Tweak the location for better diagnostics, but keep syntactic context intact.
+                next.span = fallback_span.with_ctxt(next.span.ctxt());
+            }
+            if matches!(
+                next.kind,
+                token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
+            ) {
+                continue;
+            }
+            return (next, spacing);
         }
-        (next, spacing)
     }
 
     pub fn unexpected<T>(&mut self) -> PResult<'a, T> {
@@ -606,8 +668,7 @@ impl<'a> Parser<'a> {
                 // If we consume any additional tokens, then this token
                 // is not needed (we'll capture the entire 'glued' token),
                 // and `next_tok` will set this field to `None`
-                self.token_cursor.append_unglued_token =
-                    Some((TokenTree::Token(self.token.clone()), Spacing::Alone));
+                self.token_cursor.break_last_token = true;
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
@@ -688,6 +749,8 @@ impl<'a> Parser<'a> {
         let mut recovered = false;
         let mut trailing = false;
         let mut v = vec![];
+        let unclosed_delims = !self.unclosed_delims.is_empty();
+
         while !self.expect_any_with_type(kets, expect) {
             if let token::CloseDelim(..) | token::Eof = self.token.kind {
                 break;
@@ -708,7 +771,7 @@ impl<'a> Parser<'a> {
 
                             // Attempt to keep parsing if it was a similar separator.
                             if let Some(ref tokens) = t.similar_tokens() {
-                                if tokens.contains(&self.token.kind) {
+                                if tokens.contains(&self.token.kind) && !unclosed_delims {
                                     self.bump();
                                 }
                             }
@@ -867,15 +930,38 @@ impl<'a> Parser<'a> {
         }
 
         let frame = &self.token_cursor.frame;
-        match frame.tree_cursor.look_ahead(dist - 1) {
-            Some(tree) => match tree {
-                TokenTree::Token(token) => looker(token),
-                TokenTree::Delimited(dspan, delim, _) => {
-                    looker(&Token::new(token::OpenDelim(*delim), dspan.open))
-                }
-            },
-            None => looker(&Token::new(token::CloseDelim(frame.delim), frame.span.close)),
+        if frame.delim != DelimToken::NoDelim {
+            let all_normal = (0..dist).all(|i| {
+                let token = frame.tree_cursor.look_ahead(i);
+                !matches!(token, Some(TokenTree::Delimited(_, DelimToken::NoDelim, _)))
+            });
+            if all_normal {
+                return match frame.tree_cursor.look_ahead(dist - 1) {
+                    Some(tree) => match tree {
+                        TokenTree::Token(token) => looker(token),
+                        TokenTree::Delimited(dspan, delim, _) => {
+                            looker(&Token::new(token::OpenDelim(*delim), dspan.open))
+                        }
+                    },
+                    None => looker(&Token::new(token::CloseDelim(frame.delim), frame.span.close)),
+                };
+            }
         }
+
+        let mut cursor = self.token_cursor.clone();
+        let mut i = 0;
+        let mut token = Token::dummy();
+        while i < dist {
+            token = cursor.next().0;
+            if matches!(
+                token.kind,
+                token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
+            ) {
+                continue;
+            }
+            i += 1;
+        }
+        return looker(&token);
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
@@ -987,7 +1073,7 @@ impl<'a> Parser<'a> {
                     }
 
                     // Collect tokens because they are used during lowering to HIR.
-                    let expr = self.collect_tokens_no_attrs(|this| this.parse_expr())?;
+                    let expr = self.parse_expr_force_collect()?;
                     let span = expr.span;
 
                     match &expr.kind {
@@ -1286,4 +1372,25 @@ pub fn emit_unclosed_delims(unclosed_delims: &mut Vec<UnmatchedBrace>, sess: &Pa
             e.emit();
         }
     }
+}
+
+/// A helper struct used when building a `AttrAnnotatedTokenStream` from
+/// a `LazyTokenStream`. Both delimiter and non-delimited tokens
+/// are stored as `FlatToken::Token`. A vector of `FlatToken`s
+/// is then 'parsed' to build up a `AttrAnnotatedTokenStream` with nested
+/// `AttrAnnotatedTokenTree::Delimited` tokens
+#[derive(Debug, Clone)]
+pub enum FlatToken {
+    /// A token - this holds both delimiter (e.g. '{' and '}')
+    /// and non-delimiter tokens
+    Token(Token),
+    /// Holds the `AttributesData` for an AST node. The
+    /// `AttributesData` is inserted directly into the
+    /// constructed `AttrAnnotatedTokenStream` as
+    /// a `AttrAnnotatedTokenTree::Attributes`
+    AttrTarget(AttributesData),
+    /// A special 'empty' token that is ignored during the conversion
+    /// to a `AttrAnnotatedTokenStream`. This is used to simplify the
+    /// handling of replace ranges.
+    Empty,
 }

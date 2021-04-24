@@ -414,7 +414,9 @@ impl UsedLocals {
             // A use, not a definition.
             self.visit_place(place, PlaceContext::MutatingUse(MutatingUseContext::Store), location);
         } else {
-            // A definition. Although, it still might use other locals for indexing.
+            // A definition. The base local itself is not visited, so this occurrence is not counted
+            // toward its use count. There might be other locals still, used in an indexing
+            // projection.
             self.super_projection(
                 place.as_ref(),
                 PlaceContext::MutatingUse(MutatingUseContext::Projection),
@@ -428,6 +430,7 @@ impl Visitor<'_> for UsedLocals {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::LlvmInlineAsm(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Retag(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)

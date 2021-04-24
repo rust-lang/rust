@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 struct Point<T> {
     x: T,
     y: T,

@@ -3,6 +3,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
+use crate::char::EscapeDebugExtArgs;
+use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::flt2dec;
@@ -1087,7 +1089,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
+            for (arg, piece) in iter::zip(args.args, args.pieces) {
                 formatter.buf.write_str(*piece)?;
                 (arg.formatter)(arg.value, &mut formatter)?;
                 idx += 1;
@@ -1096,7 +1098,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
+            for (arg, piece) in iter::zip(fmt, args.pieces) {
                 formatter.buf.write_str(*piece)?;
                 // SAFETY: arg and args.args come from the same Arguments,
                 // which guarantees the indexes are always within bounds.
@@ -2054,7 +2056,11 @@ impl Debug for str {
         f.write_char('"')?;
         let mut from = 0;
         for (i, c) in self.char_indices() {
-            let esc = c.escape_debug();
+            let esc = c.escape_debug_ext(EscapeDebugExtArgs {
+                escape_grapheme_extended: true,
+                escape_single_quote: false,
+                escape_double_quote: true,
+            });
             // If char needs escaping, flush backlog so far and write, else skip
             if esc.len() != 1 {
                 f.write_str(&self[from..i])?;
@@ -2080,7 +2086,11 @@ impl Display for str {
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.write_char('\'')?;
-        for c in self.escape_debug() {
+        for c in self.escape_debug_ext(EscapeDebugExtArgs {
+            escape_grapheme_extended: true,
+            escape_single_quote: true,
+            escape_double_quote: false,
+        }) {
             f.write_char(c)?
         }
         f.write_char('\'')
@@ -2210,7 +2220,7 @@ impl Debug for () {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad("PhantomData")
+        f.debug_struct("PhantomData").finish()
     }
 }
 
@@ -2258,9 +2268,9 @@ impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
+impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.pad("UnsafeCell")
+        f.debug_struct("UnsafeCell").finish_non_exhaustive()
     }
 }
 

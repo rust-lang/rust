@@ -45,6 +45,8 @@ exclude = [
   # not all `Cargo.toml` files are available, so we exclude the `x` binary,
   # so it can be invoked before the current checkout is set up.
   "src/tools/x",
+  # stdarch has its own Cargo workspace
+  "library/stdarch",
 ]
 
 [profile.release.package.compiler_builtins]
@@ -88,6 +90,7 @@ object.debug = 0
 # vendored copy.
 [patch."https://github.com/rust-lang/cargo"]
 cargo = { path = "src/tools/cargo" }
+cargo-util = { path = "src/tools/cargo/crates/cargo-util" }
 
 [patch."https://github.com/rust-lang/rustfmt"]
 # Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`

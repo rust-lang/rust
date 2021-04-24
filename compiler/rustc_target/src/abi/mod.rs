@@ -1112,7 +1112,7 @@ pub enum PointerKind {
     /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
     Frozen,
 
-    /// `&mut T`, when we know `noalias` is safe for LLVM.
+    /// `&mut T` which is `noalias` but not `readonly`.
     UniqueBorrowed,
 
     /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.

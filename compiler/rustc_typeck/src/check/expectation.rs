@@ -104,8 +104,8 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// for the program to type-check). `only_has_type` will return
     /// such a constraint, if it exists.
     pub(super) fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
-        match self.resolve(fcx) {
-            ExpectHasType(ty) => Some(ty),
+        match self {
+            ExpectHasType(ty) => Some(fcx.resolve_vars_if_possible(ty)),
             NoExpectation | ExpectCastableToType(_) | ExpectRvalueLikeUnsized(_) | IsLast(_) => {
                 None
             }

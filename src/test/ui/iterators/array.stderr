@@ -2,10 +2,10 @@ error[E0277]: `[{integer}; 2]` is not an iterator
   --> $DIR/array.rs:2:14
    |
 LL |     for _ in [1, 2] {}
-   |              ^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |              ^^^^^^ arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`
    |
    = help: the trait `Iterator` is not implemented for `[{integer}; 2]`
-   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: see <https://github.com/rust-lang/rust/pull/65819> for more details
    = note: required because of the requirements on the impl of `IntoIterator` for `[{integer}; 2]`
    = note: required by `into_iter`
 
@@ -13,10 +13,10 @@ error[E0277]: `[{integer}; 2]` is not an iterator
   --> $DIR/array.rs:5:14
    |
 LL |     for _ in x {}
-   |              ^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |              ^ arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`
    |
    = help: the trait `Iterator` is not implemented for `[{integer}; 2]`
-   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: see <https://github.com/rust-lang/rust/pull/65819> for more details
    = note: required because of the requirements on the impl of `IntoIterator` for `[{integer}; 2]`
    = note: required by `into_iter`
 
@@ -24,10 +24,10 @@ error[E0277]: `[{float}; 2]` is not an iterator
   --> $DIR/array.rs:7:14
    |
 LL |     for _ in [1.0, 2.0] {}
-   |              ^^^^^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it
+   |              ^^^^^^^^^^ arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`
    |
    = help: the trait `Iterator` is not implemented for `[{float}; 2]`
-   = note: arrays are not iterators, but slices like the following are: `&[1, 2, 3]`
+   = note: see <https://github.com/rust-lang/rust/pull/65819> for more details
    = note: required because of the requirements on the impl of `IntoIterator` for `[{float}; 2]`
    = note: required by `into_iter`
 

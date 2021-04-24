@@ -81,8 +81,8 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     ),
     on(
         _Self = "[]",
-        label = "borrow the array with `&` or call `.iter()` on it to iterate over it",
-        note = "arrays are not iterators, but slices like the following are: `&[1, 2, 3]`"
+        label = "arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`",
+        note = "see <https://github.com/rust-lang/rust/pull/65819> for more details"
     ),
     on(
         _Self = "{integral}",
@@ -92,7 +92,9 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     label = "`{Self}` is not an iterator",
     message = "`{Self}` is not an iterator"
 )]
-#[doc(spotlight)]
+#[cfg_attr(bootstrap, doc(spotlight))]
+#[cfg_attr(not(bootstrap), doc(notable_trait))]
+#[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {
     /// The type of the elements being iterated over.
@@ -935,20 +937,16 @@ pub trait Iterator {
         Enumerate::new(self)
     }
 
-    /// Creates an iterator which can use [`peek`] to look at the next element of
-    /// the iterator without consuming it.
+    /// Creates an iterator which can use the [`peek`] and [`peek_mut`] methods
+    /// to look at the next element of the iterator without consuming it. See
+    /// their documentation for more information.
     ///
-    /// Adds a [`peek`] method to an iterator. See its documentation for
-    /// more information.
+    /// Note that the underlying iterator is still advanced when [`peek`] or
+    /// [`peek_mut`] are called for the first time: In order to retrieve the
+    /// next element, [`next`] is called on the underlying iterator, hence any
+    /// side effects (i.e. anything other than fetching the next value) of
+    /// the [`next`] method will occur.
     ///
-    /// Note that the underlying iterator is still advanced when [`peek`] is
-    /// called for the first time: In order to retrieve the next element,
-    /// [`next`] is called on the underlying iterator, hence any side effects (i.e.
-    /// anything other than fetching the next value) of the [`next`] method
-    /// will occur.
-    ///
-    /// [`peek`]: Peekable::peek
-    /// [`next`]: Iterator::next
     ///
     /// # Examples
     ///
@@ -975,6 +973,32 @@ pub trait Iterator {
     /// assert_eq!(iter.peek(), None);
     /// assert_eq!(iter.next(), None);
     /// ```
+    ///
+    /// Using [`peek_mut`] to mutate the next item without advancing the
+    /// iterator:
+    ///
+    /// ```
+    /// let xs = [1, 2, 3];
+    ///
+    /// let mut iter = xs.iter().peekable();
+    ///
+    /// // `peek_mut()` lets us see into the future
+    /// assert_eq!(iter.peek_mut(), Some(&mut &1));
+    /// assert_eq!(iter.peek_mut(), Some(&mut &1));
+    /// assert_eq!(iter.next(), Some(&1));
+    ///
+    /// if let Some(mut p) = iter.peek_mut() {
+    ///     assert_eq!(*p, &2);
+    ///     // put a value into the iterator
+    ///     *p = &1000;
+    /// }
+    ///
+    /// // The value reappears as the iterator continues
+    /// assert_eq!(iter.collect::<Vec<_>>(), vec![&1000, &3]);
+    /// ```
+    /// [`peek`]: Peekable::peek
+    /// [`peek_mut`]: Peekable::peek_mut
+    /// [`next`]: Iterator::next
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn peekable(self) -> Peekable<Self>
@@ -1011,7 +1035,7 @@ pub trait Iterator {
     ///
     /// Because the closure passed to `skip_while()` takes a reference, and many
     /// iterators iterate over references, this leads to a possibly confusing
-    /// situation, where the type of the closure is a double reference:
+    /// situation, where the type of the closure argument is a double reference:
     ///
     /// ```
     /// let a = [-1, 0, 1];
@@ -1227,7 +1251,11 @@ pub trait Iterator {
 
     /// Creates an iterator that skips the first `n` elements.
     ///
-    /// After they have been consumed, the rest of the elements are yielded.
+    /// `skip(n)` skips elements until `n` elements are skipped or the end of the
+    /// iterator is reached (whichever happens first). After that, all the remaining
+    /// elements are yielded. In particular, if the original iterator is too short,
+    /// then the returned iterator is empty.
+    ///
     /// Rather than overriding this method directly, instead override the `nth` method.
     ///
     /// # Examples
@@ -1251,7 +1279,14 @@ pub trait Iterator {
         Skip::new(self, n)
     }
 
-    /// Creates an iterator that yields its first `n` elements.
+    /// Creates an iterator that yields the first `n` elements, or fewer
+    /// if the underlying iterator ends sooner.
+    ///
+    /// `take(n)` yields elements until `n` elements are yielded or the end of
+    /// the iterator is reached (whichever happens first).
+    /// The returned iterator is a prefix of length `n` if the original iterator
+    /// contains at least `n` elements, otherwise it contains all of the
+    /// (fewer than `n`) elements of the original iterator.
     ///
     /// # Examples
     ///
@@ -1460,7 +1495,12 @@ pub trait Iterator {
     /// [`Some(T)`] again. `fuse()` adapts an iterator, ensuring that after a
     /// [`None`] is given, it will always return [`None`] forever.
     ///
+    /// Note that the [`Fuse`] wrapper is a no-op on iterators that implement
+    /// the [`FusedIterator`] trait. `fuse()` may therefore behave incorrectly
+    /// if the [`FusedIterator`] trait is improperly implemented.
+    ///
     /// [`Some(T)`]: Some
+    /// [`FusedIterator`]: crate::iter::FusedIterator
     ///
     /// # Examples
     ///
@@ -1611,31 +1651,16 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let mut words = vec!["hello", "world", "of", "Rust"].into_iter();
     ///
-    /// let iter = a.iter();
+    /// // Take the first two words.
+    /// let hello_world: Vec<_> = words.by_ref().take(2).collect();
+    /// assert_eq!(hello_world, vec!["hello", "world"]);
     ///
-    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i);
-    ///
-    /// assert_eq!(sum, 6);
-    ///
-    /// // if we try to use iter again, it won't work. The following line
-    /// // gives "error: use of moved value: `iter`
-    /// // assert_eq!(iter.next(), None);
-    ///
-    /// // let's try that again
-    /// let a = [1, 2, 3];
-    ///
-    /// let mut iter = a.iter();
-    ///
-    /// // instead, we add in a .by_ref()
-    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i);
-    ///
-    /// assert_eq!(sum, 3);
-    ///
-    /// // now this is just fine:
-    /// assert_eq!(iter.next(), Some(&3));
-    /// assert_eq!(iter.next(), None);
+    /// // Collect the rest of the words.
+    /// // We can only do this because we used `by_ref` earlier.
+    /// let of_rust: Vec<_> = words.collect();
+    /// assert_eq!(of_rust, vec!["of", "Rust"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self
@@ -2736,6 +2761,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
+    #[doc(alias = "reverse")]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rev(self) -> Rev<Self>
     where

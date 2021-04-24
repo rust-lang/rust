@@ -19,7 +19,12 @@ pub(crate) fn optimize_function<'tcx>(
     if tcx.sess.opts.optimize == rustc_session::config::OptLevel::No {
         return; // FIXME classify optimizations over opt levels
     }
-    self::stack2reg::optimize_function(ctx, clif_comments);
+
+    // FIXME(#1142) stack2reg miscompiles lewton
+    if false {
+        self::stack2reg::optimize_function(ctx, clif_comments);
+    }
+
     crate::pretty_clif::write_clif_file(tcx, "stack2reg", None, instance, &ctx, &*clif_comments);
     crate::base::verify_func(tcx, &*clif_comments, &ctx.func);
 }

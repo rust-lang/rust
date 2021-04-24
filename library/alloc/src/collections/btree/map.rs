@@ -14,22 +14,22 @@ use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
 
 mod entry;
-pub use entry::{Entry, OccupiedEntry, VacantEntry};
+pub use entry::{Entry, OccupiedEntry, OccupiedError, VacantEntry};
 use Entry::*;
 
 /// Minimum number of elements in nodes that are not a root.
 /// We might temporarily have fewer elements during methods.
 pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 
-// A tree in a `BTreeMap` is a tree in the `node` module with addtional invariants:
+// A tree in a `BTreeMap` is a tree in the `node` module with additional invariants:
 // - Keys must appear in ascending order (according to the key's type).
 // - If the root node is internal, it must contain at least 1 element.
 // - Every non-root node contains at least MIN_LEN elements.
 //
-// An empty map may be represented both by the absense of a root node or by a
+// An empty map may be represented both by the absence of a root node or by a
 // root node that is an empty leaf.
 
-/// A map based on a B-Tree.
+/// A map based on a [B-Tree].
 ///
 /// B-Trees represent a fundamental compromise between cache-efficiency and actually minimizing
 /// the amount of work performed in a search. In theory, a binary search tree (BST) is the optimal
@@ -63,6 +63,7 @@ pub(super) const MIN_LEN: usize = node::MIN_LEN_AFTER_SPLIT;
 /// undefined behavior. This could include panics, incorrect results, aborts, memory leaks, and
 /// non-termination.
 ///
+/// [B-Tree]: https://en.wikipedia.org/wiki/B-tree
 /// [`Cell`]: core::cell::Cell
 /// [`RefCell`]: core::cell::RefCell
 ///
@@ -836,6 +837,40 @@ impl<K, V> BTreeMap<K, V> {
         }
     }
 
+    /// Tries to insert a key-value pair into the map, and returns
+    /// a mutable reference to the value in the entry.
+    ///
+    /// If the map already had this key present, nothing is updated, and
+    /// an error containing the occupied entry and the value is returned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_try_insert)]
+    ///
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// assert_eq!(map.try_insert(37, "a").unwrap(), &"a");
+    ///
+    /// let err = map.try_insert(37, "b").unwrap_err();
+    /// assert_eq!(err.entry.key(), &37);
+    /// assert_eq!(err.entry.get(), &"a");
+    /// assert_eq!(err.value, "b");
+    /// ```
+    #[unstable(feature = "map_try_insert", issue = "82766")]
+    pub fn try_insert(&mut self, key: K, value: V) -> Result<&mut V, OccupiedError<'_, K, V>>
+    where
+        K: Ord,
+    {
+        match self.entry(key) {
+            Occupied(entry) => Err(OccupiedError { entry, value }),
+            Vacant(entry) => Ok(entry.insert(value)),
+        }
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -905,7 +940,6 @@ impl<K, V> BTreeMap<K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_retain)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x*10)).collect();
@@ -914,7 +948,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert!(map.into_iter().eq(vec![(0, 0), (2, 20), (4, 40), (6, 60)]));
     /// ```
     #[inline]
-    #[unstable(feature = "btree_retain", issue = "79025")]
+    #[stable(feature = "btree_retain", since = "1.53.0")]
     pub fn retain<F>(&mut self, mut f: F)
     where
         K: Ord,

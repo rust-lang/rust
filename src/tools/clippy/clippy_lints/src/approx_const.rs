@@ -1,4 +1,4 @@
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

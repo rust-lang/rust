@@ -3,8 +3,8 @@ use crate::spec::{LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::vxworks_base::opts();
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-mspe".to_string());
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("--secure-plt".to_string());
+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-mspe".to_string());
+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("--secure-plt".to_string());
     base.max_atomic_width = Some(32);
 
     Target {

@@ -1,7 +1,7 @@
 use super::{ErrorHandled, EvalToConstValueResult, GlobalId};
 
 use crate::mir;
-use crate::ty::subst::{InternalSubsts, SubstsRef};
+use crate::ty::subst::InternalSubsts;
 use crate::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
 use rustc_span::Span;
@@ -35,14 +35,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn const_eval_resolve(
         self,
         param_env: ty::ParamEnv<'tcx>,
-        def: ty::WithOptConstParam<DefId>,
-        substs: SubstsRef<'tcx>,
-        promoted: Option<mir::Promoted>,
+        ct: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
-        match ty::Instance::resolve_opt_const_arg(self, param_env, def, substs) {
+        match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
-                let cid = GlobalId { instance, promoted };
+                let cid = GlobalId { instance, promoted: ct.promoted };
                 self.const_eval_global_id(param_env, cid, span)
             }
             Ok(None) => Err(ErrorHandled::TooGeneric),

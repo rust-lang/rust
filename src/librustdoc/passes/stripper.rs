@@ -66,7 +66,7 @@ impl<'a> DocFolder for Stripper<'a> {
             }
 
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
+            clean::ExternCrateItem { .. } | clean::ImportItem(..) => {}
 
             clean::ImplItem(..) => {}
 
@@ -161,7 +161,9 @@ crate struct ImportStripper;
 impl DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
-            clean::ExternCrateItem(..) | clean::ImportItem(..) if !i.visibility.is_public() => None,
+            clean::ExternCrateItem { .. } | clean::ImportItem(..) if !i.visibility.is_public() => {
+                None
+            }
             _ => Some(self.fold_item_recur(i)),
         }
     }

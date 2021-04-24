@@ -33,9 +33,10 @@
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(iter_order_by)]
+#![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
 #![feature(control_flow_enum)]
@@ -57,6 +58,7 @@ mod methods;
 mod non_ascii_idents;
 mod non_fmt_panic;
 mod nonstandard_style;
+mod noop_method_call;
 mod passes;
 mod redundant_semicolon;
 mod traits;
@@ -81,6 +83,7 @@ use methods::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
+use noop_method_call::*;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
@@ -168,6 +171,7 @@ macro_rules! late_lint_passes {
                 DropTraitConstraints: DropTraitConstraints,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
                 NonPanicFmt: NonPanicFmt,
+                NoopMethodCall: NoopMethodCall,
             ]
         );
     };
@@ -202,6 +206,7 @@ macro_rules! late_lint_mod_passes {
                 UnreachablePub: UnreachablePub,
                 ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
                 InvalidValue: InvalidValue,
+                DerefNullPtr: DerefNullPtr,
             ]
         );
     };
@@ -322,6 +327,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
     store.register_renamed("exceeding_bitshifts", "arithmetic_overflow");
     store.register_renamed("redundant_semicolon", "redundant_semicolons");
     store.register_renamed("overlapping_patterns", "overlapping_range_endpoints");
+    store.register_renamed("safe_packed_borrows", "unaligned_references");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -337,12 +343,13 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         "non_autolinks",
     ];
     for rustdoc_lint in RUSTDOC_LINTS {
-        store.register_removed(rustdoc_lint, &format!("use `rustdoc::{}` instead", rustdoc_lint));
+        store.register_ignored(rustdoc_lint);
     }
     store.register_removed(
         "intra_doc_link_resolution_failure",
         "use `rustdoc::broken_intra_doc_links` instead",
     );
+    store.register_removed("rustdoc", "use `rustdoc::all` instead");
 
     store.register_removed("unknown_features", "replaced by an error");
     store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");

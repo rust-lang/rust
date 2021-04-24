@@ -1,4 +1,6 @@
-use crate::utils::{differing_macro_contexts, snippet_opt, span_lint_and_help, span_lint_and_note};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
+use clippy_utils::differing_macro_contexts;
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -215,9 +217,8 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         if let Some(else_snippet) = snippet_opt(cx, else_span);
         if let Some(else_pos) = else_snippet.find("else");
         if else_snippet[else_pos..].contains('\n');
-        let else_desc = if is_if(else_) { "if" } else { "{..}" };
-
         then {
+            let else_desc = if is_if(else_) { "if" } else { "{..}" };
             span_lint_and_note(
                 cx,
                 SUSPICIOUS_ELSE_FORMATTING,

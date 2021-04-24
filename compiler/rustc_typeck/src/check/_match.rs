@@ -207,17 +207,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ),
                 };
                 let cause = self.cause(span, code);
-                let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
-                    Some(ret_coercion) if self.in_tail_expr => {
-                        let ret_ty = ret_coercion.borrow().expected_ty();
-                        let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
-                        self.can_coerce(arm_ty, ret_ty)
-                            && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
-                            // The match arms need to unify for the case of `impl Trait`.
-                            && !matches!(ret_ty.kind(), ty::Opaque(..))
-                    }
-                    _ => false,
-                };
 
                 // This is the moral equivalent of `coercion.coerce(self, cause, arm.body, arm_ty)`.
                 // We use it this way to be able to expand on the potential error and detect when a
@@ -229,6 +218,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(&arm.body),
                     arm_ty,
                     Some(&mut |err: &mut DiagnosticBuilder<'_>| {
+                        let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
+                            Some(ret_coercion) if self.in_tail_expr => {
+                                let ret_ty = ret_coercion.borrow().expected_ty();
+                                let ret_ty = self.inh.infcx.shallow_resolve(ret_ty);
+                                self.can_coerce(arm_ty, ret_ty)
+                                    && prior_arm_ty.map_or(true, |t| self.can_coerce(t, ret_ty))
+                                    // The match arms need to unify for the case of `impl Trait`.
+                                    && !matches!(ret_ty.kind(), ty::Opaque(..))
+                            }
+                            _ => false,
+                        };
                         if let (Expectation::IsLast(stmt), Some(ret), true) =
                             (orig_expected, self.ret_type_span, can_coerce_to_return_ty)
                         {

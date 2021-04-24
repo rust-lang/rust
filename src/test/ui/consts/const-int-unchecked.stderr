@@ -516,5 +516,27 @@ LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::MIN, -1) };
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
-error: aborting due to 47 previous errors
+error: any use of this value will cause an error
+  --> $DIR/const-int-unchecked.rs:191:25
+   |
+LL | const _: u32 = unsafe { std::intrinsics::ctlz_nonzero(0) };
+   | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                         |
+   |                         `ctlz_nonzero` called on 0
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: any use of this value will cause an error
+  --> $DIR/const-int-unchecked.rs:194:25
+   |
+LL | const _: u32 = unsafe { std::intrinsics::cttz_nonzero(0) };
+   | ------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |                         |
+   |                         `cttz_nonzero` called on 0
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+
+error: aborting due to 49 previous errors
 

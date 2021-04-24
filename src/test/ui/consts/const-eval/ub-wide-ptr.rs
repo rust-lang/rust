@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 // ignore-tidy-linelength
 #![allow(unused)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here

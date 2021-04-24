@@ -193,3 +193,19 @@ fn cstr_index_from_empty() {
     let cstr = CStr::from_bytes_with_nul(original).unwrap();
     let _ = &cstr[original.len()..];
 }
+
+#[test]
+fn c_string_from_empty_string() {
+    let original = "";
+    let cstring = CString::new(original).unwrap();
+    assert_eq!(original.as_bytes(), cstring.as_bytes());
+    assert_eq!([b'\0'], cstring.as_bytes_with_nul());
+}
+
+#[test]
+fn c_str_from_empty_string() {
+    let original = b"\0";
+    let cstr = CStr::from_bytes_with_nul(original).unwrap();
+    assert_eq!([] as [u8; 0], cstr.to_bytes());
+    assert_eq!([b'\0'], cstr.to_bytes_with_nul());
+}

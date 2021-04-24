@@ -1,7 +1,8 @@
 //! lint on inherent implementations
 
-use crate::utils::{in_macro, span_lint_and_then};
-use rustc_data_structures::fx::FxHashMap;
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::in_macro;
+use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{def_id, Crate, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -42,7 +43,7 @@ declare_clippy_lint! {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Default)]
 pub struct MultipleInherentImpl {
-    impls: FxHashMap<def_id::DefId, Span>,
+    impls: DefIdMap<Span>,
 }
 
 impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);

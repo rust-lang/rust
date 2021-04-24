@@ -45,6 +45,7 @@ use rustc_target::abi::LayoutOf;
 use tracing::debug;
 
 use std::cell::Cell;
+use std::iter;
 use std::slice;
 
 /// Information about the registered lints.
@@ -100,6 +101,11 @@ enum TargetLint {
     /// Lint with this name existed previously, but has been removed/deprecated.
     /// The string argument is the reason for removal.
     Removed(String),
+
+    /// A lint name that should give no warnings and have no effect.
+    ///
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    Ignored,
 }
 
 pub enum FindLintError {
@@ -171,6 +177,7 @@ impl LintStore {
         self.early_passes.push(Box::new(pass));
     }
 
+    /// Used by clippy.
     pub fn register_pre_expansion_pass(
         &mut self,
         pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
@@ -266,6 +273,33 @@ impl LintStore {
         }
     }
 
+    /// This lint should be available with either the old or the new name.
+    ///
+    /// Using the old name will not give a warning.
+    /// You must register a lint with the new name before calling this function.
+    #[track_caller]
+    pub fn register_alias(&mut self, old_name: &str, new_name: &str) {
+        let target = match self.by_name.get(new_name) {
+            Some(&Id(lint_id)) => lint_id,
+            _ => bug!("cannot add alias {} for lint {} that does not exist", old_name, new_name),
+        };
+        match self.by_name.insert(old_name.to_string(), Id(target)) {
+            None | Some(Ignored) => {}
+            Some(x) => bug!("duplicate specification of lint {} (was {:?})", old_name, x),
+        }
+    }
+
+    /// This lint should give no warning and have no effect.
+    ///
+    /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
+    #[track_caller]
+    pub fn register_ignored(&mut self, name: &str) {
+        if self.by_name.insert(name.to_string(), Ignored).is_some() {
+            bug!("duplicate specification of lint {}", name);
+        }
+    }
+
+    /// This lint has been renamed; warn about using the new name and apply the lint.
     #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
@@ -284,6 +318,7 @@ impl LintStore {
             Some(&Id(lint_id)) => Ok(vec![lint_id]),
             Some(&Renamed(_, lint_id)) => Ok(vec![lint_id]),
             Some(&Removed(_)) => Err(FindLintError::Removed),
+            Some(&Ignored) => Ok(vec![]),
             None => loop {
                 return match self.lint_groups.get(lint_name) {
                     Some(LintGroup { lint_ids, depr, .. }) => {
@@ -427,6 +462,7 @@ impl LintStore {
                 }
             },
             Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
+            Some(&Ignored) => CheckLintNameResult::Ok(&[]),
         }
     }
 
@@ -670,6 +706,12 @@ pub trait LintContext: Sized {
                         json
                     );
                 }
+                BuiltinLintDiagnostics::ProcMacroBackCompat(note) => {
+                    db.note(&note);
+                }
+                BuiltinLintDiagnostics::OrPatternsBackCompat(span,suggestion) => {
+                    db.span_suggestion(span, "use pat2015 to preserve semantics", suggestion, Applicability::MachineApplicable);
+                }
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
@@ -711,7 +753,7 @@ impl<'a> EarlyContext<'a> {
             sess,
             krate,
             lint_store,
-            builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store),
+            builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store, &krate.attrs),
             buffered,
         }
     }
@@ -824,10 +866,12 @@ impl<'tcx> LateContext<'tcx> {
     ///     // The given `def_id` is that of an `Option` type
     /// }
     /// ```
+    ///
+    /// Used by clippy, but should be replaced by diagnostic items eventually.
     pub fn match_def_path(&self, def_id: DefId, path: &[Symbol]) -> bool {
         let names = self.get_def_path(def_id);
 
-        names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| a == b)
+        names.len() == path.len() && iter::zip(names, path).all(|(a, &b)| a == b)
     }
 
     /// Gets the absolute path of `def_id` as a vector of `Symbol`.
@@ -868,7 +912,7 @@ impl<'tcx> LateContext<'tcx> {
 
             fn print_dyn_existential(
                 self,
-                _predicates: &'tcx ty::List<ty::Binder<ty::ExistentialPredicate<'tcx>>>,
+                _predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Ok(())
             }

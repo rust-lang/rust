@@ -1,0 +1,26 @@
+error: `$x:pat2021` is followed by `|`, which is not allowed for `pat2021` fragments
+  --> $DIR/macro-pat2021-pattern-followed-by-or.rs:3:32
+   |
+LL | macro_rules! foo { ($x:pat2021 | $y:pat2021) => {} }
+   |                                ^ not allowed after `pat2021` fragments
+   |
+   = note: allowed there are: `=>`, `,`, `=`, `if` or `in`
+
+error: `$x:pat2021` is followed by `|`, which is not allowed for `pat2021` fragments
+  --> $DIR/macro-pat2021-pattern-followed-by-or.rs:6:32
+   |
+LL | macro_rules! ogg { ($x:pat2021 | $y:pat2015) => {} }
+   |                                ^ not allowed after `pat2021` fragments
+   |
+   = note: allowed there are: `=>`, `,`, `=`, `if` or `in`
+
+error: `$pat:pat2021` may be followed by `|`, which is not allowed for `pat2021` fragments
+  --> $DIR/macro-pat2021-pattern-followed-by-or.rs:8:40
+   |
+LL |     ( $expr:expr , $( $( $pat:pat2021 )|+ => $expr_arm:pat2021 ),+ ) => {
+   |                                        ^ not allowed after `pat2021` fragments
+   |
+   = note: allowed there are: `=>`, `,`, `=`, `if` or `in`
+
+error: aborting due to 3 previous errors
+

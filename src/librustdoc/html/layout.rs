@@ -58,7 +58,7 @@ crate fn render<T: Print, S: Print>(
     {style_files}\
     <script id=\"default-settings\"{default_settings}></script>\
     <script src=\"{static_root_path}storage{suffix}.js\"></script>\
-    <script src=\"{static_root_path}crates{suffix}.js\"></script>\
+    <script src=\"{root_path}crates{suffix}.js\"></script>\
     <noscript><link rel=\"stylesheet\" href=\"{static_root_path}noscript{suffix}.css\"></noscript>\
     {css_extension}\
     {favicon}\
@@ -68,7 +68,7 @@ crate fn render<T: Print, S: Print>(
     </style>\
 </head>\
 <body class=\"rustdoc {css_class}\">\
-    <!--[if lte IE 8]>\
+    <!--[if lte IE 11]>\
     <div class=\"warning\">\
         This old browser is unsupported and will most likely display funky \
         things.\
@@ -88,7 +88,6 @@ crate fn render<T: Print, S: Print>(
         </button>\
         <div id=\"theme-choices\" role=\"menu\"></div>\
     </div>\
-    <script src=\"{static_root_path}theme{suffix}.js\"></script>\
     <nav class=\"sub\">\
         <form class=\"search-form\">\
             <div class=\"search-container\">\
@@ -111,10 +110,10 @@ crate fn render<T: Print, S: Print>(
     </nav>\
     <section id=\"main\" class=\"content\">{content}</section>\
     <section id=\"search\" class=\"content hidden\"></section>\
-    <section class=\"footer\"></section>\
     {after_content}\
     <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\" \
-       data-search-js=\"{root_path}search-index{suffix}.js\"></div>
+       data-search-index-js=\"{root_path}search-index{suffix}.js\" \
+       data-search-js=\"{static_root_path}search{suffix}.js\"></div>
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
     {extra_scripts}\
 </body>\

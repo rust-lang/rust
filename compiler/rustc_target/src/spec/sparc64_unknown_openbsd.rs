@@ -5,7 +5,7 @@ pub fn target() -> Target {
     let mut base = super::openbsd_base::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".to_string();
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
     base.max_atomic_width = Some(64);
 
     Target {

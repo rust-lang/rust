@@ -1,0 +1,17 @@
+error[E0277]: `PhantomPinned` cannot be unpinned
+  --> $DIR/pin-needed-to-poll-2.rs:43:9
+   |
+LL |         Pin::new(&mut self.sleep).poll(cx)
+   |         ^^^^^^^^ within `Sleep`, the trait `Unpin` is not implemented for `PhantomPinned`
+   |
+   = note: consider using `Box::pin`
+note: required because it appears within the type `Sleep`
+  --> $DIR/pin-needed-to-poll-2.rs:8:8
+   |
+LL | struct Sleep(std::marker::PhantomPinned);
+   |        ^^^^^
+   = note: required by `Pin::<P>::new`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

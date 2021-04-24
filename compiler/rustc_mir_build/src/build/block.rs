@@ -2,7 +2,6 @@ use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::thir::*;
-use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
 use rustc_session::lint::Level;
@@ -13,7 +12,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         block: BasicBlock,
-        ast_block: &'tcx hir::Block<'tcx>,
+        ast_block: &Block<'_, 'tcx>,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let Block {
@@ -24,7 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expr,
             targeted_by_break,
             safety_mode,
-        } = self.hir.mirror(ast_block);
+        } = *ast_block;
         self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
@@ -50,8 +49,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         mut block: BasicBlock,
         span: Span,
-        stmts: Vec<StmtRef<'tcx>>,
-        expr: Option<ExprRef<'tcx>>,
+        stmts: &[Stmt<'_, 'tcx>],
+        expr: Option<&Expr<'_, 'tcx>>,
         safety_mode: BlockSafety,
     ) -> BlockAnd<()> {
         let this = self;
@@ -79,10 +78,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         this.update_source_scope_for_safety_mode(span, safety_mode);
 
         let source_info = this.source_info(span);
-        for stmt in stmts {
-            let Stmt { kind, opt_destruction_scope } = this.hir.mirror(stmt);
+        for Stmt { kind, opt_destruction_scope } in stmts {
             match kind {
-                StmtKind::Expr { scope, expr } => {
+                &StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
                     unpack!(
                         block = this.in_opt_scope(
@@ -90,7 +88,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             |this| {
                                 let si = (scope, source_info);
                                 this.in_scope(si, LintLevel::Inherited, |this| {
-                                    let expr = this.hir.mirror(expr);
                                     this.stmt_expr(block, expr, Some(scope))
                                 })
                             }
@@ -102,45 +99,44 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
                     // Enter the remainder scope, i.e., the bindings' destruction scope.
-                    this.push_scope((remainder_scope, source_info));
+                    this.push_scope((*remainder_scope, source_info));
                     let_scope_stack.push(remainder_scope);
 
                     // Declare the bindings, which may create a source scope.
-                    let remainder_span =
-                        remainder_scope.span(this.hir.tcx(), &this.hir.region_scope_tree);
+                    let remainder_span = remainder_scope.span(this.tcx, this.region_scope_tree);
 
                     let visibility_scope =
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = initializer {
-                        let initializer_span = init.span();
+                        let initializer_span = init.span;
 
                         unpack!(
                             block = this.in_opt_scope(
                                 opt_destruction_scope.map(|de| (de, source_info)),
                                 |this| {
-                                    let scope = (init_scope, source_info);
-                                    this.in_scope(scope, lint_level, |this| {
+                                    let scope = (*init_scope, source_info);
+                                    this.in_scope(scope, *lint_level, |this| {
                                         this.declare_bindings(
                                             visibility_scope,
                                             remainder_span,
-                                            &pattern,
+                                            pattern,
                                             ArmHasGuard(false),
                                             Some((None, initializer_span)),
                                         );
-                                        this.expr_into_pattern(block, pattern, init)
+                                        this.expr_into_pattern(block, pattern.clone(), init)
                                     })
                                 }
                             )
                         );
                     } else {
-                        let scope = (init_scope, source_info);
-                        unpack!(this.in_scope(scope, lint_level, |this| {
+                        let scope = (*init_scope, source_info);
+                        unpack!(this.in_scope(scope, *lint_level, |this| {
                             this.declare_bindings(
                                 visibility_scope,
                                 remainder_span,
-                                &pattern,
+                                pattern,
                                 ArmHasGuard(false),
                                 None,
                             );
@@ -171,18 +167,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Then, the block may have an optional trailing expression which is a “return” value
         // of the block, which is stored into `destination`.
-        let tcx = this.hir.tcx();
+        let tcx = this.tcx;
         let destination_ty = destination.ty(&this.local_decls, tcx).ty;
         if let Some(expr) = expr {
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
-            let span = match expr {
-                ExprRef::Thir(expr) => expr.span,
-                ExprRef::Mirror(ref expr) => expr.span,
-            };
-            this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored, span });
+            this.block_context
+                .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
 
-            unpack!(block = this.into(destination, block, expr));
+            unpack!(block = this.expr_into_dest(destination, block, expr));
             let popped = this.block_context.pop();
 
             assert!(popped.map_or(false, |bf| bf.is_tail_expr()));
@@ -194,13 +187,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if destination_ty.is_unit() {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
-                this.cfg.push_assign_unit(block, source_info, destination, this.hir.tcx());
+                this.cfg.push_assign_unit(block, source_info, destination, this.tcx);
             }
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block
         // itself.
         for scope in let_scope_stack.into_iter().rev() {
-            unpack!(block = this.pop_scope((scope, source_info), block));
+            unpack!(block = this.pop_scope((*scope, source_info), block));
         }
         // Restore the original source scope.
         this.source_scope = outer_source_scope;
@@ -220,7 +213,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Safety::Safe => {}
                     // no longer treat `unsafe fn`s as `unsafe` contexts (see RFC #2585)
                     Safety::FnUnsafe
-                        if self.hir.tcx().lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, hir_id).0
+                        if self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, hir_id).0
                             != Level::Allow => {}
                     _ => return,
                 }

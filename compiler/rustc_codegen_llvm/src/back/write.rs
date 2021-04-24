@@ -1,4 +1,3 @@
-use crate::attributes;
 use crate::back::lto::ThinBuffer;
 use crate::back::profiling::{
     selfprofile_after_pass_callback, selfprofile_before_pass_callback, LlvmSelfProfiler,
@@ -24,11 +23,11 @@ use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{self, Lto, OutputType, Passes, SanitizerSet, SwitchWithOptPath};
+use rustc_session::config::{self, Lto, OutputType, Passes, SwitchWithOptPath};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::InnerSpan;
-use rustc_target::spec::{CodeModel, RelocModel, SplitDebuginfo};
+use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo};
 use tracing::debug;
 
 use libc::{c_char, c_int, c_uint, c_void, size_t};
@@ -140,7 +139,7 @@ fn to_llvm_relocation_model(relocation_model: RelocModel) -> llvm::RelocModel {
     }
 }
 
-fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
+pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeModel {
     match code_model {
         Some(CodeModel::Tiny) => llvm::CodeModel::Tiny,
         Some(CodeModel::Small) => llvm::CodeModel::Small,
@@ -166,23 +165,18 @@ pub fn target_machine_factory(
 
     let code_model = to_llvm_code_model(sess.code_model());
 
-    let mut features = llvm_util::handle_native_features(sess);
-    features.extend(attributes::llvm_target_features(sess).map(|s| s.to_owned()));
     let mut singlethread = sess.target.singlethread;
 
     // On the wasm target once the `atomics` feature is enabled that means that
     // we're no longer single-threaded, or otherwise we don't want LLVM to
     // lower atomic operations to single-threaded operations.
-    if singlethread
-        && sess.target.llvm_target.contains("wasm32")
-        && sess.target_features.contains(&sym::atomics)
-    {
+    if singlethread && sess.target.is_like_wasm && sess.target_features.contains(&sym::atomics) {
         singlethread = false;
     }
 
     let triple = SmallCStr::new(&sess.target.llvm_target);
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = features.join(",");
+    let features = llvm_util::llvm_global_features(sess).join(",");
     let features = CString::new(features).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
     let trap_unreachable =
@@ -549,6 +543,15 @@ pub(crate) unsafe fn optimize(
                 if pass_name == "lint" {
                     // Linting should also be performed early, directly on the generated IR.
                     llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
+                    continue;
+                }
+                if pass_name == "insert-gcov-profiling" || pass_name == "instrprof" {
+                    // Instrumentation must be inserted before optimization,
+                    // otherwise LLVM may optimize some functions away which
+                    // breaks llvm-cov.
+                    //
+                    // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
+                    llvm::LLVMRustAddPass(mpm, find_pass(pass_name).unwrap());
                     continue;
                 }
 
@@ -1044,7 +1047,7 @@ pub unsafe fn with_llvm_pmb(
     // thresholds copied from clang.
     match (opt_level, opt_size, inline_threshold) {
         (.., Some(t)) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t as u32);
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t);
         }
         (llvm::CodeGenOptLevel::Aggressive, ..) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);

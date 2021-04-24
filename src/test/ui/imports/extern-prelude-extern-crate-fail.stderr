@@ -1,5 +1,5 @@
 error: macro-expanded `extern crate` items cannot shadow names passed with `--extern`
-  --> $DIR/extern-prelude-extern-crate-fail.rs:18:9
+  --> $DIR/extern-prelude-extern-crate-fail.rs:16:9
    |
 LL |         extern crate std as non_existent;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | define_std_as_non_existent!();
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared crate or module `two_macros`
-  --> $DIR/extern-prelude-extern-crate-fail.rs:12:9
+  --> $DIR/extern-prelude-extern-crate-fail.rs:10:9
    |
 LL |         two_macros::m!();
    |         ^^^^^^^^^^ use of undeclared crate or module `two_macros`

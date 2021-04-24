@@ -1,0 +1,18 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/coherence.rs:4:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/coherence.rs:17:6
+   |
+LL | impl<T> foreign_crate::ForeignTrait for AliasOfForeignType<T> {}
+   |      ^ unconstrained type parameter
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0207`.

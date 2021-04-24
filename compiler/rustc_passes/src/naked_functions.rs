@@ -46,7 +46,7 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
         let fn_header;
 
         match fk {
-            FnKind::Closure(..) => {
+            FnKind::Closure => {
                 // Closures with a naked attribute are rejected during attribute
                 // check. Don't validate them any further.
                 return;
@@ -62,7 +62,8 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
             }
         }
 
-        let naked = fk.attrs().iter().any(|attr| attr.has_name(sym::naked));
+        let attrs = self.tcx.hir().attrs(hir_id);
+        let naked = attrs.iter().any(|attr| attr.has_name(sym::naked));
         if naked {
             let body = self.tcx.hir().body(body_id);
             check_abi(self.tcx, hir_id, fn_header.abi, ident_span);

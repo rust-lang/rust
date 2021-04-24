@@ -28,6 +28,7 @@ use std::fmt;
 
 use super::InferCtxtPrivExt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 
 #[derive(Debug)]
 pub enum GeneratorInteriorOrUpvar {
@@ -65,7 +66,7 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     );
 
@@ -73,7 +74,7 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: &ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         points_at_arg: bool,
         has_custom_message: bool,
     ) -> bool;
@@ -82,14 +83,14 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     );
 
     fn suggest_change_mut(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     );
 
@@ -98,7 +99,7 @@ pub trait InferCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     );
 
     fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span>;
@@ -108,7 +109,7 @@ pub trait InferCtxtExt<'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
         obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ) -> bool;
 
     fn point_at_returns_when_relevant(
@@ -170,7 +171,7 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         span: Span,
     );
 }
@@ -440,7 +441,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
-                    let constraint = trait_ref.print_only_trait_path().to_string();
+                    let constraint =
+                        with_no_trimmed_paths(|| trait_ref.print_only_trait_path().to_string());
                     if suggest_constraining_type_param(
                         self.tcx,
                         generics,
@@ -583,7 +585,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     ) {
         let self_ty = match trait_ref.self_ty().no_bound_vars() {
@@ -676,7 +678,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: &ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         points_at_arg: bool,
         has_custom_message: bool,
     ) -> bool {
@@ -761,7 +763,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ) {
         let span = obligation.cause.span;
 
@@ -824,7 +826,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         points_at_arg: bool,
     ) {
         let span = obligation.cause.span;
@@ -896,10 +898,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ) {
         let is_empty_tuple =
-            |ty: ty::Binder<Ty<'_>>| *ty.skip_binder().kind() == ty::Tuple(ty::List::empty());
+            |ty: ty::Binder<'tcx, Ty<'_>>| *ty.skip_binder().kind() == ty::Tuple(ty::List::empty());
 
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
@@ -948,7 +950,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
         obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
     ) -> bool {
         match obligation.cause.code.peel_derives() {
             // Only suggest `impl Trait` if the return type is unsized because it is `dyn Trait`.
@@ -1840,6 +1842,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
             | ObligationCauseCode::UnifyReceiver(..)
+            | ObligationCauseCode::OpaqueType
             | ObligationCauseCode::MiscObligation => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
@@ -1908,7 +1911,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 if is_const_fn {
                     err.help(
-                        "consider creating a new `const` item and initializing with the result \
+                        "consider creating a new `const` item and initializing it with the result \
                         of the function call to be used in the repeat position, like \
                         `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
                     );
@@ -1916,7 +1919,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 if self.tcx.sess.is_nightly_build() && is_const_fn {
                     err.help(
-                        "create an inline `const` block, see PR \
+                        "create an inline `const` block, see RFC \
                         #2920 <https://github.com/rust-lang/rfcs/pull/2920> \
                         for more information",
                     );
@@ -2067,7 +2070,14 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 // Don't print the tuple of capture types
                 if !is_upvar_tys_infer_tuple {
-                    err.note(&format!("required because it appears within the type `{}`", ty));
+                    let msg = format!("required because it appears within the type `{}`", ty);
+                    match ty.kind() {
+                        ty::Adt(def, _) => match self.tcx.opt_item_name(def.did) {
+                            Some(ident) => err.span_note(ident.span, &msg),
+                            None => err.note(&msg),
+                        },
+                        _ => err.note(&msg),
+                    };
                 }
 
                 obligated_types.push(ty);
@@ -2089,11 +2099,36 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ImplDerivedObligation(ref data) => {
                 let mut parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_ref);
                 let parent_def_id = parent_trait_ref.def_id();
-                err.note(&format!(
+                let msg = format!(
                     "required because of the requirements on the impl of `{}` for `{}`",
                     parent_trait_ref.print_only_trait_path(),
                     parent_trait_ref.skip_binder().self_ty()
-                ));
+                );
+                let mut candidates = vec![];
+                self.tcx.for_each_relevant_impl(
+                    parent_def_id,
+                    parent_trait_ref.self_ty().skip_binder(),
+                    |impl_def_id| {
+                        candidates.push(impl_def_id);
+                    },
+                );
+                match &candidates[..] {
+                    [def_id] => match self.tcx.hir().get_if_local(*def_id) {
+                        Some(Node::Item(hir::Item {
+                            kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                            ..
+                        })) => {
+                            let mut spans = Vec::with_capacity(2);
+                            if let Some(trait_ref) = of_trait {
+                                spans.push(trait_ref.path.span);
+                            }
+                            spans.push(self_ty.span);
+                            err.span_note(spans, &msg)
+                        }
+                        _ => err.note(&msg),
+                    },
+                    _ => err.note(&msg),
+                };
 
                 let mut parent_predicate = parent_trait_ref.without_const().to_predicate(tcx);
                 let mut data = data;
@@ -2144,19 +2179,60 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     )
                 });
             }
-            ObligationCauseCode::CompareImplMethodObligation { .. } => {
-                err.note(&format!(
-                    "the requirement `{}` appears on the impl method but not on the corresponding \
-                     trait method",
-                    predicate
-                ));
+            ObligationCauseCode::CompareImplMethodObligation {
+                item_name,
+                trait_item_def_id,
+                ..
+            } => {
+                let msg = format!(
+                    "the requirement `{}` appears on the impl method `{}` but not on the \
+                     corresponding trait method",
+                    predicate, item_name,
+                );
+                let sp = self
+                    .tcx
+                    .opt_item_name(trait_item_def_id)
+                    .map(|i| i.span)
+                    .unwrap_or_else(|| self.tcx.def_span(trait_item_def_id));
+                let mut assoc_span: MultiSpan = sp.into();
+                assoc_span.push_span_label(
+                    sp,
+                    format!("this trait method doesn't have the requirement `{}`", predicate),
+                );
+                if let Some(ident) = self
+                    .tcx
+                    .opt_associated_item(trait_item_def_id)
+                    .and_then(|i| self.tcx.opt_item_name(i.container.id()))
+                {
+                    assoc_span.push_span_label(ident.span, "in this trait".into());
+                }
+                err.span_note(assoc_span, &msg);
             }
-            ObligationCauseCode::CompareImplTypeObligation { .. } => {
-                err.note(&format!(
-                    "the requirement `{}` appears on the associated impl type but not on the \
+            ObligationCauseCode::CompareImplTypeObligation {
+                item_name, trait_item_def_id, ..
+            } => {
+                let msg = format!(
+                    "the requirement `{}` appears on the associated impl type `{}` but not on the \
                      corresponding associated trait type",
-                    predicate
-                ));
+                    predicate, item_name,
+                );
+                let sp = self.tcx.def_span(trait_item_def_id);
+                let mut assoc_span: MultiSpan = sp.into();
+                assoc_span.push_span_label(
+                    sp,
+                    format!(
+                        "this trait associated type doesn't have the requirement `{}`",
+                        predicate,
+                    ),
+                );
+                if let Some(ident) = self
+                    .tcx
+                    .opt_associated_item(trait_item_def_id)
+                    .and_then(|i| self.tcx.opt_item_name(i.container.id()))
+                {
+                    assoc_span.push_span_label(ident.span, "in this trait".into());
+                }
+                err.span_note(assoc_span, &msg);
             }
             ObligationCauseCode::CompareImplConstObligation => {
                 err.note(&format!(
@@ -2190,7 +2266,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
-        trait_ref: ty::Binder<ty::TraitRef<'tcx>>,
+        trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
         span: Span,
     ) {
         debug!(

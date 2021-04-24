@@ -15,8 +15,8 @@ use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
-use rustc_index::vec::IndexVec;
 use rustc_lint::LintStore;
+use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::middle;
@@ -302,8 +302,10 @@ fn configure_and_expand_inner<'a>(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let extern_mod_loaded = |k: &ast::Crate, ident: Ident| {
-            pre_expansion_lint(sess, lint_store, k, &*ident.name.as_str())
+        let extern_mod_loaded = |ident: Ident, attrs, items, span| {
+            let krate = ast::Crate { attrs, items, span, proc_macros: vec![] };
+            pre_expansion_lint(sess, lint_store, &krate, &ident.name.as_str());
+            (krate.attrs, krate.items)
         };
         let mut ecx = ExtCtxt::new(&sess, cfg, &mut resolver, Some(&extern_mod_loaded));
 
@@ -786,13 +788,7 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let queries = {
-        let crates = resolver_outputs.cstore.crates_untracked();
-        let max_cnum = crates.iter().map(|c| c.as_usize()).max().unwrap_or(0);
-        let mut providers = IndexVec::from_elem_n(extern_providers, max_cnum + 1);
-        providers[LOCAL_CRATE] = local_providers;
-        queries.get_or_init(|| TcxQueries::new(providers, extern_providers))
-    };
+    let queries = queries.get_or_init(|| TcxQueries::new(local_providers, extern_providers));
 
     let gcx = sess.time("setup_global_ctxt", || {
         global_ctxt.get_or_init(|| {
@@ -836,6 +832,12 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 });
 
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
+
+                let cstore = tcx
+                    .cstore_as_any()
+                    .downcast_ref::<CStore>()
+                    .expect("`tcx.cstore` is not a `CStore`");
+                cstore.report_unused_deps(tcx);
             },
             {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
@@ -988,7 +990,7 @@ fn encode_and_write_metadata(
             .unwrap_or_else(|err| tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
         let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
-        if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
+        if let Err(e) = util::non_durable_rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
         if tcx.sess.opts.json_artifact_notifications {
@@ -1025,9 +1027,6 @@ pub fn start_codegen<'tcx>(
         rustc_incremental::assert_module_sources::assert_module_sources(tcx);
         rustc_symbol_mangling::test::report_symbol_names(tcx);
     }
-
-    tcx.sess.time("assert_dep_graph", || rustc_incremental::assert_dep_graph(tcx));
-    tcx.sess.time("serialize_dep_graph", || rustc_incremental::save_dep_graph(tcx));
 
     info!("Post-codegen\n{:?}", tcx.debug_stats());
 

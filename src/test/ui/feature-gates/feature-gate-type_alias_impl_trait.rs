@@ -1,50 +1,37 @@
 // ignore-compare-mode-chalk
+#![feature(min_type_alias_impl_trait)]
 use std::fmt::Debug;
 
-type Foo = impl Debug; //~ ERROR `impl Trait` in type aliases is unstable
+type Foo = impl Debug;
+//~^ ERROR could not find defining uses
 
-trait Bar {
-    type Baa: Debug;
-    fn define() -> Self::Baa;
+struct Bar(Foo);
+fn define() -> Bar {
+    Bar(42) //~ ERROR mismatched types
 }
 
-impl Bar for () {
-    type Baa = impl Debug; //~ ERROR `impl Trait` in type aliases is unstable
-    fn define() -> Self::Baa {
-        0
-    }
+type Foo2 = impl Debug;
+
+fn define2() {
+    let x = || -> Foo2 { 42 }; //~ ERROR not permitted here
 }
 
-fn define() -> Foo {
-    0
+type Foo3 = impl Debug;
+//~^ ERROR could not find defining uses
+
+fn define3(x: Foo3) {
+    let y: i32 = x; //~ ERROR mismatched types
+}
+fn define3_1() {
+    define3(42) //~ ERROR mismatched types
 }
 
-trait TraitWithDefault {
-    type Assoc = impl Debug;
-    //~^ ERROR associated type defaults are unstable
-    //~| ERROR `impl Trait` not allowed outside of function
-    //~| ERROR `impl Trait` in type aliases is unstable
-}
+type Foo4 = impl Debug;
+//~^ ERROR could not find defining uses
 
-type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
-//~^ ERROR `impl Trait` in type aliases is unstable
-//~| ERROR `impl Trait` in type aliases is unstable
-//~| ERROR `impl Trait` in type aliases is unstable
-//~| ERROR `impl Trait` in type aliases is unstable
-
-fn define_multiple() -> NestedFree {
-    (vec![true], 0u8, 0i32..1)
-}
-
-impl Bar for u8 {
-    type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug> + Debug);
-    //~^ ERROR `impl Trait` in type aliases is unstable
-    //~| ERROR `impl Trait` in type aliases is unstable
-    //~| ERROR `impl Trait` in type aliases is unstable
-    //~| ERROR `impl Trait` in type aliases is unstable
-    fn define() -> Self::Baa {
-        (vec![true], 0u8, 0i32..1)
-    }
+fn define4() {
+    let y: Foo4 = 42;
+    //~^ ERROR not permitted here
 }
 
 fn main() {}

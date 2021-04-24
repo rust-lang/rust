@@ -7,7 +7,6 @@ use crate::passes::Pass;
 use rustc_lint::builtin::MISSING_DOCS;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
-use rustc_span::symbol::sym;
 use rustc_span::FileName;
 use serde::Serialize;
 
@@ -193,44 +192,13 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 // don't count items in stripped modules
                 return Some(i);
             }
-            clean::ImportItem(..) | clean::ExternCrateItem(..) => {
-                // docs on `use` and `extern crate` statements are not displayed, so they're not
-                // worth counting
-                return Some(i);
-            }
-            clean::ImplItem(ref impl_)
-                if i.attrs
-                    .other_attrs
-                    .iter()
-                    .any(|item| item.has_name(sym::automatically_derived))
-                    || impl_.synthetic
-                    || impl_.blanket_impl.is_some() =>
-            {
-                // built-in derives get the `#[automatically_derived]` attribute, and
-                // synthetic/blanket impls are made up by rustdoc and can't be documented
-                // FIXME(misdreavus): need to also find items that came out of a derive macro
-                return Some(i);
-            }
-            clean::ImplItem(ref impl_) => {
-                let filename = i.source.filename(self.ctx.sess());
-                if let Some(ref tr) = impl_.trait_ {
-                    debug!(
-                        "impl {:#} for {:#} in {}",
-                        tr.print(&self.ctx.cache),
-                        impl_.for_.print(&self.ctx.cache),
-                        filename,
-                    );
-
-                    // don't count trait impls, the missing-docs lint doesn't so we shouldn't
-                    // either
-                    return Some(i);
-                } else {
-                    // inherent impls *can* be documented, and those docs show up, but in most
-                    // cases it doesn't make sense, as all methods on a type are in one single
-                    // impl block
-                    debug!("impl {:#} in {}", impl_.for_.print(&self.ctx.cache), filename);
-                }
-            }
+            // docs on `use` and `extern crate` statements are not displayed, so they're not
+            // worth counting
+            clean::ImportItem(..) | clean::ExternCrateItem { .. } => {}
+            // Don't count trait impls, the missing-docs lint doesn't so we shouldn't either.
+            // Inherent impls *can* be documented, and those docs show up, but in most cases it
+            // doesn't make sense, as all methods on a type are in one single impl block
+            clean::ImplItem(_) => {}
             _ => {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
@@ -243,7 +211,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                     None,
                 );
 
-                let filename = i.source.filename(self.ctx.sess());
+                let filename = i.span.filename(self.ctx.sess());
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = self.ctx.tcx.hir().local_def_id_to_hir_id(i.def_id.expect_local());
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);

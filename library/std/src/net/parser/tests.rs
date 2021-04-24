@@ -8,11 +8,15 @@ const SCOPE_ID: u32 = 1337;
 const IPV4: Ipv4Addr = Ipv4Addr::new(192, 168, 0, 1);
 const IPV4_STR: &str = "192.168.0.1";
 const IPV4_STR_PORT: &str = "192.168.0.1:8080";
+const IPV4_STR_WITH_OCTAL: &str = "0127.0.0.1";
+const IPV4_STR_WITH_HEX: &str = "0x10.0.0.1";
 
 const IPV6: Ipv6Addr = Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0xc0a8, 0x1);
 const IPV6_STR_FULL: &str = "2001:db8:0:0:0:0:c0a8:1";
 const IPV6_STR_COMPRESS: &str = "2001:db8::c0a8:1";
 const IPV6_STR_V4: &str = "2001:db8::192.168.0.1";
+const IPV6_STR_V4_WITH_OCTAL: &str = "2001:db8::0127.0.0.1";
+const IPV6_STR_V4_WITH_HEX: &str = "2001:db8::0x10.0.0.1";
 const IPV6_STR_PORT: &str = "[2001:db8::c0a8:1]:8080";
 const IPV6_STR_PORT_SCOPE_ID: &str = "[2001:db8::c0a8:1%1337]:8080";
 
@@ -22,6 +26,8 @@ fn parse_ipv4() {
     assert_eq!(result, IPV4);
 
     assert!(Ipv4Addr::from_str(IPV4_STR_PORT).is_err());
+    assert!(Ipv4Addr::from_str(IPV4_STR_WITH_OCTAL).is_err());
+    assert!(Ipv4Addr::from_str(IPV4_STR_WITH_HEX).is_err());
     assert!(Ipv4Addr::from_str(IPV6_STR_FULL).is_err());
     assert!(Ipv4Addr::from_str(IPV6_STR_COMPRESS).is_err());
     assert!(Ipv4Addr::from_str(IPV6_STR_V4).is_err());
@@ -39,6 +45,8 @@ fn parse_ipv6() {
     let result: Ipv6Addr = IPV6_STR_V4.parse().unwrap();
     assert_eq!(result, IPV6);
 
+    assert!(Ipv6Addr::from_str(IPV6_STR_V4_WITH_OCTAL).is_err());
+    assert!(Ipv6Addr::from_str(IPV6_STR_V4_WITH_HEX).is_err());
     assert!(Ipv6Addr::from_str(IPV4_STR).is_err());
     assert!(Ipv6Addr::from_str(IPV4_STR_PORT).is_err());
     assert!(Ipv6Addr::from_str(IPV6_STR_PORT).is_err());

@@ -145,6 +145,6 @@ impl fmt::Display for EscapeDefault {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for EscapeDefault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("EscapeDefault { .. }")
+        f.debug_struct("EscapeDefault").finish_non_exhaustive()
     }
 }

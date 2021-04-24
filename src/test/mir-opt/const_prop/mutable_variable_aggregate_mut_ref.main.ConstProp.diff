@@ -25,7 +25,7 @@
           ((*_2).1: i32) = const 99_i32;   // scope 2 at $DIR/mutable_variable_aggregate_mut_ref.rs:7:5: 7:13
           StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_aggregate_mut_ref.rs:8:9: 8:10
           _3 = _1;                         // scope 2 at $DIR/mutable_variable_aggregate_mut_ref.rs:8:13: 8:14
-          _0 = const ();                   // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:4:11: 9:2
+          nop;                             // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:4:11: 9:2
           StorageDead(_3);                 // scope 2 at $DIR/mutable_variable_aggregate_mut_ref.rs:9:1: 9:2
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_aggregate_mut_ref.rs:9:1: 9:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_aggregate_mut_ref.rs:9:1: 9:2

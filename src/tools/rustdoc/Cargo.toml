@@ -13,3 +13,6 @@ path = "main.rs"
 
 [dependencies]
 rustdoc = { path = "../../librustdoc" }
+
+[features]
+jemalloc = ['rustdoc/jemalloc']

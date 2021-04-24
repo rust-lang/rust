@@ -109,6 +109,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
     fn visit_anon_const(&mut self, c: &'a ast::AnonConst) {
         run_early_pass!(self, check_anon_const, c);
+        self.check_id(c.id);
         ast_visit::walk_anon_const(self, c);
     }
 
@@ -163,10 +164,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         run_early_pass!(self, check_struct_def_post, s);
     }
 
-    fn visit_struct_field(&mut self, s: &'a ast::StructField) {
+    fn visit_field_def(&mut self, s: &'a ast::FieldDef) {
         self.with_lint_attrs(s.id, &s.attrs, |cx| {
-            run_early_pass!(cx, check_struct_field, s);
-            ast_visit::walk_struct_field(cx, s);
+            run_early_pass!(cx, check_field_def, s);
+            ast_visit::walk_field_def(cx, s);
         })
     }
 

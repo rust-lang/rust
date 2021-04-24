@@ -5,17 +5,18 @@ use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
-/// This `struct` is created by [`Iterator::zip`]. See its documentation
-/// for more.
+/// This `struct` is created by [`zip`] or [`Iterator::zip`].
+/// See their documentation for more.
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Zip<A, B> {
     a: A,
     b: B,
-    // index and len are only used by the specialized version of zip
+    // index, len and a_len are only used by the specialized version of zip
     index: usize,
     len: usize,
+    a_len: usize,
 }
 impl<A: Iterator, B: Iterator> Zip<A, B> {
     pub(in crate::iter) fn new(a: A, b: B) -> Zip<A, B> {
@@ -30,6 +31,37 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
         }
         None
     }
+}
+
+/// Converts the arguments to iterators and zips them.
+///
+/// See the documentation of [`Iterator::zip`] for more.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(iter_zip)]
+/// use std::iter::zip;
+///
+/// let xs = [1, 2, 3];
+/// let ys = [4, 5, 6];
+/// for (x, y) in zip(&xs, &ys) {
+///     println!("x:{}, y:{}", x, y);
+/// }
+///
+/// // Nested zips are also possible:
+/// let zs = [7, 8, 9];
+/// for ((x, y), z) in zip(zip(&xs, &ys), &zs) {
+///     println!("x:{}, y:{}, z:{}", x, y, z);
+/// }
+/// ```
+#[unstable(feature = "iter_zip", issue = "83574")]
+pub fn zip<A, B>(a: A, b: B) -> Zip<A::IntoIter, B::IntoIter>
+where
+    A: IntoIterator,
+    B: IntoIterator,
+{
+    ZipImpl::new(a.into_iter(), b.into_iter())
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -110,6 +142,7 @@ where
             b,
             index: 0, // unused
             len: 0,   // unused
+            a_len: 0, // unused
         }
     }
 
@@ -184,8 +217,9 @@ where
     B: TrustedRandomAccess + Iterator,
 {
     fn new(a: A, b: B) -> Self {
-        let len = cmp::min(a.size(), b.size());
-        Zip { a, b, index: 0, len }
+        let a_len = a.size();
+        let len = cmp::min(a_len, b.size());
+        Zip { a, b, index: 0, len, a_len }
     }
 
     #[inline]
@@ -197,9 +231,10 @@ where
             unsafe {
                 Some((self.a.__iterator_get_unchecked(i), self.b.__iterator_get_unchecked(i)))
             }
-        } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a.size() {
+        } else if A::MAY_HAVE_SIDE_EFFECT && self.index < self.a_len {
             let i = self.index;
             self.index += 1;
+            self.len += 1;
             // match the base implementation's potential side effects
             // SAFETY: we just checked that `i` < `self.a.len()`
             unsafe {
@@ -258,9 +293,10 @@ where
             if sz_a != sz_b {
                 let sz_a = self.a.size();
                 if A::MAY_HAVE_SIDE_EFFECT && sz_a > self.len {
-                    for _ in 0..sz_a - cmp::max(self.len, self.index) {
+                    for _ in 0..sz_a - self.len {
                         self.a.next_back();
                     }
+                    self.a_len = self.len;
                 }
                 let sz_b = self.b.size();
                 if B::MAY_HAVE_SIDE_EFFECT && sz_b > self.len {
@@ -272,6 +308,7 @@ where
         }
         if self.index < self.len {
             self.len -= 1;
+            self.a_len -= 1;
             let i = self.len;
             // SAFETY: `i` is smaller than the previous value of `self.len`,
             // which is also smaller than or equal to `self.a.len()` and `self.b.len()`

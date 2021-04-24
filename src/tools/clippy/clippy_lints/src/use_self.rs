@@ -1,6 +1,7 @@
-use crate::utils::{in_macro, meets_msrv, snippet_opt, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_opt;
+use clippy_utils::{in_macro, meets_msrv};
 use if_chain::if_chain;
-
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -103,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 of_trait,
                 ..
             }) => {
-                let should_check = if let TyKind::Path(QPath::Resolved(_, ref item_path)) = hir_self_ty.kind {
+                let should_check = if let TyKind::Path(QPath::Resolved(_, item_path)) = hir_self_ty.kind {
                     let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                     parameters.as_ref().map_or(true, |params| {
                         !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
@@ -196,7 +197,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 for (impl_hir_ty, trait_sem_ty) in impl_inputs_outputs.zip(trait_method_sig.inputs_and_output) {
                     if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
                         let mut visitor = SkipTyCollector::default();
-                        visitor.visit_ty(&impl_hir_ty);
+                        visitor.visit_ty(impl_hir_ty);
                         types_to_skip.extend(visitor.types_to_skip);
                     }
                 }
@@ -262,12 +263,17 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             // FIXME: this span manipulation should not be necessary
             // @flip1995 found an ast lowering issue in
             // https://github.com/rust-lang/rust/blob/master/src/librustc_ast_lowering/path.rs#l142-l162
-            match cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_ty.hir_id)) {
-                Some(Node::Expr(Expr {
-                    kind: ExprKind::Path(QPath::TypeRelative(_, segment)),
-                    ..
-                })) => span_lint_until_last_segment(cx, hir_ty.span, segment),
-                _ => span_lint(cx, hir_ty.span),
+            let hir = cx.tcx.hir();
+            let id = hir.get_parent_node(hir_ty.hir_id);
+
+            if !hir.opt_span(id).map_or(false, in_macro) {
+                match hir.find(id) {
+                    Some(Node::Expr(Expr {
+                        kind: ExprKind::Path(QPath::TypeRelative(_, segment)),
+                        ..
+                    })) => span_lint_until_last_segment(cx, hir_ty.span, segment),
+                    _ => span_lint(cx, hir_ty.span),
+                }
             }
         }
     }
@@ -327,7 +333,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 // unit enum variants (`Enum::A`)
                 ExprKind::Path(qpath) => {
                     if expr_ty_matches(cx, expr, self_ty) {
-                        span_lint_on_qpath_resolved(cx, &qpath, true);
+                        span_lint_on_qpath_resolved(cx, qpath, true);
                     }
                 },
                 _ => (),

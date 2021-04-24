@@ -36,11 +36,6 @@ impl<K: DepKind> PreviousDepGraph<K> {
     }
 
     #[inline]
-    pub fn node_to_index(&self, dep_node: &DepNode<K>) -> SerializedDepNodeIndex {
-        self.index[dep_node]
-    }
-
-    #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode<K>) -> Option<SerializedDepNodeIndex> {
         self.index.get(dep_node).cloned()
     }

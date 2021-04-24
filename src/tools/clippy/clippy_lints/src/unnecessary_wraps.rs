@@ -1,7 +1,6 @@
-use crate::utils::{
-    contains_return, in_macro, match_qpath, paths, return_ty, snippet, span_lint_and_then,
-    visitors::find_all_ret_expressions,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet;
+use clippy_utils::{contains_return, in_macro, match_qpath, paths, return_ty, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -66,13 +65,13 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
     ) {
         // Abort if public function/method or closure.
         match fn_kind {
-            FnKind::ItemFn(.., visibility, _) | FnKind::Method(.., Some(visibility), _) => {
+            FnKind::ItemFn(.., visibility) | FnKind::Method(.., Some(visibility)) => {
                 if visibility.node.is_pub() {
                     return;
                 }
             },
-            FnKind::Closure(..) => return,
-            _ => (),
+            FnKind::Closure => return,
+            FnKind::Method(..) => (),
         }
 
         // Abort if the method is implementing a trait or of it a trait method.
@@ -104,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             if_chain! {
                 if !in_macro(ret_expr.span);
                 // Check if a function call.
-                if let ExprKind::Call(ref func, ref args) = ret_expr.kind;
+                if let ExprKind::Call(func, args) = ret_expr.kind;
                 // Get the Path of the function call.
                 if let ExprKind::Path(ref qpath) = func.kind;
                 // Check if OPTION_SOME or RESULT_OK, depending on return type.

@@ -3,7 +3,6 @@
 
 // Require a gdb that can read DW_TAG_variant_part.
 // min-gdb-version: 8.2
-// ignore-tidy-linelength
 
 // compile-flags:-g
 

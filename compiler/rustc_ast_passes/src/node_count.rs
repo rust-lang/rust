@@ -88,9 +88,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_struct_def(self, s)
     }
-    fn visit_struct_field(&mut self, s: &StructField) {
+    fn visit_field_def(&mut self, s: &FieldDef) {
         self.count += 1;
-        walk_struct_field(self, s)
+        walk_field_def(self, s)
     }
     fn visit_enum_def(
         &mut self,

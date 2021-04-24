@@ -1,4 +1,4 @@
-// no-system-llvm
+// min-llvm-version: 10.0.1
 // assembly-output: emit-asm
 // compile-flags: --target nvptx64-nvidia-cuda
 // compile-flags: --crate-type cdylib

@@ -340,3 +340,13 @@ mod issue5435 {
         }
     }
 }
+
+// issue #1724
+struct RetOtherSelf<T>(T);
+struct RetOtherSelfWrapper<T>(T);
+
+impl RetOtherSelf<T> {
+    fn new(t: T) -> RetOtherSelf<RetOtherSelfWrapper<T>> {
+        RetOtherSelf(RetOtherSelfWrapper(t))
+    }
+}

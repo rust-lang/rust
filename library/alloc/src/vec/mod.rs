@@ -58,7 +58,7 @@ use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::FromIterator;
+use core::iter::{self, FromIterator};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
@@ -126,7 +126,7 @@ use self::spec_extend::SpecExtend;
 
 mod spec_extend;
 
-/// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
+/// A contiguous growable array type, written as `Vec<T>` and pronounced 'vector'.
 ///
 /// # Examples
 ///
@@ -215,7 +215,7 @@ mod spec_extend;
 ///
 /// # Slicing
 ///
-/// A `Vec` can be mutable. Slices, on the other hand, are read-only objects.
+/// A `Vec` can be mutable. On the other hand, slices are read-only objects.
 /// To get a [slice][prim@slice], use [`&`]. Example:
 ///
 /// ```
@@ -267,12 +267,12 @@ mod spec_extend;
 /// unspecified, and you should use the appropriate methods to modify these.
 /// The pointer will never be null, so this type is null-pointer-optimized.
 ///
-/// However, the pointer may not actually point to allocated memory. In particular,
+/// However, the pointer might not actually point to allocated memory. In particular,
 /// if you construct a `Vec` with capacity 0 via [`Vec::new`], [`vec![]`][`vec!`],
 /// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit`]
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
-/// the `Vec` may not report a [`capacity`] of 0*. `Vec` will allocate if and only
+/// the `Vec` might not report a [`capacity`] of 0*. `Vec` will allocate if and only
 /// if [`mem::size_of::<T>`]`() * capacity() > 0`. In general, `Vec`'s allocation
 /// details are very subtle &mdash; if you intend to allocate memory using a `Vec`
 /// and use it for something else (either to pass to unsafe code, or to build your
@@ -347,12 +347,12 @@ mod spec_extend;
 /// whatever is most efficient or otherwise easy to implement. Do not rely on
 /// removed data to be erased for security purposes. Even if you drop a `Vec`, its
 /// buffer may simply be reused by another `Vec`. Even if you zero a `Vec`'s memory
-/// first, that may not actually happen because the optimizer does not consider
+/// first, that might not actually happen because the optimizer does not consider
 /// this a side-effect that must be preserved. There is one case which we will
 /// not break, however: using `unsafe` code to write to the excess capacity,
 /// and then increasing the length to match, is always valid.
 ///
-/// `Vec` does not currently guarantee the order in which elements are dropped.
+/// Currently, `Vec` does not guarantee the order in which elements are dropped.
 /// The order has changed in the past and may change again.
 ///
 /// [`get`]: ../../std/vec/struct.Vec.html#method.get
@@ -409,6 +409,10 @@ impl<T> Vec<T> {
     /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -540,6 +544,10 @@ impl<T, A: Allocator> Vec<T, A> {
     /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity exceeds `isize::MAX` bytes.
     ///
     /// # Examples
     ///
@@ -1512,15 +1520,98 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
     /// ```
     #[stable(feature = "dedup_by", since = "1.16.0")]
-    pub fn dedup_by<F>(&mut self, same_bucket: F)
+    pub fn dedup_by<F>(&mut self, mut same_bucket: F)
     where
         F: FnMut(&mut T, &mut T) -> bool,
     {
-        let len = {
-            let (dedup, _) = self.as_mut_slice().partition_dedup_by(same_bucket);
-            dedup.len()
-        };
-        self.truncate(len);
+        let len = self.len();
+        if len <= 1 {
+            return;
+        }
+
+        /* INVARIANT: vec.len() > read >= write > write-1 >= 0 */
+        struct FillGapOnDrop<'a, T, A: core::alloc::Allocator> {
+            /* Offset of the element we want to check if it is duplicate */
+            read: usize,
+
+            /* Offset of the place where we want to place the non-duplicate
+             * when we find it. */
+            write: usize,
+
+            /* The Vec that would need correction if `same_bucket` panicked */
+            vec: &'a mut Vec<T, A>,
+        }
+
+        impl<'a, T, A: core::alloc::Allocator> Drop for FillGapOnDrop<'a, T, A> {
+            fn drop(&mut self) {
+                /* This code gets executed when `same_bucket` panics */
+
+                /* SAFETY: invariant guarantees that `read - write`
+                 * and `len - read` never overflow and that the copy is always
+                 * in-bounds. */
+                unsafe {
+                    let ptr = self.vec.as_mut_ptr();
+                    let len = self.vec.len();
+
+                    /* How many items were left when `same_bucket` paniced.
+                     * Basically vec[read..].len() */
+                    let items_left = len.wrapping_sub(self.read);
+
+                    /* Pointer to first item in vec[write..write+items_left] slice */
+                    let dropped_ptr = ptr.add(self.write);
+                    /* Pointer to first item in vec[read..] slice */
+                    let valid_ptr = ptr.add(self.read);
+
+                    /* Copy `vec[read..]` to `vec[write..write+items_left]`.
+                     * The slices can overlap, so `copy_nonoverlapping` cannot be used */
+                    ptr::copy(valid_ptr, dropped_ptr, items_left);
+
+                    /* How many items have been already dropped
+                     * Basically vec[read..write].len() */
+                    let dropped = self.read.wrapping_sub(self.write);
+
+                    self.vec.set_len(len - dropped);
+                }
+            }
+        }
+
+        let mut gap = FillGapOnDrop { read: 1, write: 1, vec: self };
+        let ptr = gap.vec.as_mut_ptr();
+
+        /* Drop items while going through Vec, it should be more efficient than
+         * doing slice partition_dedup + truncate */
+
+        /* SAFETY: Because of the invariant, read_ptr, prev_ptr and write_ptr
+         * are always in-bounds and read_ptr never aliases prev_ptr */
+        unsafe {
+            while gap.read < len {
+                let read_ptr = ptr.add(gap.read);
+                let prev_ptr = ptr.add(gap.write.wrapping_sub(1));
+
+                if same_bucket(&mut *read_ptr, &mut *prev_ptr) {
+                    /* We have found duplicate, drop it in-place */
+                    ptr::drop_in_place(read_ptr);
+                } else {
+                    let write_ptr = ptr.add(gap.write);
+
+                    /* Because `read_ptr` can be equal to `write_ptr`, we either
+                     * have to use `copy` or conditional `copy_nonoverlapping`.
+                     * Looks like the first option is faster. */
+                    ptr::copy(read_ptr, write_ptr, 1);
+
+                    /* We have filled that place, so go further */
+                    gap.write += 1;
+                }
+
+                gap.read += 1;
+            }
+
+            /* Technically we could let `gap` clean up with its Drop, but
+             * when `same_bucket` is guaranteed to not panic, this bloats a little
+             * the codegen, so we just do it manually */
+            gap.vec.set_len(gap.write);
+            mem::forget(gap);
+        }
     }
 
     /// Appends an element to the back of a collection.
@@ -1942,6 +2033,18 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "vec_split_at_spare", issue = "81944")]
     #[inline]
     pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
+        // SAFETY:
+        // - len is ignored and so never changed
+        let (init, spare, _) = unsafe { self.split_at_spare_mut_with_len() };
+        (init, spare)
+    }
+
+    /// Safety: changing returned .2 (&mut usize) is considered the same as calling `.set_len(_)`.
+    ///
+    /// This method provides unique access to all vec parts at once in `extend_from_within`.
+    unsafe fn split_at_spare_mut_with_len(
+        &mut self,
+    ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
         let Range { start: ptr, end: spare_ptr } = self.as_mut_ptr_range();
         let spare_ptr = spare_ptr.cast::<MaybeUninit<T>>();
         let spare_len = self.buf.capacity() - self.len;
@@ -1953,7 +2056,7 @@ impl<T, A: Allocator> Vec<T, A> {
             let initialized = slice::from_raw_parts_mut(ptr, self.len);
             let spare = slice::from_raw_parts_mut(spare_ptr, spare_len);
 
-            (initialized, spare)
+            (initialized, spare, &mut self.len)
         }
     }
 }
@@ -2165,22 +2268,20 @@ trait ExtendFromWithinSpec {
 
 impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
     default unsafe fn spec_extend_from_within(&mut self, src: Range<usize>) {
-        let initialized = {
-            let (this, spare) = self.split_at_spare_mut();
-
-            // SAFETY:
-            // - caller guaratees that src is a valid index
-            let to_clone = unsafe { this.get_unchecked(src) };
-
-            to_clone.iter().cloned().zip(spare.iter_mut()).map(|(e, s)| s.write(e)).count()
-        };
+        // SAFETY:
+        // - len is increased only after initializing elements
+        let (this, spare, len) = unsafe { self.split_at_spare_mut_with_len() };
 
         // SAFETY:
-        // - elements were just initialized
-        unsafe {
-            let new_len = self.len() + initialized;
-            self.set_len(new_len);
-        }
+        // - caller guaratees that src is a valid index
+        let to_clone = unsafe { this.get_unchecked(src) };
+
+        iter::zip(to_clone, spare)
+            .map(|(src, dst)| dst.write(src.clone()))
+            // Note:
+            // - Element was just initialized with `MaybeUninit::write`, so it's ok to increase len
+            // - len is increased after each element to prevent leaks (see issue #82533)
+            .for_each(|_| *len += 1);
     }
 }
 
@@ -2466,7 +2567,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
     /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
     /// let mut i = 0;
-    /// while i != vec.len() {
+    /// while i < vec.len() {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
     ///         // your code here
@@ -2616,6 +2717,13 @@ impl<T, A: Allocator> AsMut<[T]> for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> From<&[T]> for Vec<T> {
+    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from(&[1, 2, 3][..]), vec![1, 2, 3]);
+    /// ```
     #[cfg(not(test))]
     fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
@@ -2628,6 +2736,13 @@ impl<T: Clone> From<&[T]> for Vec<T> {
 
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
 impl<T: Clone> From<&mut [T]> for Vec<T> {
+    /// Allocate a `Vec<T>` and fill it by cloning `s`'s items.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from(&mut [1, 2, 3][..]), vec![1, 2, 3]);
+    /// ```
     #[cfg(not(test))]
     fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
@@ -2644,6 +2759,13 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     fn from(s: [T; N]) -> Vec<T> {
         <[T]>::into_vec(box s)
     }
+    /// Allocate a `Vec<T>` and move `s`'s items into it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from([1, 2, 3]), vec![1, 2, 3]);
+    /// ```
     #[cfg(test)]
     fn from(s: [T; N]) -> Vec<T> {
         crate::slice::into_vec(box s)
@@ -2655,6 +2777,20 @@ impl<'a, T> From<Cow<'a, [T]>> for Vec<T>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
+    /// Convert a clone-on-write slice into a vector.
+    ///
+    /// If `s` already owns a `Vec<T>`, it will be returned directly.
+    /// If `s` is borrowing a slice, a new `Vec<T>` will be allocated and
+    /// filled by cloning `s`'s items into it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::borrow::Cow;
+    /// let o: Cow<[i32]> = Cow::Owned(vec![1, 2, 3]);
+    /// let b: Cow<[i32]> = Cow::Borrowed(&[1, 2, 3]);
+    /// assert_eq!(Vec::from(o), Vec::from(b));
+    /// ```
     fn from(s: Cow<'a, [T]>) -> Vec<T> {
         s.into_owned()
     }
@@ -2664,9 +2800,17 @@ where
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
+    /// Convert a boxed slice into a vector by transferring ownership of
+    /// the existing heap allocation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let b: Box<[i32]> = vec![1, 2, 3].into_boxed_slice();
+    /// assert_eq!(Vec::from(b), vec![1, 2, 3]);
+    /// ```
     fn from(s: Box<[T], A>) -> Self {
-        let len = s.len();
-        Self { buf: RawVec::from_box(s), len }
+        s.into_vec()
     }
 }
 
@@ -2674,6 +2818,16 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
+    /// Convert a vector into a boxed slice.
+    ///
+    /// If `v` has excess capacity, its items will be moved into a
+    /// newly-allocated buffer with exactly the right capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Box::from(vec![1, 2, 3]), vec![1, 2, 3].into_boxed_slice());
+    /// ```
     fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()
     }
@@ -2681,6 +2835,13 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<&str> for Vec<u8> {
+    /// Allocate a `Vec<u8>` and fill it with a UTF-8 string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(Vec::from("123"), vec![b'1', b'2', b'3']);
+    /// ```
     fn from(s: &str) -> Vec<u8> {
         From::from(s.as_bytes())
     }

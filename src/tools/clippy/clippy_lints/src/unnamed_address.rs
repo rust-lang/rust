@@ -1,4 +1,5 @@
-use crate::utils::{match_def_path, paths, span_lint, span_lint_and_help};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -76,7 +77,7 @@ impl LateLintPass<'_> for UnnamedAddress {
         }
 
         if_chain! {
-            if let ExprKind::Binary(binop, ref left, ref right) = expr.kind;
+            if let ExprKind::Binary(binop, left, right) = expr.kind;
             if is_comparison(binop.node);
             if is_trait_ptr(cx, left) && is_trait_ptr(cx, right);
             then {
@@ -92,7 +93,7 @@ impl LateLintPass<'_> for UnnamedAddress {
         }
 
         if_chain! {
-            if let ExprKind::Call(ref func, [ref _left, ref _right]) = expr.kind;
+            if let ExprKind::Call(func, [ref _left, ref _right]) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::PTR_EQ) ||
@@ -113,10 +114,10 @@ impl LateLintPass<'_> for UnnamedAddress {
         }
 
         if_chain! {
-            if let ExprKind::Binary(binop, ref left, ref right) = expr.kind;
+            if let ExprKind::Binary(binop, left, right) = expr.kind;
             if is_comparison(binop.node);
-            if cx.typeck_results().expr_ty_adjusted(left).is_fn_ptr() &&
-                cx.typeck_results().expr_ty_adjusted(right).is_fn_ptr();
+            if cx.typeck_results().expr_ty_adjusted(left).is_fn_ptr();
+            if cx.typeck_results().expr_ty_adjusted(right).is_fn_ptr();
             if is_fn_def(cx, left) || is_fn_def(cx, right);
             then {
                 span_lint(

@@ -29,6 +29,16 @@ fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<String> {
     std::iter::once(crate_name).chain(relative).collect()
 }
 
+crate fn inherits_doc_hidden(tcx: TyCtxt<'_>, mut node: hir::HirId) -> bool {
+    while let Some(id) = tcx.hir().get_enclosing_scope(node) {
+        node = id;
+        if tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
+            return true;
+        }
+    }
+    false
+}
+
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.
 
@@ -61,12 +71,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
+        let span = krate.item.inner;
         let mut top_level_module = self.visit_mod_contents(
-            krate.item.span,
-            &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
+            span,
+            &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
-            &krate.item.module,
-            None,
+            &krate.item,
+            self.cx.tcx.crate_name,
         );
         top_level_module.is_crate = true;
         // Attach the crate's exported macros to the top-level module.
@@ -104,7 +115,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     _ => continue 'exported_macros,
                 };
                 // Descend into the child module that matches this path segment (if any).
-                match cur_mod.mods.iter_mut().find(|child| child.name == Some(path_segment_ty_ns)) {
+                match cur_mod.mods.iter_mut().find(|child| child.name == path_segment_ty_ns) {
                     Some(child_mod) => cur_mod = &mut *child_mod,
                     None => continue 'exported_macros,
                 }
@@ -120,10 +131,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_mod_contents(
         &mut self,
         span: Span,
-        vis: &'tcx hir::Visibility<'_>,
+        vis: &hir::Visibility<'_>,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
-        name: Option<Symbol>,
+        name: Symbol,
     ) -> Module<'tcx> {
         let mut om = Module::new(name);
         om.where_outer = span;
@@ -158,19 +169,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om: &mut Module<'tcx>,
         please_inline: bool,
     ) -> bool {
-        fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
-            while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
-                node = id;
-                if cx.tcx.hir().attrs(node).lists(sym::doc).has_word(sym::hidden) {
-                    return true;
-                }
-                if node == hir::CRATE_HIR_ID {
-                    break;
-                }
-            }
-            false
-        }
-
         debug!("maybe_inline_local res: {:?}", res);
 
         let tcx = self.cx.tcx;
@@ -212,7 +210,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let is_private = !self.cx.cache.access_levels.is_public(res_did);
-        let is_hidden = inherits_doc_hidden(self.cx, res_hir_id);
+        let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
@@ -288,10 +286,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     return;
                 }
 
+                let attrs = self.cx.tcx.hir().attrs(item.hir_id());
+
                 // If there was a private module in the current path then don't bother inlining
                 // anything as it will probably be stripped anyway.
                 if item.vis.node.is_pub() && self.inside_public_path {
-                    let please_inline = item.attrs.iter().any(|item| match item.meta_item_list() {
+                    let please_inline = attrs.iter().any(|item| match item.meta_item_list() {
                         Some(ref list) if item.has_name(sym::doc) => {
                             list.iter().any(|i| i.has_name(sym::inline))
                         }
@@ -313,13 +313,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.items.push((item, renamed))
             }
             hir::ItemKind::Mod(ref m) => {
-                om.mods.push(self.visit_mod_contents(
-                    item.span,
-                    &item.vis,
-                    item.hir_id(),
-                    m,
-                    Some(name),
-                ));
+                om.mods.push(self.visit_mod_contents(item.span, &item.vis, item.hir_id(), m, name));
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)

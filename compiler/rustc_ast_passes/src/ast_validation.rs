@@ -532,6 +532,25 @@ impl<'a> AstValidator<'a> {
         }
     }
 
+    /// An item in `extern { ... }` cannot use non-ascii identifier.
+    fn check_foreign_item_ascii_only(&self, ident: Ident) {
+        let symbol_str = ident.as_str();
+        if !symbol_str.is_ascii() {
+            let n = 83942;
+            self.err_handler()
+                .struct_span_err(
+                    ident.span,
+                    "items in `extern` blocks cannot use non-ascii identifiers",
+                )
+                .span_label(self.current_extern_span(), "in this `extern` block")
+                .note(&format!(
+                    "This limitation may be lifted in the future; see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
+                    n, n,
+                ))
+                .emit();
+        }
+    }
+
     /// Reject C-varadic type unless the function is foreign,
     /// or free and `unsafe extern "C"` semantically.
     fn check_c_varadic_type(&self, fk: FnKind<'a>) {
@@ -592,7 +611,7 @@ impl<'a> AstValidator<'a> {
             self.session,
             ident.span,
             E0754,
-            "trying to load file for module `{}` with non ascii identifer name",
+            "trying to load file for module `{}` with non-ascii identifier name",
             ident.name
         )
         .help("consider using `#[path]` attribute to specify filesystem path")
@@ -1103,15 +1122,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(fi.span, *def);
                 self.check_foreign_fn_bodyless(fi.ident, body.as_deref());
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
+                self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::TyAlias(box TyAliasKind(def, generics, bounds, body)) => {
                 self.check_defaultness(fi.span, *def);
                 self.check_foreign_kind_bodyless(fi.ident, "type", body.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
                 self.check_foreign_ty_genericless(generics);
+                self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
                 self.check_foreign_kind_bodyless(fi.ident, "static", body.as_ref().map(|b| b.span));
+                self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::MacCall(..) => {}
         }
@@ -1150,20 +1172,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_generics(&mut self, generics: &'a Generics) {
-        let mut prev_ty_default = None;
+        let cg_defaults = self.session.features_untracked().const_generics_defaults;
+
+        let mut prev_param_default = None;
         for param in &generics.params {
             match param.kind {
                 GenericParamKind::Lifetime => (),
-                GenericParamKind::Type { default: Some(_), .. } => {
-                    prev_ty_default = Some(param.ident.span);
+                GenericParamKind::Type { default: Some(_), .. }
+                | GenericParamKind::Const { default: Some(_), .. } => {
+                    prev_param_default = Some(param.ident.span);
                 }
                 GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
-                    if let Some(span) = prev_ty_default {
+                    if let Some(span) = prev_param_default {
                         let mut err = self.err_handler().struct_span_err(
                             span,
-                            "type parameters with a default must be trailing",
+                            "generic parameters with a default must be trailing",
                         );
-                        if matches!(param.kind, GenericParamKind::Const { .. }) {
+                        if matches!(param.kind, GenericParamKind::Const { .. }) && !cg_defaults {
                             err.note(
                                 "using type defaults and const parameters \
                                  in the same parameter list is currently not permitted",
@@ -1188,8 +1213,41 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 deny_equality_constraints(self, predicate, generics);
             }
         }
+        walk_list!(self, visit_generic_param, &generics.params);
+        for predicate in &generics.where_clause.predicates {
+            match predicate {
+                WherePredicate::BoundPredicate(bound_pred) => {
+                    // A type binding, eg `for<'c> Foo: Send+Clone+'c`
+                    self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
 
-        visit::walk_generics(self, generics)
+                    // This is slightly complicated. Our representation for poly-trait-refs contains a single
+                    // binder and thus we only allow a single level of quantification. However,
+                    // the syntax of Rust permits quantification in two places in where clauses,
+                    // e.g., `T: for <'a> Foo<'a>` and `for <'a, 'b> &'b T: Foo<'a>`. If both are
+                    // defined, then error.
+                    if !bound_pred.bound_generic_params.is_empty() {
+                        for bound in &bound_pred.bounds {
+                            match bound {
+                                GenericBound::Trait(t, _) => {
+                                    if !t.bound_generic_params.is_empty() {
+                                        struct_span_err!(
+                                            self.err_handler(),
+                                            t.span,
+                                            E0316,
+                                            "nested quantification of lifetimes"
+                                        )
+                                        .emit();
+                                    }
+                                }
+                                GenericBound::Outlives(_) => {}
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+            self.visit_where_predicate(predicate);
+        }
     }
 
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
@@ -1236,14 +1294,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         visit::walk_pat(self, pat)
-    }
-
-    fn visit_where_predicate(&mut self, p: &'a WherePredicate) {
-        if let &WherePredicate::BoundPredicate(ref bound_predicate) = p {
-            // A type binding, eg `for<'c> Foo: Send+Clone+'c`
-            self.check_late_bound_lifetime_defs(&bound_predicate.bound_generic_params);
-        }
-        visit::walk_where_predicate(self, p);
     }
 
     fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef, m: &'a TraitBoundModifier) {

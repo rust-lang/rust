@@ -1,0 +1,11 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/issue-69136-inner-lifetime-resolve-error.rs:20:65
+   |
+LL | type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
+   |             -                                                   ^^ undeclared lifetime
+   |             |
+   |             help: consider introducing lifetime `'a` here: `'a,`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0261`.

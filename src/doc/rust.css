@@ -332,6 +332,7 @@ table th {
 
 /* Code snippets */
 
+.example-wrap { position: relative; }
 pre.rust { position: relative; }
 a.test-arrow {
 	background-color: rgba(78, 139, 202, 0.2);

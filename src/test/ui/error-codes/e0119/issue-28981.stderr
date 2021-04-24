@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `&_`:
+error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `&_`
   --> $DIR/issue-28981.rs:5:1
    |
 LL | impl<Foo> Deref for Foo { }

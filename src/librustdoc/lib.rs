@@ -8,7 +8,7 @@
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
@@ -30,7 +30,9 @@ extern crate tracing;
 // So if `rustc` was specified in Cargo.toml, this would spuriously rebuild crates.
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
+
 extern crate rustc_ast;
+extern crate rustc_ast_lowering;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
 extern crate rustc_data_structures;
@@ -59,17 +61,46 @@ extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 extern crate test as testing;
 
+#[cfg(feature = "jemalloc")]
+extern crate tikv_jemalloc_sys;
+#[cfg(feature = "jemalloc")]
+use tikv_jemalloc_sys as jemalloc_sys;
+#[cfg(feature = "jemalloc")]
+extern crate tikv_jemallocator;
+#[cfg(feature = "jemalloc")]
+use tikv_jemallocator as jemallocator;
+
 use std::default::Default;
 use std::env;
 use std::process;
 
-use rustc_driver::abort_on_err;
+use rustc_driver::{abort_on_err, describe_lints};
 use rustc_errors::ErrorReported;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
+
+use crate::clean::utils::doc_rust_lang_org_channel;
+
+/// A macro to create a FxHashMap.
+///
+/// Example:
+///
+/// ```
+/// let letters = map!{"a" => "b", "c" => "d"};
+/// ```
+///
+/// Trailing commas are allowed.
+/// Commas between elements are required (even if the expression is a block).
+macro_rules! map {
+    ($( $key: expr => $val: expr ),* $(,)*) => {{
+        let mut map = ::rustc_data_structures::fx::FxHashMap::default();
+        $( map.insert($key, $val); )*
+        map
+    }}
+}
 
 #[macro_use]
 mod externalfiles;
@@ -94,7 +125,48 @@ mod theme;
 mod visit_ast;
 mod visit_lib;
 
+// See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+// about jemallocator
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 pub fn main() {
+    // See docs in https://github.com/rust-lang/rust/blob/master/compiler/rustc/src/main.rs
+    // about jemalloc-sys
+    #[cfg(feature = "jemalloc")]
+    {
+        use std::os::raw::{c_int, c_void};
+
+        #[used]
+        static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
+        #[used]
+        static _F2: unsafe extern "C" fn(*mut *mut c_void, usize, usize) -> c_int =
+            jemalloc_sys::posix_memalign;
+        #[used]
+        static _F3: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::aligned_alloc;
+        #[used]
+        static _F4: unsafe extern "C" fn(usize) -> *mut c_void = jemalloc_sys::malloc;
+        #[used]
+        static _F5: unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void = jemalloc_sys::realloc;
+        #[used]
+        static _F6: unsafe extern "C" fn(*mut c_void) = jemalloc_sys::free;
+
+        // On OSX, jemalloc doesn't directly override malloc/free, but instead
+        // registers itself with the allocator's zone APIs in a ctor. However,
+        // the linker doesn't seem to consider ctors as "used" when statically
+        // linking, so we need to explicitly depend on the function.
+        #[cfg(target_os = "macos")]
+        {
+            extern "C" {
+                fn _rjem_je_zone_register();
+            }
+
+            #[used]
+            static _F7: unsafe extern "C" fn() = _rjem_je_zone_register;
+        }
+    }
+
     rustc_driver::set_sigpipe_handler();
     rustc_driver::install_ice_hook();
 
@@ -217,7 +289,13 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
         stable("extern", |o| o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")),
         unstable("extern-html-root-url", |o| {
-            o.optmulti("", "extern-html-root-url", "base URL to use for dependencies", "NAME=URL")
+            o.optmulti(
+                "",
+                "extern-html-root-url",
+                "base URL to use for dependencies; for example, \
+                 \"std=/doc\" links std::vec::Vec to /doc/std/vec/struct.Vec.html",
+                "NAME=URL",
+            )
         }),
         stable("plugin-path", |o| o.optmulti("", "plugin-path", "removed", "DIR")),
         stable("C", |o| {
@@ -506,6 +584,17 @@ fn opts() -> Vec<RustcOptGroup> {
                 "Generate JSON file at the top level instead of generating HTML redirection files",
             )
         }),
+        unstable("print", |o| {
+            o.optmulti("", "print", "Rustdoc information to print on stdout", "[unversioned-files]")
+        }),
+        unstable("emit", |o| {
+            o.optmulti(
+                "",
+                "emit",
+                "Comma separated list of types of output for rustdoc to emit",
+                "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
+            )
+        }),
     ]
 }
 
@@ -516,7 +605,10 @@ fn usage(argv0: &str) {
     }
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
     println!("    @path               Read newline separated options from `path`\n");
-    println!("More information available at https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html")
+    println!(
+        "More information available at https://doc.rust-lang.org/{}/rustdoc/what-is-rustdoc.html",
+        doc_rust_lang_org_channel()
+    );
 }
 
 /// A result type used by several functions under `main()`.
@@ -564,14 +656,13 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     krate: clean::Crate,
     renderopts: config::RenderOptions,
     cache: formats::cache::Cache,
-    diag: &rustc_errors::Handler,
-    edition: rustc_span::edition::Edition,
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
-    match formats::run_format::<T>(krate, renderopts, cache, &diag, edition, tcx) {
+    match formats::run_format::<T>(krate, renderopts, cache, tcx) {
         Ok(_) => Ok(()),
         Err(e) => {
-            let mut msg = diag.struct_err(&format!("couldn't generate documentation: {}", e.error));
+            let mut msg =
+                tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if file.is_empty() {
                 msg.emit()
@@ -600,7 +691,6 @@ fn main_options(options: config::Options) -> MainResult {
 
     // need to move these items separately because we lose them by the time the closure is called,
     // but we can't create the Handler ahead of time because it's not Send
-    let diag_opts = (options.error_format, options.edition, options.debugging_opts.clone());
     let show_coverage = options.show_coverage;
     let run_check = options.run_check;
 
@@ -616,7 +706,6 @@ fn main_options(options: config::Options) -> MainResult {
     let default_passes = options.default_passes;
     let output_format = options.output_format;
     // FIXME: fix this clone (especially render_options)
-    let externs = options.externs.clone();
     let manual_passes = options.manual_passes.clone();
     let render_options = options.render_options.clone();
     let config = core::create_config(options);
@@ -625,10 +714,16 @@ fn main_options(options: config::Options) -> MainResult {
         compiler.enter(|queries| {
             let sess = compiler.session();
 
+            if sess.opts.describe_lints {
+                let (_, lint_store) = &*queries.register_plugins()?.peek();
+                describe_lints(sess, lint_store, true);
+                return Ok(());
+            }
+
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
-            let resolver = core::create_resolver(externs, queries, &sess);
+            let resolver = core::create_resolver(queries, &sess);
 
             if sess.has_errors() {
                 sess.fatal("Compilation failed, aborting rustdoc");
@@ -661,28 +756,12 @@ fn main_options(options: config::Options) -> MainResult {
                 }
 
                 info!("going to format");
-                let (error_format, edition, debugging_options) = diag_opts;
-                let diag = core::new_handler(error_format, None, &debugging_options);
                 match output_format {
                     config::OutputFormat::Html => sess.time("render_html", || {
-                        run_renderer::<html::render::Context<'_>>(
-                            krate,
-                            render_opts,
-                            cache,
-                            &diag,
-                            edition,
-                            tcx,
-                        )
+                        run_renderer::<html::render::Context<'_>>(krate, render_opts, cache, tcx)
                     }),
                     config::OutputFormat::Json => sess.time("render_json", || {
-                        run_renderer::<json::JsonRenderer<'_>>(
-                            krate,
-                            render_opts,
-                            cache,
-                            &diag,
-                            edition,
-                            tcx,
-                        )
+                        run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
                     }),
                 }
             })

@@ -26,23 +26,17 @@ LL |     #[inline(XYZ)]
 LL |     let _b = 4;
    |     ----------- not a function or closure
 
-error[E0517]: attribute should be applied to a struct, enum, or union
+error[E0552]: unrecognized representation hint
   --> $DIR/issue-43988.rs:14:12
    |
 LL |     #[repr(nothing)]
    |            ^^^^^^^
-LL |     let _x = 0;
-   |     ----------- not a struct, enum, or union
 
-error[E0517]: attribute should be applied to a struct, enum, or union
+error[E0552]: unrecognized representation hint
   --> $DIR/issue-43988.rs:18:12
    |
-LL |       #[repr(something_not_real)]
-   |              ^^^^^^^^^^^^^^^^^^
-LL | /     loop {
-LL | |         ()
-LL | |     };
-   | |_____- not a struct, enum, or union
+LL |     #[repr(something_not_real)]
+   |            ^^^^^^^^^^^^^^^^^^
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43988.rs:30:5
@@ -54,5 +48,5 @@ LL |     foo();
 
 error: aborting due to 7 previous errors
 
-Some errors have detailed explanations: E0517, E0518.
-For more information about an error, try `rustc --explain E0517`.
+Some errors have detailed explanations: E0518, E0552.
+For more information about an error, try `rustc --explain E0518`.

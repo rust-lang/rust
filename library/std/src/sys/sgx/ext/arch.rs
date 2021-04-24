@@ -36,8 +36,7 @@ pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> 
             inlateout("eax") ENCLU_EGETKEY => error,
             in("rbx") request,
             in("rcx") out.as_mut_ptr(),
-            // NOTE(#76738): ATT syntax is used to support LLVM 8 and 9.
-            options(att_syntax, nostack),
+            options(nostack),
         );
 
         match error {
@@ -66,8 +65,7 @@ pub fn ereport(
             in("rbx") targetinfo,
             in("rcx") reportdata,
             in("rdx") report.as_mut_ptr(),
-            // NOTE(#76738): ATT syntax is used to support LLVM 8 and 9.
-            options(att_syntax, preserves_flags, nostack),
+            options(preserves_flags, nostack),
         );
 
         report.assume_init()

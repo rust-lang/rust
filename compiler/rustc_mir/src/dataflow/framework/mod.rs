@@ -510,7 +510,7 @@ impl EffectIndex {
         }
     }
 
-    /// Returns `true` if the effect at `self` should be applied eariler than the effect at `other`
+    /// Returns `true` if the effect at `self` should be applied earlier than the effect at `other`
     /// in forward order.
     fn precedes_in_forward_order(self, other: Self) -> bool {
         let ord = self

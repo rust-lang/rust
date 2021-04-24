@@ -1,0 +1,16 @@
+// check-pass
+// compile-flags: -Z unpretty=hir
+
+// revisions: min_tait full_tait
+#![feature(min_type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+
+trait Animal { }
+
+fn main() {
+              pub type ServeFut = /*impl Trait*/;
+          }

@@ -1,4 +1,4 @@
-// compile-flags: -Z mir-opt-level=3
+// compile-flags: -Z mir-opt-level=4
 
 // must not optimize as it does not follow the pattern of
 // left and right hand side being the same variant

@@ -25,5 +25,5 @@ impl Foo for u16 {
 
 fn main() {
     println!("{}", <Bar<u16, u8> as Foo>::AMT);
-    //~^ ERROR evaluation of constant value failed [E0080]
+    //~^ ERROR evaluation of constant value failed
 }

@@ -3,6 +3,11 @@
     3|       |
     4|      2|#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
                        ^0            ^0      ^0 ^0  ^1       ^1 ^0^0
+  ------------------
+  | Unexecuted instantiation: <partial_eq::Version as core::cmp::PartialEq>::ne
+  ------------------
+  | Unexecuted instantiation: <partial_eq::Version as core::cmp::PartialEq>::eq
+  ------------------
     5|       |pub struct Version {
     6|       |    major: usize,
     7|       |    minor: usize,

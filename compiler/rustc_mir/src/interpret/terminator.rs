@@ -248,9 +248,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             };
             if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
                 throw_ub_format!(
-                    "calling a function with ABI {:?} using caller ABI {:?}",
-                    callee_abi,
-                    caller_abi
+                    "calling a function with ABI {} using caller ABI {}",
+                    callee_abi.name(),
+                    caller_abi.name()
                 )
             }
         }

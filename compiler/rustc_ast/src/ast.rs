@@ -100,6 +100,7 @@ pub struct Path {
 }
 
 impl PartialEq<Symbol> for Path {
+    #[inline]
     fn eq(&self, symbol: &Symbol) -> bool {
         self.segments.len() == 1 && { self.segments[0].ident.name == *symbol }
     }
@@ -149,8 +150,16 @@ impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
         PathSegment { ident, id: DUMMY_NODE_ID, args: None }
     }
+
     pub fn path_root(span: Span) -> Self {
         PathSegment::from_ident(Ident::new(kw::PathRoot, span))
+    }
+
+    pub fn span(&self) -> Span {
+        match &self.args {
+            Some(args) => self.ident.span.to(args.span()),
+            None => self.ident.span,
+        }
     }
 }
 
@@ -647,7 +656,7 @@ impl Pat {
 /// are treated the same as `x: x, y: ref y, z: ref mut z`,
 /// except when `is_shorthand` is true.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct FieldPat {
+pub struct PatField {
     /// The identifier for the field.
     pub ident: Ident,
     /// The pattern the field is destructured to.
@@ -692,7 +701,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, Vec<FieldPat>, /* recovered */ bool),
+    Struct(Path, Vec<PatField>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Path, Vec<P<Pat>>),
@@ -754,14 +763,6 @@ pub enum Mutability {
 }
 
 impl Mutability {
-    /// Returns `MutMutable` only if both `self` and `other` are mutable.
-    pub fn and(self, other: Self) -> Self {
-        match self {
-            Mutability::Mut => other,
-            Mutability::Not => Mutability::Not,
-        }
-    }
-
     pub fn invert(self) -> Self {
         match self {
             Mutability::Mut => Mutability::Not,
@@ -915,16 +916,6 @@ impl Stmt {
         }
     }
 
-    pub fn tokens_mut(&mut self) -> Option<&mut LazyTokenStream> {
-        match self.kind {
-            StmtKind::Local(ref mut local) => local.tokens.as_mut(),
-            StmtKind::Item(ref mut item) => item.tokens.as_mut(),
-            StmtKind::Expr(ref mut expr) | StmtKind::Semi(ref mut expr) => expr.tokens.as_mut(),
-            StmtKind::Empty => None,
-            StmtKind::MacCall(ref mut mac) => mac.tokens.as_mut(),
-        }
-    }
-
     pub fn has_trailing_semicolon(&self) -> bool {
         match &self.kind {
             StmtKind::Semi(_) => true,
@@ -1037,9 +1028,9 @@ pub struct Arm {
     pub is_placeholder: bool,
 }
 
-/// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
+/// A single field in a struct expression, e.g. `x: value` and `y` in `Foo { x: value, y }`.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Field {
+pub struct ExprField {
     pub attrs: AttrVec,
     pub id: NodeId,
     pub span: Span,
@@ -1083,8 +1074,8 @@ pub struct Expr {
 }
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Expr, 120);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Expr, 104);
 
 impl Expr {
     /// Returns `true` if this expression would be valid somewhere that expects a value;
@@ -1137,6 +1128,14 @@ impl Expr {
             )),
             _ => None,
         }
+    }
+
+    pub fn peel_parens(&self) -> &Expr {
+        let mut expr = self;
+        while let ExprKind::Paren(inner) = &expr.kind {
+            expr = &inner;
+        }
+        expr
     }
 
     /// Attempts to reparse as `Ty` (for diagnostic purposes).
@@ -1247,6 +1246,13 @@ pub enum StructRest {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
+pub struct StructExpr {
+    pub path: Path,
+    pub fields: Vec<ExprField>,
+    pub rest: StructRest,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum ExprKind {
     /// A `box x` expression.
     Box(P<Expr>),
@@ -1340,7 +1346,7 @@ pub enum ExprKind {
     Field(P<Expr>, Ident),
     /// An indexing operation (e.g., `foo[2]`).
     Index(P<Expr>, P<Expr>),
-    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assingment).
+    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assignment).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
     /// An underscore, used in destructuring assignment to ignore a value.
     Underscore,
@@ -1371,7 +1377,7 @@ pub enum ExprKind {
     /// A struct literal expression.
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. rest}`.
-    Struct(Path, Vec<Field>, StructRest),
+    Struct(P<StructExpr>),
 
     /// An array literal constructed from one repeated element.
     ///
@@ -1709,13 +1715,6 @@ impl FloatTy {
             FloatTy::F64 => sym::f64,
         }
     }
-
-    pub fn bit_width(self) -> u64 {
-        match self {
-            FloatTy::F32 => 32,
-            FloatTy::F64 => 64,
-        }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -1751,29 +1750,6 @@ impl IntTy {
             IntTy::I128 => sym::i128,
         }
     }
-
-    pub fn bit_width(&self) -> Option<u64> {
-        Some(match *self {
-            IntTy::Isize => return None,
-            IntTy::I8 => 8,
-            IntTy::I16 => 16,
-            IntTy::I32 => 32,
-            IntTy::I64 => 64,
-            IntTy::I128 => 128,
-        })
-    }
-
-    pub fn normalize(&self, target_width: u32) -> Self {
-        match self {
-            IntTy::Isize => match target_width {
-                16 => IntTy::I16,
-                32 => IntTy::I32,
-                64 => IntTy::I64,
-                _ => unreachable!(),
-            },
-            _ => *self,
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
@@ -1807,29 +1783,6 @@ impl UintTy {
             UintTy::U32 => sym::u32,
             UintTy::U64 => sym::u64,
             UintTy::U128 => sym::u128,
-        }
-    }
-
-    pub fn bit_width(&self) -> Option<u64> {
-        Some(match *self {
-            UintTy::Usize => return None,
-            UintTy::U8 => 8,
-            UintTy::U16 => 16,
-            UintTy::U32 => 32,
-            UintTy::U64 => 64,
-            UintTy::U128 => 128,
-        })
-    }
-
-    pub fn normalize(&self, target_width: u32) -> Self {
-        match self {
-            UintTy::Usize => match target_width {
-                16 => UintTy::U16,
-                32 => UintTy::U32,
-                64 => UintTy::U64,
-                _ => unreachable!(),
-            },
-            _ => *self,
         }
     }
 }
@@ -1951,7 +1904,7 @@ impl TyKind {
 }
 
 /// Syntax used to declare a trait object.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TraitObjectSyntax {
     Dyn,
     None,
@@ -2046,7 +1999,7 @@ pub enum InlineAsmOperand {
         out_expr: Option<P<Expr>>,
     },
     Const {
-        expr: P<Expr>,
+        anon_const: AnonConst,
     },
     Sym {
         expr: P<Expr>,
@@ -2202,9 +2155,6 @@ pub struct FnDecl {
 }
 
 impl FnDecl {
-    pub fn get_self(&self) -> Option<ExplicitSelf> {
-        self.inputs.get(0).and_then(Param::to_self)
-    }
     pub fn has_self(&self) -> bool {
         self.inputs.get(0).map_or(false, Param::is_self)
     }
@@ -2299,7 +2249,7 @@ impl FnRetTy {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
 pub enum Inline {
     Yes,
     No,
@@ -2521,11 +2471,11 @@ impl VisibilityKind {
     }
 }
 
-/// Field of a struct.
+/// Field definition in a struct, variant or union.
 ///
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct StructField {
+pub struct FieldDef {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
@@ -2542,11 +2492,11 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(Vec<StructField>, bool),
+    Struct(Vec<FieldDef>, bool),
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(Vec<StructField>, NodeId),
+    Tuple(Vec<FieldDef>, NodeId),
     /// Unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
@@ -2555,7 +2505,7 @@ pub enum VariantData {
 
 impl VariantData {
     /// Return the fields of this variant.
-    pub fn fields(&self) -> &[StructField] {
+    pub fn fields(&self) -> &[FieldDef] {
         match *self {
             VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, _) => fields,
             _ => &[],
@@ -2757,7 +2707,7 @@ pub enum ItemKind {
     MacroDef(MacroDef),
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(ItemKind, 112);
 
 impl ItemKind {
@@ -2831,7 +2781,7 @@ pub enum AssocItemKind {
     MacCall(MacCall),
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(AssocItemKind, 72);
 
 impl AssocItemKind {
@@ -2883,7 +2833,7 @@ pub enum ForeignItemKind {
     MacCall(MacCall),
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(ForeignItemKind, 72);
 
 impl From<ForeignItemKind> for ItemKind {

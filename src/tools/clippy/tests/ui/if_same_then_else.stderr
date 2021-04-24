@@ -1,19 +1,5 @@
 error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:28:12
-   |
-LL |       } else {
-   |  ____________^
-LL | |         //~ ERROR same body as `if` block
-LL | |         Foo { bar: 42 };
-LL | |         0..10;
-...  |
-LL | |         foo();
-LL | |     }
-   | |_____^
-   |
-   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
-note: same as this
-  --> $DIR/if_same_then_else.rs:20:13
+  --> $DIR/if_same_then_else.rs:21:13
    |
 LL |       if true {
    |  _____________^
@@ -24,79 +10,80 @@ LL | |         ..;
 LL | |         foo();
 LL | |     } else {
    | |_____^
-
-error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:66:12
    |
-LL |       } else {
-   |  ____________^
-LL | |         //~ ERROR same body as `if` block
-LL | |         0.0
-LL | |     };
-   | |_____^
-   |
+   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
 note: same as this
-  --> $DIR/if_same_then_else.rs:64:21
-   |
-LL |       let _ = if true {
-   |  _____________________^
-LL | |         0.0
-LL | |     } else {
-   | |_____^
-
-error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:73:12
+  --> $DIR/if_same_then_else.rs:29:12
    |
 LL |       } else {
    |  ____________^
 LL | |         //~ ERROR same body as `if` block
-LL | |         -0.0
-LL | |     };
-   | |_____^
-   |
-note: same as this
-  --> $DIR/if_same_then_else.rs:71:21
-   |
-LL |       let _ = if true {
-   |  _____________________^
-LL | |         -0.0
-LL | |     } else {
-   | |_____^
-
-error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:89:12
-   |
-LL |       } else {
-   |  ____________^
-LL | |         //~ ERROR same body as `if` block
-LL | |         42
-LL | |     };
-   | |_____^
-   |
-note: same as this
-  --> $DIR/if_same_then_else.rs:87:21
-   |
-LL |       let _ = if true {
-   |  _____________________^
-LL | |         42
-LL | |     } else {
-   | |_____^
-
-error: this `if` has identical blocks
-  --> $DIR/if_same_then_else.rs:101:12
-   |
-LL |       } else {
-   |  ____________^
-LL | |         //~ ERROR same body as `if` block
-LL | |         let bar = if true { 42 } else { 43 };
-LL | |
+LL | |         Foo { bar: 42 };
+LL | |         0..10;
 ...  |
-LL | |         bar + 1;
+LL | |         foo();
 LL | |     }
    | |_____^
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:65:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         0.0
+LL | |     } else {
+   | |_____^
    |
 note: same as this
-  --> $DIR/if_same_then_else.rs:94:13
+  --> $DIR/if_same_then_else.rs:67:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         0.0
+LL | |     };
+   | |_____^
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:72:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         -0.0
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:74:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         -0.0
+LL | |     };
+   | |_____^
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:88:21
+   |
+LL |       let _ = if true {
+   |  _____________________^
+LL | |         42
+LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:90:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         42
+LL | |     };
+   | |_____^
+
+error: this `if` has identical blocks
+  --> $DIR/if_same_then_else.rs:95:13
    |
 LL |       if true {
    |  _____________^
@@ -106,6 +93,19 @@ LL | |         while foo() {
 ...  |
 LL | |         bar + 1;
 LL | |     } else {
+   | |_____^
+   |
+note: same as this
+  --> $DIR/if_same_then_else.rs:102:12
+   |
+LL |       } else {
+   |  ____________^
+LL | |         //~ ERROR same body as `if` block
+LL | |         let bar = if true { 42 } else { 43 };
+LL | |
+...  |
+LL | |         bar + 1;
+LL | |     }
    | |_____^
 
 error: aborting due to 5 previous errors

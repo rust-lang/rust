@@ -1,4 +1,4 @@
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:10:5
    |
 LL |     forget(&SomeStruct);
@@ -11,7 +11,7 @@ note: argument has type `&SomeStruct`
 LL |     forget(&SomeStruct);
    |            ^^^^^^^^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:13:5
    |
 LL |     forget(&owned);
@@ -23,7 +23,7 @@ note: argument has type `&SomeStruct`
 LL |     forget(&owned);
    |            ^^^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:14:5
    |
 LL |     forget(&&owned);
@@ -35,7 +35,7 @@ note: argument has type `&&SomeStruct`
 LL |     forget(&&owned);
    |            ^^^^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:15:5
    |
 LL |     forget(&mut owned);
@@ -47,7 +47,7 @@ note: argument has type `&mut SomeStruct`
 LL |     forget(&mut owned);
    |            ^^^^^^^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:19:5
    |
 LL |     forget(&*reference1);
@@ -59,7 +59,7 @@ note: argument has type `&SomeStruct`
 LL |     forget(&*reference1);
    |            ^^^^^^^^^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:22:5
    |
 LL |     forget(reference2);
@@ -71,7 +71,7 @@ note: argument has type `&mut SomeStruct`
 LL |     forget(reference2);
    |            ^^^^^^^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:25:5
    |
 LL |     forget(reference3);
@@ -83,7 +83,7 @@ note: argument has type `&SomeStruct`
 LL |     forget(reference3);
    |            ^^^^^^^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:30:5
    |
 LL |     forget(&val);
@@ -95,7 +95,7 @@ note: argument has type `&T`
 LL |     forget(&val);
    |            ^^^^
 
-error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing
   --> $DIR/forget_ref.rs:38:5
    |
 LL |     std::mem::forget(&SomeStruct);

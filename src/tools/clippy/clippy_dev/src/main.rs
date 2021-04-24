@@ -1,21 +1,13 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
 use clap::{App, Arg, ArgMatches, SubCommand};
-use clippy_dev::{bless, fmt, new_lint, ra_setup, serve, stderr_length_check, update_lints};
-
-#[cfg(feature = "lintcheck")]
-use clippy_dev::lintcheck;
-
+use clippy_dev::{bless, fmt, ide_setup, new_lint, serve, stderr_length_check, update_lints};
 fn main() {
     let matches = get_clap_config();
 
     match matches.subcommand() {
         ("bless", Some(matches)) => {
             bless::bless(matches.is_present("ignore-timestamp"));
-        },
-        #[cfg(feature = "lintcheck")]
-        ("lintcheck", Some(matches)) => {
-            lintcheck::run(&matches);
         },
         ("fmt", Some(matches)) => {
             fmt::run(matches.is_present("check"), matches.is_present("verbose"));
@@ -42,7 +34,7 @@ fn main() {
         ("limit_stderr_length", _) => {
             stderr_length_check::check();
         },
-        ("ra_setup", Some(matches)) => ra_setup::run(matches.value_of("rustc-repo-path")),
+        ("ide_setup", Some(matches)) => ide_setup::run(matches.value_of("rustc-repo-path")),
         ("serve", Some(matches)) => {
             let port = matches.value_of("port").unwrap().parse().unwrap();
             let lint = matches.value_of("lint");
@@ -53,33 +45,7 @@ fn main() {
 }
 
 fn get_clap_config<'a>() -> ArgMatches<'a> {
-    #[cfg(feature = "lintcheck")]
-    let lintcheck_sbcmd = SubCommand::with_name("lintcheck")
-        .about("run clippy on a set of crates and check output")
-        .arg(
-            Arg::with_name("only")
-                .takes_value(true)
-                .value_name("CRATE")
-                .long("only")
-                .help("only process a single crate of the list"),
-        )
-        .arg(
-            Arg::with_name("crates-toml")
-                .takes_value(true)
-                .value_name("CRATES-SOURCES-TOML-PATH")
-                .long("crates-toml")
-                .help("set the path for a crates.toml where lintcheck should read the sources from"),
-        )
-        .arg(
-            Arg::with_name("threads")
-                .takes_value(true)
-                .value_name("N")
-                .short("j")
-                .long("jobs")
-                .help("number of threads to use, 0 automatic choice"),
-        );
-
-    let app = App::new("Clippy developer tooling")
+    App::new("Clippy developer tooling")
         .subcommand(
             SubCommand::with_name("bless")
                 .about("bless the test output changes")
@@ -172,8 +138,8 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .about("Ensures that stderr files do not grow longer than a certain amount of lines."),
         )
         .subcommand(
-            SubCommand::with_name("ra_setup")
-                .about("Alter dependencies so rust-analyzer can find rustc internals")
+            SubCommand::with_name("ide_setup")
+                .about("Alter dependencies so Intellij Rust can find rustc internals")
                 .arg(
                     Arg::with_name("rustc-repo-path")
                         .long("repo-path")
@@ -196,10 +162,6 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                         .validator_os(serve::validate_port),
                 )
                 .arg(Arg::with_name("lint").help("Which lint's page to load initially (optional)")),
-        );
-
-    #[cfg(feature = "lintcheck")]
-    let app = app.subcommand(lintcheck_sbcmd);
-
-    app.get_matches()
+        )
+        .get_matches()
 }

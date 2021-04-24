@@ -62,7 +62,7 @@ impl AsRef<OsStr> for EnvKey {
 
 fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::Error::new(ErrorKind::InvalidInput, "nul byte found in provided data"))
+        Err(io::Error::new_const(ErrorKind::InvalidInput, &"nul byte found in provided data"))
     } else {
         Ok(str)
     }

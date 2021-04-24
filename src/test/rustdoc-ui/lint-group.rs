@@ -4,7 +4,7 @@
 //! println!("sup");
 //! ```
 
-#![deny(rustdoc)]
+#![deny(rustdoc::all)]
 
 /// what up, let's make an [error]
 ///

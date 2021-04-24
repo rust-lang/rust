@@ -65,9 +65,13 @@ use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, O
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[rustc_deprecated(
     reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
-    since = "1.18.0"
+    since = "1.52.0"
 )]
-pub use crate::ptr::drop_in_place;
+#[inline]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    // SAFETY: see `ptr::drop_in_place`
+    unsafe { crate::ptr::drop_in_place(to_drop) }
+}
 
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
@@ -846,6 +850,12 @@ extern "rust-intrinsic" {
     /// destination value, then forgets the original. It's equivalent to C's
     /// `memcpy` under the hood, just like `transmute_copy`.
     ///
+    /// Because `transmute` is a by-value operation, alignment of the *transmuted values
+    /// themselves* is not a concern. As with any other function, the compiler already ensures
+    /// both `T` and `U` are properly aligned. However, when transmuting values that *point
+    /// elsewhere* (such as pointers, references, boxes…), the caller has to ensure proper
+    /// alignment of the pointed-to values.
+    ///
     /// `transmute` is **incredibly** unsafe. There are a vast number of ways to
     /// cause [undefined behavior][ub] with this function. `transmute` should be
     /// the absolute last resort.
@@ -965,7 +975,13 @@ extern "rust-intrinsic" {
     /// assert_eq!(b"Rust", &[82, 117, 115, 116]);
     /// ```
     ///
-    /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`:
+    /// Turning a `Vec<&T>` into a `Vec<Option<&T>>`.
+    ///
+    /// To transmute the inner type of the contents of a container, you must make sure to not
+    /// violate any of the container's invariants. For `Vec`, this means that both the size
+    /// *and alignment* of the inner types have to match. Other containers might rely on the
+    /// size of the type, alignment, or even the `TypeId`, in which case transmuting wouldn't
+    /// be possible at all without violating the container invariants.
     ///
     /// ```
     /// let store = [0, 1, 2, 3];
@@ -991,14 +1007,11 @@ extern "rust-intrinsic" {
     ///
     /// let v_clone = v_orig.clone();
     ///
-    /// // The no-copy, unsafe way, still using transmute, but not relying on the data layout.
-    /// // Like the first approach, this reuses the `Vec` internals.
-    /// // Therefore, the new inner type must have the
-    /// // exact same size, *and the same alignment*, as the old type.
-    /// // The same caveats exist for this method as transmute, for
-    /// // the original inner type (`&i32`) to the converted inner type
-    /// // (`Option<&i32>`), so read the nomicon pages linked above and also
-    /// // consult the [`from_raw_parts`] documentation.
+    /// // This is the proper no-copy, unsafe way of "transmuting" a `Vec`, without relying on the
+    /// // data layout. Instead of literally calling `transmute`, we perform a pointer cast, but
+    /// // in terms of converting the original inner type (`&i32`) to the new one (`Option<&i32>`),
+    /// // this has all the same caveats. Besides the information provided above, also consult the
+    /// // [`from_raw_parts`] documentation.
     /// let v_from_raw = unsafe {
     // FIXME Update this when vec_into_raw_parts is stabilized
     ///     // Ensure the original vector is not dropped.
@@ -1530,7 +1543,7 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
-    #[rustc_const_unstable(feature = "const_cttz", issue = "none")]
+    #[rustc_const_stable(feature = "const_cttz", since = "1.53.0")]
     pub fn cttz_nonzero<T: Copy>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
@@ -1891,18 +1904,6 @@ extern "rust-intrinsic" {
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
     !ptr.is_null() && ptr as usize % mem::align_of::<T>() == 0
-}
-
-/// Checks whether the regions of memory starting at `src` and `dst` of size
-/// `count * size_of::<T>()` do *not* overlap.
-pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
-    let src_usize = src as usize;
-    let dst_usize = dst as usize;
-    let size = mem::size_of::<T>().checked_mul(count).unwrap();
-    let diff = if src_usize > dst_usize { src_usize - dst_usize } else { dst_usize - src_usize };
-    // If the absolute distance between the ptrs is at least as big as the size of the buffer,
-    // they do not overlap.
-    diff >= size
 }
 
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to

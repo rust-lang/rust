@@ -1,0 +1,115 @@
+    1|       |// compile-flags: --edition=2018
+    2|       |
+    3|       |use core::{
+    4|       |    future::Future,
+    5|       |    marker::Send,
+    6|       |    pin::Pin,
+    7|       |};
+    8|       |
+    9|      1|fn non_async_func() {
+   10|      1|    println!("non_async_func was covered");
+   11|      1|    let b = true;
+   12|      1|    if b {
+   13|      1|        println!("non_async_func println in block");
+   14|      1|    }
+   15|      1|}
+   16|       |
+   17|       |// FIXME(#83985): The auto-generated closure in an async function is failing to include
+   18|       |// the println!() and `let` assignment lines in the coverage code region(s), as it does in the
+   19|       |// non-async function above, unless the `println!()` is inside a covered block.
+   20|      1|async fn async_func() {
+   21|      1|    println!("async_func was covered");
+   22|      1|    let b = true;
+   23|      1|    if b {
+   24|      1|        println!("async_func println in block");
+   25|      1|    }
+                   ^0
+   26|      1|}
+   27|       |
+   28|       |// FIXME(#83985): As above, this async function only has the `println!()` macro call, which is not
+   29|       |// showing coverage, so the entire async closure _appears_ uncovered; but this is not exactly true.
+   30|       |// It's only certain kinds of lines and/or their context that results in missing coverage.
+   31|      1|async fn async_func_just_println() {
+   32|      1|    println!("async_func_just_println was covered");
+   33|      1|}
+   34|       |
+   35|      1|fn main() {
+   36|      1|    println!("codecovsample::main");
+   37|      1|
+   38|      1|    non_async_func();
+   39|      1|
+   40|      1|    executor::block_on(async_func());
+   41|      1|    executor::block_on(async_func_just_println());
+   42|      1|}
+   43|       |
+   44|       |mod executor {
+   45|       |    use core::{
+   46|       |        future::Future,
+   47|       |        pin::Pin,
+   48|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
+   49|       |    };
+   50|       |
+   51|      2|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
+   52|      2|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
+   53|      2|        use std::hint::unreachable_unchecked;
+   54|      2|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
+   55|      2|            |_| unsafe { unreachable_unchecked() }, // clone
+                              ^0
+   56|      2|            |_| unsafe { unreachable_unchecked() }, // wake
+                              ^0
+   57|      2|            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
+                              ^0
+   58|      2|            |_| (),
+   59|      2|        );
+   60|      2|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+   61|      2|        let mut context = Context::from_waker(&waker);
+   62|       |
+   63|       |        loop {
+   64|      2|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+   65|      2|                break val;
+   66|      0|            }
+   67|       |        }
+   68|      2|    }
+  ------------------
+  | async2::executor::block_on::<core::future::from_generator::GenFuture<async2::async_func::{closure#0}>>:
+  |   51|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
+  |   52|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
+  |   53|      1|        use std::hint::unreachable_unchecked;
+  |   54|      1|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
+  |   55|      1|            |_| unsafe { unreachable_unchecked() }, // clone
+  |   56|      1|            |_| unsafe { unreachable_unchecked() }, // wake
+  |   57|      1|            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
+  |   58|      1|            |_| (),
+  |   59|      1|        );
+  |   60|      1|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+  |   61|      1|        let mut context = Context::from_waker(&waker);
+  |   62|       |
+  |   63|       |        loop {
+  |   64|      1|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+  |   65|      1|                break val;
+  |   66|      0|            }
+  |   67|       |        }
+  |   68|      1|    }
+  ------------------
+  | async2::executor::block_on::<core::future::from_generator::GenFuture<async2::async_func_just_println::{closure#0}>>:
+  |   51|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
+  |   52|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
+  |   53|      1|        use std::hint::unreachable_unchecked;
+  |   54|      1|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
+  |   55|      1|            |_| unsafe { unreachable_unchecked() }, // clone
+  |   56|      1|            |_| unsafe { unreachable_unchecked() }, // wake
+  |   57|      1|            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
+  |   58|      1|            |_| (),
+  |   59|      1|        );
+  |   60|      1|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+  |   61|      1|        let mut context = Context::from_waker(&waker);
+  |   62|       |
+  |   63|       |        loop {
+  |   64|      1|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+  |   65|      1|                break val;
+  |   66|      0|            }
+  |   67|       |        }
+  |   68|      1|    }
+  ------------------
+   69|       |}
+

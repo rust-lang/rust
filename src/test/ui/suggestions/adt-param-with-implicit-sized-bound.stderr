@@ -5,7 +5,7 @@ LL | struct X<T>(T);
    |          - required by this bound in `X`
 ...
 LL | struct Struct5<T: ?Sized>{
-   |                - this type parameter needs to be `Sized`
+   |                - this type parameter needs to be `std::marker::Sized`
 LL |     _t: X<T>,
    |         ^^^^ doesn't have a size known at compile-time
    |

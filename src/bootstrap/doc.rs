@@ -270,6 +270,10 @@ fn invoke_rustdoc(
         .arg("--markdown-css")
         .arg("../rust.css");
 
+    if !builder.config.docs_minification {
+        cmd.arg("-Z").arg("unstable-options").arg("--disable-minification");
+    }
+
     builder.run(&mut cmd);
 }
 
@@ -365,6 +369,10 @@ impl Step for Standalone {
                 .arg(&out)
                 .arg(&path);
 
+            if !builder.config.docs_minification {
+                cmd.arg("--disable-minification");
+            }
+
             if filename == "not_found.md" {
                 cmd.arg("--markdown-css").arg("https://doc.rust-lang.org/rust.css");
             } else {
@@ -437,6 +445,10 @@ impl Step for Std {
                 .arg("--index-page")
                 .arg(&builder.src.join("src/doc/index.md"));
 
+            if !builder.config.docs_minification {
+                cargo.arg("--disable-minification");
+            }
+
             builder.run(&mut cargo.into());
         };
         // Only build the following crates. While we could just iterate over the
@@ -458,12 +470,16 @@ impl Step for Std {
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
         for path in builder.paths.iter().map(components_simplified) {
-            if path.get(0) == Some(&"library") {
-                let requested_crate = &path[1];
-                if krates.contains(&requested_crate) {
-                    let index = out.join(requested_crate).join("index.html");
-                    open(builder, &index);
-                }
+            let requested_crate = if path.get(0) == Some(&"library") {
+                &path[1]
+            } else if !path.is_empty() {
+                &path[0]
+            } else {
+                continue;
+            };
+            if krates.contains(&requested_crate) {
+                let index = out.join(requested_crate).join("index.html");
+                open(builder, &index);
             }
         }
     }
@@ -528,6 +544,8 @@ impl Step for Rustc {
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
         cargo.rustdocflag("--document-private-items");
+        // Since we always pass --document-private-items, there's no need to warn about linking to private items.
+        cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
         cargo.rustdocflag("--enable-index-page");
         cargo.rustdocflag("-Zunstable-options");
         cargo.rustdocflag("-Znormalize-docs");

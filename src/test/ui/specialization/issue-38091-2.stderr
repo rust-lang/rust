@@ -10,7 +10,11 @@ LL | #![feature(specialization)]
 
 error[E0275]: overflow evaluating the requirement `i32: Check`
    |
-   = note: required because of the requirements on the impl of `Iterate` for `i32`
+note: required because of the requirements on the impl of `Iterate` for `i32`
+  --> $DIR/issue-38091-2.rs:11:13
+   |
+LL | impl<'a, T> Iterate<'a> for T
+   |             ^^^^^^^^^^^     ^
 
 error: aborting due to previous error; 1 warning emitted
 

@@ -1,6 +1,6 @@
 // ignore-endian-big
 // ignore-wasm32-bare compiled with panic=abort by default
-// compile-flags: -Z mir-opt-level=3
+// compile-flags: -Z mir-opt-level=4
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 #![feature(box_syntax)]
 // EMIT_MIR inline_into_box_place.main.Inline.diff

@@ -5,6 +5,7 @@ use crate::interpret::{
     Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
     ScalarMaybeUninit, StackPopCleanup,
 };
+use crate::util::pretty::display_allocation;
 
 use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
@@ -360,6 +361,15 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     "it is undefined behavior to use this value",
                     |mut diag| {
                         diag.note(note_on_undefined_behavior_error());
+                        diag.note(&format!(
+                            "the raw bytes of the constant ({}",
+                            display_allocation(
+                                *ecx.tcx,
+                                ecx.tcx
+                                    .global_alloc(mplace.ptr.assert_ptr().alloc_id)
+                                    .unwrap_memory()
+                            )
+                        ));
                         diag.emit();
                     },
                 ))

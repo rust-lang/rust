@@ -1,4 +1,6 @@
-use crate::utils::{in_macro, snippet_with_macro_callsite, span_lint_and_sugg, sugg};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::{in_macro, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
@@ -49,7 +51,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
                     return;
                 }
 
-                let sugg = sugg::Sugg::hir_with_macro_callsite(cx, &expr, "..");
+                let sugg = sugg::Sugg::hir_with_macro_callsite(cx, expr, "..");
                 let suggestion = format!("{0};", sugg);
                 span_lint_and_sugg(
                     cx,

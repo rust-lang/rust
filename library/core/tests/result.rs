@@ -226,6 +226,28 @@ pub fn test_into_ok() {
 }
 
 #[test]
+pub fn test_into_err() {
+    fn until_error_op() -> Result<!, isize> {
+        Err(666)
+    }
+
+    assert_eq!(until_error_op().into_err(), 666);
+
+    enum MyNeverToken {}
+    impl From<MyNeverToken> for ! {
+        fn from(never: MyNeverToken) -> ! {
+            match never {}
+        }
+    }
+
+    fn until_error_op2() -> Result<MyNeverToken, isize> {
+        Err(667)
+    }
+
+    assert_eq!(until_error_op2().into_err(), 667);
+}
+
+#[test]
 fn test_try() {
     fn try_result_some() -> Option<u8> {
         let val = Ok(1)?;

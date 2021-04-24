@@ -57,23 +57,6 @@ release: 1.17.0
 LLVM version: 3.9
 ```
 
-## `-r`/`--input-format`: input format
-
-This flag is currently ignored; the idea is that `rustdoc` would support various
-input formats, and you could specify them via this flag.
-
-Rustdoc only supports Rust source code and Markdown input formats. If the
-file ends in `.md` or `.markdown`, `rustdoc` treats it as a Markdown file.
-Otherwise, it assumes that the input file is Rust.
-
-
-## `-w`/`--output-format`: output format
-
-This flag is currently ignored; the idea is that `rustdoc` would support
-various output formats, and you could specify them via this flag.
-
-Rustdoc only supports HTML output, and so this flag is redundant today.
-
 ## `-o`/`--output`: output path
 
 Using this flag looks like this:
@@ -99,6 +82,25 @@ $ rustdoc src/lib.rs --crate-name mycrate
 By default, `rustdoc` assumes that the name of your crate is the same name
 as the `.rs` file. `--crate-name` lets you override this assumption with
 whatever name you choose.
+
+## `--document-private-items`: Show items that are not public
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --document-private-items
+```
+
+By default, `rustdoc` only documents items that are publicly reachable.
+
+```rust
+pub fn public() {} // this item is public and will documented
+mod private { // this item is private and will not be documented
+    pub fn unreachable() {} // this item is public, but unreachable, so it will not be documented
+}
+```
+
+`--document-private-items` documents all items, even if they're not public.
 
 ## `-L`/`--library-path`: where to look for dependencies
 
@@ -165,38 +167,6 @@ affect that.
 
 The arguments to this flag are the same as those for the `-C` flag on rustc. Run `rustc -C help` to
 get the full list.
-
-## `--passes`: add more rustdoc passes
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc --passes list
-$ rustdoc src/lib.rs --passes strip-priv-imports
-```
-
-An argument of "list" will print a list of possible "rustdoc passes", and other
-arguments will be the name of which passes to run in addition to the defaults.
-
-For more details on passes, see [the chapter on them](passes.md).
-
-See also `--no-defaults`.
-
-## `--no-defaults`: don't run default passes
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs --no-defaults
-```
-
-By default, `rustdoc` will run several passes over your code. This
-removes those defaults, allowing you to use `--passes` to specify
-exactly which passes you want.
-
-For more details on passes, see [the chapter on them](passes.md).
-
-See also `--passes`.
 
 ## `--test`: run code examples as tests
 
@@ -429,3 +399,21 @@ If you specify `@path` on the command-line, then it will open `path` and read
 command line options from it. These options are one per line; a blank line indicates
 an empty option. The file can use Unix or Windows style line endings, and must be
 encoded as UTF-8.
+
+## `--passes`: add more rustdoc passes
+
+This flag is **deprecated**.
+For more details on passes, see [the chapter on them](passes.md).
+
+## `--no-defaults`: don't run default passes
+
+This flag is **deprecated**.
+For more details on passes, see [the chapter on them](passes.md).
+
+## `-r`/`--input-format`: input format
+
+This flag is **deprecated** and **has no effect**.
+
+Rustdoc only supports Rust source code and Markdown input formats. If the
+file ends in `.md` or `.markdown`, `rustdoc` treats it as a Markdown file.
+Otherwise, it assumes that the input file is Rust.

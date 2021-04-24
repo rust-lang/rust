@@ -6,6 +6,8 @@ LL | fn assert_unpin<T: Unpin>(_: T) {
 ...
 LL |     assert_unpin(generator);
    |                  ^^^^^^^^^ the trait `Unpin` is not implemented for `[static generator@$DIR/static-not-unpin.rs:11:25: 13:6]`
+   |
+   = note: consider using `Box::pin`
 
 error: aborting due to previous error
 

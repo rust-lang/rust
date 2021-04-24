@@ -1,8 +1,14 @@
 use super::{Custom, Error, ErrorKind, Repr};
 use crate::error;
 use crate::fmt;
+use crate::mem::size_of;
 use crate::sys::decode_error_kind;
 use crate::sys::os::error_string;
+
+#[test]
+fn test_size() {
+    assert!(size_of::<Error>() <= size_of::<[usize; 2]>());
+}
 
 #[test]
 fn test_debug_error() {
@@ -50,4 +56,14 @@ fn test_downcasting() {
     assert!(err.get_mut().unwrap().is::<TestError>());
     let extracted = err.into_inner().unwrap();
     extracted.downcast::<TestError>().unwrap();
+}
+
+#[test]
+fn test_const() {
+    const E: Error = Error::new_const(ErrorKind::NotFound, &"hello");
+
+    assert_eq!(E.kind(), ErrorKind::NotFound);
+    assert_eq!(E.to_string(), "hello");
+    assert!(format!("{:?}", E).contains("\"hello\""));
+    assert!(format!("{:?}", E).contains("NotFound"));
 }

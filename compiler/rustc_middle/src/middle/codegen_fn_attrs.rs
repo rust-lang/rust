@@ -1,7 +1,7 @@
 use crate::mir::mono::Linkage;
 use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
-use rustc_session::config::SanitizerSet;
 use rustc_span::symbol::Symbol;
+use rustc_target::spec::SanitizerSet;
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct CodegenFnAttrs {
@@ -38,6 +38,9 @@ pub struct CodegenFnAttrs {
     /// be generated against a specific instruction set. Only usable on architectures which allow
     /// switching between multiple instruction sets.
     pub instruction_set: Option<InstructionSetAttr>,
+    /// The `#[repr(align(...))]` attribute. Indicates the value of which the function should be
+    /// aligned to.
+    pub alignment: Option<u32>,
 }
 
 bitflags! {
@@ -103,6 +106,7 @@ impl CodegenFnAttrs {
             link_section: None,
             no_sanitize: SanitizerSet::empty(),
             instruction_set: None,
+            alignment: None,
         }
     }
 

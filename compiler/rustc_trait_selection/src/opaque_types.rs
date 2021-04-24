@@ -422,7 +422,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
             // These opaque type inherit all lifetime parameters from their
             // parent, so we have to check them all.
-            hir::OpaqueTyOrigin::Binding | hir::OpaqueTyOrigin::Misc => 0,
+            hir::OpaqueTyOrigin::Binding
+            | hir::OpaqueTyOrigin::TyAlias
+            | hir::OpaqueTyOrigin::Misc => 0,
         };
 
         let span = tcx.def_span(def_id);
@@ -581,6 +583,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Otherwise, generate the label we'll use in the error message.
             hir::OpaqueTyOrigin::Binding
             | hir::OpaqueTyOrigin::FnReturn
+            | hir::OpaqueTyOrigin::TyAlias
             | hir::OpaqueTyOrigin::Misc => "impl Trait",
         };
         let msg = format!("ambiguous lifetime bound in `{}`", context_name);
@@ -694,7 +697,7 @@ where
 {
     fn visit_binder<T: TypeFoldable<'tcx>>(
         &mut self,
-        t: &ty::Binder<T>,
+        t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
         t.as_ref().skip_binder().visit_with(self);
         ControlFlow::CONTINUE
@@ -1168,7 +1171,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             // This also instantiates nested instances of `impl Trait`.
             let predicate = self.instantiate_opaque_types_in_map(predicate);
 
-            let cause = traits::ObligationCause::new(span, self.body_id, traits::MiscObligation);
+            let cause = traits::ObligationCause::new(span, self.body_id, traits::OpaqueType);
 
             // Require that the predicate holds for the concrete type.
             debug!("instantiate_opaque_types: predicate={:?}", predicate);

@@ -23,6 +23,7 @@ use rustc_span::{self, MultiSpan, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
 use crate::structured_errors::StructuredDiagnostic;
+use std::iter;
 use std::slice;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -108,7 +109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
-        for (&fn_input_ty, arg_expr) in fn_inputs.iter().zip(args.iter()) {
+        for (&fn_input_ty, arg_expr) in iter::zip(fn_inputs, args) {
             self.register_wf_obligation(fn_input_ty.into(), arg_expr.span, traits::MiscObligation);
         }
 
@@ -439,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &QPath<'_>,
         hir_id: hir::HirId,
     ) -> Option<(&'tcx ty::VariantDef, Ty<'tcx>)> {
-        let path_span = qpath.qself_span();
+        let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
             Res::Err => {
@@ -875,7 +876,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = AstConv::res_to_ty(self, self_ty, path, true);
+                let ty = <dyn AstConv<'_>>::res_to_ty(self, self_ty, path, true);
                 (path.res, ty)
             }
             QPath::TypeRelative(ref qself, ref segment) => {
@@ -886,8 +887,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     Res::Err
                 };
-                let result =
-                    AstConv::associated_path_to_ty(self, hir_id, path_span, ty, res, segment, true);
+                let result = <dyn AstConv<'_>>::associated_path_to_ty(
+                    self, hir_id, path_span, ty, res, segment, true,
+                );
                 let ty = result.map(|(ty, _, _)| ty).unwrap_or_else(|_| self.tcx().ty_error());
                 let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
@@ -1000,7 +1002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         // would trigger in `is_send::<T::AssocType>();`
                                         // from `typeck-default-trait-impl-assoc-type.rs`.
                                     } else {
-                                        let ty = AstConv::ast_ty_to_ty(self, hir_ty);
+                                        let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, hir_ty);
                                         let ty = self.resolve_vars_if_possible(ty);
                                         if ty == predicate.self_ty() {
                                             error.obligation.cause.make_mut().span = hir_ty.span;

@@ -368,7 +368,6 @@ bootstrap_tool!(
     Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
-    RustDemangler, "src/tools/rust-demangler", "rust-demangler";
     RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
     RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
     ExpandYamlAnchors, "src/tools/expand-yaml-anchors", "expand-yaml-anchors";
@@ -514,12 +513,30 @@ impl Step for Rustdoc {
         // rustc compiler it's paired with, so it must be built with the previous stage compiler.
         let build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
 
+        // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
+        // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
+        // it.
+        builder.ensure(compile::Std { compiler: build_compiler, target: target_compiler.host });
+        builder.ensure(compile::Rustc { compiler: build_compiler, target: target_compiler.host });
+        // NOTE: this implies that `download-rustc` is pretty useless when compiling with the stage0
+        // compiler, since you do just as much work.
+        if !builder.config.dry_run && builder.config.download_rustc && build_compiler.stage == 0 {
+            println!(
+                "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
+            );
+        }
+
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
         // compiler libraries, ...) are built. Rustdoc does not require the presence of any
         // libraries within sysroot_libdir (i.e., rustlib), though doctests may want it (since
         // they'll be linked to those libraries). As such, don't explicitly `ensure` any additional
         // libraries here. The intuition here is that If we've built a compiler, we should be able
         // to build rustdoc.
+        //
+        let mut features = Vec::new();
+        if builder.config.jemalloc {
+            features.push("jemalloc".to_string());
+        }
 
         let cargo = prepare_tool_cargo(
             builder,
@@ -529,7 +546,7 @@ impl Step for Rustdoc {
             "build",
             "src/tools/rustdoc",
             SourceType::InTree,
-            &[],
+            features.as_slice(),
         );
 
         builder.info(&format!(
@@ -719,6 +736,7 @@ tool_extended!((self, builder),
         });
         self.extra_features.push("clippy".to_owned());
     };
+    RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
     RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, {};
 );

@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // aux-build:macro_inner.rs
 // aux-build:proc_macro.rs
 // build-aux-docs

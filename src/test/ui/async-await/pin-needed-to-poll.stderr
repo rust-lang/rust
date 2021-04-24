@@ -1,0 +1,22 @@
+error[E0599]: no method named `poll` found for struct `Sleep` in the current scope
+  --> $DIR/pin-needed-to-poll.rs:42:20
+   |
+LL | struct Sleep;
+   | ------------- method `poll` not found for this
+...
+LL |         self.sleep.poll(cx)
+   |                    ^^^^ method not found in `Sleep`
+   | 
+  ::: $SRC_DIR/core/src/future/future.rs:LL:COL
+   |
+LL |     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
+   |        ---- the method is available for `Pin<&mut Sleep>` here
+   |
+help: consider wrapping the receiver expression with the appropriate type
+   |
+LL |         Pin::new(&mut self.sleep).poll(cx)
+   |         ^^^^^^^^^^^^^           ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

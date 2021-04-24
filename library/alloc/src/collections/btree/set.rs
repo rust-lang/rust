@@ -851,7 +851,6 @@ impl<T> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_retain)]
     /// use std::collections::BTreeSet;
     ///
     /// let xs = [1, 2, 3, 4, 5, 6];
@@ -860,7 +859,7 @@ impl<T> BTreeSet<T> {
     /// set.retain(|&k| k % 2 == 0);
     /// assert!(set.iter().eq([2, 4, 6].iter()));
     /// ```
-    #[unstable(feature = "btree_retain", issue = "79025")]
+    #[stable(feature = "btree_retain", since = "1.53.0")]
     pub fn retain<F>(&mut self, mut f: F)
     where
         T: Ord,

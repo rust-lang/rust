@@ -334,8 +334,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         self.call(expect, &[cond, self.const_bool(expected)], None)
     }
 
-    fn sideeffect(&mut self, unconditional: bool) {
-        if unconditional || self.tcx.sess.opts.debugging_opts.insert_sideeffect {
+    fn sideeffect(&mut self) {
+        // This kind of check would make a ton of sense in the caller, but currently the only
+        // caller of this function is in `rustc_codegen_ssa`, which is agnostic to whether LLVM
+        // codegen backend being used, and so is unable to check the LLVM version.
+        if unsafe { llvm::LLVMRustVersionMajor() } < 12 {
             let fnname = self.get_intrinsic(&("llvm.sideeffect"));
             self.call(fnname, &[], None);
         }
@@ -390,7 +393,6 @@ fn codegen_msvc_try(
 ) {
     let llfn = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
-        bx.sideeffect(false);
 
         let mut normal = bx.build_sibling_block("normal");
         let mut catchswitch = bx.build_sibling_block("catchswitch");
@@ -552,9 +554,6 @@ fn codegen_gnu_try(
         //      (%ptr, _) = landingpad
         //      call %catch_func(%data, %ptr)
         //      ret 1
-
-        bx.sideeffect(false);
-
         let mut then = bx.build_sibling_block("then");
         let mut catch = bx.build_sibling_block("catch");
 
@@ -614,9 +613,6 @@ fn codegen_emcc_try(
         //      %catch_data[1] = %is_rust_panic
         //      call %catch_func(%data, %catch_data)
         //      ret 1
-
-        bx.sideeffect(false);
-
         let mut then = bx.build_sibling_block("then");
         let mut catch = bx.build_sibling_block("catch");
 
@@ -1057,46 +1053,48 @@ fn generic_simd_intrinsic(
         let vec_ty = bx.type_vector(elem_ty, in_len);
 
         let (intr_name, fn_ty) = match name {
-            sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_ceil => ("ceil", bx.type_func(&[vec_ty], vec_ty)),
-            sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fabs => ("fabs", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fcos => ("cos", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fexp2 => ("exp2", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fexp => ("exp", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_flog10 => ("log10", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_flog2 => ("log2", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_flog => ("log", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
             sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
             sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
-            sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
+            sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
+            sym::simd_trunc => ("trunc", bx.type_func(&[vec_ty], vec_ty)),
             _ => return_error!("unrecognized intrinsic `{}`", name),
         };
-
         let llvm_name = &format!("llvm.{0}.v{1}{2}", intr_name, in_len, elem_ty_str);
         let f = bx.declare_cfn(&llvm_name, llvm::UnnamedAddr::No, fn_ty);
         let c = bx.call(f, &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(), None);
-        unsafe { llvm::LLVMRustSetHasUnsafeAlgebra(c) };
         Ok(c)
     }
 
     if std::matches!(
         name,
-        sym::simd_fsqrt
-            | sym::simd_fsin
-            | sym::simd_fcos
+        sym::simd_ceil
             | sym::simd_fabs
-            | sym::simd_floor
-            | sym::simd_ceil
-            | sym::simd_fexp
+            | sym::simd_fcos
             | sym::simd_fexp2
+            | sym::simd_fexp
             | sym::simd_flog10
             | sym::simd_flog2
             | sym::simd_flog
-            | sym::simd_fpowi
-            | sym::simd_fpow
+            | sym::simd_floor
             | sym::simd_fma
+            | sym::simd_fpow
+            | sym::simd_fpowi
+            | sym::simd_fsin
+            | sym::simd_fsqrt
+            | sym::simd_round
+            | sym::simd_trunc
     ) {
         return simd_simple_float_intrinsic(name, in_elem, in_ty, in_len, bx, span, args);
     }
@@ -1632,7 +1630,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             out_elem
         );
     }
-    macro_rules! arith {
+    macro_rules! arith_binary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
             $(if name == sym::$name {
                 match in_elem.kind() {
@@ -1648,7 +1646,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
             })*
         }
     }
-    arith! {
+    arith_binary! {
         simd_add: Uint, Int => add, Float => fadd;
         simd_sub: Uint, Int => sub, Float => fsub;
         simd_mul: Uint, Int => mul, Float => fmul;
@@ -1662,6 +1660,25 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         simd_fmax: Float => maxnum;
         simd_fmin: Float => minnum;
 
+    }
+    macro_rules! arith_unary {
+        ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
+            $(if name == sym::$name {
+                match in_elem.kind() {
+                    $($(ty::$p(_))|* => {
+                        return Ok(bx.$call(args[0].immediate()))
+                    })*
+                    _ => {},
+                }
+                require!(false,
+                         "unsupported operation on `{}` with element `{}`",
+                         in_ty,
+                         in_elem)
+            })*
+        }
+    }
+    arith_unary! {
+        simd_neg: Int => neg, Float => fneg;
     }
 
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {

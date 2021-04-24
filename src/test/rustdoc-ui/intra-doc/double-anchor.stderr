@@ -2,7 +2,9 @@ warning: `with#anchor#error` contains multiple anchors
   --> $DIR/double-anchor.rs:5:18
    |
 LL | /// docs [label][with#anchor#error]
-   |                  ^^^^^^^^^^^^^^^^^ contains invalid anchor
+   |                  ^^^^^^^^^^^------
+   |                             |
+   |                             invalid anchor
    |
    = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
 

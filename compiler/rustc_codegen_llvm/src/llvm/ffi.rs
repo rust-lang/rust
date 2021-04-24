@@ -190,33 +190,6 @@ pub enum RealPredicate {
     RealPredicateTrue = 15,
 }
 
-impl RealPredicate {
-    pub fn from_generic(realpred: rustc_codegen_ssa::common::RealPredicate) -> Self {
-        match realpred {
-            rustc_codegen_ssa::common::RealPredicate::RealPredicateFalse => {
-                RealPredicate::RealPredicateFalse
-            }
-            rustc_codegen_ssa::common::RealPredicate::RealOEQ => RealPredicate::RealOEQ,
-            rustc_codegen_ssa::common::RealPredicate::RealOGT => RealPredicate::RealOGT,
-            rustc_codegen_ssa::common::RealPredicate::RealOGE => RealPredicate::RealOGE,
-            rustc_codegen_ssa::common::RealPredicate::RealOLT => RealPredicate::RealOLT,
-            rustc_codegen_ssa::common::RealPredicate::RealOLE => RealPredicate::RealOLE,
-            rustc_codegen_ssa::common::RealPredicate::RealONE => RealPredicate::RealONE,
-            rustc_codegen_ssa::common::RealPredicate::RealORD => RealPredicate::RealORD,
-            rustc_codegen_ssa::common::RealPredicate::RealUNO => RealPredicate::RealUNO,
-            rustc_codegen_ssa::common::RealPredicate::RealUEQ => RealPredicate::RealUEQ,
-            rustc_codegen_ssa::common::RealPredicate::RealUGT => RealPredicate::RealUGT,
-            rustc_codegen_ssa::common::RealPredicate::RealUGE => RealPredicate::RealUGE,
-            rustc_codegen_ssa::common::RealPredicate::RealULT => RealPredicate::RealULT,
-            rustc_codegen_ssa::common::RealPredicate::RealULE => RealPredicate::RealULE,
-            rustc_codegen_ssa::common::RealPredicate::RealUNE => RealPredicate::RealUNE,
-            rustc_codegen_ssa::common::RealPredicate::RealPredicateTrue => {
-                RealPredicate::RealPredicateTrue
-            }
-        }
-    }
-}
-
 /// LLVMTypeKind
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
@@ -711,7 +684,7 @@ pub mod coverageinfo {
     }
 
     impl CounterMappingRegion {
-        pub fn code_region(
+        crate fn code_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,
@@ -731,7 +704,10 @@ pub mod coverageinfo {
             }
         }
 
-        pub fn expansion_region(
+        // This function might be used in the future; the LLVM API is still evolving, as is coverage
+        // support.
+        #[allow(dead_code)]
+        crate fn expansion_region(
             file_id: u32,
             expanded_file_id: u32,
             start_line: u32,
@@ -751,7 +727,10 @@ pub mod coverageinfo {
             }
         }
 
-        pub fn skipped_region(
+        // This function might be used in the future; the LLVM API is still evolving, as is coverage
+        // support.
+        #[allow(dead_code)]
+        crate fn skipped_region(
             file_id: u32,
             start_line: u32,
             start_col: u32,
@@ -770,7 +749,10 @@ pub mod coverageinfo {
             }
         }
 
-        pub fn gap_region(
+        // This function might be used in the future; the LLVM API is still evolving, as is coverage
+        // support.
+        #[allow(dead_code)]
+        crate fn gap_region(
             counter: coverage_map::Counter,
             file_id: u32,
             start_line: u32,
@@ -1031,6 +1013,7 @@ extern "C" {
     pub fn LLVMSetSection(Global: &Value, Section: *const c_char);
     pub fn LLVMRustGetVisibility(Global: &Value) -> Visibility;
     pub fn LLVMRustSetVisibility(Global: &Value, Viz: Visibility);
+    pub fn LLVMRustSetDSOLocal(Global: &Value, is_dso_local: bool);
     pub fn LLVMGetAlignment(Global: &Value) -> c_uint;
     pub fn LLVMSetAlignment(Global: &Value, Bytes: c_uint);
     pub fn LLVMSetDLLStorageClass(V: &Value, C: DLLStorageClass);
@@ -1371,7 +1354,7 @@ extern "C" {
     pub fn LLVMBuildNeg(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
     pub fn LLVMBuildFNeg(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
     pub fn LLVMBuildNot(B: &Builder<'a>, V: &'a Value, Name: *const c_char) -> &'a Value;
-    pub fn LLVMRustSetHasUnsafeAlgebra(Instr: &Value);
+    pub fn LLVMRustSetFastMath(Instr: &Value);
 
     // Memory
     pub fn LLVMBuildAlloca(B: &Builder<'a>, Ty: &'a Type, Name: *const c_char) -> &'a Value;
@@ -2145,7 +2128,13 @@ extern "C" {
     pub fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
 
     pub fn LLVMRustPrintTargetCPUs(T: &TargetMachine);
-    pub fn LLVMRustPrintTargetFeatures(T: &TargetMachine);
+    pub fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
+    pub fn LLVMRustGetTargetFeature(
+        T: &TargetMachine,
+        Index: size_t,
+        Feature: &mut *const c_char,
+        Desc: &mut *const c_char,
+    );
 
     pub fn LLVMRustGetHostCPUName(len: *mut usize) -> *const c_char;
     pub fn LLVMRustCreateTargetMachine(
@@ -2326,6 +2315,7 @@ extern "C" {
     pub fn LLVMRustUnsetComdat(V: &Value);
     pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
+    pub fn LLVMRustSetModuleCodeModel(M: &Module, Model: CodeModel);
     pub fn LLVMRustModuleBufferCreate(M: &Module) -> &'static mut ModuleBuffer;
     pub fn LLVMRustModuleBufferPtr(p: &ModuleBuffer) -> *const u8;
     pub fn LLVMRustModuleBufferLen(p: &ModuleBuffer) -> usize;

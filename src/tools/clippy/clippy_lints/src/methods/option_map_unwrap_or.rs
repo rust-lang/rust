@@ -1,5 +1,8 @@
-use crate::utils::{differing_macro_contexts, snippet_with_applicability, span_lint_and_then};
-use crate::utils::{is_copy, is_type_diagnostic_item};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::differing_macro_contexts;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::is_copy;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
@@ -12,16 +15,18 @@ use rustc_span::{sym, Symbol};
 use super::MAP_UNWRAP_OR;
 
 /// lint use of `map().unwrap_or()` for `Option`s
-pub(super) fn lint<'tcx>(
+pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &rustc_hir::Expr<'_>,
-    map_args: &'tcx [rustc_hir::Expr<'_>],
-    unwrap_args: &'tcx [rustc_hir::Expr<'_>],
+    recv: &rustc_hir::Expr<'_>,
+    map_arg: &'tcx rustc_hir::Expr<'_>,
+    unwrap_recv: &rustc_hir::Expr<'_>,
+    unwrap_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
 ) {
     // lint if the caller of `map()` is an `Option`
-    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(&map_args[0]), sym::option_type) {
-        if !is_copy(cx, cx.typeck_results().expr_ty(&unwrap_args[1])) {
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::option_type) {
+        if !is_copy(cx, cx.typeck_results().expr_ty(unwrap_arg)) {
             // Do not lint if the `map` argument uses identifiers in the `map`
             // argument that are also used in the `unwrap_or` argument
 
@@ -29,27 +34,27 @@ pub(super) fn lint<'tcx>(
                 cx,
                 identifiers: FxHashSet::default(),
             };
-            unwrap_visitor.visit_expr(&unwrap_args[1]);
+            unwrap_visitor.visit_expr(unwrap_arg);
 
             let mut map_expr_visitor = MapExprVisitor {
                 cx,
                 identifiers: unwrap_visitor.identifiers,
                 found_identifier: false,
             };
-            map_expr_visitor.visit_expr(&map_args[1]);
+            map_expr_visitor.visit_expr(map_arg);
 
             if map_expr_visitor.found_identifier {
                 return;
             }
         }
 
-        if differing_macro_contexts(unwrap_args[1].span, map_span) {
+        if differing_macro_contexts(unwrap_arg.span, map_span) {
             return;
         }
 
         let mut applicability = Applicability::MachineApplicable;
         // get snippet for unwrap_or()
-        let unwrap_snippet = snippet_with_applicability(cx, unwrap_args[1].span, "..", &mut applicability);
+        let unwrap_snippet = snippet_with_applicability(cx, unwrap_arg.span, "..", &mut applicability);
         // lint message
         // comparing the snippet from source to raw text ("None") below is safe
         // because we already have checked the type.
@@ -67,14 +72,14 @@ pub(super) fn lint<'tcx>(
         );
 
         span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
-            let map_arg_span = map_args[1].span;
+            let map_arg_span = map_arg.span;
 
             let mut suggestion = vec![
                 (
                     map_span,
                     String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
                 ),
-                (expr.span.with_lo(unwrap_args[0].span.hi()), String::from("")),
+                (expr.span.with_lo(unwrap_recv.span.hi()), String::from("")),
             ];
 
             if !unwrap_snippet_none {

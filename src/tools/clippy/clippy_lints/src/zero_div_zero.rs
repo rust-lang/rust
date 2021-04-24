@@ -1,5 +1,5 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::span_lint_and_help;
+use clippy_utils::diagnostics::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -31,7 +31,7 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // check for instances of 0.0/0.0
         if_chain! {
-            if let ExprKind::Binary(ref op, ref left, ref right) = expr.kind;
+            if let ExprKind::Binary(ref op, left, right) = expr.kind;
             if let BinOpKind::Div = op.node;
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
                     "constant division of `0.0` with `0.0` will always result in NaN",
                     None,
                     &format!(
-                        "Consider using `{}::NAN` if you would like a constant representing NaN",
+                        "consider using `{}::NAN` if you would like a constant representing NaN",
                         float_type,
                     ),
                 );

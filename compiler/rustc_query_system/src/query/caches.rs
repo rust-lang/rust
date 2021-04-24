@@ -49,12 +49,11 @@ pub trait QueryCache: QueryStorage {
         index: DepNodeIndex,
     ) -> Self::Stored;
 
-    fn iter<R, L>(
+    fn iter<R>(
         &self,
-        shards: &Sharded<L>,
-        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
+        shards: &Sharded<Self::Sharded>,
         f: impl for<'a> FnOnce(
-            Box<dyn Iterator<Item = (&'a Self::Key, &'a Self::Value, DepNodeIndex)> + 'a>,
+            &'a mut dyn Iterator<Item = (&'a Self::Key, &'a Self::Value, DepNodeIndex)>,
         ) -> R,
     ) -> R;
 }
@@ -125,16 +124,14 @@ where
         value
     }
 
-    fn iter<R, L>(
+    fn iter<R>(
         &self,
-        shards: &Sharded<L>,
-        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
-        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
+        shards: &Sharded<Self::Sharded>,
+        f: impl for<'a> FnOnce(&'a mut dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)>) -> R,
     ) -> R {
-        let mut shards = shards.lock_shards();
-        let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
-        let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
-        f(Box::new(results))
+        let shards = shards.lock_shards();
+        let mut results = shards.iter().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
+        f(&mut results)
     }
 }
 
@@ -210,15 +207,13 @@ where
         &value.0
     }
 
-    fn iter<R, L>(
+    fn iter<R>(
         &self,
-        shards: &Sharded<L>,
-        get_shard: impl Fn(&mut L) -> &mut Self::Sharded,
-        f: impl for<'a> FnOnce(Box<dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)> + 'a>) -> R,
+        shards: &Sharded<Self::Sharded>,
+        f: impl for<'a> FnOnce(&'a mut dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)>) -> R,
     ) -> R {
-        let mut shards = shards.lock_shards();
-        let mut shards: Vec<_> = shards.iter_mut().map(|shard| get_shard(shard)).collect();
-        let results = shards.iter_mut().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
-        f(Box::new(results))
+        let shards = shards.lock_shards();
+        let mut results = shards.iter().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
+        f(&mut results)
     }
 }

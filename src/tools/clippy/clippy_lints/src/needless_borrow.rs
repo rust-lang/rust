@@ -2,7 +2,9 @@
 //!
 //! This lint is **warn** by default
 
-use crate::utils::{is_automatically_derived, snippet_opt, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_automatically_derived;
+use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, BorrowKind, Expr, ExprKind, Item, Mutability, Pat, PatKind};
@@ -46,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         if e.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
-        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, ref inner) = e.kind {
+        if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = e.kind {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
                     if let [Adjustment {
@@ -115,8 +117,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         }
     }
 
-    fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if is_automatically_derived(item.attrs) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
+        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        if is_automatically_derived(attrs) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.def_id);
         }

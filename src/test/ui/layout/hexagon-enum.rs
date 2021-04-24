@@ -4,7 +4,7 @@
 // Verify that the hexagon targets implement the repr(C) for enums correctly.
 //
 // See #82100
-#![feature(never_type, rustc_attrs, type_alias_impl_trait, no_core, lang_items)]
+#![feature(never_type, rustc_attrs, no_core, lang_items)]
 #![crate_type = "lib"]
 #![no_core]
 

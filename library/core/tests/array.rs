@@ -1,23 +1,5 @@
-use core::array::{self, FixedSizeArray, IntoIter};
+use core::array::{self, IntoIter};
 use core::convert::TryFrom;
-
-#[test]
-fn fixed_size_array() {
-    let mut array = [0; 64];
-    let mut zero_sized = [(); 64];
-    let mut empty_array = [0; 0];
-    let mut empty_zero_sized = [(); 0];
-
-    assert_eq!(FixedSizeArray::as_slice(&array).len(), 64);
-    assert_eq!(FixedSizeArray::as_slice(&zero_sized).len(), 64);
-    assert_eq!(FixedSizeArray::as_slice(&empty_array).len(), 0);
-    assert_eq!(FixedSizeArray::as_slice(&empty_zero_sized).len(), 0);
-
-    assert_eq!(FixedSizeArray::as_mut_slice(&mut array).len(), 64);
-    assert_eq!(FixedSizeArray::as_mut_slice(&mut zero_sized).len(), 64);
-    assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_array).len(), 0);
-    assert_eq!(FixedSizeArray::as_mut_slice(&mut empty_zero_sized).len(), 0);
-}
 
 #[test]
 fn array_from_ref() {

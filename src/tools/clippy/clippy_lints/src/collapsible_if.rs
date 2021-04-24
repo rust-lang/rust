@@ -12,14 +12,14 @@
 //!
 //! This lint is **warn** by default
 
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::source::{snippet_block, snippet_block_with_applicability};
+use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_ast::ast;
+use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-
-use crate::utils::sugg::Sugg;
-use crate::utils::{snippet_block, snippet_block_with_applicability, span_lint_and_sugg, span_lint_and_then};
-use rustc_errors::Applicability;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for nested `if` statements which can be collapsed

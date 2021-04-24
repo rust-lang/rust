@@ -1,5 +1,6 @@
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_target::abi::Align;
 
 /// Returns `true` if this place is allowed to be less aligned
 /// than its containing struct (because it is within a packed
@@ -14,17 +15,25 @@ where
     L: HasLocalDecls<'tcx>,
 {
     debug!("is_disaligned({:?})", place);
-    if !is_within_packed(tcx, local_decls, place) {
-        debug!("is_disaligned({:?}) - not within packed", place);
-        return false;
-    }
+    let pack = match is_within_packed(tcx, local_decls, place) {
+        None => {
+            debug!("is_disaligned({:?}) - not within packed", place);
+            return false;
+        }
+        Some(pack) => pack,
+    };
 
     let ty = place.ty(local_decls, tcx).ty;
     match tcx.layout_raw(param_env.and(ty)) {
-        Ok(layout) if layout.align.abi.bytes() == 1 => {
-            // if the alignment is 1, the type can't be further
-            // disaligned.
-            debug!("is_disaligned({:?}) - align = 1", place);
+        Ok(layout) if layout.align.abi <= pack => {
+            // If the packed alignment is greater or equal to the field alignment, the type won't be
+            // further disaligned.
+            debug!(
+                "is_disaligned({:?}) - align = {}, packed = {}; not disaligned",
+                place,
+                layout.align.abi.bytes(),
+                pack.bytes()
+            );
             false
         }
         _ => {
@@ -34,7 +43,11 @@ where
     }
 }
 
-fn is_within_packed<'tcx, L>(tcx: TyCtxt<'tcx>, local_decls: &L, place: Place<'tcx>) -> bool
+fn is_within_packed<'tcx, L>(
+    tcx: TyCtxt<'tcx>,
+    local_decls: &L,
+    place: Place<'tcx>,
+) -> Option<Align>
 where
     L: HasLocalDecls<'tcx>,
 {
@@ -45,7 +58,7 @@ where
             ProjectionElem::Field(..) => {
                 let ty = place_base.ty(local_decls, tcx).ty;
                 match ty.kind() {
-                    ty::Adt(def, _) if def.repr.packed() => return true,
+                    ty::Adt(def, _) => return def.repr.pack,
                     _ => {}
                 }
             }
@@ -53,5 +66,5 @@ where
         }
     }
 
-    false
+    None
 }

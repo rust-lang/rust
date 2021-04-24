@@ -16,8 +16,8 @@ LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: [u8]| x }]> {
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL | fn bug<T>() -> impl Iterator<Item = [(); { |&x: [u8]| x }]> {
-   |                                             ^
+LL | fn bug<T>() -> impl Iterator<Item = [(); { |x: &[u8]| x }]> {
+   |                                                ^
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/ice-6251.rs:4:54

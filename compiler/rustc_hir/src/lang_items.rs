@@ -38,27 +38,34 @@ macro_rules! expand_group {
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
     (
-        $( $variant:ident $($group:expr)?, $name:expr, $method:ident, $target:expr; )*
+        $( $(#[$attr:meta])* $variant:ident $($group:expr)?, $module:ident :: $name:ident, $method:ident, $target:expr; )*
     ) => {
 
         enum_from_u32! {
             /// A representation of all the valid language items in Rust.
             #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
             pub enum LangItem {
-                $($variant,)*
+                $(
+                    #[doc = concat!("The `", stringify!($name), "` lang item.")]
+                    ///
+                    $(#[$attr])*
+                    $variant,
+                )*
             }
         }
 
         impl LangItem {
             /// Returns the `name` symbol in `#[lang = "$name"]`.
-            /// For example, `LangItem::EqTraitLangItem`,
-            /// that is `#[lang = "eq"]` would result in `sym::eq`.
+            /// For example, [`LangItem::PartialEq`]`.name()`
+            /// would result in [`sym::eq`] since it is `#[lang = "eq"]`.
             pub fn name(self) -> Symbol {
                 match self {
-                    $( LangItem::$variant => $name, )*
+                    $( LangItem::$variant => $module::$name, )*
                 }
             }
 
+            /// The [group](LangItemGroup) that this lang item belongs to,
+            /// or `None` if it doesn't belong to a group.
             pub fn group(self) -> Option<LangItemGroup> {
                 use LangItemGroup::*;
                 match self {
@@ -67,15 +74,17 @@ macro_rules! language_item_table {
             }
         }
 
+        /// All of the language items, defined or not.
+        /// Defined lang items can come from the current crate or its dependencies.
         #[derive(HashStable_Generic, Debug)]
         pub struct LanguageItems {
-            /// Mappings from lang items to their possibly found `DefId`s.
-            /// The index corresponds to the order in `LangItem`.
+            /// Mappings from lang items to their possibly found [`DefId`]s.
+            /// The index corresponds to the order in [`LangItem`].
             pub items: Vec<Option<DefId>>,
             /// Lang items that were not found during collection.
             pub missing: Vec<LangItem>,
-            /// Mapping from `LangItemGroup` discriminants to all
-            /// `DefId`s of lang items in that group.
+            /// Mapping from [`LangItemGroup`] discriminants to all
+            /// [`DefId`]s of lang items in that group.
             pub groups: [Vec<DefId>; NUM_GROUPS],
         }
 
@@ -103,14 +112,13 @@ macro_rules! language_item_table {
                 self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
             }
 
+            /// Returns the [`DefId`]s of all lang items in a group.
             pub fn group(&self, group: LangItemGroup) -> &[DefId] {
                 self.groups[group as usize].as_ref()
             }
 
             $(
-                /// Returns the corresponding `DefId` for the lang item if it
-                /// exists.
-                #[allow(dead_code)]
+                #[doc = concat!("Returns the [`DefId`] of the `", stringify!($name), "` lang item if it is defined.")]
                 pub fn $method(&self) -> Option<DefId> {
                     self.items[LangItem::$variant as usize]
                 }
@@ -120,7 +128,7 @@ macro_rules! language_item_table {
         /// A mapping from the name of the lang item to its order and the form it must be of.
         pub static ITEM_REFS: SyncLazy<FxHashMap<Symbol, (usize, Target)>> = SyncLazy::new(|| {
             let mut item_refs = FxHashMap::default();
-            $( item_refs.insert($name, (LangItem::$variant as usize, $target)); )*
+            $( item_refs.insert($module::$name, (LangItem::$variant as usize, $target)); )*
             item_refs
         });
 
@@ -140,7 +148,7 @@ impl<CTX> HashStable<CTX> for LangItem {
 ///
 /// About the `check_name` argument: passing in a `Session` would be simpler,
 /// because then we could call `Session::check_name` directly. But we want to
-/// avoid the need for `librustc_hir` to depend on `librustc_session`, so we
+/// avoid the need for `rustc_hir` to depend on `rustc_session`, so we
 /// use a closure instead.
 pub fn extract<'a, F>(check_name: F, attrs: &'a [ast::Attribute]) -> Option<(Symbol, Span)>
 where
@@ -190,15 +198,15 @@ language_item_table! {
 
     Sized,                   sym::sized,               sized_trait,                Target::Trait;
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait;
-    // Trait injected by #[derive(PartialEq)], (i.e. "Partial EQ").
+    /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait;
-    // Trait injected by #[derive(Eq)], (i.e. "Total EQ"; no, I will not apologize).
+    /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
     StructuralTeq,           sym::structural_teq,      structural_teq_trait,       Target::Trait;
     Copy,                    sym::copy,                copy_trait,                 Target::Trait;
     Clone,                   sym::clone,               clone_trait,                Target::Trait;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait;
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait;
-    // The associated item of `trait DiscriminantKind`.
+    /// The associated item of the [`DiscriminantKind`] trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy;
 
     PointeeTrait,            sym::pointee_trait,       pointee_trait,              Target::Trait;
@@ -273,7 +281,7 @@ language_item_table! {
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn;
-    // libstd panic entry point. Necessary for const eval to be able to catch it
+    /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn;
 
     ExchangeMalloc,          sym::exchange_malloc,     exchange_malloc_fn,         Target::Fn;
@@ -295,7 +303,7 @@ language_item_table! {
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union;
 
-    // Align offset for stride != 1; must not panic.
+    /// Align offset for stride != 1; must not panic.
     AlignOffset,             sym::align_offset,        align_offset_fn,            Target::Fn;
 
     Termination,             sym::termination,         termination,                Target::Trait;

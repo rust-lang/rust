@@ -10,7 +10,11 @@ LL | |
 LL | | }
    | |_^
    |
-   = note: required because of the requirements on the impl of `Grault` for `(T,)`
+note: required because of the requirements on the impl of `Grault` for `(T,)`
+  --> $DIR/impl-wf-cycle-1.rs:15:17
+   |
+LL | impl<T: Grault> Grault for (T,)
+   |                 ^^^^^^     ^^^^
    = note: 1 redundant requirements hidden
    = note: required because of the requirements on the impl of `Grault` for `(T,)`
 
@@ -20,7 +24,11 @@ error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
 LL |     type A = ();
    |     ^^^^^^^^^^^^
    |
-   = note: required because of the requirements on the impl of `Grault` for `(T,)`
+note: required because of the requirements on the impl of `Grault` for `(T,)`
+  --> $DIR/impl-wf-cycle-1.rs:15:17
+   |
+LL | impl<T: Grault> Grault for (T,)
+   |                 ^^^^^^     ^^^^
    = note: 1 redundant requirements hidden
    = note: required because of the requirements on the impl of `Grault` for `(T,)`
 
@@ -30,7 +38,11 @@ error[E0275]: overflow evaluating the requirement `<(T,) as Grault>::A == _`
 LL |     type B = bool;
    |     ^^^^^^^^^^^^^^
    |
-   = note: required because of the requirements on the impl of `Grault` for `(T,)`
+note: required because of the requirements on the impl of `Grault` for `(T,)`
+  --> $DIR/impl-wf-cycle-1.rs:15:17
+   |
+LL | impl<T: Grault> Grault for (T,)
+   |                 ^^^^^^     ^^^^
    = note: 1 redundant requirements hidden
    = note: required because of the requirements on the impl of `Grault` for `(T,)`
 

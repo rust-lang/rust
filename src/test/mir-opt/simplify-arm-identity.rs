@@ -1,7 +1,7 @@
 // Checks that `SimplifyArmIdentity` is not applied if enums have incompatible layouts.
 // Regression test for issue #66856.
 //
-// compile-flags: -Zmir-opt-level=2
+// compile-flags: -Zmir-opt-level=3
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 enum Src {

@@ -8,7 +8,7 @@
 - [Documentation tests](documentation-tests.md)
 - [Linking to items by name](linking-to-items-by-name.md)
 - [Lints](lints.md)
-- [Passes](passes.md)
 - [Advanced features](advanced-features.md)
 - [Unstable features](unstable-features.md)
+- [Passes](passes.md)
 - [References](references.md)

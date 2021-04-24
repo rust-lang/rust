@@ -1,4 +1,4 @@
-error[E0119]: conflicting implementations of trait `MyTrait` for type `Foo`:
+error[E0119]: conflicting implementations of trait `MyTrait` for type `Foo`
   --> $DIR/E0119.rs:13:1
    |
 LL | impl<T> MyTrait for T {

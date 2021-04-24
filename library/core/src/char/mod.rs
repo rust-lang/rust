@@ -45,6 +45,8 @@ pub use self::methods::encode_utf8_raw;
 use crate::fmt::{self, Write};
 use crate::iter::FusedIterator;
 
+pub(crate) use self::methods::EscapeDebugExtArgs;
+
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8 = 0b1000_0000;
 const TAG_TWO_B: u8 = 0b1100_0000;

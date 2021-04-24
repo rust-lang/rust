@@ -28,31 +28,19 @@ fn main() {
 
         // Const operands must be integer or floats, and must be constants.
 
-        let x = 0;
-        const C: i32 = 0;
-        const fn const_foo(x: i32) -> i32 {
-            x
-        }
-        const fn const_bar<T>(x: T) -> T {
-            x
-        }
+        asm!("{}", const 0);
         asm!("{}", const 0i32);
         asm!("{}", const 0f32);
         asm!("{}", const 0 as *mut u8);
         //~^ ERROR asm `const` arguments must be integer or floating-point values
-        asm!("{}", const &0);
-        //~^ ERROR asm `const` arguments must be integer or floating-point values
-        asm!("{}", const x);
-        //~^ ERROR argument 1 is required to be a constant
-        asm!("{}", const const_foo(0));
-        asm!("{}", const const_foo(x));
-        //~^ ERROR argument 1 is required to be a constant
-        asm!("{}", const const_bar(0));
-        asm!("{}", const const_bar(x));
-        //~^ ERROR argument 1 is required to be a constant
+
+        // This currently causes an ICE: https://github.com/rust-lang/rust/issues/81857
+        // asm!("{}", const &0);
+        // ERROR asm `const` arguments must be integer or floating-point values
 
         // Sym operands must point to a function or static
 
+        const C: i32 = 0;
         static S: i32 = 0;
         asm!("{}", sym S);
         asm!("{}", sym main);

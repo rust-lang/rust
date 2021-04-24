@@ -69,6 +69,12 @@ pub struct TraitImpls {
     non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
 }
 
+impl TraitImpls {
+    pub fn blanket_impls(&self) -> &[DefId] {
+        self.blanket_impls.as_slice()
+    }
+}
+
 impl<'tcx> TraitDef {
     pub fn new(
         def_id: DefId,

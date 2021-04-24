@@ -15,7 +15,7 @@
 mod tests;
 
 #[derive(Clone)]
-pub struct TinyList<T: PartialEq> {
+pub struct TinyList<T> {
     head: Option<Element<T>>,
 }
 
@@ -56,20 +56,10 @@ impl<T: PartialEq> TinyList<T> {
         }
         false
     }
-
-    #[inline]
-    pub fn len(&self) -> usize {
-        let (mut elem, mut count) = (self.head.as_ref(), 0);
-        while let Some(ref e) = elem {
-            count += 1;
-            elem = e.next.as_deref();
-        }
-        count
-    }
 }
 
 #[derive(Clone)]
-struct Element<T: PartialEq> {
+struct Element<T> {
     data: T,
     next: Option<Box<Element<T>>>,
 }

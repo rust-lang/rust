@@ -754,7 +754,6 @@ impl CrateInfo {
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
-            link_args: tcx.link_args(LOCAL_CRATE),
             crate_name: Default::default(),
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),

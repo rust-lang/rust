@@ -98,6 +98,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --qemu-riscv64-rootfs=/tmp/rootfs
-ENV SCRIPT python3 ../x.py --stage 2 test --target riscv64gc-unknown-linux-gnu
+ENV SCRIPT python3 ../x.py --stage 2 test --host='' --target riscv64gc-unknown-linux-gnu
 
 ENV NO_CHANGE_USER=1

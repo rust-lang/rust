@@ -24,6 +24,9 @@ crate static NORMALIZE_CSS: &str = include_str!("static/normalize.css");
 /// including search behavior and docblock folding, among others.
 crate static MAIN_JS: &str = include_str!("static/main.js");
 
+/// The file contents of `search.js`, which contains the search behavior.
+crate static SEARCH_JS: &str = include_str!("static/search.js");
+
 /// The file contents of `settings.js`, which contains the JavaScript used to handle the settings
 /// page.
 crate static SETTINGS_JS: &str = include_str!("static/settings.js");
@@ -89,29 +92,32 @@ crate mod fira_sans {
     crate static LICENSE: &[u8] = include_bytes!("static/FiraSans-LICENSE.txt");
 }
 
-/// Files related to the Source Serif Pro font.
-crate mod source_serif_pro {
-    /// The file `SourceSerifPro-Regular.ttf.woff`, the Regular variant of the Source Serif Pro
-    /// font.
-    crate static REGULAR: &[u8] = include_bytes!("static/SourceSerifPro-Regular.ttf.woff");
+/// Files related to the Source Serif 4 font.
+crate mod source_serif_4 {
+    /// The file `SourceSerif4-Regular.ttf.woff`, the Regular variant of the Source Serif 4 font.
+    crate static REGULAR: &[u8] = include_bytes!("static/SourceSerif4-Regular.ttf.woff");
 
-    /// The file `SourceSerifPro-Bold.ttf.woff`, the Bold variant of the Source Serif Pro font.
-    crate static BOLD: &[u8] = include_bytes!("static/SourceSerifPro-Bold.ttf.woff");
+    /// The file `SourceSerif4-Bold.ttf.woff`, the Bold variant of the Source Serif 4 font.
+    crate static BOLD: &[u8] = include_bytes!("static/SourceSerif4-Bold.ttf.woff");
 
-    /// The file `SourceSerifPro-It.ttf.woff`, the Italic variant of the Source Serif Pro font.
-    crate static ITALIC: &[u8] = include_bytes!("static/SourceSerifPro-It.ttf.woff");
+    /// The file `SourceSerif4-It.ttf.woff`, the Italic variant of the Source Serif 4 font.
+    crate static ITALIC: &[u8] = include_bytes!("static/SourceSerif4-It.ttf.woff");
 
-    /// The file `SourceSerifPro-LICENSE.txt`, the license text for the Source Serif Pro font.
-    crate static LICENSE: &[u8] = include_bytes!("static/SourceSerifPro-LICENSE.md");
+    /// The file `SourceSerif4-LICENSE.txt`, the license text for the Source Serif 4 font.
+    crate static LICENSE: &[u8] = include_bytes!("static/SourceSerif4-LICENSE.md");
 }
 
 /// Files related to the Source Code Pro font.
 crate mod source_code_pro {
-    /// The file `SourceCodePro-Regular.woff`, the Regular variant of the Source Code Pro font.
-    crate static REGULAR: &[u8] = include_bytes!("static/SourceCodePro-Regular.woff");
+    /// The file `SourceCodePro-Regular.ttf.woff`, the Regular variant of the Source Code Pro font.
+    crate static REGULAR: &[u8] = include_bytes!("static/SourceCodePro-Regular.ttf.woff");
 
-    /// The file `SourceCodePro-Semibold.woff`, the Semibold variant of the Source Code Pro font.
-    crate static SEMIBOLD: &[u8] = include_bytes!("static/SourceCodePro-Semibold.woff");
+    /// The file `SourceCodePro-Semibold.ttf.woff`, the Semibold variant of the Source Code Pro
+    /// font.
+    crate static SEMIBOLD: &[u8] = include_bytes!("static/SourceCodePro-Semibold.ttf.woff");
+
+    /// The file `SourceCodePro-It.ttf.woff`, the Italic variant of the Source Code Pro font.
+    crate static ITALIC: &[u8] = include_bytes!("static/SourceCodePro-It.ttf.woff");
 
     /// The file `SourceCodePro-LICENSE.txt`, the license text of the Source Code Pro font.
     crate static LICENSE: &[u8] = include_bytes!("static/SourceCodePro-LICENSE.txt");

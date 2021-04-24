@@ -14,8 +14,8 @@ use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLife
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{ConstAlloc, LitToConstError, LitToConstInput};
 use crate::mir::interpret::{ConstValue, EvalToAllocationRawResult, EvalToConstValueResult};
-use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
@@ -217,8 +217,11 @@ macro_rules! define_callbacks {
             fn default() -> Self {
                 Providers {
                     $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` unsupported by its crate",
-                         stringify!($name), key
+                        "`tcx.{}({:?})` unsupported by its crate; \
+                         perhaps the `{}` query was never assigned a provider function",
+                        stringify!($name),
+                        key,
+                        stringify!($name),
                     ),)*
                 }
             }

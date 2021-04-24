@@ -1,16 +1,18 @@
-use crate::utils::ptr::get_spans;
-use crate::utils::{
-    get_trait_def_id, implements_trait, is_copy, is_self, is_type_diagnostic_item, multispan_sugg, paths, snippet,
-    snippet_opt, span_lint_and_then,
-};
+use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::ptr::get_spans;
+use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::ty::{implements_trait, is_copy, is_type_diagnostic_item};
+use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Node, PatKind, QPath, TyKind};
+use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::kw;
@@ -80,13 +82,14 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         match kind {
-            FnKind::ItemFn(.., header, _, attrs) => {
+            FnKind::ItemFn(.., header, _) => {
+                let attrs = cx.tcx.hir().attrs(hir_id);
                 if header.abi != Abi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
             },
             FnKind::Method(..) => (),
-            FnKind::Closure(..) => return,
+            FnKind::Closure => return,
         }
 
         // Exclude non-inherent impls
@@ -205,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             if is_type_diagnostic_item(cx, ty, sym::vec_type);
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
-                            if let TyKind::Path(QPath::Resolved(_, ref path)) = input.kind;
+                            if let TyKind::Path(QPath::Resolved(_, path)) = input.kind;
                             if let Some(elem_ty) = path.segments.iter()
                                 .find(|seg| seg.ident.name == sym::Vec)
                                 .and_then(|ps| ps.args.as_ref())
@@ -308,10 +311,10 @@ fn requires_exact_signature(attrs: &[Attribute]) -> bool {
 
 #[derive(Default)]
 struct MovedVariablesCtxt {
-    moved_vars: FxHashSet<HirId>,
+    moved_vars: HirIdSet,
     /// Spans which need to be prefixed with `*` for dereferencing the
     /// suggested additional reference.
-    spans_need_deref: FxHashMap<HirId, FxHashSet<Span>>,
+    spans_need_deref: HirIdMap<FxHashSet<Span>>,
 }
 
 impl MovedVariablesCtxt {
@@ -332,4 +335,6 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
     fn borrow(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
 
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
 }

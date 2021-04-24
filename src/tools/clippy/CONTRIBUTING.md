@@ -18,11 +18,13 @@ All contributors are expected to follow the [Rust Code of Conduct].
     - [Finding something to fix/improve](#finding-something-to-fiximprove)
   - [Writing code](#writing-code)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
+    - [IntelliJ Rust](#intellij-rust)
+    - [Rust Analyzer](#rust-analyzer)
   - [How Clippy works](#how-clippy-works)
-  - [Syncing changes between Clippy and `rust-lang/rust`](#syncing-changes-between-clippy-and-rust-langrust)
+  - [Syncing changes between Clippy and [`rust-lang/rust`]](#syncing-changes-between-clippy-and-rust-langrust)
     - [Patching git-subtree to work with big repos](#patching-git-subtree-to-work-with-big-repos)
-    - [Performing the sync from `rust-lang/rust` to Clippy](#performing-the-sync-from-rust-langrust-to-clippy)
-    - [Performing the sync from Clippy to `rust-lang/rust`](#performing-the-sync-from-clippy-to-rust-langrust)
+    - [Performing the sync from [`rust-lang/rust`] to Clippy](#performing-the-sync-from-rust-langrust-to-clippy)
+    - [Performing the sync from Clippy to [`rust-lang/rust`]](#performing-the-sync-from-clippy-to-rust-langrust)
     - [Defining remotes](#defining-remotes)
   - [Issue and PR triage](#issue-and-pr-triage)
   - [Bors and Homu](#bors-and-homu)
@@ -105,21 +107,41 @@ quick read.
 
 ## Getting code-completion for rustc internals to work
 
-Unfortunately, [`rust-analyzer`][ra_homepage] does not (yet?) understand how Clippy uses compiler-internals
+### IntelliJ Rust
+Unfortunately, [`IntelliJ Rust`][IntelliJ_rust_homepage] does not (yet?) understand how Clippy uses compiler-internals
 using `extern crate` and it also needs to be able to read the source files of the rustc-compiler which are not
 available via a `rustup` component at the time of writing.
 To work around this, you need to have a copy of the [rustc-repo][rustc_repo] available which can be obtained via
 `git clone https://github.com/rust-lang/rust/`.
 Then you can run a `cargo dev` command to automatically make Clippy use the rustc-repo via path-dependencies
-which rust-analyzer will be able to understand.
-Run `cargo dev ra_setup --repo-path <repo-path>` where `<repo-path>` is an absolute path to the rustc repo
+which `IntelliJ Rust` will be able to understand.
+Run `cargo dev ide_setup --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
 Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
-[ra_homepage]: https://rust-analyzer.github.io/
 [rustc_repo]: https://github.com/rust-lang/rust/
+[IntelliJ_rust_homepage]: https://intellij-rust.github.io/
+
+### Rust Analyzer
+As of [#6869][6869], [`rust-analyzer`][ra_homepage] can understand that Clippy uses compiler-internals
+using `extern crate` when `package.metadata.rust-analyzer.rustc_private` is set to `true` in Clippys `Cargo.toml.`
+You will required a `nightly` toolchain with the `rustc-dev` component installed.
+Make sure that in the `rust-analyzer` configuration, you set
+```
+{ "rust-analyzer.rustcSource": "discover" }
+```
+and
+```
+{ "rust-analyzer.updates.channel": "nightly" }
+```
+You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
+a lot more type hints.
+This will work with `rust-analyzer 2021-03-15` shipped in nightly `1.52.0-nightly (107896c32 2021-03-15)` or later.
+
+[ra_homepage]: https://rust-analyzer.github.io/
+[6869]: https://github.com/rust-lang/rust-clippy/pull/6869
 
 ## How Clippy works
 

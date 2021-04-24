@@ -3,7 +3,7 @@
 //  - The generator types and variants are marked artificial
 //  - Captured vars from the source are not marked artificial
 //
-// ignore-tidy-linelength
+//
 // compile-flags: -C debuginfo=2 --edition=2018
 // ignore-msvc
 

@@ -15,7 +15,8 @@ use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{SymbolName, TyCtxt};
-use rustc_session::config::{CrateType, SanitizerSet};
+use rustc_session::config::CrateType;
+use rustc_target::spec::SanitizerSet;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(&tcx.sess.crate_types())
@@ -188,9 +189,7 @@ fn exported_symbols_provider_local(
         }
     }
 
-    if tcx.sess.opts.debugging_opts.instrument_coverage
-        || tcx.sess.opts.cg.profile_generate.enabled()
-    {
+    if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.

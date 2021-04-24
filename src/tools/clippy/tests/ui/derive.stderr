@@ -40,7 +40,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:44:1
+  --> $DIR/derive.rs:43:1
    |
 LL | / impl Clone for BigArray {
 LL | |     fn clone(&self) -> Self {
@@ -50,7 +50,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:44:1
+  --> $DIR/derive.rs:43:1
    |
 LL | / impl Clone for BigArray {
 LL | |     fn clone(&self) -> Self {
@@ -60,7 +60,7 @@ LL | | }
    | |_^
 
 error: you are implementing `Clone` explicitly on a `Copy` type
-  --> $DIR/derive.rs:56:1
+  --> $DIR/derive.rs:54:1
    |
 LL | / impl Clone for FnPtr {
 LL | |     fn clone(&self) -> Self {
@@ -70,7 +70,7 @@ LL | | }
    | |_^
    |
 note: consider deriving `Clone` or removing `Copy`
-  --> $DIR/derive.rs:56:1
+  --> $DIR/derive.rs:54:1
    |
 LL | / impl Clone for FnPtr {
 LL | |     fn clone(&self) -> Self {
@@ -79,5 +79,25 @@ LL | |     }
 LL | | }
    | |_^
 
-error: aborting due to 4 previous errors
+error: you are implementing `Clone` explicitly on a `Copy` type
+  --> $DIR/derive.rs:74:1
+   |
+LL | / impl<T: Clone> Clone for Generic2<T> {
+LL | |     fn clone(&self) -> Self {
+LL | |         Self(self.0.clone())
+LL | |     }
+LL | | }
+   | |_^
+   |
+note: consider deriving `Clone` or removing `Copy`
+  --> $DIR/derive.rs:74:1
+   |
+LL | / impl<T: Clone> Clone for Generic2<T> {
+LL | |     fn clone(&self) -> Self {
+LL | |         Self(self.0.clone())
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to 5 previous errors
 

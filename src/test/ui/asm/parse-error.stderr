@@ -91,7 +91,7 @@ LL |         asm!("{}", options(), const foo);
    |                    previous options
 
 error: duplicate argument named `a`
-  --> $DIR/parse-error.rs:39:36
+  --> $DIR/parse-error.rs:40:36
    |
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                     -------------  ^^^^^^^^^^^^^ duplicate argument
@@ -99,7 +99,7 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |                     previously here
 
 error: argument never used
-  --> $DIR/parse-error.rs:39:36
+  --> $DIR/parse-error.rs:40:36
    |
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                                    ^^^^^^^^^^^^^ argument never used
@@ -107,13 +107,13 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
 error: explicit register arguments cannot have names
-  --> $DIR/parse-error.rs:42:18
+  --> $DIR/parse-error.rs:45:18
    |
 LL |         asm!("", a = in("eax") foo);
    |                  ^^^^^^^^^^^^^^^^^
 
 error: named arguments cannot follow explicit register arguments
-  --> $DIR/parse-error.rs:44:36
+  --> $DIR/parse-error.rs:47:36
    |
 LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     -------------  ^^^^^^^^^^^^^ named argument
@@ -121,7 +121,7 @@ LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     explicit register argument
 
 error: named arguments cannot follow explicit register arguments
-  --> $DIR/parse-error.rs:46:36
+  --> $DIR/parse-error.rs:50:36
    |
 LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     -------------  ^^^^^^^^^^^^^ named argument
@@ -129,7 +129,7 @@ LL |         asm!("{a}", in("eax") foo, a = const bar);
    |                     explicit register argument
 
 error: positional arguments cannot follow named arguments or explicit register arguments
-  --> $DIR/parse-error.rs:48:36
+  --> $DIR/parse-error.rs:53:36
    |
 LL |         asm!("{1}", in("eax") foo, const bar);
    |                     -------------  ^^^^^^^^^ positional argument
@@ -137,19 +137,19 @@ LL |         asm!("{1}", in("eax") foo, const bar);
    |                     explicit register argument
 
 error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `""`
-  --> $DIR/parse-error.rs:50:29
+  --> $DIR/parse-error.rs:56:29
    |
 LL |         asm!("", options(), "");
    |                             ^^ expected one of 8 possible tokens
 
 error: expected one of `const`, `in`, `inlateout`, `inout`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
-  --> $DIR/parse-error.rs:52:33
+  --> $DIR/parse-error.rs:58:33
    |
 LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
    |                                 ^^^^ expected one of 8 possible tokens
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:54:14
+  --> $DIR/parse-error.rs:60:14
    |
 LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -157,12 +157,67 @@ LL |         asm!(format!("{{{}}}", 0), in(reg) foo);
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: asm template must be a string literal
-  --> $DIR/parse-error.rs:56:21
+  --> $DIR/parse-error.rs:62:21
    |
 LL |         asm!("{1}", format!("{{{}}}", 0), in(reg) foo, out(reg) bar);
    |                     ^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 25 previous errors
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/parse-error.rs:37:37
+   |
+LL |     let mut foo = 0;
+   |      ---------- help: consider using `const` instead of `let`: `const foo`
+...
+LL |         asm!("{}", options(), const foo);
+   |                                     ^^^ non-constant value
 
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/parse-error.rs:40:31
+   |
+LL |     let mut foo = 0;
+   |      ---------- help: consider using `const` instead of `let`: `const foo`
+...
+LL |         asm!("{a}", a = const foo, a = const bar);
+   |                               ^^^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/parse-error.rs:40:46
+   |
+LL |     let mut bar = 0;
+   |      ---------- help: consider using `const` instead of `let`: `const bar`
+...
+LL |         asm!("{a}", a = const foo, a = const bar);
+   |                                              ^^^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/parse-error.rs:47:46
+   |
+LL |     let mut bar = 0;
+   |      ---------- help: consider using `const` instead of `let`: `const bar`
+...
+LL |         asm!("{a}", in("eax") foo, a = const bar);
+   |                                              ^^^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/parse-error.rs:50:46
+   |
+LL |     let mut bar = 0;
+   |      ---------- help: consider using `const` instead of `let`: `const bar`
+...
+LL |         asm!("{a}", in("eax") foo, a = const bar);
+   |                                              ^^^ non-constant value
+
+error[E0435]: attempt to use a non-constant value in a constant
+  --> $DIR/parse-error.rs:53:42
+   |
+LL |     let mut bar = 0;
+   |      ---------- help: consider using `const` instead of `let`: `const bar`
+...
+LL |         asm!("{1}", in("eax") foo, const bar);
+   |                                          ^^^ non-constant value
+
+error: aborting due to 31 previous errors
+
+For more information about this error, try `rustc --explain E0435`.

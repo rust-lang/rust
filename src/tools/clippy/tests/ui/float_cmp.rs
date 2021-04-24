@@ -21,19 +21,11 @@ where
 }
 
 fn eq_fl(x: f32, y: f32) -> bool {
-    if x.is_nan() {
-        y.is_nan()
-    } else {
-        x == y
-    } // no error, inside "eq" fn
+    if x.is_nan() { y.is_nan() } else { x == y } // no error, inside "eq" fn
 }
 
 fn fl_eq(x: f32, y: f32) -> bool {
-    if x.is_nan() {
-        y.is_nan()
-    } else {
-        x == y
-    } // no error, inside "eq" fn
+    if x.is_nan() { y.is_nan() } else { x == y } // no error, inside "eq" fn
 }
 
 struct X {

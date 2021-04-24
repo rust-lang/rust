@@ -2,12 +2,13 @@ use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
+use rustc_session::config::InstrumentCoverage;
 use rustc_session::config::Strip;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{rustc_optgroups, ErrorOutputType, ExternLocation, Options, Passes};
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::config::{
-    Externs, OutputType, OutputTypes, SanitizerSet, SymbolManglingVersion, WasiExecModel,
+    Externs, OutputType, OutputTypes, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -17,7 +18,7 @@ use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::SourceFileHashAlgorithm;
 use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
-use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TlsModel};
+use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use std::num::NonZeroUsize;
@@ -404,7 +405,6 @@ fn test_codegen_options_tracking_hash() {
     untracked!(incremental, Some(String::from("abc")));
     // `link_arg` is omitted because it just forwards to `link_args`.
     untracked!(link_args, vec![String::from("abc"), String::from("def")]);
-    untracked!(link_dead_code, Some(true));
     untracked!(link_self_contained, Some(true));
     untracked!(linker, Some(PathBuf::from("linker")));
     untracked!(linker_flavor, Some(LinkerFlavor::Gcc));
@@ -432,6 +432,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(force_unwind_tables, Some(true));
     tracked!(inline_threshold, Some(0xf007ba11));
     tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
+    tracked!(link_dead_code, Some(true));
     tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
     tracked!(lto, LtoCli::Fat);
     tracked!(metadata, vec![String::from("A"), String::from("B")]);
@@ -470,7 +471,6 @@ fn test_debugging_options_tracking_hash() {
     untracked!(ast_json, true);
     untracked!(ast_json_noexpand, true);
     untracked!(borrowck, String::from("other"));
-    untracked!(borrowck_stats, true);
     untracked!(deduplicate_diagnostics, true);
     untracked!(dep_tasks, true);
     untracked!(dont_buffer_diagnostics, true);
@@ -560,14 +560,13 @@ fn test_debugging_options_tracking_hash() {
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_threshold, Some(123));
     tracked!(inline_mir_hint_threshold, Some(123));
-    tracked!(insert_sideeffect, true);
-    tracked!(instrument_coverage, true);
+    tracked!(instrument_coverage, Some(InstrumentCoverage::All));
     tracked!(instrument_mcount, true);
     tracked!(link_only, true);
     tracked!(merge_functions, Some(MergeFunctions::Disabled));
     tracked!(mir_emit_retag, true);
-    tracked!(mir_opt_level, 3);
-    tracked!(mutable_noalias, true);
+    tracked!(mir_opt_level, Some(4));
+    tracked!(mutable_noalias, Some(true));
     tracked!(new_llvm_pass_manager, true);
     tracked!(no_codegen, true);
     tracked!(no_generate_arange_section, true);

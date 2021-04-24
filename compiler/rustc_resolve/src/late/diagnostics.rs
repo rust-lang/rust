@@ -16,10 +16,13 @@ use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
+
+use std::iter;
 
 use tracing::debug;
 
@@ -133,7 +136,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let is_enum_variant = &|res| matches!(res, Res::Def(DefKind::Variant, _));
 
         // Make the base error.
-        let expected = source.descr_expected();
+        let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
         let (base_msg, fallback_label, base_span, could_be_expr) = if let Some(res) = res {
@@ -166,6 +169,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             let (mod_prefix, mod_str) = if path.len() == 1 {
                 (String::new(), "this scope".to_string())
             } else if path.len() == 2 && path[0].ident.name == kw::PathRoot {
+                if self.r.session.edition() > Edition::Edition2015 {
+                    // In edition 2018 onwards, the `::foo` syntax may only pull from the extern prelude
+                    // which overrides all other expectations of item type
+                    expected = "crate";
+                    (String::new(), "the list of imported crates".to_string())
+                } else {
+                    (String::new(), "the crate root".to_string())
+                }
+            } else if path.len() == 2 && path[0].ident.name == kw::Crate {
                 (String::new(), "the crate root".to_string())
             } else {
                 let mod_path = &path[..path.len() - 1];
@@ -174,7 +186,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
                         _ => None,
                     }
-                    .map_or(String::new(), |res| format!("{} ", res.descr()));
+                    .map_or_else(String::new, |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
             };
             (
@@ -324,7 +336,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 .lookup_import_candidates(ident, ns, &self.parent_scope, is_enum_variant)
                 .into_iter()
                 .map(|suggestion| import_candidate_to_enum_paths(&suggestion))
-                .filter(|(_, enum_ty_path)| enum_ty_path != "std::prelude::v1")
+                .filter(|(_, enum_ty_path)| !enum_ty_path.starts_with("std::prelude::"))
                 .collect();
             if !enum_candidates.is_empty() {
                 if let (PathSource::Type, Some(span)) =
@@ -444,12 +456,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
         }
 
+        let is_macro = base_span.from_expansion() && base_span.desugaring_kind().is_none();
         if !self.type_ascription_suggestion(&mut err, base_span) {
             let mut fallback = false;
             if let (
                 PathSource::Trait(AliasPossibility::Maybe),
                 Some(Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, _)),
-            ) = (source, res)
+                false,
+            ) = (source, res, is_macro)
             {
                 if let Some(bounds @ [_, .., _]) = self.diagnostic_metadata.current_trait_object {
                     fallback = true;
@@ -552,6 +566,15 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                             }
                         }
                     }
+                }
+            } else if err_code == &rustc_errors::error_code!(E0412) {
+                if let Some(correct) = Self::likely_rust_type(path) {
+                    err.span_suggestion(
+                        span,
+                        "perhaps you intended to use this type",
+                        correct.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             }
         }
@@ -907,7 +930,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
                     if let Some(span) = self.def_span(def_id) {
-                        err.span_help(span, msg);
+                        if let Ok(snip) = self.r.session.source_map().span_to_snippet(span) {
+                            // The span contains a type alias so we should be able to
+                            // replace `type` with `trait`.
+                            let snip = snip.replacen("type", "trait", 1);
+                            err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
+                        } else {
+                            err.span_help(span, msg);
+                        }
                     } else {
                         err.help(msg);
                     }
@@ -985,9 +1015,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 if let Some(spans) =
                     field_spans.filter(|spans| spans.len() > 0 && fields.len() == spans.len())
                 {
-                    let non_visible_spans: Vec<Span> = fields
-                        .iter()
-                        .zip(spans.iter())
+                    let non_visible_spans: Vec<Span> = iter::zip(&fields, &spans)
                         .filter(|(vis, _)| {
                             !self.r.is_accessible_from(**vis, self.parent_scope.module)
                         })
@@ -1023,10 +1051,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 if let Some(span) = self.def_span(def_id) {
                     err.span_label(span, &format!("`{}` defined here", path_str));
                 }
-                let fields =
-                    self.r.field_names.get(&def_id).map_or("/* fields */".to_string(), |fields| {
-                        vec!["_"; fields.len()].join(", ")
-                    });
+                let fields = self.r.field_names.get(&def_id).map_or_else(
+                    || "/* fields */".to_string(),
+                    |fields| vec!["_"; fields.len()].join(", "),
+                );
                 err.span_suggestion(
                     span,
                     "use the tuple variant pattern syntax instead",
@@ -1231,6 +1259,23 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             }
             _ => None,
         }
+    }
+
+    // Returns the name of the Rust type approximately corresponding to
+    // a type name in another programming language.
+    fn likely_rust_type(path: &[Segment]) -> Option<Symbol> {
+        let name = path[path.len() - 1].ident.as_str();
+        // Common Java types
+        Some(match &*name {
+            "byte" => sym::u8, // In Java, bytes are signed, but in practice one almost always wants unsigned bytes.
+            "short" => sym::i16,
+            "boolean" => sym::bool,
+            "int" => sym::i32,
+            "long" => sym::i64,
+            "float" => sym::f32,
+            "double" => sym::f64,
+            _ => return None,
+        })
     }
 
     /// Only used in a specific case of type ascription suggestions

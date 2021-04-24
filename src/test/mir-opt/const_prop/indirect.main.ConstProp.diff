@@ -28,7 +28,7 @@
 -         _1 = move (_3.0: u8);            // scope 0 at $DIR/indirect.rs:5:13: 5:29
 +         _1 = const 3_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:29
           StorageDead(_2);                 // scope 0 at $DIR/indirect.rs:5:28: 5:29
-          _0 = const ();                   // scope 0 at $DIR/indirect.rs:4:11: 6:2
+          nop;                             // scope 0 at $DIR/indirect.rs:4:11: 6:2
           StorageDead(_1);                 // scope 0 at $DIR/indirect.rs:6:1: 6:2
           return;                          // scope 0 at $DIR/indirect.rs:6:2: 6:2
       }

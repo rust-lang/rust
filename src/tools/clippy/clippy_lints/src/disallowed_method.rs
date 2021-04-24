@@ -1,4 +1,5 @@
-use crate::utils::{fn_def_id, span_lint};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::fn_def_id;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::Expr;

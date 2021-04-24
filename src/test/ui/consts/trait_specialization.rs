@@ -1,5 +1,5 @@
 // ignore-wasm32-bare which doesn't support `std::process:exit()`
-// compile-flags: -Zmir-opt-level=2
+// compile-flags: -Zmir-opt-level=3
 // run-pass
 
 // Tests that specialization does not cause optimizations running on polymorphic MIR to resolve

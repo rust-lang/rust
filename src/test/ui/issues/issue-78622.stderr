@@ -2,7 +2,7 @@ error[E0223]: ambiguous associated type
   --> $DIR/issue-78622.rs:5:5
    |
 LL |     S::A::<f> {}
-   |     ^^^^^^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
+   |     ^^^^ help: use fully-qualified syntax: `<S as Trait>::A`
 
 error: aborting due to previous error
 

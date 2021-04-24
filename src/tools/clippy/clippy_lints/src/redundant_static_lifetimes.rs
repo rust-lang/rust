@@ -1,4 +1,6 @@
-use crate::utils::{meets_msrv, snippet, span_lint_and_then};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::meets_msrv;
+use clippy_utils::source::snippet;
 use rustc_ast::ast::{Item, ItemKind, Ty, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};

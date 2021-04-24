@@ -164,9 +164,9 @@ impl<W: Write> BufWriter<W> {
 
             match r {
                 Ok(0) => {
-                    return Err(Error::new(
+                    return Err(Error::new_const(
                         ErrorKind::WriteZero,
-                        "failed to write the buffered data",
+                        &"failed to write the buffered data",
                     ));
                 }
                 Ok(n) => guard.consume(n),

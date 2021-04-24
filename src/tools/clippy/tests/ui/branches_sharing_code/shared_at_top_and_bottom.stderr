@@ -1,0 +1,154 @@
+error: all if blocks contain the same code at the start and the end. Here at the start
+  --> $DIR/shared_at_top_and_bottom.rs:16:5
+   |
+LL | /     if x == 7 {
+LL | |         let t = 7;
+LL | |         let _overlap_start = t * 2;
+LL | |         let _overlap_end = 2 * t;
+   | |_________________________________^
+   |
+note: the lint level is defined here
+  --> $DIR/shared_at_top_and_bottom.rs:2:36
+   |
+LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: and here at the end
+  --> $DIR/shared_at_top_and_bottom.rs:28:5
+   |
+LL | /         let _u = 9;
+LL | |     }
+   | |_____^
+help: consider moving the start statements out like this
+   |
+LL |     let t = 7;
+LL |     let _overlap_start = t * 2;
+LL |     let _overlap_end = 2 * t;
+LL |     if x == 7 {
+   |
+help: and consider moving the end statements out like this
+   |
+LL |     }
+LL |     let _u = 9;
+   |
+
+error: all if blocks contain the same code at the start and the end. Here at the start
+  --> $DIR/shared_at_top_and_bottom.rs:32:5
+   |
+LL | /     if x == 99 {
+LL | |         let r = 7;
+LL | |         let _overlap_start = r;
+LL | |         let _overlap_middle = r * r;
+   | |____________________________________^
+   |
+note: and here at the end
+  --> $DIR/shared_at_top_and_bottom.rs:43:5
+   |
+LL | /         let _overlap_end = r * r * r;
+LL | |         let z = "end";
+LL | |     }
+   | |_____^
+   = warning: Some moved values might need to be renamed to avoid wrong references
+help: consider moving the start statements out like this
+   |
+LL |     let r = 7;
+LL |     let _overlap_start = r;
+LL |     let _overlap_middle = r * r;
+LL |     if x == 99 {
+   |
+help: and consider moving the end statements out like this
+   |
+LL |     }
+LL |     let _overlap_end = r * r * r;
+LL |     let z = "end";
+   |
+
+error: all if blocks contain the same code at the start and the end. Here at the start
+  --> $DIR/shared_at_top_and_bottom.rs:61:5
+   |
+LL | /     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
+LL | |         let a = 0xcafe;
+LL | |         let b = 0xffff00ff;
+LL | |         let e_id = gen_id(a, b);
+   | |________________________________^
+   |
+note: and here at the end
+  --> $DIR/shared_at_top_and_bottom.rs:81:5
+   |
+LL | /         let pack = DataPack {
+LL | |             id: e_id,
+LL | |             name: "Player 1".to_string(),
+LL | |             some_data: vec![0x12, 0x34, 0x56, 0x78, 0x90],
+LL | |         };
+LL | |         process_data(pack);
+LL | |     }
+   | |_____^
+   = warning: Some moved values might need to be renamed to avoid wrong references
+help: consider moving the start statements out like this
+   |
+LL |     let a = 0xcafe;
+LL |     let b = 0xffff00ff;
+LL |     let e_id = gen_id(a, b);
+LL |     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
+   |
+help: and consider moving the end statements out like this
+   |
+LL |     }
+LL |     let pack = DataPack {
+LL |         id: e_id,
+LL |         name: "Player 1".to_string(),
+LL |         some_data: vec![0x12, 0x34, 0x56, 0x78, 0x90],
+LL |     };
+ ...
+
+error: all if blocks contain the same code at the start and the end. Here at the start
+  --> $DIR/shared_at_top_and_bottom.rs:94:5
+   |
+LL | /     let _ = if x == 7 {
+LL | |         let _ = 19;
+   | |___________________^
+   |
+note: and here at the end
+  --> $DIR/shared_at_top_and_bottom.rs:103:5
+   |
+LL | /         x << 2
+LL | |     };
+   | |_____^
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving the start statements out like this
+   |
+LL |     let _ = 19;
+LL |     let _ = if x == 7 {
+   |
+help: and consider moving the end statements out like this
+   |
+LL |     }
+LL |     x << 2;
+   |
+
+error: all if blocks contain the same code at the start and the end. Here at the start
+  --> $DIR/shared_at_top_and_bottom.rs:106:5
+   |
+LL | /     if x == 9 {
+LL | |         let _ = 17;
+   | |___________________^
+   |
+note: and here at the end
+  --> $DIR/shared_at_top_and_bottom.rs:115:5
+   |
+LL | /         x * 4
+LL | |     }
+   | |_____^
+   = note: The end suggestion probably needs some adjustments to use the expression result correctly
+help: consider moving the start statements out like this
+   |
+LL |     let _ = 17;
+LL |     if x == 9 {
+   |
+help: and consider moving the end statements out like this
+   |
+LL |     }
+LL |     x * 4
+   |
+
+error: aborting due to 5 previous errors
+

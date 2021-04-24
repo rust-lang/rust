@@ -15,15 +15,15 @@ fn check_that_clippy_lints_and_clippy_utils_have_the_same_version_as_clippy() {
         .expect("could not obtain cargo metadata");
 
     for krate in &["clippy_lints", "clippy_utils"] {
-        let krate_meta = clippy_meta
-            .packages
-            .iter()
-            .find(|package| package.name == *krate)
+        let krate_meta = cargo_metadata::MetadataCommand::new()
+            .current_dir(std::env::current_dir().unwrap().join(krate))
+            .no_deps()
+            .exec()
             .expect("could not obtain cargo metadata");
-        assert_eq!(krate_meta.version, clippy_meta.packages[0].version);
+        assert_eq!(krate_meta.packages[0].version, clippy_meta.packages[0].version);
         for package in &clippy_meta.packages[0].dependencies {
             if package.name == *krate {
-                assert!(package.req.matches(&krate_meta.version));
+                assert!(package.req.matches(&krate_meta.packages[0].version));
                 break;
             }
         }

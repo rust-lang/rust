@@ -1,5 +1,5 @@
-use crate::utils::paths;
-use crate::utils::{get_trait_def_id, in_macro, span_lint, trait_ref_of_method};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{in_macro, trait_ref_of_method};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::intravisit::{
     walk_fn_decl, walk_generic_param, walk_generics, walk_item, walk_param_bound, walk_poly_trait_ref, walk_ty,
@@ -8,8 +8,8 @@ use rustc_hir::intravisit::{
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem,
-    ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, ParamName, PolyTraitRef, TraitBoundModifier, TraitFn,
-    TraitItem, TraitItemKind, Ty, TyKind, WhereClause, WherePredicate,
+    ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, TraitBoundModifier,
+    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereClause, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
@@ -81,7 +81,7 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Fn(ref sig, ref generics, id) = item.kind {
-            check_fn_inner(cx, &sig.decl, Some(id), generics, item.span, true);
+            check_fn_inner(cx, sig.decl, Some(id), generics, item.span, true);
         }
     }
 
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
             let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id()).is_none();
             check_fn_inner(
                 cx,
-                &sig.decl,
+                sig.decl,
                 Some(id),
                 &item.generics,
                 item.span,
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
                 TraitFn::Required(_) => None,
                 TraitFn::Provided(id) => Some(id),
             };
-            check_fn_inner(cx, &sig.decl, body, &item.generics, item.span, true);
+            check_fn_inner(cx, sig.decl, body, &item.generics, item.span, true);
         }
     }
 }
@@ -149,7 +149,7 @@ fn check_fn_inner<'tcx>(
                     .last()
                     .expect("a path must have at least one segment")
                     .args;
-                if let Some(ref params) = *params {
+                if let Some(params) = *params {
                     let lifetimes = params.args.iter().filter_map(|arg| match arg {
                         GenericArg::Lifetime(lt) => Some(lt),
                         _ => None,
@@ -163,7 +163,7 @@ fn check_fn_inner<'tcx>(
             }
         }
     }
-    if could_use_elision(cx, decl, body, &generics.params) {
+    if could_use_elision(cx, decl, body, generics.params) {
         span_lint(
             cx,
             NEEDLESS_LIFETIMES,
@@ -201,7 +201,7 @@ fn could_use_elision<'tcx>(
         input_visitor.visit_ty(arg);
     }
     // extract lifetimes in output type
-    if let Return(ref ty) = func.output {
+    if let Return(ty) = func.output {
         output_visitor.visit_ty(ty);
     }
     for lt in named_generics {
@@ -300,7 +300,7 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
     lts.iter().collect::<FxHashSet<_>>().len()
 }
 
-const CLOSURE_TRAIT_BOUNDS: [&[&str]; 3] = [&paths::FN, &paths::FN_MUT, &paths::FN_ONCE];
+const CLOSURE_TRAIT_BOUNDS: [LangItem; 3] = [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce];
 
 /// A visitor usable for `rustc_front::visit::walk_ty()`.
 struct RefVisitor<'a, 'tcx> {
@@ -359,10 +359,13 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>, tbm: TraitBoundModifier) {
         let trait_ref = &poly_tref.trait_ref;
-        if CLOSURE_TRAIT_BOUNDS
-            .iter()
-            .any(|trait_path| trait_ref.trait_def_id() == get_trait_def_id(self.cx, trait_path))
-        {
+        if CLOSURE_TRAIT_BOUNDS.iter().any(|&item| {
+            self.cx
+                .tcx
+                .lang_items()
+                .require(item)
+                .map_or(false, |id| Some(id) == trait_ref.trait_def_id())
+        }) {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);
             self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
@@ -385,7 +388,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
                 return;
             },
-            TyKind::TraitObject(bounds, ref lt) => {
+            TyKind::TraitObject(bounds, ref lt, _) => {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }
@@ -413,12 +416,12 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereCl
                 // a predicate like F: Trait or F: for<'a> Trait<'a>
                 let mut visitor = RefVisitor::new(cx);
                 // walk the type F, it may not contain LT refs
-                walk_ty(&mut visitor, &pred.bounded_ty);
+                walk_ty(&mut visitor, pred.bounded_ty);
                 if !visitor.all_lts().is_empty() {
                     return true;
                 }
                 // if the bounds define new lifetimes, they are fine to occur
-                let allowed_lts = allowed_lts_from(&pred.bound_generic_params);
+                let allowed_lts = allowed_lts_from(pred.bound_generic_params);
                 // now walk the bounds
                 for bound in pred.bounds.iter() {
                     walk_param_bound(&mut visitor, bound);
@@ -430,8 +433,8 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereCl
             },
             WherePredicate::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
-                walk_ty(&mut visitor, &pred.lhs_ty);
-                walk_ty(&mut visitor, &pred.rhs_ty);
+                walk_ty(&mut visitor, pred.lhs_ty);
+                walk_ty(&mut visitor, pred.rhs_ty);
                 if !visitor.lts.is_empty() {
                     return true;
                 }

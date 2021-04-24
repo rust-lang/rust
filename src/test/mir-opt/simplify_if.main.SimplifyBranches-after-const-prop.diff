@@ -22,13 +22,13 @@
       }
   
       bb2: {
-          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:8:6: 8:6
+          nop;                             // scope 0 at $DIR/simplify_if.rs:8:6: 8:6
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   
       bb3: {
           StorageDead(_2);                 // scope 0 at $DIR/simplify_if.rs:7:15: 7:16
-          _0 = const ();                   // scope 0 at $DIR/simplify_if.rs:6:14: 8:6
+          nop;                             // scope 0 at $DIR/simplify_if.rs:6:14: 8:6
           goto -> bb4;                     // scope 0 at $DIR/simplify_if.rs:6:5: 8:6
       }
   

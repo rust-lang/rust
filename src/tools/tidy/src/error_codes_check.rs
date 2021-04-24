@@ -48,6 +48,8 @@ fn check_error_code_explanation(
 }
 
 fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
+    let mut ignore_found = false;
+
     for line in f.lines() {
         let s = line.trim();
         if s.starts_with("#### Note: this error code is no longer emitted by the compiler") {
@@ -56,13 +58,13 @@ fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
         if s.starts_with("```") {
             if s.contains("compile_fail") && s.contains(err_code) {
                 return true;
-            } else if s.contains('(') {
+            } else if s.contains("ignore") {
                 // It's very likely that we can't actually make it fail compilation...
-                return true;
+                ignore_found = true;
             }
         }
     }
-    false
+    ignore_found
 }
 
 macro_rules! some_or_continue {
@@ -164,18 +166,32 @@ fn extract_error_codes_from_tests(f: &str, error_codes: &mut HashMap<String, boo
     }
 }
 
-pub fn check(path: &Path, bad: &mut bool) {
+pub fn check(paths: &[&Path], bad: &mut bool) {
     let mut errors = Vec::new();
+    let mut found_explanations = 0;
+    let mut found_tests = 0;
     println!("Checking which error codes lack tests...");
     let mut error_codes: HashMap<String, bool> = HashMap::new();
-    super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
-        let file_name = entry.file_name();
-        if file_name == "error_codes.rs" {
-            extract_error_codes(contents, &mut error_codes, entry.path(), &mut errors);
-        } else if entry.path().extension() == Some(OsStr::new("stderr")) {
-            extract_error_codes_from_tests(contents, &mut error_codes);
-        }
-    });
+    for path in paths {
+        super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
+            let file_name = entry.file_name();
+            if file_name == "error_codes.rs" {
+                extract_error_codes(contents, &mut error_codes, entry.path(), &mut errors);
+                found_explanations += 1;
+            } else if entry.path().extension() == Some(OsStr::new("stderr")) {
+                extract_error_codes_from_tests(contents, &mut error_codes);
+                found_tests += 1;
+            }
+        });
+    }
+    if found_explanations == 0 {
+        eprintln!("No error code explanation was tested!");
+        *bad = true;
+    }
+    if found_tests == 0 {
+        eprintln!("No error code was found in compilation errors!");
+        *bad = true;
+    }
     if errors.is_empty() {
         println!("Found {} error codes", error_codes.len());
 

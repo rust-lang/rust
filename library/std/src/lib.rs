@@ -208,13 +208,15 @@
 // std may use features in a platform-specific way
 #![allow(unused_features)]
 #![feature(rustc_allow_const_fn_unstable)]
-#![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count))]
+#![cfg_attr(
+    test,
+    feature(internal_output_capture, print_internals, update_panic_count, thread_local_const_init)
+)]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
     feature(slice_index_methods, coerce_unsized, sgx_platform)
 )]
 #![deny(rustc::existing_doc_keyword)]
-#![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"), feature(fixed_size_array))]
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
@@ -228,11 +230,13 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
+#![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(atomic_mut_ptr)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
+#![feature(cfg_eval)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
@@ -247,6 +251,7 @@
 #![feature(const_ip)]
 #![feature(const_ipv6)]
 #![feature(const_raw_ptr_deref)]
+#![feature(const_socketaddr)]
 #![feature(const_ipv4)]
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
@@ -255,10 +260,10 @@
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
 #![feature(doc_masked)]
-#![feature(doc_spotlight)]
+#![cfg_attr(bootstrap, feature(doc_spotlight))]
+#![cfg_attr(not(bootstrap), feature(doc_notable_trait))]
 #![feature(dropck_eyepatch)]
 #![feature(duration_constants)]
-#![feature(duration_zero)]
 #![feature(edition_panic)]
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
@@ -276,11 +281,12 @@
 #![feature(integer_atomics)]
 #![feature(into_future)]
 #![feature(intra_doc_pointers)]
+#![feature(iter_zip)]
 #![feature(lang_items)]
-#![feature(link_args)]
 #![feature(linkage)]
 #![feature(llvm_asm)]
 #![feature(log_syntax)]
+#![feature(map_try_insert)]
 #![feature(maybe_uninit_extra)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
@@ -289,15 +295,17 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(new_uninit)]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(once_cell)]
 #![feature(auto_traits)]
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(pin_static_ref)]
+#![feature(prelude_2021)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
 #![feature(raw)]
@@ -323,7 +331,6 @@
 #![feature(try_blocks)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_block_in_unsafe_fn)]
 #![feature(unsafe_cell_raw_get)]
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
@@ -391,7 +398,11 @@ pub use alloc_crate::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "simd_arch", since = "1.27.0")]
-#[doc(no_inline)]
+// The `no_inline`-attribute is required to make the documentation of all
+// targets available.
+// See https://github.com/rust-lang/rust/pull/57808#issuecomment-457390549 for
+// more information.
+#[doc(no_inline)] // Note (#82861): required for correct documentation
 pub use core::arch;
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
@@ -448,6 +459,7 @@ pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated, deprecated_in_future)]
 pub use core::raw;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
@@ -529,29 +541,23 @@ pub mod rt;
 #[allow(dead_code, unused_attributes)]
 mod backtrace_rs;
 
-// Pull in the `std_detect` crate directly into libstd. The contents of
-// `std_detect` are in a different repository: rust-lang/stdarch.
-//
-// `std_detect` depends on libstd, but the contents of this module are
-// set up in such a way that directly pulling it here works such that the
-// crate uses the this crate as its libstd.
-#[path = "../../stdarch/crates/std_detect/src/mod.rs"]
-#[allow(missing_debug_implementations, missing_docs, dead_code)]
-#[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(not(test))]
-mod std_detect;
-
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub use std_detect::is_x86_feature_detected;
 #[doc(hidden)]
 #[unstable(feature = "stdsimd", issue = "48556")]
-#[cfg(not(test))]
-pub use std_detect::detect;
+pub use std_detect::*;
+#[unstable(feature = "stdsimd", issue = "48556")]
+pub use std_detect::{
+    is_aarch64_feature_detected, is_arm_feature_detected, is_mips64_feature_detected,
+    is_mips_feature_detected, is_powerpc64_feature_detected, is_powerpc_feature_detected,
+};
 
 // Re-export macros defined in libcore.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, r#try, todo,
-    unimplemented, unreachable, write, writeln,
+    assert_eq, assert_matches, assert_ne, debug_assert, debug_assert_eq, debug_assert_matches,
+    debug_assert_ne, matches, r#try, todo, unimplemented, unreachable, write, writeln,
 };
 
 // Re-export built-in macros defined through libcore.

@@ -2,7 +2,6 @@
 
 // check-pass
 
-#![feature(or_patterns)]
 #![allow(irrefutable_let_patterns)]
 
 fn main() {
@@ -37,11 +36,11 @@ fn main() {
     if let &(Ok(x) | Err(x)) = res {
         drop::<u8>(x);
     }
-    let Ok(mut x) | &Err(mut x) = res;
+    let (Ok(mut x) | &Err(mut x)) = res;
     drop::<u8>(x);
     let &(Ok(x) | Err(x)) = res;
     drop::<u8>(x);
-    let Ok(x) | Err(x) = res;
+    let (Ok(x) | Err(x)) = res;
     drop::<&u8>(x);
     for Ok(mut x) | &Err(mut x) in std::iter::once(res) {
         drop::<u8>(x);
@@ -119,9 +118,9 @@ fn main() {
     }
 
     let tri = &Tri::A(&Ok(0));
-    let Tri::A(Ok(mut x) | Err(mut x))
+    let (Tri::A(Ok(mut x) | Err(mut x))
     | Tri::B(&Ok(mut x) | Err(mut x))
-    | &Tri::C(Ok(mut x) | Err(mut x)) = tri;
+    | &Tri::C(Ok(mut x) | Err(mut x))) = tri;
     drop::<u8>(x);
 
     match tri {

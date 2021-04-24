@@ -1,11 +1,11 @@
 error: unused variable: `j`
-  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:21:16
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:20:16
    |
 LL |         A { i, j } | B { i, j } => {
    |                ^            ^
    |
 note: the lint level is defined here
-  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:5:9
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:4:9
    |
 LL | #![deny(unused)]
    |         ^^^^^^
@@ -16,7 +16,7 @@ LL |         A { i, j: _ } | B { i, j: _ } => {
    |                ^^^^            ^^^^
 
 error: unused variable: `j`
-  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:31:16
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:30:16
    |
 LL |         A { i, ref j } | B { i, ref j } => {
    |                ^^^^^            ^^^^^
@@ -27,7 +27,7 @@ LL |         A { i, j: _ } | B { i, j: _ } => {
    |                ^^^^            ^^^^
 
 error: unused variable: `j`
-  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:41:21
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:40:21
    |
 LL |         Some(A { i, j } | B { i, j }) => {
    |                     ^            ^
@@ -38,7 +38,7 @@ LL |         Some(A { i, j: _ } | B { i, j: _ }) => {
    |                     ^^^^            ^^^^
 
 error: unused variable: `j`
-  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:53:21
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:52:21
    |
 LL |         Some(A { i, ref j } | B { i, ref j }) => {
    |                     ^^^^^            ^^^^^
@@ -49,7 +49,7 @@ LL |         Some(A { i, j: _ } | B { i, j: _ }) => {
    |                     ^^^^            ^^^^
 
 error: unused variable: `i`
-  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:63:24
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:62:24
    |
 LL |         MixedEnum::A { i } | MixedEnum::B(i) => {
    |                        ^                  ^
@@ -60,7 +60,7 @@ LL |         MixedEnum::A { i: _ } | MixedEnum::B(_) => {
    |                        ^^^^                  ^
 
 error: unused variable: `i`
-  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:71:24
+  --> $DIR/issue-67691-unused-field-in-or-pattern.rs:70:24
    |
 LL |         MixedEnum::A { ref i } | MixedEnum::B(ref i) => {
    |                        ^^^^^                  ^^^^^

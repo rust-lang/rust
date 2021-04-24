@@ -1083,9 +1083,9 @@ pub fn compile_unit_metadata(
             );
         }
 
-        // Insert `llvm.ident` metadata on the wasm32 targets since that will
+        // Insert `llvm.ident` metadata on the wasm targets since that will
         // get hooked up to the "producer" sections `processed-by` information.
-        if tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+        if tcx.sess.target.is_like_wasm {
             let name_metadata = llvm::LLVMMDStringInContext(
                 debug_context.llcontext,
                 rustc_producer.as_ptr().cast(),
@@ -1842,10 +1842,7 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
                     .span;
                 if !span.is_dummy() {
                     let loc = cx.lookup_debug_loc(span.lo());
-                    return Some(SourceInfo {
-                        file: file_metadata(cx, &loc.file),
-                        line: loc.line.unwrap_or(UNKNOWN_LINE_NUMBER),
-                    });
+                    return Some(SourceInfo { file: file_metadata(cx, &loc.file), line: loc.line });
                 }
             }
             _ => {}
@@ -1965,9 +1962,7 @@ fn prepare_enum_metadata(
 
     let discriminant_type_metadata = |discr: Primitive| {
         let enumerators_metadata: Vec<_> = match enum_type.kind() {
-            ty::Adt(def, _) => def
-                .discriminants(tcx)
-                .zip(&def.variants)
+            ty::Adt(def, _) => iter::zip(def.discriminants(tcx), &def.variants)
                 .map(|((_, discr), v)| {
                     let name = v.ident.as_str();
                     let is_unsigned = match discr.ty.kind() {
@@ -2339,9 +2334,7 @@ fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> &'ll DIAr
         if substs.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did);
             let names = get_parameter_names(cx, generics);
-            let template_params: Vec<_> = substs
-                .iter()
-                .zip(names)
+            let template_params: Vec<_> = iter::zip(substs, names)
                 .filter_map(|(kind, name)| {
                     if let GenericArgKind::Type(ty) = kind.unpack() {
                         let actual_type =
@@ -2484,7 +2477,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
         let loc = cx.lookup_debug_loc(span.lo());
         (file_metadata(cx, &loc.file), loc.line)
     } else {
-        (unknown_file_metadata(cx), None)
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
@@ -2507,7 +2500,7 @@ pub fn create_global_var_metadata(cx: &CodegenCx<'ll, '_>, def_id: DefId, global
             linkage_name.as_ptr().cast(),
             linkage_name.len(),
             file_metadata,
-            line_number.unwrap_or(UNKNOWN_LINE_NUMBER),
+            line_number,
             type_metadata,
             is_local_to_unit,
             global,

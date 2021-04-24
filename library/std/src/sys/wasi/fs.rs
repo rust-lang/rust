@@ -130,7 +130,7 @@ impl FileType {
 
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ReadDir").finish()
+        f.debug_struct("ReadDir").finish_non_exhaustive()
     }
 }
 
@@ -650,13 +650,11 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                 );
                 return Err(io::Error::new(io::ErrorKind::Other, msg));
             }
-            let len = CStr::from_ptr(buf.as_ptr().cast()).to_bytes().len();
-            buf.set_len(len);
-            buf.shrink_to_fit();
+            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
 
             return Ok((
                 ManuallyDrop::new(WasiFd::from_raw(fd as u32)),
-                PathBuf::from(OsString::from_vec(buf)),
+                PathBuf::from(OsString::from_vec(relative)),
             ));
         }
     }
@@ -672,7 +670,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
-    f.to_str().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "input must be utf-8"))
+    f.to_str().ok_or_else(|| io::Error::new_const(io::ErrorKind::Other, &"input must be utf-8"))
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

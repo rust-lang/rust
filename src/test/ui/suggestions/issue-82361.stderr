@@ -21,10 +21,10 @@ LL | |         1
    | |         - expected because of this
 LL | |     } else {
 LL | |         &1
-   | |         -^
+   | |         ^^
    | |         |
    | |         expected integer, found `&{integer}`
-   | |         help: consider removing the `&`
+   | |         help: consider removing the borrow: `1`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
 
@@ -36,10 +36,10 @@ LL | |         1
    | |         - expected because of this
 LL | |     } else {
 LL | |         &mut 1
-   | |         -----^
+   | |         ^^^^^^
    | |         |
    | |         expected integer, found `&mut {integer}`
-   | |         help: consider removing the `&mut`
+   | |         help: consider removing the borrow: `1`
 LL | |     };
    | |_____- `if` and `else` have incompatible types
 

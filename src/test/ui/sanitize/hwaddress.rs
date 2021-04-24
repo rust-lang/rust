@@ -1,7 +1,8 @@
 // needs-sanitizer-support
 // needs-sanitizer-hwaddress
 //
-// compile-flags: -Z sanitizer=hwaddress -O -g
+// FIXME(#83989): codegen-units=1 triggers linker errors on aarch64-gnu
+// compile-flags: -Z sanitizer=hwaddress -O -g -C codegen-units=16
 //
 // run-fail
 // error-pattern: HWAddressSanitizer: tag-mismatch

@@ -1,7 +1,6 @@
 #![feature(repr_simd)]
 #![allow(non_camel_case_types)]
 
-// ignore-tidy-linelength
 
 #[repr(simd)]
 struct empty; //~ ERROR SIMD vector cannot be empty

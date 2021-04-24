@@ -9,15 +9,16 @@ use std::sync::Arc;
 use std::{slice, vec};
 
 use arrayvec::ArrayVec;
+
 use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_feature::UnstableFeatures;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex};
+use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
@@ -32,13 +33,15 @@ use rustc_target::spec::abi::Abi;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
-use crate::clean::inline;
+use crate::clean::inline::{self, print_inlined_const};
 use crate::clean::types::Type::{QPath, ResolvedPath};
+use crate::clean::utils::{is_literal_expr, print_const_expr, print_evaluated_const};
 use crate::clean::Clean;
 use crate::core::DocContext;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::render::cache::ExternalLocation;
+use crate::html::render::Context;
 
 use self::FnRetTy::*;
 use self::ItemKind::*;
@@ -51,13 +54,12 @@ thread_local!(crate static MAX_DEF_IDX: RefCell<FxHashMap<CrateNum, DefIndex>> =
 crate struct Crate {
     crate name: Symbol,
     crate src: FileName,
-    crate module: Option<Item>,
+    crate module: Item,
     crate externs: Vec<(CrateNum, ExternalCrate)>,
-    crate primitives: Vec<(DefId, PrimitiveType)>,
+    crate primitives: ThinVec<(DefId, PrimitiveType)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
     crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
-    crate masked_crates: FxHashSet<CrateNum>,
     crate collapsed: bool,
 }
 
@@ -65,16 +67,143 @@ crate struct Crate {
 #[derive(Clone, Debug)]
 crate struct TraitWithExtraInfo {
     crate trait_: Trait,
-    crate is_spotlight: bool,
+    crate is_notable: bool,
 }
 
 #[derive(Clone, Debug)]
 crate struct ExternalCrate {
-    crate name: Symbol,
-    crate src: FileName,
+    crate crate_num: CrateNum,
     crate attrs: Attributes,
-    crate primitives: Vec<(DefId, PrimitiveType)>,
-    crate keywords: Vec<(DefId, Symbol)>,
+}
+
+impl ExternalCrate {
+    #[inline]
+    fn def_id(&self) -> DefId {
+        DefId { krate: self.crate_num, index: CRATE_DEF_INDEX }
+    }
+
+    crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
+        let krate_span = tcx.def_span(self.def_id());
+        tcx.sess.source_map().span_to_filename(krate_span)
+    }
+
+    crate fn name(&self, tcx: TyCtxt<'_>) -> Symbol {
+        tcx.crate_name(self.crate_num)
+    }
+
+    crate fn keywords(&self, tcx: TyCtxt<'_>) -> ThinVec<(DefId, Symbol)> {
+        let root = self.def_id();
+
+        let as_keyword = |res: Res| {
+            if let Res::Def(DefKind::Mod, def_id) = res {
+                let attrs = tcx.get_attrs(def_id);
+                let mut keyword = None;
+                for attr in attrs.lists(sym::doc) {
+                    if attr.has_name(sym::keyword) {
+                        if let Some(v) = attr.value_str() {
+                            keyword = Some(v);
+                            break;
+                        }
+                    }
+                }
+                return keyword.map(|p| (def_id, p));
+            }
+            None
+        };
+        if root.is_local() {
+            tcx.hir()
+                .krate()
+                .item
+                .item_ids
+                .iter()
+                .filter_map(|&id| {
+                    let item = tcx.hir().item(id);
+                    match item.kind {
+                        hir::ItemKind::Mod(_) => {
+                            as_keyword(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
+                        }
+                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
+                            if item.vis.node.is_pub() =>
+                        {
+                            as_keyword(path.res).map(|(_, prim)| (id.def_id.to_def_id(), prim))
+                        }
+                        _ => None,
+                    }
+                })
+                .collect()
+        } else {
+            tcx.item_children(root).iter().map(|item| item.res).filter_map(as_keyword).collect()
+        }
+    }
+
+    crate fn primitives(&self, tcx: TyCtxt<'_>) -> ThinVec<(DefId, PrimitiveType)> {
+        let root = self.def_id();
+
+        // Collect all inner modules which are tagged as implementations of
+        // primitives.
+        //
+        // Note that this loop only searches the top-level items of the crate,
+        // and this is intentional. If we were to search the entire crate for an
+        // item tagged with `#[doc(primitive)]` then we would also have to
+        // search the entirety of external modules for items tagged
+        // `#[doc(primitive)]`, which is a pretty inefficient process (decoding
+        // all that metadata unconditionally).
+        //
+        // In order to keep the metadata load under control, the
+        // `#[doc(primitive)]` feature is explicitly designed to only allow the
+        // primitive tags to show up as the top level items in a crate.
+        //
+        // Also note that this does not attempt to deal with modules tagged
+        // duplicately for the same primitive. This is handled later on when
+        // rendering by delegating everything to a hash map.
+        let as_primitive = |res: Res| {
+            if let Res::Def(DefKind::Mod, def_id) = res {
+                let attrs = tcx.get_attrs(def_id);
+                let mut prim = None;
+                for attr in attrs.lists(sym::doc) {
+                    if let Some(v) = attr.value_str() {
+                        if attr.has_name(sym::primitive) {
+                            prim = PrimitiveType::from_symbol(v);
+                            if prim.is_some() {
+                                break;
+                            }
+                            // FIXME: should warn on unknown primitives?
+                        }
+                    }
+                }
+                return prim.map(|p| (def_id, p));
+            }
+            None
+        };
+
+        if root.is_local() {
+            tcx.hir()
+                .krate()
+                .item
+                .item_ids
+                .iter()
+                .filter_map(|&id| {
+                    let item = tcx.hir().item(id);
+                    match item.kind {
+                        hir::ItemKind::Mod(_) => {
+                            as_primitive(Res::Def(DefKind::Mod, id.def_id.to_def_id()))
+                        }
+                        hir::ItemKind::Use(ref path, hir::UseKind::Single)
+                            if item.vis.node.is_pub() =>
+                        {
+                            as_primitive(path.res).map(|(_, prim)| {
+                                // Pretend the primitive is local.
+                                (id.def_id.to_def_id(), prim)
+                            })
+                        }
+                        _ => None,
+                    }
+                })
+                .collect()
+        } else {
+            tcx.item_children(root).iter().map(|item| item.res).filter_map(as_primitive).collect()
+        }
+    }
 }
 
 /// Anything with a source location and set of attributes and, optionally, a
@@ -82,18 +211,20 @@ crate struct ExternalCrate {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 crate struct Item {
-    /// Stringified span
-    crate source: Span,
-    /// Not everything has a name. E.g., impls
+    crate span: Span,
+    /// The name of this item.
+    /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
     crate attrs: Box<Attributes>,
     crate visibility: Visibility,
+    /// Information about this item that is specific to what kind of item it is.
+    /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
     crate def_id: DefId,
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Item, 48);
 
 impl fmt::Debug for Item {
@@ -101,7 +232,7 @@ impl fmt::Debug for Item {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
-            .field("source", &self.source)
+            .field("source", &self.span)
             .field("name", &self.name)
             .field("attrs", &self.attrs)
             .field("kind", &self.kind)
@@ -166,7 +297,7 @@ impl Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         // `span_if_local()` lies about functions and only gives the span of the function signature
-        let source = def_id.as_local().map_or_else(
+        let span = def_id.as_local().map_or_else(
             || cx.tcx.def_span(def_id),
             |local| {
                 let hir = cx.tcx.hir();
@@ -178,7 +309,7 @@ impl Item {
             def_id,
             kind: box kind,
             name,
-            source: source.clean(cx),
+            span: span.clean(cx),
             attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
@@ -190,8 +321,73 @@ impl Item {
         self.attrs.collapsed_doc_value()
     }
 
-    crate fn links(&self, cache: &Cache) -> Vec<RenderedLink> {
-        self.attrs.links(self.def_id.krate, cache)
+    crate fn links(&self, cx: &Context<'_>) -> Vec<RenderedLink> {
+        use crate::html::format::href;
+
+        cx.cache()
+            .intra_doc_links
+            .get(&self.def_id)
+            .map_or(&[][..], |v| v.as_slice())
+            .iter()
+            .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
+                match *did {
+                    Some(did) => {
+                        if let Some((mut href, ..)) = href(did, cx) {
+                            if let Some(ref fragment) = *fragment {
+                                href.push('#');
+                                href.push_str(fragment);
+                            }
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href,
+                            })
+                        } else {
+                            None
+                        }
+                    }
+                    // FIXME(83083): using fragments as a side-channel for
+                    // primitive names is very unfortunate
+                    None => {
+                        let relative_to = &cx.current;
+                        if let Some(ref fragment) = *fragment {
+                            let url = match cx.cache().extern_locations.get(&self.def_id.krate) {
+                                Some(&(_, _, ExternalLocation::Local)) => {
+                                    if relative_to[0] == "std" {
+                                        let depth = relative_to.len() - 1;
+                                        "../".repeat(depth)
+                                    } else {
+                                        let depth = relative_to.len();
+                                        format!("{}std/", "../".repeat(depth))
+                                    }
+                                }
+                                Some(&(_, _, ExternalLocation::Remote(ref s))) => {
+                                    format!("{}/std/", s.trim_end_matches('/'))
+                                }
+                                Some(&(_, _, ExternalLocation::Unknown)) | None => format!(
+                                    "https://doc.rust-lang.org/{}/std/",
+                                    crate::doc_rust_lang_org_channel(),
+                                ),
+                            };
+                            // This is a primitive so the url is done "by hand".
+                            let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
+                            Some(RenderedLink {
+                                original_text: s.clone(),
+                                new_text: link_text.clone(),
+                                href: format!(
+                                    "{}primitive.{}.html{}",
+                                    url,
+                                    &fragment[..tail],
+                                    &fragment[tail..]
+                                ),
+                            })
+                        } else {
+                            panic!("This isn't a primitive?!");
+                        }
+                    }
+                }
+            })
+            .collect()
     }
 
     crate fn is_crate(&self) -> bool {
@@ -323,7 +519,10 @@ impl Item {
 
 #[derive(Clone, Debug)]
 crate enum ItemKind {
-    ExternCrateItem(Symbol, Option<Symbol>),
+    ExternCrateItem {
+        /// The crate's name, *not* the name it's imported as.
+        src: Option<Symbol>,
+    },
     ImportItem(Import),
     StructItem(Struct),
     UnionItem(Union),
@@ -376,7 +575,7 @@ impl ItemKind {
             TraitItem(t) => t.items.iter(),
             ImplItem(i) => i.items.iter(),
             ModuleItem(m) => m.items.iter(),
-            ExternCrateItem(_, _)
+            ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
             | TypedefItem(_, _)
@@ -557,21 +756,21 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
+/// The attributes on an [`Item`], including attributes like `#[derive(...)]` and `#[inline]`,
+/// as well as doc comments.
 #[derive(Clone, Debug, Default)]
 crate struct Attributes {
     crate doc_strings: Vec<DocFragment>,
     crate other_attrs: Vec<ast::Attribute>,
     crate cfg: Option<Arc<Cfg>>,
     crate span: Option<rustc_span::Span>,
-    /// map from Rust paths to resolved defs and potential URL fragments
-    crate links: Vec<ItemLink>,
     crate inner_docs: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 /// A link that has not yet been rendered.
 ///
-/// This link will be turned into a rendered link by [`Attributes::links`]
+/// This link will be turned into a rendered link by [`Item::links`].
 crate struct ItemLink {
     /// The original link written in the markdown
     pub(crate) link: String,
@@ -797,7 +996,6 @@ impl Attributes {
             other_attrs,
             cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
             span: sp,
-            links: vec![],
             inner_docs,
         }
     }
@@ -841,79 +1039,24 @@ impl Attributes {
         if self.doc_strings.is_empty() { None } else { Some(self.doc_strings.iter().collect()) }
     }
 
-    /// Gets links as a vector
-    ///
-    /// Cache must be populated before call
-    crate fn links(&self, krate: CrateNum, cache: &Cache) -> Vec<RenderedLink> {
-        use crate::html::format::href;
-        use crate::html::render::CURRENT_DEPTH;
+    crate fn get_doc_aliases(&self) -> Box<[String]> {
+        let mut aliases = FxHashSet::default();
 
-        self.links
-            .iter()
-            .filter_map(|ItemLink { link: s, link_text, did, fragment }| {
-                match *did {
-                    Some(did) => {
-                        if let Some((mut href, ..)) = href(did, cache) {
-                            if let Some(ref fragment) = *fragment {
-                                href.push('#');
-                                href.push_str(fragment);
-                            }
-                            Some(RenderedLink {
-                                original_text: s.clone(),
-                                new_text: link_text.clone(),
-                                href,
-                            })
-                        } else {
-                            None
+        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+            if let Some(values) = attr.meta_item_list() {
+                for l in values {
+                    match l.literal().unwrap().kind {
+                        ast::LitKind::Str(s, _) => {
+                            aliases.insert(s.as_str().to_string());
                         }
-                    }
-                    None => {
-                        if let Some(ref fragment) = *fragment {
-                            let url = match cache.extern_locations.get(&krate) {
-                                Some(&(_, _, ExternalLocation::Local)) => {
-                                    let depth = CURRENT_DEPTH.with(|l| l.get());
-                                    "../".repeat(depth)
-                                }
-                                Some(&(_, _, ExternalLocation::Remote(ref s))) => s.to_string(),
-                                Some(&(_, _, ExternalLocation::Unknown)) | None => String::from(
-                                    // NOTE: intentionally doesn't pass crate name to avoid having
-                                    // different primitive links between crates
-                                    if UnstableFeatures::from_environment(None).is_nightly_build() {
-                                        "https://doc.rust-lang.org/nightly"
-                                    } else {
-                                        "https://doc.rust-lang.org"
-                                    },
-                                ),
-                            };
-                            // This is a primitive so the url is done "by hand".
-                            let tail = fragment.find('#').unwrap_or_else(|| fragment.len());
-                            Some(RenderedLink {
-                                original_text: s.clone(),
-                                new_text: link_text.clone(),
-                                href: format!(
-                                    "{}{}std/primitive.{}.html{}",
-                                    url,
-                                    if !url.ends_with('/') { "/" } else { "" },
-                                    &fragment[..tail],
-                                    &fragment[tail..]
-                                ),
-                            })
-                        } else {
-                            panic!("This isn't a primitive?!");
-                        }
+                        _ => unreachable!(),
                     }
                 }
-            })
-            .collect()
-    }
-
-    crate fn get_doc_aliases(&self) -> FxHashSet<String> {
-        self.other_attrs
-            .lists(sym::doc)
-            .filter(|a| a.has_name(sym::alias))
-            .filter_map(|a| a.value_str().map(|s| s.to_string()))
-            .filter(|v| !v.is_empty())
-            .collect::<FxHashSet<_>>()
+            } else {
+                aliases.insert(attr.value_str().map(|s| s.to_string()).unwrap());
+            }
+        }
+        aliases.into_iter().collect::<Vec<String>>().into()
     }
 }
 
@@ -922,7 +1065,6 @@ impl PartialEq for Attributes {
         self.doc_strings == rhs.doc_strings
             && self.cfg == rhs.cfg
             && self.span == rhs.span
-            && self.links == rhs.links
             && self
                 .other_attrs
                 .iter()
@@ -938,7 +1080,6 @@ impl Hash for Attributes {
         self.doc_strings.hash(hasher);
         self.cfg.hash(hasher);
         self.span.hash(hasher);
-        self.links.hash(hasher);
         for attr in &self.other_attrs {
             attr.id.hash(hasher);
         }
@@ -1602,36 +1743,18 @@ impl PrimitiveType {
         }
     }
 
-    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<[DefId; 4]> {
+    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<DefId, 4> {
         Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
     }
 
-    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, ArrayVec<[DefId; 4]>> {
-        static CELL: OnceCell<FxHashMap<PrimitiveType, ArrayVec<[DefId; 4]>>> = OnceCell::new();
+    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, ArrayVec<DefId, 4>> {
+        static CELL: OnceCell<FxHashMap<PrimitiveType, ArrayVec<DefId, 4>>> = OnceCell::new();
 
         CELL.get_or_init(move || {
             use self::PrimitiveType::*;
 
-            /// A macro to create a FxHashMap.
-            ///
-            /// Example:
-            ///
-            /// ```
-            /// let letters = map!{"a" => "b", "c" => "d"};
-            /// ```
-            ///
-            /// Trailing commas are allowed.
-            /// Commas between elements are required (even if the expression is a block).
-            macro_rules! map {
-                ($( $key: expr => $val: expr ),* $(,)*) => {{
-                    let mut map = ::rustc_data_structures::fx::FxHashMap::default();
-                    $( map.insert($key, $val); )*
-                    map
-                }}
-            }
-
             let single = |a: Option<DefId>| a.into_iter().collect();
-            let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_> {
+            let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_, 4> {
                 a.into_iter().chain(b).collect()
             };
 
@@ -1803,8 +1926,13 @@ impl From<hir::PrimTy> for PrimitiveType {
 
 #[derive(Copy, Clone, Debug)]
 crate enum Visibility {
+    /// `pub`
     Public,
+    /// Visibility inherited from parent.
+    ///
+    /// For example, this is the visibility of private items and of enum variants.
     Inherited,
+    /// `pub(crate)`, `pub(super)`, or `pub(in path::to::somewhere)`
     Restricted(DefId),
 }
 
@@ -1853,7 +1981,8 @@ crate enum Variant {
     Struct(VariantStruct),
 }
 
-/// Small wrapper around `rustc_span::Span` that adds helper methods and enforces calling `source_callsite`.
+/// Small wrapper around [`rustc_span::Span]` that adds helper methods
+/// and enforces calling [`rustc_span::Span::source_callsite()`].
 #[derive(Clone, Debug)]
 crate struct Span(rustc_span::Span);
 
@@ -1865,12 +1994,12 @@ impl Span {
         Self(sp.source_callsite())
     }
 
-    crate fn dummy() -> Self {
-        Self(rustc_span::DUMMY_SP)
+    crate fn inner(&self) -> rustc_span::Span {
+        self.0
     }
 
-    crate fn span(&self) -> rustc_span::Span {
-        self.0
+    crate fn dummy() -> Self {
+        Self(rustc_span::DUMMY_SP)
     }
 
     crate fn is_dummy(&self) -> bool {
@@ -1983,9 +2112,58 @@ crate struct Static {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 crate struct Constant {
     crate type_: Type,
-    crate expr: String,
-    crate value: Option<String>,
-    crate is_literal: bool,
+    crate kind: ConstantKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+crate enum ConstantKind {
+    /// This is the wrapper around `ty::Const` for a non-local constant. Because it doesn't have a
+    /// `BodyId`, we need to handle it on its own.
+    ///
+    /// Note that `ty::Const` includes generic parameters, and may not always be uniquely identified
+    /// by a DefId. So this field must be different from `Extern`.
+    TyConst { expr: String },
+    /// A constant (expression) that's not an item or associated item. These are usually found
+    /// nested inside types (e.g., array lengths) or expressions (e.g., repeat counts), and also
+    /// used to define explicit discriminant values for enum variants.
+    Anonymous { body: BodyId },
+    /// A constant from a different crate.
+    Extern { def_id: DefId },
+    /// `const FOO: u32 = ...;`
+    Local { def_id: DefId, body: BodyId },
+}
+
+impl Constant {
+    crate fn expr(&self, tcx: TyCtxt<'_>) -> String {
+        match self.kind {
+            ConstantKind::TyConst { ref expr } => expr.clone(),
+            ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+                print_const_expr(tcx, body)
+            }
+        }
+    }
+
+    crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
+        match self.kind {
+            ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
+            ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
+                print_evaluated_const(tcx, def_id)
+            }
+        }
+    }
+
+    crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind {
+            ConstantKind::TyConst { .. } => false,
+            ConstantKind::Extern { def_id } => def_id.as_local().map_or(false, |def_id| {
+                is_literal_expr(tcx, tcx.hir().local_def_id_to_hir_id(def_id))
+            }),
+            ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
+                is_literal_expr(tcx, body.hir_id)
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

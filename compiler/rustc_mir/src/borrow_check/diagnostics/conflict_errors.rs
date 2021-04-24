@@ -10,16 +10,18 @@ use rustc_middle::mir::{
     FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_param, Instance, Ty};
-use rustc_span::{source_map::DesugaringKind, symbol::sym, Span};
+use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TypeFoldable};
+use rustc_span::source_map::DesugaringKind;
+use rustc_span::symbol::sym;
+use rustc_span::{Span, DUMMY_SP};
 
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MoveOutIndex, MovePathIndex};
 use crate::util::borrowck_errors;
 
 use crate::borrow_check::{
-    borrow_set::BorrowData, prefixes::IsPrefixOf, InitializationRequiringAction, MirBorrowckCtxt,
-    PrefixSet, WriteKind,
+    borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
+    InitializationRequiringAction, MirBorrowckCtxt, PrefixSet, WriteKind,
 };
 
 use super::{
@@ -195,7 +197,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
                             }
                         }
-                        FnSelfUseKind::Normal { self_arg, implicit_into_iter } => {
+                        FnSelfUseKind::Normal {
+                            self_arg,
+                            implicit_into_iter,
+                            is_option_or_result,
+                        } => {
                             if implicit_into_iter {
                                 err.span_label(
                                     fn_call_span,
@@ -213,13 +219,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     ),
                                 );
                             }
-                            // Avoid pointing to the same function in multiple different
-                            // error messages
-                            if self.fn_self_span_reported.insert(self_arg.span) {
-                                err.span_note(
-                                    self_arg.span,
-                                    &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
+                            if is_option_or_result {
+                                err.span_suggestion_verbose(
+                                    fn_call_span.shrink_to_lo(),
+                                    "consider calling `.as_ref()` to borrow the type's contents",
+                                    "as_ref().".to_string(),
+                                    Applicability::MachineApplicable,
                                 );
+                            }
+                            // Avoid pointing to the same function in multiple different
+                            // error messages.
+                            if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span)
+                            {
+                                err.span_note(
+                                        self_arg.span,
+                                        &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
+                                    );
                             }
                         }
                         // Deref::deref takes &self, which cannot cause a move
@@ -261,7 +276,24 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 if let Some(DesugaringKind::ForLoop(_)) = move_span.desugaring_kind() {
                     let sess = self.infcx.tcx.sess;
-                    if let Ok(snippet) = sess.source_map().span_to_snippet(move_span) {
+                    let ty = used_place.ty(self.body, self.infcx.tcx).ty;
+                    // If we have a `&mut` ref, we need to reborrow.
+                    if let ty::Ref(_, _, hir::Mutability::Mut) = ty.kind() {
+                        // If we are in a loop this will be suggested later.
+                        if !is_loop_move {
+                            err.span_suggestion_verbose(
+                                move_span.shrink_to_lo(),
+                                &format!(
+                                    "consider creating a fresh reborrow of {} here",
+                                    self.describe_place(moved_place.as_ref())
+                                        .map(|n| format!("`{}`", n))
+                                        .unwrap_or_else(|| "the mutable reference".to_string()),
+                                ),
+                                format!("&mut *"),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    } else if let Ok(snippet) = sess.source_map().span_to_snippet(move_span) {
                         err.span_suggestion(
                             move_span,
                             "consider borrowing to avoid moving into the for loop",
@@ -1267,6 +1299,29 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         if return_span != borrow_span {
             err.span_label(borrow_span, note);
+
+            let tcx = self.infcx.tcx;
+            let ty_params = ty::List::empty();
+
+            let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
+            let return_ty = tcx.erase_regions(return_ty);
+
+            // to avoid panics
+            if !return_ty.has_infer_types() {
+                if let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator) {
+                    if tcx.type_implements_trait((iter_trait, return_ty, ty_params, self.param_env))
+                    {
+                        if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
+                            err.span_suggestion_hidden(
+                                return_span,
+                                "use `.collect()` to allocate the iterator",
+                                format!("{}{}", snippet, ".collect::<Vec<_>>()"),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
+                }
+            }
         }
 
         Some(err)
@@ -1638,7 +1693,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if decl.can_be_made_mutable() {
                     err.span_suggestion(
                         decl.source_info.span,
-                        "make this binding mutable",
+                        "consider making this binding mutable",
                         format!("mut {}", name),
                         Applicability::MachineApplicable,
                     );
@@ -1702,7 +1757,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         impl<'tcx> Visitor<'tcx> for FakeReadCauseFinder<'tcx> {
             fn visit_statement(&mut self, statement: &Statement<'tcx>, _: Location) {
                 match statement {
-                    Statement { kind: StatementKind::FakeRead(cause, box place), .. }
+                    Statement { kind: StatementKind::FakeRead(box (cause, place)), .. }
                         if *place == self.place =>
                     {
                         self.cause = Some(*cause);

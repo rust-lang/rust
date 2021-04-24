@@ -68,12 +68,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn report_method_error<'b>(
+    pub fn report_method_error(
         &self,
         span: Span,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
-        source: SelfSource<'b>,
+        source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> Option<DiagnosticBuilder<'_>> {
@@ -323,8 +323,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 err.span_suggestion(
                                     lit.span,
                                     &format!(
-                                        "you must specify a concrete type for \
-                                              this numeric value, like `{}`",
+                                        "you must specify a concrete type for this numeric value, \
+                                         like `{}`",
                                         concrete_type
                                     ),
                                     format!("{}_{}", snippet, concrete_type),
@@ -975,17 +975,79 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_traits_to_import<'b>(
+    fn suggest_traits_to_import(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         span: Span,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
-        source: SelfSource<'b>,
+        source: SelfSource<'tcx>,
         valid_out_of_scope_traits: Vec<DefId>,
         unsatisfied_predicates: &[(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)],
     ) {
-        if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
+        let mut alt_rcvr_sugg = false;
+        if let SelfSource::MethodCall(rcvr) = source {
+            debug!(?span, ?item_name, ?rcvr_ty, ?rcvr);
+            // Try alternative arbitrary self types that could fulfill this call.
+            // FIXME: probe for all types that *could* be arbitrary self-types, not
+            // just this list.
+            for (rcvr_ty, post) in &[
+                (rcvr_ty, ""),
+                (self.tcx.mk_mut_ref(&ty::ReErased, rcvr_ty), "&mut "),
+                (self.tcx.mk_imm_ref(&ty::ReErased, rcvr_ty), "&"),
+            ] {
+                for (rcvr_ty, pre) in &[
+                    (self.tcx.mk_lang_item(rcvr_ty, LangItem::OwnedBox), "Box::new"),
+                    (self.tcx.mk_lang_item(rcvr_ty, LangItem::Pin), "Pin::new"),
+                    (self.tcx.mk_diagnostic_item(rcvr_ty, sym::Arc), "Arc::new"),
+                    (self.tcx.mk_diagnostic_item(rcvr_ty, sym::Rc), "Rc::new"),
+                ] {
+                    if let Some(new_rcvr_t) = *rcvr_ty {
+                        if let Ok(pick) = self.lookup_probe(
+                            span,
+                            item_name,
+                            new_rcvr_t,
+                            rcvr,
+                            crate::check::method::probe::ProbeScope::AllTraits,
+                        ) {
+                            debug!("try_alt_rcvr: pick candidate {:?}", pick);
+                            let did = Some(pick.item.container.id());
+                            // We don't want to suggest a container type when the missing
+                            // method is `.clone()` or `.deref()` otherwise we'd suggest
+                            // `Arc::new(foo).clone()`, which is far from what the user wants.
+                            let skip = [
+                                self.tcx.lang_items().clone_trait(),
+                                self.tcx.lang_items().deref_trait(),
+                                self.tcx.lang_items().deref_mut_trait(),
+                                self.tcx.lang_items().drop_trait(),
+                            ]
+                            .contains(&did);
+                            // Make sure the method is defined for the *actual* receiver: we don't
+                            // want to treat `Box<Self>` as a receiver if it only works because of
+                            // an autoderef to `&self`
+                            if pick.autoderefs == 0 && !skip {
+                                err.span_label(
+                                    pick.item.ident.span,
+                                    &format!("the method is available for `{}` here", new_rcvr_t),
+                                );
+                                err.multipart_suggestion(
+                                    "consider wrapping the receiver expression with the \
+                                        appropriate type",
+                                    vec![
+                                        (rcvr.span.shrink_to_lo(), format!("{}({}", pre, post)),
+                                        (rcvr.span.shrink_to_hi(), ")".to_string()),
+                                    ],
+                                    Applicability::MaybeIncorrect,
+                                );
+                                // We don't care about the other suggestions.
+                                alt_rcvr_sugg = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if !alt_rcvr_sugg && self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
         }
 
@@ -1074,6 +1136,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 *span,
                 "the method might not be found because of this arbitrary self type",
             );
+        }
+        if alt_rcvr_sugg {
+            return;
         }
 
         if !candidates.is_empty() {
@@ -1284,7 +1349,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Checks whether there is a local type somewhere in the chain of
     /// autoderefs of `rcvr_ty`.
-    fn type_derefs_to_local(&self, span: Span, rcvr_ty: Ty<'tcx>, source: SelfSource<'_>) -> bool {
+    fn type_derefs_to_local(
+        &self,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        source: SelfSource<'tcx>,
+    ) -> bool {
         fn is_local(ty: Ty<'_>) -> bool {
             match ty.kind() {
                 ty::Adt(def, _) => def.did.is_local(),
@@ -1310,7 +1380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum SelfSource<'a> {
     QPath(&'a hir::Ty<'a>),
     MethodCall(&'a hir::Expr<'a> /* rcvr */),
@@ -1466,11 +1536,12 @@ impl intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
                     if self.span.map_or(true, |span| item.span < span) {
                         if !item.span.from_expansion() {
                             // Don't insert between attributes and an item.
-                            if item.attrs.is_empty() {
+                            let attrs = self.tcx.hir().attrs(item.hir_id());
+                            if attrs.is_empty() {
                                 self.span = Some(item.span.shrink_to_lo());
                             } else {
                                 // Find the first attribute on the item.
-                                for attr in item.attrs {
+                                for attr in attrs {
                                     if self.span.map_or(true, |span| attr.span < span) {
                                         self.span = Some(attr.span.shrink_to_lo());
                                     }

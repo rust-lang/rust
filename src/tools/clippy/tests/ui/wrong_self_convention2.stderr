@@ -1,0 +1,11 @@
+error: methods with the following characteristics: (`to_*` and `self` type is not `Copy`) usually take `self` by reference
+  --> $DIR/wrong_self_convention2.rs:28:19
+   |
+LL |         fn to_u64(self) -> u64 {
+   |                   ^^^^
+   |
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
+   = help: consider choosing a less ambiguous name
+
+error: aborting due to previous error
+

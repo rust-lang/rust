@@ -31,8 +31,8 @@ LL |     type Bar: Clone = Vec<T>;
    = note: required because of the requirements on the impl of `Clone` for `Vec<T>`
 help: consider restricting type parameter `T`
    |
-LL | trait Foo<T: Clone> {
-   |            ^^^^^^^
+LL | trait Foo<T: std::clone::Clone> {
+   |            ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `(): Foo<Self>` is not satisfied
   --> $DIR/defaults-suitability.rs:34:5
@@ -99,8 +99,8 @@ LL |     type Baz = T;
    |
 help: consider further restricting type parameter `T`
    |
-LL |     Self::Baz: Clone, T: Clone
-   |                     ^^^^^^^^^^
+LL |     Self::Baz: Clone, T: std::clone::Clone
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors
 

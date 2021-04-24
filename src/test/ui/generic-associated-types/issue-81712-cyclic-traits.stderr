@@ -1,0 +1,19 @@
+error[E0107]: missing generics for associated type `C::DType`
+  --> $DIR/issue-81712-cyclic-traits.rs:14:10
+   |
+LL |     type DType<T>: D<T, CType = Self>;
+   |          ^^^^^ expected 1 type argument
+   |
+note: associated type defined here, with 1 type parameter: `T`
+  --> $DIR/issue-81712-cyclic-traits.rs:14:10
+   |
+LL |     type DType<T>: D<T, CType = Self>;
+   |          ^^^^^ -
+help: use angle brackets to add missing type argument
+   |
+LL |     type DType<T><T>: D<T, CType = Self>;
+   |               ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0107`.

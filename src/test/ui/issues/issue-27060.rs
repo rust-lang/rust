@@ -5,7 +5,7 @@ pub struct Good {
     aligned: [u8; 32],
 }
 
-#[deny(safe_packed_borrows)]
+#[deny(unaligned_references)]
 fn main() {
     let good = Good {
         data: &0,
@@ -13,14 +13,14 @@ fn main() {
         aligned: [0; 32]
     };
 
-    unsafe {
-        let _ = &good.data; // ok
-        let _ = &good.data2[0]; // ok
-    }
+    let _ = &good.data; //~ ERROR reference to packed field
+    //~| hard error
+    let _ = &good.data2[0]; //~ ERROR reference to packed field
+    //~| hard error
 
-    let _ = &good.data; //~ ERROR borrow of packed field is unsafe
+    let _ = &good.data; //~ ERROR reference to packed field
                         //~| hard error
-    let _ = &good.data2[0]; //~ ERROR borrow of packed field is unsafe
+    let _ = &good.data2[0]; //~ ERROR reference to packed field
                             //~| hard error
     let _ = &*good.data; // ok, behind a pointer
     let _ = &good.aligned; // ok, has align 1

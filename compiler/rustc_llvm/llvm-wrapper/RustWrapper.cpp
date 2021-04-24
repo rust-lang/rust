@@ -349,8 +349,10 @@ extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
   F->setAttributes(PALNew);
 }
 
-// enable fpmath flag UnsafeAlgebra
-extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef V) {
+// Enable a fast-math flag
+//
+// https://llvm.org/docs/LangRef.html#fast-math-flags
+extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
     I->setFast(true);
   }
@@ -382,9 +384,18 @@ LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
                            LLVMValueRef Old, LLVMValueRef Source,
                            LLVMAtomicOrdering Order,
                            LLVMAtomicOrdering FailureOrder, LLVMBool Weak) {
+#if LLVM_VERSION_GE(13,0)
+  // Rust probably knows the alignment of the target value and should be able to
+  // specify something more precise than MaybeAlign here. See also
+  // https://reviews.llvm.org/D97224 which may be a useful reference.
+  AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
+      unwrap(Target), unwrap(Old), unwrap(Source), llvm::MaybeAlign(), fromRust(Order),
+      fromRust(FailureOrder));
+#else
   AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
       unwrap(Target), unwrap(Old), unwrap(Source), fromRust(Order),
       fromRust(FailureOrder));
+#endif
   ACXI->setWeak(Weak);
   return wrap(ACXI);
 }
@@ -532,11 +543,6 @@ static DINode::DIFlags fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagAppleBlock)) {
     Result |= DINode::DIFlags::FlagAppleBlock;
   }
-#if LLVM_VERSION_LT(10, 0)
-  if (isSet(Flags & LLVMRustDIFlags::FlagBlockByrefStruct)) {
-    Result |= DINode::DIFlags::FlagBlockByrefStruct;
-  }
-#endif
   if (isSet(Flags & LLVMRustDIFlags::FlagVirtual)) {
     Result |= DINode::DIFlags::FlagVirtual;
   }
@@ -901,9 +907,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
       unwrapDI<DIDescriptor>(Context), StringRef(Name, NameLen),
       StringRef(LinkageName, LinkageNameLen),
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-#if LLVM_VERSION_GE(10, 0)
       /* isDefined */ true,
-#endif
       InitExpr, unwrapDIPtr<MDNode>(Decl),
       /* templateParams */ nullptr,
       AlignInBits);
@@ -1090,19 +1094,11 @@ inline section_iterator *unwrap(LLVMSectionIteratorRef SI) {
 
 extern "C" size_t LLVMRustGetSectionName(LLVMSectionIteratorRef SI,
                                          const char **Ptr) {
-#if LLVM_VERSION_GE(10, 0)
   auto NameOrErr = (*unwrap(SI))->getName();
   if (!NameOrErr)
     report_fatal_error(NameOrErr.takeError());
   *Ptr = NameOrErr->data();
   return NameOrErr->size();
-#else
-  StringRef Ret;
-  if (std::error_code EC = (*unwrap(SI))->getName(Ret))
-    report_fatal_error(EC.message());
-  *Ptr = Ret.data();
-  return Ret.size();
-#endif
 }
 
 // LLVMArrayType function does not support 64-bit ElementCount
@@ -1304,9 +1300,19 @@ extern "C" LLVMTypeKind LLVMRustGetTypeKind(LLVMTypeRef Ty) {
 
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
 
+#if LLVM_VERSION_LT(13, 0)
+using LLVMInlineAsmDiagHandlerTy = LLVMContext::InlineAsmDiagHandlerTy;
+#else
+using LLVMInlineAsmDiagHandlerTy = void*;
+#endif
+
 extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
-    LLVMContextRef C, LLVMContext::InlineAsmDiagHandlerTy H, void *CX) {
+    LLVMContextRef C, LLVMInlineAsmDiagHandlerTy H, void *CX) {
+  // Diagnostic handlers were unified in LLVM change 5de2d189e6ad, so starting
+  // with LLVM 13 this function is gone.
+#if LLVM_VERSION_LT(13, 0)
   unwrap(C)->setInlineAsmDiagnosticHandler(H, CX);
+#endif
 }
 
 extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
@@ -1441,47 +1447,28 @@ extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Src, unsigned SrcAlign,
                                             LLVMValueRef Size, bool IsVolatile) {
-#if LLVM_VERSION_GE(10, 0)
   return wrap(unwrap(B)->CreateMemCpy(
       unwrap(Dst), MaybeAlign(DstAlign),
       unwrap(Src), MaybeAlign(SrcAlign),
       unwrap(Size), IsVolatile));
-#else
-  return wrap(unwrap(B)->CreateMemCpy(
-      unwrap(Dst), DstAlign,
-      unwrap(Src), SrcAlign,
-      unwrap(Size), IsVolatile));
-#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
                                              LLVMValueRef Dst, unsigned DstAlign,
                                              LLVMValueRef Src, unsigned SrcAlign,
                                              LLVMValueRef Size, bool IsVolatile) {
-#if LLVM_VERSION_GE(10, 0)
   return wrap(unwrap(B)->CreateMemMove(
       unwrap(Dst), MaybeAlign(DstAlign),
       unwrap(Src), MaybeAlign(SrcAlign),
       unwrap(Size), IsVolatile));
-#else
-  return wrap(unwrap(B)->CreateMemMove(
-      unwrap(Dst), DstAlign,
-      unwrap(Src), SrcAlign,
-      unwrap(Size), IsVolatile));
-#endif
 }
 
 extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
                                             LLVMValueRef Dst, unsigned DstAlign,
                                             LLVMValueRef Val,
                                             LLVMValueRef Size, bool IsVolatile) {
-#if LLVM_VERSION_GE(10, 0)
   return wrap(unwrap(B)->CreateMemSet(
       unwrap(Dst), unwrap(Val), unwrap(Size), MaybeAlign(DstAlign), IsVolatile));
-#else
-  return wrap(unwrap(B)->CreateMemSet(
-      unwrap(Dst), unwrap(Val), unwrap(Size), DstAlign, IsVolatile));
-#endif
 }
 
 extern "C" LLVMValueRef
@@ -1661,17 +1648,17 @@ extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
   LLVMSetVisibility(V, fromRust(RustVisibility));
 }
 
+extern "C" void LLVMRustSetDSOLocal(LLVMValueRef Global, bool is_dso_local) {
+  unwrap<GlobalValue>(Global)->setDSOLocal(is_dso_local);
+}
+
 struct LLVMRustModuleBuffer {
   std::string data;
 };
 
 extern "C" LLVMRustModuleBuffer*
 LLVMRustModuleBufferCreate(LLVMModuleRef M) {
-#if LLVM_VERSION_GE(10, 0)
   auto Ret = std::make_unique<LLVMRustModuleBuffer>();
-#else
-  auto Ret = llvm::make_unique<LLVMRustModuleBuffer>();
-#endif
   {
     raw_string_ostream OS(Ret->data);
     {

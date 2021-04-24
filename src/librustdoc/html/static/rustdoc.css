@@ -18,26 +18,26 @@
 	font-display: swap;
 }
 
-/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license. */
+/* See SourceSerif4-LICENSE.md for the Source Serif 4 license. */
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 400;
-	src: local('Source Serif Pro'), url("SourceSerifPro-Regular.ttf.woff") format('woff');
+	src: local('Source Serif 4'), url("SourceSerif4-Regular.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: italic;
 	font-weight: 400;
-	src: local('Source Serif Pro Italic'), url("SourceSerifPro-It.ttf.woff") format('woff');
+	src: local('Source Serif 4 Italic'), url("SourceSerif4-It.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
-	font-family: 'Source Serif Pro';
+	font-family: 'Source Serif 4';
 	font-style: normal;
 	font-weight: 700;
-	src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.ttf.woff") format('woff');
+	src: local('Source Serif 4 Bold'), url("SourceSerif4-Bold.ttf.woff") format('woff');
 	font-display: swap;
 }
 
@@ -48,14 +48,21 @@
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular.woff") format('woff');
+	src: url("SourceCodePro-Regular.ttf.woff") format('woff');
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Source Code Pro';
+	font-style: italic;
+	font-weight: 400;
+	src: url("SourceCodePro-It.ttf.woff") format('woff');
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold.woff") format('woff');
+	src: url("SourceCodePro-Semibold.ttf.woff") format('woff');
 	font-display: swap;
 }
 
@@ -83,7 +90,7 @@ html {
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif Pro", serif;
+	font: 16px/1.4 "Source Serif 4", serif;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
@@ -109,6 +116,8 @@ h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	padding-bottom: 6px;
 }
 h1.fqn {
+	display: flex;
+	width: 100%;
 	border-bottom: 1px dashed;
 	margin-top: 0;
 }
@@ -126,7 +135,8 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	margin-bottom: 10px;
 	position: relative;
 }
-h3.impl, h3.method, h3.type {
+h3.impl, h3.method, h4.method.trait-impl, h3.type,
+h4.type.trait-impl, h4.associatedconstant.trait-impl {
 	padding-left: 15px;
 }
 
@@ -136,11 +146,12 @@ h1, h2, h3, h4,
 #source-sidebar, #sidebar-toggle,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
-	font-family: "Fira Sans", Arial;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content ul.crate a.crate {
-	font: 16px/1.6 "Fira Sans";
+	font-size: 16px/1.6;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 ol, ul {
@@ -165,12 +176,9 @@ code, pre, a.test-arrow {
 	border-radius: 3px;
 	padding: 0 0.1em;
 }
-.docblock pre code, .docblock-short pre code, .docblock code.spotlight {
+.docblock pre code, .docblock-short pre code {
 	padding: 0;
 	padding-right: 1ex;
-}
-.docblock code.spotlight :last-child {
-	padding-bottom: 0.6em;
 }
 pre {
 	padding: 14px;
@@ -347,10 +355,10 @@ nav.sub {
 .rustdoc:not(.source) .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
-	position: relative;
 }
 
 .example-wrap {
+	position: relative;
 	width: 100%;
 }
 
@@ -416,7 +424,9 @@ nav.sub {
 	text-overflow: ellipsis;
 	margin: 0;
 }
-.docblock-short code {
+/* Wrap non-pre code blocks (`text`) but not (```text```). */
+.docblock > :not(pre) > code,
+.docblock-short > :not(pre) > code {
 	white-space: pre-wrap;
 }
 
@@ -448,6 +458,13 @@ nav.sub {
 	margin: 0px;
 	padding: 0px;
 	font-weight: normal;
+}
+
+h1.fqn > .out-of-band {
+	float: unset;
+	flex: 1;
+	text-align: right;
+	margin-left: 8px;
 }
 
 h3.impl > .out-of-band {
@@ -482,7 +499,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", Arial;
+	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -648,7 +665,8 @@ a {
 	display: initial;
 }
 
-.in-band:hover > .anchor, .impl:hover > .anchor {
+.in-band:hover > .anchor, .impl:hover > .anchor, .method.trait-impl:hover > .anchor,
+.type.trait-impl:hover > .anchor, .associatedconstant.trait-impl:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
@@ -850,7 +868,17 @@ body.blur > :not(#help) {
 	font-size: 1.5em;
 }
 
-.module-item .stab {
+/* Black one-pixel outline around emoji shapes */
+.emoji {
+	text-shadow:
+		1px 0 0 black,
+		-1px 0 0 black,
+		0  1px 0 black,
+		0 -1px 0 black;
+}
+
+.module-item .stab,
+.import-item .stab {
 	border-radius: 3px;
 	display: inline-block;
 	font-size: 80%;
@@ -861,7 +889,8 @@ body.blur > :not(#help) {
 	vertical-align: text-bottom;
 }
 
-.module-item.unstable {
+.module-item.unstable,
+.import-item.unstable {
 	opacity: 0.65;
 }
 
@@ -949,6 +978,10 @@ a.test-arrow:hover{
 	color: inherit;
 }
 
+.code-attribute {
+	font-weight: 300;
+}
+
 .collapse-toggle {
 	font-weight: 300;
 	position: absolute;
@@ -1013,10 +1046,11 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 }
 
 .sub-variant, .sub-variant > h3 {
-	margin-top: 1px !important;
+	margin-top: 0px !important;
+	padding-top: 1px;
 }
 
-#main > .sub-variant > h3 {
+#main > details > .sub-variant > h3 {
 	font-size: 15px;
 	margin-left: 25px;
 	margin-bottom: 5px;
@@ -1038,12 +1072,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	margin-top: 3px;
 }
 
-.enum > .toggle-wrapper + .docblock, .struct > .toggle-wrapper + .docblock {
-	margin-left: 30px;
-	margin-bottom: 20px;
-	margin-top: 5px;
-}
-
 .docblock > .section-header:first-child {
 	margin-left: 15px;
 	margin-top: 0;
@@ -1053,30 +1081,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	left: -10px;
 }
 
-.enum > .collapsed, .struct > .collapsed {
-	margin-bottom: 25px;
-}
-
 #main > .variant, #main > .structfield {
 	display: block;
 }
 
-.attributes {
-	display: block;
-	margin-top: 0px !important;
-	margin-right: 0px;
-	margin-bottom: 0px !important;
-	margin-left: 30px;
-}
-.toggle-attributes.collapsed {
-	margin-bottom: 0;
-}
-.impl-items > .toggle-attributes {
-	margin-left: 20px;
-}
-.impl-items .attributes {
-	font-weight: 500;
-}
 
 :target > code {
 	opacity: 1;
@@ -1299,20 +1307,29 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-.help-button {
-	right: 30px;
-	font-family: "Fira Sans", Arial;
-	text-align: center;
-	font-size: 17px;
-}
-
-#theme-picker, #settings-menu, .help-button {
+#theme-picker, #settings-menu, .help-button, #copy-path {
 	padding: 4px;
 	width: 27px;
 	height: 29px;
 	border: 1px solid;
 	border-radius: 3px;
 	cursor: pointer;
+}
+
+.help-button {
+	right: 30px;
+	font-family: "Fira Sans", Arial, sans-serif;
+	text-align: center;
+	font-size: 17px;
+	padding-top: 2px;
+}
+
+#copy-path {
+	height: 30px;
+	font-size: 18px;
+	margin-left: 10px;
+	padding: 0 6px;
+	width: 28px;
 }
 
 #theme-choices {
@@ -1343,9 +1360,9 @@ h4 > .notable-traits {
 @media (min-width: 701px) {
 	/* In case there is no documentation before a code block, we need to add some margin at the top
 	to prevent an overlay between the "collapse toggle" and the information tooltip.
-	However, it's needed needed with smaller screen width because the doc/code block is always put
+	However, it's not needed with smaller screen width because the doc/code block is always put
 	"one line" below. */
-	.information:first-child > .tooltip {
+	.docblock > .information:first-child > .tooltip {
 		margin-top: 16px;
 	}
 }
@@ -1441,10 +1458,6 @@ h4 > .notable-traits {
 	#main, #search {
 		margin-top: 45px;
 		padding: 0;
-	}
-
-	.content .in-band {
-		width: 100%;
 	}
 
 	.content h4 > .out-of-band {
@@ -1557,6 +1570,10 @@ h4 > .notable-traits {
 	}
 
 	.impl > .collapse-toggle {
+		left: -10px;
+	}
+
+	.item-list > details.rustdoc-toggle > summary:not(.hideme)::before {
 		left: -10px;
 	}
 
@@ -1754,16 +1771,56 @@ div.name.expand::before {
 	top: 2px;
 }
 
-/* This part is to fix the "Expand attributes" part in the type declaration. */
-.type-decl > pre > .toggle-wrapper.toggle-attributes.top-attr {
-	margin-left: 0 !important;
+/* The hideme class is used on summary tags that contain a span with
+	placeholder text shown only when the toggle is closed. For instance,
+	"Expand description" or "Show methods". */
+details.rustdoc-toggle > summary.hideme {
+	cursor: pointer;
 }
-.type-decl > pre > .docblock.attributes.top-attr {
-	margin-left: 1.8em !important;
+
+details.rustdoc-toggle > summary::-webkit-details-marker {
+	display: none;
 }
-.type-decl > pre > .toggle-attributes {
-	margin-left: 2.2em;
+
+details.rustdoc-toggle > summary.hideme > span {
+	margin-left: 9px;
 }
-.type-decl > pre > .docblock.attributes {
-	margin-left: 4em;
+
+details.rustdoc-toggle > summary::before {
+	content: "[+]";
+	font-weight: 300;
+	font-size: 0.8em;
+	letter-spacing: 1px;
+	cursor: pointer;
+}
+
+details.rustdoc-toggle > summary.hideme::before {
+	position: relative;
+}
+
+details.rustdoc-toggle > summary:not(.hideme)::before {
+	position: absolute;
+	left: -23px;
+}
+
+/* When a "hideme" summary is open and the "Expand description" or "Show
+	methods" text is hidden, we want the [-] toggle that remains to not
+	affect the layout of the items to its right. To do that, we use
+	absolute positioning. Note that we also set position: relative
+	on the parent <details> to make this work properly. */
+details.rustdoc-toggle[open] > summary.hideme {
+	position: absolute;
+}
+
+details.rustdoc-toggle[open] {
+	position: relative;
+}
+
+details.rustdoc-toggle[open] > summary.hideme > span {
+	display: none;
+}
+
+details.rustdoc-toggle[open] > summary::before {
+	content: "[−]";
+	display: inline;
 }

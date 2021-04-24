@@ -1,9 +1,10 @@
-use crate::utils::span_lint;
+use clippy_utils::diagnostics::span_lint;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use std::iter;
 
 declare_clippy_lint! {
     /// **What it does:** Detects passing a mutable reference to a function that only
@@ -32,7 +33,7 @@ declare_lint_pass!(UnnecessaryMutPassed => [UNNECESSARY_MUT_PASSED]);
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         match e.kind {
-            ExprKind::Call(ref fn_expr, ref arguments) => {
+            ExprKind::Call(fn_expr, arguments) => {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
                     check_arguments(
                         cx,
@@ -43,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                     );
                 }
             },
-            ExprKind::MethodCall(ref path, _, ref arguments, _) => {
+            ExprKind::MethodCall(path, _, arguments, _) => {
                 let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
                 let substs = cx.typeck_results().node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
@@ -64,7 +65,7 @@ fn check_arguments<'tcx>(
     match type_definition.kind() {
         ty::FnDef(..) | ty::FnPtr(_) => {
             let parameters = type_definition.fn_sig(cx.tcx).skip_binder().inputs();
-            for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
+            for (argument, parameter) in iter::zip(arguments, parameters) {
                 match parameter.kind() {
                     ty::Ref(_, _, Mutability::Not)
                     | ty::RawPtr(ty::TypeAndMut {

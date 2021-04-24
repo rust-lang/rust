@@ -1,4 +1,4 @@
-use crate::utils::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -86,7 +86,7 @@ impl TabsInDocComments {
 
 impl EarlyLintPass for TabsInDocComments {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attribute: &ast::Attribute) {
-        Self::warn_if_tabs_in_doc(cx, &attribute);
+        Self::warn_if_tabs_in_doc(cx, attribute);
     }
 }
 

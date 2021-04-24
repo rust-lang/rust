@@ -1,0 +1,29 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/bare-trait-objects-path.rs:17:12
+   |
+LL |     let _: Dyn::Ty;
+   |            ^^^^^^^ help: use fully-qualified syntax: `<dyn Dyn as Trait>::Ty`
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/bare-trait-objects-path.rs:14:5
+   |
+LL |     Dyn::func();
+   |     ^^^ help: use `dyn`: `<dyn Dyn>`
+   |
+   = note: `#[warn(bare_trait_objects)]` on by default
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/bare-trait-objects-path.rs:15:5
+   |
+LL |     ::Dyn::func();
+   |     ^^^^^ help: use `dyn`: `<dyn (::Dyn)>`
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/bare-trait-objects-path.rs:16:5
+   |
+LL |     Dyn::CONST;
+   |     ^^^ help: use `dyn`: `<dyn Dyn>`
+
+error: aborting due to previous error; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0223`.

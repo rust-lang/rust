@@ -1,11 +1,25 @@
 #![crate_type = "lib"]
-#![deny(unused_attributes)]
-//~^ NOTE lint level is defined here
+#![deny(warnings)]
 #![doc(as_ptr)]
 //~^ ERROR unknown `doc` attribute
-//~| WARNING will become a hard error in a future release
+//~^^ WARN
 
 #[doc(as_ptr)]
 //~^ ERROR unknown `doc` attribute
-//~| WARNING will become a hard error in a future release
+//~^^ WARN
 pub fn foo() {}
+
+#[doc(123)]
+//~^ ERROR invalid `doc` attribute
+//~| WARN
+#[doc("hello", "bar")]
+//~^ ERROR invalid `doc` attribute
+//~| WARN
+//~| ERROR invalid `doc` attribute
+//~| WARN
+#[doc(foo::bar, crate::bar::baz = "bye")]
+//~^ ERROR unknown `doc` attribute
+//~| WARN
+//~| ERROR unknown `doc` attribute
+//~| WARN
+fn bar() {}

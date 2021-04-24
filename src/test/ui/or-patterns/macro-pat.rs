@@ -3,8 +3,6 @@
 // ignore-test
 // FIXME(mark-i-m): enable this test again when 2021 machinery is available
 
-#![feature(or_patterns)]
-
 use Foo::*;
 
 #[derive(Eq, PartialEq, Debug)]

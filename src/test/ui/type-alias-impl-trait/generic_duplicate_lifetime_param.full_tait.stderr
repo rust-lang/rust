@@ -1,0 +1,23 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/generic_duplicate_lifetime_param.rs:3:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_lifetime_param.rs:10:26
+   |
+LL | fn one<'a>(t: &'a ()) -> Two<'a, 'a> {
+   |                          ^^^^^^^^^^^
+   |
+note: lifetime used multiple times
+  --> $DIR/generic_duplicate_lifetime_param.rs:8:10
+   |
+LL | type Two<'a, 'b> = impl std::fmt::Debug;
+   |          ^^  ^^
+
+error: aborting due to previous error; 1 warning emitted
+

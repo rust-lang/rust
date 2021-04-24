@@ -14,7 +14,6 @@
 //! the required condition is not met.
 
 use rustc_ast::{self as ast, Attribute, NestedMetaItem};
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -74,16 +73,6 @@ const BASE_STRUCT: &[&str] =
     &[label_strs::generics_of, label_strs::predicates_of, label_strs::type_of];
 
 /// Trait definition `DepNode`s.
-const BASE_TRAIT_DEF: &[&str] = &[
-    label_strs::associated_item_def_ids,
-    label_strs::generics_of,
-    label_strs::object_safety_violations,
-    label_strs::predicates_of,
-    label_strs::specialization_graph_of,
-    label_strs::trait_def,
-    label_strs::trait_impls_of,
-];
-
 /// Extra `DepNode`s for functions and methods.
 const EXTRA_ASSOCIATED: &[&str] = &[label_strs::associated_item];
 
@@ -118,10 +107,6 @@ const LABELS_IMPL: &[&[&str]] = &[BASE_HIR, BASE_IMPL];
 /// Abstract data type (struct, enum, union) `DepNode`s.
 const LABELS_ADT: &[&[&str]] = &[BASE_HIR, BASE_STRUCT];
 
-/// Trait definition `DepNode`s.
-#[allow(dead_code)]
-const LABELS_TRAIT: &[&[&str]] = &[BASE_HIR, BASE_TRAIT_DEF];
-
 // FIXME: Struct/Enum/Unions Fields (there is currently no way to attach these)
 //
 // Fields are kind of separate from their containers, as they can change independently from
@@ -148,6 +133,10 @@ impl Assertion {
 }
 
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
+    if !tcx.sess.opts.debugging_opts.query_dep_graph {
+        return;
+    }
+
     // can't add `#[rustc_dirty]` etc without opting in to this feature
     if !tcx.features().rustc_attrs {
         return;
@@ -168,7 +157,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
         // all codegen-specific attributes are `AssumedUsed` in rustc_ast::feature_gate.
-        all_attrs.report_unchecked_attrs(&dirty_clean_visitor.checked_attrs);
+        all_attrs.report_unchecked_attrs(dirty_clean_visitor.checked_attrs);
     })
 }
 
@@ -391,10 +380,7 @@ impl DirtyCleanVisitor<'tcx> {
     fn assert_dirty(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_dirty({:?})", dep_node);
 
-        let current_fingerprint = self.get_fingerprint(&dep_node);
-        let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
-
-        if current_fingerprint == prev_fingerprint {
+        if self.tcx.dep_graph.is_green(&dep_node) {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
                 .sess
@@ -402,28 +388,10 @@ impl DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn get_fingerprint(&self, dep_node: &DepNode) -> Option<Fingerprint> {
-        if self.tcx.dep_graph.dep_node_exists(dep_node) {
-            let dep_node_index = self.tcx.dep_graph.dep_node_index_of(dep_node);
-            Some(self.tcx.dep_graph.fingerprint_of(dep_node_index))
-        } else {
-            None
-        }
-    }
-
     fn assert_clean(&self, item_span: Span, dep_node: DepNode) {
         debug!("assert_clean({:?})", dep_node);
 
-        let current_fingerprint = self.get_fingerprint(&dep_node);
-        let prev_fingerprint = self.tcx.dep_graph.prev_fingerprint_of(&dep_node);
-
-        // if the node wasn't previously evaluated and now is (or vice versa),
-        // then the node isn't actually clean or dirty.
-        if (current_fingerprint == None) ^ (prev_fingerprint == None) {
-            return;
-        }
-
-        if current_fingerprint != prev_fingerprint {
+        if self.tcx.dep_graph.is_red(&dep_node) {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
                 .sess
@@ -535,13 +503,14 @@ impl FindAllAttrs<'_, 'tcx> {
         false
     }
 
-    fn report_unchecked_attrs(&self, checked_attrs: &FxHashSet<ast::AttrId>) {
+    fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
             if !checked_attrs.contains(&attr.id) {
                 self.tcx.sess.span_err(
                     attr.span,
                     "found unchecked `#[rustc_dirty]` / `#[rustc_clean]` attribute",
                 );
+                checked_attrs.insert(attr.id);
             }
         }
     }
@@ -554,7 +523,7 @@ impl intravisit::Visitor<'tcx> for FindAllAttrs<'_, 'tcx> {
         intravisit::NestedVisitorMap::All(self.tcx.hir())
     }
 
-    fn visit_attribute(&mut self, attr: &'tcx Attribute) {
+    fn visit_attribute(&mut self, _: hir::HirId, attr: &'tcx Attribute) {
         if self.is_active_attr(attr) {
             self.found_attrs.push(attr);
         }

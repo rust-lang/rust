@@ -5,7 +5,7 @@ use crate::lint;
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLibKind;
 
-use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy};
+use rustc_target::spec::{CodeModel, LinkerFlavor, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{RelocModel, RelroLevel, SplitDebuginfo, TargetTriple, TlsModel};
 
 use rustc_feature::UnstableFeatures;
@@ -147,6 +147,9 @@ top_level_options!(
         // by the compiler.
         json_artifact_notifications: bool [TRACKED],
 
+        // `true` if we're emitting a JSON blob containing the unused externs
+        json_unused_externs: bool [UNTRACKED],
+
         pretty: Option<PpMode> [UNTRACKED],
     }
 );
@@ -248,9 +251,9 @@ macro_rules! options {
         pub const parse_list: &str = "a space-separated list of strings";
         pub const parse_opt_list: &str = parse_list;
         pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
-        pub const parse_uint: &str = "a number";
-        pub const parse_opt_uint: &str = parse_uint;
-        pub const parse_threads: &str = parse_uint;
+        pub const parse_number: &str = "a number";
+        pub const parse_opt_number: &str = parse_number;
+        pub const parse_threads: &str = parse_number;
         pub const parse_passes: &str = "a space-separated list of passes, or `all`";
         pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
         pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
@@ -262,6 +265,7 @@ macro_rules! options {
         pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
         pub const parse_optimization_fuel: &str = "crate=integer";
         pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
+        pub const parse_instrument_coverage: &str = "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
         pub const parse_unpretty: &str = "`string` or `string=string`";
         pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
         pub const parse_lto: &str =
@@ -413,16 +417,16 @@ macro_rules! options {
             }
         }
 
-        /// Use this for any uint option that has a static default.
-        fn parse_uint(slot: &mut usize, v: Option<&str>) -> bool {
+        /// Use this for any numeric option that has a static default.
+        fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>) -> bool {
             match v.and_then(|s| s.parse().ok()) {
                 Some(i) => { *slot = i; true },
                 None => false
             }
         }
 
-        /// Use this for any uint option that lacks a static default.
-        fn parse_opt_uint(slot: &mut Option<usize>, v: Option<&str>) -> bool {
+        /// Use this for any numeric option that lacks a static default.
+        fn parse_opt_number<T: Copy + FromStr>(slot: &mut Option<T>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
                 None => false
@@ -592,6 +596,41 @@ macro_rules! options {
             true
         }
 
+        fn parse_instrument_coverage(slot: &mut Option<InstrumentCoverage>, v: Option<&str>) -> bool {
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        Some(InstrumentCoverage::All)
+                    } else {
+                        None
+                    };
+                    return true
+                }
+            }
+
+            let v = match v {
+                None => {
+                    *slot = Some(InstrumentCoverage::All);
+                    return true;
+                }
+                Some(v) => v,
+            };
+
+            *slot = Some(match v {
+                "all" => InstrumentCoverage::All,
+                "except-unused-generics" | "except_unused_generics" => {
+                    InstrumentCoverage::ExceptUnusedGenerics
+                }
+                "except-unused-functions" | "except_unused_functions" => {
+                    InstrumentCoverage::ExceptUnusedFunctions
+                }
+                "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
+                _ => return false,
+            });
+            true
+        }
+
         fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
@@ -748,13 +787,13 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "this option is deprecated and does nothing"),
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
-    codegen_units: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+    codegen_units: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "divide crate into N units to optimize in parallel"),
     control_flow_guard: CFGuard = (CFGuard::Disabled, parse_cfguard, [TRACKED],
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(debug_assertions)` directive"),
-    debuginfo: usize = (0, parse_uint, [TRACKED],
+    debuginfo: usize = (0, parse_number, [TRACKED],
         "debug info emission level (0 = no debug info, 1 = line tables only, \
         2 = full debug info with variable and type information; default: 0)"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
@@ -769,13 +808,13 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "force use of unwind tables"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
-    inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "set the threshold for inlining a function"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],
         "extra arguments to append to the linker invocation (space separated)"),
-    link_dead_code: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
+    link_dead_code: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "keep dead code at link time (useful for code coverage) (default: no)"),
     link_self_contained: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
         "control whether to link Rust provided C objects/libraries or rely
@@ -870,8 +909,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         (default: no)"),
     borrowck: String = ("migrate".to_string(), parse_string, [UNTRACKED],
         "select which borrowck is used (`mir` or `migrate`) (default: `migrate`)"),
-    borrowck_stats: bool = (false, parse_bool, [UNTRACKED],
-        "gather borrowck statistics (default: no)"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
     chalk: bool = (false, parse_bool, [TRACKED],
@@ -959,24 +996,22 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "verify incr. comp. hashes of green query instances (default: no)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable MIR inlining (default: no)"),
-    inline_mir_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    inline_mir_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "a default MIR inlining threshold (default: 50)"),
-    inline_mir_hint_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
+    inline_mir_hint_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
         "inlining threshold for functions with inline hint (default: 100)"),
     inline_in_all_cgus: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "control whether `#[inline]` functions are in all CGUs"),
     input_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather statistics about the input (default: no)"),
-    insert_sideeffect: bool = (false, parse_bool, [TRACKED],
-        "fix undefined behavior when a thread doesn't eventually make progress \
-        (such as entering an empty infinite loop) by inserting llvm.sideeffect \
-        (default: no)"),
-    instrument_coverage: bool = (false, parse_bool, [TRACKED],
+    instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
         "instrument the generated code to support LLVM source-based code coverage \
         reports (note, the compiler build config must include `profiler = true`, \
         and is mutually exclusive with `-C profile-generate`/`-C profile-use`); \
         implies `-Z symbol-mangling-version=v0`; disables/overrides some Rust \
-        optimizations (default: no)"),
+        optimizations. Optional values are: `=all` (default coverage), \
+        `=except-unused-generics`, `=except-unused-functions`, or `=off` \
+        (default: instrument-coverage=off)"),
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
@@ -999,10 +1034,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
         "emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
         (default: no)"),
-    mir_opt_level: usize = (1, parse_uint, [TRACKED],
-        "MIR optimization level (0-3; default: 1)"),
-    mutable_noalias: bool = (false, parse_bool, [TRACKED],
-        "emit noalias metadata for mutable references (default: no)"),
+    mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
+    mutable_noalias: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "emit noalias metadata for mutable references (default: yes for LLVM >= 12, otherwise no)"),
     new_llvm_pass_manager: bool = (false, parse_bool, [TRACKED],
         "use new LLVM pass manager (default: no)"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
@@ -1120,7 +1155,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
-    terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+    terminal_width: Option<usize> = (None, parse_opt_number, [UNTRACKED],
         "set the current terminal width"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),

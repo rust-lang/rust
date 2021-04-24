@@ -22,29 +22,17 @@ fn func2(a: bool, b: bool) -> Option<i32> {
     if a && b {
         return Some(10);
     }
-    if a {
-        Some(20)
-    } else {
-        Some(30)
-    }
+    if a { Some(20) } else { Some(30) }
 }
 
 // public fns should not be linted
 pub fn func3(a: bool) -> Option<i32> {
-    if a {
-        Some(1)
-    } else {
-        Some(1)
-    }
+    if a { Some(1) } else { Some(1) }
 }
 
 // should not be linted
 fn func4(a: bool) -> Option<i32> {
-    if a {
-        Some(1)
-    } else {
-        None
-    }
+    if a { Some(1) } else { None }
 }
 
 // should be linted
@@ -64,11 +52,7 @@ fn func7() -> Result<i32, ()> {
 
 // should not be linted
 fn func8(a: bool) -> Result<i32, ()> {
-    if a {
-        Ok(1)
-    } else {
-        Err(())
-    }
+    if a { Ok(1) } else { Err(()) }
 }
 
 // should not be linted
@@ -143,20 +127,12 @@ fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
 
 // should not be linted
 fn issue_6640_3() -> Option<()> {
-    if true {
-        Some(())
-    } else {
-        None
-    }
+    if true { Some(()) } else { None }
 }
 
 // should not be linted
 fn issue_6640_4() -> Result<(), ()> {
-    if true {
-        Ok(())
-    } else {
-        Err(())
-    }
+    if true { Ok(()) } else { Err(()) }
 }
 
 fn main() {

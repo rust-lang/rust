@@ -1,13 +1,12 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
-    inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
-    ItemKind, Lifetime, MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type,
-    TypeBinding, TypeKind,
+    inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
+    MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
+    TypeKind,
 };
 use crate::core::DocContext;
 
-use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -38,7 +37,6 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     // Clean the crate, translating the entire librustc_ast AST to one that is
     // understood by rustdoc.
     let mut module = module.clean(cx);
-    let mut masked_crates = FxHashSet::default();
 
     match *module.kind {
         ItemKind::ModuleItem(ref module) => {
@@ -49,14 +47,18 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
                     && (it.attrs.has_doc_flag(sym::masked)
                         || cx.tcx.is_compiler_builtins(it.def_id.krate))
                 {
-                    masked_crates.insert(it.def_id.krate);
+                    cx.cache.masked_crates.insert(it.def_id.krate);
                 }
             }
         }
         _ => unreachable!(),
     }
 
-    let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
+    let local_crate = LOCAL_CRATE.clean(cx);
+    let src = local_crate.src(cx.tcx);
+    let name = local_crate.name(cx.tcx);
+    let primitives = local_crate.primitives(cx.tcx);
+    let keywords = local_crate.keywords(cx.tcx);
     {
         let m = match *module.kind {
             ItemKind::ModuleItem(ref mut m) => m,
@@ -78,11 +80,10 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate {
         name,
         src,
-        module: Some(module),
+        module,
         externs,
         primitives,
         external_traits: cx.external_traits.clone(),
-        masked_crates,
         collapsed: false,
     }
 }
@@ -100,7 +101,7 @@ fn external_generic_args(
         .iter()
         .filter_map(|kind| match kind.unpack() {
             GenericArgKind::Lifetime(lt) => match lt {
-                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_) }) => {
+                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
                     Some(GenericArg::Lifetime(Lifetime::elided()))
                 }
                 _ => lt.clean(cx).map(GenericArg::Lifetime),
@@ -254,19 +255,9 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     debug!("trying to get a name from pattern: {:?}", p);
 
     Symbol::intern(&match p.kind {
-        PatKind::Wild => return kw::Underscore,
+        PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
-        PatKind::Struct(ref name, ref fields, etc) => format!(
-            "{} {{ {}{} }}",
-            qpath_to_string(name),
-            fields
-                .iter()
-                .map(|fp| format!("{}: {}", fp.ident, name_from_pat(&fp.pat)))
-                .collect::<Vec<String>>()
-                .join(", "),
-            if etc { ", .." } else { "" }
-        ),
         PatKind::Or(ref pats) => pats
             .iter()
             .map(|p| name_from_pat(&**p).to_string())
@@ -299,12 +290,12 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
 crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     match n.val {
-        ty::ConstKind::Unevaluated(def, _, promoted) => {
+        ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
                 let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
                 print_const_expr(cx.tcx, cx.tcx.hir().body_owned_by(hir_id))
             } else {
-                inline::print_inlined_const(cx, def.did)
+                inline::print_inlined_const(cx.tcx, def.did)
             };
             if let Some(promoted) = promoted {
                 s.push_str(&format!("::{:?}", promoted))
@@ -327,15 +318,15 @@ crate fn print_const(cx: &DocContext<'_>, n: &'tcx ty::Const<'_>) -> String {
     }
 }
 
-crate fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
-    cx.tcx.const_eval_poly(def_id).ok().and_then(|val| {
-        let ty = cx.tcx.type_of(def_id);
+crate fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
+    tcx.const_eval_poly(def_id).ok().and_then(|val| {
+        let ty = tcx.type_of(def_id);
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
             (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
             (ConstValue::Scalar(_), _) => {
-                let const_ = ty::Const::from_value(cx.tcx, val, ty);
-                Some(print_const_with_custom_print_scalar(cx, const_))
+                let const_ = ty::Const::from_value(tcx, val, ty);
+                Some(print_const_with_custom_print_scalar(tcx, const_))
             }
             _ => None,
         }
@@ -352,7 +343,7 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
+fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.val, ct.ty.kind()) {
@@ -360,8 +351,8 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
             format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
         }
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
-            let ty = cx.tcx.lift(ct.ty).unwrap();
-            let size = cx.tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
+            let ty = tcx.lift(ct.ty).unwrap();
+            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
 
@@ -375,8 +366,8 @@ fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const
     }
 }
 
-crate fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
-    if let hir::Node::Expr(expr) = cx.tcx.hir().get(hir_id) {
+crate fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
+    if let hir::Node::Expr(expr) = tcx.hir().get(hir_id) {
         if let hir::ExprKind::Lit(_) = &expr.kind {
             return true;
         }
@@ -414,7 +405,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path, id: hir::HirId) -> Ty
             return Generic(kw::SelfUpper);
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
-            return Generic(Symbol::intern(&format!("{:#}", path.print(&cx.cache))));
+            return Generic(Symbol::intern(&path.whole_name()));
         }
         Res::SelfTy(..) | Res::Def(DefKind::TyParam | DefKind::AssocTy, _) => true,
         _ => false,
@@ -533,4 +524,15 @@ crate fn has_doc_flag(attrs: ty::Attributes<'_>, flag: Symbol) -> bool {
         attr.has_name(sym::doc)
             && attr.meta_item_list().map_or(false, |l| rustc_attr::list_contains_name(&l, flag))
     })
+}
+
+/// Return a channel suitable for using in a `doc.rust-lang.org/{channel}` format string.
+crate fn doc_rust_lang_org_channel() -> &'static str {
+    match env!("CFG_RELEASE_CHANNEL") {
+        "stable" => env!("CFG_RELEASE_NUM"),
+        "beta" => "beta",
+        "nightly" | "dev" => "nightly",
+        // custom build of rustdoc maybe? link to the stable docs just in case
+        _ => "",
+    }
 }

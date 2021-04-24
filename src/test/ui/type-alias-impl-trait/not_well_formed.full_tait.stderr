@@ -1,0 +1,18 @@
+warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/not_well_formed.rs:3:32
+   |
+LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
+   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+
+error[E0220]: associated type `Assoc` not found for `V`
+  --> $DIR/not_well_formed.rs:13:29
+   |
+LL | type Foo<V> = impl Trait<V::Assoc>;
+   |                             ^^^^^ associated type `Assoc` not found
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0220`.

@@ -1,15 +1,3 @@
-error[E0277]: `<<Self as Case1>::C as Iterator>::Item` is not an iterator
-  --> $DIR/bad-bounds-on-assoc-in-trait.rs:27:5
-   |
-LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8, App: Debug>> + Sync>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `<<Self as Case1>::C as Iterator>::Item` is not an iterator
-   |
-   = help: the trait `Iterator` is not implemented for `<<Self as Case1>::C as Iterator>::Item`
-help: consider further restricting the associated type
-   |
-LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Iterator {
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0277]: `<<Self as Case1>::C as Iterator>::Item` cannot be sent between threads safely
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:27:36
    |
@@ -26,6 +14,23 @@ help: consider further restricting the associated type
    |
 LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Send {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `<<Self as Case1>::C as Iterator>::Item` is not an iterator
+  --> $DIR/bad-bounds-on-assoc-in-trait.rs:27:43
+   |
+LL |     type C: Clone + Iterator<Item: Send + Iterator<Item: for<'a> Lam<&'a u8, App: Debug>> + Sync>;
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `<<Self as Case1>::C as Iterator>::Item` is not an iterator
+   | 
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL | pub trait Iterator {
+   | ------------------ required by this bound in `Iterator`
+   |
+   = help: the trait `Iterator` is not implemented for `<<Self as Case1>::C as Iterator>::Item`
+help: consider further restricting the associated type
+   |
+LL | trait Case1 where <<Self as Case1>::C as Iterator>::Item: Iterator {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `<<Self as Case1>::C as Iterator>::Item` cannot be shared between threads safely
   --> $DIR/bad-bounds-on-assoc-in-trait.rs:27:93

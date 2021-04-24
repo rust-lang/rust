@@ -684,8 +684,8 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 }
             }
 
-            Rvalue::BinaryOp(op, ref lhs, ref rhs)
-            | Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::BinaryOp(op, box (ref lhs, ref rhs))
+            | Rvalue::CheckedBinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(self.body, self.tcx);
                 let rhs_ty = rhs.ty(self.body, self.tcx);
 
@@ -808,6 +808,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
+            | StatementKind::CopyNonOverlapping(..)
             | StatementKind::Nop => {}
         }
     }
@@ -849,9 +850,12 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                     let obligation = Obligation::new(
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::bind(TraitPredicate {
-                            trait_ref: TraitRef::from_method(tcx, trait_id, substs),
-                        }),
+                        Binder::bind(
+                            TraitPredicate {
+                                trait_ref: TraitRef::from_method(tcx, trait_id, substs),
+                            },
+                            tcx,
+                        ),
                     );
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {

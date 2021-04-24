@@ -439,7 +439,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, user_ty, literal } = constant;
-        match literal.ty.kind() {
+        match literal.ty().kind() {
             ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
             // Unit type
             ty::Tuple(tys) if tys.is_empty() => {}
@@ -449,7 +449,16 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
                 if let Some(user_ty) = user_ty {
                     self.push(&format!("+ user_ty: {:?}", user_ty));
                 }
-                self.push(&format!("+ literal: {:?}", literal));
+                match literal {
+                    ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
+                    ConstantKind::Val(val, ty) => {
+                        // To keep the diffs small, we render this almost like we render ty::Const
+                        self.push(&format!(
+                            "+ literal: Const {{ ty: {}, val: Value({:?}) }}",
+                            ty, val
+                        ))
+                    }
+                }
             }
         }
     }
@@ -460,7 +469,21 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
         if use_verbose(ty) {
             self.push("ty::Const");
             self.push(&format!("+ ty: {:?}", ty));
-            self.push(&format!("+ val: {:?}", val));
+            let val = match val {
+                ty::ConstKind::Param(p) => format!("Param({})", p),
+                ty::ConstKind::Infer(infer) => format!("Infer({:?})", infer),
+                ty::ConstKind::Bound(idx, var) => format!("Bound({:?}, {:?})", idx, var),
+                ty::ConstKind::Placeholder(ph) => format!("PlaceHolder({:?})", ph),
+                ty::ConstKind::Unevaluated(uv) => format!(
+                    "Unevaluated({}, {:?}, {:?})",
+                    self.tcx.def_path_str(uv.def.did),
+                    uv.substs,
+                    uv.promoted
+                ),
+                ty::ConstKind::Value(val) => format!("Value({:?})", val),
+                ty::ConstKind::Error(_) => format!("Error"),
+            };
+            self.push(&format!("+ val: {}", val));
         }
     }
 

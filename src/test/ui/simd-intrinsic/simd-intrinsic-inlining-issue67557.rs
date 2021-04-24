@@ -2,7 +2,7 @@
 // the wrong Instance, causing issues with inlining. See #67557.
 //
 // run-pass
-// compile-flags: -Zmir-opt-level=3
+// compile-flags: -Zmir-opt-level=4
 #![feature(platform_intrinsics, repr_simd)]
 
 extern "platform-intrinsic" {

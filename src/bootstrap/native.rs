@@ -256,7 +256,7 @@ impl Step for Llvm {
             enabled_llvm_projects.push("compiler-rt");
         }
 
-        if let Some(true) = builder.config.llvm_polly {
+        if builder.config.llvm_polly {
             enabled_llvm_projects.push("polly");
         }
 
@@ -311,7 +311,7 @@ impl Step for Llvm {
             cfg.define("LLVM_USE_LINKER", linker);
         }
 
-        if let Some(true) = builder.config.llvm_allow_old_toolchain {
+        if builder.config.llvm_allow_old_toolchain {
             cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
         }
 
@@ -347,11 +347,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 9 {
+        if major >= 10 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=9.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=10.0\n\n", version)
 }
 
 fn configure_cmake(
@@ -812,6 +812,9 @@ fn supported_sanitizers(
         "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
         "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
         "x86_64-unknown-linux-gnu" => {
+            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
+        }
+        "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }
         _ => Vec::new(),

@@ -453,41 +453,6 @@ impl SourceMap {
         }
     }
 
-    /// Returns `Some(span)`, a union of the LHS and RHS span. The LHS must precede the RHS. If
-    /// there are gaps between LHS and RHS, the resulting union will cross these gaps.
-    /// For this to work,
-    ///
-    ///    * the syntax contexts of both spans much match,
-    ///    * the LHS span needs to end on the same line the RHS span begins,
-    ///    * the LHS span must start at or before the RHS span.
-    pub fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
-        // Ensure we're at the same expansion ID.
-        if sp_lhs.ctxt() != sp_rhs.ctxt() {
-            return None;
-        }
-
-        let lhs_end = match self.lookup_line(sp_lhs.hi()) {
-            Ok(x) => x,
-            Err(_) => return None,
-        };
-        let rhs_begin = match self.lookup_line(sp_rhs.lo()) {
-            Ok(x) => x,
-            Err(_) => return None,
-        };
-
-        // If we must cross lines to merge, don't merge.
-        if lhs_end.line != rhs_begin.line {
-            return None;
-        }
-
-        // Ensure these follow the expected order and that we don't overlap.
-        if (sp_lhs.lo() <= sp_rhs.lo()) && (sp_lhs.hi() <= sp_rhs.lo()) {
-            Some(sp_lhs.to(sp_rhs))
-        } else {
-            None
-        }
-    }
-
     pub fn span_to_string(&self, sp: Span) -> String {
         if self.files.borrow().source_files.is_empty() && sp.is_dummy() {
             return "no-location".to_string();
@@ -929,13 +894,6 @@ impl SourceMap {
         let sf = (*self.files.borrow().source_files)[idx].clone();
         let offset = bpos - sf.start_pos;
         SourceFileAndBytePos { sf, pos: offset }
-    }
-
-    /// Converts an absolute `BytePos` to a `CharPos` relative to the `SourceFile`.
-    pub fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
-        let idx = self.lookup_source_file_idx(bpos);
-        let sf = &(*self.files.borrow().source_files)[idx];
-        sf.bytepos_to_file_charpos(bpos)
     }
 
     // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.

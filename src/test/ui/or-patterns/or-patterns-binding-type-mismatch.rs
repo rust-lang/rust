@@ -1,8 +1,6 @@
 // Here we test type checking of bindings when combined with or-patterns.
 // Specifically, we ensure that introducing bindings of different types result in type errors.
 
-#![feature(or_patterns)]
-
 fn main() {
     enum Blah {
         A(isize, isize, usize),
@@ -52,10 +50,10 @@ fn main() {
     = Some((0u8, Some((1u16, 2u32))))
     {}
 
-    let Blah::A(_, x, y) | Blah::B(x, y) = Blah::A(1, 1, 2);
+    let (Blah::A(_, x, y) | Blah::B(x, y)) = Blah::A(1, 1, 2);
     //~^ ERROR mismatched types
 
-    let (x, y) | (y, x) = (0u8, 1u16);
+    let ((x, y) | (y, x)) = (0u8, 1u16);
     //~^ ERROR mismatched types
     //~| ERROR mismatched types
 

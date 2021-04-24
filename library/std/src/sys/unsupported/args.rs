@@ -9,9 +9,9 @@ pub fn args() -> Args {
     Args {}
 }
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        &[]
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_list().finish()
     }
 }
 

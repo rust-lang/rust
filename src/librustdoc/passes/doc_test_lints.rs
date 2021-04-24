@@ -9,8 +9,10 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{find_testable_code, ErrorCodes, Ignore, LangString};
+use crate::visit_ast::inherits_doc_hidden;
 use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
+use rustc_span::symbol::sym;
 
 crate const CHECK_PRIVATE_ITEMS_DOC_TESTS: Pass = Pass {
     name: "check-private-items-doc-tests",
@@ -51,29 +53,36 @@ impl crate::doctest::Tester for Tests {
 }
 
 crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if matches!(
-        *item.kind,
-        clean::StructFieldItem(_)
-            | clean::VariantItem(_)
-            | clean::AssocConstItem(_, _)
-            | clean::AssocTypeItem(_, _)
-            | clean::TypedefItem(_, _)
-            | clean::StaticItem(_)
-            | clean::ConstantItem(_)
-            | clean::ExternCrateItem(_, _)
-            | clean::ImportItem(_)
-            | clean::PrimitiveItem(_)
-            | clean::KeywordItem(_)
-    ) {
+    if !cx.cache.access_levels.is_public(item.def_id)
+        || matches!(
+            *item.kind,
+            clean::StructFieldItem(_)
+                | clean::VariantItem(_)
+                | clean::AssocConstItem(_, _)
+                | clean::AssocTypeItem(_, _)
+                | clean::TypedefItem(_, _)
+                | clean::StaticItem(_)
+                | clean::ConstantItem(_)
+                | clean::ExternCrateItem { .. }
+                | clean::ImportItem(_)
+                | clean::PrimitiveItem(_)
+                | clean::KeywordItem(_)
+        )
+    {
         return false;
     }
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
+    if cx.tcx.hir().attrs(hir_id).lists(sym::doc).has_word(sym::hidden)
+        || inherits_doc_hidden(cx.tcx, hir_id)
+    {
+        return false;
+    }
     let (level, source) = cx.tcx.lint_level_at_node(crate::lint::MISSING_DOC_CODE_EXAMPLES, hir_id);
     level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
 
 crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
-    let hir_id = match cx.as_local_hir_id(item.def_id) {
+    let hir_id = match DocContext::as_local_hir_id(cx.tcx, item.def_id) {
         Some(hir_id) => hir_id,
         None => {
             // If non-local, no need to check anything.
@@ -88,7 +97,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
         if should_have_doc_example(cx, &item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
-            let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
+            let sp = span_of_attrs(&item.attrs).unwrap_or(item.span.inner());
             cx.tcx.struct_span_lint_hir(
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
@@ -100,7 +109,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
-            span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
+            span_of_attrs(&item.attrs).unwrap_or(item.span.inner()),
             |lint| lint.build("documentation test in private item").emit(),
         );
     }

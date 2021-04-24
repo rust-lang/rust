@@ -4,7 +4,7 @@
 //! The goal is to move the definition of `MetaItem` and things that don't need to be in `syntax`
 //! to this crate.
 
-#![feature(or_patterns)]
+#![cfg_attr(bootstrap, feature(or_patterns))]
 
 #[macro_use]
 extern crate rustc_macros;

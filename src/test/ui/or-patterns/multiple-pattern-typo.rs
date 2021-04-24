@@ -1,4 +1,4 @@
-#![feature(or_patterns)]
+//! Test for `||` in or-patterns
 
 fn main() {
     let x = 3;

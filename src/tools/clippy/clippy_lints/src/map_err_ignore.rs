@@ -1,5 +1,4 @@
-use crate::utils::span_lint_and_help;
-
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{CaptureBy, Expr, ExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -113,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for MapErrIgnore {
         }
 
         // check if this is a method call (e.g. x.foo())
-        if let ExprKind::MethodCall(ref method, _t_span, ref args, _) = e.kind {
+        if let ExprKind::MethodCall(method, _t_span, args, _) = e.kind {
             // only work if the method name is `map_err` and there are only 2 arguments (e.g. x.map_err(|_|[1]
             // Enum::Variant[2]))
             if method.ident.as_str() == "map_err" && args.len() == 2 {

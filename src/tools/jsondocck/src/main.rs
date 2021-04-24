@@ -205,7 +205,21 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
                     let val = cache.get_value(&command.args[0])?;
                     let results = select(&val, &command.args[1]).unwrap();
                     let pat = string_to_value(&command.args[2], cache);
-                    results.contains(&pat.as_ref())
+                    let has = results.contains(&pat.as_ref());
+                    // Give better error for when @has check fails
+                    if !command.negated && !has {
+                        return Err(CkError::FailedCheck(
+                            format!(
+                                "{} matched to {:?} but didn't have {:?}",
+                                &command.args[1],
+                                results,
+                                pat.as_ref()
+                            ),
+                            command,
+                        ));
+                    } else {
+                        has
+                    }
                 }
                 _ => unreachable!(),
             }
@@ -225,7 +239,20 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             let val = cache.get_value(&command.args[0])?;
             let results = select(&val, &command.args[1]).unwrap();
             let pat = string_to_value(&command.args[2], cache);
-            results.len() == 1 && results[0] == pat.as_ref()
+            let is = results.len() == 1 && results[0] == pat.as_ref();
+            if !command.negated && !is {
+                return Err(CkError::FailedCheck(
+                    format!(
+                        "{} matched to {:?}, but expected {:?}",
+                        &command.args[1],
+                        results,
+                        pat.as_ref()
+                    ),
+                    command,
+                ));
+            } else {
+                is
+            }
         }
         CommandKind::Set => {
             // @set <name> = <path> <jsonpath>
@@ -233,7 +260,13 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             assert_eq!(command.args[1], "=", "Expected an `=`");
             let val = cache.get_value(&command.args[2])?;
             let results = select(&val, &command.args[3]).unwrap();
-            assert_eq!(results.len(), 1);
+            assert_eq!(
+                results.len(),
+                1,
+                "Didn't get 1 result for `{}`: got {:?}",
+                command.args[3],
+                results
+            );
             match results.len() {
                 0 => false,
                 1 => {
@@ -279,7 +312,10 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
 
 fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
     if s.starts_with("$") {
-        Cow::Borrowed(&cache.variables[&s[1..]])
+        Cow::Borrowed(&cache.variables.get(&s[1..]).unwrap_or_else(|| {
+            // FIXME(adotinthevoid): Show line number
+            panic!("No variable: `{}`. Current state: `{:?}`", &s[1..], cache.variables)
+        }))
     } else {
         Cow::Owned(serde_json::from_str(s).unwrap())
     }

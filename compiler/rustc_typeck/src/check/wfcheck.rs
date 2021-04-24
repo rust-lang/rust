@@ -24,6 +24,7 @@ use rustc_trait_selection::opaque_types::may_define_opaque_type;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
+use std::iter;
 use std::ops::ControlFlow;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
@@ -713,10 +714,11 @@ fn check_where_clauses<'tcx, 'fcx>(
     let generics = tcx.generics_of(def_id);
 
     let is_our_default = |def: &ty::GenericParamDef| match def.kind {
-        GenericParamDefKind::Type { has_default, .. } => {
+        GenericParamDefKind::Type { has_default, .. }
+        | GenericParamDefKind::Const { has_default } => {
             has_default && def.index >= generics.parent_count as u32
         }
-        _ => unreachable!(),
+        GenericParamDefKind::Lifetime => unreachable!(),
     };
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
@@ -771,10 +773,15 @@ fn check_where_clauses<'tcx, 'fcx>(
 
                 fcx.tcx.mk_param_from_def(param)
             }
-
-            GenericParamDefKind::Const => {
-                // FIXME(const_generics_defaults)
-                fcx.tcx.mk_param_from_def(param)
+            GenericParamDefKind::Const { .. } => {
+                if is_our_default(param) {
+                    let default_ct = tcx.const_param_default(param.def_id);
+                    // Const params currently have to be concrete.
+                    assert!(!default_ct.needs_subst());
+                    default_ct.into()
+                } else {
+                    fcx.tcx.mk_param_from_def(param)
+                }
             }
         }
     });
@@ -857,7 +864,7 @@ fn check_where_clauses<'tcx, 'fcx>(
     debug!("check_where_clauses: predicates={:?}", predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations =
-        predicates.predicates.iter().zip(predicates.spans.iter()).flat_map(|(&p, &sp)| {
+        iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
             traits::wf::predicate_obligations(fcx, fcx.param_env, fcx.body_id, p, sp)
         });
 
@@ -879,8 +886,8 @@ fn check_fn_or_method<'fcx, 'tcx>(
     let sig = fcx.normalize_associated_types_in(span, sig);
     let sig = fcx.tcx.liberate_late_bound_regions(def_id, sig);
 
-    for (&input_ty, span) in sig.inputs().iter().zip(hir_decl.inputs.iter().map(|t| t.span)) {
-        fcx.register_wf_obligation(input_ty.into(), span, ObligationCauseCode::MiscObligation);
+    for (&input_ty, ty) in iter::zip(sig.inputs(), hir_decl.inputs) {
+        fcx.register_wf_obligation(input_ty.into(), ty.span, ObligationCauseCode::MiscObligation);
     }
     implied_bounds.extend(sig.inputs());
 
@@ -1060,13 +1067,14 @@ fn check_method_receiver<'fcx, 'tcx>(
     debug!("check_method_receiver: sig={:?}", sig);
 
     let self_ty = fcx.normalize_associated_types_in(span, self_ty);
-    let self_ty = fcx.tcx.liberate_late_bound_regions(method.def_id, ty::Binder::bind(self_ty));
+    let self_ty =
+        fcx.tcx.liberate_late_bound_regions(method.def_id, ty::Binder::bind(self_ty, fcx.tcx));
 
     let receiver_ty = sig.inputs()[0];
 
     let receiver_ty = fcx.normalize_associated_types_in(span, receiver_ty);
     let receiver_ty =
-        fcx.tcx.liberate_late_bound_regions(method.def_id, ty::Binder::bind(receiver_ty));
+        fcx.tcx.liberate_late_bound_regions(method.def_id, ty::Binder::bind(receiver_ty, fcx.tcx));
 
     if fcx.tcx.features().arbitrary_self_types {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {

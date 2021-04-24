@@ -108,9 +108,6 @@ pub enum Candidate {
     /// the attribute currently provides the semantic requirement that arguments
     /// must be constant.
     Argument { bb: BasicBlock, index: usize },
-
-    /// `const` operand in asm!.
-    InlineAsm { bb: BasicBlock, index: usize },
 }
 
 impl Candidate {
@@ -118,16 +115,14 @@ impl Candidate {
     fn forces_explicit_promotion(&self) -> bool {
         match self {
             Candidate::Ref(_) => false,
-            Candidate::Argument { .. } | Candidate::InlineAsm { .. } => true,
+            Candidate::Argument { .. } => true,
         }
     }
 
     fn source_info(&self, body: &Body<'_>) -> SourceInfo {
         match self {
             Candidate::Ref(location) => *body.source_info(*location),
-            Candidate::Argument { bb, .. } | Candidate::InlineAsm { bb, .. } => {
-                *body.source_info(body.terminator_loc(*bb))
-            }
+            Candidate::Argument { bb, .. } => *body.source_info(body.terminator_loc(*bb)),
         }
     }
 }
@@ -217,36 +212,25 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
 
-        match terminator.kind {
-            TerminatorKind::Call { ref func, .. } => {
-                if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
-                    let fn_sig = self.ccx.tcx.fn_sig(def_id);
-                    if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
-                        let name = self.ccx.tcx.item_name(def_id);
-                        // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
-                        if name.as_str().starts_with("simd_shuffle") {
-                            self.candidates
-                                .push(Candidate::Argument { bb: location.block, index: 2 });
+        if let TerminatorKind::Call { ref func, .. } = terminator.kind {
+            if let ty::FnDef(def_id, _) = *func.ty(self.ccx.body, self.ccx.tcx).kind() {
+                let fn_sig = self.ccx.tcx.fn_sig(def_id);
+                if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
+                    let name = self.ccx.tcx.item_name(def_id);
+                    // FIXME(eddyb) use `#[rustc_args_required_const(2)]` for shuffles.
+                    if name.as_str().starts_with("simd_shuffle") {
+                        self.candidates.push(Candidate::Argument { bb: location.block, index: 2 });
 
-                            return; // Don't double count `simd_shuffle` candidates
-                        }
+                        return; // Don't double count `simd_shuffle` candidates
                     }
+                }
 
-                    if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
-                        for index in constant_args {
-                            self.candidates.push(Candidate::Argument { bb: location.block, index });
-                        }
+                if let Some(constant_args) = args_required_const(self.ccx.tcx, def_id) {
+                    for index in constant_args {
+                        self.candidates.push(Candidate::Argument { bb: location.block, index });
                     }
                 }
             }
-            TerminatorKind::InlineAsm { ref operands, .. } => {
-                for (index, op) in operands.iter().enumerate() {
-                    if let InlineAsmOperand::Const { .. } = op {
-                        self.candidates.push(Candidate::InlineAsm { bb: location.block, index })
-                    }
-                }
-            }
-            _ => {}
         }
     }
 }
@@ -332,18 +316,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let terminator = self.body[bb].terminator();
                 match &terminator.kind {
                     TerminatorKind::Call { args, .. } => self.validate_operand(&args[index]),
-                    _ => bug!(),
-                }
-            }
-            Candidate::InlineAsm { bb, index } => {
-                assert!(self.explicit);
-
-                let terminator = self.body[bb].terminator();
-                match &terminator.kind {
-                    TerminatorKind::InlineAsm { operands, .. } => match &operands[index] {
-                        InlineAsmOperand::Const { value } => self.validate_operand(value),
-                        _ => bug!(),
-                    },
                     _ => bug!(),
                 }
             }
@@ -643,7 +615,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::BinaryOp(op, lhs, rhs) | Rvalue::CheckedBinaryOp(op, lhs, rhs) => {
+            Rvalue::BinaryOp(op, box (lhs, rhs)) | Rvalue::CheckedBinaryOp(op, box (lhs, rhs)) => {
                 let op = *op;
                 let lhs_ty = lhs.ty(self.body, self.tcx);
 
@@ -818,9 +790,7 @@ pub fn validate_candidates(
             }
 
             match candidate {
-                Candidate::Argument { bb, index } | Candidate::InlineAsm { bb, index }
-                    if !is_promotable =>
-                {
+                Candidate::Argument { bb, index } if !is_promotable => {
                     let span = ccx.body[bb].terminator().source_info.span;
                     let msg = format!("argument {} is required to be a constant", index + 1);
                     ccx.tcx.sess.span_err(span, &msg);
@@ -921,7 +891,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(box Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit),
+                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
                         }));
                         mem::replace(rhs, unit)
                     },
@@ -998,20 +968,22 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: tcx.mk_const(ty::Const {
-                        ty,
-                        val: ty::ConstKind::Unevaluated(
-                            def,
-                            InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                    tcx.lifetimes.re_erased.into()
-                                } else {
-                                    tcx.mk_param_from_def(param)
-                                }
+                    literal: tcx
+                        .mk_const(ty::Const {
+                            ty,
+                            val: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                                def,
+                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
+                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                        tcx.lifetimes.re_erased.into()
+                                    } else {
+                                        tcx.mk_param_from_def(param)
+                                    }
+                                }),
+                                promoted: Some(promoted_id),
                             }),
-                            Some(promoted_id),
-                        ),
-                    }),
+                        })
+                        .into(),
                 }))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
@@ -1087,24 +1059,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         _ => bug!(),
                     }
                 }
-                Candidate::InlineAsm { bb, index } => {
-                    let terminator = blocks[bb].terminator_mut();
-                    match terminator.kind {
-                        TerminatorKind::InlineAsm { ref mut operands, .. } => {
-                            match &mut operands[index] {
-                                InlineAsmOperand::Const { ref mut value } => {
-                                    let ty = value.ty(local_decls, self.tcx);
-                                    let span = terminator.source_info.span;
-
-                                    Rvalue::Use(mem::replace(value, promoted_operand(ty, span)))
-                                }
-                                _ => bug!(),
-                            }
-                        }
-
-                        _ => bug!(),
-                    }
-                }
             }
         };
 
@@ -1159,7 +1113,7 @@ pub fn promote_candidates<'tcx>(
                     }
                 }
             }
-            Candidate::Argument { .. } | Candidate::InlineAsm { .. } => {}
+            Candidate::Argument { .. } => {}
         }
 
         // Declare return place local so that `mir::Body::new` doesn't complain.
@@ -1250,8 +1204,8 @@ crate fn is_const_fn_in_array_repeat_expression<'tcx>(
         if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
             &block.terminator
         {
-            if let Operand::Constant(box Constant { literal: ty::Const { ty, .. }, .. }) = func {
-                if let ty::FnDef(def_id, _) = *ty.kind() {
+            if let Operand::Constant(box Constant { literal, .. }) = func {
+                if let ty::FnDef(def_id, _) = *literal.ty().kind() {
                     if let Some((destination_place, _)) = destination {
                         if destination_place == place {
                             if is_const_fn(ccx.tcx, def_id) {

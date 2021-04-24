@@ -1,4 +1,5 @@
 #![warn(clippy::manual_flatten)]
+#![allow(clippy::useless_vec)]
 
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
@@ -66,6 +67,27 @@ fn main() {
             println!("{}", n);
         } else {
             println!("Oops!");
+        }
+    }
+
+    let vec_of_ref = vec![&Some(1)];
+    for n in &vec_of_ref {
+        if let Some(n) = n {
+            println!("{:?}", n);
+        }
+    }
+
+    let vec_of_ref = &vec_of_ref;
+    for n in vec_of_ref {
+        if let Some(n) = n {
+            println!("{:?}", n);
+        }
+    }
+
+    let slice_of_ref = &[&Some(1)];
+    for n in slice_of_ref {
+        if let Some(n) = n {
+            println!("{:?}", n);
         }
     }
 

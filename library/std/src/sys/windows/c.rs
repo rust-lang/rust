@@ -285,8 +285,6 @@ pub const FD_SETSIZE: usize = 64;
 
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: DWORD = 0x00010000;
 
-pub const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
-
 pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
 
 #[repr(C)]
@@ -1016,11 +1014,6 @@ extern "system" {
         exceptfds: *mut fd_set,
         timeout: *const timeval,
     ) -> c_int;
-
-    pub fn GetProcessHeap() -> HANDLE;
-    pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
-    pub fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T) -> LPVOID;
-    pub fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
 
     // >= Vista / Server 2008
     // https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw

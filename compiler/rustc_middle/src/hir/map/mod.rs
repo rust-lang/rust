@@ -180,11 +180,6 @@ impl<'hir> Map<'hir> {
         self.tcx.definitions.local_def_id_to_hir_id(def_id)
     }
 
-    #[inline]
-    pub fn opt_local_def_id_to_hir_id(&self, def_id: LocalDefId) -> Option<HirId> {
-        self.tcx.definitions.opt_local_def_id_to_hir_id(def_id)
-    }
-
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
         self.tcx.definitions.iter_local_def_id()
     }
@@ -457,17 +452,14 @@ impl<'hir> Map<'hir> {
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn krate_attrs(&self) -> &'hir [ast::Attribute] {
-        match self.get_entry(CRATE_HIR_ID).node {
-            Node::Crate(item) => item.attrs,
-            _ => bug!(),
-        }
+        self.attrs(CRATE_HIR_ID)
     }
 
     pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = self.local_def_id_to_hir_id(module);
         match self.get_entry(hir_id).node {
             Node::Item(&Item { span, kind: ItemKind::Mod(ref m), .. }) => (m, span, hir_id),
-            Node::Crate(item) => (&item.module, item.span, hir_id),
+            Node::Crate(item) => (&item, item.inner, hir_id),
             node => panic!("not a module: {:?}", node),
         }
     }
@@ -556,24 +548,6 @@ impl<'hir> Map<'hir> {
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
     pub fn parent_iter(&self, current_id: HirId) -> ParentHirIterator<'_, 'hir> {
         ParentHirIterator { current_id, map: self }
-    }
-
-    /// Checks if the node is an argument. An argument is a local variable whose
-    /// immediate parent is an item or a closure.
-    pub fn is_argument(&self, id: HirId) -> bool {
-        match self.find(id) {
-            Some(Node::Binding(_)) => (),
-            _ => return false,
-        }
-        matches!(
-            self.find(self.get_parent_node(id)),
-            Some(
-                Node::Item(_)
-                    | Node::TraitItem(_)
-                    | Node::ImplItem(_)
-                    | Node::Expr(Expr { kind: ExprKind::Closure(..), .. }),
-            )
-        )
     }
 
     /// Checks if the node is left-hand side of an assignment.
@@ -787,17 +761,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData<'hir> {
-        match self.find(id) {
-            Some(
-                Node::Ctor(vd)
-                | Node::Item(Item { kind: ItemKind::Struct(vd, _) | ItemKind::Union(vd, _), .. }),
-            ) => vd,
-            Some(Node::Variant(variant)) => &variant.data,
-            _ => bug!("expected struct or variant, found {}", self.node_to_string(id)),
-        }
-    }
-
     pub fn expect_variant(&self, id: HirId) -> &'hir Variant<'hir> {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
@@ -853,34 +816,7 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.find_entry(id).map_or(&[], |entry| match entry.node {
-            Node::Param(a) => a.attrs,
-            Node::Local(l) => &l.attrs[..],
-            Node::Item(i) => i.attrs,
-            Node::ForeignItem(fi) => fi.attrs,
-            Node::TraitItem(ref ti) => ti.attrs,
-            Node::ImplItem(ref ii) => ii.attrs,
-            Node::Variant(ref v) => v.attrs,
-            Node::Field(ref f) => f.attrs,
-            Node::Expr(ref e) => &*e.attrs,
-            Node::Stmt(ref s) => s.kind.attrs(|id| self.item(id)),
-            Node::Arm(ref a) => &*a.attrs,
-            Node::GenericParam(param) => param.attrs,
-            // Unit/tuple structs/variants take the attributes straight from
-            // the struct/variant definition.
-            Node::Ctor(..) => self.attrs(self.get_parent_item(id)),
-            Node::Crate(item) => item.attrs,
-            Node::MacroDef(def) => def.attrs,
-            Node::AnonConst(..)
-            | Node::PathSegment(..)
-            | Node::Ty(..)
-            | Node::Pat(..)
-            | Node::Binding(..)
-            | Node::TraitRef(..)
-            | Node::Block(..)
-            | Node::Lifetime(..)
-            | Node::Visibility(..) => &[],
-        })
+        self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 
     /// Gets the span of the definition of the specified HIR node.
@@ -932,7 +868,7 @@ impl<'hir> Map<'hir> {
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
             Node::MacroDef(macro_def) => macro_def.span,
-            Node::Crate(item) => item.span,
+            Node::Crate(item) => item.inner,
         };
         Some(span)
     }

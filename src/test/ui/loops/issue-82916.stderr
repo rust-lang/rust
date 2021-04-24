@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-82916.rs:7:13
+   |
+LL | fn foo(x: Vec<S>) {
+   |        - move occurs because `x` has type `Vec<S>`, which does not implement the `Copy` trait
+LL |     for y in x {
+   |              -
+   |              |
+   |              `x` moved due to this implicit call to `.into_iter()`
+   |              help: consider borrowing to avoid moving into the for loop: `&x`
+...
+LL |     let z = x;
+   |             ^ value used here after move
+   |
+note: this function takes ownership of the receiver `self`, which moves `x`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL |     fn into_iter(self) -> Self::IntoIter;
+   |                  ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

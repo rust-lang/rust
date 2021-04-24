@@ -9,6 +9,7 @@ pub mod place;
 use crate::ich::StableHashingContext;
 use crate::ty::query::Providers;
 use crate::ty::TyCtxt;
+use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -16,6 +17,7 @@ use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::DUMMY_SP;
+use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct Owner<'tcx> {
@@ -55,6 +57,48 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OwnerNodes<'tcx> {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct AttributeMap<'tcx> {
+    map: &'tcx BTreeMap<HirId, &'tcx [Attribute]>,
+    prefix: LocalDefId,
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for AttributeMap<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        let range = self.range();
+
+        range.clone().count().hash_stable(hcx, hasher);
+        for (key, value) in range {
+            key.hash_stable(hcx, hasher);
+            value.hash_stable(hcx, hasher);
+        }
+    }
+}
+
+impl<'tcx> std::fmt::Debug for AttributeMap<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AttributeMap")
+            .field("prefix", &self.prefix)
+            .field("range", &&self.range().collect::<Vec<_>>()[..])
+            .finish()
+    }
+}
+
+impl<'tcx> AttributeMap<'tcx> {
+    fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
+        self.map.get(&HirId { owner: self.prefix, local_id: id }).copied().unwrap_or(&[])
+    }
+
+    fn range(&self) -> std::collections::btree_map::Range<'_, rustc_hir::HirId, &[Attribute]> {
+        let local_zero = ItemLocalId::from_u32(0);
+        let range = HirId { owner: self.prefix, local_id: local_zero }..HirId {
+            owner: LocalDefId { local_def_index: self.prefix.local_def_index + 1 },
+            local_id: local_zero,
+        };
+        self.map.range(range)
+    }
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn hir(self) -> map::Map<'tcx> {
@@ -76,6 +120,7 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_module_items = |tcx, id| &tcx.untracked_crate.modules[&id];
     providers.hir_owner = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].signature;
     providers.hir_owner_nodes = |tcx, id| tcx.index_hir(LOCAL_CRATE).map[id].with_bodies.as_deref();
+    providers.hir_attrs = |tcx, id| AttributeMap { map: &tcx.untracked_crate.attrs, prefix: id };
     providers.def_span = |tcx, def_id| tcx.hir().span_if_local(def_id).unwrap_or(DUMMY_SP);
     providers.fn_arg_names = |tcx, id| {
         let hir = tcx.hir();

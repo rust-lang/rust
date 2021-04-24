@@ -28,7 +28,7 @@
   
       bb1: {
           StorageDead(_3);                 // scope 0 at $DIR/boxes.rs:12:26: 12:27
-          _0 = const ();                   // scope 0 at $DIR/boxes.rs:11:11: 13:2
+          nop;                             // scope 0 at $DIR/boxes.rs:11:11: 13:2
           StorageDead(_1);                 // scope 0 at $DIR/boxes.rs:13:1: 13:2
           return;                          // scope 0 at $DIR/boxes.rs:13:2: 13:2
       }
