@@ -100,4 +100,15 @@ fn check_if_same_than_else_mask() {
     }
 }
 
+#[allow(clippy::vec_init_then_push)]
+fn pf_local_with_inferred_type_issue7053() {
+    if true {
+        let mut v = Vec::new();
+        v.push(0);
+    } else {
+        let mut v = Vec::new();
+        v.push("");
+    };
+}
+
 fn main() {}

@@ -100,7 +100,7 @@ fn never_loop_expr(expr: &Expr<'_>, main_loop_id: HirId) -> NeverLoopResult {
         ExprKind::Binary(_, e1, e2)
         | ExprKind::Assign(e1, e2, _)
         | ExprKind::AssignOp(_, e1, e2)
-        | ExprKind::Index(e1, e2) => never_loop_expr_all(&mut [e1, e2].iter().cloned(), main_loop_id),
+        | ExprKind::Index(e1, e2) => never_loop_expr_all(&mut [e1, e2].iter().copied(), main_loop_id),
         ExprKind::Loop(b, _, _, _) => {
             // Break can come from the inner loop so remove them.
             absorb_break(&never_loop_block(b, main_loop_id))

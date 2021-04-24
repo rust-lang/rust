@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::{is_trait_method, match_qpath, path_to_local_id, paths};
+use clippy_utils::{is_lang_ctor, is_trait_method, path_to_local_id};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_span::sym;
@@ -54,14 +55,12 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
     match &expr.kind {
         hir::ExprKind::Call(func, args) => {
             if let hir::ExprKind::Path(ref path) = func.kind {
-                if match_qpath(path, &paths::OPTION_SOME) {
+                if is_lang_ctor(cx, path, OptionSome) {
                     if path_to_local_id(&args[0], arg_id) {
                         return (false, false);
                     }
                     return (true, false);
                 }
-                // We don't know. It might do anything.
-                return (true, true);
             }
             (true, true)
         },
@@ -85,7 +84,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             let else_check = check_expression(cx, arg_id, else_arm);
             (if_check.0 | else_check.0, if_check.1 | else_check.1)
         },
-        hir::ExprKind::Path(path) if match_qpath(path, &paths::OPTION_NONE) => (false, true),
+        hir::ExprKind::Path(path) if is_lang_ctor(cx, path, OptionNone) => (false, true),
         _ => (true, true),
     }
 }

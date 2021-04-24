@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{in_macro, match_path_ast};
+use clippy_utils::in_macro;
 use rustc_ast::ast::{AssocItemKind, Extern, FnKind, FnSig, ImplKind, Item, ItemKind, TraitKind, Ty, TyKind};
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -126,7 +126,9 @@ impl_lint_pass!(ExcessiveBools => [STRUCT_EXCESSIVE_BOOLS, FN_PARAMS_EXCESSIVE_B
 
 fn is_bool_ty(ty: &Ty) -> bool {
     if let TyKind::Path(None, path) = &ty.kind {
-        return match_path_ast(path, &["bool"]);
+        if let [name] = path.segments.as_slice() {
+            return name.ident.name == sym::bool;
+        }
     }
     false
 }

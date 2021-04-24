@@ -261,7 +261,7 @@ fn simplify_not(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
             }
             METHODS_WITH_NEGATION
                 .iter()
-                .cloned()
+                .copied()
                 .flat_map(|(a, b)| vec![(a, b), (b, a)])
                 .find(|&(a, _)| {
                     let path: &str = &path.ident.name.as_str();

@@ -96,36 +96,9 @@ declare_deprecated_lint! {
 declare_deprecated_lint! {
     /// **What it does:** Nothing. This lint has been deprecated.
     ///
-    /// **Deprecation reason:** This lint has been superseded by the warn-by-default
-    /// `invalid_value` rustc lint.
-    pub INVALID_REF,
-    "superseded by rustc lint `invalid_value`"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
     /// **Deprecation reason:** This lint has been superseded by #[must_use] in rustc.
     pub UNUSED_COLLECT,
     "`collect` has been marked as #[must_use] in rustc and that covers all cases of this lint"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
-    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
-    /// `array_into_iter`.
-    pub INTO_ITER_ON_ARRAY,
-    "this lint has been uplifted to rustc and is now called `array_into_iter`"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
-    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
-    /// `unused_labels`.
-    pub UNUSED_LABEL,
-    "this lint has been uplifted to rustc and is now called `unused_labels`"
 }
 
 declare_deprecated_lint! {
@@ -147,44 +120,17 @@ declare_deprecated_lint! {
 declare_deprecated_lint! {
     /// **What it does:** Nothing. This lint has been deprecated.
     ///
-    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
-    /// `drop_bounds`.
-    pub DROP_BOUNDS,
-    "this lint has been uplifted to rustc and is now called `drop_bounds`"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
-    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
-    /// `temporary_cstring_as_ptr`.
-    pub TEMPORARY_CSTRING_AS_PTR,
-    "this lint has been uplifted to rustc and is now called `temporary_cstring_as_ptr`"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
-    /// **Deprecation reason:** This lint has been uplifted to rustc and is now called
-    /// `panic_fmt`.
-    pub PANIC_PARAMS,
-    "this lint has been uplifted to rustc and is now called `panic_fmt`"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
-    /// **Deprecation reason:** This lint has been integrated into the `unknown_lints`
-    /// rustc lint.
-    pub UNKNOWN_CLIPPY_LINTS,
-    "this lint has been integrated into the `unknown_lints` rustc lint"
-}
-
-declare_deprecated_lint! {
-    /// **What it does:** Nothing. This lint has been deprecated.
-    ///
     /// **Deprecation reason:** This lint has been replaced by `manual_find_map`, a
     /// more specific lint.
     pub FIND_MAP,
     "this lint has been replaced by `manual_find_map`, a more specific lint"
+}
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** This lint has been replaced by `manual_filter_map`, a
+    /// more specific lint.
+    pub FILTER_MAP,
+    "this lint has been replaced by `manual_filter_map`, a more specific lint"
 }
