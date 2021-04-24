@@ -1245,12 +1245,9 @@ checksum = "5f2a4a2034423744d2cc7ca2068453168dcdb82c438419e639a26bd87839c674"
 
 [[package]]
 name = "fst"
-version = "0.3.5"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "927fb434ff9f0115b215dc0efd2e4fbdd7448522a92a1aa37c77d6a2f8f1ebd6"
-dependencies = [
- "byteorder",
-]
+checksum = "d79238883cf0307100b90aba4a755d8051a3182305dfe7f649a1e9dc0517006f"
 
 [[package]]
 name = "fuchsia-zircon"
@@ -1759,9 +1756,9 @@ dependencies = [
 
 [[package]]
 name = "json"
-version = "0.11.15"
+version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92c245af8786f6ac35f95ca14feca9119e71339aaab41e878e7cdd655c97e9e5"
+checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
 
 [[package]]
 name = "jsondocck"
@@ -3133,7 +3130,7 @@ dependencies = [
  "futures 0.3.12",
  "heck",
  "home",
- "itertools 0.8.2",
+ "itertools 0.9.0",
  "jsonrpc-core",
  "lazy_static",
  "log",
@@ -3168,14 +3165,14 @@ dependencies = [
 
 [[package]]
 name = "rls-analysis"
-version = "0.18.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "534032993e1b60e5db934eab2dde54da7afd1e46c3465fddb2b29eb47cb1ed3a"
+version = "0.18.2"
 dependencies = [
  "derive-new",
+ "env_logger 0.7.1",
  "fst",
- "itertools 0.8.2",
+ "itertools 0.9.0",
  "json",
+ "lazy_static",
  "log",
  "rls-data",
  "rls-span",
