@@ -109,6 +109,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     );
                 }
             }
+            (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
+                let body = tcx.hir().body(cnst.value.body);
+                if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
+                    body.value.kind
+                {
+                    if let Res::Def(DefKind::Fn { .. }, id) = path.res {
+                        err.help(&format!(
+                            "`{}` is a function item, not a type",
+                            tcx.item_name(id)
+                        ));
+                        err.help("function item types cannot be named directly");
+                    }
+                }
+            }
             _ => {}
         }
 

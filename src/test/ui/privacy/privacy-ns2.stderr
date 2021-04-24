@@ -83,12 +83,18 @@ error[E0747]: constant provided when a type was expected
    |
 LL |     let _x : Box<Bar>;
    |                  ^^^
+   |
+   = help: `Bar` is a function item, not a type
+   = help: function item types cannot be named directly
 
 error[E0747]: constant provided when a type was expected
   --> $DIR/privacy-ns2.rs:48:17
    |
 LL |     let _x: Box<Bar>;
    |                 ^^^
+   |
+   = help: `Bar` is a function item, not a type
+   = help: function item types cannot be named directly
 
 error: aborting due to 8 previous errors
 
