@@ -721,6 +721,124 @@ generate float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
 arm = vacge.s
 generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t
 
+/// Insert vector element from another vector element
+name = vcopy
+lane-suffixes
+constn = LANE1:LANE2
+multi_fn = static_assert_imm-in0_exp_len-LANE1
+multi_fn = static_assert_imm-in_exp_len-LANE2
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-noext, a, b, {ins-in0_len-in0_len-LANE2}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 0, MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 0:1
+validate MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = mov
+generate int8x8_t, int8x16_t, int16x4_t, int16x8_t, int32x2_t, int32x4_t, int64x2_t
+generate uint8x8_t, uint8x16_t, uint16x4_t, uint16x8_t, uint32x2_t, uint32x4_t, uint64x2_t
+generate poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t, poly64x2_t
+
+/// Insert vector element from another vector element
+name = vcopy
+lane-suffixes
+constn = LANE1:LANE2
+multi_fn = static_assert_imm-in0_exp_len-LANE1
+multi_fn = static_assert_imm-in_exp_len-LANE2
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-noext, a, b, {ins-in0_len-in0_len-LANE2}
+a = 1., 2., 3., 4.
+b = 0., 0.5, 0., 0.
+n = 0:1
+validate 0.5, 2., 3., 4.
+
+aarch64 = mov
+generate float32x2_t, float32x4_t, float64x2_t
+
+/// Insert vector element from another vector element
+name = vcopy
+lane-suffixes
+constn = LANE1:LANE2
+multi_fn = static_assert_imm-in0_exp_len-LANE1
+multi_fn = static_assert_imm-in_exp_len-LANE2
+multi_fn = simd_shuffle-in_len-noext, a:in_t, a, a, {asc-0-in_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-noext, a, b, {ins-in0_len-in_len-LANE2}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 0, MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 0:1
+validate MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = mov
+generate int8x8_t:int8x16_t:int8x8_t, int16x4_t:int16x8_t:int16x4_t, int32x2_t:int32x4_t:int32x2_t
+generate uint8x8_t:uint8x16_t:uint8x8_t, uint16x4_t:uint16x8_t:uint16x4_t, uint32x2_t:uint32x4_t:uint32x2_t
+generate poly8x8_t:poly8x16_t:poly8x8_t, poly16x4_t:poly16x8_t:poly16x4_t
+
+/// Insert vector element from another vector element
+name = vcopy
+lane-suffixes
+constn = LANE1:LANE2
+multi_fn = static_assert_imm-in0_exp_len-LANE1
+multi_fn = static_assert_imm-in_exp_len-LANE2
+multi_fn = simd_shuffle-in_len-noext, a:in_t, a, a, {asc-0-in_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-noext, a, b, {ins-in0_len-in_len-LANE2}
+a = 1., 2., 3., 4.
+b = 0., 0.5, 0., 0.
+n = 0:1
+validate 0.5, 2., 3., 4.
+
+aarch64 = mov
+generate float32x2_t:float32x4_t:float32x2_t
+
+/// Insert vector element from another vector element
+name = vcopy
+lane-suffixes
+constn = LANE1:LANE2
+multi_fn = static_assert_imm-in0_exp_len-LANE1
+multi_fn = static_assert_imm-in_exp_len-LANE2
+multi_fn = simd_shuffle-in0_len-noext, b:in_t0, b, b, {asc-0-in0_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-noext, a, b, {ins-in0_len-in0_len-LANE2}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 0, MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 0:1
+validate MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = mov
+generate int8x16_t:int8x8_t:int8x16_t, int16x8_t:int16x4_t:int16x8_t, int32x4_t:int32x2_t:int32x4_t
+generate uint8x16_t:uint8x8_t:uint8x16_t, uint16x8_t:uint16x4_t:uint16x8_t, uint32x4_t:uint32x2_t:uint32x4_t
+generate poly8x16_t:poly8x8_t:poly8x16_t, poly16x8_t:poly16x4_t:poly16x8_t
+
+/// Insert vector element from another vector element
+name = vcopy
+lane-suffixes
+constn = LANE1:LANE2
+multi_fn = static_assert_imm-in0_exp_len-LANE1
+multi_fn = static_assert_imm-in_exp_len-LANE2
+multi_fn = simd_shuffle-in0_len-noext, b:in_t0, b, b, {asc-0-in0_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-noext, a, b, {ins-in0_len-in0_len-LANE2}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1:0
+validate 1, MAX
+
+aarch64 = zip1
+generate int64x2_t:int64x1_t:int64x2_t, uint64x2_t:uint64x1_t:uint64x2_t, poly64x2_t:poly64x1_t:poly64x2_t
+
+/// Insert vector element from another vector element
+name = vcopy
+lane-suffixes
+constn = LANE1:LANE2
+multi_fn = static_assert_imm-in0_exp_len-LANE1
+multi_fn = static_assert_imm-in_exp_len-LANE2
+multi_fn = simd_shuffle-in0_len-noext, b:in_t0, b, b, {asc-0-in0_len}
+multi_fn = matchn-in0_exp_len-LANE1, simd_shuffle-out_len-noext, a, b, {ins-in0_len-in0_len-LANE2}
+a = 1., 2., 3., 4.
+b = 0.5, 0., 0., 0.
+n = 1:0
+validate 1., 0.5, 3., 4.
+
+aarch64 = mov
+generate float32x4_t:float32x2_t:float32x4_t
+aarch64 = zip1
+generate float64x2_t:float64x1_t:float64x2_t
+
 /// Floating-point convert to higher precision long
 name = vcvt
 double-suffixes
@@ -1036,7 +1154,7 @@ generate float32x2_t:f32, float32x4_t:f32, float64x1_t:f64, float64x2_t:f64
 name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
-multi_fn = matchn-out_exp_len, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
+multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
 a = 0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15
 b = 9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11
 n = HFLEN
@@ -1050,7 +1168,7 @@ generate int*_t, uint*_t, poly8x8_t, poly8x16_t, poly16x4_t, poly16x8_t
 name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
-multi_fn = matchn-out_exp_len, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
+multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
 a = 0, 8, 8, 9, 8, 9, 9, 11, 8, 9, 9, 11, 9, 11, 14, 15
 b = 9, 11, 14, 15, 16, 17, 18, 19, 0, 8, 8, 9, 8, 9, 9, 11
 n = HFLEN
@@ -1066,7 +1184,7 @@ generate int64x2_t, uint64x2_t
 name = vext
 constn = N
 multi_fn = static_assert_imm-out_exp_len-N
-multi_fn = matchn-out_exp_len, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
+multi_fn = matchn-out_exp_len-N, simd_shuffle-out_len-noext, a, b, {asc-n-out_len}
 a = 0., 2., 2., 3.
 b = 3., 4., 5., 6.,
 n = HFLEN

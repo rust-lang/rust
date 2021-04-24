@@ -949,21 +949,50 @@ fn gen_aarch64(
         String::new()
     };
     let const_declare = if let Some(constn) = constn {
-        format!(r#"<const {}: i32>"#, constn)
+        if constn.contains(":") {
+            let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
+            assert_eq!(constns.len(), 2);
+            format!(r#"<const {}: i32, const {}: i32>"#, constns[0], constns[1])
+        } else {
+            format!(r#"<const {}: i32>"#, constn)
+        }
     } else {
         String::new()
     };
     let const_assert = if let Some(constn) = constn {
-        format!(
-            r#", {} = {}"#,
-            constn,
-            map_val(in_t[1], current_tests[0].3.as_ref().unwrap())
-        )
+        if constn.contains(":") {
+            let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
+            let const_test = current_tests[0].3.as_ref().unwrap();
+            let const_tests: Vec<_> = const_test.split(':').map(|v| v.to_string()).collect();
+            assert_eq!(constns.len(), 2);
+            assert_eq!(const_tests.len(), 2);
+            format!(
+                r#", {} = {}, {} = {}"#,
+                constns[0],
+                map_val(in_t[1], &const_tests[0]),
+                constns[1],
+                map_val(in_t[1], &const_tests[1]),
+            )
+        } else {
+            format!(
+                r#", {} = {}"#,
+                constn,
+                map_val(in_t[1], current_tests[0].3.as_ref().unwrap())
+            )
+        }
     } else {
         String::new()
     };
-    let const_legacy = if constn.is_some() {
-        format!("\n#[rustc_legacy_const_generics({})]", para_num)
+    let const_legacy = if let Some(constn) = constn {
+        if constn.contains(":") {
+            format!(
+                "\n#[rustc_legacy_const_generics({}, {})]",
+                para_num - 1,
+                para_num + 1
+            )
+        } else {
+            format!("\n#[rustc_legacy_const_generics({})]", para_num)
+        }
     } else {
         String::new()
     };
@@ -1105,7 +1134,16 @@ fn gen_test(
         let c: Vec<String> = c.iter().take(len_in[2]).cloned().collect();
         let e: Vec<String> = e.iter().take(len_out).cloned().collect();
         let const_value = if let Some(constn) = n {
-            format!(r#"::<{}>"#, map_val(in_t[1], constn))
+            if constn.contains(":") {
+                let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
+                format!(
+                    r#"::<{}, {}>"#,
+                    map_val(in_t[1], &constns[0]),
+                    map_val(in_t[1], &constns[1])
+                )
+            } else {
+                format!(r#"::<{}>"#, map_val(in_t[1], constn))
+            }
         } else {
             String::new()
         };
@@ -1739,10 +1777,40 @@ fn get_call(
         let len = match &*fn_format[2] {
             "out_len" => type_len(out_t),
             "in_len" => type_len(in_t[1]),
+            "in0_len" => type_len(in_t[0]),
             "halflen" => type_len(in_t[1]) / 2,
             _ => 0,
         };
         return asc(start, len);
+    }
+    if fn_name.starts_with("ins") {
+        let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
+        let n = n.unwrap();
+        let len = match &*fn_format[1] {
+            "out_len" => type_len(out_t),
+            "in_len" => type_len(in_t[1]),
+            "in0_len" => type_len(in_t[0]),
+            _ => 0,
+        };
+        let offset = match &*fn_format[2] {
+            "out_len" => type_len(out_t),
+            "in_len" => type_len(in_t[1]),
+            "in0_len" => type_len(in_t[0]),
+            _ => 0,
+        };
+        let mut s = String::from("[");
+        for i in 0..len {
+            if i != 0 {
+                s.push_str(", ");
+            }
+            if i == n as usize {
+                s.push_str(&format!("{} + {} as u32", offset.to_string(), fn_format[3]));
+            } else {
+                s.push_str(&i.to_string());
+            }
+        }
+        s.push_str("]");
+        return s;
     }
     if fn_name.starts_with("static_assert_imm") {
         let fn_format: Vec<_> = fn_name.split('-').map(|v| v.to_string()).collect();
@@ -1751,6 +1819,8 @@ fn get_call(
             "out_bits_exp_len" => type_bits_exp_len(out_t),
             "in_exp_len" => type_exp_len(in_t[1]),
             "in_bits_exp_len" => type_bits_exp_len(in_t[1]),
+            "in0_exp_len" => type_exp_len(in_t[0]),
+            "in1_exp_len" => type_exp_len(in_t[1]),
             "in2_exp_len" => type_exp_len(in_t[2]),
             _ => 0,
         };
@@ -1796,9 +1866,10 @@ fn get_call(
         let len = match &*fn_format[1] {
             "out_exp_len" => type_exp_len(out_t),
             "in_exp_len" => type_exp_len(in_t[1]),
+            "in0_exp_len" => type_exp_len(in_t[0]),
             _ => 0,
         };
-        let mut call = format!("match N & 0b{} {{\n", "1".repeat(len));
+        let mut call = format!("match {} & 0b{} {{\n", &fn_format[2], "1".repeat(len));
         let mut sub_call = String::new();
         for p in 1..params.len() {
             if !sub_call.is_empty() {
@@ -1946,6 +2017,8 @@ fn get_call(
         } else if fn_format[1] == "nosuffix" {
         } else if fn_format[1] == "in_len" {
             fn_name.push_str(&type_len(in_t[1]).to_string());
+        } else if fn_format[1] == "in0_len" {
+            fn_name.push_str(&type_len(in_t[0]).to_string());
         } else if fn_format[1] == "out_len" {
             fn_name.push_str(&type_len(out_t).to_string());
         } else if fn_format[1] == "halflen" {

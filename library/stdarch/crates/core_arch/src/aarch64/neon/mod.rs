@@ -359,6 +359,118 @@ extern "C" {
     fn vsriq_n_s64_(a: int64x2_t, b: int64x2_t, n: i32) -> int64x2_t;
 }
 
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_s64<const N1: i32, const N2: i32>(
+    _a: int64x1_t,
+    b: int64x1_t,
+) -> int64x1_t {
+    static_assert!(N1 : i32 where N1 == 0);
+    static_assert!(N2 : i32 where N2 == 0);
+    b
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_u64<const N1: i32, const N2: i32>(
+    _a: uint64x1_t,
+    b: uint64x1_t,
+) -> uint64x1_t {
+    static_assert!(N1 : i32 where N1 == 0);
+    static_assert!(N2 : i32 where N2 == 0);
+    b
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_p64<const N1: i32, const N2: i32>(
+    _a: poly64x1_t,
+    b: poly64x1_t,
+) -> poly64x1_t {
+    static_assert!(N1 : i32 where N1 == 0);
+    static_assert!(N2 : i32 where N2 == 0);
+    b
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_f64<const N1: i32, const N2: i32>(
+    _a: float64x1_t,
+    b: float64x1_t,
+) -> float64x1_t {
+    static_assert!(N1 : i32 where N1 == 0);
+    static_assert!(N2 : i32 where N2 == 0);
+    b
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_s64<const LANE1: i32, const LANE2: i32>(
+    _a: int64x1_t,
+    b: int64x2_t,
+) -> int64x1_t {
+    static_assert!(LANE1 : i32 where LANE1 == 0);
+    static_assert_imm1!(LANE2);
+    transmute::<i64, _>(simd_extract(b, LANE2 as u32))
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_u64<const LANE1: i32, const LANE2: i32>(
+    _a: uint64x1_t,
+    b: uint64x2_t,
+) -> uint64x1_t {
+    static_assert!(LANE1 : i32 where LANE1 == 0);
+    static_assert_imm1!(LANE2);
+    transmute::<u64, _>(simd_extract(b, LANE2 as u32))
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_p64<const LANE1: i32, const LANE2: i32>(
+    _a: poly64x1_t,
+    b: poly64x2_t,
+) -> poly64x1_t {
+    static_assert!(LANE1 : i32 where LANE1 == 0);
+    static_assert_imm1!(LANE2);
+    transmute::<u64, _>(simd_extract(b, LANE2 as u32))
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_f64<const LANE1: i32, const LANE2: i32>(
+    _a: float64x1_t,
+    b: float64x2_t,
+) -> float64x1_t {
+    static_assert!(LANE1 : i32 where LANE1 == 0);
+    static_assert_imm1!(LANE2);
+    transmute::<f64, _>(simd_extract(b, LANE2 as u32))
+}
+
 /// Load multiple single-element structures to one, two, three, or four registers.
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3790,6 +3902,78 @@ mod tests {
         let a = u64x2::new(1, 2);
         let e = u64x1::new(1);
         let r: u64x1 = transmute(vget_low_p64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_s64() {
+        let a: i64x1 = i64x1::new(1);
+        let b: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x1 = transmute(vcopy_lane_s64::<0, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_u64() {
+        let a: u64x1 = u64x1::new(1);
+        let b: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vcopy_lane_u64::<0, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_p64() {
+        let a: i64x1 = i64x1::new(1);
+        let b: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x1 = transmute(vcopy_lane_p64::<0, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_f64() {
+        let a: f64 = 1.;
+        let b: f64 = 0.;
+        let e: f64 = 0.;
+        let r: f64 = transmute(vcopy_lane_f64::<0, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_s64() {
+        let a: i64x1 = i64x1::new(1);
+        let b: i64x2 = i64x2::new(0, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x1 = transmute(vcopy_laneq_s64::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_u64() {
+        let a: u64x1 = u64x1::new(1);
+        let b: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let e: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x1 = transmute(vcopy_laneq_u64::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_p64() {
+        let a: i64x1 = i64x1::new(1);
+        let b: i64x2 = i64x2::new(0, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x1 = transmute(vcopy_laneq_p64::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_f64() {
+        let a: f64 = 1.;
+        let b: f64x2 = f64x2::new(0., 0.5);
+        let e: f64 = 0.5;
+        let r: f64 = transmute(vcopy_laneq_f64::<0, 1>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

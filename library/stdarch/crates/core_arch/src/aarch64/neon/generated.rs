@@ -1162,6 +1162,868 @@ pub unsafe fn vcaleq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
     vcageq_f64(b, a)
 }
 
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm3!(LANE2);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    static_assert_imm4!(LANE1);
+    static_assert_imm4!(LANE2);
+    match LANE1 & 0b1111 {
+        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm2!(LANE2);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_s16<const LANE1: i32, const LANE2: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm3!(LANE2);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm1!(LANE2);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_s32<const LANE1: i32, const LANE2: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm2!(LANE2);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_s64<const LANE1: i32, const LANE2: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm1!(LANE2);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm3!(LANE2);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_u8<const LANE1: i32, const LANE2: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    static_assert_imm4!(LANE1);
+    static_assert_imm4!(LANE2);
+    match LANE1 & 0b1111 {
+        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_u16<const LANE1: i32, const LANE2: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm2!(LANE2);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_u16<const LANE1: i32, const LANE2: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm3!(LANE2);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_u32<const LANE1: i32, const LANE2: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm1!(LANE2);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_u32<const LANE1: i32, const LANE2: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm2!(LANE2);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_u64<const LANE1: i32, const LANE2: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm1!(LANE2);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm3!(LANE2);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_p8<const LANE1: i32, const LANE2: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
+    static_assert_imm4!(LANE1);
+    static_assert_imm4!(LANE2);
+    match LANE1 & 0b1111 {
+        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_p16<const LANE1: i32, const LANE2: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm2!(LANE2);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_p16<const LANE1: i32, const LANE2: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm3!(LANE2);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_p64<const LANE1: i32, const LANE2: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm1!(LANE2);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_lane_f32<const LANE1: i32, const LANE2: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm1!(LANE2);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_f32<const LANE1: i32, const LANE2: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm2!(LANE2);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_laneq_f64<const LANE1: i32, const LANE2: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm1!(LANE2);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x16_t) -> int8x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm4!(LANE2);
+    let a: int8x16_t = simd_shuffle16(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm3!(LANE2);
+    let a: int16x8_t = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [8 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 8 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 8 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm2!(LANE2);
+    let a: int32x4_t = simd_shuffle4(a, a, [0, 1, 2, 3]);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [4 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b: uint8x16_t) -> uint8x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm4!(LANE2);
+    let a: uint8x16_t = simd_shuffle16(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_u16<const LANE1: i32, const LANE2: i32>(a: uint16x4_t, b: uint16x8_t) -> uint16x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm3!(LANE2);
+    let a: uint16x8_t = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [8 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 8 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 8 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_u32<const LANE1: i32, const LANE2: i32>(a: uint32x2_t, b: uint32x4_t) -> uint32x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm2!(LANE2);
+    let a: uint32x4_t = simd_shuffle4(a, a, [0, 1, 2, 3]);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [4 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b: poly8x16_t) -> poly8x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm4!(LANE2);
+    let a: poly8x16_t = simd_shuffle16(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_p16<const LANE1: i32, const LANE2: i32>(a: poly16x4_t, b: poly16x8_t) -> poly16x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm3!(LANE2);
+    let a: poly16x8_t = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [8 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 8 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 8 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopy_laneq_f32<const LANE1: i32, const LANE2: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert_imm2!(LANE2);
+    let a: float32x4_t = simd_shuffle4(a, a, [0, 1, 2, 3]);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [4 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, b: int8x8_t) -> int8x16_t {
+    static_assert_imm4!(LANE1);
+    static_assert_imm3!(LANE2);
+    let b: int8x16_t = simd_shuffle16(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    match LANE1 & 0b1111 {
+        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm2!(LANE2);
+    let b: int16x8_t = simd_shuffle8(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm1!(LANE2);
+    let b: int32x4_t = simd_shuffle4(b, b, [0, 1, 2, 3]);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x16_t, b: uint8x8_t) -> uint8x16_t {
+    static_assert_imm4!(LANE1);
+    static_assert_imm3!(LANE2);
+    let b: uint8x16_t = simd_shuffle16(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    match LANE1 & 0b1111 {
+        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_u16<const LANE1: i32, const LANE2: i32>(a: uint16x8_t, b: uint16x4_t) -> uint16x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm2!(LANE2);
+    let b: uint16x8_t = simd_shuffle8(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_u32<const LANE1: i32, const LANE2: i32>(a: uint32x4_t, b: uint32x2_t) -> uint32x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm1!(LANE2);
+    let b: uint32x4_t = simd_shuffle4(b, b, [0, 1, 2, 3]);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x16_t, b: poly8x8_t) -> poly8x16_t {
+    static_assert_imm4!(LANE1);
+    static_assert_imm3!(LANE2);
+    let b: poly8x16_t = simd_shuffle16(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    match LANE1 & 0b1111 {
+        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_p16<const LANE1: i32, const LANE2: i32>(a: poly16x8_t, b: poly16x4_t) -> poly16x8_t {
+    static_assert_imm3!(LANE1);
+    static_assert_imm2!(LANE2);
+    let b: poly16x8_t = simd_shuffle8(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+    match LANE1 & 0b111 {
+        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1, LANE1 = 1, LANE2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_s64<const LANE1: i32, const LANE2: i32>(a: int64x2_t, b: int64x1_t) -> int64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert!(LANE2 : i32 where LANE2 == 0);
+    let b: int64x2_t = simd_shuffle2(b, b, [0, 1]);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1, LANE1 = 1, LANE2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_u64<const LANE1: i32, const LANE2: i32>(a: uint64x2_t, b: uint64x1_t) -> uint64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert!(LANE2 : i32 where LANE2 == 0);
+    let b: uint64x2_t = simd_shuffle2(b, b, [0, 1]);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1, LANE1 = 1, LANE2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_p64<const LANE1: i32, const LANE2: i32>(a: poly64x2_t, b: poly64x1_t) -> poly64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert!(LANE2 : i32 where LANE2 == 0);
+    let b: poly64x2_t = simd_shuffle2(b, b, [0, 1]);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(mov, LANE1 = 1, LANE2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_f32<const LANE1: i32, const LANE2: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
+    static_assert_imm2!(LANE1);
+    static_assert_imm1!(LANE2);
+    let b: float32x4_t = simd_shuffle4(b, b, [0, 1, 2, 3]);
+    match LANE1 & 0b11 {
+        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(zip1, LANE1 = 1, LANE2 = 0))]
+#[rustc_legacy_const_generics(1, 3)]
+pub unsafe fn vcopyq_lane_f64<const LANE1: i32, const LANE2: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
+    static_assert_imm1!(LANE1);
+    static_assert!(LANE2 : i32 where LANE2 == 0);
+    let b: float64x2_t = simd_shuffle2(b, b, [0, 1]);
+    match LANE1 & 0b1 {
+        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        _ => unreachable_unchecked(),
+    }
+}
+
 /// Floating-point convert to higher precision long
 #[inline]
 #[target_feature(enable = "neon")]
@@ -7797,6 +8659,402 @@ mod test {
         let b: f64x2 = f64x2::new(-1.1, 0.0);
         let e: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
         let r: u64x2 = transmute(vcaleq_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_s8() {
+        let a: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i8x8 = i8x8::new(0, 0x7F, 0, 0, 0, 0, 0, 0);
+        let e: i8x8 = i8x8::new(0x7F, 2, 3, 4, 5, 6, 7, 8);
+        let r: i8x8 = transmute(vcopy_lane_s8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_s8() {
+        let a: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: i8x16 = i8x16::new(0, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: i8x16 = i8x16::new(0x7F, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r: i8x16 = transmute(vcopyq_laneq_s8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_s16() {
+        let a: i16x4 = i16x4::new(1, 2, 3, 4);
+        let b: i16x4 = i16x4::new(0, 0x7F_FF, 0, 0);
+        let e: i16x4 = i16x4::new(0x7F_FF, 2, 3, 4);
+        let r: i16x4 = transmute(vcopy_lane_s16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_s16() {
+        let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i16x8 = i16x8::new(0, 0x7F_FF, 0, 0, 0, 0, 0, 0);
+        let e: i16x8 = i16x8::new(0x7F_FF, 2, 3, 4, 5, 6, 7, 8);
+        let r: i16x8 = transmute(vcopyq_laneq_s16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_s32() {
+        let a: i32x2 = i32x2::new(1, 2);
+        let b: i32x2 = i32x2::new(0, 0x7F_FF_FF_FF);
+        let e: i32x2 = i32x2::new(0x7F_FF_FF_FF, 2);
+        let r: i32x2 = transmute(vcopy_lane_s32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_s32() {
+        let a: i32x4 = i32x4::new(1, 2, 3, 4);
+        let b: i32x4 = i32x4::new(0, 0x7F_FF_FF_FF, 0, 0);
+        let e: i32x4 = i32x4::new(0x7F_FF_FF_FF, 2, 3, 4);
+        let r: i32x4 = transmute(vcopyq_laneq_s32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_s64() {
+        let a: i64x2 = i64x2::new(1, 2);
+        let b: i64x2 = i64x2::new(0, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x2 = i64x2::new(0x7F_FF_FF_FF_FF_FF_FF_FF, 2);
+        let r: i64x2 = transmute(vcopyq_laneq_s64::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_u8() {
+        let a: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: u8x8 = u8x8::new(0, 0xFF, 0, 0, 0, 0, 0, 0);
+        let e: u8x8 = u8x8::new(0xFF, 2, 3, 4, 5, 6, 7, 8);
+        let r: u8x8 = transmute(vcopy_lane_u8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_u8() {
+        let a: u8x16 = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: u8x16 = u8x16::new(0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: u8x16 = u8x16::new(0xFF, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r: u8x16 = transmute(vcopyq_laneq_u8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_u16() {
+        let a: u16x4 = u16x4::new(1, 2, 3, 4);
+        let b: u16x4 = u16x4::new(0, 0xFF_FF, 0, 0);
+        let e: u16x4 = u16x4::new(0xFF_FF, 2, 3, 4);
+        let r: u16x4 = transmute(vcopy_lane_u16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_u16() {
+        let a: u16x8 = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: u16x8 = u16x8::new(0, 0xFF_FF, 0, 0, 0, 0, 0, 0);
+        let e: u16x8 = u16x8::new(0xFF_FF, 2, 3, 4, 5, 6, 7, 8);
+        let r: u16x8 = transmute(vcopyq_laneq_u16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_u32() {
+        let a: u32x2 = u32x2::new(1, 2);
+        let b: u32x2 = u32x2::new(0, 0xFF_FF_FF_FF);
+        let e: u32x2 = u32x2::new(0xFF_FF_FF_FF, 2);
+        let r: u32x2 = transmute(vcopy_lane_u32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u32x4 = u32x4::new(0, 0xFF_FF_FF_FF, 0, 0);
+        let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 2, 3, 4);
+        let r: u32x4 = transmute(vcopyq_laneq_u32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_u64() {
+        let a: u64x2 = u64x2::new(1, 2);
+        let b: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let e: u64x2 = u64x2::new(0xFF_FF_FF_FF_FF_FF_FF_FF, 2);
+        let r: u64x2 = transmute(vcopyq_laneq_u64::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_p8() {
+        let a: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i8x8 = i8x8::new(0, 0x7F, 0, 0, 0, 0, 0, 0);
+        let e: i8x8 = i8x8::new(0x7F, 2, 3, 4, 5, 6, 7, 8);
+        let r: i8x8 = transmute(vcopy_lane_p8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_p8() {
+        let a: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: i8x16 = i8x16::new(0, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: i8x16 = i8x16::new(0x7F, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r: i8x16 = transmute(vcopyq_laneq_p8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_p16() {
+        let a: i16x4 = i16x4::new(1, 2, 3, 4);
+        let b: i16x4 = i16x4::new(0, 0x7F_FF, 0, 0);
+        let e: i16x4 = i16x4::new(0x7F_FF, 2, 3, 4);
+        let r: i16x4 = transmute(vcopy_lane_p16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_p16() {
+        let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i16x8 = i16x8::new(0, 0x7F_FF, 0, 0, 0, 0, 0, 0);
+        let e: i16x8 = i16x8::new(0x7F_FF, 2, 3, 4, 5, 6, 7, 8);
+        let r: i16x8 = transmute(vcopyq_laneq_p16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_p64() {
+        let a: i64x2 = i64x2::new(1, 2);
+        let b: i64x2 = i64x2::new(0, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x2 = i64x2::new(0x7F_FF_FF_FF_FF_FF_FF_FF, 2);
+        let r: i64x2 = transmute(vcopyq_laneq_p64::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_lane_f32() {
+        let a: f32x2 = f32x2::new(1., 2.);
+        let b: f32x2 = f32x2::new(0., 0.5);
+        let e: f32x2 = f32x2::new(0.5, 2.);
+        let r: f32x2 = transmute(vcopy_lane_f32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_f32() {
+        let a: f32x4 = f32x4::new(1., 2., 3., 4.);
+        let b: f32x4 = f32x4::new(0., 0.5, 0., 0.);
+        let e: f32x4 = f32x4::new(0.5, 2., 3., 4.);
+        let r: f32x4 = transmute(vcopyq_laneq_f32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_laneq_f64() {
+        let a: f64x2 = f64x2::new(1., 2.);
+        let b: f64x2 = f64x2::new(0., 0.5);
+        let e: f64x2 = f64x2::new(0.5, 2.);
+        let r: f64x2 = transmute(vcopyq_laneq_f64::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_s8() {
+        let a: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i8x16 = i8x16::new(0, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: i8x8 = i8x8::new(0x7F, 2, 3, 4, 5, 6, 7, 8);
+        let r: i8x8 = transmute(vcopy_laneq_s8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_s16() {
+        let a: i16x4 = i16x4::new(1, 2, 3, 4);
+        let b: i16x8 = i16x8::new(0, 0x7F_FF, 0, 0, 0, 0, 0, 0);
+        let e: i16x4 = i16x4::new(0x7F_FF, 2, 3, 4);
+        let r: i16x4 = transmute(vcopy_laneq_s16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_s32() {
+        let a: i32x2 = i32x2::new(1, 2);
+        let b: i32x4 = i32x4::new(0, 0x7F_FF_FF_FF, 0, 0);
+        let e: i32x2 = i32x2::new(0x7F_FF_FF_FF, 2);
+        let r: i32x2 = transmute(vcopy_laneq_s32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_u8() {
+        let a: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: u8x16 = u8x16::new(0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: u8x8 = u8x8::new(0xFF, 2, 3, 4, 5, 6, 7, 8);
+        let r: u8x8 = transmute(vcopy_laneq_u8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_u16() {
+        let a: u16x4 = u16x4::new(1, 2, 3, 4);
+        let b: u16x8 = u16x8::new(0, 0xFF_FF, 0, 0, 0, 0, 0, 0);
+        let e: u16x4 = u16x4::new(0xFF_FF, 2, 3, 4);
+        let r: u16x4 = transmute(vcopy_laneq_u16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_u32() {
+        let a: u32x2 = u32x2::new(1, 2);
+        let b: u32x4 = u32x4::new(0, 0xFF_FF_FF_FF, 0, 0);
+        let e: u32x2 = u32x2::new(0xFF_FF_FF_FF, 2);
+        let r: u32x2 = transmute(vcopy_laneq_u32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_p8() {
+        let a: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i8x16 = i8x16::new(0, 0x7F, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        let e: i8x8 = i8x8::new(0x7F, 2, 3, 4, 5, 6, 7, 8);
+        let r: i8x8 = transmute(vcopy_laneq_p8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_p16() {
+        let a: i16x4 = i16x4::new(1, 2, 3, 4);
+        let b: i16x8 = i16x8::new(0, 0x7F_FF, 0, 0, 0, 0, 0, 0);
+        let e: i16x4 = i16x4::new(0x7F_FF, 2, 3, 4);
+        let r: i16x4 = transmute(vcopy_laneq_p16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopy_laneq_f32() {
+        let a: f32x2 = f32x2::new(1., 2.);
+        let b: f32x4 = f32x4::new(0., 0.5, 0., 0.);
+        let e: f32x2 = f32x2::new(0.5, 2.);
+        let r: f32x2 = transmute(vcopy_laneq_f32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_s8() {
+        let a: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: i8x8 = i8x8::new(0, 0x7F, 0, 0, 0, 0, 0, 0);
+        let e: i8x16 = i8x16::new(0x7F, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r: i8x16 = transmute(vcopyq_lane_s8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_s16() {
+        let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i16x4 = i16x4::new(0, 0x7F_FF, 0, 0);
+        let e: i16x8 = i16x8::new(0x7F_FF, 2, 3, 4, 5, 6, 7, 8);
+        let r: i16x8 = transmute(vcopyq_lane_s16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_s32() {
+        let a: i32x4 = i32x4::new(1, 2, 3, 4);
+        let b: i32x2 = i32x2::new(0, 0x7F_FF_FF_FF);
+        let e: i32x4 = i32x4::new(0x7F_FF_FF_FF, 2, 3, 4);
+        let r: i32x4 = transmute(vcopyq_lane_s32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_u8() {
+        let a: u8x16 = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: u8x8 = u8x8::new(0, 0xFF, 0, 0, 0, 0, 0, 0);
+        let e: u8x16 = u8x16::new(0xFF, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r: u8x16 = transmute(vcopyq_lane_u8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_u16() {
+        let a: u16x8 = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: u16x4 = u16x4::new(0, 0xFF_FF, 0, 0);
+        let e: u16x8 = u16x8::new(0xFF_FF, 2, 3, 4, 5, 6, 7, 8);
+        let r: u16x8 = transmute(vcopyq_lane_u16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_u32() {
+        let a: u32x4 = u32x4::new(1, 2, 3, 4);
+        let b: u32x2 = u32x2::new(0, 0xFF_FF_FF_FF);
+        let e: u32x4 = u32x4::new(0xFF_FF_FF_FF, 2, 3, 4);
+        let r: u32x4 = transmute(vcopyq_lane_u32::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_p8() {
+        let a: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let b: i8x8 = i8x8::new(0, 0x7F, 0, 0, 0, 0, 0, 0);
+        let e: i8x16 = i8x16::new(0x7F, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        let r: i8x16 = transmute(vcopyq_lane_p8::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_p16() {
+        let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b: i16x4 = i16x4::new(0, 0x7F_FF, 0, 0);
+        let e: i16x8 = i16x8::new(0x7F_FF, 2, 3, 4, 5, 6, 7, 8);
+        let r: i16x8 = transmute(vcopyq_lane_p16::<0, 1>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_s64() {
+        let a: i64x2 = i64x2::new(1, 2);
+        let b: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x2 = i64x2::new(1, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x2 = transmute(vcopyq_lane_s64::<1, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_u64() {
+        let a: u64x2 = u64x2::new(1, 2);
+        let b: u64x1 = u64x1::new(0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let e: u64x2 = u64x2::new(1, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let r: u64x2 = transmute(vcopyq_lane_u64::<1, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_p64() {
+        let a: i64x2 = i64x2::new(1, 2);
+        let b: i64x1 = i64x1::new(0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x2 = i64x2::new(1, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let r: i64x2 = transmute(vcopyq_lane_p64::<1, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_f32() {
+        let a: f32x4 = f32x4::new(1., 2., 3., 4.);
+        let b: f32x2 = f32x2::new(0.5, 0.);
+        let e: f32x4 = f32x4::new(1., 0.5, 3., 4.);
+        let r: f32x4 = transmute(vcopyq_lane_f32::<1, 0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcopyq_lane_f64() {
+        let a: f64x2 = f64x2::new(1., 2.);
+        let b: f64 = 0.5;
+        let e: f64x2 = f64x2::new(1., 0.5);
+        let r: f64x2 = transmute(vcopyq_lane_f64::<1, 0>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
