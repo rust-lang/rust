@@ -1207,31 +1207,18 @@ function hideThemeButtonState() {
             if (!next) {
                 return;
             }
-            if (hasClass(e, "impl") &&
-                (next.getElementsByClassName("method").length > 0 ||
-                 next.getElementsByClassName("associatedconstant").length > 0)) {
-                var newToggle = toggle.cloneNode(true);
-                insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
-                // In case the option "auto-collapse implementors" is not set to false, we collapse
-                // all implementors.
-                if (hideImplementors === true && e.parentNode.id === "implementors-list") {
-                    collapseDocs(newToggle, "hide");
-                }
-            }
         };
 
         onEachLazy(document.getElementsByClassName("method"), func);
         onEachLazy(document.getElementsByClassName("associatedconstant"), func);
-        onEachLazy(document.getElementsByClassName("impl"), funcImpl);
         var impl_call = function() {};
-        // Large items are hidden by default in the HTML. If the setting overrides that, show 'em.
-        if (!hideLargeItemContents) {
-            onEachLazy(document.getElementsByTagName("details"), function (e) {
-                if (hasClass(e, "type-contents-toggle")) {
-                    e.open = true;
-                }
-            });
-        }
+        onEachLazy(document.getElementsByTagName("details"), function (e) {
+            var showLargeItem = !hideLargeItemContents && hasClass(e, "type-contents-toggle");
+            var showImplementor = !hideImplementors && hasClass(e, "implementors-toggle");
+            if (showLargeItem || showImplementor) {
+                e.open = true;
+            }
+        });
         if (hideMethodDocs === true) {
             impl_call = function(e, newToggle) {
                 if (e.id.match(/^impl(?:-\d+)?$/) === null) {

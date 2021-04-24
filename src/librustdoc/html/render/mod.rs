@@ -530,7 +530,7 @@ fn render_markdown(
             &links,
             &mut ids,
             cx.shared.codes,
-            cx.shared.edition,
+            cx.shared.edition(),
             &cx.shared.playground
         )
         .into_string()
@@ -660,7 +660,7 @@ fn short_item_info(
                 &note,
                 &mut ids,
                 error_codes,
-                cx.shared.edition,
+                cx.shared.edition(),
                 &cx.shared.playground,
             );
             message.push_str(&format!(": {}", html.into_string()));
@@ -702,7 +702,7 @@ fn short_item_info(
                     &unstable_reason.as_str(),
                     &mut ids,
                     error_codes,
-                    cx.shared.edition,
+                    cx.shared.edition(),
                     &cx.shared.playground,
                 )
                 .into_string()
@@ -1284,6 +1284,7 @@ fn render_impl(
     let cache = cx.cache();
     let traits = &cache.traits;
     let trait_ = i.trait_did_full(cache).map(|did| &traits[&did]);
+    let mut close_tags = String::new();
 
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
@@ -1302,7 +1303,12 @@ fn render_impl(
             format!(" aliases=\"{}\"", aliases.join(","))
         };
         if let Some(use_absolute) = use_absolute {
-            write!(w, "<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">", id, aliases);
+            write!(
+                w,
+                "<details class=\"rustdoc-toggle implementors-toggle\"><summary><h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">",
+                id, aliases
+            );
+            close_tags.insert_str(0, "</details>");
             write!(w, "{}", i.inner_impl().print(use_absolute, cx));
             if show_def_docs {
                 for it in &i.inner_impl().items {
@@ -1325,11 +1331,12 @@ fn render_impl(
         } else {
             write!(
                 w,
-                "<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
+                "<details class=\"rustdoc-toggle implementors-toggle\"><summary><h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
                 id,
                 aliases,
                 i.inner_impl().print(false, cx)
             );
+            close_tags.insert_str(0, "</details>");
         }
         write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
         render_stability_since_raw(
@@ -1341,6 +1348,7 @@ fn render_impl(
         );
         write_srclink(cx, &i.impl_item, w);
         w.write_str("</h3>");
+        w.write_str("</summary>");
 
         if trait_.is_some() {
             if let Some(portability) = portability(&i.impl_item, Some(parent)) {
@@ -1358,7 +1366,7 @@ fn render_impl(
                     &i.impl_item.links(cx),
                     &mut ids,
                     cx.shared.codes,
-                    cx.shared.edition,
+                    cx.shared.edition(),
                     &cx.shared.playground
                 )
                 .into_string()
@@ -1542,6 +1550,7 @@ fn render_impl(
     }
 
     w.write_str("<div class=\"impl-items\">");
+    close_tags.insert_str(0, "</div>");
     for trait_item in &i.inner_impl().items {
         doc_impl_item(
             w,
@@ -1612,7 +1621,7 @@ fn render_impl(
             );
         }
     }
-    w.write_str("</div>");
+    w.write_str(&close_tags);
 }
 
 fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {

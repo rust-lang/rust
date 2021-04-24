@@ -797,7 +797,7 @@ pub const fn default_lib_output() -> CrateType {
     CrateType::Rlib
 }
 
-pub fn default_configuration(sess: &Session) -> CrateConfig {
+fn default_configuration(sess: &Session) -> CrateConfig {
     let end = &sess.target.endian;
     let arch = &sess.target.arch;
     let wordsz = sess.target.pointer_width.to_string();
@@ -892,7 +892,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
     user_cfg
 }
 
-pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> Target {
+pub(super) fn build_target_config(opts: &Options, target_override: Option<Target>) -> Target {
     let target_result = target_override.map_or_else(|| Target::search(&opts.target_triple), Ok);
     let target = target_result.unwrap_or_else(|e| {
         early_error(
