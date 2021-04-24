@@ -18,8 +18,8 @@ use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::path::{Path, PathBuf};
-use crate::sys;
 use crate::sys::os as os_imp;
+use crate::sys_common;
 
 /// Returns the current working directory as a [`PathBuf`].
 ///
@@ -705,7 +705,7 @@ pub struct Args {
 /// [`env::args_os()`]: args_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs {
-    inner: sys::args::Args,
+    inner: sys_common::args::Args,
 }
 
 /// Returns the arguments that this program was started with (normally passed
@@ -777,7 +777,7 @@ pub fn args() -> Args {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn args_os() -> ArgsOs {
-    ArgsOs { inner: sys::args::args() }
+    ArgsOs { inner: sys_common::args::Args::get() }
 }
 
 #[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
@@ -817,8 +817,7 @@ impl DoubleEndedIterator for Args {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let args = &AsRef::<[OsString]>::as_ref(&self.inner.inner);
-        f.debug_struct("Args").field("inner", args).finish()
+        f.debug_struct("Args").field("inner", &self.inner.inner).finish()
     }
 }
 
@@ -859,8 +858,7 @@ impl DoubleEndedIterator for ArgsOs {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let args = &AsRef::<[OsString]>::as_ref(&self.inner);
-        f.debug_struct("ArgsOs").field("inner", args).finish()
+        f.debug_struct("ArgsOs").field("inner", &self.inner).finish()
     }
 }
 
