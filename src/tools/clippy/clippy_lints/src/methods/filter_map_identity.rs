@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_trait_method, match_qpath, path_to_local_id, paths};
+use clippy_utils::{is_expr_path_def_path, is_trait_method, path_to_local_id, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -33,14 +33,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, filter_map_arg: 
             }
         }
 
-        if_chain! {
-            if let hir::ExprKind::Path(ref qpath) = filter_map_arg.kind;
-
-            if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
-
-            then {
-                apply_lint("called `filter_map(std::convert::identity)` on an `Iterator`");
-            }
+        if is_expr_path_def_path(cx, filter_map_arg, &paths::CONVERT_IDENTITY) {
+            apply_lint("called `filter_map(std::convert::identity)` on an `Iterator`");
         }
     }
 }

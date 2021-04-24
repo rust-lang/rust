@@ -74,5 +74,11 @@ error: returning an `Err(_)` with the `?` operator
 LL |         Err(io::ErrorKind::NotFound)?
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `return Poll::Ready(Some(Err(io::ErrorKind::NotFound.into())))`
 
-error: aborting due to 10 previous errors
+error: returning an `Err(_)` with the `?` operator
+  --> $DIR/try_err.rs:167:16
+   |
+LL |         return Err(42)?;
+   |                ^^^^^^^^ help: try this: `Err(42)`
+
+error: aborting due to 11 previous errors
 

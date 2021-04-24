@@ -195,7 +195,7 @@ fn attempt_to_emit_no_difference_lint(
     i: usize,
     expected_loc: IdentLocation,
 ) {
-    if let Some(binop) = binops.get(i).cloned() {
+    if let Some(binop) = binops.get(i).copied() {
         // We need to try and figure out which identifier we should
         // suggest using instead. Since there could be multiple
         // replacement candidates in a given expression, and we're

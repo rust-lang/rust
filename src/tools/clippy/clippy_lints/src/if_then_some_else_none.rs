@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet_with_macro_callsite;
-use clippy_utils::{match_qpath, meets_msrv, parent_node_is_if_expr};
+use clippy_utils::{is_else_clause, is_lang_ctor, meets_msrv};
 use if_chain::if_chain;
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -67,7 +68,7 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
         }
 
         // We only care about the top-most `if` in the chain
-        if parent_node_is_if_expr(expr, cx) {
+        if is_else_clause(cx.tcx, expr) {
             return;
         }
 
@@ -77,12 +78,12 @@ impl LateLintPass<'_> for IfThenSomeElseNone {
             if let Some(then_expr) = then_block.expr;
             if let ExprKind::Call(then_call, [then_arg]) = then_expr.kind;
             if let ExprKind::Path(ref then_call_qpath) = then_call.kind;
-            if match_qpath(then_call_qpath, &clippy_utils::paths::OPTION_SOME);
+            if is_lang_ctor(cx, then_call_qpath, OptionSome);
             if let ExprKind::Block(els_block, _) = els.kind;
             if els_block.stmts.is_empty();
             if let Some(els_expr) = els_block.expr;
-            if let ExprKind::Path(ref els_call_qpath) = els_expr.kind;
-            if match_qpath(els_call_qpath, &clippy_utils::paths::OPTION_NONE);
+            if let ExprKind::Path(ref qpath) = els_expr.kind;
+            if is_lang_ctor(cx, qpath, OptionNone);
             then {
                 let cond_snip = snippet_with_macro_callsite(cx, cond.span, "[condition]");
                 let cond_snip = if matches!(cond.kind, ExprKind::Unary(_, _) | ExprKind::Binary(_, _, _)) {

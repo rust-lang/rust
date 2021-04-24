@@ -7,7 +7,8 @@
     clippy::needless_bool,
     clippy::match_like_matches_macro,
     clippy::unnecessary_wraps,
-    deprecated
+    deprecated,
+    clippy::if_same_then_else
 )]
 
 fn main() {

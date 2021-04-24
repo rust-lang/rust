@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths;
 use clippy_utils::source::{snippet, snippet_opt};
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_expn_of, last_path_segment, match_def_path, match_function_call};
 use if_chain::if_chain;
@@ -100,15 +101,15 @@ fn on_argumentv1_new<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arms: &
                     return Some(format!("{:?}.to_string()", s.as_str()));
                 }
             } else {
-                let snip = snippet(cx, format_args.span, "<arg>");
+                let sugg = Sugg::hir(cx, format_args, "<arg>");
                 if let ExprKind::MethodCall(path, _, _, _) = format_args.kind {
                     if path.ident.name == sym!(to_string) {
-                        return Some(format!("{}", snip));
+                        return Some(format!("{}", sugg));
                     }
                 } else if let ExprKind::Binary(..) = format_args.kind {
-                    return Some(format!("{}", snip));
+                    return Some(format!("{}", sugg));
                 }
-                return Some(format!("{}.to_string()", snip));
+                return Some(format!("{}.to_string()", sugg.maybe_par()));
             }
         }
     }
@@ -136,7 +137,7 @@ fn on_new_v1<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Strin
                 if let Some(s_src) = snippet_opt(cx, lit.span) {
                     // Simulate macro expansion, converting {{ and }} to { and }.
                     let s_expand = s_src.replace("{{", "{").replace("}}", "}");
-                    return Some(format!("{}.to_string()", s_expand))
+                    return Some(format!("{}.to_string()", s_expand));
                 }
             } else if s.as_str().is_empty() {
                 return on_argumentv1_new(cx, &tup[0], arms);

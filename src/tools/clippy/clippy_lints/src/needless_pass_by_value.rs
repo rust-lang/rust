@@ -279,7 +279,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             spans.extend(
                                 deref_span
                                     .iter()
-                                    .cloned()
+                                    .copied()
                                     .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))),
                             );
                             spans.sort_by_key(|&(span, _)| span);

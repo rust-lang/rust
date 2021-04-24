@@ -66,6 +66,15 @@ pub fn indent_of<T: LintContext>(cx: &T, span: Span) -> Option<usize> {
     snippet_opt(cx, line_span(cx, span)).and_then(|snip| snip.find(|c: char| !c.is_whitespace()))
 }
 
+/// Gets a snippet of the indentation of the line of a span
+pub fn snippet_indent<T: LintContext>(cx: &T, span: Span) -> Option<String> {
+    snippet_opt(cx, line_span(cx, span)).map(|mut s| {
+        let len = s.len() - s.trim_start().len();
+        s.truncate(len);
+        s
+    })
+}
+
 // If the snippet is empty, it's an attribute that was inserted during macro
 // expansion and we want to ignore those, because they could come from external
 // sources that the user has no control over.

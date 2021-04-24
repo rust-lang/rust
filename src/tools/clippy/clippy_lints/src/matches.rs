@@ -7,7 +7,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use clippy_utils::visitors::LocalUsedVisitor;
 use clippy_utils::{
-    get_parent_expr, in_macro, is_allowed, is_expn_of, is_refutable, is_wild, match_qpath, meets_msrv, path_to_local,
+    get_parent_expr, in_macro, is_allowed, is_expn_of, is_lang_ctor, is_refutable, is_wild, meets_msrv, path_to_local,
     path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks, strip_pat_refs,
 };
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
@@ -15,6 +15,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{
     self as hir, Arm, BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Guard, HirId, Local, MatchSource,
     Mutability, Node, Pat, PatKind, PathSegment, QPath, RangeEnd, TyKind,
@@ -422,7 +423,12 @@ declare_clippy_lint! {
     /// **Why is this bad?** It's more concise and clear to just use the proper
     /// utility function
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** This will change the drop order for the matched type. Both `if let` and
+    /// `while let` will drop the value at the end of the block, both `if` and `while` will drop the
+    /// value before entering the block. For most types this change will not matter, but for a few
+    /// types this will not be an acceptable change (e.g. locks). See the
+    /// [reference](https://doc.rust-lang.org/reference/destructors.html#drop-scopes) for more about
+    /// drop order.
     ///
     /// **Example:**
     ///
@@ -737,8 +743,11 @@ fn report_single_match_single_pattern(
     let (msg, sugg) = if_chain! {
         if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
         let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
-        if let Some(trait_id) = cx.tcx.lang_items().structural_peq_trait();
-        if ty.is_integral() || ty.is_char() || ty.is_str() || implements_trait(cx, ty, trait_id, &[]);
+        if let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait();
+        if let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait();
+        if ty.is_integral() || ty.is_char() || ty.is_str()
+            || (implements_trait(cx, ty, spe_trait_id, &[])
+                && implements_trait(cx, ty, pe_trait_id, &[ty.into()]));
         then {
             // scrutinee derives PartialEq and the pattern is a constant.
             let pat_ref_count = match pat.kind {
@@ -1120,7 +1129,7 @@ fn check_wild_enum_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) 
             Applicability::MaybeIncorrect,
         ),
         variants => {
-            let mut suggestions: Vec<_> = variants.iter().cloned().map(format_suggestion).collect();
+            let mut suggestions: Vec<_> = variants.iter().copied().map(format_suggestion).collect();
             let message = if adt_def.is_variant_list_non_exhaustive() {
                 suggestions.push("_".into());
                 "wildcard matches known variants and will also match future added variants"
@@ -1189,10 +1198,10 @@ fn check_match_ref_pats(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], e
 
 fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
-        let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
-            is_ref_some_arm(&arms[1])
-        } else if is_none_arm(&arms[1]) {
-            is_ref_some_arm(&arms[0])
+        let arm_ref: Option<BindingAnnotation> = if is_none_arm(cx, &arms[0]) {
+            is_ref_some_arm(cx, &arms[1])
+        } else if is_none_arm(cx, &arms[1]) {
+            is_ref_some_arm(cx, &arms[0])
         } else {
             None
         };
@@ -1500,7 +1509,7 @@ fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'
 /// Gets all arms that are unbounded `PatRange`s.
 fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>) -> Vec<SpannedRange<Constant>> {
     arms.iter()
-        .flat_map(|arm| {
+        .filter_map(|arm| {
             if let Arm { pat, guard: None, .. } = *arm {
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
                     let lhs = match lhs {
@@ -1575,20 +1584,20 @@ fn is_unit_expr(expr: &Expr<'_>) -> bool {
 }
 
 // Checks if arm has the form `None => None`
-fn is_none_arm(arm: &Arm<'_>) -> bool {
-    matches!(arm.pat.kind, PatKind::Path(ref path) if match_qpath(path, &paths::OPTION_NONE))
+fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
+    matches!(arm.pat.kind, PatKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone))
 }
 
 // Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
-fn is_ref_some_arm(arm: &Arm<'_>) -> Option<BindingAnnotation> {
+fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotation> {
     if_chain! {
-        if let PatKind::TupleStruct(ref path, pats, _) = arm.pat.kind;
-        if pats.len() == 1 && match_qpath(path, &paths::OPTION_SOME);
+        if let PatKind::TupleStruct(ref qpath, pats, _) = arm.pat.kind;
+        if is_lang_ctor(cx, qpath, OptionSome);
         if let PatKind::Binding(rb, .., ident, _) = pats[0].kind;
         if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
         if let ExprKind::Call(e, args) = remove_blocks(arm.body).kind;
         if let ExprKind::Path(ref some_path) = e.kind;
-        if match_qpath(some_path, &paths::OPTION_SOME) && args.len() == 1;
+        if is_lang_ctor(cx, some_path, OptionSome) && args.len() == 1;
         if let ExprKind::Path(QPath::Resolved(_, path2)) = args[0].kind;
         if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
         then {
@@ -1699,54 +1708,206 @@ where
 mod redundant_pattern_match {
     use super::REDUNDANT_PATTERN_MATCHING;
     use clippy_utils::diagnostics::span_lint_and_then;
-    use clippy_utils::source::snippet;
-    use clippy_utils::{is_trait_method, match_qpath, paths};
+    use clippy_utils::source::{snippet, snippet_with_applicability};
+    use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, is_type_lang_item, match_type};
+    use clippy_utils::{is_lang_ctor, is_qpath_def_path, is_trait_method, paths};
     use if_chain::if_chain;
     use rustc_ast::ast::LitKind;
     use rustc_errors::Applicability;
-    use rustc_hir::{Arm, Expr, ExprKind, MatchSource, PatKind, QPath};
+    use rustc_hir::LangItem::{OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
+    use rustc_hir::{
+        intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
+        Arm, Block, Expr, ExprKind, LangItem, MatchSource, Node, PatKind, QPath,
+    };
     use rustc_lint::LateContext;
+    use rustc_middle::ty::{self, subst::GenericArgKind, Ty};
     use rustc_span::sym;
 
     pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Match(op, arms, ref match_source) = &expr.kind {
             match match_source {
                 MatchSource::Normal => find_sugg_for_match(cx, expr, op, arms),
-                MatchSource::IfLetDesugar { .. } => find_sugg_for_if_let(cx, expr, op, arms, "if"),
-                MatchSource::WhileLetDesugar => find_sugg_for_if_let(cx, expr, op, arms, "while"),
+                MatchSource::IfLetDesugar { contains_else_clause } => {
+                    find_sugg_for_if_let(cx, expr, op, &arms[0], "if", *contains_else_clause)
+                },
+                MatchSource::WhileLetDesugar => find_sugg_for_if_let(cx, expr, op, &arms[0], "while", false),
                 _ => {},
             }
         }
     }
 
+    /// Checks if the drop order for a type matters. Some std types implement drop solely to
+    /// deallocate memory. For these types, and composites containing them, changing the drop order
+    /// won't result in any observable side effects.
+    fn type_needs_ordered_drop(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+        if !ty.needs_drop(cx.tcx, cx.param_env) {
+            false
+        } else if !cx
+            .tcx
+            .lang_items()
+            .drop_trait()
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+        {
+            // This type doesn't implement drop, so no side effects here.
+            // Check if any component type has any.
+            match ty.kind() {
+                ty::Tuple(_) => ty.tuple_fields().any(|ty| type_needs_ordered_drop(cx, ty)),
+                ty::Array(ty, _) => type_needs_ordered_drop(cx, ty),
+                ty::Adt(adt, subs) => adt
+                    .all_fields()
+                    .map(|f| f.ty(cx.tcx, subs))
+                    .any(|ty| type_needs_ordered_drop(cx, ty)),
+                _ => true,
+            }
+        }
+        // Check for std types which implement drop, but only for memory allocation.
+        else if is_type_diagnostic_item(cx, ty, sym::vec_type)
+            || is_type_lang_item(cx, ty, LangItem::OwnedBox)
+            || is_type_diagnostic_item(cx, ty, sym::Rc)
+            || is_type_diagnostic_item(cx, ty, sym::Arc)
+            || is_type_diagnostic_item(cx, ty, sym::cstring_type)
+            || match_type(cx, ty, &paths::BTREEMAP)
+            || match_type(cx, ty, &paths::LINKED_LIST)
+            || match_type(cx, ty, &paths::WEAK_RC)
+            || match_type(cx, ty, &paths::WEAK_ARC)
+        {
+            // Check all of the generic arguments.
+            if let ty::Adt(_, subs) = ty.kind() {
+                subs.types().any(|ty| type_needs_ordered_drop(cx, ty))
+            } else {
+                true
+            }
+        } else {
+            true
+        }
+    }
+
+    // Extract the generic arguments out of a type
+    fn try_get_generic_ty(ty: Ty<'_>, index: usize) -> Option<Ty<'_>> {
+        if_chain! {
+            if let ty::Adt(_, subs) = ty.kind();
+            if let Some(sub) = subs.get(index);
+            if let GenericArgKind::Type(sub_ty) = sub.unpack();
+            then {
+                Some(sub_ty)
+            } else {
+                None
+            }
+        }
+    }
+
+    // Checks if there are any temporaries created in the given expression for which drop order
+    // matters.
+    fn temporaries_need_ordered_drop(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+        struct V<'a, 'tcx> {
+            cx: &'a LateContext<'tcx>,
+            res: bool,
+        }
+        impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
+            type Map = ErasedMap<'tcx>;
+            fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+                NestedVisitorMap::None
+            }
+
+            fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
+                match expr.kind {
+                    // Taking the reference of a value leaves a temporary
+                    // e.g. In `&String::new()` the string is a temporary value.
+                    // Remaining fields are temporary values
+                    // e.g. In `(String::new(), 0).1` the string is a temporary value.
+                    ExprKind::AddrOf(_, _, expr) | ExprKind::Field(expr, _) => {
+                        if !matches!(expr.kind, ExprKind::Path(_)) {
+                            if type_needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(expr)) {
+                                self.res = true;
+                            } else {
+                                self.visit_expr(expr);
+                            }
+                        }
+                    },
+                    // the base type is alway taken by reference.
+                    // e.g. In `(vec![0])[0]` the vector is a temporary value.
+                    ExprKind::Index(base, index) => {
+                        if !matches!(base.kind, ExprKind::Path(_)) {
+                            if type_needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(base)) {
+                                self.res = true;
+                            } else {
+                                self.visit_expr(base);
+                            }
+                        }
+                        self.visit_expr(index);
+                    },
+                    // Method calls can take self by reference.
+                    // e.g. In `String::new().len()` the string is a temporary value.
+                    ExprKind::MethodCall(_, _, [self_arg, args @ ..], _) => {
+                        if !matches!(self_arg.kind, ExprKind::Path(_)) {
+                            let self_by_ref = self
+                                .cx
+                                .typeck_results()
+                                .type_dependent_def_id(expr.hir_id)
+                                .map_or(false, |id| self.cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref());
+                            if self_by_ref
+                                && type_needs_ordered_drop(self.cx, self.cx.typeck_results().expr_ty(self_arg))
+                            {
+                                self.res = true;
+                            } else {
+                                self.visit_expr(self_arg)
+                            }
+                        }
+                        args.iter().for_each(|arg| self.visit_expr(arg));
+                    },
+                    // Either explicitly drops values, or changes control flow.
+                    ExprKind::DropTemps(_)
+                    | ExprKind::Ret(_)
+                    | ExprKind::Break(..)
+                    | ExprKind::Yield(..)
+                    | ExprKind::Block(Block { expr: None, .. }, _)
+                    | ExprKind::Loop(..) => (),
+
+                    // Only consider the final expression.
+                    ExprKind::Block(Block { expr: Some(expr), .. }, _) => self.visit_expr(expr),
+
+                    _ => walk_expr(self, expr),
+                }
+            }
+        }
+
+        let mut v = V { cx, res: false };
+        v.visit_expr(expr);
+        v.res
+    }
+
     fn find_sugg_for_if_let<'tcx>(
         cx: &LateContext<'tcx>,
         expr: &'tcx Expr<'_>,
-        op: &Expr<'_>,
-        arms: &[Arm<'_>],
+        op: &'tcx Expr<'tcx>,
+        arm: &Arm<'_>,
         keyword: &'static str,
+        has_else: bool,
     ) {
         // also look inside refs
-        let mut kind = &arms[0].pat.kind;
+        let mut kind = &arm.pat.kind;
         // if we have &None for example, peel it so we can detect "if let None = x"
         if let PatKind::Ref(inner, _mutability) = kind {
             kind = &inner.kind;
         }
-        let good_method = match kind {
-            PatKind::TupleStruct(ref path, patterns, _) if patterns.len() == 1 => {
-                if let PatKind::Wild = patterns[0].kind {
-                    if match_qpath(path, &paths::RESULT_OK) {
-                        "is_ok()"
-                    } else if match_qpath(path, &paths::RESULT_ERR) {
-                        "is_err()"
-                    } else if match_qpath(path, &paths::OPTION_SOME) {
-                        "is_some()"
-                    } else if match_qpath(path, &paths::POLL_READY) {
-                        "is_ready()"
-                    } else if match_qpath(path, &paths::IPADDR_V4) {
-                        "is_ipv4()"
-                    } else if match_qpath(path, &paths::IPADDR_V6) {
-                        "is_ipv6()"
+        let op_ty = cx.typeck_results().expr_ty(op);
+        // Determine which function should be used, and the type contained by the corresponding
+        // variant.
+        let (good_method, inner_ty) = match kind {
+            PatKind::TupleStruct(ref path, [sub_pat], _) => {
+                if let PatKind::Wild = sub_pat.kind {
+                    if is_lang_ctor(cx, path, ResultOk) {
+                        ("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty))
+                    } else if is_lang_ctor(cx, path, ResultErr) {
+                        ("is_err()", try_get_generic_ty(op_ty, 1).unwrap_or(op_ty))
+                    } else if is_lang_ctor(cx, path, OptionSome) {
+                        ("is_some()", op_ty)
+                    } else if is_lang_ctor(cx, path, PollReady) {
+                        ("is_ready()", op_ty)
+                    } else if is_qpath_def_path(cx, path, sub_pat.hir_id, &paths::IPADDR_V4) {
+                        ("is_ipv4()", op_ty)
+                    } else if is_qpath_def_path(cx, path, sub_pat.hir_id, &paths::IPADDR_V6) {
+                        ("is_ipv6()", op_ty)
                     } else {
                         return;
                     }
@@ -1755,16 +1916,35 @@ mod redundant_pattern_match {
                 }
             },
             PatKind::Path(ref path) => {
-                if match_qpath(path, &paths::OPTION_NONE) {
+                let method = if is_lang_ctor(cx, path, OptionNone) {
                     "is_none()"
-                } else if match_qpath(path, &paths::POLL_PENDING) {
+                } else if is_lang_ctor(cx, path, PollPending) {
                     "is_pending()"
                 } else {
                     return;
-                }
+                };
+                // `None` and `Pending` don't have an inner type.
+                (method, cx.tcx.types.unit)
             },
             _ => return,
         };
+
+        // If this is the last expression in a block or there is an else clause then the whole
+        // type needs to be considered, not just the inner type of the branch being matched on.
+        // Note the last expression in a block is dropped after all local bindings.
+        let check_ty = if has_else
+            || (keyword == "if" && matches!(cx.tcx.hir().parent_iter(expr.hir_id).next(), Some((_, Node::Block(..)))))
+        {
+            op_ty
+        } else {
+            inner_ty
+        };
+
+        // All temporaries created in the scrutinee expression are dropped at the same time as the
+        // scrutinee would be, so they have to be considered as well.
+        // e.g. in `if let Some(x) = foo.lock().unwrap().baz.as_ref() { .. }` the lock will be held
+        // for the duration if body.
+        let needs_drop = type_needs_ordered_drop(cx, check_ty) || temporaries_need_ordered_drop(cx, op);
 
         // check that `while_let_on_iterator` lint does not trigger
         if_chain! {
@@ -1784,7 +1964,7 @@ mod redundant_pattern_match {
         span_lint_and_then(
             cx,
             REDUNDANT_PATTERN_MATCHING,
-            arms[0].pat.span,
+            arm.pat.span,
             &format!("redundant pattern matching, consider using `{}`", good_method),
             |diag| {
                 // while let ... = ... { ... }
@@ -1798,12 +1978,20 @@ mod redundant_pattern_match {
                 // while let ... = ... { ... }
                 // ^^^^^^^^^^^^^^^^^^^
                 let span = expr_span.until(op_span.shrink_to_hi());
-                diag.span_suggestion(
-                    span,
-                    "try this",
-                    format!("{} {}.{}", keyword, snippet(cx, op_span, "_"), good_method),
-                    Applicability::MachineApplicable, // snippet
-                );
+
+                let mut app = if needs_drop {
+                    Applicability::MaybeIncorrect
+                } else {
+                    Applicability::MachineApplicable
+                };
+                let sugg = snippet_with_applicability(cx, op_span, "_", &mut app);
+
+                diag.span_suggestion(span, "try this", format!("{} {}.{}", keyword, sugg, good_method), app);
+
+                if needs_drop {
+                    diag.note("this will change drop order of the result, as well as all temporaries");
+                    diag.note("add `#[allow(clippy::redundant_pattern_matching)]` if this is important");
+                }
             },
         );
     }
@@ -1819,6 +2007,7 @@ mod redundant_pattern_match {
                 ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
                     if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].kind, &patterns_right[0].kind) {
                         find_good_method_for_match(
+                            cx,
                             arms,
                             path_left,
                             path_right,
@@ -1829,6 +2018,7 @@ mod redundant_pattern_match {
                         )
                         .or_else(|| {
                             find_good_method_for_match(
+                                cx,
                                 arms,
                                 path_left,
                                 path_right,
@@ -1848,6 +2038,7 @@ mod redundant_pattern_match {
                 {
                     if let PatKind::Wild = patterns[0].kind {
                         find_good_method_for_match(
+                            cx,
                             arms,
                             path_left,
                             path_right,
@@ -1858,6 +2049,7 @@ mod redundant_pattern_match {
                         )
                         .or_else(|| {
                             find_good_method_for_match(
+                                cx,
                                 arms,
                                 path_left,
                                 path_right,
@@ -1898,7 +2090,9 @@ mod redundant_pattern_match {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn find_good_method_for_match<'a>(
+        cx: &LateContext<'_>,
         arms: &[Arm<'_>],
         path_left: &QPath<'_>,
         path_right: &QPath<'_>,
@@ -1907,9 +2101,13 @@ mod redundant_pattern_match {
         should_be_left: &'a str,
         should_be_right: &'a str,
     ) -> Option<&'a str> {
-        let body_node_pair = if match_qpath(path_left, expected_left) && match_qpath(path_right, expected_right) {
+        let body_node_pair = if is_qpath_def_path(cx, path_left, arms[0].pat.hir_id, expected_left)
+            && is_qpath_def_path(cx, path_right, arms[1].pat.hir_id, expected_right)
+        {
             (&(*arms[0].body).kind, &(*arms[1].body).kind)
-        } else if match_qpath(path_right, expected_left) && match_qpath(path_left, expected_right) {
+        } else if is_qpath_def_path(cx, path_right, arms[1].pat.hir_id, expected_left)
+            && is_qpath_def_path(cx, path_left, arms[0].pat.hir_id, expected_right)
+        {
             (&(*arms[1].body).kind, &(*arms[0].body).kind)
         } else {
             return None;
