@@ -229,6 +229,7 @@ pub struct CodegenUnit<'tcx> {
     name: Symbol,
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
+    primary: bool,
 }
 
 /// Specifies the linkage type for a `MonoItem`.
@@ -258,7 +259,7 @@ pub enum Visibility {
 
 impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit { name, items: Default::default(), size_estimate: None }
+        CodegenUnit { name, items: Default::default(), size_estimate: None, primary: false }
     }
 
     pub fn name(&self) -> Symbol {
@@ -267,6 +268,14 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn set_name(&mut self, name: Symbol) {
         self.name = name;
+    }
+
+    pub fn is_primary(&self) -> bool {
+        self.primary
+    }
+
+    pub fn make_primary(&mut self) {
+        self.primary = true;
     }
 
     pub fn items(&self) -> &FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
@@ -378,6 +387,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
             name,
             // The size estimate is not relevant to the hash
             size_estimate: _,
+            primary: _,
         } = *self;
 
         name.hash_stable(hcx, hasher);

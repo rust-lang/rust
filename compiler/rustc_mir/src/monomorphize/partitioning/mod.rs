@@ -350,12 +350,14 @@ fn collect_and_partition_mono_items<'tcx>(
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
             || {
-                &*tcx.arena.alloc_from_iter(partition(
+                let mut codegen_units = partition(
                     tcx,
                     &mut items.iter().cloned(),
                     tcx.sess.codegen_units(),
                     &inlining_map,
-                ))
+                );
+                codegen_units[0].make_primary();
+                &*tcx.arena.alloc_from_iter(codegen_units)
             },
             || assert_symbols_are_distinct(tcx, items.iter()),
         )

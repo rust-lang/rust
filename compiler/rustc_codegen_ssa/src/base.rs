@@ -357,20 +357,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
             return None;
         }
-    } else {
-        // FIXME: Add support for non-local main fn codegen
-        let span = cx.tcx().main_def.unwrap().span;
-        let n = 28937;
-        cx.sess()
-            .struct_span_err(span, "entry symbol `main` from foreign crate is not yet supported.")
-            .note(&format!(
-                "see issue #{} <https://github.com/rust-lang/rust/issues/{}> \
-                 for more information",
-                n, n,
-            ))
-            .emit();
-        cx.sess().abort_if_errors();
-        bug!();
+    } else if !cx.codegen_unit().is_primary() {
+        // We want to create the wrapper only when the codegen unit is the primary one
+        return None;
     }
 
     let main_llfn = cx.get_fn_addr(instance);
