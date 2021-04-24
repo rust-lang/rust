@@ -1,9 +1,9 @@
 //! Module converting command-line arguments into test configuration.
 
 use std::env;
+use std::io::{IsAtty, Stdout};
 use std::path::PathBuf;
 
-use super::helpers::isatty;
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
 use super::time::TestTimeOptions;
 
@@ -30,7 +30,7 @@ pub struct TestOpts {
 impl TestOpts {
     pub fn use_color(&self) -> bool {
         match self.color {
-            ColorConfig::AutoColor => !self.nocapture && isatty::stdout_isatty(),
+            ColorConfig::AutoColor => !self.nocapture && Stdout::is_atty(),
             ColorConfig::AlwaysColor => true,
             ColorConfig::NeverColor => false,
         }

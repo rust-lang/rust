@@ -220,3 +220,141 @@ impl IntoRawSocket for net::UdpSocket {
         self.into_inner().into_socket().into_inner()
     }
 }
+
+#[unstable(feature = "is_atty", issue = "80937")]
+impl io::IsAtty for sys::stdio::Stdin {
+    fn is_atty() -> bool {
+        use c::{
+            STD_ERROR_HANDLE as STD_ERROR, STD_INPUT_HANDLE as STD_INPUT,
+            STD_OUTPUT_HANDLE as STD_OUTPUT,
+        };
+
+        let fd = STD_INPUT;
+        let others = [STD_ERROR, STD_OUTPUT];
+
+        if unsafe { console_on_any(&[fd]) } {
+            // False positives aren't possible. If we got a console then
+            // we definitely have a tty on stdin.
+            return true;
+        }
+
+        // At this point, we *could* have a false negative. We can determine that
+        // this is true negative if we can detect the presence of a console on
+        // any of the other streams. If another stream has a console, then we know
+        // we're in a Windows console and can therefore trust the negative.
+        if unsafe { console_on_any(&others) } {
+            return false;
+        }
+
+        // Otherwise, we fall back to a very strange msys hack to see if we can
+        // sneakily detect the presence of a tty.
+        unsafe { msys_tty_on(fd) }
+    }
+}
+
+#[unstable(feature = "is_atty", issue = "80937")]
+impl io::IsAtty for sys::stdio::Stdout {
+    fn is_atty() -> bool {
+        use c::{
+            STD_ERROR_HANDLE as STD_ERROR, STD_INPUT_HANDLE as STD_INPUT,
+            STD_OUTPUT_HANDLE as STD_OUTPUT,
+        };
+
+        let fd = STD_OUTPUT;
+        let others = [STD_INPUT, STD_ERROR];
+
+        if unsafe { console_on_any(&[fd]) } {
+            // False positives aren't possible. If we got a console then
+            // we definitely have a tty on stdin.
+            return true;
+        }
+
+        // At this point, we *could* have a false negative. We can determine that
+        // this is true negative if we can detect the presence of a console on
+        // any of the other streams. If another stream has a console, then we know
+        // we're in a Windows console and can therefore trust the negative.
+        if unsafe { console_on_any(&others) } {
+            return false;
+        }
+
+        // Otherwise, we fall back to a very strange msys hack to see if we can
+        // sneakily detect the presence of a tty.
+        unsafe { msys_tty_on(fd) }
+    }
+}
+
+#[unstable(feature = "is_atty", issue = "80937")]
+impl io::IsAtty for sys::stdio::Stderr {
+    fn is_atty() -> bool {
+        use c::{
+            STD_ERROR_HANDLE as STD_ERROR, STD_INPUT_HANDLE as STD_INPUT,
+            STD_OUTPUT_HANDLE as STD_OUTPUT,
+        };
+
+        let fd = STD_ERROR;
+        let others = [STD_INPUT, STD_OUTPUT];
+
+        if unsafe { console_on_any(&[fd]) } {
+            // False positives aren't possible. If we got a console then
+            // we definitely have a tty on stdin.
+            return true;
+        }
+
+        // At this point, we *could* have a false negative. We can determine that
+        // this is true negative if we can detect the presence of a console on
+        // any of the other streams. If another stream has a console, then we know
+        // we're in a Windows console and can therefore trust the negative.
+        if unsafe { console_on_any(&others) } {
+            return false;
+        }
+
+        // Otherwise, we fall back to a very strange msys hack to see if we can
+        // sneakily detect the presence of a tty.
+        unsafe { msys_tty_on(fd) }
+    }
+}
+
+#[unstable(feature = "is_atty", issue = "80937")]
+unsafe fn console_on_any(fds: &[c::DWORD]) -> bool {
+    use c::{GetConsoleMode, GetStdHandle};
+
+    for &fd in fds {
+        let mut out = 0;
+        let handle = GetStdHandle(fd);
+        if GetConsoleMode(handle, &mut out) != 0 {
+            return true;
+        }
+    }
+    false
+}
+#[unstable(feature = "is_atty", issue = "80937")]
+unsafe fn msys_tty_on(fd: c::DWORD) -> bool {
+    use std::{mem, slice};
+
+    use c::{
+        c_void, FileNameInfo, GetFileInformationByHandleEx, GetStdHandle, FILE_NAME_INFO, MAX_PATH,
+    };
+
+    let size = mem::size_of::<FILE_NAME_INFO>();
+    let mut name_info_bytes = vec![0u8; size + MAX_PATH * mem::size_of::<WCHAR>()];
+    let res = GetFileInformationByHandleEx(
+        GetStdHandle(fd),
+        FileNameInfo,
+        &mut *name_info_bytes as *mut _ as *mut c_void,
+        name_info_bytes.len() as u32,
+    );
+    if res == 0 {
+        return false;
+    }
+    let name_info: &FILE_NAME_INFO = &*(name_info_bytes.as_ptr() as *const FILE_NAME_INFO);
+    let s =
+        slice::from_raw_parts(name_info.FileName.as_ptr(), name_info.FileNameLength as usize / 2);
+    let name = String::from_utf16_lossy(s);
+    // This checks whether 'pty' exists in the file name, which indicates that
+    // a pseudo-terminal is attached. To mitigate against false positives
+    // (e.g., an actual file name that contains 'pty'), we also require that
+    // either the strings 'msys-' or 'cygwin-' are in the file name as well.)
+    let is_msys = name.contains("msys-") || name.contains("cygwin-");
+    let is_pty = name.contains("-pty");
+    is_msys && is_pty
+}

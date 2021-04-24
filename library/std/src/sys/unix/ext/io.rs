@@ -181,3 +181,23 @@ impl<'a> AsRawFd for io::StderrLock<'a> {
         libc::STDERR_FILENO
     }
 }
+
+#[unstable(feature = "is_atty", issue = "80937")]
+impl io::IsAtty for sys::stdio::Stdin {
+    fn is_atty() -> bool {
+        unsafe { libc::isatty(libc::STDIN_FILENO) != 0 }
+    }
+}
+
+#[unstable(feature = "is_atty", issue = "80937")]
+impl io::IsAtty for sys::stdio::Stdout {
+    fn is_atty() -> bool {
+        unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+    }
+}
+#[unstable(feature = "is_atty", issue = "80937")]
+impl io::IsAtty for sys::stdio::Stderr {
+    fn is_atty() -> bool {
+        unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
+    }
+}

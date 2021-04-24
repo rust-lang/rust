@@ -273,6 +273,8 @@ pub use self::error::{Error, ErrorKind, Result};
 #[unstable(feature = "internal_output_capture", issue = "none")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::set_output_capture;
+#[unstable(feature = "is_atty", issue = "80937")]
+pub use self::stdio::IsAtty;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]

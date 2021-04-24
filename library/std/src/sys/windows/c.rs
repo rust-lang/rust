@@ -389,6 +389,12 @@ pub struct FILE_BASIC_INFO {
 }
 
 #[repr(C)]
+pub struct FILE_NAME_INFO {
+    FileNameLength: DWORD,
+    FileName: [WCHAR; 1],
+}
+
+#[repr(C)]
 pub struct FILE_END_OF_FILE_INFO {
     pub EndOfFile: LARGE_INTEGER,
 }
