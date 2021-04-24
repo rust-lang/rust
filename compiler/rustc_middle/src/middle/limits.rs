@@ -1,4 +1,8 @@
-//! Registering limits, recursion_limit, type_length_limit and const_eval_limit
+//! Registering limits:
+//! * recursion_limit,
+//! * move_size_limit,
+//! * type_length_limit, and
+//! * const_eval_limit
 //!
 //! There are various parts of the compiler that must impose arbitrary limits
 //! on how deeply they recurse to prevent stack overflow. Users can override
@@ -8,13 +12,14 @@
 use crate::bug;
 use rustc_ast as ast;
 use rustc_data_structures::sync::OnceCell;
-use rustc_session::{Limit, Session};
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 
 use std::num::IntErrorKind;
 
 pub fn update_limits(sess: &Session, krate: &ast::Crate) {
     update_limit(sess, krate, &sess.recursion_limit, sym::recursion_limit, 128);
+    update_limit(sess, krate, &sess.move_size_limit, sym::move_size_limit, 0);
     update_limit(sess, krate, &sess.type_length_limit, sym::type_length_limit, 1048576);
     update_limit(sess, krate, &sess.const_eval_limit, sym::const_eval_limit, 1_000_000);
 }
@@ -22,7 +27,7 @@ pub fn update_limits(sess: &Session, krate: &ast::Crate) {
 fn update_limit(
     sess: &Session,
     krate: &ast::Crate,
-    limit: &OnceCell<Limit>,
+    limit: &OnceCell<impl From<usize> + std::fmt::Debug>,
     name: Symbol,
     default: usize,
 ) {
@@ -34,7 +39,7 @@ fn update_limit(
         if let Some(s) = attr.value_str() {
             match s.as_str().parse() {
                 Ok(n) => {
-                    limit.set(Limit::new(n)).unwrap();
+                    limit.set(From::from(n)).unwrap();
                     return;
                 }
                 Err(e) => {
@@ -63,5 +68,5 @@ fn update_limit(
             }
         }
     }
-    limit.set(Limit::new(default)).unwrap();
+    limit.set(From::from(default)).unwrap();
 }

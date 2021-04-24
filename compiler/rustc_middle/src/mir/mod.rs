@@ -12,10 +12,10 @@ use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
+use rustc_hir::{self as hir, HirId};
 use rustc_target::abi::{Size, VariantIdx};
 
 use polonius_engine::Atom;
@@ -1945,6 +1945,29 @@ rustc_index::newtype_index! {
         derive [HashStable]
         DEBUG_FORMAT = "scope[{}]",
         const OUTERMOST_SOURCE_SCOPE = 0,
+    }
+}
+
+impl SourceScope {
+    /// Finds the original HirId this MIR item came from.
+    /// This is necessary after MIR optimizations, as otherwise we get a HirId
+    /// from the function that was inlined instead of the function call site.
+    pub fn lint_root(
+        self,
+        source_scopes: &IndexVec<SourceScope, SourceScopeData<'tcx>>,
+    ) -> Option<HirId> {
+        let mut data = &source_scopes[self];
+        // FIXME(oli-obk): we should be able to just walk the `inlined_parent_scope`, but it
+        // does not work as I thought it would. Needs more investigation and documentation.
+        while data.inlined.is_some() {
+            trace!(?data);
+            data = &source_scopes[data.parent_scope.unwrap()];
+        }
+        trace!(?data);
+        match &data.local_data {
+            ClearCrossCrate::Set(data) => Some(data.lint_root),
+            ClearCrossCrate::Clear => None,
+        }
     }
 }
 
