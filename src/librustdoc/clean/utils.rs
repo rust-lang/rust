@@ -3,9 +3,9 @@ use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::{
     inline, Clean, Crate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
     MacroKind, Path, PathSegment, Primitive, PrimitiveType, ResolvedPath, Type, TypeBinding,
-    TypeKind,
 };
 use crate::core::DocContext;
+use crate::formats::item_type::ItemType;
 
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -435,29 +435,29 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
     debug!("register_res({:?})", res);
 
     let (did, kind) = match res {
-        Res::Def(DefKind::Fn, i) => (i, TypeKind::Function),
-        Res::Def(DefKind::TyAlias, i) => (i, TypeKind::Typedef),
-        Res::Def(DefKind::Enum, i) => (i, TypeKind::Enum),
-        Res::Def(DefKind::Trait, i) => (i, TypeKind::Trait),
+        Res::Def(DefKind::Fn, i) => (i, ItemType::Function),
+        Res::Def(DefKind::TyAlias, i) => (i, ItemType::Typedef),
+        Res::Def(DefKind::Enum, i) => (i, ItemType::Enum),
+        Res::Def(DefKind::Trait, i) => (i, ItemType::Trait),
         Res::Def(DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst, i) => {
-            (cx.tcx.parent(i).unwrap(), TypeKind::Trait)
+            (cx.tcx.parent(i).unwrap(), ItemType::Trait)
         }
-        Res::Def(DefKind::Struct, i) => (i, TypeKind::Struct),
-        Res::Def(DefKind::Union, i) => (i, TypeKind::Union),
-        Res::Def(DefKind::Mod, i) => (i, TypeKind::Module),
-        Res::Def(DefKind::ForeignTy, i) => (i, TypeKind::Foreign),
-        Res::Def(DefKind::Const, i) => (i, TypeKind::Const),
-        Res::Def(DefKind::Static, i) => (i, TypeKind::Static),
+        Res::Def(DefKind::Struct, i) => (i, ItemType::Struct),
+        Res::Def(DefKind::Union, i) => (i, ItemType::Union),
+        Res::Def(DefKind::Mod, i) => (i, ItemType::Module),
+        Res::Def(DefKind::ForeignTy, i) => (i, ItemType::ForeignType),
+        Res::Def(DefKind::Const, i) => (i, ItemType::Constant),
+        Res::Def(DefKind::Static, i) => (i, ItemType::Static),
         Res::Def(DefKind::Variant, i) => {
-            (cx.tcx.parent(i).expect("cannot get parent def id"), TypeKind::Enum)
+            (cx.tcx.parent(i).expect("cannot get parent def id"), ItemType::Enum)
         }
         Res::Def(DefKind::Macro(mac_kind), i) => match mac_kind {
-            MacroKind::Bang => (i, TypeKind::Macro),
-            MacroKind::Attr => (i, TypeKind::Attr),
-            MacroKind::Derive => (i, TypeKind::Derive),
+            MacroKind::Bang => (i, ItemType::Macro),
+            MacroKind::Attr => (i, ItemType::ProcAttribute),
+            MacroKind::Derive => (i, ItemType::ProcDerive),
         },
-        Res::Def(DefKind::TraitAlias, i) => (i, TypeKind::TraitAlias),
-        Res::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
+        Res::Def(DefKind::TraitAlias, i) => (i, ItemType::TraitAlias),
+        Res::SelfTy(Some(def_id), _) => (def_id, ItemType::Trait),
         Res::SelfTy(_, Some((impl_def_id, _))) => return impl_def_id,
         _ => return res.def_id(),
     };
@@ -465,7 +465,7 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         return did;
     }
     inline::record_extern_fqn(cx, did, kind);
-    if let TypeKind::Trait = kind {
+    if let ItemType::Trait = kind {
         inline::record_extern_trait(cx, did);
     }
     did
