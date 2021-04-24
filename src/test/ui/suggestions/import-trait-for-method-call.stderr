@@ -12,6 +12,7 @@ LL |     fn finish(&self) -> u64;
    |        the method is available for `Box<DefaultHasher>` here
    |        the method is available for `Box<&mut DefaultHasher>` here
    |
+   = help: items from traits can only be used if the trait is in scope
 help: consider wrapping the receiver expression with the appropriate type
    |
 LL |     Box::new(h).finish()
@@ -20,6 +21,10 @@ help: consider wrapping the receiver expression with the appropriate type
    |
 LL |     Box::new(&mut h).finish()
    |     ^^^^^^^^^^^^^  ^
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL | use std::hash::Hasher;
+   |
 
 error: aborting due to previous error
 

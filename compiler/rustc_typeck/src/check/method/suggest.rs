@@ -1047,7 +1047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if !alt_rcvr_sugg && self.suggest_valid_traits(err, valid_out_of_scope_traits) {
+        if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
         }
 
