@@ -461,6 +461,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         )
                         .into()
                     }
+                    (&GenericParamDefKind::Const { has_default }, hir::GenericArg::Infer(inf)) => {
+                        if has_default {
+                            // FIXME(const_generics): Actually infer parameter here?
+                            tcx.const_param_default(param.def_id).into()
+                        } else {
+                            self.inferred_params.push(inf.span);
+                            tcx.ty_error().into()
+                        }
+                    }
+                    (
+                        &GenericParamDefKind::Type { has_default, .. },
+                        hir::GenericArg::Infer(inf),
+                    ) => {
+                        if has_default {
+                            tcx.check_optional_stability(
+                                param.def_id,
+                                Some(arg.id()),
+                                arg.span(),
+                                |_, _| {
+                                    // Default generic parameters may not be marked
+                                    // with stability attributes, i.e. when the
+                                    // default parameter was defined at the same time
+                                    // as the rest of the type. As such, we ignore missing
+                                    // stability attributes.
+                                },
+                            );
+                        }
+                        if self.astconv.allow_ty_infer() {
+                            self.astconv.ast_ty_to_ty(&inf.to_ty()).into()
+                        } else {
+                            self.inferred_params.push(inf.span);
+                            tcx.ty_error().into()
+                        }
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -1921,6 +1955,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err_for_ct = true;
                         has_err = true;
                         (ct.span, "const")
+                    }
+                    hir::GenericArg::Infer(inf) => {
+                        if err_for_ty {
+                            continue;
+                        }
+                        has_err = true;
+                        err_for_ty = true;
+                        (inf.span, "inferred")
                     }
                 };
                 let mut err = struct_span_err!(

@@ -336,6 +336,7 @@ pub enum ParamKindOrd {
     // is active. Specifically, if it's only `min_const_generics`, it will still require
     // ordering consts after types.
     Const { unordered: bool },
+    Infer,
 }
 
 impl Ord for ParamKindOrd {
@@ -343,7 +344,7 @@ impl Ord for ParamKindOrd {
         use ParamKindOrd::*;
         let to_int = |v| match v {
             Lifetime => 0,
-            Type | Const { unordered: true } => 1,
+            Infer | Type | Const { unordered: true } => 1,
             // technically both consts should be ordered equally,
             // but only one is ever encountered at a time, so this is
             // fine.
@@ -371,6 +372,7 @@ impl fmt::Display for ParamKindOrd {
             ParamKindOrd::Lifetime => "lifetime".fmt(f),
             ParamKindOrd::Type => "type".fmt(f),
             ParamKindOrd::Const { .. } => "const".fmt(f),
+            ParamKindOrd::Infer => "infer".fmt(f),
         }
     }
 }

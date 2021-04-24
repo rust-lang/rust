@@ -2007,6 +2007,7 @@ crate enum GenericArg {
     Lifetime(Lifetime),
     Type(Type),
     Const(Constant),
+    Infer,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

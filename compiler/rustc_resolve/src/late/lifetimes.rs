@@ -2557,6 +2557,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 GenericArg::Const(ct) => {
                     self.visit_anon_const(&ct.value);
                 }
+                GenericArg::Infer(inf) => {
+                    self.visit_id(inf.hir_id);
+                    i += 1;
+                }
             }
         }
 

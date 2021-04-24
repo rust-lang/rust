@@ -1188,6 +1188,23 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
+    fn visit_generic_arg(&mut self, generic_arg: &'tcx hir::GenericArg<'tcx>) {
+        match generic_arg {
+            hir::GenericArg::Type(t) => self.visit_ty(t),
+            hir::GenericArg::Infer(inf) => {
+                self.span = inf.span;
+                let parent_hir_id = self.tcx.hir().get_parent_node(inf.hir_id);
+                if let Some(typeck_results) = self.maybe_typeck_results {
+                    let node_substs = typeck_results.node_substs(parent_hir_id);
+                    for ty in node_substs.types() {
+                        self.visit(ty);
+                    }
+                }
+            }
+            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
+        }
+    }
+
     fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
         self.span = hir_ty.span;
         if let Some(typeck_results) = self.maybe_typeck_results {
@@ -1441,6 +1458,14 @@ impl<'a, 'b, 'tcx, 'v> Visitor<'v> for ObsoleteCheckTypeForPrivatenessVisitor<'a
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
         NestedVisitorMap::None
+    }
+
+    fn visit_generic_arg(&mut self, generic_arg: &'v hir::GenericArg<'v>) {
+        match generic_arg {
+            hir::GenericArg::Type(t) => self.visit_ty(t),
+            hir::GenericArg::Infer(inf) => self.visit_ty(&inf.to_ty()),
+            hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
+        }
     }
 
     fn visit_ty(&mut self, ty: &hir::Ty<'_>) {

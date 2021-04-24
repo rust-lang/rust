@@ -18,6 +18,23 @@ use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, MultiSpan, Span};
 use smallvec::SmallVec;
 
+/*
+pub fn generic_arg_for_infer_arg<'tcx>(tcx: TyCtxt<'tcx>, did: LocalDefId) -> GenericArg<'tcx> {
+    todo!()
+    let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+    let arg = match tcx.hir().get(hir_id) {
+        hir::Node::GenericParam(hir::GenericParam {
+            kind: hir::GenericParamKind::Const { ty: _, default: _ },
+            ..
+        }) => todo!(),
+        _ => bug!("Expected GenericParam for generic_arg_for_infer_arg"),
+    };
+
+    assert!(!matches!(arg, GenericArg::Infer(_)));
+    arg
+}
+*/
+
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.
@@ -39,7 +56,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         if let GenericParamDefKind::Const { .. } = param.kind {
-            if let GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. }) = arg {
+            if matches!(
+                arg,
+                GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. }) | GenericArg::Infer(_)
+            ) {
                 err.help("const arguments cannot yet be inferred with `_`");
             }
         }
@@ -249,14 +269,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (Some(&arg), Some(&param)) => {
                         match (arg, &param.kind, arg_count.explicit_late_bound) {
                             (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
-                            | (GenericArg::Type(_), GenericParamDefKind::Type { .. }, _)
-                            | (GenericArg::Const(_), GenericParamDefKind::Const { .. }, _) => {
+                            | (
+                                GenericArg::Type(_) | GenericArg::Infer(_),
+                                GenericParamDefKind::Type { .. },
+                                _,
+                            )
+                            | (
+                                GenericArg::Const(_) | GenericArg::Infer(_),
+                                GenericParamDefKind::Const { .. },
+                                _,
+                            ) => {
                                 substs.push(ctx.provided_kind(param, arg));
                                 args.next();
                                 params.next();
                             }
                             (
-                                GenericArg::Type(_) | GenericArg::Const(_),
+                                GenericArg::Infer(_) | GenericArg::Type(_) | GenericArg::Const(_),
                                 GenericParamDefKind::Lifetime,
                                 _,
                             ) => {
@@ -325,6 +353,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                                     .features()
                                                     .unordered_const_ty_params(),
                                             },
+                                            GenericArg::Infer(_) => ParamKindOrd::Infer,
                                         }),
                                         Some(&format!(
                                             "reorder the arguments: {}: `<{}>`",
@@ -581,7 +610,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             check_types_and_consts(
                 expected_min,
                 param_counts.consts + named_type_param_count,
-                arg_counts.consts + arg_counts.types,
+                arg_counts.consts + arg_counts.types + arg_counts.infer,
                 param_counts.lifetimes + has_self as usize,
                 arg_counts.lifetimes,
             )
@@ -622,7 +651,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .args
                 .iter()
                 .filter_map(|arg| match arg {
-                    GenericArg::Type(_) | GenericArg::Const(_) => Some(arg.span()),
+                    GenericArg::Infer(_) | GenericArg::Type(_) | GenericArg::Const(_) => {
+                        Some(arg.span())
+                    }
                     _ => None,
                 })
                 .collect::<Vec<_>>();

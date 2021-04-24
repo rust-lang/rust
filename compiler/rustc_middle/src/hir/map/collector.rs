@@ -404,6 +404,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_infer(&mut self, inf: &'hir InferArg) {
+        self.insert(inf.span, inf.hir_id, Node::Infer(inf));
+
+        self.with_parent(inf.hir_id, |this| {
+            intravisit::walk_inf(this, inf);
+        });
+    }
+
     fn visit_trait_ref(&mut self, tr: &'hir TraitRef<'hir>) {
         self.insert(tr.path.span, tr.hir_ref_id, Node::TraitRef(tr));
 
