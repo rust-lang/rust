@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, ItemKind, Node, StmtKind};
+use rustc_hir::{Expr, ExprKind, ItemKind, Node, Stmt, StmtKind};
 use rustc_infer::infer;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, Ty};
@@ -489,18 +489,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let found = self.resolve_vars_with_obligations(found);
 
-        if self.in_loop(id) {
-            if self.in_local_statement(id) {
-                err.multipart_suggestion(
-                    "you might have meant to break the loop with this value",
-                    vec![
-                        (expr.span.shrink_to_lo(), "break ".to_string()),
-                        (expr.span.shrink_to_hi(), ";".to_string()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                );
-                return;
-            }
+        let in_loop = self.is_loop(id)
+            || self.tcx.hir().parent_iter(id).any(|(parent_id, _)| self.is_loop(parent_id));
+
+        let in_local_statement = self.is_local_statement(id)
+            || self
+                .tcx
+                .hir()
+                .parent_iter(id)
+                .any(|(parent_id, _)| self.is_local_statement(parent_id));
+
+        if in_loop && in_local_statement {
+            err.multipart_suggestion(
+                "you might have meant to break the loop with this value",
+                vec![
+                    (expr.span.shrink_to_lo(), "break ".to_string()),
+                    (expr.span.shrink_to_hi(), ";".to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+            return;
         }
 
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
@@ -533,55 +541,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn in_loop(&self, id: hir::HirId) -> bool {
-        if self.is_loop(id) {
-            return true;
-        }
-
-        for (parent_id, _) in self.tcx.hir().parent_iter(id) {
-            if self.is_loop(parent_id) {
-                return true;
-            }
-        }
-
-        false
-    }
-
     fn is_loop(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir().get(id);
-
-        if let Node::Expr(expr) = node {
-            if let ExprKind::Loop(..) = expr.kind {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    fn in_local_statement(&self, id: hir::HirId) -> bool {
-        if self.is_local_statement(id) {
-            return true;
-        }
-
-        for (parent_id, _) in self.tcx.hir().parent_iter(id) {
-            if self.is_local_statement(parent_id) {
-                return true;
-            }
-        }
-
-        false
+        matches!(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
     }
 
     fn is_local_statement(&self, id: hir::HirId) -> bool {
         let node = self.tcx.hir().get(id);
-
-        if let Node::Stmt(stmt) = node {
-            if let StmtKind::Local(..) = stmt.kind {
-                return true;
-            }
-        }
-
-        false
+        matches!(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
     }
 }
