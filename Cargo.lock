@@ -3602,6 +3602,7 @@ dependencies = [
  "libz-sys",
  "proc-macro2",
  "quote",
+ "rand_core 0.5.1",
  "serde",
  "serde_json",
  "smallvec",
