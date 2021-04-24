@@ -181,21 +181,8 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         Ok(())
     }
 
-    fn mod_item_in(&mut self, item: &clean::Item) -> Result<(), Error> {
-        use clean::types::ItemKind::*;
-        if let ModuleItem(m) = &*item.kind {
-            for item in &m.items {
-                match &*item.kind {
-                    // These don't have names so they don't get added to the output by default
-                    ImportItem(_) => self.item(item.clone()).unwrap(),
-                    ExternCrateItem { .. } => self.item(item.clone()).unwrap(),
-                    ImplItem(i) => i.items.iter().for_each(|i| self.item(i.clone()).unwrap()),
-                    _ => {}
-                }
-            }
-        }
-        self.item(item.clone()).unwrap();
-        Ok(())
+    fn mod_item_in(&mut self, _item: &clean::Item) -> Result<(), Error> {
+        unreachable!("RUN_ON_MODULE = false should never call mod_item_in")
     }
 
     fn after_krate(&mut self) -> Result<(), Error> {
