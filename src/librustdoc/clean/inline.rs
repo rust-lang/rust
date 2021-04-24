@@ -487,7 +487,7 @@ fn build_module(
         }
     }
 
-    clean::Module { items, is_crate: false }
+    clean::Module { items }
 }
 
 crate fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
