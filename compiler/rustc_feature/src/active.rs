@@ -63,6 +63,10 @@ macro_rules! declare_features {
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
+
+            pub fn unordered_const_ty_params(&self) -> bool {
+                self.const_generics || self.const_generics_defaults
+            }
         }
     };
 }
