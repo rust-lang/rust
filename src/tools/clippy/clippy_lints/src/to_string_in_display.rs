@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{is_diagnostic_assoc_item, match_def_path, path_to_local_id, paths};
+use clippy_utils::{is_diag_trait_item, match_def_path, path_to_local_id, paths};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -95,7 +95,7 @@ impl LateLintPass<'_> for ToStringInDisplay {
             if let ExprKind::MethodCall(path, _, args, _) = expr.kind;
             if path.ident.name == sym!(to_string);
             if let Some(expr_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-            if is_diagnostic_assoc_item(cx, expr_def_id, sym::ToString);
+            if is_diag_trait_item(cx, expr_def_id, sym::ToString);
             if path_to_local_id(&args[0], self_hir_id);
             then {
                 span_lint(

@@ -391,12 +391,9 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        matches!(
-            *self.kind,
-            StrippedItem(box ModuleItem(Module { is_crate: true, .. }))
-                | ModuleItem(Module { is_crate: true, .. })
-        )
+        self.is_mod() && self.def_id.index == CRATE_DEF_INDEX
     }
+
     crate fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
     }
@@ -608,7 +605,6 @@ impl ItemKind {
 #[derive(Clone, Debug)]
 crate struct Module {
     crate items: Vec<Item>,
-    crate is_crate: bool,
 }
 
 crate struct ListAttributesIter<'a> {
@@ -1103,7 +1099,7 @@ impl GenericBound {
         let did = cx.tcx.require_lang_item(LangItem::Sized, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, cx.tcx.item_name(did), Some(did), false, vec![], empty);
-        inline::record_extern_fqn(cx, did, TypeKind::Trait);
+        inline::record_extern_fqn(cx, did, ItemType::Trait);
         GenericBound::TraitBound(
             PolyTrait {
                 trait_: ResolvedPath { path, param_names: None, did, is_generic: false },
@@ -1440,62 +1436,6 @@ crate enum PrimitiveType {
     Reference,
     Fn,
     Never,
-}
-
-#[derive(Clone, PartialEq, Eq, Hash, Copy, Debug)]
-crate enum TypeKind {
-    Enum,
-    Function,
-    Module,
-    Const,
-    Static,
-    Struct,
-    Union,
-    Trait,
-    Typedef,
-    Foreign,
-    Macro,
-    Attr,
-    Derive,
-    TraitAlias,
-    Primitive,
-}
-
-impl From<hir::def::DefKind> for TypeKind {
-    fn from(other: hir::def::DefKind) -> Self {
-        match other {
-            hir::def::DefKind::Enum => Self::Enum,
-            hir::def::DefKind::Fn => Self::Function,
-            hir::def::DefKind::Mod => Self::Module,
-            hir::def::DefKind::Const => Self::Const,
-            hir::def::DefKind::Static => Self::Static,
-            hir::def::DefKind::Struct => Self::Struct,
-            hir::def::DefKind::Union => Self::Union,
-            hir::def::DefKind::Trait => Self::Trait,
-            hir::def::DefKind::TyAlias => Self::Typedef,
-            hir::def::DefKind::TraitAlias => Self::TraitAlias,
-            hir::def::DefKind::Macro(_) => Self::Macro,
-            hir::def::DefKind::ForeignTy
-            | hir::def::DefKind::Variant
-            | hir::def::DefKind::AssocTy
-            | hir::def::DefKind::TyParam
-            | hir::def::DefKind::ConstParam
-            | hir::def::DefKind::Ctor(..)
-            | hir::def::DefKind::AssocFn
-            | hir::def::DefKind::AssocConst
-            | hir::def::DefKind::ExternCrate
-            | hir::def::DefKind::Use
-            | hir::def::DefKind::ForeignMod
-            | hir::def::DefKind::AnonConst
-            | hir::def::DefKind::OpaqueTy
-            | hir::def::DefKind::Field
-            | hir::def::DefKind::LifetimeParam
-            | hir::def::DefKind::GlobalAsm
-            | hir::def::DefKind::Impl
-            | hir::def::DefKind::Closure
-            | hir::def::DefKind::Generator => Self::Foreign,
-        }
-    }
 }
 
 crate trait GetDefId {
@@ -1983,7 +1923,7 @@ crate enum Variant {
 
 /// Small wrapper around [`rustc_span::Span]` that adds helper methods
 /// and enforces calling [`rustc_span::Span::source_callsite()`].
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 crate struct Span(rustc_span::Span);
 
 impl Span {

@@ -206,4 +206,18 @@ fn fp_test() {
     }
 }
 
+fn fp_if_let_issue7054() {
+    // This shouldn't trigger the lint
+    let string;
+    let _x = if let true = true {
+        ""
+    } else if true {
+        string = "x".to_owned();
+        &string
+    } else {
+        string = "y".to_owned();
+        &string
+    };
+}
+
 fn main() {}

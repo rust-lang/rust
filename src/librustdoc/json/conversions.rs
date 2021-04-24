@@ -10,7 +10,6 @@ use rustc_ast::ast;
 use rustc_hir::def::CtorKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_span::symbol::Symbol;
 use rustc_span::Pos;
 
 use rustdoc_json_types::*;
@@ -34,10 +33,17 @@ impl JsonRenderer<'_> {
                 did.map(|did| (link.clone(), from_def_id(did)))
             })
             .collect();
-        let clean::Item { span, name, attrs, kind, visibility, def_id } = item;
-        let inner = match *kind {
+        let docs = item.attrs.collapsed_doc_value();
+        let attrs = item
+            .attrs
+            .other_attrs
+            .iter()
+            .map(rustc_ast_pretty::pprust::attribute_to_string)
+            .collect();
+        let clean::Item { span, name, attrs: _, kind: _, visibility, def_id } = item;
+        let inner = match *item.kind {
             clean::StrippedItem(_) => return None,
-            kind => from_clean_item_kind(kind, self.tcx, &name),
+            _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
             id: from_def_id(def_id),
@@ -45,12 +51,8 @@ impl JsonRenderer<'_> {
             name: name.map(|sym| sym.to_string()),
             span: self.convert_span(span),
             visibility: self.convert_visibility(visibility),
-            docs: attrs.collapsed_doc_value(),
-            attrs: attrs
-                .other_attrs
-                .iter()
-                .map(rustc_ast_pretty::pprust::attribute_to_string)
-                .collect(),
+            docs,
+            attrs,
             deprecation: deprecation.map(from_deprecation),
             inner,
             links,
@@ -172,10 +174,12 @@ crate fn from_def_id(did: DefId) -> Id {
     Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index)))
 }
 
-fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Symbol>) -> ItemEnum {
+fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
     use clean::ItemKind::*;
-    match item {
-        ModuleItem(m) => ItemEnum::Module(m.into_tcx(tcx)),
+    let name = item.name;
+    let is_crate = item.is_crate();
+    match *item.kind {
+        ModuleItem(m) => ItemEnum::Module(Module { is_crate, items: ids(m.items) }),
         ImportItem(i) => ItemEnum::Import(i.into_tcx(tcx)),
         StructItem(s) => ItemEnum::Struct(s.into_tcx(tcx)),
         UnionItem(u) => ItemEnum::Union(u.into_tcx(tcx)),
@@ -211,12 +215,6 @@ fn from_clean_item_kind(item: clean::ItemKind, tcx: TyCtxt<'_>, name: &Option<Sy
             name: name.as_ref().unwrap().to_string(),
             rename: src.map(|x| x.to_string()),
         },
-    }
-}
-
-impl FromWithTcx<clean::Module> for Module {
-    fn from_tcx(module: clean::Module, _tcx: TyCtxt<'_>) -> Self {
-        Module { is_crate: module.is_crate, items: ids(module.items) }
     }
 }
 

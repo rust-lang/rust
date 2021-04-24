@@ -1,0 +1,10 @@
+error: using tabs in doc comments is not recommended
+  --> $DIR/ice-5835.rs:3:10
+   |
+LL |     /// 位    
+   |           ^^^^ help: consider using four spaces per tab
+   |
+   = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
+
+error: aborting due to previous error
+

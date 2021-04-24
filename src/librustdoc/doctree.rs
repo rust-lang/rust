@@ -14,7 +14,6 @@ crate struct Module<'hir> {
     crate items: Vec<(&'hir hir::Item<'hir>, Option<Symbol>)>,
     crate foreigns: Vec<(&'hir hir::ForeignItem<'hir>, Option<Symbol>)>,
     crate macros: Vec<(&'hir hir::MacroDef<'hir>, Option<Symbol>)>,
-    crate is_crate: bool,
 }
 
 impl Module<'hir> {
@@ -28,7 +27,6 @@ impl Module<'hir> {
             items: Vec::new(),
             foreigns: Vec::new(),
             macros: Vec::new(),
-            is_crate: false,
         }
     }
 }

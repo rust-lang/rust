@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{in_macro, match_qpath, SpanlessEq};
+use clippy_utils::{in_macro, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, QPath, StmtKind};
+use rustc_hir::{lang_items::LangItem, BinOpKind, Expr, ExprKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -87,7 +87,13 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
 
                 // Get the variable name
                 let var_name = ares_path.segments[0].ident.name.as_str();
-                const INT_TYPES: [&str; 5] = ["i8", "i16", "i32", "i64", "i128"];
+                const INT_TYPES: [LangItem; 5] = [
+                    LangItem::I8,
+                    LangItem::I16,
+                    LangItem::I32,
+                    LangItem::I64,
+                    LangItem::Isize
+                ];
 
                 match cond_num_val.kind {
                     ExprKind::Lit(ref cond_lit) => {
@@ -99,17 +105,30 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                             };
                         }
                     },
-                    ExprKind::Path(ref cond_num_path) => {
-                        if INT_TYPES.iter().any(|int_type| match_qpath(cond_num_path, &[int_type, "MIN"])) {
-                            print_lint_and_sugg(cx, &var_name, expr);
-                        };
-                    },
-                    ExprKind::Call(func, _) => {
-                        if let ExprKind::Path(ref cond_num_path) = func.kind {
-                            if INT_TYPES.iter().any(|int_type| match_qpath(cond_num_path, &[int_type, "min_value"])) {
-                                print_lint_and_sugg(cx, &var_name, expr);
+                    ExprKind::Path(QPath::TypeRelative(_, name)) => {
+                        if_chain! {
+                            if name.ident.as_str() == "MIN";
+                            if let Some(const_id) = cx.typeck_results().type_dependent_def_id(cond_num_val.hir_id);
+                            if let Some(impl_id) = cx.tcx.impl_of_method(const_id);
+                            let mut int_ids = INT_TYPES.iter().filter_map(|&ty| cx.tcx.lang_items().require(ty).ok());
+                            if int_ids.any(|int_id| int_id == impl_id);
+                            then {
+                                print_lint_and_sugg(cx, &var_name, expr)
                             }
-                        };
+                        }
+                    },
+                    ExprKind::Call(func, []) => {
+                        if_chain! {
+                            if let ExprKind::Path(QPath::TypeRelative(_, name)) = func.kind;
+                            if name.ident.as_str() == "min_value";
+                            if let Some(func_id) = cx.typeck_results().type_dependent_def_id(func.hir_id);
+                            if let Some(impl_id) = cx.tcx.impl_of_method(func_id);
+                            let mut int_ids = INT_TYPES.iter().filter_map(|&ty| cx.tcx.lang_items().require(ty).ok());
+                            if int_ids.any(|int_id| int_id == impl_id);
+                            then {
+                                print_lint_and_sugg(cx, &var_name, expr)
+                            }
+                        }
                     },
                     _ => (),
                 }

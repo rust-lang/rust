@@ -5,7 +5,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_expn_of, parent_node_is_if_expr};
+use clippy_utils::{is_else_clause, is_expn_of};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     snip = snip.make_return();
                 }
 
-                if parent_node_is_if_expr(e, cx) {
+                if is_else_clause(cx.tcx, e) {
                     snip = snip.blockify()
                 }
 

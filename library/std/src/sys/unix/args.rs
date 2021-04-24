@@ -7,7 +7,6 @@
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::marker::PhantomData;
 use crate::vec;
 
 /// One-time global initialization.
@@ -27,8 +26,10 @@ pub fn args() -> Args {
 
 pub struct Args {
     iter: vec::IntoIter<OsString>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Args {}
+impl !Sync for Args {}
 
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -77,7 +78,6 @@ impl DoubleEndedIterator for Args {
 mod imp {
     use super::Args;
     use crate::ffi::{CStr, OsString};
-    use crate::marker::PhantomData;
     use crate::os::unix::prelude::*;
     use crate::ptr;
     use crate::sync::atomic::{AtomicIsize, AtomicPtr, Ordering};
@@ -134,7 +134,7 @@ mod imp {
     }
 
     pub fn args() -> Args {
-        Args { iter: clone().into_iter(), _dont_send_or_sync_me: PhantomData }
+        Args { iter: clone().into_iter() }
     }
 
     fn clone() -> Vec<OsString> {
@@ -156,7 +156,6 @@ mod imp {
 mod imp {
     use super::Args;
     use crate::ffi::CStr;
-    use crate::marker::PhantomData;
 
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
@@ -181,7 +180,7 @@ mod imp {
                 })
                 .collect::<Vec<_>>()
         };
-        Args { iter: vec.into_iter(), _dont_send_or_sync_me: PhantomData }
+        Args { iter: vec.into_iter() }
     }
 
     // As _NSGetArgc and _NSGetArgv aren't mentioned in iOS docs
@@ -248,6 +247,6 @@ mod imp {
             }
         }
 
-        Args { iter: res.into_iter(), _dont_send_or_sync_me: PhantomData }
+        Args { iter: res.into_iter() }
     }
 }

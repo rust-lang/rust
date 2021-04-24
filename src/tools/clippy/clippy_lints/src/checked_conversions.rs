@@ -323,7 +323,7 @@ fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function:
         if let [int] = &*tp.segments;
         then {
             let name = &int.ident.name.as_str();
-            candidates.iter().find(|c| name == *c).cloned()
+            candidates.iter().find(|c| name == *c).copied()
         } else {
             None
         }
@@ -337,7 +337,7 @@ fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
         if let [ty] = &*path.segments;
         then {
             let name = &ty.ident.name.as_str();
-            INTS.iter().find(|c| name == *c).cloned()
+            INTS.iter().find(|c| name == *c).copied()
         } else {
             None
         }

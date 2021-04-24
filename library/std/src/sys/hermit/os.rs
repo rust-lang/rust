@@ -110,8 +110,10 @@ pub fn init_environment(env: *const *const i8) {
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Env {}
+impl !Sync for Env {}
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
@@ -134,7 +136,7 @@ pub fn env() -> Env {
             result.push((key.clone(), value.clone()));
         }
 
-        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
+        return Env { iter: result.into_iter() };
     }
 }
 
