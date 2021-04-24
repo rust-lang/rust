@@ -147,19 +147,12 @@ fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
     if trimmed.starts_with("##") {
         Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
-    } else if trimmed.starts_with('#') {
-        let mut without_hash = trimmed[1..].trim_start();
-        if without_hash.starts_with('!') {
-            // #! text
-            without_hash = without_hash[1..].trim_start_matches(' ');
-        }
-        if without_hash.starts_with('[') {
-            // #[attr] or #![attr]
-            Line::Shown(Cow::Borrowed(s))
-        } else {
-            // #text
-            Line::Hidden(without_hash)
-        }
+    } else if let Some(stripped) = trimmed.strip_prefix("# ") {
+        // # text
+        Line::Hidden(&stripped)
+    } else if trimmed == "#" {
+        // We cannot handle '#text' because it could be #[attr].
+        Line::Hidden("")
     } else {
         Line::Shown(Cow::Borrowed(s))
     }
