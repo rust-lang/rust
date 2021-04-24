@@ -12,7 +12,8 @@ use std::{ffi::OsString, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
 use ide_db::helpers::{
-    insert_use::{InsertUseConfig, MergeBehavior, PrefixKind},
+    insert_use::{InsertUseConfig, PrefixKind},
+    merge_imports::MergeBehavior,
     SnippetCap,
 };
 use lsp_types::{ClientCapabilities, MarkupKind};

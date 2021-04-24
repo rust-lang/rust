@@ -4,10 +4,7 @@ use expect_test::expect;
 use hir::Semantics;
 use ide_db::{
     base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
-    helpers::{
-        insert_use::{InsertUseConfig, MergeBehavior},
-        SnippetCap,
-    },
+    helpers::{insert_use::InsertUseConfig, merge_imports::MergeBehavior, SnippetCap},
     source_change::FileSystemEdit,
     RootDatabase,
 };

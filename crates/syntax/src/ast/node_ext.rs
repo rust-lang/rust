@@ -1,7 +1,7 @@
 //! Various extension methods to ast Nodes, which are hard to code-generate.
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
-use std::fmt;
+use std::{fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
@@ -236,6 +236,26 @@ impl ast::Path {
             Some(_) => None,
             None => self.segment(),
         }
+    }
+
+    pub fn first_qualifier_or_self(&self) -> ast::Path {
+        successors(Some(self.clone()), ast::Path::qualifier).last().unwrap()
+    }
+
+    pub fn first_segment(&self) -> Option<ast::PathSegment> {
+        self.first_qualifier_or_self().segment()
+    }
+
+    pub fn segments(&self) -> impl Iterator<Item = ast::PathSegment> + Clone {
+        // cant make use of SyntaxNode::siblings, because the returned Iterator is not clone
+        successors(self.first_segment(), |p| {
+            p.parent_path().parent_path().and_then(|p| p.segment())
+        })
+    }
+}
+impl ast::UseTree {
+    pub fn is_simple_path(&self) -> bool {
+        self.use_tree_list().is_none() && self.star_token().is_none()
     }
 }
 

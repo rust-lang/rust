@@ -1,4 +1,4 @@
-use ide_db::helpers::insert_use::{try_merge_imports, try_merge_trees, MergeBehavior};
+use ide_db::helpers::merge_imports::{try_merge_imports, try_merge_trees, MergeBehavior};
 use syntax::{algo::neighbor, ast, ted, AstNode};
 
 use crate::{
