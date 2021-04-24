@@ -54,7 +54,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, GetDefId, RenderedLink, SelfTy, TypeKind};
+use crate::clean::{self, GetDefId, RenderedLink, SelfTy};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -182,11 +182,11 @@ impl Serialize for IndexItemFunctionType {
 #[derive(Debug)]
 crate struct TypeWithKind {
     ty: RenderType,
-    kind: TypeKind,
+    kind: ItemType,
 }
 
-impl From<(RenderType, TypeKind)> for TypeWithKind {
-    fn from(x: (RenderType, TypeKind)) -> TypeWithKind {
+impl From<(RenderType, ItemType)> for TypeWithKind {
+    fn from(x: (RenderType, ItemType)) -> TypeWithKind {
         TypeWithKind { ty: x.0, kind: x.1 }
     }
 }
@@ -196,7 +196,7 @@ impl Serialize for TypeWithKind {
     where
         S: Serializer,
     {
-        (&self.ty.name, ItemType::from(self.kind)).serialize(serializer)
+        (&self.ty.name, self.kind).serialize(serializer)
     }
 }
 
