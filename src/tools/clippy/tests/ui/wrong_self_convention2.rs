@@ -30,3 +30,15 @@ mod issue6983 {
         }
     }
 }
+
+mod issue7032 {
+    trait Foo {
+        fn from_usize(x: usize) -> Self;
+    }
+    // don't trigger
+    impl Foo for usize {
+        fn from_usize(x: usize) -> Self {
+            x
+        }
+    }
+}

@@ -215,9 +215,22 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         // the snippet should look like " else \n    " with maybe comments anywhere
         // it’s bad when there is a ‘\n’ after the “else”
         if let Some(else_snippet) = snippet_opt(cx, else_span);
-        if let Some(else_pos) = else_snippet.find("else");
-        if else_snippet[else_pos..].contains('\n');
+        if let Some((pre_else, post_else)) = else_snippet.split_once("else");
+        if let Some((_, post_else_post_eol)) = post_else.split_once('\n');
+
         then {
+            // Allow allman style braces `} \n else \n {`
+            if_chain! {
+                if is_block(else_);
+                if let Some((_, pre_else_post_eol)) = pre_else.split_once('\n');
+                // Exactly one eol before and after the else
+                if !pre_else_post_eol.contains('\n');
+                if !post_else_post_eol.contains('\n');
+                then {
+                    return;
+                }
+            }
+
             let else_desc = if is_if(else_) { "if" } else { "{..}" };
             span_lint_and_note(
                 cx,

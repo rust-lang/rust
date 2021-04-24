@@ -27,8 +27,8 @@ LL |     let bs = "lit to owned".to_owned().into_bytes();
 error: calling `as_bytes()` on `include_str!(..)`
   --> $DIR/string_lit_as_bytes.rs:25:22
    |
-LL |     let includestr = include_str!("entry_unfixable.rs").as_bytes();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("entry_unfixable.rs")`
+LL |     let includestr = include_str!("string_lit_as_bytes.rs").as_bytes();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("string_lit_as_bytes.rs")`
 
 error: calling `as_bytes()` on a string literal
   --> $DIR/string_lit_as_bytes.rs:27:13
