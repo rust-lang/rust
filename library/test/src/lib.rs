@@ -292,11 +292,7 @@ where
     fn calc_timeout(timeout_queue: &VecDeque<TimeoutEntry>) -> Option<Duration> {
         timeout_queue.front().map(|&TimeoutEntry { timeout: next_timeout, .. }| {
             let now = Instant::now();
-            if next_timeout >= now {
-                next_timeout - now
-            } else {
-                Duration::new(0, 0)
-            }
+            if next_timeout >= now { next_timeout - now } else { Duration::new(0, 0) }
         })
     }
 

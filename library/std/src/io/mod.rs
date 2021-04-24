@@ -2224,11 +2224,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
 
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
-        if initializer.should_initialize() {
-            initializer
-        } else {
-            self.second.initializer()
-        }
+        if initializer.should_initialize() { initializer } else { self.second.initializer() }
     }
 }
 
@@ -2247,11 +2243,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     }
 
     fn consume(&mut self, amt: usize) {
-        if !self.done_first {
-            self.first.consume(amt)
-        } else {
-            self.second.consume(amt)
-        }
+        if !self.done_first { self.first.consume(amt) } else { self.second.consume(amt) }
     }
 }
 
