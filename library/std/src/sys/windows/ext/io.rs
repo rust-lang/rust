@@ -221,9 +221,9 @@ impl IntoRawSocket for net::UdpSocket {
     }
 }
 
-#[unstable(feature = "is_atty", issue = "80937")]
-impl io::IsAtty for sys::stdio::Stdin {
-    fn is_atty() -> bool {
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stdin {
+    fn is_terminal() -> bool {
         use c::{
             STD_ERROR_HANDLE as STD_ERROR, STD_INPUT_HANDLE as STD_INPUT,
             STD_OUTPUT_HANDLE as STD_OUTPUT,
@@ -252,9 +252,9 @@ impl io::IsAtty for sys::stdio::Stdin {
     }
 }
 
-#[unstable(feature = "is_atty", issue = "80937")]
-impl io::IsAtty for sys::stdio::Stdout {
-    fn is_atty() -> bool {
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stdout {
+    fn is_terminal() -> bool {
         use c::{
             STD_ERROR_HANDLE as STD_ERROR, STD_INPUT_HANDLE as STD_INPUT,
             STD_OUTPUT_HANDLE as STD_OUTPUT,
@@ -283,9 +283,9 @@ impl io::IsAtty for sys::stdio::Stdout {
     }
 }
 
-#[unstable(feature = "is_atty", issue = "80937")]
-impl io::IsAtty for sys::stdio::Stderr {
-    fn is_atty() -> bool {
+#[unstable(feature = "is_terminal", issue = "80937")]
+impl io::IsTerminal for sys::stdio::Stderr {
+    fn is_terminal() -> bool {
         use c::{
             STD_ERROR_HANDLE as STD_ERROR, STD_INPUT_HANDLE as STD_INPUT,
             STD_OUTPUT_HANDLE as STD_OUTPUT,
@@ -314,7 +314,7 @@ impl io::IsAtty for sys::stdio::Stderr {
     }
 }
 
-#[unstable(feature = "is_atty", issue = "80937")]
+#[unstable(feature = "is_terminal", issue = "80937")]
 unsafe fn console_on_any(fds: &[c::DWORD]) -> bool {
     use c::{GetConsoleMode, GetStdHandle};
 
@@ -327,7 +327,7 @@ unsafe fn console_on_any(fds: &[c::DWORD]) -> bool {
     }
     false
 }
-#[unstable(feature = "is_atty", issue = "80937")]
+#[unstable(feature = "is_terminal", issue = "80937")]
 unsafe fn msys_tty_on(fd: c::DWORD) -> bool {
     use std::{mem, slice};
 

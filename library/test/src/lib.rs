@@ -30,7 +30,7 @@
 #![feature(termination_trait_lib)]
 #![feature(test)]
 #![feature(total_cmp)]
-#![feature(is_atty)]
+#![feature(is_terminal)]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};
@@ -292,7 +292,11 @@ where
     fn calc_timeout(timeout_queue: &VecDeque<TimeoutEntry>) -> Option<Duration> {
         timeout_queue.front().map(|&TimeoutEntry { timeout: next_timeout, .. }| {
             let now = Instant::now();
-            if next_timeout >= now { next_timeout - now } else { Duration::new(0, 0) }
+            if next_timeout >= now {
+                next_timeout - now
+            } else {
+                Duration::new(0, 0)
+            }
         })
     }
 

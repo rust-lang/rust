@@ -335,7 +335,7 @@
 #![feature(unwind_attributes)]
 #![feature(vec_into_raw_parts)]
 #![feature(vec_spare_capacity)]
-#![feature(is_atty)]
+#![feature(is_terminal)]
 // NB: the above list is sorted to minimize merge conflicts.
 #![default_lib_allocator]
 

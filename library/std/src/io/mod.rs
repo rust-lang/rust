@@ -273,8 +273,8 @@ pub use self::error::{Error, ErrorKind, Result};
 #[unstable(feature = "internal_output_capture", issue = "none")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::set_output_capture;
-#[unstable(feature = "is_atty", issue = "80937")]
-pub use self::stdio::IsAtty;
+#[unstable(feature = "is_terminal", issue = "80937")]
+pub use self::stdio::IsTerminal;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2224,7 +2224,11 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
 
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
-        if initializer.should_initialize() { initializer } else { self.second.initializer() }
+        if initializer.should_initialize() {
+            initializer
+        } else {
+            self.second.initializer()
+        }
     }
 }
 
@@ -2243,7 +2247,11 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     }
 
     fn consume(&mut self, amt: usize) {
-        if !self.done_first { self.first.consume(amt) } else { self.second.consume(amt) }
+        if !self.done_first {
+            self.first.consume(amt)
+        } else {
+            self.second.consume(amt)
+        }
     }
 }
 

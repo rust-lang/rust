@@ -966,54 +966,54 @@ pub fn _eprint(args: fmt::Arguments<'_>) {
 #[cfg(test)]
 pub use realstd::io::{_eprint, _print};
 
-/// Trait to determine if stdio stream (Stdin, Stdout, Stderr) is a tty.
-#[unstable(feature = "is_atty", issue = "80937")]
-pub trait IsAtty {
-    /// returns true if implemented stream is a tty.
-    fn is_atty() -> bool;
+/// Trait to determine if stdio stream (Stdin, Stdout, Stderr) is a terminal/tty.
+#[unstable(feature = "is_terminal", issue = "80937")]
+pub trait IsTerminal {
+    /// returns true if stdio stream (Stdin, Stdout, Stderr) is a terminal/tty.
+    fn is_terminal() -> bool;
 }
 
-#[unstable(feature = "is_atty", issue = "80937")]
+#[unstable(feature = "is_terminal", issue = "80937")]
 cfg_if::cfg_if! {
     if #[cfg(any(unix, windows, hermit))] {
-        #[unstable(feature = "is_atty", issue = "80937")]
-        impl IsAtty for Stdin {
-            fn is_atty() -> bool {
-               stdio::Stdin::is_atty()
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdin {
+            fn is_terminal() -> bool {
+               stdio::Stdin::is_terminal()
             }
         }
 
-        #[unstable(feature = "is_atty", issue = "80937")]
-        impl IsAtty for Stdout {
-            fn is_atty() -> bool {
-                stdio::Stdout::is_atty()
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdout {
+            fn is_terminal() -> bool {
+                stdio::Stdout::is_terminal()
             }
         }
 
-        #[unstable(feature = "is_atty", issue = "80937")]
-        impl IsAtty for Stderr {
-            fn is_atty() -> bool {
-                stdio::Stderr::is_atty()
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stderr {
+            fn is_terminal() -> bool {
+                stdio::Stderr::is_terminal()
             }
         }
     } else {
-        #[unstable(feature = "is_atty", issue = "80937")]
-        impl IsAtty for Stdin {
-            fn is_atty() -> bool {
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdin {
+            fn is_terminal() -> bool {
                 false
             }
         }
 
-        #[unstable(feature = "is_atty", issue = "80937")]
-        impl IsAtty for Stdout {
-            fn is_atty() -> bool {
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stdout {
+            fn is_terminal() -> bool {
                 false
             }
         }
 
-        #[unstable(feature = "is_atty", issue = "80937")]
-        impl IsAtty for Stderr {
-            fn is_atty() -> bool {
+        #[unstable(feature = "is_terminal", issue = "80937")]
+        impl IsTerminal for Stderr {
+            fn is_terminal() -> bool {
                 false
             }
         }
