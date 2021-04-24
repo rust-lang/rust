@@ -24,4 +24,8 @@ fn foo() -> i8 {
     loop {
         return 1;
     }
+
+    loop {
+        1 //~ ERROR mismatched types
+    }
 }
