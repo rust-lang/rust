@@ -249,6 +249,9 @@ pub struct Config {
     /// Force the pass mode of a check/build/run-pass test to this mode.
     pub force_pass_mode: Option<PassMode>,
 
+    /// Explicitly enable or disable running.
+    pub run: Option<bool>,
+
     /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
 

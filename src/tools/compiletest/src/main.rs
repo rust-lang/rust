@@ -87,6 +87,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "force {check,build,run}-pass tests to this mode.",
             "check | build | run",
         )
+        .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
         .optopt(
@@ -233,6 +234,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         force_pass_mode: matches.opt_str("pass").map(|mode| {
             mode.parse::<PassMode>()
                 .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
+        }),
+        run: matches.opt_str("run").and_then(|mode| match mode.as_str() {
+            "auto" => None,
+            "always" => Some(true),
+            "never" => Some(false),
+            _ => panic!("unknown `--run` option `{}` given", mode),
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),

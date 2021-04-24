@@ -317,6 +317,7 @@ enum TestOutput {
 enum WillExecute {
     Yes,
     No,
+    Disabled,
 }
 
 /// Should `--emit metadata` be used?
@@ -357,13 +358,22 @@ impl<'test> TestCx<'test> {
     }
 
     fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
-        match self.config.mode {
+        let test_should_run = match self.config.mode {
             Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => {
-                WillExecute::Yes
+                true
             }
-            MirOpt if pm == Some(PassMode::Run) => WillExecute::Yes,
-            Ui | MirOpt => WillExecute::No,
+            MirOpt if pm == Some(PassMode::Run) => true,
+            Ui | MirOpt => false,
             mode => panic!("unimplemented for mode {:?}", mode),
+        };
+        let enabled = self.config.run.unwrap_or_else(|| {
+            // Auto-detect whether to run based on the platform.
+            !self.config.target.ends_with("-fuchsia")
+        });
+        match (test_should_run, enabled) {
+            (false, _) => WillExecute::No,
+            (true, true) => WillExecute::Yes,
+            (true, false) => WillExecute::Disabled,
         }
     }
 
@@ -1531,7 +1541,8 @@ impl<'test> TestCx<'test> {
         // Only use `make_exe_name` when the test ends up being executed.
         let output_file = match will_execute {
             WillExecute::Yes => TargetLocation::ThisFile(self.make_exe_name()),
-            WillExecute::No => TargetLocation::ThisDirectory(self.output_base_dir()),
+            WillExecute::No | WillExecute::Disabled =>
+                TargetLocation::ThisDirectory(self.output_base_dir()),
         };
 
         let allow_unused = match self.config.mode {
