@@ -53,17 +53,11 @@ pub struct RawVec<T, A: Allocator = Global> {
 }
 
 impl<T> RawVec<T, Global> {
-    /// HACK(Centril): This exists because `#[unstable]` `const fn`s needn't conform
-    /// to `min_const_fn` and so they cannot be called in `min_const_fn`s either.
+    /// HACK(Centril): This exists because stable `const fn` can only call stable `const fn`, so
+    /// they cannot call `Self::new()`.
     ///
-    /// If you change `RawVec<T>::new` or dependencies, please take care to not
-    /// introduce anything that would truly violate `min_const_fn`.
-    ///
-    /// NOTE: We could avoid this hack and check conformance with some
-    /// `#[rustc_force_min_const_fn]` attribute which requires conformance
-    /// with `min_const_fn` but does not necessarily allow calling it in
-    /// `stable(...) const fn` / user code not enabling `foo` when
-    /// `#[rustc_const_unstable(feature = "foo", issue = "01234")]` is present.
+    /// If you change `RawVec<T>::new` or dependencies, please take care to not introduce anything
+    /// that would truly const-call something unstable.
     pub const NEW: Self = Self::new();
 
     /// Creates the biggest possible `RawVec` (on the system heap)

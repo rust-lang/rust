@@ -139,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
         let mir = cx.tcx.optimized_mir(def_id);
 
         if let Err((span, err)) = is_min_const_fn(cx.tcx, mir, self.msrv.as_ref()) {
-            if rustc_mir::const_eval::is_min_const_fn(cx.tcx, def_id.to_def_id()) {
+            if cx.tcx.is_const_fn_raw(def_id.to_def_id()) {
                 cx.tcx.sess.span_err(span, &err);
             }
         } else {
