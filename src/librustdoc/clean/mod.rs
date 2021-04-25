@@ -122,8 +122,8 @@ impl Clean<Item> for doctree::Module<'_> {
 }
 
 impl Clean<Attributes> for [ast::Attribute] {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Attributes {
-        Attributes::from_ast(cx.sess().diagnostic(), self, None)
+    fn clean(&self, _cx: &mut DocContext<'_>) -> Attributes {
+        Attributes::from_ast(self, None)
     }
 }
 
@@ -1998,6 +1998,7 @@ fn clean_extern_crate(
             return items;
         }
     }
+
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
@@ -2005,6 +2006,7 @@ fn clean_extern_crate(
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
+        cfg: attrs.cfg(cx.sess().diagnostic()),
     }]
 }
 

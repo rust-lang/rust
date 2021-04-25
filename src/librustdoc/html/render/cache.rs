@@ -9,8 +9,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{
-    AttributesExt, FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, TypeKind,
-    WherePredicate,
+    AttributesExt, FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
 };
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;

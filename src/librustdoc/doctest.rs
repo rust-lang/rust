@@ -1093,9 +1093,9 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         nested: F,
     ) {
         let ast_attrs = self.tcx.hir().attrs(hir_id);
+        let mut attrs = Attributes::from_ast(ast_attrs, None);
 
-        let mut attrs = Attributes::from_ast(self.sess.diagnostic(), ast_attrs, None);
-        if let Some(ref cfg) = attrs.cfg {
+        if let Some(ref cfg) = ast_attrs.cfg(self.sess.diagnostic()) {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;
             }
