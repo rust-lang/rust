@@ -20,16 +20,10 @@ cd rust
 
 ## Create a `config.toml`
 
-To start, copy [`config.toml.example`] to `config.toml`:
+To start, run `x.py setup`. This will create a `config.toml` with reasonable defaults.
 
-[`config.toml.example`]: https://github.com/rust-lang/rust/blob/master/config.toml.example
-
-```bash
-cp config.toml.example config.toml
-```
-
-Then you will want to open up the file and change the following
-settings (and possibly others, such as `llvm.ccache`):
+You may also want to change some of the following settings (and possibly others, such as
+`llvm.ccache`):
 
 ```toml
 [llvm]
@@ -54,10 +48,9 @@ debug-logging = true
 incremental = true
 ```
 
-If you have already built `rustc`, then you may have to execute `rm -rf build` for subsequent
-configuration changes to take effect. Note that `./x.py clean` will not cause a
-rebuild of LLVM, so if your configuration change affects LLVM, you will need to
-manually `rm -rf build/` before rebuilding.
+If you have already built `rustc` and you change settings related to LLVM, then you may have to
+execute `rm -rf build` for subsequent configuration changes to take effect. Note that `./x.py
+clean` will not cause a rebuild of LLVM.
 
 ## What is `x.py`?
 
