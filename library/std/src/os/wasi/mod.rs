@@ -25,6 +25,7 @@
 //! }
 //! ```
 
+#![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(cfg(target_os = "wasi"))]
 

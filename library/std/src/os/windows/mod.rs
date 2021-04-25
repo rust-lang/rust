@@ -8,7 +8,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(windows))]
-#![allow(missing_docs)]
 
 pub mod ffi;
 pub mod fs;

@@ -27,44 +27,43 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(cfg(unix))]
-#![allow(missing_docs)]
 
-cfg_if::cfg_if! {
-    if #[cfg(doc)] {
-        // Use linux as the default platform when documenting on other platforms like Windows
-        use crate::os::linux as platform;
-    } else {
-        #[cfg(target_os = "android")]
-        use crate::os::android as platform;
-        #[cfg(target_os = "dragonfly")]
-        use crate::os::dragonfly as platform;
-        #[cfg(target_os = "emscripten")]
-        use crate::os::emscripten as platform;
-        #[cfg(target_os = "freebsd")]
-        use crate::os::freebsd as platform;
-        #[cfg(target_os = "fuchsia")]
-        use crate::os::fuchsia as platform;
-        #[cfg(target_os = "haiku")]
-        use crate::os::haiku as platform;
-        #[cfg(target_os = "illumos")]
-        use crate::os::illumos as platform;
-        #[cfg(target_os = "ios")]
-        use crate::os::ios as platform;
-        #[cfg(any(target_os = "linux", target_os = "l4re"))]
-        use crate::os::linux as platform;
-        #[cfg(target_os = "macos")]
-        use crate::os::macos as platform;
-        #[cfg(target_os = "netbsd")]
-        use crate::os::netbsd as platform;
-        #[cfg(target_os = "openbsd")]
-        use crate::os::openbsd as platform;
-        #[cfg(target_os = "redox")]
-        use crate::os::redox as platform;
-        #[cfg(target_os = "solaris")]
-        use crate::os::solaris as platform;
-        #[cfg(target_os = "vxworks")]
-        use crate::os::vxworks as platform;
-    }
+// Use linux as the default platform when documenting on other platforms like Windows
+#[cfg(doc)]
+use crate::os::linux as platform;
+
+#[cfg(not(doc))]
+mod platform {
+    #[cfg(target_os = "android")]
+    pub use crate::os::android::*;
+    #[cfg(target_os = "dragonfly")]
+    pub use crate::os::dragonfly::*;
+    #[cfg(target_os = "emscripten")]
+    pub use crate::os::emscripten::*;
+    #[cfg(target_os = "freebsd")]
+    pub use crate::os::freebsd::*;
+    #[cfg(target_os = "fuchsia")]
+    pub use crate::os::fuchsia::*;
+    #[cfg(target_os = "haiku")]
+    pub use crate::os::haiku::*;
+    #[cfg(target_os = "illumos")]
+    pub use crate::os::illumos::*;
+    #[cfg(target_os = "ios")]
+    pub use crate::os::ios::*;
+    #[cfg(any(target_os = "linux", target_os = "l4re"))]
+    pub use crate::os::linux::*;
+    #[cfg(target_os = "macos")]
+    pub use crate::os::macos::*;
+    #[cfg(target_os = "netbsd")]
+    pub use crate::os::netbsd::*;
+    #[cfg(target_os = "openbsd")]
+    pub use crate::os::openbsd::*;
+    #[cfg(target_os = "redox")]
+    pub use crate::os::redox::*;
+    #[cfg(target_os = "solaris")]
+    pub use crate::os::solaris::*;
+    #[cfg(target_os = "vxworks")]
+    pub use crate::os::vxworks::*;
 }
 
 pub mod ffi;

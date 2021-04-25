@@ -49,80 +49,27 @@ cfg_if::cfg_if! {
     }
 }
 
-// Import essential modules from both platforms when documenting. These are
-// then later used in the `std::os` module when documenting, for example,
-// Windows when we're compiling for Linux.
+// Import essential modules from platforms used in `std::os` when documenting.
+//
+// Note that on some platforms those modules don't compile
+// (missing things in `libc` which is empty), so they are not included in `std::os` and can be
+// omitted here as well.
 
 #[cfg(doc)]
+#[cfg(not(any(
+    all(target_arch = "wasm32", not(target_os = "wasi")),
+    all(target_vendor = "fortanix", target_env = "sgx")
+)))]
 cfg_if::cfg_if! {
-    if #[cfg(unix)] {
-        // On unix we'll document what's already available
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use self::ext as unix_ext;
-    } else if #[cfg(any(target_os = "hermit",
-                        all(target_arch = "wasm32", not(target_os = "wasi")),
-                        all(target_vendor = "fortanix", target_env = "sgx")))] {
-        // On non-WASI wasm right now the module below doesn't compile
-        // (missing things in `libc` which is empty) so just omit everything
-        // with an empty module
-        #[unstable(issue = "none", feature = "std_internals")]
-        #[allow(missing_docs)]
-        pub mod unix_ext {}
-    } else {
-        #[path = "unix/ext/mod.rs"]
-        pub mod unix_ext;
-    }
-}
-
-#[cfg(doc)]
-cfg_if::cfg_if! {
-    if #[cfg(windows)] {
-        // On windows we'll just be documenting what's already available
-        #[allow(missing_docs)]
-        #[stable(feature = "rust1", since = "1.0.0")]
-        pub use self::ext as windows_ext;
-    } else if #[cfg(any(target_os = "hermit",
-                        all(target_arch = "wasm32", not(target_os = "wasi")),
-                        all(target_vendor = "fortanix", target_env = "sgx")))] {
-        // On non-WASI wasm right now the shim below doesn't compile, so
-        // just omit it
-        #[unstable(issue = "none", feature = "std_internals")]
-        #[allow(missing_docs)]
-        pub mod windows_ext {}
-    } else {
-        // On all other platforms (aka linux/osx/etc) then pull in a "minimal"
+    if #[cfg(not(windows))] {
+        // On non-Windows platforms (aka linux/osx/etc) pull in a "minimal"
         // amount of windows goop which ends up compiling
+
         #[macro_use]
         #[path = "windows/compat.rs"]
-        mod compat;
+        pub mod compat;
 
         #[path = "windows/c.rs"]
-        mod c;
-
-        #[path = "windows/ext/mod.rs"]
-        pub mod windows_ext;
-    }
-}
-
-#[cfg(doc)]
-cfg_if::cfg_if! {
-    if #[cfg(target_os = "wasi")] {
-        // On WASI we'll document what's already available
-        #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
-        pub use self::ext as wasi_ext;
-    } else if #[cfg(any(target_os = "hermit",
-                        target_arch = "wasm32",
-                        all(target_vendor = "fortanix", target_env = "sgx")))] {
-        // On non-WASI wasm right now the module below doesn't compile
-        // (missing things in `libc` which is empty) so just omit everything
-        // with an empty module
-        #[unstable(issue = "none", feature = "std_internals")]
-        #[allow(missing_docs)]
-        pub mod wasi_ext {}
-    } else {
-        // On other platforms like Windows document the bare bones of WASI
-        #[path = "wasi/ext/mod.rs"]
-        #[stable(feature = "wasi_ext_doc", since = "1.35.0")]
-        pub mod wasi_ext;
+        pub mod c;
     }
 }
