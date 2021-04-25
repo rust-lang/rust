@@ -54,126 +54,147 @@ pub trait IntoRawFd {
 
 #[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
 impl AsRawFd for RawFd {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         *self
     }
 }
 #[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
 impl IntoRawFd for RawFd {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self
     }
 }
 #[stable(feature = "raw_fd_reflexive_traits", since = "1.48.0")]
 impl FromRawFd for RawFd {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> RawFd {
         fd
     }
 }
 
 impl AsRawFd for net::TcpStream {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().as_raw()
     }
 }
 
 impl FromRawFd for net::TcpStream {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
         net::TcpStream::from_inner(sys::net::TcpStream::from_inner(fd))
     }
 }
 
 impl IntoRawFd for net::TcpStream {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
     }
 }
 
 impl AsRawFd for net::TcpListener {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().as_raw()
     }
 }
 
 impl FromRawFd for net::TcpListener {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> net::TcpListener {
         net::TcpListener::from_inner(sys::net::TcpListener::from_inner(fd))
     }
 }
 
 impl IntoRawFd for net::TcpListener {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
     }
 }
 
 impl AsRawFd for net::UdpSocket {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().as_raw()
     }
 }
 
 impl FromRawFd for net::UdpSocket {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
         net::UdpSocket::from_inner(sys::net::UdpSocket::from_inner(fd))
     }
 }
 
 impl IntoRawFd for net::UdpSocket {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
     }
 }
 
 impl AsRawFd for fs::File {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().as_raw()
     }
 }
 
 impl FromRawFd for fs::File {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
         fs::File::from_inner(sys::fs::File::from_inner(fd))
     }
 }
 
 impl IntoRawFd for fs::File {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
     }
 }
 
 impl AsRawFd for io::Stdin {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDIN_FILENO as RawFd
     }
 }
 
 impl AsRawFd for io::Stdout {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDOUT_FILENO as RawFd
     }
 }
 
 impl AsRawFd for io::Stderr {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDERR_FILENO as RawFd
     }
 }
 
 impl<'a> AsRawFd for io::StdinLock<'a> {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDIN_FILENO as RawFd
     }
 }
 
 impl<'a> AsRawFd for io::StdoutLock<'a> {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDOUT_FILENO as RawFd
     }
 }
 
 impl<'a> AsRawFd for io::StderrLock<'a> {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         libc::STDERR_FILENO as RawFd
     }

@@ -8,6 +8,7 @@ use crate::thread;
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> AsRawHandle for thread::JoinHandle<T> {
+    #[inline]
     fn as_raw_handle(&self) -> RawHandle {
         self.as_inner().handle().raw() as *mut _
     }
@@ -15,6 +16,7 @@ impl<T> AsRawHandle for thread::JoinHandle<T> {
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> IntoRawHandle for thread::JoinHandle<T> {
+    #[inline]
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
     }
