@@ -1327,13 +1327,13 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
     }
 }
 
-struct AnonConstInParamListDetector {
-    in_param_list: bool,
-    found_anon_const_in_list: bool,
+struct AnonConstInParamTyDetector {
+    in_param_ty: bool,
+    found_anon_const_in_param_ty: bool,
     ct: HirId,
 }
 
-impl<'v> Visitor<'v> for AnonConstInParamListDetector {
+impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
     type Map = intravisit::ErasedMap<'v>;
 
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
@@ -1341,15 +1341,17 @@ impl<'v> Visitor<'v> for AnonConstInParamListDetector {
     }
 
     fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
-        let prev = self.in_param_list;
-        self.in_param_list = true;
-        intravisit::walk_generic_param(self, p);
-        self.in_param_list = prev;
+        if let GenericParamKind::Const { ref ty, default: _ } = p.kind {
+            let prev = self.in_param_ty;
+            self.in_param_ty = true;
+            self.visit_ty(ty);
+            self.in_param_ty = prev;
+        }
     }
 
     fn visit_anon_const(&mut self, c: &'v hir::AnonConst) {
-        if self.in_param_list && self.ct == c.hir_id {
-            self.found_anon_const_in_list = true;
+        if self.in_param_ty && self.ct == c.hir_id {
+            self.found_anon_const_in_param_ty = true;
         } else {
             intravisit::walk_anon_const(self, c)
         }
@@ -1377,27 +1379,24 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             let parent_def_id = tcx.hir().local_def_id(parent_id);
 
-            let mut in_param_list = false;
+            let mut in_param_ty = false;
             for (_parent, node) in tcx.hir().parent_iter(hir_id) {
                 if let Some(generics) = node.generics() {
-                    let mut visitor = AnonConstInParamListDetector {
-                        in_param_list: false,
-                        found_anon_const_in_list: false,
+                    let mut visitor = AnonConstInParamTyDetector {
+                        in_param_ty: false,
+                        found_anon_const_in_param_ty: false,
                         ct: hir_id,
                     };
 
                     visitor.visit_generics(generics);
-                    in_param_list = visitor.found_anon_const_in_list;
+                    in_param_ty = visitor.found_anon_const_in_param_ty;
                     break;
                 }
             }
 
-            if in_param_list {
+            if in_param_ty {
                 // We do not allow generic parameters in anon consts if we are inside
-                // of a param list.
-                //
-                // This affects both default type bindings, e.g. `struct<T, U = [u8; std::mem::size_of::<T>()]>(T, U)`,
-                // and the types of const parameters, e.g. `struct V<const N: usize, const M: [u8; N]>();`.
+                // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
             } else if tcx.lazy_normalization() {
                 // HACK(eddyb) this provides the correct generics when
