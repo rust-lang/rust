@@ -480,6 +480,8 @@ function hideThemeButtonState() {
                 }
                 // Open all ancestor <details> to make this element visible.
                 openParentDetails(h3.parentNode);
+            } else {
+                openParentDetails(elem.parentNode);
             }
         }
     }
