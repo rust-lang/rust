@@ -6,7 +6,7 @@ use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
@@ -16,15 +16,14 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, RegionKind, ToPredicate, Ty, TyCtxt};
-use rustc_session::config::EntryFnType;
+use rustc_middle::ty::{self, ParamEnv, RegionKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
+use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCauseCode};
 use rustc_ty_utils::representability::{self, Representability};
 
 use std::iter;
@@ -325,29 +324,6 @@ pub(super) fn check_fn<'a, 'tcx>(
         });
     }
     fcx.demand_suptype(span, revealed_ret_ty, actual_return_ty);
-
-    // Check that the main return type implements the termination trait.
-    if let Some(term_id) = tcx.lang_items().termination() {
-        if let Some((def_id, EntryFnType::Main)) = tcx.entry_fn(LOCAL_CRATE) {
-            let main_id = hir.local_def_id_to_hir_id(def_id);
-            if main_id == fn_id {
-                let substs = tcx.mk_substs_trait(declared_ret_ty, &[]);
-                let trait_ref = ty::TraitRef::new(term_id, substs);
-                let return_ty_span = decl.output.span();
-                let cause = traits::ObligationCause::new(
-                    return_ty_span,
-                    fn_id,
-                    ObligationCauseCode::MainFunctionType,
-                );
-
-                inherited.register_predicate(traits::Obligation::new(
-                    cause,
-                    param_env,
-                    trait_ref.without_const().to_predicate(tcx),
-                ));
-            }
-        }
-    }
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {

@@ -103,7 +103,7 @@ pub(super) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     });
 
     let (main_def_id, entry_ty) = tcx.entry_fn(LOCAL_CRATE).unwrap();
-    let instance = Instance::mono(tcx, main_def_id.to_def_id()).polymorphize(tcx);
+    let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
 
     match entry_ty {
         EntryFnType::Main => {

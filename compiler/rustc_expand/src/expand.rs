@@ -20,7 +20,7 @@ use rustc_attr::{self as attr, is_builtin_attr};
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{AttemptLocalParseRecovery, ForceCollect, Parser, RecoverComma};
 use rustc_parse::validate_attr;
@@ -414,6 +414,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         kind.article(), kind.descr()
                     ),
                 );
+                // FIXME: this workaround issue #84569
+                FatalError.raise();
             }
         };
         self.cx.trace_macros_diag();

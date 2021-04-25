@@ -1194,7 +1194,7 @@ rustc_queries! {
 
     /// Identifies the entry-point (e.g., the `main` function) for a given
     /// crate, returning `None` if there is no entry point (such as for library crates).
-    query entry_fn(_: CrateNum) -> Option<(LocalDefId, EntryFnType)> {
+    query entry_fn(_: CrateNum) -> Option<(DefId, EntryFnType)> {
         desc { "looking up the entry function of a crate" }
     }
     query plugin_registrar_fn(_: CrateNum) -> Option<DefId> {

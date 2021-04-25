@@ -307,7 +307,7 @@ impl<'tcx> Queries<'tcx> {
             _ => return,
         };
 
-        let attrs = &*tcx.get_attrs(def_id.to_def_id());
+        let attrs = &*tcx.get_attrs(def_id);
         let attrs = attrs.iter().filter(|attr| tcx.sess.check_name(attr, sym::rustc_error));
         for attr in attrs {
             match attr.meta_item_list() {
