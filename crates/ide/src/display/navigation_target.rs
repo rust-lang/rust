@@ -20,7 +20,7 @@ use syntax::{
 
 use crate::FileSymbol;
 
-/// `NavigationTarget` represents and element in the editor's UI which you can
+/// `NavigationTarget` represents an element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
 ///
 /// Typically, a `NavigationTarget` corresponds to some element in the source
@@ -35,12 +35,10 @@ pub struct NavigationTarget {
     /// Clients should use this range to answer "is the cursor inside the
     /// element?" question.
     pub full_range: TextRange,
-    /// A "most interesting" range withing the `full_range`.
+    /// A "most interesting" range within the `full_range`.
     ///
     /// Typically, `full_range` is the whole syntax node, including doc
-    /// comments, and `focus_range` is the range of the identifier. "Most
-    /// interesting" range within the full range, typically the range of
-    /// identifier.
+    /// comments, and `focus_range` is the range of the identifier.
     ///
     /// Clients should place the cursor on this range when navigating to this target.
     pub focus_range: Option<TextRange>,

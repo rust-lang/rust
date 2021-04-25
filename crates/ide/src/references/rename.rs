@@ -50,6 +50,17 @@ pub(crate) fn prepare_rename(
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
     let syntax = source_file.syntax();
+
+    let def = find_definition(&sema, syntax, position)?;
+    match def {
+        Definition::SelfType(_) => bail!("Cannot rename `Self`"),
+        Definition::ModuleDef(ModuleDef::BuiltinType(_)) => bail!("Cannot rename builtin type"),
+        _ => {}
+    };
+    let nav =
+        def.try_to_nav(sema.db).ok_or_else(|| format_err!("No references found at position"))?;
+    nav.focus_range.ok_or_else(|| format_err!("No identifier available to rename"))?;
+
     let name_like = sema
         .find_node_at_offset_with_descend(&syntax, position.offset)
         .ok_or_else(|| format_err!("No references found at position"))?;
@@ -507,7 +518,8 @@ fn source_edit_from_def(
         def.try_to_nav(sema.db).ok_or_else(|| format_err!("No references found at position"))?;
 
     let mut replacement_text = String::new();
-    let mut repl_range = nav.focus_or_full_range();
+    let mut repl_range =
+        nav.focus_range.ok_or_else(|| format_err!("No identifier available to rename"))?;
     if let Definition::Local(local) = def {
         if let Either::Left(pat) = local.source(sema.db).value {
             if matches!(
@@ -623,6 +635,49 @@ foo!(Foo$0);",
     #[test]
     fn test_prepare_rename_keyword() {
         check_prepare(r"struct$0 Foo;", expect![[r#"No references found at position"#]]);
+    }
+
+    #[test]
+    fn test_prepare_rename_tuple_field() {
+        check_prepare(
+            r#"
+struct Foo(i32);
+
+fn baz() {
+    let mut x = Foo(4);
+    x.0$0 = 5;
+}
+"#,
+            expect![[r#"No identifier available to rename"#]],
+        );
+    }
+
+    #[test]
+    fn test_prepare_rename_builtin() {
+        check_prepare(
+            r#"
+fn foo() {
+    let x: i32$0 = 0;
+}
+"#,
+            expect![[r#"Cannot rename builtin type"#]],
+        );
+    }
+
+    #[test]
+    fn test_prepare_rename_self() {
+        check_prepare(
+            r#"
+struct Foo {}
+
+impl Foo {
+    fn foo(self) -> Self$0 {
+        self
+    }
+}
+"#,
+            expect![[r#"Cannot rename `Self`"#]],
+        );
     }
 
     #[test]
@@ -1786,5 +1841,51 @@ fn foo() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn test_rename_tuple_field() {
+        check(
+            "foo",
+            r#"
+struct Foo(i32);
+
+fn baz() {
+    let mut x = Foo(4);
+    x.0$0 = 5;
+}
+"#,
+            "error: No identifier available to rename",
+        );
+    }
+
+    #[test]
+    fn test_rename_builtin() {
+        check(
+            "foo",
+            r#"
+fn foo() {
+    let x: i32$0 = 0;
+}
+"#,
+            "error: Cannot rename builtin type",
+        );
+    }
+
+    #[test]
+    fn test_rename_self() {
+        check(
+            "foo",
+            r#"
+struct Foo {}
+
+impl Foo {
+    fn foo(self) -> Self$0 {
+        self
+    }
+}
+"#,
+            "error: Cannot rename `Self`",
+        );
     }
 }
