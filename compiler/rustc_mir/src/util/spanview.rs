@@ -99,7 +99,11 @@ where
     W: Write,
 {
     let def_id = body.source.def_id();
-    let body_span = hir_body(tcx, def_id).value.span;
+    let hir_body = hir_body(tcx, def_id);
+    if hir_body.is_none() {
+        return Ok(());
+    }
+    let body_span = hir_body.unwrap().value.span;
     let mut span_viewables = Vec::new();
     for (bb, data) in body.basic_blocks().iter_enumerated() {
         match spanview {
@@ -664,19 +668,16 @@ fn fn_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
     let hir_id =
         tcx.hir().local_def_id_to_hir_id(def_id.as_local().expect("expected DefId is local"));
     let fn_decl_span = tcx.hir().span(hir_id);
-    let body_span = hir_body(tcx, def_id).value.span;
-    if fn_decl_span.ctxt() == body_span.ctxt() {
-        fn_decl_span.to(body_span)
+    if let Some(body_span) = hir_body(tcx, def_id).map(|hir_body| hir_body.value.span) {
+        if fn_decl_span.ctxt() == body_span.ctxt() { fn_decl_span.to(body_span) } else { body_span }
     } else {
-        // This probably occurs for functions defined via macros
-        body_span
+        fn_decl_span
     }
 }
 
-fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx rustc_hir::Body<'tcx> {
+fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<&'tcx rustc_hir::Body<'tcx>> {
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
-    let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    tcx.hir().body(fn_body_id)
+    hir::map::associated_body(hir_node).map(|fn_body_id| tcx.hir().body(fn_body_id))
 }
 
 fn escape_html(s: &str) -> String {
