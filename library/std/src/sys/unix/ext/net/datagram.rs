@@ -879,6 +879,7 @@ impl UnixDatagram {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixDatagram {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
@@ -886,6 +887,7 @@ impl AsRawFd for UnixDatagram {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixDatagram {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixDatagram {
         UnixDatagram(Socket::from_inner(fd))
     }
@@ -893,6 +895,7 @@ impl FromRawFd for UnixDatagram {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixDatagram {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
     }
