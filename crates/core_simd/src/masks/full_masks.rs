@@ -418,12 +418,6 @@ define_mask! {
 }
 
 define_mask! {
-    /// A mask equivalent to [SimdI128](crate::SimdI128), where all bits in the lane must be either set
-    /// or unset.
-    struct SimdMask128<const LANES: usize>(crate::SimdI128<LANES>);
-}
-
-define_mask! {
     /// A mask equivalent to [SimdIsize](crate::SimdIsize), where all bits in the lane must be either set
     /// or unset.
     struct SimdMaskSize<const LANES: usize>(crate::SimdIsize<LANES>);

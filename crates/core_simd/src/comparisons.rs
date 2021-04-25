@@ -71,14 +71,12 @@ implement_mask_ops! {
     SimdI16 => Mask16 (SimdMask16, SimdI16),
     SimdI32 => Mask32 (SimdMask32, SimdI32),
     SimdI64 => Mask64 (SimdMask64, SimdI64),
-    SimdI128 => Mask128 (SimdMask128, SimdI128),
     SimdIsize => MaskSize (SimdMaskSize, SimdIsize),
 
     SimdU8 => Mask8 (SimdMask8, SimdI8),
     SimdU16 => Mask16 (SimdMask16, SimdI16),
     SimdU32 => Mask32 (SimdMask32, SimdI32),
     SimdU64 => Mask64 (SimdMask64, SimdI64),
-    SimdU128 => Mask128 (SimdMask128, SimdI128),
     SimdUsize => MaskSize (SimdMaskSize, SimdIsize),
 
     SimdF32 => Mask32 (SimdMask32, SimdI32),

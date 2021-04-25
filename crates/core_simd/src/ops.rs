@@ -653,7 +653,6 @@ impl_unsigned_int_ops! {
     u16 => SimdU16;
     u32 => SimdU32;
     u64 => SimdU64;
-    u128 => SimdU128;
     usize => SimdUsize;
 }
 
@@ -662,7 +661,6 @@ impl_signed_int_ops! {
     i16 => SimdI16;
     i32 => SimdI32;
     i64 => SimdI64;
-    i128 => SimdI128;
     isize => SimdIsize;
 }
 

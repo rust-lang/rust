@@ -140,5 +140,5 @@ macro_rules! impl_int_arith {
 
 use crate::vector::*;
 
-impl_uint_arith! { (SimdU8, u8), (SimdU16, u16), (SimdU32, u32), (SimdU64, u64), (SimdU128, u128), (SimdUsize, usize) }
-impl_int_arith! { (SimdI8, i8), (SimdI16, i16), (SimdI32, i32), (SimdI64, i64), (SimdI128, i128), (SimdIsize, isize) }
+impl_uint_arith! { (SimdU8, u8), (SimdU16, u16), (SimdU32, u32), (SimdU64, u64), (SimdUsize, usize) }
+impl_int_arith! { (SimdI8, i8), (SimdI16, i16), (SimdI32, i32), (SimdI64, i64), (SimdIsize, isize) }
