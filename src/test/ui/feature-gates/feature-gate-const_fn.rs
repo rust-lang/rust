@@ -3,10 +3,8 @@
 const fn foo() -> usize { 0 } // ok
 
 trait Foo {
-    const fn foo() -> u32; //~ ERROR const fn is unstable
-                           //~| ERROR functions in traits cannot be declared const
-    const fn bar() -> u32 { 0 } //~ ERROR const fn is unstable
-                                //~| ERROR functions in traits cannot be declared const
+    const fn foo() -> u32; //~ ERROR functions in traits cannot be declared const
+    const fn bar() -> u32 { 0 } //~ ERROR functions in traits cannot be declared const
 }
 
 impl Foo for u32 {

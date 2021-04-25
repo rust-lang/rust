@@ -5,36 +5,17 @@ LL |     const fn foo() -> u32;
    |     ^^^^^ functions in traits cannot be const
 
 error[E0379]: functions in traits cannot be declared const
-  --> $DIR/feature-gate-const_fn.rs:8:5
+  --> $DIR/feature-gate-const_fn.rs:7:5
    |
 LL |     const fn bar() -> u32 { 0 }
    |     ^^^^^ functions in traits cannot be const
 
 error[E0379]: functions in traits cannot be declared const
-  --> $DIR/feature-gate-const_fn.rs:13:5
+  --> $DIR/feature-gate-const_fn.rs:11:5
    |
 LL |     const fn foo() -> u32 { 0 }
    |     ^^^^^ functions in traits cannot be const
 
-error[E0658]: const fn is unstable
-  --> $DIR/feature-gate-const_fn.rs:6:5
-   |
-LL |     const fn foo() -> u32;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
+error: aborting due to 3 previous errors
 
-error[E0658]: const fn is unstable
-  --> $DIR/feature-gate-const_fn.rs:8:5
-   |
-LL |     const fn bar() -> u32 { 0 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
-   = help: add `#![feature(const_fn)]` to the crate attributes to enable
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0379, E0658.
-For more information about an error, try `rustc --explain E0379`.
+For more information about this error, try `rustc --explain E0379`.
