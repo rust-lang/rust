@@ -426,7 +426,7 @@ impl Validator<'mir, 'tcx> {
                     ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, constness) => {
+                    ty::PredicateKind::Trait(pred, _constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -440,16 +440,7 @@ impl Validator<'mir, 'tcx> {
                                 // arguments when determining importance.
                                 let kind = LocalKind::Arg;
 
-                                if constness == hir::Constness::Const {
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                } else if !tcx.features().const_fn
-                                    || self.ccx.is_const_stable_const_fn()
-                                {
-                                    // HACK: We shouldn't need the conditional above, but trait
-                                    // bounds on containing impl blocks are wrongly being marked as
-                                    // "not-const".
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                }
+                                self.check_op_spanned(ops::ty::TraitBound(kind), span);
                             }
                             // other kinds of bounds are either tautologies
                             // or cause errors in other passes

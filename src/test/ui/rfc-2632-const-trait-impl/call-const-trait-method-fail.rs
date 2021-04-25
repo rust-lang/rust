@@ -1,6 +1,5 @@
 #![allow(incomplete_features)]
 #![feature(const_trait_impl)]
-#![feature(const_fn)]
 
 pub trait Plus {
     fn plus(self, rhs: Self) -> Self;
