@@ -264,6 +264,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Code generation:
     ungated!(inline, AssumedUsed, template!(Word, List: "always|never")),
+    ungated!(no_coverage, AssumedUsed, template!(Word)),
     ungated!(cold, AssumedUsed, template!(Word)),
     ungated!(no_builtins, AssumedUsed, template!(Word)),
     ungated!(target_feature, AssumedUsed, template!(List: r#"enable = "name""#)),

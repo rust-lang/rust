@@ -2724,6 +2724,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
         } else if tcx.sess.check_name(attr, sym::no_mangle) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        } else if tcx.sess.check_name(attr, sym::no_coverage) {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE;
         } else if tcx.sess.check_name(attr, sym::rustc_std_internal_symbol) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         } else if tcx.sess.check_name(attr, sym::used) {

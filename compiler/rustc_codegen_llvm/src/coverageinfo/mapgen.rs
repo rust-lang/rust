@@ -8,6 +8,7 @@ use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_llvm::RustString;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_span::Symbol;
 
@@ -280,6 +281,10 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 
     let mut unused_def_ids_by_file: FxHashMap<Symbol, Vec<DefId>> = FxHashMap::default();
     for &non_codegenned_def_id in all_def_ids.difference(codegenned_def_ids) {
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+            continue;
+        }
         // Make sure the non-codegenned (unused) function has a file_name
         if let Some(non_codegenned_file_name) = tcx.covered_file_name(non_codegenned_def_id) {
             let def_ids =

@@ -16,9 +16,10 @@ pub fn expand_deriving_eq(
     push: &mut dyn FnMut(Annotatable),
 ) {
     let inline = cx.meta_word(span, sym::inline);
+    let no_coverage = cx.meta_word(span, sym::no_coverage);
     let hidden = rustc_ast::attr::mk_nested_word_item(Ident::new(sym::hidden, span));
     let doc = rustc_ast::attr::mk_list_item(Ident::new(sym::doc, span), vec![hidden]);
-    let attrs = vec![cx.attribute(inline), cx.attribute(doc)];
+    let attrs = vec![cx.attribute(inline), cx.attribute(no_coverage), cx.attribute(doc)];
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
