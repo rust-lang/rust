@@ -286,7 +286,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                                         ParamKindOrd::Const {
                                                             unordered: tcx
                                                                 .features()
-                                                                .const_generics,
+                                                                .unordered_const_ty_params(),
                                                         }
                                                     }
                                                 },
@@ -309,7 +309,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                             GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
                                             GenericArg::Type(_) => ParamKindOrd::Type,
                                             GenericArg::Const(_) => ParamKindOrd::Const {
-                                                unordered: tcx.features().const_generics,
+                                                unordered: tcx
+                                                    .features()
+                                                    .unordered_const_ty_params(),
                                             },
                                         }),
                                         Some(&format!(

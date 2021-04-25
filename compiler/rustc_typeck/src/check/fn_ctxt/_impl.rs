@@ -1446,7 +1446,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     GenericParamDefKind::Const { has_default, .. } => {
                         if !infer_args && has_default {
-                            tcx.const_param_default(param.def_id).into()
+                            tcx.const_param_default(param.def_id)
+                                .subst_spanned(tcx, substs.unwrap(), Some(self.span))
+                                .into()
                         } else {
                             self.fcx.var_for_def(self.span, param)
                         }
