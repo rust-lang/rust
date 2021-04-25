@@ -751,8 +751,8 @@ pub fn args() -> Args {
 /// extension. This allows `std::env::args_os` to work even in a `cdylib` or `staticlib`, as it
 /// does on macOS and Windows.
 ///
-/// Note that the returned iterator will not panic during iteration if any argument to the
-/// process is not valid Unicode. For more safety,
+/// Note that the returned iterator will not check if the arguments to the
+/// process are valid Unicode. To ensure UTF-8 validity,
 /// use the [`args`] function instead.
 ///
 /// # Examples
