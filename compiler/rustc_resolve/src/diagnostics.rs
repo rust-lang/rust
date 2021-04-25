@@ -472,17 +472,6 @@ impl<'a> Resolver<'a> {
                 );
                 err
             }
-            ResolutionError::ParamInAnonConstInTyDefault(name) => {
-                let mut err = self.session.struct_span_err(
-                    span,
-                    "constant values inside of type parameter defaults must not depend on generic parameters",
-                );
-                err.span_label(
-                    span,
-                    format!("the anonymous constant must not depend on the parameter `{}`", name),
-                );
-                err
-            }
             ResolutionError::ParamInNonTrivialAnonConst { name, is_type } => {
                 let mut err = self.session.struct_span_err(
                     span,
