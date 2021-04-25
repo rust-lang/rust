@@ -13,7 +13,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 ) {
     let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
-            def_id.to_def_id(),
+            def_id,
             match entry_ty {
                 EntryFnType::Main => true,
                 EntryFnType::Start => false,
