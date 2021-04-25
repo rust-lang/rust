@@ -1,0 +1,20 @@
+error[E0599]: no method named `finish` found for struct `DefaultHasher` in the current scope
+  --> $DIR/import-trait-for-method-call.rs:6:7
+   |
+LL |     h.finish()
+   |       ^^^^^^ method not found in `DefaultHasher`
+   | 
+  ::: $SRC_DIR/core/src/hash/mod.rs:LL:COL
+   |
+LL |     fn finish(&self) -> u64;
+   |        ------ the method is available for `DefaultHasher` here
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
+   |
+LL | use std::hash::Hasher;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
