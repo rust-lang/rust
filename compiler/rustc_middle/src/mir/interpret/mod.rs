@@ -555,12 +555,12 @@ impl<'tcx> TyCtxt<'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[inline]
-pub fn write_target_uint(
+fn write_target_uint(
     endianness: Endian,
     mut target: &mut [u8],
     data: u128,
 ) -> Result<(), io::Error> {
-    // This u128 holds an "any-size uint" (since smaller uints can fits in it)
+    // This u128 holds an "any-size uint" (since smaller uints can fit in it)
     // So we do not write all bytes of the u128, just the "payload".
     match endianness {
         Endian::Little => target.write(&data.to_le_bytes())?,
