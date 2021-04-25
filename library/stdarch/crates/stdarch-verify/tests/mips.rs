@@ -1,5 +1,4 @@
 //! Verification of MIPS MSA intrinsics
-#![feature(try_trait)]
 #![allow(bad_style, unused)]
 
 // This file is obtained from
@@ -139,47 +138,53 @@ struct MsaIntrinsic {
     instruction: String,
 }
 
+struct NoneError;
+
 impl std::convert::TryFrom<&'static str> for MsaIntrinsic {
     // The intrinsics are just C function declarations of the form:
     // $ret_ty __builtin_${fn_id}($($arg_ty),*);
-    type Error = std::option::NoneError;
+    type Error = NoneError;
     fn try_from(line: &'static str) -> Result<Self, Self::Error> {
-        let first_whitespace = line.find(char::is_whitespace)?;
-        let ret_ty = &line[0..first_whitespace];
-        let ret_ty = MsaTy::from(ret_ty);
+        return inner(line).ok_or(NoneError);
 
-        let first_parentheses = line.find('(')?;
-        assert!(first_parentheses > first_whitespace);
-        let id = &line[first_whitespace + 1..first_parentheses].trim();
-        assert!(id.starts_with("__builtin"));
-        let mut id_str = "_".to_string();
-        id_str += &id[9..];
-        let id = id_str;
+        fn inner(line: &'static str) -> Option<MsaIntrinsic> {
+            let first_whitespace = line.find(char::is_whitespace)?;
+            let ret_ty = &line[0..first_whitespace];
+            let ret_ty = MsaTy::from(ret_ty);
 
-        let mut arg_tys = Vec::new();
+            let first_parentheses = line.find('(')?;
+            assert!(first_parentheses > first_whitespace);
+            let id = &line[first_whitespace + 1..first_parentheses].trim();
+            assert!(id.starts_with("__builtin"));
+            let mut id_str = "_".to_string();
+            id_str += &id[9..];
+            let id = id_str;
 
-        let last_parentheses = line.find(')')?;
-        for arg in (&line[first_parentheses + 1..last_parentheses]).split(',') {
-            let arg = arg.trim();
-            arg_tys.push(MsaTy::from(arg));
+            let mut arg_tys = Vec::new();
+
+            let last_parentheses = line.find(')')?;
+            for arg in (&line[first_parentheses + 1..last_parentheses]).split(',') {
+                let arg = arg.trim();
+                arg_tys.push(MsaTy::from(arg));
+            }
+
+            // The instruction is the intrinsic name without the __msa_ prefix.
+            let instruction = &id[6..];
+            let mut instruction = instruction.to_string();
+            // With all underscores but the first one replaced with a `.`
+            if let Some(first_underscore) = instruction.find('_') {
+                let postfix = instruction[first_underscore + 1..].replace('_', ".");
+                instruction = instruction[0..=first_underscore].to_string();
+                instruction += &postfix;
+            }
+
+            Some(MsaIntrinsic {
+                id,
+                ret_ty,
+                arg_tys,
+                instruction,
+            })
         }
-
-        // The instruction is the intrinsic name without the __msa_ prefix.
-        let instruction = &id[6..];
-        let mut instruction = instruction.to_string();
-        // With all underscores but the first one replaced with a `.`
-        if let Some(first_underscore) = instruction.find('_') {
-            let postfix = instruction[first_underscore + 1..].replace('_', ".");
-            instruction = instruction[0..=first_underscore].to_string();
-            instruction += &postfix;
-        }
-
-        Ok(MsaIntrinsic {
-            id,
-            ret_ty,
-            arg_tys,
-            instruction,
-        })
     }
 }
 
