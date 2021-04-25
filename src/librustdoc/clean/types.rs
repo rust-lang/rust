@@ -211,7 +211,6 @@ impl ExternalCrate {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 crate struct Item {
-    crate span: Span,
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
     crate name: Option<Symbol>,
@@ -225,14 +224,13 @@ crate struct Item {
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Item, 48);
+rustc_data_structures::static_assert_size!(Item, 40);
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
 
         fmt.debug_struct("Item")
-            .field("source", &self.span)
             .field("name", &self.name)
             .field("attrs", &self.attrs)
             .field("kind", &self.kind)
@@ -240,6 +238,16 @@ impl fmt::Debug for Item {
             .field("def_id", def_id)
             .finish()
     }
+}
+
+crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
+    Span::from_rustc_span(def_id.as_local().map_or_else(
+        || tcx.def_span(def_id),
+        |local| {
+            let hir = tcx.hir();
+            hir.span_with_body(hir.local_def_id_to_hir_id(local))
+        },
+    ))
 }
 
 impl Item {
@@ -253,6 +261,26 @@ impl Item {
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
         if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id) }
+    }
+
+    crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
+        let kind = match &*self.kind {
+            ItemKind::StrippedItem(k) => k,
+            _ => &*self.kind,
+        };
+        if let ItemKind::ModuleItem(Module { span, .. }) | ItemKind::ImplItem(Impl { span, .. }) =
+            kind
+        {
+            *span
+        } else if self.is_fake() {
+            Span::dummy()
+        } else {
+            rustc_span(self.def_id, tcx)
+        }
+    }
+
+    crate fn attr_span(&self, tcx: TyCtxt<'_>) -> rustc_span::Span {
+        crate::passes::span_of_attrs(&self.attrs).unwrap_or_else(|| self.span(tcx).inner())
     }
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
@@ -296,20 +324,10 @@ impl Item {
     ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
-        // `span_if_local()` lies about functions and only gives the span of the function signature
-        let span = def_id.as_local().map_or_else(
-            || cx.tcx.def_span(def_id),
-            |local| {
-                let hir = cx.tcx.hir();
-                hir.span_with_body(hir.local_def_id_to_hir_id(local))
-            },
-        );
-
         Item {
             def_id,
             kind: box kind,
             name,
-            span: span.clean(cx),
             attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
         }
@@ -605,6 +623,7 @@ impl ItemKind {
 #[derive(Clone, Debug)]
 crate struct Module {
     crate items: Vec<Item>,
+    crate span: Span,
 }
 
 crate struct ListAttributesIter<'a> {
@@ -2108,6 +2127,7 @@ impl Constant {
 
 #[derive(Clone, Debug)]
 crate struct Impl {
+    crate span: Span,
     crate unsafety: hir::Unsafety,
     crate generics: Generics,
     crate provided_trait_methods: FxHashSet<Symbol>,

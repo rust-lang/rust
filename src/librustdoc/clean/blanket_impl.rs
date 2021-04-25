@@ -100,12 +100,12 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .collect();
 
                 impls.push(Item {
-                    span: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                     name: None,
                     attrs: Default::default(),
                     visibility: Inherited,
                     def_id: self.cx.next_def_id(impl_def_id.krate),
                     kind: box ImplItem(Impl {
+                        span: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                         unsafety: hir::Unsafety::Normal,
                         generics: (
                             self.cx.tcx.generics_of(impl_def_id),

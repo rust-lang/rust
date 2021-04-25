@@ -37,8 +37,6 @@ use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 
-use super::span_of_attrs;
-
 mod early;
 crate use early::IntraLinkCrateLoader;
 
@@ -1242,7 +1240,7 @@ impl LinkCollector<'_, '_> {
                             &ori_link.range,
                             &item.attrs,
                         )
-                        .unwrap_or_else(|| span_of_attrs(&item.attrs).unwrap_or(item.span.inner()));
+                        .unwrap_or_else(|| item.attr_span(self.cx.tcx));
 
                         rustc_session::parse::feature_err(
                             &self.cx.tcx.sess.parse_sess,
@@ -1695,13 +1693,12 @@ fn report_diagnostic(
         }
     };
 
-    let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs).unwrap_or(item.span.inner());
+    let sp = item.attr_span(tcx);
 
     tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
-        let span = super::source_span_for_markdown_range(tcx, dox, link_range, attrs);
+        let span = super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs);
 
         if let Some(sp) = span {
             diag.set_span(sp);

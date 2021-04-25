@@ -100,7 +100,7 @@ impl Clean<Item> for doctree::Module<'_> {
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
-        let span = {
+        let span = Span::from_rustc_span({
             let sm = cx.sess().source_map();
             let outer = sm.lookup_char_pos(self.where_outer.lo());
             let inner = sm.lookup_char_pos(self.where_inner.lo());
@@ -111,11 +111,14 @@ impl Clean<Item> for doctree::Module<'_> {
                 // mod foo; (and a separate SourceFile for the contents)
                 self.where_inner
             }
-        };
+        });
 
-        let what_rustc_thinks =
-            Item::from_hir_id_and_parts(self.id, Some(self.name), ModuleItem(Module { items }), cx);
-        Item { span: span.clean(cx), ..what_rustc_thinks }
+        Item::from_hir_id_and_parts(
+            self.id,
+            Some(self.name),
+            ModuleItem(Module { items, span }),
+            cx,
+        )
     }
 }
 
@@ -1942,6 +1945,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
     });
     let mut make_item = |trait_: Option<Type>, for_: Type, items: Vec<Item>| {
         let kind = ImplItem(Impl {
+            span: types::rustc_span(tcx.hir().local_def_id(hir_id).to_def_id(), tcx),
             unsafety: impl_.unsafety,
             generics: impl_.generics.clean(cx),
             provided_trait_methods: provided.clone(),
@@ -2001,7 +2005,6 @@ fn clean_extern_crate(
     vec![Item {
         name: Some(name),
         attrs: box attrs.clean(cx),
-        span: krate.span.clean(cx),
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },

@@ -40,7 +40,8 @@ impl JsonRenderer<'_> {
             .iter()
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
-        let clean::Item { span, name, attrs: _, kind: _, visibility, def_id } = item;
+        let span = item.span(self.tcx);
+        let clean::Item { name, attrs: _, kind: _, visibility, def_id } = item;
         let inner = match *item.kind {
             clean::StrippedItem(_) => return None,
             _ => from_clean_item(item, self.tcx),
@@ -462,6 +463,7 @@ impl FromWithTcx<clean::Impl> for Impl {
             negative_polarity,
             synthetic,
             blanket_impl,
+            span: _span,
         } = impl_;
         Impl {
             is_unsafe: unsafety == rustc_hir::Unsafety::Unsafe,

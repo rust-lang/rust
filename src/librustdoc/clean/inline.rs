@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::ty::{self, TyCtxt};
@@ -422,6 +422,7 @@ crate fn build_impl(
         did,
         None,
         clean::ImplItem(clean::Impl {
+            span: clean::types::rustc_span(did, cx.tcx),
             unsafety: hir::Unsafety::Normal,
             generics,
             provided_trait_methods: provided,
@@ -459,8 +460,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    span: clean::Span::dummy(),
-                    def_id: DefId::local(CRATE_DEF_INDEX),
+                    def_id: cx.next_def_id(did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
@@ -487,7 +487,8 @@ fn build_module(
         }
     }
 
-    clean::Module { items }
+    let span = clean::Span::from_rustc_span(cx.tcx.def_span(did));
+    clean::Module { items, span }
 }
 
 crate fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
