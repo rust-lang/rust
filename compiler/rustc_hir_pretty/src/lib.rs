@@ -1095,8 +1095,8 @@ impl<'a> State<'a> {
 
     fn print_else(&mut self, els: Option<&hir::Expr<'_>>) {
         match els {
-            Some(_else) => {
-                match _else.kind {
+            Some(else_) => {
+                match else_.kind {
                     // "another else-if"
                     hir::ExprKind::If(ref i, ref then, ref e) => {
                         self.cbox(INDENT_UNIT - 1);
@@ -1113,6 +1113,26 @@ impl<'a> State<'a> {
                         self.ibox(0);
                         self.s.word(" else ");
                         self.print_block(&b)
+                    }
+                    hir::ExprKind::Match(ref expr, arms, _) => {
+                        // else if let desugared to match
+                        assert!(arms.len() == 2, "if let desugars to match with two arms");
+
+                        self.s.word(" else ");
+                        self.s.word("{");
+
+                        self.cbox(INDENT_UNIT);
+                        self.ibox(INDENT_UNIT);
+                        self.word_nbsp("match");
+                        self.print_expr_as_cond(&expr);
+                        self.s.space();
+                        self.bopen();
+                        for arm in arms {
+                            self.print_arm(arm);
+                        }
+                        self.bclose(expr.span);
+
+                        self.s.word("}");
                     }
                     // BLEAH, constraints would be great here
                     _ => {
