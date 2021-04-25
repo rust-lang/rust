@@ -1422,11 +1422,13 @@ function hideThemeButtonState() {
             // errors in mobile browsers).
             if (e.tagName === "H2" || e.tagName === "H3") {
                 var nextTagName = e.nextElementSibling.tagName;
-                if (nextTagName == "H2" || nextTagName == "H3") {
+                if (nextTagName === "H2" || nextTagName === "H3") {
                     e.nextElementSibling.style.display = "flex";
-                } else {
+                } else if (nextTagName !== "DETAILS") {
                     e.nextElementSibling.style.display = "block";
                 }
+            } else if (e.tagName === "DETAILS") {
+                e.open = true;
             }
         });
     }
