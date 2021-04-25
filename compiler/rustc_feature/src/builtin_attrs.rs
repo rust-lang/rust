@@ -544,6 +544,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_main, Normal, template!(Word),
         "the `#[rustc_main]` attribute is used internally to specify test entry point function",
     ),
+    rustc_attr!(
+        rustc_skip_array_during_method_dispatch, Normal, template!(Word),
+        "the `#[rustc_skip_array_during_method_dispatch]` attribute is used to exclude a trait \
+        from method dispatch when the receiver is an array, for compatibility in editions < 2021."
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

@@ -1191,6 +1191,8 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
+    let skip_array_during_method_dispatch =
+        tcx.has_attr(def_id, sym::rustc_skip_array_during_method_dispatch);
     let spec_kind = if tcx.has_attr(def_id, sym::rustc_unsafe_specialization_marker) {
         ty::trait_def::TraitSpecializationKind::Marker
     } else if tcx.has_attr(def_id, sym::rustc_specialization_trait) {
@@ -1199,7 +1201,16 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         ty::trait_def::TraitSpecializationKind::None
     };
     let def_path_hash = tcx.def_path_hash(def_id);
-    ty::TraitDef::new(def_id, unsafety, paren_sugar, is_auto, is_marker, spec_kind, def_path_hash)
+    ty::TraitDef::new(
+        def_id,
+        unsafety,
+        paren_sugar,
+        is_auto,
+        is_marker,
+        skip_array_during_method_dispatch,
+        spec_kind,
+        def_path_hash,
+    )
 }
 
 fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<Span> {

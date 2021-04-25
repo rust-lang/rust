@@ -385,6 +385,7 @@ struct TraitData {
     paren_sugar: bool,
     has_auto_impl: bool,
     is_marker: bool,
+    skip_array_during_method_dispatch: bool,
     specialization_kind: ty::trait_def::TraitSpecializationKind,
 }
 

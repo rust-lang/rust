@@ -35,6 +35,11 @@ pub struct TraitDef {
     /// and thus `impl`s of it are allowed to overlap.
     pub is_marker: bool,
 
+    /// If `true`, then this trait has the `#[rustc_skip_array_during_method_dispatch]`
+    /// attribute, indicating that editions before 2021 should not consider this trait
+    /// during method dispatch if the receiver is an array.
+    pub skip_array_during_method_dispatch: bool,
+
     /// Used to determine whether the standard library is allowed to specialize
     /// on this trait.
     pub specialization_kind: TraitSpecializationKind,
@@ -82,6 +87,7 @@ impl<'tcx> TraitDef {
         paren_sugar: bool,
         has_auto_impl: bool,
         is_marker: bool,
+        skip_array_during_method_dispatch: bool,
         specialization_kind: TraitSpecializationKind,
         def_path_hash: DefPathHash,
     ) -> TraitDef {
@@ -91,6 +97,7 @@ impl<'tcx> TraitDef {
             paren_sugar,
             has_auto_impl,
             is_marker,
+            skip_array_during_method_dispatch,
             specialization_kind,
             def_path_hash,
         }

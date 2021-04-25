@@ -1461,6 +1461,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 TraitCandidate(trait_ref) => {
+                    if let Some(method_name) = self.method_name {
+                        // Some trait methods are excluded for arrays before 2021.
+                        // (`array.into_iter()` wants a slice iterator for compatibility.)
+                        if self_ty.is_array() && !method_name.span.rust_2021() {
+                            let trait_def = self.tcx.trait_def(trait_ref.def_id);
+                            if trait_def.skip_array_during_method_dispatch {
+                                return ProbeResult::NoMatch;
+                            }
+                        }
+                    }
                     let predicate = trait_ref.without_const().to_predicate(self.tcx);
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {

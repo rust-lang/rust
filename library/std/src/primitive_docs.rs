@@ -498,7 +498,7 @@ mod prim_pointer {}
 /// - [`Copy`]
 /// - [`Clone`]
 /// - [`Debug`]
-/// - [`IntoIterator`] (implemented for `&[T; N]` and `&mut [T; N]`)
+/// - [`IntoIterator`] (implemented for `[T; N]`, `&[T; N]` and `&mut [T; N]`)
 /// - [`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`]
 /// - [`Hash`]
 /// - [`AsRef`], [`AsMut`]
@@ -517,7 +517,8 @@ mod prim_pointer {}
 ///
 /// # Examples
 ///
-/// ```
+#[cfg_attr(bootstrap, doc = "```ignore")]
+#[cfg_attr(not(bootstrap), doc = "```")]
 /// let mut array: [i32; 3] = [0; 3];
 ///
 /// array[1] = 1;
@@ -526,31 +527,16 @@ mod prim_pointer {}
 /// assert_eq!([1, 2], &array[1..]);
 ///
 /// // This loop prints: 0 1 2
-/// for x in &array {
+/// for x in array {
 ///     print!("{} ", x);
 /// }
 /// ```
 ///
-/// An array itself is not iterable:
+/// You can also iterate over reference to the array's elements:
 ///
-/// ```compile_fail,E0277
+/// ```
 /// let array: [i32; 3] = [0; 3];
 ///
-/// for x in array { }
-/// // error: the trait bound `[i32; 3]: std::iter::Iterator` is not satisfied
-/// ```
-///
-/// The solution is to coerce the array to a slice by calling a slice method:
-///
-/// ```
-/// # let array: [i32; 3] = [0; 3];
-/// for x in array.iter() { }
-/// ```
-///
-/// You can also use the array reference's [`IntoIterator`] implementation:
-///
-/// ```
-/// # let array: [i32; 3] = [0; 3];
 /// for x in &array { }
 /// ```
 ///
@@ -562,6 +548,57 @@ mod prim_pointer {}
 /// let [john, roa] = ["John".to_string(), "Roa".to_string()];
 /// move_away(john);
 /// move_away(roa);
+/// ```
+///
+/// # Editions
+///
+/// Prior to Rust 1.53, arrays did not implement `IntoIterator` by value, so the method call
+/// `array.into_iter()` auto-referenced into a slice iterator. That behavior is preserved in the
+/// 2015 and 2018 editions of Rust for compatability, ignoring `IntoIterator` by value.
+///
+#[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
+#[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
+/// # #![allow(array_into_iter)] // override our `deny(warnings)`
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This creates a slice iterator, producing references to each value.
+/// for item in array.into_iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // The `array_into_iter` lint suggests this change for future compatibility:
+/// for item in array.iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // You can explicitly iterate an array by value using
+/// // `IntoIterator::into_iter` or `std::array::IntoIter::new`:
+/// for item in IntoIterator::into_iter(array).enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+/// ```
+///
+/// Starting in the 2021 edition, `array.into_iter()` will use `IntoIterator` normally to iterate
+/// by value, and `iter()` should be used to iterate by reference like previous editions.
+///
+/// ```rust,edition2021,ignore
+/// # // FIXME: ignored because 2021 testing is still unstable
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This iterates by reference:
+/// for item in array.iter().enumerate() {
+///     let (i, x): (usize, &i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+///
+/// // This iterates by value:
+/// for item in array.into_iter().enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
 /// ```
 ///
 /// [slice]: prim@slice

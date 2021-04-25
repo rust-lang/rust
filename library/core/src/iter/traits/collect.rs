@@ -198,6 +198,7 @@ pub trait FromIterator<A>: Sized {
 /// }
 /// ```
 #[rustc_diagnostic_item = "IntoIterator"]
+#[cfg_attr(not(bootstrap), rustc_skip_array_during_method_dispatch)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
