@@ -678,7 +678,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
 pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
     cx.tcx
         .entry_fn(LOCAL_CRATE)
-        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id.to_def_id())
+        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id)
 }
 
 /// Returns `true` if the expression is in the program's `#[panic_handler]`.
