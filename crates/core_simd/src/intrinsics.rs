@@ -86,6 +86,12 @@ mod std {
 
         // floor
         pub(crate) fn simd_floor<T>(x: T) -> T;
+
+        // round
+        pub(crate) fn simd_round<T>(x: T) -> T;
+
+        // trunc
+        pub(crate) fn simd_trunc<T>(x: T) -> T;
     }
 }
 

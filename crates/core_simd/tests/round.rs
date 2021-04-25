@@ -22,6 +22,30 @@ macro_rules! float_rounding_test {
                         &|_| true,
                     )
                 }
+
+                fn round<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::round,
+                        &Scalar::round,
+                        &|_| true,
+                    )
+                }
+
+                fn trunc<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::trunc,
+                        &Scalar::trunc,
+                        &|_| true,
+                    )
+                }
+
+                fn fract<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::fract,
+                        &Scalar::fract,
+                        &|_| true,
+                    )
+                }
             }
 
             test_helpers::test_lanes! {

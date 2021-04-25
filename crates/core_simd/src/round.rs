@@ -7,18 +7,39 @@ macro_rules! implement {
         where
             Self: crate::LanesAtMost32,
         {
-            /// Returns the largest integer less than or equal to each lane.
+            /// Returns the smallest integer greater than or equal to each lane.
+            #[must_use = "method returns a new vector and does not mutate the original value"]
+            #[inline]
+            pub fn ceil(self) -> Self {
+                unsafe { crate::intrinsics::simd_ceil(self) }
+            }
+
+            /// Returns the largest integer value less than or equal to each lane.
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
             pub fn floor(self) -> Self {
                 unsafe { crate::intrinsics::simd_floor(self) }
             }
 
-            /// Returns the smallest integer greater than or equal to each lane.
+            /// Rounds to the nearest integer value. Ties round toward zero.
             #[must_use = "method returns a new vector and does not mutate the original value"]
             #[inline]
-            pub fn ceil(self) -> Self {
-                unsafe { crate::intrinsics::simd_ceil(self) }
+            pub fn round(self) -> Self {
+                unsafe { crate::intrinsics::simd_round(self) }
+            }
+
+            /// Returns the floating point's integer value, with its fractional part removed.
+            #[must_use = "method returns a new vector and does not mutate the original value"]
+            #[inline]
+            pub fn trunc(self) -> Self {
+                unsafe { crate::intrinsics::simd_trunc(self) }
+            }
+
+            /// Returns the floating point's fractional value, with its integer part removed.
+            #[must_use = "method returns a new vector and does not mutate the original value"]
+            #[inline]
+            pub fn fract(self) -> Self {
+                self - self.trunc()
             }
         }
 
