@@ -43,14 +43,6 @@ extern "platform-intrinsic" {
     /// neg/fneg
     pub(crate) fn simd_neg<T>(x: T) -> T;
 
-    // floor
-    #[cfg(feature = "std")]
-    pub(crate) fn simd_floor<T>(x: T) -> T;
-
-    // ceil
-    #[cfg(feature = "std")]
-    pub(crate) fn simd_ceil<T>(x: T) -> T;
-
     /// fabs
     pub(crate) fn simd_fabs<T>(x: T) -> T;
 
@@ -85,3 +77,17 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_reduce_or<T, U>(x: T) -> U;
     pub(crate) fn simd_reduce_xor<T, U>(x: T) -> U;
 }
+
+#[cfg(feature = "std")]
+mod std {
+    extern "platform-intrinsic" {
+        // ceil
+        pub(crate) fn simd_ceil<T>(x: T) -> T;
+
+        // floor
+        pub(crate) fn simd_floor<T>(x: T) -> T;
+    }
+}
+
+#[cfg(feature = "std")]
+pub(crate) use crate::intrinsics::std::*;
