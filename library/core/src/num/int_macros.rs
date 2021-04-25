@@ -254,7 +254,7 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0, 0", stringify!($SelfT), ".reverse_bits());")]
         /// ```
         #[stable(feature = "reverse_bits", since = "1.37.0")]
-        #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
+        #[rustc_const_stable(feature = "const_int_methods", since = "1.37.0")]
         #[inline(always)]
         #[must_use]
         pub const fn reverse_bits(self) -> Self {
