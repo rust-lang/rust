@@ -5,10 +5,6 @@ use crate::fmt;
 use crate::os::wasi::ffi::OsStrExt;
 use crate::vec;
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
-
-pub unsafe fn cleanup() {}
-
 pub struct Args {
     iter: vec::IntoIter<OsString>,
 }

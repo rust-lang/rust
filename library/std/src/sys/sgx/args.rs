@@ -23,8 +23,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     }
 }
 
-pub unsafe fn cleanup() {}
-
 pub fn args() -> Args {
     let args = unsafe { (ARGS.load(Ordering::Relaxed) as *const ArgsStore).as_ref() };
     if let Some(args) = args { Args(args.iter()) } else { Args([].iter()) }

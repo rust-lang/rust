@@ -32,7 +32,6 @@ pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
 pub mod rwlock;
-pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
@@ -40,8 +39,17 @@ pub mod time;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
-#[cfg(not(test))]
-pub fn init() {}
+// SAFETY: must be called only once during runtime initialization.
+// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
+pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    unsafe {
+        args::init(argc, argv);
+    }
+}
+
+// SAFETY: must be called only once during runtime cleanup.
+// NOTE: this is not guaranteed to run, for example when the program aborts.
+pub unsafe fn cleanup() {}
 
 /// This function is used to implement functionality that simply doesn't exist.
 /// Programs relying on this functionality will need to deal with the error.
