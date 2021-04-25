@@ -714,30 +714,30 @@ impl u8 {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(to_ascii_digit)]
-    /// assert_eq!(b'1'.to_ascii_digit_radix(10), Some(1));
-    /// assert_eq!(b'f'.to_ascii_digit_radix(16), Some(15));
+    /// #![feature(byte_parse_ascii_digit)]
+    /// assert_eq!(b'1'.parse_ascii_digit(10), Some(1));
+    /// assert_eq!(b'f'.parse_ascii_digit(16), Some(15));
     /// ```
     ///
     /// Passing a non-digit results in failure:
     ///
     /// ```
-    /// #![feature(to_ascii_digit)]
-    /// assert_eq!(b'f'.to_ascii_digit_radix(10), None);
-    /// assert_eq!(b'z'.to_ascii_digit_radix(16), None);
+    /// #![feature(byte_parse_ascii_digit)]
+    /// assert_eq!(b'f'.parse_ascii_digit(10), None);
+    /// assert_eq!(b'z'.parse_ascii_digit(16), None);
     /// ```
     ///
     /// Passing a large radix, causing a panic:
     ///
     /// ```should_panic
-    /// #![feature(to_ascii_digit)]
+    /// #![feature(byte_parse_ascii_digit)]
     /// // this panics
-    /// b'1'.to_ascii_digit_radix(37);
+    /// b'1'.parse_ascii_digit(37);
     /// ```
-    #[unstable(feature = "to_ascii_digit", issue = "83447")]
+    #[unstable(feature = "byte_parse_ascii_digit", issue = "83447")]
     #[inline]
-    pub fn to_ascii_digit_radix(&self, radix: u32) -> Option<u32> {
-        assert!(radix <= 36, "to_ascii_digit_radix: radix is too high (maximum 36)");
+    pub fn parse_ascii_digit(&self, radix: u32) -> Option<u32> {
+        assert!(radix <= 36, "parse_ascii_digit: radix is too high (maximum 36)");
         // the code is split up here to improve execution speed for cases where
         // the `radix` is constant and 10 or smaller
         let val = if intrinsics::likely(radix <= 10) {
