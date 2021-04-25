@@ -8,10 +8,12 @@ use crate::{
 };
 
 mod json;
+mod junit;
 mod pretty;
 mod terse;
 
 pub(crate) use self::json::JsonFormatter;
+pub(crate) use self::junit::JunitFormatter;
 pub(crate) use self::pretty::PrettyFormatter;
 pub(crate) use self::terse::TerseFormatter;
 
