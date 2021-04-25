@@ -8,7 +8,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{ExprKind, ItemKind, Node};
+use rustc_hir::{Expr, ExprKind, ItemKind, Node, Stmt, StmtKind};
 use rustc_infer::infer;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Binder, Ty};
@@ -55,7 +55,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pointing_at_return_type =
                 self.suggest_missing_return_type(err, &fn_decl, expected, found, can_suggest);
             let fn_id = self.tcx.hir().get_return_block(blk_id).unwrap();
-            self.suggest_missing_return_expr(err, expr, &fn_decl, expected, found, fn_id);
+            self.suggest_missing_break_or_return_expr(
+                err, expr, &fn_decl, expected, found, blk_id, fn_id,
+            );
         }
         pointing_at_return_type
     }
@@ -472,7 +474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(in super::super) fn suggest_missing_return_expr(
+    pub(in super::super) fn suggest_missing_break_or_return_expr(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &'tcx hir::Expr<'tcx>,
@@ -480,14 +482,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         id: hir::HirId,
+        fn_id: hir::HirId,
     ) {
         if !expected.is_unit() {
             return;
         }
         let found = self.resolve_vars_with_obligations(found);
+
+        let in_loop = self.is_loop(id)
+            || self.tcx.hir().parent_iter(id).any(|(parent_id, _)| self.is_loop(parent_id));
+
+        let in_local_statement = self.is_local_statement(id)
+            || self
+                .tcx
+                .hir()
+                .parent_iter(id)
+                .any(|(parent_id, _)| self.is_local_statement(parent_id));
+
+        if in_loop && in_local_statement {
+            err.multipart_suggestion(
+                "you might have meant to break the loop with this value",
+                vec![
+                    (expr.span.shrink_to_lo(), "break ".to_string()),
+                    (expr.span.shrink_to_hi(), ";".to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+            return;
+        }
+
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
-            let bound_vars = self.tcx.late_bound_vars(id);
+            let bound_vars = self.tcx.late_bound_vars(fn_id);
             let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
             let ty = self.normalize_associated_types_in(expr.span, ty);
             if self.can_coerce(found, ty) {
@@ -513,5 +539,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp, None);
         }
+    }
+
+    fn is_loop(&self, id: hir::HirId) -> bool {
+        let node = self.tcx.hir().get(id);
+        matches!(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
+    }
+
+    fn is_local_statement(&self, id: hir::HirId) -> bool {
+        let node = self.tcx.hir().get(id);
+        matches!(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
     }
 }
