@@ -1,7 +1,17 @@
 use crate::ops::ControlFlow;
 
-/// The trait used for a variety of operations related to short-circuits,
-/// such as the `?` operator, `try {}` blocks, and `try_*` methods.
+/// The `?` operator and `try {}` blocks.
+///
+/// `try_*` methods typically involve a type implementing this trait.  For
+/// example, the closures passed to [`Iterator::try_fold`] and
+/// [`Iterator::try_for_each`] must return such a type.
+///
+/// `Try` types are typically those containing two or more categories of values,
+/// some subset of which are so commonly handled via early returns that it's
+/// worth providing a terse (but still visible) syntax to make that easy.
+///
+/// This is most often seen for error handling with [`Result`] and [`Option`].
+/// The quintessential implementation of this trait is on [`ControlFlow`].
 ///
 /// # Using `Try` in Generic Code
 ///
@@ -42,8 +52,8 @@ use crate::ops::ControlFlow;
 /// }
 /// ```
 ///
-/// `Try` is also the trait we need to get the updated accumulator from `f`'s return
-/// value and return the result if we manage to get through the entire iterator:
+/// If we get through the entire iterator, we need to wrap up the accumulator
+/// into the return type using [`Try::from_output`]:
 /// ```
 /// # #![feature(try_trait_v2)]
 /// # #![feature(try_trait_transition)]
@@ -65,9 +75,9 @@ use crate::ops::ControlFlow;
 /// }
 /// ```
 ///
-/// We'll also need `FromResidual::from_residual` to turn the residual back into
-/// the original type.  But because it's a supertrait of `Try`, we don't need to
-/// mention it in the bounds.  All types which implement `Try` can always be
+/// We'll also need [`FromResidual::from_residual`] to turn the residual back
+/// into the original type.  But because it's a supertrait of `Try`, we don't
+/// need to mention it in the bounds.  All types which implement `Try` can be
 /// recreated from their corresponding residual, so we'll just call it:
 /// ```
 /// # #![feature(try_trait_v2)]
@@ -131,14 +141,18 @@ pub trait Try: FromResidual {
     /// That way it's distinct from `ControlFlow<E>::Residual`, for example,
     /// and thus `?` on `ControlFlow` cannot be used in a method returning `Result`.
     ///
-    /// In a type that's generic on a parameter that's used as the `Output` type,
-    /// call it `Foo<T> : Try` where `Foo<T>::Output == T`, it's typically easiest
-    /// to make the corresponding `Residual` type by filling in that generic
-    /// with an uninhabited type: `type Residual = Foo<Infallible>;`.
+    /// If you're making a generic type `Foo<T>` that implements `Try<Output = T>`,
+    /// then typically you can use `Foo<std::convert::Infallible>` as its `Residual`
+    /// type: that type will have a "hole" in the correct place, and will maintain the
+    /// "foo-ness" of the residual so other types need to opt-in to interconversion.
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     type Residual;
 
-    /// Wraps up a value such that `?` on the value will produce the original value.
+    /// Constructs the type from its `Output` type.
+    ///
+    /// This should be implemented consistently with the `branch` method
+    /// such that applying the `?` operator will get back the original value:
+    /// `Try::from_output(x).branch() --> ControlFlow::Continue(x)`.
     ///
     /// # Examples
     ///
@@ -203,8 +217,12 @@ pub trait Try: FromResidual {
 /// to support interconversion with other `Try` types.
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub trait FromResidual<R = <Self as Try>::Residual> {
-    /// Produces the return value of the function from the residual
-    /// when the `?` operator results in an early exit.
+    /// Constructs the type from a compatible `Residual` type.
+    ///
+    /// This should be implemented consistently with the `branch` method such
+    /// that applying the `?` operator will get back an equivalent residual:
+    /// `FromResidual::from_residual(r).branch() --> ControlFlow::Break(r)`.
+    /// (It may not be an *identical* residual when interconversion is involved.)
     ///
     /// # Examples
     ///
