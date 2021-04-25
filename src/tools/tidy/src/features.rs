@@ -425,7 +425,7 @@ fn map_lib_features(
                 }
 
                 lazy_static::lazy_static! {
-                    static ref COMMENT_LINE: Regex = Regex::new(r"\s*//").unwrap();
+                    static ref COMMENT_LINE: Regex = Regex::new(r"^\s*//").unwrap();
                 }
                 // exclude commented out lines
                 if COMMENT_LINE.is_match(line) {
