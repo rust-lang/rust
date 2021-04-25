@@ -517,7 +517,8 @@ mod prim_pointer {}
 ///
 /// # Examples
 ///
-/// ```
+#[cfg_attr(bootstrap, doc = "```ignore")]
+#[cfg_attr(not(bootstrap), doc = "```")]
 /// let mut array: [i32; 3] = [0; 3];
 ///
 /// array[1] = 1;
@@ -555,7 +556,8 @@ mod prim_pointer {}
 /// `array.into_iter()` auto-referenced into a slice iterator. That behavior is preserved in the
 /// 2015 and 2018 editions of Rust for compatability, ignoring `IntoIterator` by value.
 ///
-/// ```rust,edition2018
+#[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
+#[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
 /// # #![allow(array_into_iter)] // override our `deny(warnings)`
 /// let array: [i32; 3] = [0; 3];
 ///
