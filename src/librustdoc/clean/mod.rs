@@ -22,7 +22,7 @@ use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
-use rustc_mir::const_eval::{is_const_fn, is_min_const_fn, is_unstable_const_fn};
+use rustc_mir::const_eval::{is_const_fn, is_unstable_const_fn};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};
@@ -1048,7 +1048,7 @@ impl Clean<Item> for ty::AssocItem {
                     ty::TraitContainer(_) => self.defaultness.has_value(),
                 };
                 if provided {
-                    let constness = if is_min_const_fn(tcx, self.def_id) {
+                    let constness = if tcx.is_const_fn_raw(self.def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst
