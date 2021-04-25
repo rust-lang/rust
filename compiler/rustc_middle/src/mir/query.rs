@@ -19,7 +19,7 @@ use super::{Field, SourceInfo};
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationKind {
-    /// Unsafe operation outside `unsafe`
+    /// Unsafe operation outside `unsafe`.
     General,
     /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
     /// Has to be handled as a lint for backwards compatibility.
