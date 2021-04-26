@@ -553,8 +553,10 @@ mod prim_pointer {}
 /// # Editions
 ///
 /// Prior to Rust 1.53, arrays did not implement `IntoIterator` by value, so the method call
-/// `array.into_iter()` auto-referenced into a slice iterator. That behavior is preserved in the
-/// 2015 and 2018 editions of Rust for compatability, ignoring `IntoIterator` by value.
+/// `array.into_iter()` auto-referenced into a slice iterator. Right now, the old behavior
+/// is preserved in the 2015 and 2018 editions of Rust for compatibility, ignoring
+/// `IntoIterator` by value. In the future, the behavior on the 2015 and 2018 edition
+/// might be made consistent to the behavior of later editions.
 ///
 #[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
 #[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
