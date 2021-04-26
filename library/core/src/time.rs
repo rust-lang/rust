@@ -135,17 +135,21 @@ impl Duration {
 
     /// The maximum duration.
     ///
-    /// It is roughly equal to a duration of 584,942,417,355 years.
+    /// May vary by platform as necessary. Must be able to contain the difference between
+    /// two instances of [`Instant`] or two instances of [`SystemTime`].
+    /// This constraint gives it a value of about 584,942,417,355 years in practice,
+    /// which is currently used on all platforms.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_constants)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::MAX, Duration::new(u64::MAX, 1_000_000_000 - 1));
     /// ```
-    #[unstable(feature = "duration_constants", issue = "57391")]
+    /// [`Instant`]: ../../std/time/struct.Instant.html
+    /// [`SystemTime`]: ../../std/time/struct.SystemTime.html
+    #[stable(feature = "duration_saturating_ops", since = "1.53.0")]
     pub const MAX: Duration = Duration::new(u64::MAX, NANOS_PER_SEC - 1);
 
     /// Creates a new `Duration` from the specified number of whole seconds and
