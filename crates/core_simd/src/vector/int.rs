@@ -64,17 +64,6 @@ from_transmute_x86! { unsafe isizex4 => __m256i }
 //#[cfg(target_pointer_width = "64")]
 //from_transmute_x86! { unsafe isizex8 => __m512i }
 
-/// A SIMD vector of containing `LANES` `i128` values.
-#[repr(simd)]
-pub struct SimdI128<const LANES: usize>([i128; LANES])
-where
-    Self: crate::LanesAtMost32;
-
-impl_integer_vector! { SimdI128, i128, Mask128, SimdI128 }
-
-from_transmute_x86! { unsafe i128x2 => __m256i }
-//from_transmute_x86! { unsafe i128x4 => __m512i }
-
 /// A SIMD vector of containing `LANES` `i16` values.
 #[repr(simd)]
 pub struct SimdI16<const LANES: usize>([i16; LANES])
@@ -131,12 +120,6 @@ pub type isizex4 = SimdIsize<4>;
 
 /// Vector of eight `isize` values
 pub type isizex8 = SimdIsize<8>;
-
-/// Vector of two `i128` values
-pub type i128x2 = SimdI128<2>;
-
-/// Vector of four `i128` values
-pub type i128x4 = SimdI128<4>;
 
 /// Vector of four `i16` values
 pub type i16x4 = SimdI16<4>;

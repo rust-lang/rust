@@ -1,5 +1,5 @@
 macro_rules! impl_uint_arith {
-    ($(($name:ident, $n:ty)),+) => {
+    ($(($name:ident, $n:ident)),+) => {
         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
 
             /// Lanewise saturating add.
@@ -41,7 +41,7 @@ macro_rules! impl_uint_arith {
 }
 
 macro_rules! impl_int_arith {
-    ($(($name:ident, $n:ty)),+) => {
+    ($(($name:ident, $n:ident)),+) => {
         $( impl<const LANES: usize> $name<LANES> where Self: crate::LanesAtMost32 {
 
             /// Lanewise saturating add.
@@ -79,16 +79,34 @@ macro_rules! impl_int_arith {
                 unsafe { crate::intrinsics::simd_saturating_sub(self, second) }
             }
 
+            /// Lanewise absolute value, implemented in Rust.
+            /// Every lane becomes its absolute value.
+            ///
+            /// # Examples
+            /// ```
+            /// # use core_simd::*;
+            #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
+            #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, MIN +1, -5, 0]);")]
+            #[doc = concat!("assert_eq!(xs.abs(), ", stringify!($name), "::from_array([MIN, MAX, 5, 0]));")]
+            /// ```
+            #[inline]
+            pub fn abs(self) -> Self {
+                const SHR: $n = <$n>::BITS as $n - 1;
+                let m = self >> SHR;
+                (self^m) - m
+            }
+
             /// Lanewise saturating absolute value, implemented in Rust.
             /// As abs(), except the MIN value becomes MAX instead of itself.
             ///
             /// # Examples
+            /// ```
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::splat([MIN, -2, 0, 3]);")]
-            /// let unsat = x.abs();
-            /// let sat = x.saturating_abs();
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, 0, 3]);")]
+            #[doc = concat!("let xs = ", stringify!($name), "::from_array([MIN, -2, 0, 3]);")]
+            /// let unsat = xs.abs();
+            /// let sat = xs.saturating_abs();
+            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, 0, 3]));")]
             #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, 0, 3]));")]
             /// ```
             #[inline]
@@ -103,12 +121,13 @@ macro_rules! impl_int_arith {
             /// As neg(), except the MIN value becomes MAX instead of itself.
             ///
             /// # Examples
+            /// ```
             /// # use core_simd::*;
             #[doc = concat!("# use core::", stringify!($n), "::{MIN, MAX};")]
-            #[doc = concat!("let x = ", stringify!($name), "::splat([MIN, -2, 3, MAX]);")]
+            #[doc = concat!("let x = ", stringify!($name), "::from_array([MIN, -2, 3, MAX]);")]
             /// let unsat = -x;
             /// let sat = x.saturating_neg();
-            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, -3, MIN + 1]);")]
+            #[doc = concat!("assert_eq!(unsat, ", stringify!($name), "::from_array([MIN, 2, -3, MIN + 1]));")]
             #[doc = concat!("assert_eq!(sat, ", stringify!($name), "::from_array([MAX, 2, -3, MIN + 1]));")]
             /// ```
             #[inline]

@@ -7,7 +7,7 @@ pub use full_masks::*;
 mod bitmask;
 pub use bitmask::*;
 
-use crate::{LanesAtMost32, SimdI128, SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize};
+use crate::{LanesAtMost32, SimdI16, SimdI32, SimdI64, SimdI8, SimdIsize};
 
 macro_rules! define_opaque_mask {
     {
@@ -388,14 +388,6 @@ define_opaque_mask! {
 }
 
 define_opaque_mask! {
-    /// Mask for vectors with `LANES` 128-bit elements.
-    ///
-    /// The layout of this type is unspecified.
-    struct Mask128<const LANES: usize>(SimdMask128<LANES>);
-    @bits SimdI128
-}
-
-define_opaque_mask! {
     /// Mask for vectors with `LANES` pointer-width elements.
     ///
     /// The layout of this type is unspecified.
@@ -447,12 +439,6 @@ pub type mask64x4 = Mask64<4>;
 
 /// Vector of eight 64-bit masks
 pub type mask64x8 = Mask64<8>;
-
-/// Vector of two 128-bit masks
-pub type mask128x2 = Mask128<2>;
-
-/// Vector of four 128-bit masks
-pub type mask128x4 = Mask128<4>;
 
 /// Vector of two pointer-width masks
 pub type masksizex2 = MaskSize<2>;

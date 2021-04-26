@@ -77,8 +77,8 @@ macro_rules! impl_fmt_trait {
 
 impl_fmt_trait! {
     integers:
-        SimdU8, SimdU16, SimdU32, SimdU64, SimdU128,
-        SimdI8, SimdI16, SimdI32, SimdI64, SimdI128,
+        SimdU8, SimdU16, SimdU32, SimdU64,
+        SimdI8, SimdI16, SimdI32, SimdI64,
         SimdUsize, SimdIsize,
 }
 
