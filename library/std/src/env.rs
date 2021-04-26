@@ -710,14 +710,14 @@ pub struct ArgsOs {
 /// passed as-is.
 ///
 /// On glibc Linux systems, arguments are retrieved by placing a function in `.init_array`.
-/// Glibc passes `argc`, `argv`, and `envp` to functions in `.init_array`, as a non-standard
+/// glibc passes `argc`, `argv`, and `envp` to functions in `.init_array`, as a non-standard
 /// extension. This allows `std::env::args` to work even in a `cdylib` or `staticlib`, as it
 /// does on macOS and Windows.
 ///
 /// # Panics
 ///
 /// The returned iterator will panic during iteration if any argument to the
-/// process is not valid unicode. If this is not desired,
+/// process is not valid Unicode. If this is not desired,
 /// use the [`args_os`] function instead.
 ///
 /// # Examples
@@ -735,17 +735,25 @@ pub fn args() -> Args {
     Args { inner: args_os() }
 }
 
-/// Returns the arguments which this program was started with (normally passed
+/// Returns the arguments that this program was started with (normally passed
 /// via the command line).
 ///
 /// The first element is traditionally the path of the executable, but it can be
-/// set to arbitrary text, and it may not even exist, so this property should
+/// set to arbitrary text, and may not even exist. This means this property should
 /// not be relied upon for security purposes.
 ///
-/// On glibc Linux systems, arguments are retrieved by placing a function in ".init_array".
-/// Glibc passes argc, argv, and envp to functions in ".init_array", as a non-standard extension.
-/// This allows `std::env::args` to work even in a `cdylib` or `staticlib`, as it does on macOS
-/// and Windows.
+/// On Unix systems the shell usually expands unquoted arguments with glob patterns
+/// (such as `*` and `?`). On Windows this is not done, and such arguments are
+/// passed as-is.
+///
+/// On glibc Linux systems, arguments are retrieved by placing a function in `.init_array`.
+/// glibc passes `argc`, `argv`, and `envp` to functions in `.init_array`, as a non-standard
+/// extension. This allows `std::env::args_os` to work even in a `cdylib` or `staticlib`, as it
+/// does on macOS and Windows.
+///
+/// Note that the returned iterator will not check if the arguments to the
+/// process are valid Unicode. To ensure UTF-8 validity,
+/// use the [`args`] function instead.
 ///
 /// # Examples
 ///
