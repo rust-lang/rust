@@ -150,7 +150,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om
     }
 
-    /// Tries to resolve the target of a `crate use` statement and inlines the
+    /// Tries to resolve the target of a `pub use` statement and inlines the
     /// target if it is defined locally and would not be documented otherwise,
     /// or when it is specifically requested with `please_inline`.
     /// (the latter is the case when the import is marked `doc(inline)`)
@@ -183,7 +183,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             || use_attrs.lists(sym::doc).has_word(sym::hidden);
 
         // For cross-crate impl inlining we need to know whether items are
-        // reachable in documentation -- a previously nonreachable item can be
+        // reachable in documentation -- a previously unreachable item can be
         // made reachable by cross-crate inlining which we're checking here.
         // (this is done here because we need to know this upfront).
         if !res_did.is_local() && !is_no_inline {
