@@ -397,13 +397,10 @@ fn collect_items_rec<'tcx>(
             if let hir::ItemKind::GlobalAsm(asm) = item.kind {
                 for (op, op_sp) in asm.operands {
                     match op {
-                        hir::InlineAsmOperand::Const { ref anon_const } => {
-                            // Treat these the same way as ItemKind::Const
-                            let anon_const_def_id =
-                                tcx.hir().local_def_id(anon_const.hir_id).to_def_id();
-                            if let Ok(val) = tcx.const_eval_poly(anon_const_def_id) {
-                                collect_const_value(tcx, val, &mut neighbors);
-                            }
+                        hir::InlineAsmOperand::Const { .. } => {
+                            // Only constants which resolve to a plain integer
+                            // are supported. Therefore the value should not
+                            // depend on any other items.
                         }
                         _ => span_bug!(*op_sp, "invalid operand type for global_asm!"),
                     }
