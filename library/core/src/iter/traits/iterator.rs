@@ -5,7 +5,7 @@ use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 use super::super::try_process;
 use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{ArrayChunks, Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{Dedup, ByKey, ByPartialEq};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};

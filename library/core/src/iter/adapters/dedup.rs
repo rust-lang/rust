@@ -106,11 +106,7 @@ where
 {
     pub(crate) fn new(inner: I, same_bucket: F) -> Self {
         let mut inner = inner;
-        Self {
-            last: inner.next(),
-            inner,
-            same_bucket,
-        }
+        Self { last: inner.next(), inner, same_bucket }
     }
 }
 
