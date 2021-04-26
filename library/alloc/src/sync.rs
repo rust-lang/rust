@@ -271,7 +271,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
-    #[inline(always)]
+    #[inline]
     fn metadata(&self) -> &ArcMetadata {
         unsafe { ArcAllocator::<Global>::prefix(self.ptr).as_ref() }
     }
@@ -327,7 +327,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 }
 
 impl<T: ?Sized> Weak<T> {
-    #[inline(always)]
+    #[inline]
     fn metadata(&self) -> Option<&ArcMetadata> {
         if is_dangling(self.ptr.as_ptr()) {
             None
@@ -350,7 +350,11 @@ impl<T> Arc<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(data: T) -> Self {
-        Self::try_new(data).unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+        let mut arc = Self::new_uninit();
+        unsafe {
+            Arc::get_mut_unchecked(&mut arc).as_mut_ptr().write(data);
+            arc.assume_init()
+        }
     }
 
     /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
@@ -376,7 +380,36 @@ impl<T> Arc<T> {
     #[inline]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Self {
-        Self::try_new_cyclic(data_fn).unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+        // Construct the inner in the "uninitialized" state with a single
+        // weak reference.
+        let alloc = ArcAllocator::new(Global);
+        let ptr = Self::allocate(
+            &alloc,
+            Layout::new::<T>(),
+            ArcMetadata::new_weak(),
+            AllocInit::Uninitialized,
+            NonNull::cast,
+        );
+
+        // Strong references should collectively own a shared weak reference,
+        // so don't run the destructor for our old weak reference.
+        let weak = mem::ManuallyDrop::new(Weak { ptr, alloc });
+
+        // It's important we don't give up ownership of the weak pointer, or
+        // else the memory might be freed by the time `data_fn` returns. If
+        // we really wanted to pass ownership, we could create an additional
+        // weak pointer for ourselves, but this would result in additional
+        // updates to the weak reference count which might not be necessary
+        // otherwise.
+        unsafe {
+            ptr.as_ptr().write(data_fn(&weak));
+        }
+
+        let meta = unsafe { ArcAllocator::<Global>::prefix(ptr).as_ref() };
+        let prev_value = meta.strong.fetch_add(1, Release);
+        debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
+
+        unsafe { Self::from_raw_in(ptr.as_ptr(), weak.alloc) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents.
@@ -403,7 +436,16 @@ impl<T> Arc<T> {
     #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
-        Self::try_new_uninit().unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+        let alloc = ArcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::allocate(
+            &alloc,
+            layout,
+            ArcMetadata::new_strong(),
+            AllocInit::Uninitialized,
+            NonNull::cast,
+        );
+        unsafe { Arc::from_raw_in(ptr.as_ptr().cast(), alloc) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -429,7 +471,16 @@ impl<T> Arc<T> {
     #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
-        Self::try_new_zeroed().unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+        let alloc = ArcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::allocate(
+            &alloc,
+            layout,
+            ArcMetadata::new_strong(),
+            AllocInit::Zeroed,
+            NonNull::cast,
+        );
+        unsafe { Arc::from_raw_in(ptr.as_ptr().cast(), alloc) }
     }
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
@@ -459,62 +510,6 @@ impl<T> Arc<T> {
             Arc::get_mut_unchecked(&mut arc).as_mut_ptr().write(data);
             Ok(arc.assume_init())
         }
-    }
-
-    /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
-    /// to upgrade the weak reference before this function returns will result
-    /// in a `None` value. However, the weak reference may be cloned freely and
-    /// stored for use at a later time.
-    ///
-    /// # Examples
-    /// ```
-    /// #![feature(allocator_api, arc_new_cyclic)]
-    /// #![allow(dead_code)]
-    ///
-    /// use std::sync::{Arc, Weak};
-    ///
-    /// struct Foo {
-    ///     me: Weak<Foo>,
-    /// }
-    ///
-    /// let foo = Arc::try_new_cyclic(|me| Foo {
-    ///     me: me.clone(),
-    /// })?;
-    /// # Ok::<(), std::alloc::AllocError>(())
-    /// ```
-    #[inline]
-    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn try_new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Result<Self, AllocError> {
-        // Construct the inner in the "uninitialized" state with a single
-        // weak reference.
-        let alloc = ArcAllocator::new(Global);
-        let ptr = Self::try_allocate(
-            &alloc,
-            Layout::new::<T>(),
-            ArcMetadata::new_weak(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        )?;
-
-        // Strong references should collectively own a shared weak reference,
-        // so don't run the destructor for our old weak reference.
-        let weak = mem::ManuallyDrop::new(Weak { ptr, alloc });
-
-        // It's important we don't give up ownership of the weak pointer, or
-        // else the memory might be freed by the time `data_fn` returns. If
-        // we really wanted to pass ownership, we could create an additional
-        // weak pointer for ourselves, but this would result in additional
-        // updates to the weak reference count which might not be necessary
-        // otherwise.
-        unsafe {
-            ptr.as_ptr().write(data_fn(&weak));
-        }
-
-        let meta = unsafe { ArcAllocator::<Global>::prefix(ptr).as_ref() };
-        let prev_value = meta.strong.fetch_add(1, Release);
-        debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
-
-        unsafe { Ok(Self::from_raw_in(ptr.as_ptr(), weak.alloc)) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, returning an error
@@ -1099,8 +1094,11 @@ impl<T: ?Sized> Arc<T> {
         init: AllocInit,
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> NonNull<T> {
-        Self::try_allocate(alloc, layout, meta, init, mem_to_ptr)
-            .unwrap_or_else(|_| handle_alloc_error(layout))
+        let ptr = mem_to_ptr(allocate(alloc, layout, init));
+        unsafe {
+            ArcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
+        }
+        ptr
     }
 
     /// Allocates an `Arc<T>` with sufficient space for
@@ -1116,12 +1114,7 @@ impl<T: ?Sized> Arc<T> {
         init: AllocInit,
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> Result<NonNull<T>, AllocError> {
-        let memory = match init {
-            AllocInit::Uninitialized => alloc.allocate(layout)?,
-            AllocInit::Zeroed => alloc.allocate_zeroed(layout)?,
-        };
-
-        let ptr = mem_to_ptr(memory.as_non_null_ptr());
+        let ptr = mem_to_ptr(try_allocate(alloc, layout, init)?);
         unsafe {
             ArcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
         }
@@ -2451,6 +2444,26 @@ impl<T, I: iter::TrustedLen<Item = T>> ToArcSlice<T> for I {
             panic!("capacity overflow");
         }
     }
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
+#[inline]
+fn allocate(alloc: &ArcAllocator<Global>, layout: Layout, init: AllocInit) -> NonNull<u8> {
+    try_allocate(alloc, layout, init).unwrap_or_else(|_| handle_alloc_error(layout))
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
+#[inline]
+fn try_allocate(
+    alloc: &ArcAllocator<Global>,
+    layout: Layout,
+    init: AllocInit,
+) -> Result<NonNull<u8>, AllocError> {
+    let ptr = match init {
+        AllocInit::Uninitialized => alloc.allocate(layout)?,
+        AllocInit::Zeroed => alloc.allocate_zeroed(layout)?,
+    };
+    Ok(ptr.as_non_null_ptr())
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

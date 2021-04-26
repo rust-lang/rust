@@ -382,7 +382,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
-    #[inline(always)]
+    #[inline]
     fn metadata(&self) -> &RcMetadata {
         unsafe { RcAllocator::<Global>::prefix(self.ptr).as_ref() }
     }
@@ -401,7 +401,11 @@ impl<T> Rc<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        Self::try_new(value).unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+        let mut rc = Self::new_uninit();
+        unsafe {
+            Rc::get_mut_unchecked(&mut rc).as_mut_ptr().write(value);
+            rc.assume_init()
+        }
     }
 
     /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
@@ -431,47 +435,16 @@ impl<T> Rc<T> {
     #[inline]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
-        Self::try_new_cyclic(data_fn).unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
-    }
-
-    /// Tries to construct a new `Rc<T>` using a weak reference to itself. Attempting
-    /// to upgrade the weak reference before this function returns will result
-    /// in a `None` value. However, the weak reference may be cloned freely and
-    /// stored for use at a later time.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(allocator_api, arc_new_cyclic)]
-    /// #![allow(dead_code)]
-    /// use std::alloc::AllocError;
-    /// use std::rc::{Rc, Weak};
-    ///
-    /// struct Gadget {
-    ///     self_weak: Weak<Self>,
-    ///     // ... more fields
-    /// }
-    /// impl Gadget {
-    ///     pub fn new() -> Result<Rc<Self>, AllocError> {
-    ///         Rc::try_new_cyclic(|self_weak| {
-    ///             Gadget { self_weak: self_weak.clone(), /* ... */ }
-    ///         })
-    ///     }
-    /// }
-    /// ```
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn try_new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Result<Rc<T>, AllocError> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let alloc = RcAllocator::new(Global);
-        let ptr = Self::try_allocate(
+        let ptr = Self::allocate(
             &alloc,
             Layout::new::<T>(),
             RcMetadata::new_weak(),
             AllocInit::Uninitialized,
             NonNull::cast,
-        )?;
+        );
 
         // Strong references should collectively own a shared weak reference,
         // so don't run the destructor for our old weak reference.
@@ -491,7 +464,7 @@ impl<T> Rc<T> {
         debug_assert_eq!(meta.strong.get(), 0, "No prior strong references should exist");
         meta.strong.set(1);
 
-        unsafe { Ok(Self::from_raw_in(ptr.as_ptr(), weak.alloc)) }
+        unsafe { Self::from_raw_in(ptr.as_ptr(), weak.alloc) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents.
@@ -518,7 +491,16 @@ impl<T> Rc<T> {
     #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
-        Self::try_new_uninit().unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+        let alloc = RcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::allocate(
+            &alloc,
+            layout,
+            RcMetadata::new_strong(),
+            AllocInit::Uninitialized,
+            NonNull::cast,
+        );
+        unsafe { Rc::from_raw_in(ptr.as_ptr().cast(), alloc) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -544,7 +526,16 @@ impl<T> Rc<T> {
     #[inline]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
-        Self::try_new_zeroed().unwrap_or_else(|_| handle_alloc_error(Layout::new::<T>()))
+        let alloc = RcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::allocate(
+            &alloc,
+            layout,
+            RcMetadata::new_strong(),
+            AllocInit::Zeroed,
+            NonNull::cast,
+        );
+        unsafe { Rc::from_raw_in(ptr.as_ptr().cast(), alloc) }
     }
 
     /// Constructs a new `Rc<T>`, returning an error if the allocation fails
@@ -1293,8 +1284,11 @@ impl<T: ?Sized> Rc<T> {
         init: AllocInit,
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> NonNull<T> {
-        Self::try_allocate(alloc, layout, meta, init, mem_to_ptr)
-            .unwrap_or_else(|_| handle_alloc_error(layout))
+        let ptr = mem_to_ptr(allocate(alloc, layout, init));
+        unsafe {
+            RcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
+        }
+        ptr
     }
 
     /// Allocates an `Rc<T>` with sufficient space for
@@ -1311,12 +1305,7 @@ impl<T: ?Sized> Rc<T> {
         init: AllocInit,
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> Result<NonNull<T>, AllocError> {
-        let memory = match init {
-            AllocInit::Uninitialized => alloc.allocate(layout)?,
-            AllocInit::Zeroed => alloc.allocate_zeroed(layout)?,
-        };
-
-        let ptr = mem_to_ptr(memory.as_non_null_ptr());
+        let ptr = mem_to_ptr(try_allocate(alloc, layout, init)?);
         unsafe {
             RcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
         }
@@ -2043,7 +2032,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 impl<T: ?Sized> Weak<T> {
-    #[inline(always)]
+    #[inline]
     fn metadata(&self) -> Option<&RcMetadata> {
         if is_dangling(self.ptr.as_ptr()) {
             None
@@ -2396,6 +2385,26 @@ impl<T> Default for Weak<T> {
     fn default() -> Weak<T> {
         Weak::new()
     }
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
+#[inline]
+fn allocate(alloc: &RcAllocator<Global>, layout: Layout, init: AllocInit) -> NonNull<u8> {
+    try_allocate(alloc, layout, init).unwrap_or_else(|_| handle_alloc_error(layout))
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
+#[inline]
+fn try_allocate(
+    alloc: &RcAllocator<Global>,
+    layout: Layout,
+    init: AllocInit,
+) -> Result<NonNull<u8>, AllocError> {
+    let ptr = match init {
+        AllocInit::Uninitialized => alloc.allocate(layout)?,
+        AllocInit::Zeroed => alloc.allocate_zeroed(layout)?,
+    };
+    Ok(ptr.as_non_null_ptr())
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
