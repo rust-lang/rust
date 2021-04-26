@@ -71,7 +71,7 @@ pub fn blargh() {}
 /// \_
 #[doc = "```"]
 pub fn crazy_attrs() {}
-//~^^^^ WARNING doc comment contains an invalid Rust code block
+//~^^^^ WARNING could not parse code block
 
 /// ```rust
 /// ```
