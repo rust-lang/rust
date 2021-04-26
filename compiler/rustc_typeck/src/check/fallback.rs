@@ -5,7 +5,9 @@ use rustc_data_structures::{
     graph::{iterate::DepthFirstSearch, vec_graph::VecGraph},
     stable_set::FxHashSet,
 };
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::traits;
+use rustc_middle::ty::{self, ToPredicate, Ty, WithConstness};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, returning true if any fallback
@@ -337,17 +339,68 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // reach a member of N. If so, it falls back to `()`. Else
         // `!`.
         let mut diverging_fallback = FxHashMap::default();
-        for &diverging_vid in &diverging_vids {
+        diverging_fallback.reserve(diverging_vids.len());
+        'outer: for &diverging_vid in &diverging_vids {
             let diverging_ty = self.tcx.mk_ty_var(diverging_vid);
             let root_vid = self.infcx.root_var(diverging_vid);
             let can_reach_non_diverging = coercion_graph
                 .depth_first_search(root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
+
+            for obligation in self.fulfillment_cx.borrow_mut().pending_obligations() {
+                // We need to check if this obligation is a trait bound like
+                // `root_vid: Foo`, and then we check:
+                //
+                // If `(): Foo` may hold, then fallback to (),
+                // otherwise continue on.
+                if let ty::PredicateKind::Trait(predicate, constness) =
+                    obligation.predicate.kind().skip_binder()
+                {
+                    if predicate.trait_ref.def_id
+                        == self.infcx.tcx.require_lang_item(rustc_hir::LangItem::Sized, None)
+                    {
+                        // Skip sized obligations, those are not usually
+                        // 'intentional', satisfied by both ! and () though.
+                        continue;
+                    }
+
+                    // If this trait bound is on the current root_vid...
+                    if self.root_vid(predicate.self_ty()) == Some(root_vid) {
+                        // fixme: copy of mk_trait_obligation_with_new_self_ty
+                        let new_self_ty = self.infcx.tcx.types.unit;
+
+                        let trait_ref = ty::TraitRef {
+                            substs: self
+                                .infcx
+                                .tcx
+                                .mk_substs_trait(new_self_ty, &predicate.trait_ref.substs[1..]),
+                            ..predicate.trait_ref
+                        };
+
+                        // Then contstruct a new obligation with Self = () added
+                        // to the ParamEnv, and see if it holds.
+                        let o = rustc_infer::traits::Obligation::new(
+                            traits::ObligationCause::dummy(),
+                            obligation.param_env,
+                            // FIXME: this drops the binder on the floor that
+                            // previously existed?
+                            trait_ref.with_constness(constness).to_predicate(self.infcx.tcx),
+                        );
+                        if self.infcx.predicate_may_hold(&o) {
+                            // If we might hold for (), then fallback to ().
+                            debug!("fallback to () as {:?} may hold: {:?}", o, diverging_vid);
+                            diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+                            continue 'outer;
+                        }
+                    }
+                }
+            }
+
             if can_reach_non_diverging {
-                debug!("fallback to (): {:?}", diverging_vid);
+                debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
             } else {
-                debug!("fallback to !: {:?}", diverging_vid);
+                debug!("fallback to ! - all diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.mk_diverging_default());
             }
         }
