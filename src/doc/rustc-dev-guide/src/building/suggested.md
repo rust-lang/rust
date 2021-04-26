@@ -34,7 +34,9 @@ you can write:
     "rust-analyzer.rustfmt.overrideCommand": [
       "./build/TARGET_TRIPLE/stage0/bin/rustfmt"
     ],
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "rust-analyzer.cargo.runBuildScripts": false,
+    "rust-analyzer.procMacro.enable": false
 }
 ```
 
