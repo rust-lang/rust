@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{match_def_path, meets_msrv, path_to_local_id, paths, remove_blocks};
+use clippy_utils::{match_def_path, meets_msrv, msrvs, path_to_local_id, paths, remove_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -12,8 +12,6 @@ use rustc_span::sym;
 
 use super::OPTION_AS_REF_DEREF;
 
-const OPTION_AS_REF_DEREF_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
-
 /// lint use of `_.as_ref().map(Deref::deref)` for `Option`s
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -23,7 +21,7 @@ pub(super) fn check<'tcx>(
     is_mut: bool,
     msrv: Option<&RustcVersion>,
 ) {
-    if !meets_msrv(msrv, &OPTION_AS_REF_DEREF_MSRV) {
+    if !meets_msrv(msrv, &msrvs::OPTION_AS_DEREF) {
         return;
     }
 

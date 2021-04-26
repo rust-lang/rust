@@ -7,8 +7,9 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use clippy_utils::visitors::LocalUsedVisitor;
 use clippy_utils::{
-    get_parent_expr, in_macro, is_allowed, is_expn_of, is_lang_ctor, is_refutable, is_wild, meets_msrv, path_to_local,
-    path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks, strip_pat_refs,
+    get_parent_expr, in_macro, is_allowed, is_expn_of, is_lang_ctor, is_refutable, is_wild, meets_msrv, msrvs,
+    path_to_local, path_to_local_id, peel_hir_pat_refs, peel_n_hir_expr_refs, recurse_or_patterns, remove_blocks,
+    strip_pat_refs,
 };
 use clippy_utils::{paths, search_same, SpanlessEq, SpanlessHash};
 use if_chain::if_chain;
@@ -578,8 +579,6 @@ impl_lint_pass!(Matches => [
     MATCH_SAME_ARMS,
 ]);
 
-const MATCH_LIKE_MATCHES_MACRO_MSRV: RustcVersion = RustcVersion::new(1, 42, 0);
-
 impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if in_external_macro(cx.sess(), expr.span) || in_macro(expr.span) {
@@ -588,7 +587,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
         redundant_pattern_match::check(cx, expr);
 
-        if meets_msrv(self.msrv.as_ref(), &MATCH_LIKE_MATCHES_MACRO_MSRV) {
+        if meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO) {
             if !check_match_like_matches(cx, expr) {
                 lint_match_arms(cx, expr);
             }

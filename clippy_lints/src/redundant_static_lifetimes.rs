@@ -1,13 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::meets_msrv;
 use clippy_utils::source::snippet;
+use clippy_utils::{meets_msrv, msrvs};
 use rustc_ast::ast::{Item, ItemKind, Ty, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-
-const REDUNDANT_STATIC_LIFETIMES_MSRV: RustcVersion = RustcVersion::new(1, 17, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for constants and statics with an explicit `'static` lifetime.
@@ -100,7 +98,7 @@ impl RedundantStaticLifetimes {
 
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !meets_msrv(self.msrv.as_ref(), &REDUNDANT_STATIC_LIFETIMES_MSRV) {
+        if !meets_msrv(self.msrv.as_ref(), &msrvs::STATIC_IN_CONST) {
             return;
         }
 

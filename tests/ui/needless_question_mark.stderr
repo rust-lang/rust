@@ -67,25 +67,7 @@ LL |         return Ok(t.magic?);
    |                ^^^^^^^^^^^^ help: try: `t.magic`
 
 error: question mark operator is useless here
-  --> $DIR/needless_question_mark.rs:138:9
-   |
-LL |         Ok(to.magic?) // should be triggered
-   |         ^^^^^^^^^^^^^ help: try: `to.magic`
-
-error: question mark operator is useless here
-  --> $DIR/needless_question_mark.rs:154:9
-   |
-LL |         Some(to.magic?) // should be triggered
-   |         ^^^^^^^^^^^^^^^ help: try: `to.magic`
-
-error: question mark operator is useless here
-  --> $DIR/needless_question_mark.rs:162:9
-   |
-LL |         Ok(to.magic?) // should be triggered
-   |         ^^^^^^^^^^^^^ help: try: `to.magic`
-
-error: question mark operator is useless here
-  --> $DIR/needless_question_mark.rs:187:27
+  --> $DIR/needless_question_mark.rs:115:27
    |
 LL |         || -> Option<_> { Some(Some($expr)?) }()
    |                           ^^^^^^^^^^^^^^^^^^ help: try: `Some($expr)`
@@ -95,5 +77,5 @@ LL |     let _x = some_and_qmark_in_macro!(x?);
    |
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 15 previous errors
+error: aborting due to 12 previous errors
 
