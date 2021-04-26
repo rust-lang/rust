@@ -299,6 +299,10 @@ declare_features! (
     (accepted, macro_attributes_in_derive_output, "1.57.0", Some(81119), None),
     /// Allows panicking during const eval (producing compile-time errors).
     (accepted, const_panic, "1.57.0", Some(51999), None),
+    /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
+    (accepted, never_type, "1.57.0", Some(35121), None),
+    /// Allows diverging expressions to fall back to `!` rather than `()`.
+    (accepted, never_type_fallback, "1.57.0", Some(65992), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

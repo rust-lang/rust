@@ -9,7 +9,7 @@ Core encoding and decoding interfaces.
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
 #![feature(min_specialization)]

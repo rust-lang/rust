@@ -6,11 +6,6 @@
 //
 // check-pass
 
-// revisions: nofallback fallback
-
-#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
-
-
 fn make_unit() {}
 
 trait UnitReturn {}

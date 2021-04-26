@@ -17,7 +17,7 @@
 #![feature(hash_drain_filter)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(crate_visibility_modifier)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "512"] // For rustdoc

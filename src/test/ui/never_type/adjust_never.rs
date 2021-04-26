@@ -2,7 +2,7 @@
 
 // check-pass
 
-#![feature(never_type)]
+
 
 fn main() {
     let x: ! = panic!();

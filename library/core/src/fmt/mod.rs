@@ -2100,14 +2100,14 @@ macro_rules! fmt_refs {
 
 fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.57.0")]
 impl Debug for ! {
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
         *self
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.57.0")]
 impl Display for ! {
     fn fmt(&self, _: &mut Formatter<'_>) -> Result {
         *self

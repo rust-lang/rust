@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![deny(uninhabited_static)]
 
 enum Void {}

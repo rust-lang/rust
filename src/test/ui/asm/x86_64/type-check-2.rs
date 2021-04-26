@@ -1,6 +1,6 @@
 // only-x86_64
 
-#![feature(asm, repr_simd, never_type)]
+#![feature(asm, repr_simd)]
 
 #[repr(simd)]
 struct SimdNonCopy(f32, f32, f32, f32);

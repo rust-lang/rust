@@ -1,7 +1,7 @@
 // run-pass
 #![allow(dead_code)]
 #![feature(variant_count)]
-#![feature(never_type)]
+
 
 use std::mem::variant_count;
 

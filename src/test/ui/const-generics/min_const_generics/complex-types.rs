@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 struct Foo<const N: [u8; 0]>;
 //~^ ERROR `[u8; 0]` is forbidden
 

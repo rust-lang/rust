@@ -1,7 +1,7 @@
 // compile-flags: -Z mir-opt-level=1
 // Regression test for #72181, this ICE requires `-Z mir-opt-level=1` flags.
 
-#![feature(never_type)]
+
 #![allow(unused, invalid_value)]
 
 enum Void {}

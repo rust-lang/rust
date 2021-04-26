@@ -116,7 +116,7 @@
 #![feature(lang_items)]
 #![feature(layout_for_ptr)]
 #![feature(negative_impls)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(nonnull_slice_from_raw_parts)]
 #![feature(auto_traits)]

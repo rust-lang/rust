@@ -7,7 +7,7 @@
 #![feature(proc_macro_internals)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![recursion_limit = "256"]
 
 extern crate proc_macro;

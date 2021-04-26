@@ -2,7 +2,6 @@
 // revisions: normal exhaustive_patterns
 //
 // This tests a match with no arms on various types.
-#![feature(never_type)]
 #![feature(never_type_fallback)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![deny(unreachable_patterns)]

@@ -17,7 +17,7 @@
 #![feature(box_patterns)]
 #![feature(extend_one)]
 #![feature(iter_zip)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
 #![feature(min_specialization)]

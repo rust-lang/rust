@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(never_type)]
+
 
 // Test that we can call static methods on ! both directly and when it appears in a generic
 
