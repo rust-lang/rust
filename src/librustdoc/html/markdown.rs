@@ -625,6 +625,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for Footnotes<'a, I> {
 
 crate fn find_testable_code<T: doctest::Tester>(
     doc: &str,
+    syntax_override: &[String],
     tests: &mut T,
     error_codes: ErrorCodes,
     enable_per_target_ignores: bool,
@@ -634,24 +635,24 @@ crate fn find_testable_code<T: doctest::Tester>(
     let mut prev_offset = 0;
     let mut nb_lines = 0;
     let mut register_header = None;
+
+    let syntax_override =
+        if syntax_override.is_empty() { None } else { Some(syntax_override.join(",")) };
     while let Some((event, offset)) = parser.next() {
         match event {
             Event::Start(Tag::CodeBlock(kind)) => {
-                let block_info = match kind {
-                    CodeBlockKind::Fenced(ref lang) => {
-                        if lang.is_empty() {
-                            Default::default()
-                        } else {
-                            LangString::parse(
-                                lang,
-                                error_codes,
-                                enable_per_target_ignores,
-                                extra_info,
-                            )
-                        }
-                    }
-                    CodeBlockKind::Indented => Default::default(),
+                let lang = match &kind {
+                    CodeBlockKind::Fenced(lang) => syntax_override
+                        .as_deref()
+                        .or_else(|| if lang.is_empty() { None } else { Some(&lang) }),
+                    CodeBlockKind::Indented => syntax_override.as_deref(),
                 };
+                let block_info = lang
+                    .map(|lang| {
+                        LangString::parse(lang, error_codes, enable_per_target_ignores, extra_info)
+                    })
+                    .unwrap_or_default();
+
                 if !block_info.rust {
                     continue;
                 }
@@ -1248,7 +1249,11 @@ crate struct RustCodeBlock {
 
 /// Returns a range of bytes for each code block in the markdown that is tagged as `rust` or
 /// untagged (and assumed to be rust).
-crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeBlock> {
+crate fn rust_code_blocks(
+    md: &str,
+    syntax_override: &[String],
+    extra_info: &ExtraInfo<'_>,
+) -> Vec<RustCodeBlock> {
     let mut code_blocks = vec![];
 
     if md.is_empty() {
@@ -1257,21 +1262,28 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
 
     let mut p = Parser::new_ext(md, opts()).into_offset_iter();
 
+    let syntax_override =
+        if syntax_override.is_empty() { None } else { Some(syntax_override.join(",")) };
+
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {
-            let (syntax, code, range, is_fenced, is_ignore) = match syntax {
-                CodeBlockKind::Fenced(syntax) => {
-                    let syntax = syntax.as_ref();
-                    let lang_string = if syntax.is_empty() {
-                        Default::default()
-                    } else {
-                        LangString::parse(&*syntax, ErrorCodes::Yes, false, Some(extra_info))
-                    };
-                    if !lang_string.rust {
-                        continue;
-                    }
-                    let is_ignore = lang_string.ignore != Ignore::None;
-                    let syntax = if syntax.is_empty() { None } else { Some(syntax.to_owned()) };
+            let block_syntax = match &syntax {
+                CodeBlockKind::Fenced(syntax) => syntax_override
+                    .as_deref()
+                    .or_else(|| if syntax.is_empty() { None } else { Some(&syntax) }),
+                CodeBlockKind::Indented => syntax_override.as_deref(),
+            };
+
+            let lang_string = block_syntax
+                .map(|syntax| LangString::parse(syntax, ErrorCodes::Yes, false, Some(extra_info)))
+                .unwrap_or_default();
+            if !lang_string.rust {
+                continue;
+            }
+            let is_ignore = lang_string.ignore != Ignore::None;
+
+            let (code, range, is_fenced) = match &syntax {
+                CodeBlockKind::Fenced(_syntax) => {
                     let code = match p.next() {
                         Some((Event::Text(_), offset)) => {
                             let mut code = offset.clone();
@@ -1285,26 +1297,26 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                         }
                         None => Range { start: offset.end, end: offset.end },
                     };
-                    (syntax, code, offset, true, is_ignore)
+                    (code, offset, true)
                 }
                 CodeBlockKind::Indented => {
                     // The ending of the offset goes too far sometime so we reduce it by one in
                     // these cases.
                     if offset.end > offset.start && md.get(offset.end..=offset.end) == Some(&"\n") {
-                        (
-                            None,
-                            offset.clone(),
-                            Range { start: offset.start, end: offset.end - 1 },
-                            false,
-                            false,
-                        )
+                        (offset.clone(), Range { start: offset.start, end: offset.end - 1 }, false)
                     } else {
-                        (None, offset.clone(), offset, false, false)
+                        (offset.clone(), offset, false)
                     }
                 }
             };
 
-            code_blocks.push(RustCodeBlock { is_fenced, range, code, syntax, is_ignore });
+            code_blocks.push(RustCodeBlock {
+                is_fenced,
+                range,
+                code,
+                syntax: block_syntax.map(str::to_string),
+                is_ignore,
+            });
         }
     }
 

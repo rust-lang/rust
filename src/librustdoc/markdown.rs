@@ -132,7 +132,14 @@ crate fn test(mut options: Options) -> Result<(), String> {
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(options.render_options.unstable_features.is_nightly_build());
 
-    find_testable_code(&input_str, &mut collector, codes, options.enable_per_target_ignores, None);
+    find_testable_code(
+        &input_str,
+        &[],
+        &mut collector,
+        codes,
+        options.enable_per_target_ignores,
+        None,
+    );
 
     options.test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(

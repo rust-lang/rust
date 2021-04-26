@@ -1115,8 +1115,10 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
                 .map(|span| span.ctxt().outer_expn().expansion_cause().unwrap_or(span))
                 .unwrap_or(DUMMY_SP);
             self.collector.set_position(span);
+            let syntax_override = attrs.get_codeblock_attrs();
             markdown::find_testable_code(
                 &doc,
+                &syntax_override,
                 self.collector,
                 self.codes,
                 self.collector.enable_per_target_ignores,

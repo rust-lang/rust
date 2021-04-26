@@ -1073,6 +1073,27 @@ impl Attributes {
         }
         aliases.into_iter().collect::<Vec<String>>().into()
     }
+
+    crate fn get_codeblock_attrs(&self) -> Box<[String]> {
+        let mut codeblocks = FxHashSet::default();
+
+        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::codeblock_attr)) {
+            if let Some(values) = attr.meta_item_list() {
+                for l in values {
+                    match l.literal().unwrap().kind {
+                        ast::LitKind::Str(s, _) => {
+                            codeblocks.insert(s.as_str().to_string());
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            } else {
+                codeblocks.insert(attr.value_str().map(|s| s.to_string()).unwrap());
+            }
+        }
+
+        codeblocks.into_iter().collect::<Vec<String>>().into()
+    }
 }
 
 impl PartialEq for Attributes {

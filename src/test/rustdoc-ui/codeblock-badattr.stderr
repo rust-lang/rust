@@ -1,0 +1,26 @@
+error: ',' character isn't allowed in `#[doc(codeblock_attr = "...")]`
+  --> $DIR/codeblock-badattr.rs:4:24
+   |
+LL | #[doc(codeblock_attr = "1,2,3")]
+   |                        ^^^^^^^
+
+error: ' ' character isn't allowed in `#[doc(codeblock_attr = "...")]`
+  --> $DIR/codeblock-badattr.rs:8:24
+   |
+LL | #[doc(codeblock_attr = "foo bar")]
+   |                        ^^^^^^^^^
+
+error: ' ' character isn't allowed in `#[doc(codeblock_attr("..."))]`
+  --> $DIR/codeblock-badattr.rs:12:22
+   |
+LL | #[doc(codeblock_attr(" ", ","))]
+   |                      ^^^
+
+error: ',' character isn't allowed in `#[doc(codeblock_attr("..."))]`
+  --> $DIR/codeblock-badattr.rs:12:27
+   |
+LL | #[doc(codeblock_attr(" ", ","))]
+   |                           ^^^
+
+error: aborting due to 4 previous errors
+

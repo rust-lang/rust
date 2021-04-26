@@ -1,0 +1,9 @@
+
+running 4 tests
+test $DIR/codeblock-override.rs - panic_test0 (line 54) ... ok
+test $DIR/codeblock-override.rs - panic_test1 (line 64) ... ok
+test $DIR/codeblock-override.rs - panic_test2 (line 74) ... ok
+test $DIR/codeblock-override.rs - panic_test3 (line 82) ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

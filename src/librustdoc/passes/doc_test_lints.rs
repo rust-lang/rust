@@ -91,8 +91,9 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     };
 
     let mut tests = Tests { found_tests: 0 };
+    let syntax_override = item.attrs.get_codeblock_attrs();
 
-    find_testable_code(&dox, &mut tests, ErrorCodes::No, false, None);
+    find_testable_code(&dox, &syntax_override, &mut tests, ErrorCodes::No, false, None);
 
     if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
         if should_have_doc_example(cx, &item) {

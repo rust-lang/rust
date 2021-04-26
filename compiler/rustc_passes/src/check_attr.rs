@@ -521,6 +521,103 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn check_doc_codeblock_attr_value(
+        &self,
+        meta: &NestedMetaItem,
+        doc_codeblock_attr: &str,
+        is_list: bool,
+    ) -> bool {
+        let tcx = self.tcx;
+        let err_fn = move |span: Span, msg: &str| {
+            tcx.sess.span_err(
+                span,
+                &format!(
+                    "`#[doc(codeblock_attr{})]` {}",
+                    if is_list { "(\"...\")" } else { " = \"...\"" },
+                    msg,
+                ),
+            );
+            false
+        };
+        if doc_codeblock_attr.is_empty() {
+            return err_fn(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                "attribute cannot have empty value",
+            );
+        }
+        if let Some(c) = doc_codeblock_attr
+            .chars()
+            .find(|&c| c == ',' || c == '`' || c == '"' || c == '\'' || c.is_whitespace())
+        {
+            self.tcx.sess.span_err(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                &format!(
+                    "{:?} character isn't allowed in `#[doc(codeblock_attr{})]`",
+                    c,
+                    if is_list { "(\"...\")" } else { " = \"...\"" },
+                ),
+            );
+            return false;
+        }
+        if doc_codeblock_attr.starts_with(' ') || doc_codeblock_attr.ends_with(' ') {
+            return err_fn(
+                meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
+                "cannot start or end with ' '",
+            );
+        }
+        true
+    }
+
+    fn check_doc_codeblock_attr(&self, meta: &NestedMetaItem) -> bool {
+        if let Some(values) = meta.meta_item_list() {
+            let mut errors = 0;
+            for v in values {
+                match v.literal() {
+                    Some(l) => match l.kind {
+                        LitKind::Str(s, _) => {
+                            if !self.check_doc_codeblock_attr_value(v, &s.as_str(), true) {
+                                errors += 1;
+                            }
+                        }
+                        _ => {
+                            self.tcx
+                                .sess
+                                .struct_span_err(
+                                    v.span(),
+                                    "`#[doc(codeblock_attr(\"a\"))]` expects string literals",
+                                )
+                                .emit();
+                            errors += 1;
+                        }
+                    },
+                    None => {
+                        self.tcx
+                            .sess
+                            .struct_span_err(
+                                v.span(),
+                                "`#[doc(codeblock_attr(\"a\"))]` expects string literals",
+                            )
+                            .emit();
+                        errors += 1;
+                    }
+                }
+            }
+            errors == 0
+        } else if let Some(doc_codeblock_attr) = meta.value_str().map(|s| s.to_string()) {
+            self.check_doc_codeblock_attr_value(meta, &doc_codeblock_attr, false)
+        } else {
+            self.tcx
+                .sess
+                .struct_span_err(
+                    meta.span(),
+                    "doc codeblock_attr attribute expects a string `#[doc(codeblock_attr = \"a\")]` or a list of \
+                     strings `#[doc(codeblock_attr(\"a\", \"b\"))]`",
+                )
+                .emit();
+            false
+        }
+    }
+
     fn check_doc_keyword(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
         let doc_keyword = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
         if doc_keyword.is_empty() {
@@ -600,6 +697,10 @@ impl CheckAttrVisitor<'tcx> {
                             is_valid = false
                         }
 
+                        sym::codeblock_attr if !self.check_doc_codeblock_attr(&meta) => {
+                            is_valid = false
+                        }
+
                         sym::keyword
                             if !self.check_attr_crate_level(&meta, hir_id, "keyword")
                                 || !self.check_doc_keyword(&meta, hir_id) =>
@@ -627,6 +728,7 @@ impl CheckAttrVisitor<'tcx> {
                         // passes: deprecated
                         // plugins: removed, but rustdoc warns about it itself
                         sym::alias
+                        | sym::codeblock_attr
                         | sym::cfg
                         | sym::hidden
                         | sym::html_favicon_url

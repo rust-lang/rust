@@ -364,6 +364,7 @@ symbols! {
         cmp,
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
+        codeblock_attr,
         coerce_unsized,
         cold,
         column,

@@ -202,9 +202,11 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
             _ => {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
+                let syntax_override = i.attrs.get_codeblock_attrs();
 
                 find_testable_code(
                     &i.attrs.collapsed_doc_value().unwrap_or_default(),
+                    &syntax_override,
                     &mut tests,
                     ErrorCodes::No,
                     false,

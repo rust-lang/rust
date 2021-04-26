@@ -112,7 +112,8 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
         if let Some(dox) = &item.attrs.collapsed_doc_value() {
             let sp = item.attr_span(self.cx.tcx);
             let extra = crate::html::markdown::ExtraInfo::new_did(self.cx.tcx, item.def_id, sp);
-            for code_block in markdown::rust_code_blocks(&dox, &extra) {
+            let syntax_override = item.attrs.get_codeblock_attrs();
+            for code_block in markdown::rust_code_blocks(&dox, &syntax_override, &extra) {
                 self.check_rust_syntax(&item, &dox, code_block);
             }
         }
