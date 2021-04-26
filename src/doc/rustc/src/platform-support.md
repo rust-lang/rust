@@ -7,7 +7,8 @@
 </style>
 
 Support for different platforms are organized into three tiers, each with a
-different set of guarantees.
+different set of guarantees. For more information on the policies for targets
+at each tier, see the [Target Tier Policy](target-tier-policy.md).
 
 Platforms are identified by their "target triple" which is the string to
 inform the compiler what kind of output should be produced. The columns in the
