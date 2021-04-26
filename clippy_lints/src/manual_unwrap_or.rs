@@ -112,6 +112,15 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         then {
             let reindented_or_body =
                 reindent_multiline(or_body_snippet.into(), true, Some(indent));
+
+            let suggestion = if scrutinee.span.from_expansion() {
+                    // we don't want parenthesis around macro, e.g. `(some_macro!()).unwrap_or(0)`
+                    sugg::Sugg::hir_with_macro_callsite(cx, scrutinee, "..")
+                }
+                else {
+                    sugg::Sugg::hir(cx, scrutinee, "..").maybe_par()
+                };
+
             span_lint_and_sugg(
                 cx,
                 MANUAL_UNWRAP_OR, expr.span,
@@ -119,7 +128,7 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
                 "replace with",
                 format!(
                     "{}.unwrap_or({})",
-                    sugg::Sugg::hir(cx, scrutinee, "..").maybe_par(),
+                    suggestion,
                     reindented_or_body,
                 ),
                 Applicability::MachineApplicable,
