@@ -1355,6 +1355,60 @@ h4 > .notable-traits {
 	border-top: 1px solid;
 }
 
+/* The hideme class is used on summary tags that contain a span with
+	placeholder text shown only when the toggle is closed. For instance,
+	"Expand description" or "Show methods". */
+details.rustdoc-toggle > summary.hideme {
+	cursor: pointer;
+}
+
+details.rustdoc-toggle > summary::-webkit-details-marker {
+	display: none;
+}
+
+details.rustdoc-toggle > summary.hideme > span {
+	margin-left: 9px;
+}
+
+details.rustdoc-toggle > summary::before {
+	content: "[+]";
+	font-weight: 300;
+	font-size: 0.8em;
+	letter-spacing: 1px;
+	cursor: pointer;
+}
+
+details.rustdoc-toggle > summary.hideme::before {
+	position: relative;
+}
+
+details.rustdoc-toggle > summary:not(.hideme)::before {
+	position: absolute;
+	left: -23px;
+}
+
+/* When a "hideme" summary is open and the "Expand description" or "Show
+	methods" text is hidden, we want the [-] toggle that remains to not
+	affect the layout of the items to its right. To do that, we use
+	absolute positioning. Note that we also set position: relative
+	on the parent <details> to make this work properly. */
+details.rustdoc-toggle[open] > summary.hideme {
+	position: absolute;
+}
+
+details.rustdoc-toggle[open] {
+	position: relative;
+}
+
+details.rustdoc-toggle[open] > summary.hideme > span {
+	display: none;
+}
+
+details.rustdoc-toggle[open] > summary::before {
+	content: "[−]";
+	display: inline;
+}
+
 /* Media Queries */
 
 @media (min-width: 701px) {
@@ -1573,7 +1627,7 @@ h4 > .notable-traits {
 		left: -10px;
 	}
 
-	.item-list > details.rustdoc-toggle > summary:not(.hideme)::before {
+	details.rustdoc-toggle > summary:not(.hideme)::before {
 		left: -10px;
 	}
 
@@ -1769,58 +1823,4 @@ div.name.expand::before {
 	transform: rotate(90deg);
 	left: -15px;
 	top: 2px;
-}
-
-/* The hideme class is used on summary tags that contain a span with
-	placeholder text shown only when the toggle is closed. For instance,
-	"Expand description" or "Show methods". */
-details.rustdoc-toggle > summary.hideme {
-	cursor: pointer;
-}
-
-details.rustdoc-toggle > summary::-webkit-details-marker {
-	display: none;
-}
-
-details.rustdoc-toggle > summary.hideme > span {
-	margin-left: 9px;
-}
-
-details.rustdoc-toggle > summary::before {
-	content: "[+]";
-	font-weight: 300;
-	font-size: 0.8em;
-	letter-spacing: 1px;
-	cursor: pointer;
-}
-
-details.rustdoc-toggle > summary.hideme::before {
-	position: relative;
-}
-
-details.rustdoc-toggle > summary:not(.hideme)::before {
-	position: absolute;
-	left: -23px;
-}
-
-/* When a "hideme" summary is open and the "Expand description" or "Show
-	methods" text is hidden, we want the [-] toggle that remains to not
-	affect the layout of the items to its right. To do that, we use
-	absolute positioning. Note that we also set position: relative
-	on the parent <details> to make this work properly. */
-details.rustdoc-toggle[open] > summary.hideme {
-	position: absolute;
-}
-
-details.rustdoc-toggle[open] {
-	position: relative;
-}
-
-details.rustdoc-toggle[open] > summary.hideme > span {
-	display: none;
-}
-
-details.rustdoc-toggle[open] > summary::before {
-	content: "[−]";
-	display: inline;
 }
