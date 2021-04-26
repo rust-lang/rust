@@ -1,0 +1,102 @@
+    1|       |// FIXME(#84561): function-like macros produce unintuitive coverage results.
+    2|       |// This test demonstrates some of the problems.
+    3|       |
+    4|     18|#[derive(Debug, PartialEq, Eq)]
+                       ^5                ^0
+  ------------------
+  | <issue_84561::Foo as core::cmp::PartialEq>::eq:
+  |    4|     18|#[derive(Debug, PartialEq, Eq)]
+  ------------------
+  | Unexecuted instantiation: <issue_84561::Foo as core::cmp::PartialEq>::ne
+  ------------------
+    5|       |struct Foo(u32);
+    6|       |
+    7|      1|fn main() {
+    8|      1|    let bar = Foo(1);
+    9|      1|    assert_eq!(bar, Foo(1));
+   10|      1|    let baz = Foo(0);
+   11|      1|    assert_ne!(baz, Foo(1));
+   12|      1|    println!("{:?}", Foo(1));
+   13|      1|    println!("{:?}", bar);
+   14|      1|    println!("{:?}", baz);
+   15|      1|
+   16|      1|    assert_eq!(Foo(1), Foo(1));
+   17|      1|    assert_ne!(Foo(0), Foo(1));
+   18|      1|    assert_eq!(Foo(2), Foo(2));
+   19|      1|    let bar = Foo(1);
+   20|      1|    assert_ne!(Foo(0), Foo(3));
+   21|      1|    assert_ne!(Foo(0), Foo(4));
+   22|      1|    assert_eq!(Foo(3), Foo(3));
+   23|      1|    assert_ne!(Foo(0), Foo(5));
+   24|      1|    println!("{:?}", bar);
+   25|      1|    println!("{:?}", Foo(1));
+   26|      1|
+   27|      1|    let is_true = std::env::args().len() == 1;
+   28|      1|
+   29|      1|    assert_eq!(
+   30|      1|        Foo(1),
+   31|      1|        Foo(1)
+   32|      1|    );
+   33|      1|    assert_ne!(
+   34|      1|        Foo(0),
+   35|      1|        Foo(1)
+   36|      1|    );
+   37|      1|    assert_eq!(
+   38|      1|        Foo(2),
+   39|      1|        Foo(2)
+   40|      1|    );
+   41|      1|    let bar = Foo(1
+   42|      1|    );
+   43|      1|    assert_ne!(
+   44|      1|        Foo(0),
+   45|      1|        Foo(3)
+   46|      1|    );
+   47|      1|    if is_true {
+   48|      1|        assert_ne!(
+   49|      1|            Foo(0),
+   50|      1|            Foo(4)
+   51|      1|        );
+   52|       |    } else {
+   53|      0|        assert_eq!(
+   54|      0|            Foo(3),
+   55|      0|            Foo(3)
+   56|      0|        );
+   57|       |    }
+   58|       |    assert_ne!(
+   59|      1|        if is_true {
+   60|      1|            Foo(0)
+   61|       |        } else {
+   62|      0|            Foo(1)
+   63|       |        },
+   64|       |        Foo(5)
+   65|       |    );
+   66|      1|    assert_ne!(
+   67|      1|        Foo(5),
+   68|      1|        if is_true {
+   69|      1|            Foo(0)
+   70|       |        } else {
+   71|      0|            Foo(1)
+   72|       |        }
+   73|       |    );
+   74|       |    assert_ne!(
+   75|      1|        if is_true {
+   76|      1|            assert_eq!(
+   77|      1|                Foo(3),
+   78|      1|                Foo(3)
+   79|      1|            );
+   80|      1|            Foo(0)
+   81|       |        } else {
+   82|       |            assert_ne!(
+   83|      0|                if is_true {
+   84|      0|                    Foo(0)
+   85|       |                } else {
+   86|      0|                    Foo(1)
+   87|       |                },
+   88|       |                Foo(5)
+   89|       |            );
+   90|      0|            Foo(1)
+   91|       |        },
+   92|       |        Foo(5)
+   93|       |    );
+   94|      1|}
+
