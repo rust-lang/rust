@@ -150,8 +150,8 @@
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
 use crate::pin::Pin;
 use crate::{
-    hint, mem,
-    ops::{self, Deref, DerefMut},
+    convert, hint, mem,
+    ops::{self, ControlFlow, Deref, DerefMut},
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
@@ -1661,6 +1661,35 @@ impl<T> ops::Try for Option<T> {
     #[inline]
     fn from_error(_: NoneError) -> Self {
         None
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T> ops::TryV2 for Option<T> {
+    type Output = T;
+    type Residual = Option<convert::Infallible>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Some(output)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Some(v) => ControlFlow::Continue(v),
+            None => ControlFlow::Break(None),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T> ops::FromResidual for Option<T> {
+    #[inline]
+    fn from_residual(residual: Option<convert::Infallible>) -> Self {
+        match residual {
+            None => None,
+        }
     }
 }
 

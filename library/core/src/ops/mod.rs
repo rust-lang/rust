@@ -148,6 +148,7 @@ mod generator;
 mod index;
 mod range;
 mod r#try;
+mod try_trait;
 mod unsize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -183,6 +184,12 @@ pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
 
 #[unstable(feature = "try_trait", issue = "42327")]
 pub use self::r#try::Try;
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+pub use self::try_trait::FromResidual;
+
+#[unstable(feature = "try_trait_transition", reason = "for bootstrap", issue = "none")]
+pub use self::try_trait::Try as TryV2;
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 pub use self::generator::{Generator, GeneratorState};

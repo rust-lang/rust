@@ -228,7 +228,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
-use crate::ops::{self, Deref, DerefMut};
+use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -1644,5 +1644,34 @@ impl<T, E> ops::Try for Result<T, E> {
     #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E> ops::TryV2 for Result<T, E> {
+    type Output = T;
+    type Residual = Result<convert::Infallible, E>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Ok(output)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Ok(v) => ControlFlow::Continue(v),
+            Err(e) => ControlFlow::Break(Err(e)),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+    #[inline]
+    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+        match residual {
+            Err(e) => Err(From::from(e)),
+        }
     }
 }
