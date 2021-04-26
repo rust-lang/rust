@@ -328,7 +328,7 @@ warning: Rust code block is empty
 --> src/lib.rs:8:5
 |
 8 | /// ```rust
-|     ^^^^^^^
+|       ^^^^^^^
 ```
 
 ## bare_urls

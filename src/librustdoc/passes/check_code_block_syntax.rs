@@ -61,7 +61,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         };
 
         let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_id);
-        let suggest_using_text = code_block.syntax.is_none() && code_block.is_fenced;
+        let empty_block = code_block.syntax.is_none() && code_block.is_fenced;
         let is_ignore = code_block.is_ignore;
 
         // The span and whether it is precise or not.
@@ -78,40 +78,38 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         // lambda that will use the lint to start a new diagnostic and add
         // a suggestion to it when needed.
         let diag_builder = |lint: LintDiagnosticBuilder<'_>| {
-            let mut diag = if precise_span {
-                let msg = if buffer.has_errors {
-                    "could not parse code block as Rust code"
-                } else {
-                    "Rust code block is empty"
-                };
+            let explanation = if is_ignore {
+                "`ignore` code blocks require valid Rust code for syntax highlighting; \
+                    mark blocks that do not contain Rust code as text"
+            } else {
+                "mark blocks that do not contain Rust code as text"
+            };
+            let msg = if buffer.has_errors {
+                "could not parse code block as Rust code"
+            } else {
+                "Rust code block is empty"
+            };
+            let mut diag = lint.build(msg);
 
-                let mut diag = lint.build(msg);
-
-                if suggest_using_text {
-                    let extended_msg = if is_ignore {
-                        "`ignore` code blocks require valid Rust code for syntax highlighting. \
-                         Mark blocks that do not contain Rust code as text"
-                    } else {
-                        "mark blocks that do not contain Rust code as text"
-                    };
-
+            if precise_span {
+                if is_ignore {
+                    // giving an accurate suggestion is hard because `ignore` might not have come first in the list.
+                    // just give a `help` instead.
+                    diag.span_help(
+                        sp.from_inner(InnerSpan::new(0, 3)),
+                        &format!("{}: ```text", explanation),
+                    );
+                } else if empty_block {
                     diag.span_suggestion(
                         sp.from_inner(InnerSpan::new(0, 3)),
-                        extended_msg,
+                        explanation,
                         String::from("```text"),
                         Applicability::MachineApplicable,
                     );
                 }
-
-                diag
-            } else {
-                let mut diag = lint.build("doc comment contains an invalid Rust code block");
-                if suggest_using_text {
-                    diag.help("mark blocks that do not contain Rust code as text: ```text");
-                }
-
-                diag
-            };
+            } else if empty_block || is_ignore {
+                diag.help(&format!("{}: ```text", explanation));
+            }
 
             // FIXME(#67563): Provide more context for these errors by displaying the spans inline.
             for message in buffer.messages.iter() {
