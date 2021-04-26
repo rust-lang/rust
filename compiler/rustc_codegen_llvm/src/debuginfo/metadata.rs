@@ -1574,7 +1574,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                         MemberDescription {
                             name: if fallback {
-                                String::new()
+                                format!("Variant{}", i.as_u32())
                             } else {
                                 variant_info.variant_name()
                             },
@@ -1886,8 +1886,9 @@ fn describe_enum_variant(
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
                 let offset = enum_layout.fields.offset(tag_field.as_usize());
+                let tag_name = if cx.tcx.sess.target.is_like_msvc { "variant$" } else { "RUST$ENUM$DISR" };
                 let args =
-                    ("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
+                    (tag_name.to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
                 (Some(offset), Some(args))
             }
             _ => (None, None),
@@ -2062,7 +2063,7 @@ fn prepare_enum_metadata(
             unsafe {
                 llvm::LLVMRustDIBuilderCreateUnionType(
                     DIB(cx),
-                    containing_scope,
+                    None,
                     enum_name.as_ptr().cast(),
                     enum_name.len(),
                     file_metadata,
@@ -2437,7 +2438,7 @@ fn create_union_stub(
 
         llvm::LLVMRustDIBuilderCreateUnionType(
             DIB(cx),
-            containing_scope,
+            Some(containing_scope),
             union_type_name.as_ptr().cast(),
             union_type_name.len(),
             unknown_file_metadata(cx),

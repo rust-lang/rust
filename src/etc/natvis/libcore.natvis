@@ -14,28 +14,11 @@
     </Expand>
   </Type>
 
-  <Type Name="core::option::Option&lt;*&gt;">
-    <DisplayString Condition="RUST$ENUM$DISR == 0x0">None</DisplayString>
-    <DisplayString Condition="RUST$ENUM$DISR == 0x1">Some({__0})</DisplayString>
-    <Expand>
-      <Item Name="[value]" ExcludeView="simple" Condition="RUST$ENUM$DISR == 1">__0</Item>
-    </Expand>
-  </Type>
-
   <Type Name="core::option::Option&lt;*&gt;" Priority="MediumLow">
     <DisplayString Condition="*(void**)this == nullptr">None</DisplayString>
     <DisplayString>Some({($T1 *)this})</DisplayString>
     <Expand>
       <Item Name="Some" ExcludeView="simple" Condition="*(void**)this != nullptr">($T1 *)this</Item>
-    </Expand>
-  </Type>
-
-  <Type Name="core::result::Result&lt;*&gt;">
-    <DisplayString Condition="RUST$ENUM$DISR == 0x0">Ok({__0})</DisplayString>
-    <DisplayString Condition="RUST$ENUM$DISR == 0x1">Err({(*($T2*) &amp;__0)})</DisplayString>
-    <Expand>
-      <Item Name="[value]" Condition="RUST$ENUM$DISR == 0x0">__0</Item>
-      <Item Name="[value]" Condition="RUST$ENUM$DISR == 0x1">(*($T2*) &amp;__0)</Item>
     </Expand>
   </Type>
 

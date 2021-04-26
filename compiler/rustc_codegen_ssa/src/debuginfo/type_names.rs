@@ -45,8 +45,16 @@ pub fn push_debuginfo_type_name<'tcx>(
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
+            if def.is_enum() && cpp_like_names {
+                output.push_str("_enum<");
+            }
+
             push_item_name(tcx, def.did, qualified, output);
             push_type_params(tcx, substs, output, visited);
+
+            if def.is_enum() && cpp_like_names {
+                output.push('>');
+            }
         }
         ty::Tuple(component_types) => {
             if cpp_like_names {

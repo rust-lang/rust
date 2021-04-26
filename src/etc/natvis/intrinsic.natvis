@@ -149,4 +149,42 @@
       <Synthetic Name="[...]"><DisplayString>...</DisplayString></Synthetic>
     </Expand>
   </Type>
+  <Type Name="_enum&lt;*&gt;">
+    <Intrinsic Name="tag" Expression="Variant0.variant$" />
+    <DisplayString Condition="tag() == 0">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 1" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 2" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 3" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 4" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 5" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 6" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 7" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 8" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 9" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 10" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 11" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 12" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 13" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 14" Optional="true">{tag(),en}</DisplayString>
+    <DisplayString Condition="tag() == 15" Optional="true">{tag(),en}</DisplayString>
+
+    <Expand>
+      <ExpandedItem Condition="tag() == 0">Variant0</ExpandedItem>
+      <ExpandedItem Condition="tag() == 1" Optional="true">Variant1</ExpandedItem>
+      <ExpandedItem Condition="tag() == 2" Optional="true">Variant2</ExpandedItem>
+      <ExpandedItem Condition="tag() == 3" Optional="true">Variant3</ExpandedItem>
+      <ExpandedItem Condition="tag() == 4" Optional="true">Variant4</ExpandedItem>
+      <ExpandedItem Condition="tag() == 5" Optional="true">Variant5</ExpandedItem>
+      <ExpandedItem Condition="tag() == 6" Optional="true">Variant6</ExpandedItem>
+      <ExpandedItem Condition="tag() == 7" Optional="true">Variant7</ExpandedItem>
+      <ExpandedItem Condition="tag() == 8" Optional="true">Variant8</ExpandedItem>
+      <ExpandedItem Condition="tag() == 9" Optional="true">Variant9</ExpandedItem>
+      <ExpandedItem Condition="tag() == 10" Optional="true">Variant10</ExpandedItem>
+      <ExpandedItem Condition="tag() == 11" Optional="true">Variant11</ExpandedItem>
+      <ExpandedItem Condition="tag() == 12" Optional="true">Variant12</ExpandedItem>
+      <ExpandedItem Condition="tag() == 13" Optional="true">Variant13</ExpandedItem>
+      <ExpandedItem Condition="tag() == 14" Optional="true">Variant14</ExpandedItem>
+      <ExpandedItem Condition="tag() == 15" Optional="true">Variant15</ExpandedItem>
+    </Expand>
+  </Type>
 </AutoVisualizer>
