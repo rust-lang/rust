@@ -291,7 +291,7 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                             if let hir::Access::Exclusive = sp.access(db) {
                                 h |= HlMod::Mutable;
                             }
-                        },
+                        }
                         None => h |= HlMod::Static,
                     }
 
