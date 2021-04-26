@@ -11,8 +11,18 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, returning true if any fallback
     /// occurs.
     pub(super) fn type_inference_fallback(&self) -> bool {
+        debug!(
+            "type-inference-fallback start obligations: {:#?}",
+            self.fulfillment_cx.borrow_mut().pending_obligations()
+        );
+
         // All type checking constraints were added, try to fallback unsolved variables.
         self.select_obligations_where_possible(false, |_| {});
+
+        debug!(
+            "type-inference-fallback post selection obligations: {:#?}",
+            self.fulfillment_cx.borrow_mut().pending_obligations()
+        );
 
         // Check if we have any unsolved varibales. If not, no need for fallback.
         let unsolved_variables = self.unsolved_variables();
@@ -251,6 +261,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     ) -> FxHashMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unsolved_variables);
 
+        let relationships = self.fulfillment_cx.borrow_mut().relationships().clone();
+
         // Construct a coercion graph where an edge `A -> B` indicates
         // a type variable is that is coerced
         let coercion_graph = self.create_coercion_graph();
@@ -334,21 +346,63 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             roots_reachable_from_non_diverging,
         );
 
+        debug!("inherited: {:#?}", self.inh.fulfillment_cx.borrow_mut().pending_obligations());
+        debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
+        debug!("relationships: {:#?}", relationships);
+
         // For each diverging variable, figure out whether it can
         // reach a member of N. If so, it falls back to `()`. Else
         // `!`.
         let mut diverging_fallback = FxHashMap::default();
+        diverging_fallback.reserve(diverging_vids.len());
         for &diverging_vid in &diverging_vids {
             let diverging_ty = self.tcx.mk_ty_var(diverging_vid);
             let root_vid = self.infcx.root_var(diverging_vid);
             let can_reach_non_diverging = coercion_graph
                 .depth_first_search(root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
-            if can_reach_non_diverging {
-                debug!("fallback to (): {:?}", diverging_vid);
+
+            let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
+
+            for (vid, rel) in relationships.iter() {
+                if self.infcx.root_var(*vid) == root_vid {
+                    relationship.self_in_trait |= rel.self_in_trait;
+                    relationship.output |= rel.output;
+                }
+            }
+
+            if relationship.self_in_trait && relationship.output {
+                // This case falls back to () to ensure that the code pattern in
+                // src/test/ui/never_type/fallback-closure-ret.rs continues to
+                // compile when never_type_fallback is enabled.
+                //
+                // This rule is not readily explainable from first principles,
+                // but is rather intended as a patchwork fix to ensure code
+                // which compiles before the stabilization of never type
+                // fallback continues to work.
+                //
+                // Typically this pattern is encountered in a function taking a
+                // closure as a parameter, where the return type of that closure
+                // (checked by `relationship.output`) is expected to implement
+                // some trait (checked by `relationship.self_in_trait`). This
+                // can come up in non-closure cases too, so we do not limit this
+                // rule to specifically `FnOnce`.
+                //
+                // When the closure's body is something like `panic!()`, the
+                // return type would normally be inferred to `!`. However, it
+                // needs to fall back to `()` in order to still compile, as the
+                // trait is specifically implemented for `()` but not `!`.
+                //
+                // For details on the requirements for these relationships to be
+                // set, see the relationship finding module in
+                // compiler/rustc_trait_selection/src/traits/relationships.rs.
+                debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
+                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+            } else if can_reach_non_diverging {
+                debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
             } else {
-                debug!("fallback to !: {:?}", diverging_vid);
+                debug!("fallback to ! - all diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.mk_diverging_default());
             }
         }
@@ -369,10 +423,23 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 obligation.predicate.kind().no_bound_vars()
             })
             .filter_map(|atom| {
-                if let ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) = atom {
-                    let a_vid = self.root_vid(a)?;
-                    let b_vid = self.root_vid(b)?;
-                    Some((a_vid, b_vid))
+                // We consider both subtyping and coercion to imply 'flow' from
+                // some position in the code `a` to a different position `b`.
+                // This is then used to determine which variables interact with
+                // live code, and as such must fall back to `()` to preserve
+                // soundness.
+                //
+                // In practice currently the two ways that this happens is
+                // coercion and subtyping.
+                let (a, b) = if let ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) = atom {
+                    (a, b)
+                } else if let ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                    a_is_expected: _,
+                    a,
+                    b,
+                }) = atom
+                {
+                    (a, b)
                 } else {
                     return None;
                 };
