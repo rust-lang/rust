@@ -71,7 +71,6 @@ Task] instead:
 
 [Build Task]: https://code.visualstudio.com/docs/editor/tasks
 
-
 ## Configuring `ctags`
 
 One of the challenges with rustc is that the RLS can't handle it, since it's a
