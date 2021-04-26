@@ -274,6 +274,7 @@ impl ExitStatusExt for process::ExitStatus {
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawFd for process::Stdio {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> process::Stdio {
         let fd = sys::fd::FileDesc::new(fd);
         let io = sys::process::Stdio::Fd(fd);
@@ -283,6 +284,7 @@ impl FromRawFd for process::Stdio {
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStdin {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
     }
@@ -290,6 +292,7 @@ impl AsRawFd for process::ChildStdin {
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStdout {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
     }
@@ -297,6 +300,7 @@ impl AsRawFd for process::ChildStdout {
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawFd for process::ChildStderr {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
     }
@@ -304,6 +308,7 @@ impl AsRawFd for process::ChildStderr {
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for process::ChildStdin {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
     }
@@ -311,6 +316,7 @@ impl IntoRawFd for process::ChildStdin {
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for process::ChildStdout {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
     }
@@ -318,6 +324,7 @@ impl IntoRawFd for process::ChildStdout {
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for process::ChildStderr {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
     }

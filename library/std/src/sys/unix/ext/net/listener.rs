@@ -240,6 +240,7 @@ impl UnixListener {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixListener {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
@@ -247,6 +248,7 @@ impl AsRawFd for UnixListener {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixListener {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixListener {
         UnixListener(Socket::from_inner(fd))
     }
@@ -254,6 +256,7 @@ impl FromRawFd for UnixListener {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixListener {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
     }
