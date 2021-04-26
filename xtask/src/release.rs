@@ -10,7 +10,16 @@ impl flags::Release {
             cmd!("git switch release").run()?;
             cmd!("git fetch upstream --tags --force").run()?;
             cmd!("git reset --hard tags/nightly").run()?;
-            cmd!("git push").run()?;
+            // The `release` branch sometimes has a couple of cherry-picked
+            // commits for patch releases. If that's the case, just overwrite
+            // it. As we are setting `release` branch to an up-to-date `nightly`
+            // tag, this shouldn't be problematic in general.
+            //
+            // Note that, as we tag releases, we don't worry about "losing"
+            // commits -- they'll be kept alive by the tag. More generally, we
+            // don't care about historic releases all that much, it's fine even
+            // to delete old tags.
+            cmd!("git push --force").run()?;
         }
         codegen::docs()?;
 
