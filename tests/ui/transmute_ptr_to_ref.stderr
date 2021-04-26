@@ -46,13 +46,13 @@ error: transmute from a pointer type (`*const i32`) to a reference type (`&issue
   --> $DIR/transmute_ptr_to_ref.rs:32:32
    |
 LL |     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<_>)`
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const issue1231::Foo<u8>)`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&issue1231::Foo<&u8>`)
   --> $DIR/transmute_ptr_to_ref.rs:34:33
    |
 LL |     let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const Foo<&_>)`
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const issue1231::Foo<&u8>)`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&u8`)
   --> $DIR/transmute_ptr_to_ref.rs:38:14

@@ -288,6 +288,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_body(l.value.body, r.value.body),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
             (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
+            (GenericArg::Infer(l_inf), GenericArg::Infer(r_inf)) =>
+              self.eq_ty(&l_inf.to_ty(), &r_inf.to_ty()),
             _ => false,
         }
     }
@@ -888,10 +890,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         self.hash_tykind(&ty.kind);
     }
 
-    pub fn hash_infer(&mut self) {
-        "_".hash(&mut self.s);
-    }
-
     pub fn hash_tykind(&mut self, ty: &TyKind<'_>) {
         match ty {
             TyKind::Slice(ty) => {
@@ -957,7 +955,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
                 GenericArg::Type(ref ty) => self.hash_ty(ty),
                 GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
-                GenericArg::Infer(ref _inf) => self.hash_infer(),
+                GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }
         }
     }

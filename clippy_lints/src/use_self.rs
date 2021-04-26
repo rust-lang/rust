@@ -8,8 +8,9 @@ use rustc_hir::{
     self as hir,
     def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
-    intravisit::{walk_ty, NestedVisitorMap, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
+    intravisit::{walk_ty, walk_inf, NestedVisitorMap, Visitor},
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Path, PathSegment,
+    QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -263,6 +264,11 @@ struct SkipTyCollector {
 impl<'tcx> Visitor<'tcx> for SkipTyCollector {
     type Map = Map<'tcx>;
 
+    fn visit_infer(&mut self, inf: &hir::InferArg) {
+      self.types_to_skip.push(inf.hir_id);
+
+      walk_inf(self, inf)
+    }
     fn visit_ty(&mut self, hir_ty: &hir::Ty<'_>) {
         self.types_to_skip.push(hir_ty.hir_id);
 
@@ -274,6 +280,52 @@ impl<'tcx> Visitor<'tcx> for SkipTyCollector {
     }
 }
 
+<<<<<<< HEAD
+=======
+struct LintTyCollector<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    self_ty: Ty<'tcx>,
+    types_to_lint: Vec<HirId>,
+    types_to_skip: Vec<HirId>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for LintTyCollector<'a, 'tcx> {
+    type Map = Map<'tcx>;
+
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'_>) {
+        if_chain! {
+            if let Some(ty) = self.cx.typeck_results().node_type_opt(hir_ty.hir_id);
+            if should_lint_ty(hir_ty, ty, self.self_ty);
+            then {
+                self.types_to_lint.push(hir_ty.hir_id);
+            } else {
+                self.types_to_skip.push(hir_ty.hir_id);
+            }
+        }
+
+        walk_ty(self, hir_ty);
+    }
+
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+        if_chain! {
+            if let Some(ty) = self.cx.typeck_results().node_type_opt(inf.hir_id);
+            if should_lint_ty(&inf.to_ty(), ty, self.self_ty);
+            then {
+                self.types_to_lint.push(inf.hir_id);
+            } else {
+                self.types_to_skip.push(inf.hir_id);
+            }
+        }
+
+        walk_inf(self, inf)
+    }
+
+    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
+        NestedVisitorMap::None
+    }
+}
+
+>>>>>>> Add inferred args to typeck
 fn span_lint(cx: &LateContext<'_>, span: Span) {
     span_lint_and_sugg(
         cx,
