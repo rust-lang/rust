@@ -28,8 +28,6 @@ use std::{
 use walkdir::{DirEntry, WalkDir};
 use xshell::{cmd, cp, pushd, pushenv};
 
-use crate::dist::DistCmd;
-
 fn main() -> Result<()> {
     let _d = pushd(project_root())?;
 
@@ -44,9 +42,7 @@ fn main() -> Result<()> {
         flags::XtaskCmd::PreCache(cmd) => cmd.run(),
         flags::XtaskCmd::Release(cmd) => cmd.run(),
         flags::XtaskCmd::Promote(cmd) => cmd.run(),
-        flags::XtaskCmd::Dist(flags) => {
-            DistCmd { nightly: flags.nightly, client_version: flags.client }.run()
-        }
+        flags::XtaskCmd::Dist(cmd) => cmd.run(),
         flags::XtaskCmd::Metrics(cmd) => cmd.run(),
         flags::XtaskCmd::Bb(cmd) => {
             {
