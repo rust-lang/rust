@@ -9,7 +9,13 @@ fn test_prefix<T, Prefix>() {
     unsafe {
         let layout = Layout::new::<T>();
         let prefix_offset = PrefixAllocator::<System, Prefix>::prefix_offset(layout);
-        assert_eq!(prefix_offset, Layout::new::<Prefix>().extend(layout).unwrap().1);
+        assert_eq!(
+            prefix_offset,
+            Layout::new::<Prefix>().extend(layout).unwrap().1,
+            "Invalid prefix offset for PrefixAllocator<_, {}> with Layout<{}>.",
+            type_name::<Prefix>(),
+            type_name::<T>(),
+        );
 
         let alloc =
             Tracker::new(PrefixAllocator::<Tracker<System>, Prefix>::new(Tracker::new(System)));
