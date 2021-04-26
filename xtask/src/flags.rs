@@ -37,8 +37,7 @@ xflags::xflags! {
             optional --dry-run
         }
         cmd dist {
-            optional --nightly
-            optional --client version: String
+            optional --client-patch-version version: String
         }
         cmd metrics {
             optional --dry-run
@@ -86,9 +85,6 @@ pub struct Install {
 }
 
 #[derive(Debug)]
-pub struct Lint;
-
-#[derive(Debug)]
 pub struct FuzzTests;
 
 #[derive(Debug)]
@@ -106,8 +102,7 @@ pub struct Promote {
 
 #[derive(Debug)]
 pub struct Dist {
-    pub nightly: bool,
-    pub client: Option<String>,
+    pub client_patch_version: Option<String>,
 }
 
 #[derive(Debug)]

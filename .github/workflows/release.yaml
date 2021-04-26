@@ -109,12 +109,7 @@ jobs:
         node-version: 12.x
 
     - name: Dist
-      if: github.ref == 'refs/heads/release'
-      run: cargo xtask dist --client 0.2.$GITHUB_RUN_NUMBER
-
-    - name: Dist
-      if: github.ref != 'refs/heads/release'
-      run: cargo xtask dist --nightly --client 0.3.$GITHUB_RUN_NUMBER-nightly
+      run: cargo xtask dist --client-patch-version $GITHUB_RUN_NUMBER
 
     - name: Run analysis-stats on rust-analyzer
       run: target/${{ env.RA_TARGET }}/release/rust-analyzer analysis-stats .
