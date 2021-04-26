@@ -272,11 +272,11 @@ impl<'hir> Map<'hir> {
                 GenericParamKind::Type { .. } => DefKind::TyParam,
                 GenericParamKind::Const { .. } => DefKind::ConstParam,
             },
-            Node::Infer(_) => todo!(),
             Node::Crate(_) => DefKind::Mod,
             Node::Stmt(_)
             | Node::PathSegment(_)
             | Node::Ty(_)
+            | Node::Infer(_)
             | Node::TraitRef(_)
             | Node::Pat(_)
             | Node::Binding(_)

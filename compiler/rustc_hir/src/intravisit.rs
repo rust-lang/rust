@@ -437,7 +437,7 @@ pub trait Visitor<'v>: Sized {
         walk_label(self, label)
     }
     fn visit_infer(&mut self, inf: &'v InferArg) {
-        self.visit_id(inf.hir_id);
+        walk_inf(self, inf);
     }
     fn visit_generic_arg(&mut self, generic_arg: &'v GenericArg<'v>) {
         match generic_arg {
@@ -447,11 +447,6 @@ pub trait Visitor<'v>: Sized {
             GenericArg::Infer(inf) => self.visit_infer(inf),
         }
     }
-    /*
-    fn tcx(&self) -> Option<&TyCtxt<'tcx>> {
-        None
-    }
-    */
     fn visit_lifetime(&mut self, lifetime: &'v Lifetime) {
         walk_lifetime(self, lifetime)
     }

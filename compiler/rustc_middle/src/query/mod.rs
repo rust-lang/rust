@@ -133,11 +133,6 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
     }
 
-    query generic_arg_for_infer_arg(key: DefId) -> hir::GenericArg<'tcx> {
-        desc { |tcx| "computes concrete type for inference, `{}`", tcx.def_path_str(key) }
-        storage(ArenaCacheSelector<'tcx>)
-    }
-
     /// Maps from the `DefId` of an item (trait/struct/enum/fn) to the
     /// predicates (where-clauses) that must be proven true in order
     /// to reference it. This is almost always the "predicates query"

@@ -18,23 +18,6 @@ use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, MultiSpan, Span};
 use smallvec::SmallVec;
 
-/*
-pub fn generic_arg_for_infer_arg<'tcx>(tcx: TyCtxt<'tcx>, did: LocalDefId) -> GenericArg<'tcx> {
-    todo!()
-    let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-    let arg = match tcx.hir().get(hir_id) {
-        hir::Node::GenericParam(hir::GenericParam {
-            kind: hir::GenericParamKind::Const { ty: _, default: _ },
-            ..
-        }) => todo!(),
-        _ => bug!("Expected GenericParam for generic_arg_for_infer_arg"),
-    };
-
-    assert!(!matches!(arg, GenericArg::Infer(_)));
-    arg
-}
-*/
-
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Report an error that a generic argument did not match the generic parameter that was
     /// expected.

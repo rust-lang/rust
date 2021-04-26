@@ -133,6 +133,7 @@ impl<'v> Visitor<'v> for PlaceholderHirTyCollector {
         match generic_arg {
             hir::GenericArg::Infer(inf) => {
                 self.0.push(inf.span);
+                intravisit::walk_inf(self, inf);
             }
             hir::GenericArg::Type(t) => self.visit_ty(t),
             _ => {}

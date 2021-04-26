@@ -1191,16 +1191,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
     fn visit_generic_arg(&mut self, generic_arg: &'tcx hir::GenericArg<'tcx>) {
         match generic_arg {
             hir::GenericArg::Type(t) => self.visit_ty(t),
-            hir::GenericArg::Infer(inf) => {
-                self.span = inf.span;
-                let parent_hir_id = self.tcx.hir().get_parent_node(inf.hir_id);
-                if let Some(typeck_results) = self.maybe_typeck_results {
-                    let node_substs = typeck_results.node_substs(parent_hir_id);
-                    for ty in node_substs.types() {
-                        self.visit(ty);
-                    }
-                }
-            }
+            hir::GenericArg::Infer(inf) => self.visit_infer(inf),
             hir::GenericArg::Lifetime(_) | hir::GenericArg::Const(_) => {}
         }
     }
@@ -1222,6 +1213,23 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         }
 
         intravisit::walk_ty(self, hir_ty);
+    }
+
+    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
+        self.span = inf.span;
+        if let Some(typeck_results) = self.maybe_typeck_results {
+            if let Some(ty) = typeck_results.node_type_opt(inf.hir_id) {
+                if self.visit(ty).is_break() {
+                    return;
+                }
+            }
+        } else {
+            // FIXME see above note for same issue.
+            if self.visit(rustc_typeck::hir_ty_to_ty(self.tcx, &inf.to_ty())).is_break() {
+                return;
+            }
+        }
+        intravisit::walk_inf(self, inf);
     }
 
     fn visit_trait_ref(&mut self, trait_ref: &'tcx hir::TraitRef<'tcx>) {
