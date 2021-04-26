@@ -286,8 +286,13 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
                 if let Some(item) = func.as_assoc_item(db) {
                     h |= HlMod::Associated;
-                    if func.self_param(db).is_none() {
-                        h |= HlMod::Static
+                    match func.self_param(db) {
+                        Some(sp) => {
+                            if let hir::Access::Exclusive = sp.access(db) {
+                                h |= HlMod::Mutable;
+                            }
+                        }
+                        None => h |= HlMod::Static,
                     }
 
                     match item.container(db) {
