@@ -15,7 +15,7 @@ impl flags::Release {
             // it. As we are setting `release` branch to an up-to-date `nightly`
             // tag, this shouldn't be problematic in general.
             //
-            // Note that, as we tag releases, we don't worry about "loosing"
+            // Note that, as we tag releases, we don't worry about "losing"
             // commits -- they'll be kept alive by the tag. More generally, we
             // don't care about historic releases all that much, it's fine even
             // to delete old tags.
