@@ -55,7 +55,7 @@ fn commit_hash() -> Option<String> {
 }
 
 fn build_date() -> Option<String> {
-    output_to_string("date --iso --utc")
+    output_to_string("date --utc +%Y-%m-%d")
 }
 
 fn output_to_string(command: &str) -> Option<String> {
