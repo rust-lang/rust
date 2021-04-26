@@ -1429,8 +1429,6 @@ function hideThemeButtonState() {
                 } else if (nextTagName !== "DETAILS") {
                     e.nextElementSibling.style.display = "block";
                 }
-            } else if (e.tagName === "DETAILS") {
-                e.open = true;
             }
         });
     }
