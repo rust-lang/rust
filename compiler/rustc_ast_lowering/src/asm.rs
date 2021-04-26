@@ -15,7 +15,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // lowering the register contraints in this case.
         let asm_arch = if self.sess.opts.actually_rustdoc { None } else { self.sess.asm_arch };
         if asm_arch.is_none() && !self.sess.opts.actually_rustdoc {
-            struct_span_err!(self.sess, sp, E0472, "asm! is unsupported on this target").emit();
+            struct_span_err!(self.sess, sp, E0472, "inline assembly is unsupported on this target")
+                .emit();
         }
         if asm.options.contains(InlineAsmOptions::ATT_SYNTAX)
             && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))

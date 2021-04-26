@@ -18,9 +18,9 @@ trait Sized {}
 fn main() {
     unsafe {
         asm!("");
-        //~^ ERROR asm! is unsupported on this target
+        //~^ ERROR inline assembly is unsupported on this target
     }
 }
 
 global_asm!("");
-//~^ ERROR asm! is unsupported on this target
+//~^ ERROR inline assembly is unsupported on this target
