@@ -976,7 +976,10 @@ fn ioslice_from_cow() {
     let writer = ProgrammableSink::default();
     let mut writer = LineWriter::new(writer);
 
-    fn write_vectored<'a, T: Into<IoSlice<'a>>, W: Write>(writer: &mut LineWriter<W>, content: T) -> usize {
+    fn write_vectored<'a, T: Into<IoSlice<'a>>, W: Write>(
+        writer: &mut LineWriter<W>,
+        content: T,
+    ) -> usize {
         writer.write_vectored(&[content.into()]).unwrap()
     }
 
