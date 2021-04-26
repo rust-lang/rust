@@ -86,8 +86,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     // - Unconstrained floats are replaced with with `f64`.
     //
     // - Non-numerics may get replaced with `()` or `!`, depending on
-    //   how they were categorized by `calculate_diverging_fallback`
-    //   (and the setting of `#![feature(never_type_fallback)]`).
+    //   how they were categorized by `calculate_diverging_fallback`.
     //
     // Fallback becomes very dubious if we have encountered
     // type-checking errors.  In that case, fallback to Error.
@@ -357,54 +356,55 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         diverging_fallback.reserve(diverging_vids.len());
         for &diverging_vid in &diverging_vids {
             let diverging_ty = self.tcx.mk_ty_var(diverging_vid);
-            let root_vid = self.infcx.root_var(diverging_vid);
-            let can_reach_non_diverging = coercion_graph
-                .depth_first_search(root_vid)
-                .any(|n| roots_reachable_from_non_diverging.visited(n));
+            // let root_vid = self.infcx.root_var(diverging_vid);
+            // let can_reach_non_diverging = coercion_graph
+            //     .depth_first_search(root_vid)
+            //     .any(|n| roots_reachable_from_non_diverging.visited(n));
 
-            let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
+            // let mut relationship = ty::FoundRelationships { self_in_trait: false, output: false };
 
-            for (vid, rel) in relationships.iter() {
-                if self.infcx.root_var(*vid) == root_vid {
-                    relationship.self_in_trait |= rel.self_in_trait;
-                    relationship.output |= rel.output;
-                }
-            }
+            // for (vid, rel) in relationships.iter() {
+            //     if self.infcx.root_var(*vid) == root_vid {
+            //         relationship.self_in_trait |= rel.self_in_trait;
+            //         relationship.output |= rel.output;
+            //     }
+            // }
 
-            if relationship.self_in_trait && relationship.output {
-                // This case falls back to () to ensure that the code pattern in
-                // src/test/ui/never_type/fallback-closure-ret.rs continues to
-                // compile when never_type_fallback is enabled.
-                //
-                // This rule is not readily explainable from first principles,
-                // but is rather intended as a patchwork fix to ensure code
-                // which compiles before the stabilization of never type
-                // fallback continues to work.
-                //
-                // Typically this pattern is encountered in a function taking a
-                // closure as a parameter, where the return type of that closure
-                // (checked by `relationship.output`) is expected to implement
-                // some trait (checked by `relationship.self_in_trait`). This
-                // can come up in non-closure cases too, so we do not limit this
-                // rule to specifically `FnOnce`.
-                //
-                // When the closure's body is something like `panic!()`, the
-                // return type would normally be inferred to `!`. However, it
-                // needs to fall back to `()` in order to still compile, as the
-                // trait is specifically implemented for `()` but not `!`.
-                //
-                // For details on the requirements for these relationships to be
-                // set, see the relationship finding module in
-                // compiler/rustc_trait_selection/src/traits/relationships.rs.
-                debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
-            } else if can_reach_non_diverging {
-                debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
-            } else {
-                debug!("fallback to ! - all diverging: {:?}", diverging_vid);
-                diverging_fallback.insert(diverging_ty, self.tcx.mk_diverging_default());
-            }
+            // if relationship.self_in_trait && relationship.output {
+            //     // This case falls back to () to ensure that the code pattern in
+            //     // src/test/ui/never_type/fallback-closure-ret.rs continues to
+            //     // compile when never_type_fallback is enabled.
+            //     //
+            //     // This rule is not readily explainable from first principles,
+            //     // but is rather intended as a patchwork fix to ensure code
+            //     // which compiles before the stabilization of never type
+            //     // fallback continues to work.
+            //     //
+            //     // Typically this pattern is encountered in a function taking a
+            //     // closure as a parameter, where the return type of that closure
+            //     // (checked by `relationship.output`) is expected to implement
+            //     // some trait (checked by `relationship.self_in_trait`). This
+            //     // can come up in non-closure cases too, so we do not limit this
+            //     // rule to specifically `FnOnce`.
+            //     //
+            //     // When the closure's body is something like `panic!()`, the
+            //     // return type would normally be inferred to `!`. However, it
+            //     // needs to fall back to `()` in order to still compile, as the
+            //     // trait is specifically implemented for `()` but not `!`.
+            //     //
+            //     // For details on the requirements for these relationships to be
+            //     // set, see the relationship finding module in
+            //     // compiler/rustc_trait_selection/src/traits/relationships.rs.
+            //     debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
+            //     diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+            // } else if can_reach_non_diverging {
+            //     debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
+            //     diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+            // } else {
+            //     debug!("fallback to ! - all diverging: {:?}", diverging_vid);
+            //     diverging_fallback.insert(diverging_ty, self.tcx.mk_diverging_default());
+            // }
+            diverging_fallback.insert(diverging_ty, self.tcx.types.never);
         }
 
         diverging_fallback

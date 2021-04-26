@@ -1,6 +1,6 @@
 // run-pass
 
-#![allow(irrefutable_let_patterns)]
+#![allow(irrefutable_let_patterns, unreachable_patterns)]
 
 fn main() {
     let x: bool;

@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 pub enum Void {}
 
 // EMIT_MIR uninhabited_enum.process_never.SimplifyLocals.after.mir

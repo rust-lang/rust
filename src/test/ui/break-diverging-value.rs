@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 fn loop_break_return() -> i32 {
     let loop_value = loop { break return 0 }; // ok
 }

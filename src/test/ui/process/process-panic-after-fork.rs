@@ -9,7 +9,6 @@
 
 #![feature(bench_black_box)]
 #![feature(rustc_private)]
-#![feature(never_type)]
 #![feature(panic_always_abort)]
 
 extern crate libc;

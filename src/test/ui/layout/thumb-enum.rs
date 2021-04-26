@@ -4,7 +4,7 @@
 // Verify that thumb targets implement the repr(C) for enums correctly.
 //
 // See #87917
-#![feature(never_type, rustc_attrs, no_core, lang_items)]
+#![feature(rustc_attrs, no_core, lang_items)]
 #![crate_type = "lib"]
 #![no_core]
 

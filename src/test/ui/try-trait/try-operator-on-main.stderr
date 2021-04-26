@@ -11,7 +11,7 @@ LL | |     try_trait_generic::<()>();
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
+   = help: the trait `FromResidual<Result<!, std::io::Error>>` is not implemented for `()`
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
   --> $DIR/try-operator-on-main.rs:10:5

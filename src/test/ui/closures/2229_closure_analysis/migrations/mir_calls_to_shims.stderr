@@ -1,5 +1,5 @@
 error: changes to closure capture in Rust 2021 will affect which traits the closure implements
-  --> $DIR/mir_calls_to_shims.rs:21:38
+  --> $DIR/mir_calls_to_shims.rs:20:38
    |
 LL |     let result = panic::catch_unwind(move || {
    |                                      ^^^^^^^

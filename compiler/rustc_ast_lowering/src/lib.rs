@@ -33,7 +33,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(box_patterns)]
 #![feature(let_else)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 

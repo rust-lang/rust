@@ -23,7 +23,7 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

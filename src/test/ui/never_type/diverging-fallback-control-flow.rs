@@ -1,5 +1,4 @@
-// revisions: nofallback fallback
-// run-pass
+// check-fail
 
 #![allow(dead_code)]
 #![allow(unused_assignments)]
@@ -9,7 +8,6 @@
 // to fallback based on control-flow. In all of these cases,
 // the type variable winds up being the target of both a `!` coercion
 // and a coercion from a non-`!` variable, and hence falls back to `()`.
-#![cfg_attr(fallback, feature(never_type, never_type_fallback))]
 
 trait UnitDefault {
     fn default() -> Self;
@@ -31,7 +29,7 @@ fn assignment() {
     let x;
 
     if true {
-        x = UnitDefault::default();
+        x = UnitDefault::default(); //~ ERROR the trait bound `!: UnitDefault` is not satisfied
     } else {
         x = return;
     }
@@ -43,13 +41,13 @@ fn assignment_rev() {
     if true {
         x = return;
     } else {
-        x = UnitDefault::default();
+        x = UnitDefault::default(); //~ ERROR the trait bound `!: UnitDefault` is not satisfied
     }
 }
 
 fn if_then_else() {
     let _x = if true {
-        UnitDefault::default()
+        UnitDefault::default() //~ ERROR the trait bound `!: UnitDefault` is not satisfied
     } else {
         return;
     };
@@ -59,12 +57,13 @@ fn if_then_else_rev() {
     let _x = if true {
         return;
     } else {
-        UnitDefault::default()
+        UnitDefault::default() //~ ERROR the trait bound `!: UnitDefault` is not satisfied
     };
 }
 
 fn match_arm() {
     let _x = match Ok(UnitDefault::default()) {
+        //~^ ERROR the trait bound `!: UnitDefault` is not satisfied
         Ok(v) => v,
         Err(()) => return,
     };
@@ -72,6 +71,7 @@ fn match_arm() {
 
 fn match_arm_rev() {
     let _x = match Ok(UnitDefault::default()) {
+        //~^ ERROR the trait bound `!: UnitDefault` is not satisfied
         Err(()) => return,
         Ok(v) => v,
     };
@@ -82,7 +82,7 @@ fn loop_break() {
         if false {
             break return;
         } else {
-            break UnitDefault::default();
+            break UnitDefault::default(); //~ ERROR the trait bound `!: UnitDefault` is not
         }
     };
 }
@@ -93,6 +93,7 @@ fn loop_break_rev() {
             break return;
         } else {
             break UnitDefault::default();
+            //~^ ERROR the trait bound `!: UnitDefault` is not satisfied
         }
     };
 }

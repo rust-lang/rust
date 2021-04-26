@@ -44,11 +44,6 @@ declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 
 impl<'tcx> LateLintPass<'tcx> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        // Only suggest the `never_type` if the feature is enabled
-        if !cx.tcx.features().never_type {
-            return;
-        }
-
         if let ItemKind::Enum(..) = item.kind {
             let ty = cx.tcx.type_of(item.def_id);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");

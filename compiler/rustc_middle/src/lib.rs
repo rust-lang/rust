@@ -36,7 +36,7 @@
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
 #![feature(map_first_last)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(extern_types)]
 #![feature(new_uninit)]
 #![feature(nll)]

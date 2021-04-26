@@ -6,13 +6,13 @@
 #![feature(no_core)]
 #![no_core]
 
-#[lang="sized"]
+#[lang = "sized"]
 pub trait Sized {
     // Empty.
 }
 
 #[lang = "add"]
-trait Add<RHS=Self> {
+trait Add<RHS = Self> {
     type Output;
 
     fn add(self, _: RHS) -> Self::Output;
@@ -21,5 +21,5 @@ trait Add<RHS=Self> {
 fn ice<A>(a: A) {
     let r = loop {};
     r = r + a;
-    //~^ ERROR the trait bound `(): Add<A>` is not satisfied
+    //~^ ERROR the trait bound `!: Add<A>` is not satisfied
 }

@@ -18,7 +18,7 @@
 #![feature(hash_raw_entry)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(type_alias_impl_trait)]
 #![feature(new_uninit)]
 #![feature(once_cell)]

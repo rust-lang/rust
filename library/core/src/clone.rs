@@ -200,7 +200,7 @@ mod impls {
         bool char
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "1.57.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
     impl const Clone for ! {
         #[inline]

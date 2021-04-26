@@ -2,8 +2,6 @@
 // revisions: normal exhaustive_patterns
 //
 // This tests a match with no arms on various types.
-#![feature(never_type)]
-#![feature(never_type_fallback)]
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![deny(unreachable_patterns)]
 
@@ -28,36 +26,40 @@ enum NonEmptyEnum2 {
     Bar,
 }
 enum NonEmptyEnum5 {
-    V1, V2, V3, V4, V5,
+    V1,
+    V2,
+    V3,
+    V4,
+    V5,
 }
 
 fn empty_enum(x: EmptyEnum) {
     match x {} // ok
     match x {
-        _ => {}, //~ ERROR unreachable pattern
+        _ => {} //~ ERROR unreachable pattern
     }
     match x {
-        _ if false => {}, //~ ERROR unreachable pattern
+        _ if false => {} //~ ERROR unreachable pattern
     }
 }
 
 fn empty_foreign_enum(x: empty::EmptyForeignEnum) {
     match x {} // ok
     match x {
-        _ => {}, //~ ERROR unreachable pattern
+        _ => {} //~ ERROR unreachable pattern
     }
     match x {
-        _ if false => {}, //~ ERROR unreachable pattern
+        _ if false => {} //~ ERROR unreachable pattern
     }
 }
 
 fn never(x: !) {
     match x {} // ok
     match x {
-        _ => {}, //~ ERROR unreachable pattern
+        _ => {} //~ ERROR unreachable pattern
     }
     match x {
-        _ if false => {}, //~ ERROR unreachable pattern
+        _ if false => {} //~ ERROR unreachable pattern
     }
 }
 

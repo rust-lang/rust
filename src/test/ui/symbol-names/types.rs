@@ -4,7 +4,6 @@
 //[verbose-legacy]compile-flags: -Zverbose
 // normalize-stderr-test: "h[[:xdigit:]]{16}" -> "h[HASH]"
 
-#![feature(never_type)]
 #![feature(rustc_attrs)]
 
 pub fn b() {

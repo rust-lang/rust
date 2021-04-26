@@ -456,10 +456,6 @@ declare_features! (
     (active, native_link_modifiers_whole_archive, "1.53.0", Some(81490), None),
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
-    /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
-    (active, never_type, "1.13.0", Some(35121), None),
-    /// Allows diverging expressions to fall back to `!` rather than `()`.
-    (active, never_type_fallback, "1.41.0", Some(65992), None),
     /// Allows using non lexical lifetimes (RFC 2094).
     (active, nll, "1.0.0", Some(43234), None),
     /// Allows `#![no_core]`.

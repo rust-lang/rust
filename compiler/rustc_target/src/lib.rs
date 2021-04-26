@@ -13,7 +13,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(let_else)]
 #![feature(min_specialization)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]

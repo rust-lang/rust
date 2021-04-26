@@ -3,8 +3,7 @@
 //
 // This tests plays with matching and uninhabited types. This also serves as a test for the
 // `tcx.is_ty_uninhabited_from()` function.
-#![feature(never_type)]
-#![feature(never_type_fallback)]
+//
 #![feature(exhaustive_patterns)]
 #![deny(unreachable_patterns)]
 

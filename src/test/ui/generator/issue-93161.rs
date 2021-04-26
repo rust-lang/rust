@@ -1,8 +1,6 @@
 // edition:2021
 // run-pass
 
-#![feature(never_type)]
-
 use std::future::Future;
 
 // See if we can run a basic `async fn`

@@ -1,4 +1,4 @@
-#![feature(never_type, specialization)]
+#![feature(specialization)]
 #![allow(incomplete_features)]
 
 use std::iter::{self, Empty};

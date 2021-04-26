@@ -186,7 +186,6 @@
 #![feature(mixed_integer_ops)]
 #![feature(must_not_suspend)]
 #![feature(negative_impls)]
-#![feature(never_type)]
 #![feature(no_core)]
 #![feature(no_coverage)] // rust-lang/rust#84605
 #![feature(no_niche)] // rust-lang/rust#68303
@@ -204,6 +203,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
+#![cfg_attr(bootstrap, feature(never_type))]
 //
 // Target features:
 #![cfg_attr(bootstrap, feature(aarch64_target_feature))]

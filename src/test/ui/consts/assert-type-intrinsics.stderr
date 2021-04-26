@@ -1,5 +1,5 @@
 error: any use of this value will cause an error
-  --> $DIR/assert-type-intrinsics.rs:14:9
+  --> $DIR/assert-type-intrinsics.rs:13:9
    |
 LL | /     const _BAD1: () = unsafe {
 LL | |         MaybeUninit::<!>::uninit().assume_init();
@@ -12,7 +12,7 @@ LL | |     };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/assert-type-intrinsics.rs:17:9
+  --> $DIR/assert-type-intrinsics.rs:16:9
    |
 LL | /     const _BAD2: () = unsafe {
 LL | |         intrinsics::assert_uninit_valid::<bool>();
@@ -24,7 +24,7 @@ LL | |     };
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error: any use of this value will cause an error
-  --> $DIR/assert-type-intrinsics.rs:20:9
+  --> $DIR/assert-type-intrinsics.rs:19:9
    |
 LL | /     const _BAD3: () = unsafe {
 LL | |         intrinsics::assert_zero_valid::<&'static i32>();

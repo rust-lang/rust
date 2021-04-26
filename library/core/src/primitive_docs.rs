@@ -271,7 +271,8 @@ mod prim_bool {}
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
-#[unstable(feature = "never_type", issue = "35121")]
+#[cfg_attr(not(bootstrap), stable(feature = "never_type", since = "1.57.0"))]
+//#[cfg_attr(bootstrap, unstable(feature = "never_type", issue = "35121"))]
 mod prim_never {}
 
 #[doc(primitive = "char")]

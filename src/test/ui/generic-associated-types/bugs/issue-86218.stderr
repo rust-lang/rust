@@ -10,6 +10,17 @@ note: type must outlive the lifetime `'s` as defined here as required by this bi
 LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
    |                      ^^
 
-error: aborting due to previous error
+error[E0277]: the trait bound `!: Stream` is not satisfied
+  --> $DIR/issue-86218.rs:24:21
+   |
+LL |     fn foo<'s>() -> Self::InnerStream<'s> { todo!() }
+   |                     ^^^^^^^^^^^^^^^^^^^^^ the trait `Stream` is not implemented for `!`
+   |
+   = note: this trait is implemented for `()`
+   = note: this error might have been caused by changes to Rust's type-inference algorithm (see issue #48950 <https://github.com/rust-lang/rust/issues/48950> for more information)
+   = help: did you intend to use the type `()` here instead?
 
-For more information about this error, try `rustc --explain E0477`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0477.
+For more information about an error, try `rustc --explain E0277`.

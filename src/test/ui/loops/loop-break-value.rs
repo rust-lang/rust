@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 fn main() {
     let val: ! = loop { break break; };
     //~^ ERROR mismatched types

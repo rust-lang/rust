@@ -66,7 +66,7 @@ This API is completely unstable and subject to change.
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(once_cell)]
 #![feature(slice_partition_dedup)]

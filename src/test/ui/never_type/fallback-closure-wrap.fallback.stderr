@@ -12,6 +12,6 @@ LL | |     }) as Box<dyn FnMut()>);
                    found type `!`
    = note: required for the cast to the object type `dyn FnMut()`
 
-error: aborting due to previous error
+error: aborting due to previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0271`.

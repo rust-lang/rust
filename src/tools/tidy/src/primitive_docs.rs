@@ -12,6 +12,9 @@ pub fn check(library_path: &Path, bad: &mut bool) {
     let core_contents = std::fs::read_to_string(library_path.join(core_name))
         .unwrap_or_else(|e| panic!("failed to read library/{core_name}: {e}"));
     if std_contents != core_contents {
-        tidy_error!(bad, "library/{core_name} and library/{std_name} have different contents");
+        tidy_error!(
+            bad,
+            &format!("library/{core_name} and library/{std_name} have different contents")
+        );
     }
 }

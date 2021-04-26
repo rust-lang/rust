@@ -1,11 +1,11 @@
 error[E0004]: non-exhaustive patterns: type `UninhabitedStruct` is non-empty
-  --> $DIR/match_same_crate.rs:30:11
+  --> $DIR/match_same_crate.rs:28:11
    |
 LL |     match x {}
    |           ^
    |
 note: `UninhabitedStruct` defined here
-  --> $DIR/match_same_crate.rs:8:12
+  --> $DIR/match_same_crate.rs:6:12
    |
 LL | pub struct UninhabitedStruct {
    |            ^^^^^^^^^^^^^^^^^
@@ -18,13 +18,13 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `UninhabitedTupleStruct` is non-empty
-  --> $DIR/match_same_crate.rs:34:11
+  --> $DIR/match_same_crate.rs:32:11
    |
 LL |     match x {}
    |           ^
    |
 note: `UninhabitedTupleStruct` defined here
-  --> $DIR/match_same_crate.rs:13:12
+  --> $DIR/match_same_crate.rs:11:12
    |
 LL | pub struct UninhabitedTupleStruct(!);
    |            ^^^^^^^^^^^^^^^^^^^^^^
@@ -37,13 +37,13 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `Tuple(_)` and `Struct { .. }` not covered
-  --> $DIR/match_same_crate.rs:38:11
+  --> $DIR/match_same_crate.rs:36:11
    |
 LL |     match x {}
    |           ^ patterns `Tuple(_)` and `Struct { .. }` not covered
    |
 note: `UninhabitedVariants` defined here
-  --> $DIR/match_same_crate.rs:16:23
+  --> $DIR/match_same_crate.rs:14:23
    |
 LL | pub enum UninhabitedVariants {
    |          -------------------

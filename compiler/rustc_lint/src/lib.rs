@@ -37,7 +37,7 @@
 #![feature(iter_order_by)]
 #![feature(let_chains)]
 #![feature(let_else)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![recursion_limit = "256"]
 

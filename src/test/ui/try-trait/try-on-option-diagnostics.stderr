@@ -9,7 +9,7 @@ LL | |     22
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `u32`
 
 error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:14:10
@@ -23,7 +23,7 @@ LL | |         22
 LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `{integer}`
 
 error[E0277]: the `?` operator can only be used in a method that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:26:14
@@ -35,7 +35,7 @@ LL | |             x?;
 LL | |         }
    | |_________- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `()`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `()`
 
 error[E0277]: the `?` operator can only be used in a trait method that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-diagnostics.rs:39:14
@@ -47,7 +47,7 @@ LL | |             x?;
 LL | |         }
    | |_________- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `()`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `()`
 
 error: aborting due to 4 previous errors
 

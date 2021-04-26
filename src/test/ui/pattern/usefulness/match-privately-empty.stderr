@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: `Some(Private { misc: true, .. })` not covered
-  --> $DIR/match-privately-empty.rs:13:11
+  --> $DIR/match-privately-empty.rs:12:11
    |
 LL |     match private::DATA {
    |           ^^^^^^^^^^^^^ pattern `Some(Private { misc: true, .. })` not covered

@@ -4,15 +4,15 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
     debug x => _1;                       // in scope 0 at $DIR/separate_const_switch.rs:28:13: 28:14
     let mut _0: std::result::Result<i32, i32>; // return place in scope 0 at $DIR/separate_const_switch.rs:28:37: 28:53
     let mut _2: i32;                     // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
-    let mut _3: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, i32>, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
+    let mut _3: std::ops::ControlFlow<std::result::Result<!, i32>, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
     let mut _4: std::result::Result<i32, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:9
-    let _5: std::result::Result<std::convert::Infallible, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-    let mut _6: std::result::Result<std::convert::Infallible, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
+    let _5: std::result::Result<!, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
+    let mut _6: std::result::Result<!, i32>; // in scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
     let _7: i32;                         // in scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
     scope 1 {
         debug residual => _5;            // in scope 1 at $DIR/separate_const_switch.rs:29:9: 29:10
         scope 2 {
-            scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) { // at $DIR/separate_const_switch.rs:29:8: 29:10
+            scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<!, i32>>>::from_residual) { // at $DIR/separate_const_switch.rs:29:8: 29:10
                 debug residual => _6;    // in scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
                 let _14: i32;            // in scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
                 let mut _15: i32;        // in scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -37,7 +37,7 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         let _9: i32;                     // in scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         let mut _10: i32;                // in scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         let _11: i32;                    // in scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
-        let mut _12: std::result::Result<std::convert::Infallible, i32>; // in scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
+        let mut _12: std::result::Result<!, i32>; // in scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         let mut _13: i32;                // in scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         scope 6 {
             debug v => _9;               // in scope 6 at $SRC_DIR/core/src/result.rs:LL:COL
@@ -66,14 +66,14 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         ((_12 as Err).0: i32) = move _13; // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         discriminant(_12) = 1;           // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_13);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
-        ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>) = move _12; // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
+        ((_3 as Break).0: std::result::Result<!, i32>) = move _12; // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         discriminant(_3) = 1;            // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_12);                // scope 7 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_11);                // scope 5 at $SRC_DIR/core/src/result.rs:LL:COL
         StorageDead(_8);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
         StorageDead(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
         StorageLive(_5);                 // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
-        _5 = ((_3 as Break).0: std::result::Result<std::convert::Infallible, i32>); // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
+        _5 = ((_3 as Break).0: std::result::Result<!, i32>); // scope 0 at $DIR/separate_const_switch.rs:29:9: 29:10
         StorageLive(_6);                 // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
         _6 = _5;                         // scope 2 at $DIR/separate_const_switch.rs:29:9: 29:10
         StorageLive(_14);                // scope 8 at $SRC_DIR/core/src/result.rs:LL:COL
