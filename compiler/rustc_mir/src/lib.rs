@@ -16,7 +16,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(exact_size_is_empty)]
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
 #![feature(slice_ptr_get)]

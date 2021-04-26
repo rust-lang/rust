@@ -8,7 +8,7 @@
 // to fallback based on control-flow. In all of these cases,
 // the type variable winds up being the target of both a `!` coercion
 // and a coercion from a non-`!` variable, and hence falls back to `()`.
-#![feature(never_type, never_type_fallback)]
+//
 
 trait UnitDefault {
     fn default() -> Self;

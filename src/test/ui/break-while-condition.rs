@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 fn main() {
     // The `if false` expressions are simply to
     // make sure we don't avoid checking everything

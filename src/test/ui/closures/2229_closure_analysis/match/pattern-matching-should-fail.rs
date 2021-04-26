@@ -1,7 +1,5 @@
 // edition:2021
 
-#![feature(never_type)]
-
 // Should fake read the discriminant and throw an error
 fn test1() {
     let x: !;

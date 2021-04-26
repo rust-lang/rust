@@ -6,7 +6,7 @@
 //
 // check-pass
 
-#![feature(never_type_fallback)]
+
 
 fn make_unit() {}
 

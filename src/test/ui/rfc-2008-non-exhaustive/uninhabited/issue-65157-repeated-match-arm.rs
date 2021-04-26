@@ -1,6 +1,6 @@
 // aux-build:uninhabited.rs
 #![deny(unreachable_patterns)]
-#![feature(never_type)]
+
 
 extern crate uninhabited;
 

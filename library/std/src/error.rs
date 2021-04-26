@@ -385,7 +385,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.53.0")]
 impl Error for ! {}
 
 #[unstable(

@@ -296,6 +296,10 @@ declare_features! (
     (accepted, const_fn_union, "1.56.0", Some(51909), None),
     /// Allows explicit discriminants on non-unit enum variants.
     (accepted, arbitrary_enum_discriminant, "1.56.0", Some(60553), None),
+    /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
+    (accepted, never_type, "1.60.0", Some(35121), None),
+    /// Allows diverging expressions to fall back to `!` rather than `()`.
+    (accepted, never_type_fallback, "1.60.0", Some(65992), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

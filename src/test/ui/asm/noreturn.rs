@@ -1,7 +1,7 @@
 // only-x86_64
 // check-pass
 
-#![feature(asm, never_type)]
+#![feature(asm)]
 #![crate_type = "rlib"]
 
 pub unsafe fn asm1() {

@@ -1,6 +1,6 @@
 // stderr-per-bitwidth
-#![feature(never_type)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
+
 
 use std::mem;
 

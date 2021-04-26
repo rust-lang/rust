@@ -34,7 +34,7 @@
 #![feature(format_args_capture)]
 #![feature(iter_order_by)]
 #![feature(iter_zip)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "256"]

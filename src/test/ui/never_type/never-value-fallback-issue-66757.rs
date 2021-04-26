@@ -6,11 +6,6 @@
 //
 // run-pass
 
-#![feature(never_type)]
-
-// FIXME(#67225) -- this should be true even without the fallback gate.
-#![feature(never_type_fallback)]
-
 struct E;
 
 impl From<!> for E {

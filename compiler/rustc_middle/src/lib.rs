@@ -32,7 +32,7 @@
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
 #![feature(if_let_guard)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(extern_types)]
 #![feature(new_uninit)]
 #![feature(nll)]

@@ -265,7 +265,7 @@ mod prim_bool {}
 /// [`Debug`]: fmt::Debug
 /// [`default()`]: Default::default
 ///
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.53.0")]
 mod prim_never {}
 
 #[doc(primitive = "char")]

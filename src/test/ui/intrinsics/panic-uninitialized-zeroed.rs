@@ -3,10 +3,9 @@
 // revisions: mir thir
 // [thir]compile-flags: -Zthir-unsafeck
 
-// This test checks panic emitted from `mem::{uninitialized,zeroed}`.
-
-#![feature(never_type)]
 #![allow(deprecated, invalid_value)]
+
+// This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 
 use std::{
     mem::{self, MaybeUninit, ManuallyDrop},
