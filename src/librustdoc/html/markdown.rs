@@ -1259,7 +1259,7 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
 
     while let Some((event, offset)) = p.next() {
         if let Event::Start(Tag::CodeBlock(syntax)) = event {
-            let (syntax, code_start, code_end, range, is_fenced, is_ignore) = match syntax {
+            let (syntax, code, range, is_fenced, is_ignore) = match syntax {
                 CodeBlockKind::Fenced(syntax) => {
                     let syntax = syntax.as_ref();
                     let lang_string = if syntax.is_empty() {
@@ -1272,35 +1272,20 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                     }
                     let is_ignore = lang_string.ignore != Ignore::None;
                     let syntax = if syntax.is_empty() { None } else { Some(syntax.to_owned()) };
-                    let (code_start, mut code_end) = match p.next() {
-                        Some((Event::Text(_), offset)) => (offset.start, offset.end),
+                    let code = match p.next() {
+                        Some((Event::Text(_), offset)) => {
+                            let mut code = offset.clone();
+                            while let Some((Event::Text(_), offset)) = p.next() {
+                                code.end = offset.end;
+                            }
+                            code
+                        }
                         Some((_, sub_offset)) => {
-                            let code = Range { start: sub_offset.start, end: sub_offset.start };
-                            code_blocks.push(RustCodeBlock {
-                                is_fenced: true,
-                                range: offset,
-                                code,
-                                syntax,
-                                is_ignore,
-                            });
-                            continue;
+                            Range { start: sub_offset.start, end: sub_offset.start }
                         }
-                        None => {
-                            let code = Range { start: offset.end, end: offset.end };
-                            code_blocks.push(RustCodeBlock {
-                                is_fenced: true,
-                                range: offset,
-                                code,
-                                syntax,
-                                is_ignore,
-                            });
-                            continue;
-                        }
+                        None => Range { start: offset.end, end: offset.end },
                     };
-                    while let Some((Event::Text(_), offset)) = p.next() {
-                        code_end = offset.end;
-                    }
-                    (syntax, code_start, code_end, offset, true, is_ignore)
+                    (syntax, code, offset, true, is_ignore)
                 }
                 CodeBlockKind::Indented => {
                     // The ending of the offset goes too far sometime so we reduce it by one in
@@ -1308,25 +1293,18 @@ crate fn rust_code_blocks(md: &str, extra_info: &ExtraInfo<'_>) -> Vec<RustCodeB
                     if offset.end > offset.start && md.get(offset.end..=offset.end) == Some(&"\n") {
                         (
                             None,
-                            offset.start,
-                            offset.end,
+                            offset.clone(),
                             Range { start: offset.start, end: offset.end - 1 },
                             false,
                             false,
                         )
                     } else {
-                        (None, offset.start, offset.end, offset, false, false)
+                        (None, offset.clone(), offset, false, false)
                     }
                 }
             };
 
-            code_blocks.push(RustCodeBlock {
-                is_fenced,
-                range,
-                code: Range { start: code_start, end: code_end },
-                syntax,
-                is_ignore,
-            });
+            code_blocks.push(RustCodeBlock { is_fenced, range, code, syntax, is_ignore });
         }
     }
 
