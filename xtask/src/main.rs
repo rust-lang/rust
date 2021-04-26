@@ -108,7 +108,7 @@ fn run_fuzzer() -> Result<()> {
 }
 
 fn date_iso() -> Result<String> {
-    let res = cmd!("date --utc +%Y-%m-%d").read()?;
+    let res = cmd!("date -u +%Y-%m-%d").read()?;
     Ok(res)
 }
 

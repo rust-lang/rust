@@ -261,7 +261,7 @@ jobs:
       with:
         node-version: 12.x
 
-    - run: echo "TAG=$(date --iso --utc)" >> $GITHUB_ENV
+    - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
       if: github.ref == 'refs/heads/release'
     - run: echo "TAG=nightly" >> $GITHUB_ENV
       if: github.ref != 'refs/heads/release'
