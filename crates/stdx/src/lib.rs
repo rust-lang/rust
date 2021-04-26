@@ -14,18 +14,8 @@ pub fn is_ci() -> bool {
 
 #[must_use]
 pub fn timeit(label: &'static str) -> impl Drop {
-    struct Guard {
-        label: &'static str,
-        start: Instant,
-    }
-
-    impl Drop for Guard {
-        fn drop(&mut self) {
-            eprintln!("{}: {:.2?}", self.label, self.start.elapsed())
-        }
-    }
-
-    Guard { label, start: Instant::now() }
+    let start = Instant::now();
+    defer(move || eprintln!("{}: {:.2?}", label, start.elapsed()))
 }
 
 /// Prints backtrace to stderr, useful for debugging.
@@ -179,6 +169,7 @@ where
     start..start + len
 }
 
+#[must_use]
 pub fn defer<F: FnOnce()>(f: F) -> impl Drop {
     struct D<F: FnOnce()>(Option<F>);
     impl<F: FnOnce()> Drop for D<F> {
