@@ -90,7 +90,7 @@
 #![feature(coerce_unsized)]
 #![feature(const_btree_new)]
 #![cfg_attr(bootstrap, feature(const_fn))]
-#![cfg_attr(not(bootstrap), feature(const_fn_trait_bound))]
+#![cfg_attr(not(bootstrap), feature(const_fn_trait_bounds))]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
 #![feature(destructuring_assignment)]

@@ -1,9 +1,9 @@
-// gate-test-const_fn_trait_bound
+// gate-test-const_fn_trait_bounds
 
 // revisions: stock gated
 
 #![feature(rustc_attrs)]
-#![cfg_attr(gated, feature(const_fn_trait_bound))]
+#![cfg_attr(gated, feature(const_fn_trait_bounds))]
 
 const fn test1<T: std::ops::Add>() {}
 //[stock]~^ trait bounds

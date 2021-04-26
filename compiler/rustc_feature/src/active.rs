@@ -650,7 +650,7 @@ declare_features! (
     (active, wasm_abi, "1.53.0", Some(83788), None),
 
     /// Allows trait bounds in `const fn`.
-    (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
+    (active, const_fn_trait_bounds, "1.53.0", Some(57563), None),
 
     /// Allows unsizing coercions in `const fn`.
     (active, const_fn_unsize, "1.53.0", Some(64992), None),

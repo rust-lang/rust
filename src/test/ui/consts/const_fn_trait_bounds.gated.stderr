@@ -1,5 +1,5 @@
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/const_fn_trait_bound.rs:17:1
+  --> $DIR/const_fn_trait_bounds.rs:17:1
    |
 LL | fn main() {}
    | ^^^^^^^^^

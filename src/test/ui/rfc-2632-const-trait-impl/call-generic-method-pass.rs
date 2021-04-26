@@ -3,7 +3,7 @@
 // check-pass
 
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
+#![feature(const_fn_trait_bounds)]
 #![allow(incomplete_features)]
 
 struct S;

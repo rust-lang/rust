@@ -2,7 +2,7 @@
 
 #![allow(incomplete_features)]
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
+#![feature(const_fn_trait_bounds)]
 
 use std::marker::PhantomData;
 
