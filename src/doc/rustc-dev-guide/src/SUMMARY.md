@@ -14,7 +14,6 @@
     - [Distribution artifacts](./building/build-install-distribution-artifacts.md)
     - [Documenting Compiler](./building/compiler-documenting.md)
     - [Rustdoc overview](./rustdoc.md)
-    - [ctags](./building/ctags.md)
     - [Adding a new target](./building/new-target.md)
 - [The compiler testing framework](./tests/intro.md)
     - [Running tests](./tests/running.md)
