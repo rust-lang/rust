@@ -11,7 +11,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 
 use rustc_span::source_map::original_sp;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 
 use std::cmp::Ordering;
 
@@ -67,6 +67,7 @@ impl CoverageStatement {
 #[derive(Debug, Clone)]
 pub(super) struct CoverageSpan {
     pub span: Span,
+    pub is_macro_expansion: bool,
     pub bcb: BasicCoverageBlock,
     pub coverage_statements: Vec<CoverageStatement>,
     pub is_closure: bool,
@@ -74,12 +75,22 @@ pub(super) struct CoverageSpan {
 
 impl CoverageSpan {
     pub fn for_fn_sig(fn_sig_span: Span) -> Self {
-        Self { span: fn_sig_span, bcb: START_BCB, coverage_statements: vec![], is_closure: false }
+        // Whether the function signature is from a macro or not, it should not be treated like
+        // macro-expanded statements and terminators.
+        let is_macro_expansion = false;
+        Self {
+            span: fn_sig_span,
+            is_macro_expansion,
+            bcb: START_BCB,
+            coverage_statements: vec![],
+            is_closure: false,
+        }
     }
 
     pub fn for_statement(
         statement: &Statement<'tcx>,
         span: Span,
+        is_macro_expansion: bool,
         bcb: BasicCoverageBlock,
         bb: BasicBlock,
         stmt_index: usize,
@@ -94,15 +105,22 @@ impl CoverageSpan {
 
         Self {
             span,
+            is_macro_expansion,
             bcb,
             coverage_statements: vec![CoverageStatement::Statement(bb, span, stmt_index)],
             is_closure,
         }
     }
 
-    pub fn for_terminator(span: Span, bcb: BasicCoverageBlock, bb: BasicBlock) -> Self {
+    pub fn for_terminator(
+        span: Span,
+        is_macro_expansion: bool,
+        bcb: BasicCoverageBlock,
+        bb: BasicBlock,
+    ) -> Self {
         Self {
             span,
+            is_macro_expansion,
             bcb,
             coverage_statements: vec![CoverageStatement::Terminator(bb, span)],
             is_closure: false,
@@ -344,7 +362,27 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             } else if self.prev_original_span == self.curr().span {
                 // Note that this compares the new span to `prev_original_span`, which may not
                 // be the full `prev.span` (if merged during the previous iteration).
-                self.hold_pending_dups_unless_dominated();
+                if self.prev().is_macro_expansion && self.curr().is_macro_expansion {
+                    // Macros that expand to include branching (such as
+                    // `assert_eq!()`, `assert_ne!()`, `info!()`, `debug!()`, or
+                    // `trace!()) typically generate callee spans with identical
+                    // ranges (typically the full span of the macro) for all
+                    // `BasicBlocks`. This makes it impossible to distinguish
+                    // the condition (`if val1 != val2`) from the optional
+                    // branched statements (such as the call to `panic!()` on
+                    // assert failure). In this case it is better (or less
+                    // worse) to drop the optional branch bcbs and keep the
+                    // non-conditional statements, to count when reached.
+                    debug!(
+                        "  curr and prev are part of a macro expansion, and curr has the same span \
+                        as prev, but is in a different bcb. Drop curr and keep prev for next iter. \
+                        prev={:?}",
+                        self.prev()
+                    );
+                    self.take_curr();
+                } else {
+                    self.hold_pending_dups_unless_dominated();
+                }
             } else {
                 self.cutoff_prev_at_overlapping_curr();
             }
@@ -401,14 +439,24 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                     .iter()
                     .enumerate()
                     .filter_map(move |(index, statement)| {
-                        filtered_statement_span(statement, self.body_span).map(|span| {
-                            CoverageSpan::for_statement(statement, span, bcb, bb, index)
-                        })
+                        filtered_statement_span(statement, self.body_span).map(
+                            |(span, is_macro_expansion)| {
+                                CoverageSpan::for_statement(
+                                    statement,
+                                    span,
+                                    is_macro_expansion,
+                                    bcb,
+                                    bb,
+                                    index,
+                                )
+                            },
+                        )
                     })
-                    .chain(
-                        filtered_terminator_span(data.terminator(), self.body_span)
-                            .map(|span| CoverageSpan::for_terminator(span, bcb, bb)),
-                    )
+                    .chain(filtered_terminator_span(data.terminator(), self.body_span).map(
+                        |(span, is_macro_expansion)| {
+                            CoverageSpan::for_terminator(span, is_macro_expansion, bcb, bb)
+                        },
+                    ))
             })
             .collect()
     }
@@ -656,7 +704,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
 pub(super) fn filtered_statement_span(
     statement: &'a Statement<'tcx>,
     body_span: Span,
-) -> Option<Span> {
+) -> Option<(Span, bool)> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -701,7 +749,7 @@ pub(super) fn filtered_statement_span(
 pub(super) fn filtered_terminator_span(
     terminator: &'a Terminator<'tcx>,
     body_span: Span,
-) -> Option<Span> {
+) -> Option<(Span, bool)> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from
@@ -742,7 +790,13 @@ pub(super) fn filtered_terminator_span(
 }
 
 #[inline]
-fn function_source_span(span: Span, body_span: Span) -> Span {
+fn function_source_span(span: Span, body_span: Span) -> (Span, bool) {
+    let is_macro_expansion = span.ctxt() != body_span.ctxt()
+        && if let ExpnKind::Macro(MacroKind::Bang, _) = span.ctxt().outer_expn_data().kind {
+            true
+        } else {
+            false
+        };
     let span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
-    if body_span.contains(span) { span } else { body_span }
+    (if body_span.contains(span) { span } else { body_span }, is_macro_expansion)
 }
