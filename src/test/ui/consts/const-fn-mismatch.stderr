@@ -1,5 +1,5 @@
 error[E0379]: functions in traits cannot be declared const
-  --> $DIR/const-fn-mismatch.rs:13:5
+  --> $DIR/const-fn-mismatch.rs:11:5
    |
 LL |     const fn f() -> u32 {
    |     ^^^^^ functions in traits cannot be const

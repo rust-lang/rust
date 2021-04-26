@@ -1,6 +1,5 @@
 // build-fail
 
-#![feature(const_fn)]
 #![feature(const_unreachable_unchecked)]
 
 const unsafe fn foo(x: bool) -> bool {

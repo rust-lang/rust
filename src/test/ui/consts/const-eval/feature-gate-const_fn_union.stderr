@@ -1,5 +1,5 @@
 error[E0658]: unions in const fn are unstable
-  --> $DIR/feature-gate-const_fn_union.rs:12:5
+  --> $DIR/feature-gate-const_fn_union.rs:10:5
    |
 LL |     Foo { u }.i
    |     ^^^^^^^^^^^
