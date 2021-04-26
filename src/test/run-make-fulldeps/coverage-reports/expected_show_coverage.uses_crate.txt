@@ -3,9 +3,9 @@
     3|       |use std::fmt::Debug;
     4|       |
     5|      1|pub fn used_function() {
-    6|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-    7|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-    8|       |    // dependent conditions.
+    6|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+    7|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+    8|      1|    // dependent conditions.
     9|      1|    let is_true = std::env::args().len() == 1;
    10|      1|    let mut countdown = 0;
    11|      1|    if is_true {
