@@ -10,7 +10,7 @@ impl flags::Release {
             cmd!("git switch release").run()?;
             cmd!("git fetch upstream --tags --force").run()?;
             cmd!("git reset --hard tags/nightly").run()?;
-            // The `release` branch sometimes have a couple of cherry-picked
+            // The `release` branch sometimes has a couple of cherry-picked
             // commits for patch releases. If that's the case, just overwrite
             // it. As we are setting `release` branch to an up-to-date `nightly`
             // tag, this shouldn't be problematic in general.
