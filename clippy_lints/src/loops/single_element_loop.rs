@@ -14,8 +14,14 @@ pub(super) fn check<'tcx>(
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
 ) {
+    let arg_expr = match arg.kind {
+        ExprKind::AddrOf(BorrowKind::Ref, _, ref_arg) => ref_arg,
+        ExprKind::MethodCall(method, _, args, _) if args.len() == 1 && method.ident.name == rustc_span::sym::iter => {
+            &args[0]
+        },
+        _ => return,
+    };
     if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, arg_expr) = arg.kind;
         if let PatKind::Binding(.., target, _) = pat.kind;
         if let ExprKind::Array([arg_expression]) = arg_expr.kind;
         if let ExprKind::Path(ref list_item) = arg_expression.kind;
