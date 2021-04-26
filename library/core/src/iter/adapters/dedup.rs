@@ -1,7 +1,57 @@
-use crate::mem::swap;
+use crate::{
+    iter::{InPlaceIterable, SourceIter},
+    mem::swap,
+};
 
-/// An iterator that removes all but the first of consecutive elements in a
-/// given iterator according to the [`PartialEq`] trait implementation.
+/// A wrapper type around a key function.
+///
+/// This struct acts like a function which given a key function returns true
+/// if and only if both arguments evaluate to the same key.
+///
+/// This `struct` is created by [`Iterator::dedup_by_key`].
+/// See its documentation for more.
+///
+/// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+#[derive(Debug, Clone, Copy)]
+pub struct ByKey<F> {
+    key: F,
+}
+
+impl<F> ByKey<F> {
+    pub(crate) fn new(key: F) -> Self {
+        Self { key }
+    }
+}
+
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+impl<F, T, K> FnOnce<(&T, &T)> for ByKey<F>
+where
+    F: FnMut(&T) -> K,
+    K: PartialEq,
+{
+    type Output = bool;
+
+    extern "rust-call" fn call_once(mut self, args: (&T, &T)) -> Self::Output {
+        (self.key)(args.0) == (self.key)(args.1)
+    }
+}
+
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+impl<F, T, K> FnMut<(&T, &T)> for ByKey<F>
+where
+    F: FnMut(&T) -> K,
+    K: PartialEq,
+{
+    extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
+        (self.key)(args.0) == (self.key)(args.1)
+    }
+}
+
+/// A zero-sized type for checking partial equality.
+///
+/// This struct acts exactly like the function [`PartialEq::eq`], but its
+/// type is always known during compile time.
 ///
 /// This `struct` is created by [`Iterator::dedup`].
 /// See its documentation for more.
@@ -9,89 +59,63 @@ use crate::mem::swap;
 /// [`Iterator::dedup`]: Iterator::dedup
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
-pub struct Dedup<I, T> {
-    inner: I,
-    last: Option<T>,
-}
+pub struct ByPartialEq;
 
-impl<I, T> Dedup<I, T>
-where
-    I: Iterator<Item = T>,
-{
-    pub(crate) fn new(inner: I) -> Self {
-        let mut inner = inner;
-        Self { last: inner.next(), inner }
+impl ByPartialEq {
+    pub(crate) fn new() -> Self {
+        Self
     }
 }
 
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-impl<I, T> Iterator for Dedup<I, T>
-where
-    I: Iterator<Item = T>,
-    T: PartialEq,
-{
-    type Item = T;
+impl<T: PartialEq> FnOnce<(&T, &T)> for ByPartialEq {
+    type Output = bool;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let last_item = self.last.as_ref()?;
-        let mut next = loop {
-            let curr = self.inner.next();
-            if let Some(curr_item) = &curr {
-                if last_item != curr_item {
-                    break curr;
-                }
-            } else {
-                break None;
-            }
-        };
-
-        swap(&mut self.last, &mut next);
-        next
+    extern "rust-call" fn call_once(self, args: (&T, &T)) -> Self::Output {
+        args.0 == args.1
     }
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.last.is_some() {
-            // If we have a last item stored, the iterator can yield at most
-            // as many items at the inner iterator plus the stored one. Yet we
-            // can only guarantee that the iterator yields at least one more item
-            // since all other items in the inner iterator might be duplicates.
-            let (_, max) = self.inner.size_hint();
-            (1, max.and_then(|k| k.checked_add(1)))
-        } else {
-            // If the last item we got from the inner iterator is `None`,
-            // the iterator is empty.
-            (0, Some(0))
-        }
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+impl<T: PartialEq> FnMut<(&T, &T)> for ByPartialEq {
+    extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
+        args.0 == args.1
     }
 }
 
 /// An iterator that removes all but the first of consecutive elements in a
 /// given iterator satisfying a given equality relation.
 ///
-/// This `struct` is created by [`Iterator::dedup_by`].
-/// See its documentation for more.
+/// This `struct` is created by [`Iterator::dedup`], [`Iterator::dedup_by`]
+/// and [`Iterator::dedup_by_key`]. See its documentation for more.
 ///
+/// [`Iterator::dedup`]: Iterator::dedup
 /// [`Iterator::dedup_by`]: Iterator::dedup_by
+/// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
-pub struct DedupBy<I, F, T> {
+pub struct Dedup<I, F, T> {
     inner: I,
     same_bucket: F,
     last: Option<T>,
 }
 
-impl<I, F, T> DedupBy<I, F, T>
+impl<I, F, T> Dedup<I, F, T>
 where
     I: Iterator<Item = T>,
 {
     pub(crate) fn new(inner: I, same_bucket: F) -> Self {
         let mut inner = inner;
-        Self { last: inner.next(), inner, same_bucket }
+        Self {
+            last: inner.next(),
+            inner,
+            same_bucket,
+        }
     }
 }
 
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-impl<I, F, T> Iterator for DedupBy<I, F, T>
+impl<I, F, T> Iterator for Dedup<I, F, T>
 where
     I: Iterator<Item = T>,
     F: FnMut(&T, &T) -> bool,
@@ -116,84 +140,30 @@ where
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.last.is_some() {
-            // If we have a last item stored, the iterator can yield at most
-            // as many items at the inner iterator plus the stored one. Yet we
-            // can only guarantee that the iterator yields at least one more item
-            // since all other items in the inner iterator might be duplicates.
-            let (_, max) = self.inner.size_hint();
-            (1, max.and_then(|k| k.checked_add(1)))
-        } else {
-            // If the last item we got from the inner iterator is `None`,
-            // the iterator is empty.
-            (0, Some(0))
-        }
-    }
-}
-
-/// An iterator that removes all but the first of consecutive elements in a
-/// given iterator that resolve to the same key.
-///
-/// This `struct` is created by [`Iterator::dedup_by_key`].
-/// See its documentation for more.
-///
-/// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-#[derive(Debug, Clone, Copy)]
-pub struct DedupByKey<I, F, T> {
-    inner: I,
-    key: F,
-    last: Option<T>,
-}
-
-impl<I, F, T> DedupByKey<I, F, T>
-where
-    I: Iterator<Item = T>,
-{
-    pub(crate) fn new(inner: I, key: F) -> Self {
-        let mut inner = inner;
-        Self { last: inner.next(), inner, key }
+        let min = self.last.as_ref().map(|_| 1).unwrap_or(0);
+        let max = self.inner.size_hint().1;
+        (min, max)
     }
 }
 
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-impl<I, F, K, T> Iterator for DedupByKey<I, F, T>
+unsafe impl<S, I, F, T> SourceIter for Dedup<I, F, T>
 where
-    I: Iterator<Item = T>,
-    F: FnMut(&T) -> K,
-    K: PartialEq,
+    S: Iterator,
+    I: Iterator + SourceIter<Source = S>,
 {
-    type Item = T;
+    type Source = S;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let last_item = self.last.as_ref()?;
-        let mut next = loop {
-            let curr = self.inner.next();
-            if let Some(curr_item) = &curr {
-                if (self.key)(last_item) != (self.key)(curr_item) {
-                    break curr;
-                }
-            } else {
-                break None;
-            }
-        };
-
-        swap(&mut self.last, &mut next);
-        next
+    unsafe fn as_inner(&mut self) -> &mut Self::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.inner) }
     }
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.last.is_some() {
-            // If we have a last item stored, the iterator can yield at most
-            // as many items at the inner iterator plus the stored one. Yet we
-            // can only guarantee that the iterator yields at least one more item
-            // since all other items in the inner iterator might be duplicates.
-            let (_, max) = self.inner.size_hint();
-            (1, max.and_then(|k| k.checked_add(1)))
-        } else {
-            // If the last item we got from the inner iterator is `None`,
-            // the iterator is empty.
-            (0, Some(0))
-        }
-    }
+#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+unsafe impl<I, F, T> InPlaceIterable for Dedup<I, F, T>
+where
+    I: InPlaceIterable<Item = T>,
+    F: FnMut(&T, &T) -> bool,
+{
 }

@@ -424,7 +424,7 @@ pub use self::adapters::{
     Skip, SkipWhile, Take, TakeWhile, Zip,
 };
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-pub use self::adapters::{Dedup, DedupBy, DedupByKey};
+pub use self::adapters::{Dedup, ByKey, ByPartialEq};
 #[unstable(feature = "iter_intersperse", reason = "recently added", issue = "79524")]
 pub use self::adapters::{Intersperse, IntersperseWith};
 
