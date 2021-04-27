@@ -1574,7 +1574,7 @@ void CoaleseTrivialMallocs(Function &F, DominatorTree &DT) {
                      ConstantInt::get(Size->getType(), 15)),
           ConstantInt::get(Size->getType(), 1));
       z.second->eraseFromParent();
-      IRBuilder B2(z.first);
+      IRBuilder<> B2(z.first);
       z.first->replaceAllUsesWith(B2.CreateInBoundsGEP(First, Size));
       Size = B.CreateAdd(Size, z.first->getArgOperand(0));
       z.first->eraseFromParent();
