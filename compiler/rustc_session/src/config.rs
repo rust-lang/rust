@@ -702,6 +702,7 @@ impl Default for Options {
             cli_forced_codegen_units: None,
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
+            real_rust_source_base_dir: None,
             edition: DEFAULT_EDITION,
             json_artifact_notifications: false,
             json_unused_externs: false,
@@ -1980,6 +1981,34 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     }
 
+    // Try to find a directory containing the Rust `src`, for more details see
+    // the doc comment on the `real_rust_source_base_dir` field.
+    let tmp_buf;
+    let sysroot = match &sysroot_opt {
+        Some(s) => s,
+        None => {
+            tmp_buf = crate::filesearch::get_or_default_sysroot();
+            &tmp_buf
+        }
+    };
+    let real_rust_source_base_dir = {
+        // This is the location used by the `rust-src` `rustup` component.
+        let mut candidate = sysroot.join("lib/rustlib/src/rust");
+        if let Ok(metadata) = candidate.symlink_metadata() {
+            // Replace the symlink rustbuild creates, with its destination.
+            // We could try to use `fs::canonicalize` instead, but that might
+            // produce unnecessarily verbose path.
+            if metadata.file_type().is_symlink() {
+                if let Ok(symlink_dest) = std::fs::read_link(&candidate) {
+                    candidate = symlink_dest;
+                }
+            }
+        }
+
+        // Only use this directory if it has a file we can expect to always find.
+        if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
+    };
+
     Options {
         crate_types,
         optimize: opt_level,
@@ -2010,6 +2039,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         cli_forced_codegen_units: codegen_units,
         cli_forced_thinlto_off: disable_thinlto,
         remap_path_prefix,
+        real_rust_source_base_dir,
         edition,
         json_artifact_notifications,
         json_unused_externs,

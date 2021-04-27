@@ -1617,7 +1617,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .map(Path::new)
             .filter(|_| {
                 // Only spend time on further checks if we have what to translate *to*.
-                sess.real_rust_source_base_dir.is_some()
+                sess.opts.real_rust_source_base_dir.is_some()
             })
             .filter(|virtual_dir| {
                 // Don't translate away `/rustc/$hash` if we're still remapping to it,
@@ -1629,11 +1629,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             debug!(
                 "try_to_translate_virtual_to_real(name={:?}): \
                  virtual_rust_source_base_dir={:?}, real_rust_source_base_dir={:?}",
-                name, virtual_rust_source_base_dir, sess.real_rust_source_base_dir,
+                name, virtual_rust_source_base_dir, sess.opts.real_rust_source_base_dir,
             );
 
             if let Some(virtual_dir) = virtual_rust_source_base_dir {
-                if let Some(real_dir) = &sess.real_rust_source_base_dir {
+                if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
                     if let rustc_span::FileName::Real(old_name) = name {
                         if let rustc_span::RealFileName::Named(one_path) = old_name {
                             if let Ok(rest) = one_path.strip_prefix(virtual_dir) {

@@ -54,11 +54,15 @@ macro_rules! hash_substruct {
 
 macro_rules! top_level_options {
     (pub struct Options { $(
+        $( #[$attr:meta] )*
         $opt:ident : $t:ty [$dep_tracking_marker:ident],
     )* } ) => (
         #[derive(Clone)]
         pub struct Options {
-            $(pub $opt: $t),*
+            $(
+                $( #[$attr] )*
+                pub $opt: $t
+            ),*
         }
 
         impl Options {
@@ -174,6 +178,14 @@ top_level_options!(
 
         // Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
+        /// Base directory containing the `src/` for the Rust standard library, and
+        /// potentially `rustc` as well, if we can can find it. Right now it's always
+        /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
+        ///
+        /// This directory is what the virtual `/rustc/$hash` is translated back to,
+        /// if Rust was built with path remapping to `/rustc/$hash` enabled
+        /// (the `rust.remap-debuginfo` option in `config.toml`).
+        real_rust_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
 
         edition: Edition [TRACKED],
 
@@ -254,13 +266,13 @@ macro_rules! options {
     }
 
     impl $struct_name {
-        fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
+        fn dep_tracking_hash(&self, _for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
             let mut sub_hashes = BTreeMap::new();
             $({
                 hash_opt!($opt,
                             &self.$opt,
                             &mut sub_hashes,
-                            for_crate_hash,
+                            _for_crate_hash,
                             [$dep_tracking_marker]);
             })*
             let mut hasher = DefaultHasher::new();
