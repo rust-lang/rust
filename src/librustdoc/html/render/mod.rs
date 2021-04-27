@@ -1305,7 +1305,7 @@ fn render_impl(
         if let Some(use_absolute) = use_absolute {
             write!(
                 w,
-                "<details class=\"rustdoc-toggle implementors-toggle\">\
+                "<details class=\"rustdoc-toggle implementors-toggle\" open>\
                      <summary>\
                          <h3 id=\"{}\" class=\"impl\"{}>\
                              <code class=\"in-band\">",
@@ -1334,7 +1334,7 @@ fn render_impl(
         } else {
             write!(
                 w,
-                "<details class=\"rustdoc-toggle implementors-toggle\">\
+                "<details class=\"rustdoc-toggle implementors-toggle\" open>\
                      <summary>\
                          <h3 id=\"{}\" class=\"impl\"{}>\
                              <code class=\"in-band\">{}</code>",
