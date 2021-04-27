@@ -506,8 +506,8 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Applies a function to the contained value (if [`Ok`]),
-    /// or returns the provided default (if [`Err`]).
+    /// Returns the provided default (if [`Err`]), or
+    /// applies a function to the contained value (if [`Ok`]),
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
@@ -533,9 +533,9 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Maps a `Result<T, E>` to `U` by applying a function to a
-    /// contained [`Ok`] value, or a fallback function to a
-    /// contained [`Err`] value.
+    /// Maps a `Result<T, E>` to `U` by applying a fallback function to a
+    /// contained [`Err`] value, or a default function to a
+    /// contained [`Ok`] value.
     ///
     /// This function can be used to unpack a successful result
     /// while handling an error.

@@ -489,8 +489,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value (if any),
-    /// or returns the provided default (if not).
+    /// Returns the provided default result (if none),
+    /// or applies a function to the contained value (if any).
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
@@ -516,8 +516,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value (if any),
-    /// or computes a default (if not).
+    /// Computes a default function result (if none), or
+    /// applies a different function to the contained value (if any).
     ///
     /// # Examples
     ///
