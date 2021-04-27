@@ -1,6 +1,5 @@
 #![feature(generic_associated_types)]
 #![feature(associated_type_defaults)]
-#![allow(incomplete_features)]
 
 use std::ops::Deref;
 

@@ -1,5 +1,5 @@
 error: expected one of `,`, `:`, or `>`, found `=`
-  --> $DIR/trait-path-types.rs:9:37
+  --> $DIR/trait-path-types.rs:8:37
    |
 LL |   fn f<'a>(arg : Box<dyn X< [u8; 1] = u32>>) {}
    |                                   - ^ expected one of `,`, `:`, or `>`
@@ -7,7 +7,7 @@ LL |   fn f<'a>(arg : Box<dyn X< [u8; 1] = u32>>) {}
    |                                   maybe try to close unmatched angle bracket
 
 error: expected one of `,`, `:`, or `>`, found `=`
-  --> $DIR/trait-path-types.rs:14:37
+  --> $DIR/trait-path-types.rs:13:37
    |
 LL |   fn f1<'a>(arg : Box<dyn X<(Y<'a>) = &'a ()>>) {}
    |                                   - ^ expected one of `,`, `:`, or `>`
@@ -15,21 +15,12 @@ LL |   fn f1<'a>(arg : Box<dyn X<(Y<'a>) = &'a ()>>) {}
    |                                   maybe try to close unmatched angle bracket
 
 error: expected one of `,`, `:`, or `>`, found `=`
-  --> $DIR/trait-path-types.rs:19:33
+  --> $DIR/trait-path-types.rs:18:33
    |
 LL |   fn f1<'a>(arg : Box<dyn X< 'a = u32 >>) {}
    |                              -- ^ expected one of `,`, `:`, or `>`
    |                              |
    |                              maybe try to close unmatched angle bracket
 
-warning: the feature `generic_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/trait-path-types.rs:1:12
-   |
-LL | #![feature(generic_associated_types)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-   = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
-
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors
 

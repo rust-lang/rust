@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Box<T>: Copy` is not satisfied
-  --> $DIR/issue-74824.rs:8:5
+  --> $DIR/issue-74824.rs:7:5
    |
 LL |     type Copy<T>: Copy = Box<T>;
    |     ^^^^^^^^^^^^^^----^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     type Copy<T>: Copy = Box<T>;
    |     the trait `Copy` is not implemented for `Box<T>`
 
 error[E0277]: the trait bound `T: Clone` is not satisfied
-  --> $DIR/issue-74824.rs:8:5
+  --> $DIR/issue-74824.rs:7:5
    |
 LL |     type Copy<T>: Copy = Box<T>;
    |     ^^^^^^^^^^^^^^----^^^^^^^^^^

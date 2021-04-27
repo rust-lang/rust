@@ -2,7 +2,6 @@
 // `feature(trivial_bounds)`.
 
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete
 
 trait Print {
     fn print();

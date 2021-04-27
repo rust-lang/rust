@@ -1,7 +1,6 @@
 // check-pass
 // issue #69184
 #![feature(generic_associated_types)]
-#![allow(incomplete_features)]
 
 trait A {
     type B<'a>;

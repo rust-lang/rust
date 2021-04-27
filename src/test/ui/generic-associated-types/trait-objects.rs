@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-#![allow(incomplete_features)]
 
 trait StreamingIterator {
     type Item<'a> where Self: 'a;

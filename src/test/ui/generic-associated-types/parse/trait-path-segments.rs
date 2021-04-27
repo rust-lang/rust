@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-//~^ WARNING: the feature `generic_associated_types` is incomplete
 
 const _: () = {
     trait X {

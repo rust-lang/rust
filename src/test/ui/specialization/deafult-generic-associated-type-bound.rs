@@ -3,7 +3,6 @@
 #![feature(specialization)]
 #![feature(generic_associated_types)]
 //~^^ WARNING `specialization` is incomplete
-//~^^ WARNING the feature `generic_associated_types` is incomplete
 
 trait X {
     type U<'a>: PartialEq<&'a Self> where Self: 'a;

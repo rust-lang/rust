@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-#![allow(incomplete_features)]
 
 #[derive(Default)]
 struct E<T> {

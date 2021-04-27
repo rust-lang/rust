@@ -1,7 +1,6 @@
 // Regression test for #68656
 
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete and may not
 
 trait UnsafeCopy<T: Copy> {
     type Item<'a>: std::ops::Deref<Target = T>;

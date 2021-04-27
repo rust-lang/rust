@@ -1,7 +1,6 @@
 // check-pass
 
 #![feature(generic_associated_types)]
-#![allow(incomplete_features)]
 
 trait Marker {}
 

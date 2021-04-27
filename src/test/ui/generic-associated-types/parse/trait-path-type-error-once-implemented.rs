@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-  //~^ the feature `generic_associated_types` is incomplete
 
 trait X {
     type Y<'a>;
