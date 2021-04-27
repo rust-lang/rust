@@ -6,6 +6,7 @@
 
 use crate::def_id::LocalDefId;
 use crate::hygiene::SyntaxContext;
+use crate::SPAN_TRACK;
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -55,6 +56,10 @@ use rustc_data_structures::fx::FxIndexSet;
 ///   the code. No crates in `rustc-perf` need more than 15 bits for `ctxt`,
 ///   but larger crates might need more than 16 bits.
 ///
+/// In order to reliably use parented spans in incremental compilation,
+/// the dependency to the parent definition's span. This is performed
+/// using the callback `SPAN_TRACK` to access the query engine.
+///
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Span {
     base_or_index: u32,
@@ -96,6 +101,17 @@ impl Span {
 
     #[inline]
     pub fn data(self) -> SpanData {
+        let data = self.decode();
+        if let Some(parent) = data.parent {
+            (*SPAN_TRACK)(parent);
+        }
+        data
+    }
+
+    /// Internal function to translate between an encoded span and the expanded representation.
+    /// This function must not be used outside the incremental engine.
+    #[inline]
+    pub fn decode(self) -> SpanData {
         if self.len_or_tag != LEN_TAG {
             // Inline format.
             debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
