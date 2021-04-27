@@ -1,12 +1,12 @@
 error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:156:24
+  --> $DIR/min_rust_version_attr.rs:160:24
    |
 LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
    |                        ^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::manual-strip` implied by `-D warnings`
 note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:155:9
+  --> $DIR/min_rust_version_attr.rs:159:9
    |
 LL |         if s.starts_with("hello, ") {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,13 +17,13 @@ LL |             assert_eq!(<stripped>.to_uppercase(), "WORLD!");
    |
 
 error: stripping a prefix manually
-  --> $DIR/min_rust_version_attr.rs:168:24
+  --> $DIR/min_rust_version_attr.rs:172:24
    |
 LL |             assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
    |                        ^^^^^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> $DIR/min_rust_version_attr.rs:167:9
+  --> $DIR/min_rust_version_attr.rs:171:9
    |
 LL |         if s.starts_with("hello, ") {
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

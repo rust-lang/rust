@@ -26,11 +26,13 @@ pub mod env;
 pub mod ext;
 pub mod fd;
 pub mod fs;
+#[path = "../unsupported/io.rs"]
 pub mod io;
 pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod os;
+#[path = "../unix/path.rs"]
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
@@ -40,6 +42,7 @@ pub mod rwlock;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
+#[path = "../unsupported/thread_local_key.rs"]
 pub mod thread_local_key;
 pub mod time;
 

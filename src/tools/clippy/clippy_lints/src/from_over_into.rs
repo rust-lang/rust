@@ -1,13 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::paths::INTO;
-use clippy_utils::{match_def_path, meets_msrv};
+use clippy_utils::{match_def_path, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-
-const FROM_OVER_INTO_MSRV: RustcVersion = RustcVersion::new(1, 41, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Searches for implementations of the `Into<..>` trait and suggests to implement `From<..>` instead.
@@ -57,7 +55,7 @@ impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl LateLintPass<'_> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &FROM_OVER_INTO_MSRV) {
+        if !meets_msrv(self.msrv.as_ref(), &msrvs::RE_REBALANCING_COHERENCE) {
             return;
         }
 

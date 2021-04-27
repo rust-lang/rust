@@ -38,6 +38,7 @@ pub mod diagnostics;
 pub mod eager_or_lazy;
 pub mod higher;
 mod hir_utils;
+pub mod msrvs;
 pub mod numeric_literal;
 pub mod paths;
 pub mod ptr;
