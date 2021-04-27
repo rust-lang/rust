@@ -217,6 +217,7 @@ there are no glaring errors.
 Once you're all done fixing the conflicts, you need to stage the files that had
 conflicts in them via `git add`. Afterwards, run `git rebase --continue` to let
 Git know that you've resolved the conflicts and it should finish the rebase.
+
 Once the rebase has succeeded, you'll want to update the associated branch on
 your fork with `git push --force-with-lease`.
 
@@ -262,6 +263,65 @@ the history becomes easier to work with.
 You also may want to squash just the last few commits together, possibly
 because they only represent "fixups" and not real changes. For example,
 `git rebase --interactive HEAD~2` will allow you to edit the two commits only.
+
+### `git range-diff`
+
+After completing a rebase, and before pushing up your changes, you may want to
+review the changes between your old branch and your new one. You can do that
+with `git range-diff master @{upstream} HEAD`.
+
+The first argument to `range-diff`, `master` in this case, is the base revision
+that you're comparing your old and new branch against. The second argument is
+the old version of your branch; in this case, `@upstream` means the version that
+you've pushed to GitHub, which is the same as what people will see in your pull
+request. Finally, the third argument to `range-diff` is the *new* version of
+your branch; in this case, it is `HEAD`, which is the commit that is currently
+checked-out in your local repo.
+
+Note that you can also use the equivalent, abbreviated form `git range-diff
+master @{u} HEAD`.
+
+Unlike in regular Git diffs, you'll see a `-` or `+` next to another `-` or `+`
+in the range-diff output. The marker on the left indicates a change between the
+old branch and the new branch, and the marker on the right indicates a change
+you've committed. So, you can think of a range-diff as a "diff of diffs" since
+it shows you the differences between your old diff and your new diff.
+
+Here's an example of `git range-diff` output (taken from [Git's
+docs][range-diff-example-docs]):
+
+```
+-:  ------- > 1:  0ddba11 Prepare for the inevitable!
+1:  c0debee = 2:  cab005e Add a helpful message at the start
+2:  f00dbal ! 3:  decafe1 Describe a bug
+    @@ -1,3 +1,3 @@
+     Author: A U Thor <author@example.com>
+
+    -TODO: Describe a bug
+    +Describe a bug
+    @@ -324,5 +324,6
+      This is expected.
+
+    -+What is unexpected is that it will also crash.
+    ++Unexpectedly, it also crashes. This is a bug, and the jury is
+    ++still out there how to fix it best. See ticket #314 for details.
+
+      Contact
+3:  bedead < -:  ------- TO-UNDO
+```
+
+(Note that `git range-diff` output in your terminal will probably be easier to
+read than in this example because it will have colors.)
+
+Another feature of `git range-diff` is that, unlike `git diff`, it will also
+diff commit messages. This feature can be useful when amending several commit
+messages so you can make sure you changed the right parts.
+
+`git range-diff` is a very useful command, but note that it can take some time
+to get used to its output format. You may also find Git's documentation on the
+command useful, especially their ["Examples" section][range-diff-example-docs].
+
+[range-diff-example-docs]: https://git-scm.com/docs/git-range-diff#_examples
 
 ## No-Merge Policy
 
