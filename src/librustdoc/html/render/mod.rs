@@ -1546,7 +1546,7 @@ fn render_impl(
         let aliases = if aliases.is_empty() {
             String::new()
         } else {
-            format!(" aliases=\"{}\"", aliases.join(","))
+            format!(" data-aliases=\"{}\"", aliases.join(","))
         };
         if let Some(use_absolute) = use_absolute {
             write!(
