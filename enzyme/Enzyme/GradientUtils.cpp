@@ -124,15 +124,18 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     return available.lookup(val);
   }
 
-  // assert(!val->getName().startswith("$tapeload"));;
-  auto cidx = std::make_pair(val, BuilderM.GetInsertBlock());
-  if (permitCache && unwrap_cache.find(cidx) != unwrap_cache.end()) {
-    if (unwrap_cache[cidx]->getType() != val->getType()) {
+  // assert(!val->getName().startswith("$tapeload"));
+  if (permitCache && unwrap_cache[BuilderM.GetInsertBlock()].find(val) !=
+                         unwrap_cache[BuilderM.GetInsertBlock()].end()) {
+    if (unwrap_cache[BuilderM.GetInsertBlock()][val]->getType() !=
+        val->getType()) {
       llvm::errs() << "val: " << *val << "\n";
-      llvm::errs() << "unwrap_cache[cidx]: " << *unwrap_cache[cidx] << "\n";
+      llvm::errs() << "unwrap_cache[cidx]: "
+                   << *unwrap_cache[BuilderM.GetInsertBlock()][val] << "\n";
     }
-    assert(unwrap_cache[cidx]->getType() == val->getType());
-    return unwrap_cache[cidx];
+    assert(unwrap_cache[BuilderM.GetInsertBlock()][val]->getType() ==
+           val->getType());
+    return unwrap_cache[BuilderM.GetInsertBlock()][val];
   }
 
   if (auto inst = dyn_cast<Instruction>(val)) {
@@ -157,7 +160,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }
   }
 
-#define getOpFullest(vtmp, frominst, check)                                    \
+#define getOpFullest(Builder, vtmp, frominst, check)                           \
   ({                                                                           \
     Value *v = vtmp;                                                           \
     BasicBlock *origParent = frominst;                                         \
@@ -174,14 +177,14 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (v == val)                                                            \
         ___res = nullptr;                                                      \
       else                                                                     \
-        ___res = unwrapM(v, BuilderM, available, mode, permitCache);           \
+        ___res = unwrapM(v, Builder, available, mode, permitCache);            \
       if (!___res && mode == UnwrapMode::AttemptFullUnwrapWithLookup)          \
-        ___res = lookupM(v, BuilderM, available, v != val);                    \
+        ___res = lookupM(v, Builder, available, v != val);                     \
       if (___res)                                                              \
         assert(___res->getType() == v->getType() && "uw");                     \
     } else {                                                                   \
       assert(mode == UnwrapMode::AttemptSingleUnwrap);                         \
-      ___res = lookupM(v, BuilderM, available, v != val);                      \
+      ___res = lookupM(v, Builder, available, v != val);                       \
       if (___res && ___res->getType() != v->getType()) {                       \
         llvm::errs() << *newFunc << "\n";                                      \
         llvm::errs() << " v = " << *v << " res = " << *___res << "\n";         \
@@ -191,29 +194,26 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }                                                                          \
     ___res;                                                                    \
   })
-#define getOpFull(vtmp, frominst) getOpFullest(vtmp, frominst, true)
+#define getOpFull(Builder, vtmp, frominst)                                     \
+  getOpFullest(Builder, vtmp, frominst, true)
 #define getOpUnchecked(vtmp)                                                   \
   ({                                                                           \
     BasicBlock *parent = nullptr;                                              \
     if (auto originst = dyn_cast<Instruction>(val))                            \
       parent = originst->getParent();                                          \
-    getOpFullest(vtmp, parent, false);                                         \
+    getOpFullest(BuilderM, vtmp, parent, false);                               \
   })
 #define getOp(vtmp)                                                            \
   ({                                                                           \
     BasicBlock *parent = nullptr;                                              \
     if (auto originst = dyn_cast<Instruction>(val))                            \
       parent = originst->getParent();                                          \
-    getOpFullest(vtmp, parent, true);                                          \
+    getOpFullest(BuilderM, vtmp, parent, true);                                \
   })
 
   if (isa<Argument>(val) || isa<Constant>(val)) {
-    if (permitCache)
-      unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
     return val;
   } else if (isa<AllocaInst>(val)) {
-    if (permitCache)
-      unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
     return val;
   } else if (auto op = dyn_cast<CastInst>(val)) {
     auto op0 = getOp(op->getOperand(0));
@@ -224,7 +224,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
@@ -234,7 +234,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(),
                                                 op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     assert(val->getType() == toreturn->getType());
@@ -249,7 +249,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn = BuilderM.CreateInsertValue(op0, op1, op->getIndices(),
                                                op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     assert(val->getType() == toreturn->getType());
@@ -264,7 +264,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn =
         BuilderM.CreateExtractElement(op0, op1, op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     assert(val->getType() == toreturn->getType());
@@ -282,7 +282,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     auto toreturn =
         BuilderM.CreateInsertElement(op0, op1, op2, op->getName() + "_unwrap");
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     assert(val->getType() == toreturn->getType());
@@ -302,7 +302,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                                                  op->getName() + "'_unwrap");
 #endif
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     assert(val->getType() == toreturn->getType());
@@ -325,7 +325,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<ICmpInst>(val)) {
@@ -340,7 +340,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<FCmpInst>(val)) {
@@ -355,7 +355,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
 #if LLVM_VERSION_MAJOR >= 9
@@ -369,7 +369,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
 #endif
@@ -388,7 +388,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(op);
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
@@ -416,7 +416,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (auto newi = dyn_cast<Instruction>(toreturn))
       newi->copyIRFlags(inst);
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto load = dyn_cast<LoadInst>(val)) {
@@ -466,7 +466,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                           load->getMetadata(LLVMContext::MD_invariant_group));
     // TODO adding to cache only legal if no alias of any future writes
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     assert(val->getType() == toreturn->getType());
     return toreturn;
   } else if (auto op = dyn_cast<CallInst>(val)) {
@@ -501,7 +501,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     toreturn->setTailCallKind(op->getTailCallKind());
     toreturn->setDebugLoc(getNewFromOriginal(op->getDebugLoc()));
     if (permitCache)
-      unwrap_cache[cidx] = toreturn;
+      unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
     return toreturn;
   } else if (auto phi = dyn_cast<PHINode>(val)) {
     if (phi->getNumIncomingValues() == 0) {
@@ -558,7 +558,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             dli->getMetadata(LLVMContext::MD_invariant_group));
         // TODO adding to cache only legal if no alias of any future writes
         if (permitCache)
-          unwrap_cache[cidx] = toreturn;
+          unwrap_cache[BuilderM.GetInsertBlock()][val] = toreturn;
         assert(val->getType() == toreturn->getType());
         return toreturn;
       }
@@ -715,62 +715,116 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             if (cond2 == nullptr)
               goto endCheck;
 
-            assert(done.find(std::make_pair(subblock, bi2->getSuccessor(0))) !=
-                   done.end());
-            assert(done.find(std::make_pair(subblock, bi2->getSuccessor(1))) !=
-                   done.end());
-            assert(
-                done[std::make_pair(subblock, bi2->getSuccessor(0))].size() ==
-                1);
-            assert(
-                done[std::make_pair(subblock, bi2->getSuccessor(1))].size() ==
-                1);
-
-            SmallVector<Value *, 2> vals = {
-                getOpFull(
-                    phi->getIncomingValueForBlock(
-                        *done[std::make_pair(subblock, bi2->getSuccessor(0))]
-                             .begin()),
-                    *done[std::make_pair(subblock, bi2->getSuccessor(0))]
-                         .begin()),
-                getOpFull(
-                    phi->getIncomingValueForBlock(
-                        *done[std::make_pair(subblock, bi2->getSuccessor(1))]
-                             .begin()),
-                    *done[std::make_pair(subblock, bi2->getSuccessor(1))]
-                         .begin()),
-            };
-            if (!vals[0] || !vals[1])
+            BasicBlock *oldB = BuilderM.GetInsertBlock();
+            if (BuilderM.GetInsertPoint() != oldB->end())
               goto endCheck;
 
-            assert(val->getType() == vals[0]->getType());
-            assert(val->getType() == vals[1]->getType());
-            Value *subsel = BuilderM.CreateSelect(cond2, vals[0], vals[1]);
-            assert(val->getType() == subsel->getType());
-
-            auto stagingIfNeeded = [&](BasicBlock *B) {
-              auto edge = std::make_pair(block, B);
-              assert(done.find(edge) != done.end());
-              if (done[edge].size() == 1) {
-                return getOpFull(
-                    phi->getIncomingValueForBlock(*done[edge].begin()),
-                    *done[edge].begin());
-              } else {
-                return subsel;
+            // todo speed this up
+            BasicBlock *fwd = nullptr;
+            for (const auto &pair : reverseBlocks) {
+              const std::vector<BasicBlock *> &vec = pair.second;
+              if (std::find(vec.begin(), vec.end(), oldB) != vec.end()) {
+                fwd = pair.first;
+                break;
               }
-            };
-
-            vals[0] = stagingIfNeeded(bi1->getSuccessor(0));
-            vals[1] = stagingIfNeeded(bi1->getSuccessor(1));
-
-            if (!vals[0] || !vals[1])
+            }
+            if (!fwd)
               goto endCheck;
 
-            assert(val->getType() == vals[0]->getType());
-            assert(val->getType() == vals[1]->getType());
+            SmallVector<BasicBlock *, 2> predBlocks;
+            predBlocks.push_back(bi2->getSuccessor(0));
+            predBlocks.push_back(bi2->getSuccessor(1));
+            for (int i = 0; i < 2; i++) {
+              auto edge = std::make_pair(block, bi1->getSuccessor(i));
+              if (done[edge].size() == 1) {
+                predBlocks.push_back(bi1->getSuccessor(i));
+              }
+            }
 
-            auto toret = BuilderM.CreateSelect(cond1, vals[0], vals[1]);
+            SmallVector<Value *, 2> vals;
+
+            SmallVector<BasicBlock *, 2> blocks;
+            SmallVector<BasicBlock *, 2> endingBlocks;
+
+            BasicBlock *last = oldB;
+
+            BasicBlock *bret = BasicBlock::Create(
+                val->getContext(), oldB->getName() + "_phimerge", newFunc);
+
+            for (size_t i = 0; i < predBlocks.size(); i++) {
+              BasicBlock *parent = (i < 2) ? subblock : block;
+              assert(done.find(std::make_pair(parent, predBlocks[i])) !=
+                     done.end());
+              assert(done[std::make_pair(parent, predBlocks[i])].size() == 1);
+              blocks.push_back(BasicBlock::Create(
+                  val->getContext(), oldB->getName() + "_phirc", newFunc));
+              blocks[i]->moveAfter(last);
+              last = blocks[i];
+              reverseBlocks[fwd].push_back(blocks[i]);
+              IRBuilder<> B(blocks[i]);
+
+              unwrap_cache[blocks[i]] = unwrap_cache[oldB];
+              lookup_cache[blocks[i]] = lookup_cache[oldB];
+
+              vals.push_back(getOpFull(
+                  B,
+                  phi->getIncomingValueForBlock(
+                      *done[std::make_pair(parent, predBlocks[i])].begin()),
+                  *done[std::make_pair(parent, predBlocks[i])].begin()));
+              if (!vals[i]) {
+                for (size_t j = 0; j < i; i++) {
+                  reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                                     reverseBlocks[fwd].end(),
+                                                     blocks[j]));
+                  unwrap_cache.erase(blocks[j]);
+                  lookup_cache.erase(blocks[j]);
+                  SmallVector<Instruction *, 4> toErase;
+                  for (auto &I : *blocks[j]) {
+                    toErase.push_back(&I);
+                  }
+                  for (auto I : toErase) {
+                    erase(I);
+                  }
+                }
+                bret->eraseFromParent();
+                for (size_t j = 0; j < i; i++) {
+                  blocks[j]->eraseFromParent();
+                };
+                goto endCheck;
+              }
+              assert(val->getType() == vals[i]->getType());
+              B.CreateBr(bret);
+              endingBlocks.push_back(B.GetInsertBlock());
+            }
+
+            bret->moveAfter(last);
+
+            BasicBlock *bsplit = BasicBlock::Create(
+                val->getContext(), oldB->getName() + "_phisplt", newFunc);
+            bsplit->moveAfter(oldB);
+            BuilderM.CreateCondBr(
+                cond1,
+                (done[std::make_pair(block, bi1->getSuccessor(0))].size() == 1)
+                    ? blocks[2]
+                    : bsplit,
+                (done[std::make_pair(block, bi1->getSuccessor(1))].size() == 1)
+                    ? blocks[2]
+                    : bsplit);
+
+            BuilderM.SetInsertPoint(bsplit);
+            BuilderM.CreateCondBr(cond2, blocks[0], blocks[1]);
+
+            BuilderM.SetInsertPoint(bret);
+            reverseBlocks[fwd].push_back(bret);
+            auto toret = BuilderM.CreatePHI(val->getType(), vals.size());
+            for (size_t i = 0; i < vals.size(); i++)
+              toret->addIncoming(vals[i], endingBlocks[i]);
             assert(val->getType() == toret->getType());
+            if (permitCache) {
+              unwrap_cache[bret][val] = toret;
+            }
+            unwrap_cache[bret] = unwrap_cache[oldB];
+            lookup_cache[bret] = lookup_cache[oldB];
             return toret;
           }
         }
@@ -808,92 +862,127 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
   fast:;
     assert(equivalentTerminator);
 
-    if (auto branch = dyn_cast<BranchInst>(equivalentTerminator)) {
-      auto cond = getOp(branch->getCondition());
+    if (isa<BranchInst>(equivalentTerminator) ||
+        isa<SwitchInst>(equivalentTerminator)) {
+      BasicBlock *oldB = BuilderM.GetInsertBlock();
+      if (BuilderM.GetInsertPoint() != oldB->end())
+        goto endCheck;
+
+      // todo speed this up
+      BasicBlock *fwd = nullptr;
+      for (const auto &pair : reverseBlocks) {
+        const std::vector<BasicBlock *> &vec = pair.second;
+        if (std::find(vec.begin(), vec.end(), oldB) != vec.end()) {
+          fwd = pair.first;
+          break;
+        }
+      }
+      if (!fwd)
+        goto endCheck;
+
+      SmallVector<BasicBlock *, 2> predBlocks;
+      Value *cond = nullptr;
+      if (auto branch = dyn_cast<BranchInst>(equivalentTerminator)) {
+        cond = getOp(branch->getCondition());
+        predBlocks.push_back(branch->getSuccessor(0));
+        predBlocks.push_back(branch->getSuccessor(1));
+      } else {
+        auto SI = cast<SwitchInst>(equivalentTerminator);
+        cond = getOp(SI->getCondition());
+        predBlocks.push_back(SI->getDefaultDest());
+        for (auto scase : SI->cases()) {
+          predBlocks.push_back(scase.getCaseSuccessor());
+        }
+      }
+
       if (cond == nullptr)
         goto endCheck;
 
-      assert(done.find(std::make_pair(equivalentTerminator->getParent(),
-                                      branch->getSuccessor(0))) != done.end());
-      assert(done.find(std::make_pair(equivalentTerminator->getParent(),
-                                      branch->getSuccessor(1))) != done.end());
-      assert(done[std::make_pair(equivalentTerminator->getParent(),
-                                 branch->getSuccessor(0))]
-                 .size() == 1);
-      assert(done[std::make_pair(equivalentTerminator->getParent(),
-                                 branch->getSuccessor(1))]
-                 .size() == 1);
       SmallVector<Value *, 2> vals;
-      vals.push_back(
-          getOpFull(phi->getIncomingValueForBlock(
-                        *done[std::make_pair(equivalentTerminator->getParent(),
-                                             branch->getSuccessor(0))]
-                             .begin()),
-                    *done[std::make_pair(equivalentTerminator->getParent(),
-                                         branch->getSuccessor(0))]
-                         .begin()));
-      if (!vals[0])
-        goto endCheck;
-      vals.push_back(
-          getOpFull(phi->getIncomingValueForBlock(
-                        *done[std::make_pair(equivalentTerminator->getParent(),
-                                             branch->getSuccessor(1))]
-                             .begin()),
-                    *done[std::make_pair(equivalentTerminator->getParent(),
-                                         branch->getSuccessor(1))]
-                         .begin()));
-      if (!vals[1])
-        goto endCheck;
 
-      assert(val->getType() == vals[0]->getType());
-      assert(val->getType() == vals[1]->getType());
-      auto toret = BuilderM.CreateSelect(cond, vals[0], vals[1]);
-      assert(val->getType() == toret->getType());
-      return toret;
-    }
-    if (auto SI = dyn_cast<SwitchInst>(equivalentTerminator)) {
-      // llvm::errs() << *SI << "\n";
+      SmallVector<BasicBlock *, 2> blocks;
+      SmallVector<BasicBlock *, 2> endingBlocks;
 
-      auto cond = getOp(SI->getCondition());
-      if (cond == nullptr) {
-        // llvm::errs() << " +nc " << *cond << "\n";
-        goto endCheck;
-      }
+      BasicBlock *last = oldB;
 
-      Value *val =
-          getOpFull(phi->getIncomingValueForBlock(
-                        *done[std::make_pair(equivalentTerminator->getParent(),
-                                             SI->getDefaultDest())]
-                             .begin()),
-                    *done[std::make_pair(equivalentTerminator->getParent(),
-                                         SI->getDefaultDest())]
-                         .begin());
-      if (val == nullptr) {
-        // llvm::errs() << " +ndv " << *cond << "\n";
-        goto endCheck;
-      }
+      BasicBlock *bret = BasicBlock::Create(
+          val->getContext(), oldB->getName() + "_phimerge", newFunc);
 
-      for (auto scase : SI->cases()) {
-        auto NC = getOpFull(
+      for (size_t i = 0; i < predBlocks.size(); i++) {
+        assert(done.find(std::make_pair(equivalentTerminator->getParent(),
+                                        predBlocks[i])) != done.end());
+        assert(done[std::make_pair(equivalentTerminator->getParent(),
+                                   predBlocks[i])]
+                   .size() == 1);
+        blocks.push_back(BasicBlock::Create(
+            val->getContext(), oldB->getName() + "_phirc", newFunc));
+        blocks[i]->moveAfter(last);
+        last = blocks[i];
+        reverseBlocks[fwd].push_back(blocks[i]);
+        IRBuilder<> B(blocks[i]);
+
+        unwrap_cache[blocks[i]] = unwrap_cache[oldB];
+        lookup_cache[blocks[i]] = lookup_cache[oldB];
+
+        vals.push_back(getOpFull(
+            B,
             phi->getIncomingValueForBlock(
                 *done[std::make_pair(equivalentTerminator->getParent(),
-                                     scase.getCaseSuccessor())]
+                                     predBlocks[i])]
                      .begin()),
             *done[std::make_pair(equivalentTerminator->getParent(),
-                                 scase.getCaseSuccessor())]
-                 .begin());
-
-        if (NC == nullptr) {
-          // llvm::errs() << " +nc " << *cond << "\n";
+                                 predBlocks[i])]
+                 .begin()));
+        if (!vals[i]) {
+          for (size_t j = 0; j < i; i++) {
+            reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                               reverseBlocks[fwd].end(),
+                                               blocks[j]));
+            unwrap_cache.erase(blocks[j]);
+            lookup_cache.erase(blocks[j]);
+            SmallVector<Instruction *, 4> toErase;
+            for (auto &I : *blocks[j]) {
+              toErase.push_back(&I);
+            }
+            for (auto I : toErase) {
+              erase(I);
+            }
+          }
+          bret->eraseFromParent();
+          for (size_t j = 0; j < i; i++) {
+            blocks[j]->eraseFromParent();
+          };
           goto endCheck;
         }
-
-        val = BuilderM.CreateSelect(
-            BuilderM.CreateICmpEQ(cond, scase.getCaseValue()), NC, val);
+        assert(val->getType() == vals[i]->getType());
+        B.CreateBr(bret);
+        endingBlocks.push_back(B.GetInsertBlock());
       }
-      if (permitCache)
-        unwrap_cache[cidx] = val;
-      return val;
+
+      bret->moveAfter(last);
+      if (isa<BranchInst>(equivalentTerminator)) {
+        BuilderM.CreateCondBr(cond, blocks[0], blocks[1]);
+      } else {
+        auto SI = cast<SwitchInst>(equivalentTerminator);
+        auto NSI = BuilderM.CreateSwitch(cond, blocks[0], SI->getNumCases());
+        size_t idx = 1;
+        for (auto scase : SI->cases()) {
+          NSI->addCase(scase.getCaseValue(), blocks[idx]);
+          idx++;
+        }
+      }
+      BuilderM.SetInsertPoint(bret);
+      reverseBlocks[fwd].push_back(bret);
+      auto toret = BuilderM.CreatePHI(val->getType(), vals.size());
+      for (size_t i = 0; i < vals.size(); i++)
+        toret->addIncoming(vals[i], endingBlocks[i]);
+      assert(val->getType() == toret->getType());
+      if (permitCache) {
+        unwrap_cache[bret][val] = toret;
+      }
+      unwrap_cache[bret] = unwrap_cache[oldB];
+      lookup_cache[bret] = lookup_cache[oldB];
+      return toret;
     }
     goto endCheck;
   }
@@ -1020,6 +1109,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                               .size();
            i < limit; ++i) {
         if (!isa<PointerType>(innerType)) {
+          llvm::errs() << "mod: "
+                       << *BuilderQ.GetInsertBlock()->getParent()->getParent()
+                       << "\n";
           llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent()
                        << "\n";
           llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock()
@@ -1028,7 +1120,8 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                        << "\n";
           llvm::errs() << "innerType: " << *innerType << "\n";
           if (malloc)
-            llvm::errs() << " malloc: " << *malloc << "\n";
+            llvm::errs() << " malloc: " << *malloc << " i=" << i
+                         << " / lim = " << limit << "\n";
         }
         assert(isa<PointerType>(innerType));
         innerType = cast<PointerType>(innerType)->getElementType();
@@ -1349,7 +1442,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
   bool inLoopContext = getContext(branchingBlock, branchingContext);
 
   if (!inLoop)
-    return reverseBlocks[BB];
+    return reverseBlocks[BB].front();
 
   auto tup = std::make_tuple(BB, branchingBlock);
   if (newBlocksForLoop_cache.find(tup) != newBlocksForLoop_cache.end())
@@ -1358,9 +1451,9 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
   if (inLoop && inLoopContext && branchingBlock == lc.header &&
       lc.header == branchingContext.header) {
     BasicBlock *incB = BasicBlock::Create(
-        BB->getContext(), "inc" + reverseBlocks[lc.header]->getName(),
+        BB->getContext(), "inc" + reverseBlocks[lc.header].front()->getName(),
         BB->getParent());
-    incB->moveAfter(reverseBlocks[lc.header]);
+    incB->moveAfter(reverseBlocks[lc.header].back());
 
     IRBuilder<> tbuild(incB);
 
@@ -1368,7 +1461,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
     Value *sub = tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1), "",
                                   /*NUW*/ false, /*NSW*/ true);
     tbuild.CreateStore(sub, lc.antivaralloc);
-    tbuild.CreateBr(reverseBlocks[BB]);
+    tbuild.CreateBr(reverseBlocks[BB].front());
     return newBlocksForLoop_cache[tup] = incB;
   }
 
@@ -1378,14 +1471,14 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
     if (std::find(latches.begin(), latches.end(), BB) != latches.end() &&
         std::find(lc.exitBlocks.begin(), lc.exitBlocks.end(), branchingBlock) !=
             lc.exitBlocks.end()) {
-      BasicBlock *incB =
-          BasicBlock::Create(BB->getContext(),
-                             "merge" + reverseBlocks[lc.header]->getName() +
-                                 "_" + branchingBlock->getName(),
-                             BB->getParent());
-      incB->moveAfter(reverseBlocks[branchingBlock]);
+      BasicBlock *incB = BasicBlock::Create(
+          BB->getContext(),
+          "merge" + reverseBlocks[lc.header].front()->getName() + "_" +
+              branchingBlock->getName(),
+          BB->getParent());
+      incB->moveAfter(reverseBlocks[branchingBlock].back());
 
-      IRBuilder<> tbuild(reverseBlocks[branchingBlock]);
+      IRBuilder<> tbuild(reverseBlocks[branchingBlock].back());
 
       Value *lim = nullptr;
       if (lc.dynamic) {
@@ -1403,13 +1496,13 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
 
       tbuild.SetInsertPoint(incB);
       tbuild.CreateStore(lim, lc.antivaralloc);
-      tbuild.CreateBr(reverseBlocks[BB]);
+      tbuild.CreateBr(reverseBlocks[BB].front());
 
       return newBlocksForLoop_cache[tup] = incB;
     }
   }
 
-  return newBlocksForLoop_cache[tup] = reverseBlocks[BB];
+  return newBlocksForLoop_cache[tup] = reverseBlocks[BB].front();
 }
 
 void GradientUtils::forceContexts() {
@@ -1525,7 +1618,8 @@ bool GradientUtils::legalRecompute(const Value *val,
         fwdBlockIfReverse = BuilderM->GetInsertBlock();
         if (!reverse) {
           for (auto pair : reverseBlocks) {
-            if (pair.second == BuilderM->GetInsertBlock()) {
+            if (std::find(pair.second.begin(), pair.second.end(),
+                          BuilderM->GetInsertBlock()) != pair.second.end()) {
               fwdBlockIfReverse = pair.first;
               reverse = true;
               break;
@@ -2636,9 +2730,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     }
   }
 
-  auto idx = std::make_pair(val, BuilderM.GetInsertBlock());
-  if (lookup_cache.find(idx) != lookup_cache.end()) {
-    auto result = lookup_cache[idx];
+  if (lookup_cache[BuilderM.GetInsertBlock()].find(val) !=
+      lookup_cache[BuilderM.GetInsertBlock()].end()) {
+    auto result = lookup_cache[BuilderM.GetInsertBlock()][val];
     assert(result);
     assert(result->getType());
     result = BuilderM.CreateBitCast(result, val->getType());
@@ -2705,7 +2799,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
       } else {
         lim = lookupM(lc.trueLimit, BuilderM);
       }
-      lookup_cache[idx] = lim;
+      lookup_cache[BuilderM.GetInsertBlock()][val] = lim;
       return lim;
     }
   }
@@ -2726,9 +2820,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
 
   // Update index and caching per lcssa
-  idx = std::make_pair(val, BuilderM.GetInsertBlock());
-  if (lookup_cache.find(idx) != lookup_cache.end()) {
-    auto result = lookup_cache[idx];
+  if (lookup_cache[BuilderM.GetInsertBlock()].find(val) !=
+      lookup_cache[BuilderM.GetInsertBlock()].end()) {
+    auto result = lookup_cache[BuilderM.GetInsertBlock()][val];
     assert(result);
     assert(result->getType());
     result = BuilderM.CreateBitCast(result, val->getType());
@@ -2759,7 +2853,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
         }
         assert(op->getType() == inst->getType());
         if (!reduceRegister)
-          lookup_cache[idx] = op;
+          lookup_cache[BuilderM.GetInsertBlock()][val] = op;
         return op;
       }
     } else {
@@ -2851,7 +2945,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                       //    "\n";
 
                       inst = li2;
-                      idx = std::make_pair(val, BuilderM.GetInsertBlock());
                       break;
                     }
                   }
@@ -3228,7 +3321,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                   auto result = loadFromCachePointer(BuilderM, cptr, cache);
 
                   assert(result->getType() == inst->getType());
-                  lookup_cache[idx] = result;
+                  lookup_cache[BuilderM.GetInsertBlock()][val] = result;
                   return result;
                 }
               }
@@ -3466,7 +3559,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                 /*isForwardPass*/ false, BuilderM, lctx, cache, isi1,
                 /*extraSize*/ lim, offset);
             assert(result->getType() == inst->getType());
-            lookup_cache[idx] = result;
+            lookup_cache[BuilderM.GetInsertBlock()][val] = result;
 
             if (scopeMap.find(inst) == scopeMap.end())
               EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc,
@@ -3490,7 +3583,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   Value *result = lookupValueFromCache(/*isForwardPass*/ false, BuilderM,
                                        found->second, found->first, isi1);
   assert(result->getType() == inst->getType());
-  lookup_cache[idx] = result;
+  lookup_cache[BuilderM.GetInsertBlock()][val] = result;
   assert(result);
   if (result->getType() != val->getType()) {
     result = BuilderM.CreateBitCast(result, val->getType());
@@ -3528,6 +3621,12 @@ void GradientUtils::branchToCorrespondingTarget(
 
   if (targetToPreds.size() == 1) {
     if (replacePHIs == nullptr) {
+      if (!(BuilderM.GetInsertBlock()->size() == 0 ||
+            !isa<BranchInst>(BuilderM.GetInsertBlock()->back()))) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *BuilderM.GetInsertBlock() << "\n";
+      }
       assert(BuilderM.GetInsertBlock()->size() == 0 ||
              !isa<BranchInst>(BuilderM.GetInsertBlock()->back()));
       BuilderM.CreateBr(targetToPreds.begin()->first);

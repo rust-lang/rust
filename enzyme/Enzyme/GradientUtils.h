@@ -109,7 +109,7 @@ public:
   ScalarEvolution &OrigSE;
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
-  ValueMap<BasicBlock *, BasicBlock *> reverseBlocks;
+  std::map<BasicBlock *, std::vector<BasicBlock *>> reverseBlocks;
   SmallVector<PHINode *, 4> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
   std::vector<CallInst *> originalCalls;
@@ -434,8 +434,8 @@ private:
   unsigned tapeidx;
   Value *tape;
 
-  std::map<std::pair<Value *, BasicBlock *>, Value *> unwrap_cache;
-  std::map<std::pair<Value *, BasicBlock *>, Value *> lookup_cache;
+  std::map<BasicBlock *, std::map<Value *, Value *>> unwrap_cache;
+  std::map<BasicBlock *, std::map<Value *, Value *>> lookup_cache;
 
 public:
   bool legalRecompute(const Value *val, const ValueToValueMapTy &available,
@@ -502,33 +502,33 @@ public:
       }
     }
 
-    {
-      std::vector<std::pair<Value *, BasicBlock *>> unwrap_cache_pairs;
-      for (auto &a : unwrap_cache) {
+    for (auto &pair : unwrap_cache) {
+      std::vector<Value *> cache_pairs;
+      for (auto &a : pair.second) {
         if (a.second == I) {
-          unwrap_cache_pairs.push_back(a.first);
+          cache_pairs.push_back(a.first);
         }
-        if (a.first.first == I) {
-          unwrap_cache_pairs.push_back(a.first);
+        if (a.first == I) {
+          cache_pairs.push_back(a.first);
         }
       }
-      for (auto a : unwrap_cache_pairs) {
-        unwrap_cache.erase(a);
+      for (auto a : cache_pairs) {
+        pair.second.erase(a);
       }
     }
 
-    {
-      std::vector<std::pair<Value *, BasicBlock *>> lookup_cache_pairs;
-      for (auto &a : lookup_cache) {
+    for (auto &pair : lookup_cache) {
+      std::vector<Value *> cache_pairs;
+      for (auto &a : pair.second) {
         if (a.second == I) {
-          lookup_cache_pairs.push_back(a.first);
+          cache_pairs.push_back(a.first);
         }
-        if (a.first.first == I) {
-          lookup_cache_pairs.push_back(a.first);
+        if (a.first == I) {
+          cache_pairs.push_back(a.first);
         }
       }
-      for (auto a : lookup_cache_pairs) {
-        lookup_cache.erase(a);
+      for (auto a : cache_pairs) {
+        pair.second.erase(a);
       }
     }
     CacheUtility::erase(I);
@@ -794,7 +794,8 @@ private:
     for (auto BB : originalBlocks) {
       auto it = reverseBlocks.find(BB);
       assert(it != reverseBlocks.end());
-      if (it->second == &BB2) {
+      if (std::find(it->second.begin(), it->second.end(), &BB2) !=
+          it->second.end()) {
         return BB;
       }
     }
@@ -1147,8 +1148,8 @@ class DiffeGradientUtils : public GradientUtils {
     for (BasicBlock *BB : originalBlocks) {
       if (BB == inversionAllocs)
         continue;
-      reverseBlocks[BB] = BasicBlock::Create(BB->getContext(),
-                                             "invert" + BB->getName(), newFunc);
+      reverseBlocks[BB].push_back(BasicBlock::Create(
+          BB->getContext(), "invert" + BB->getName(), newFunc));
     }
     assert(reverseBlocks.size() != 0);
   }
@@ -1455,8 +1456,8 @@ public:
                  llvm::ConstantInt *byteSizeOfType, llvm::Value *storeInto,
                  llvm::MDNode *InvariantMD) override {
     assert(reverseBlocks.find(forwardPreheader) != reverseBlocks.end());
-    assert(reverseBlocks[forwardPreheader]);
-    IRBuilder<> tbuild(reverseBlocks[forwardPreheader]);
+    assert(reverseBlocks[forwardPreheader].size());
+    IRBuilder<> tbuild(reverseBlocks[forwardPreheader].back());
     tbuild.setFastMathFlags(getFast());
 
     // ensure we are before the terminator if it exists

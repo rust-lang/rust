@@ -1884,7 +1884,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
   LoopContext loopContext;
   BasicBlock *BB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
   bool inLoop = gutils->getContext(BB, loopContext);
-  BasicBlock *BB2 = gutils->reverseBlocks[BB];
+  BasicBlock *BB2 = gutils->reverseBlocks[BB].back();
   assert(BB2);
   IRBuilder<> Builder(BB2);
   Builder.setFastMathFlags(getFast());
@@ -2031,7 +2031,8 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                 handled = true;
                 if (!gutils->isConstantValue(oval)) {
                   BasicBlock *REB =
-                      gutils->reverseBlocks[*loopContext.exitBlocks.begin()];
+                      gutils->reverseBlocks[*loopContext.exitBlocks.begin()]
+                          .back();
                   IRBuilder<> EB(REB);
                   if (REB->getTerminator())
                     EB.SetInsertPoint(REB->getTerminator());
@@ -2087,7 +2088,8 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
               if (!gutils->isConstantValue(oval)) {
 
                 BasicBlock *REB =
-                    gutils->reverseBlocks[*loopContext.exitBlocks.begin()];
+                    gutils->reverseBlocks[*loopContext.exitBlocks.begin()]
+                        .back();
                 IRBuilder<> EB(REB);
                 if (REB->getTerminator())
                   EB.SetInsertPoint(REB->getTerminator());
@@ -2181,7 +2183,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       pair.second->replaceAllUsesWith(replaceWith);
       pair.second->eraseFromParent();
     }
-
+    BB2 = gutils->reverseBlocks[BB].back();
     Builder.SetInsertPoint(BB2);
 
     Builder.CreateCondBr(
@@ -2211,6 +2213,7 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       targetToPreds[gutils->getReverseOrLatchMerge(pred, BB)].emplace_back(
           std::make_pair(pred, BB));
     }
+    BB2 = gutils->reverseBlocks[BB].back();
     Builder.SetInsertPoint(BB2);
     gutils->branchToCorrespondingTarget(BB, Builder, targetToPreds);
   }
@@ -2580,14 +2583,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         assert(orig->getReturnValue());
         assert(differetval);
         if (!gutils->isConstantValue(orig->getReturnValue())) {
-          IRBuilder<> reverseB(gutils->reverseBlocks[BB]);
+          IRBuilder<> reverseB(gutils->reverseBlocks[BB].back());
           gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
         }
       } else {
         assert(retAlloca == nullptr);
       }
 
-      rb.CreateBr(gutils->reverseBlocks[BB]);
+      rb.CreateBr(gutils->reverseBlocks[BB].front());
       gutils->erase(op);
     }
   }
@@ -2698,9 +2701,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   auto Arch =
       llvm::Triple(gutils->newFunc->getParent()->getTargetTriple()).getArch();
-  int SharedAddrSpace = Arch == Triple::amdgcn
-                            ? (int)AMDGPU::HSAMD::AddressSpaceQualifier::Local
-                            : 3;
+  unsigned int SharedAddrSpace =
+      Arch == Triple::amdgcn ? (int)AMDGPU::HSAMD::AddressSpaceQualifier::Local
+                             : 3;
 
   if (topLevel) {
     BasicBlock *sharedBlock = nullptr;
@@ -2758,8 +2761,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
       IRBuilder<> instbuilder(OldEntryInsts, OldEntryInsts->begin());
 
-      auto BarrierInst = Arch == Triple::amdgcn ? Intrinsic::amdgcn_s_barrier
-                                                : Intrinsic::nvvm_barrier0;
+      auto BarrierInst = Arch == Triple::amdgcn
+                             ? (llvm::Intrinsic::ID)Intrinsic::amdgcn_s_barrier
+                             : (llvm::Intrinsic::ID)Intrinsic::nvvm_barrier0;
       cast<CallInst>(instbuilder.CreateCall(
           Intrinsic::getDeclaration(gutils->newFunc->getParent(), BarrierInst),
           {}));
@@ -2789,9 +2793,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   (IRBuilder<>(gutils->inversionAllocs)).CreateUnreachable();
   DeleteDeadBlock(gutils->inversionAllocs);
   for (auto BBs : gutils->reverseBlocks) {
-    if (pred_begin(BBs.second) == pred_end(BBs.second)) {
-      (IRBuilder<>(BBs.second)).CreateUnreachable();
-      DeleteDeadBlock(BBs.second);
+    if (pred_begin(BBs.second.front()) == pred_end(BBs.second.front())) {
+      (IRBuilder<>(BBs.second.front())).CreateUnreachable();
+      DeleteDeadBlock(BBs.second.front());
     }
   }
 

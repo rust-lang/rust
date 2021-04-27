@@ -936,7 +936,7 @@ public:
     BasicBlock *BB = Builder2.GetInsertBlock();
     if (original)
       BB = gutils->getNewFromOriginal(BB);
-    BasicBlock *BB2 = gutils->reverseBlocks[BB];
+    BasicBlock *BB2 = gutils->reverseBlocks[BB].back();
     if (!BB2) {
       llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
       llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
@@ -2495,7 +2495,6 @@ public:
           for (auto pair : geps) {
             Value *op = pair.second;
             Value *alloc = op;
-            llvm::errs() << "op: " << *op << "\n";
             Value *replacement = gutils->unwrapM(op, BuilderZ, available,
                                                  UnwrapMode::LegalFullUnwrap);
             tape =
@@ -4319,8 +4318,10 @@ public:
         eraseIfUnused(*orig, /*erase*/ false, /*check*/ false);
       }
 
-      for (auto &a : *gutils->reverseBlocks[cast<BasicBlock>(
-               gutils->getNewFromOriginal(orig->getParent()))]) {
+      for (auto &a : *gutils
+                          ->reverseBlocks[cast<BasicBlock>(
+                              gutils->getNewFromOriginal(orig->getParent()))]
+                          .back()) {
         mapp[&a] = &a;
       }
 
