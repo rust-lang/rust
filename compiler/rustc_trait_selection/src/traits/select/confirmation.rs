@@ -462,12 +462,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         for assoc_type in assoc_types {
             if !tcx.generics_of(assoc_type).params.is_empty() {
-                // FIXME(generic_associated_types) generate placeholders to
-                // extend the trait substs.
-                tcx.sess.span_fatal(
+                tcx.sess.delay_span_bug(
                     obligation.cause.span,
-                    "generic associated types in trait objects are not supported yet",
+                    "GATs in trait object shouldn't have been considered",
                 );
+                return Err(SelectionError::Unimplemented);
             }
             // This maybe belongs in wf, but that can't (doesn't) handle
             // higher-ranked things.

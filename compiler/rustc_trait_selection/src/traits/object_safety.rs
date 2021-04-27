@@ -132,6 +132,14 @@ fn object_safety_violations_for_trait(
             .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name, item.ident.span)),
     );
 
+    violations.extend(
+        tcx.associated_items(trait_def_id)
+            .in_definition_order()
+            .filter(|item| item.kind == ty::AssocKind::Type)
+            .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
+            .map(|item| ObjectSafetyViolation::GAT(item.ident.name, item.ident.span)),
+    );
+
     debug!(
         "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
         trait_def_id, violations
