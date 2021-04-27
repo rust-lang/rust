@@ -78,9 +78,9 @@ where
         }
 
         // drop any remaining values at the tail of the source
-        src.drop_remaining();
         // but prevent drop of the allocation itself once IntoIter goes out of scope
-        src.forget_allocation();
+        // if the drop panics then we also leak any elements collected into dst_buf
+        src.forget_allocation_drop_remaining();
 
         let vec = unsafe {
             let len = dst.offset_from(dst_buf) as usize;
