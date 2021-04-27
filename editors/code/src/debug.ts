@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as ra from './lsp_ext';
 
-import { Cargo } from './toolchain';
+import { Cargo, getRustcId, getSysroot } from './toolchain';
 import { Ctx } from "./ctx";
 import { prepareEnv } from "./run";
 
@@ -104,7 +104,17 @@ async function getDebugConfiguration(ctx: Ctx, runnable: ra.Runnable): Promise<v
 
     const executable = await getDebugExecutable(runnable);
     const env = prepareEnv(runnable, ctx.config.runnableEnv);
-    const debugConfig = knownEngines[debugEngine.id](runnable, simplifyPath(executable), env, debugOptions.sourceFileMap);
+    let sourceFileMap = debugOptions.sourceFileMap;
+    if (sourceFileMap === "auto") {
+        // let's try to use the default toolchain
+        const commitHash = await getRustcId(wsFolder);
+        const sysroot = await getSysroot(wsFolder);
+        const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
+        sourceFileMap = {};
+        sourceFileMap[`/rustc/${commitHash}/`] = rustlib;
+    }
+
+    const debugConfig = knownEngines[debugEngine.id](runnable, simplifyPath(executable), env, sourceFileMap);
     if (debugConfig.type in debugOptions.engineSettings) {
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
         for (var key in settingsMap) {

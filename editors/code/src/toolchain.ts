@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as readline from 'readline';
 import { OutputChannel } from 'vscode';
-import { log, memoize } from './util';
+import { execute, log, memoize } from './util';
 
 interface CompilationArtifact {
     fileName: string;
@@ -119,6 +119,24 @@ export class Cargo {
             });
         });
     }
+}
+
+/** Mirrors `project_model::sysroot::discover_sysroot_dir()` implementation*/
+export function getSysroot(dir: string): Promise<string> {
+    const rustcPath = getPathForExecutable("rustc");
+
+    // do not memoize the result because the toolchain may change between runs
+    return execute(`${rustcPath} --print sysroot`, { cwd: dir });
+}
+
+export async function getRustcId(dir: string): Promise<string> {
+    const rustcPath = getPathForExecutable("rustc");
+
+    // do not memoize the result because the toolchain may change between runs
+    const data = await execute(`${rustcPath} -V -v`, { cwd: dir });
+    const rx = /commit-hash:\s(.*)$/m.compile();
+
+    return rx.exec(data)![1];
 }
 
 /** Mirrors `toolchain::cargo()` implementation */

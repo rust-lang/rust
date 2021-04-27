@@ -353,8 +353,9 @@
                         "Use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)"
                     ]
                 },
-                "rust-analyzer.debug.sourceFileMap": {
-                    "type": "object",
+                "rust-analyzer.debug.sourceFileMap": {                    
+                    "type": ["object", "string"],
+                    "const": "auto",
                     "description": "Optional source file mappings passed to the debug engine.",
                     "default": {
                         "/rustc/<id>": "${env:USERPROFILE}/.rustup/toolchains/<toolchain-id>/lib/rustlib/src/rust"

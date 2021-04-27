@@ -1,7 +1,7 @@
 import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { spawnSync } from "child_process";
+import { exec, ExecOptions, spawnSync } from "child_process";
 import { inspect } from "util";
 
 export function assert(condition: boolean, explanation: string): asserts condition {
@@ -140,4 +140,23 @@ export function memoize<Ret, TThis, Param extends string>(func: (this: TThis, ar
 
         return result;
     };
+}
+
+/** Awaitable wrapper around `child_process.exec` */
+export function execute(command: string, options: ExecOptions): Promise<string> {
+    return new Promise((resolve, reject) => {
+        exec(command, options, (err, stdout, stderr) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+
+            if (stderr) {
+                reject(new Error(stderr));
+                return;
+            }
+
+            resolve(stdout.trimEnd());
+        });
+    });
 }

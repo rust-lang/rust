@@ -135,8 +135,12 @@ export class Config {
     }
 
     get debug() {
-        // "/rustc/<id>" used by suggestions only.
-        const { ["/rustc/<id>"]: _, ...sourceFileMap } = this.get<Record<string, string>>("debug.sourceFileMap");
+        let sourceFileMap = this.get<Record<string, string> | "auto">("debug.sourceFileMap");
+        if (sourceFileMap !== "auto") {
+            // "/rustc/<id>" used by suggestions only.
+            const { ["/rustc/<id>"]: _, ...trimmed } = this.get<Record<string, string>>("debug.sourceFileMap");
+            sourceFileMap = trimmed;
+        }
 
         return {
             engine: this.get<string>("debug.engine"),
