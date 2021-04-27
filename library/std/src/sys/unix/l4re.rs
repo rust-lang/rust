@@ -230,6 +230,14 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn set_tos(&self, _: u32) -> io::Result<()> {
+            unimpl!();
+        }
+
+        pub fn tos(&self) -> io::Result<u32> {
+            unimpl!();
+        }
+
         pub fn take_error(&self) -> io::Result<Option<io::Error>> {
             unimpl!();
         }
@@ -285,6 +293,14 @@ pub mod net {
         }
 
         pub fn ttl(&self) -> io::Result<u32> {
+            unimpl!();
+        }
+
+        pub fn set_tos(&self, _: u32) -> io::Result<()> {
+            unimpl!();
+        }
+
+        pub fn tos(&self) -> io::Result<u32> {
             unimpl!();
         }
 
@@ -427,6 +443,14 @@ pub mod net {
         }
 
         pub fn ttl(&self) -> io::Result<u32> {
+            unimpl!();
+        }
+
+        pub fn set_tos(&self, _: u32) -> io::Result<()> {
+            unimpl!();
+        }
+
+        pub fn tos(&self) -> io::Result<u32> {
             unimpl!();
         }
 

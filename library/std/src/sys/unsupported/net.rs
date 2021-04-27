@@ -92,6 +92,14 @@ impl TcpStream {
         self.0
     }
 
+    pub fn set_tos(&self, _: u32) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
+        self.0
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0
     }
@@ -131,6 +139,14 @@ impl TcpListener {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        self.0
+    }
+
+    pub fn set_tos(&self, _: u32) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
         self.0
     }
 
@@ -257,6 +273,14 @@ impl UdpSocket {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        self.0
+    }
+
+    pub fn set_tos(&self, _: u32) -> io::Result<()> {
+        self.0
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
         self.0
     }
 

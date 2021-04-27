@@ -550,6 +550,42 @@ impl UdpSocket {
         self.0.ttl()
     }
 
+    /// Sets the value for the `IP_TOS` option on this socket.
+    ///
+    /// This value sets the type-of-service field that is used in every packet
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_tos(96).expect("set_tos call failed");
+    /// ```
+    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    pub fn set_tos(&self, tos: u32) -> io::Result<()> {
+        self.0.set_tos(tos)
+    }
+
+    /// Gets the value of the `IP_TOS` option for this socket.
+    ///
+    /// For more information about this option, see [`UdpSocket::set_tos`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.set_tos(96).expect("set_tos call failed");
+    /// assert_eq!(socket.tos().unwrap(), 96);
+    /// ```
+    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    pub fn tos(&self) -> io::Result<u32> {
+        self.0.tos()
+    }
+
     /// Executes an operation of the `IP_ADD_MEMBERSHIP` type.
     ///
     /// This function specifies a new multicast group for this socket to join.

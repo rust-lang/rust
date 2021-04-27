@@ -320,6 +320,15 @@ impl TcpStream {
         Ok(raw as u32)
     }
 
+    pub fn set_tos(&self, tos: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TOS, tos as c_int)
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TOS)?;
+        Ok(raw as u32)
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.inner.take_error()
     }
@@ -417,6 +426,15 @@ impl TcpListener {
 
     pub fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
+        Ok(raw as u32)
+    }
+
+    pub fn set_tos(&self, tos: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TOS, tos as c_int)
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TOS)?;
         Ok(raw as u32)
     }
 
@@ -621,6 +639,15 @@ impl UdpSocket {
 
     pub fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
+        Ok(raw as u32)
+    }
+
+    pub fn set_tos(&self, tos: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TOS, tos as c_int)
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TOS)?;
         Ok(raw as u32)
     }
 

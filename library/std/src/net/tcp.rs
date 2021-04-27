@@ -480,6 +480,44 @@ impl TcpStream {
         self.0.ttl()
     }
 
+    /// Sets the value for the `IP_TOS` option on this socket.
+    ///
+    /// This value sets the type-of-service field that is used in every packet
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_tos(96).expect("set_tos call failed");
+    /// ```
+    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    pub fn set_tos(&self, tos: u32) -> io::Result<()> {
+        self.0.set_tos(tos)
+    }
+
+    /// Gets the value of the `IP_TOS` option for this socket.
+    ///
+    /// For more information about this option, see [`TcpStream::set_tos`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///                        .expect("Couldn't connect to the server...");
+    /// stream.set_tos(96).expect("set_tos call failed");
+    /// assert_eq!(stream.tos().unwrap_or(0), 96);
+    /// ```
+    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    pub fn tos(&self) -> io::Result<u32> {
+        self.0.tos()
+    }
+
     /// Gets the value of the `SO_ERROR` option on this socket.
     ///
     /// This will retrieve the stored error in the underlying socket, clearing
@@ -819,6 +857,42 @@ impl TcpListener {
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
+    }
+
+    /// Sets the value for the `IP_TOS` option on this socket.
+    ///
+    /// This value sets the type-of-service field that is used in every packet
+    /// sent from this socket.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpListener;
+    ///
+    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// listener.set_tos(96).expect("could not set TOS");
+    /// ```
+    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    pub fn set_tos(&self, tos: u32) -> io::Result<()> {
+        self.0.set_tos(tos)
+    }
+
+    /// Gets the value of the `IP_TOS` option for this socket.
+    ///
+    /// For more information about this option, see [`TcpListener::set_tos`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::net::TcpListener;
+    ///
+    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// listener.set_tos(96).expect("could not set TOS");
+    /// assert_eq!(listener.tos().unwrap_or(0), 96);
+    /// ```
+    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    pub fn tos(&self) -> io::Result<u32> {
+        self.0.tos()
     }
 
     #[stable(feature = "net2_mutators", since = "1.9.0")]

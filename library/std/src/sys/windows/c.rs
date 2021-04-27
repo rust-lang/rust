@@ -236,6 +236,7 @@ pub const IPPROTO_IP: c_int = 0;
 pub const IPPROTO_TCP: c_int = 6;
 pub const IPPROTO_IPV6: c_int = 41;
 pub const TCP_NODELAY: c_int = 0x0001;
+pub const IP_TOS: c_int = 3;
 pub const IP_TTL: c_int = 4;
 pub const IPV6_V6ONLY: c_int = 27;
 pub const SO_ERROR: c_int = 0x1007;

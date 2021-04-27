@@ -198,6 +198,14 @@ impl TcpStream {
             .map_err(|_| io::Error::new_const(ErrorKind::Other, &"unable to get TTL"))
     }
 
+    pub fn set_tos(&self, tos: u32) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
+        unsupported()
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         unsupported()
     }
@@ -251,6 +259,14 @@ impl TcpListener {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        unsupported()
+    }
+
+    pub fn set_tos(&self, _: u32) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
         unsupported()
     }
 
@@ -377,6 +393,14 @@ impl UdpSocket {
     }
 
     pub fn ttl(&self) -> io::Result<u32> {
+        unsupported()
+    }
+
+    pub fn set_tos(&self, _: u32) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn tos(&self) -> io::Result<u32> {
         unsupported()
     }
 

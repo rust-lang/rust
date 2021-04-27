@@ -344,6 +344,18 @@ fn ttl() {
 }
 
 #[test]
+fn tos() {
+    let tos = 96;
+
+    let addr = next_test_ip4();
+
+    let stream = t!(UdpSocket::bind(&addr));
+
+    t!(stream.set_tos(tos));
+    assert_eq!(tos, t!(stream.tos()));
+}
+
+#[test]
 fn set_nonblocking() {
     each_ip(&mut |addr, _| {
         let socket = t!(UdpSocket::bind(&addr));

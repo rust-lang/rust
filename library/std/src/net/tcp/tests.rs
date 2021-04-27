@@ -801,6 +801,23 @@ fn ttl() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
+fn tos() {
+    let tos = 96;
+
+    let addr = next_test_ip4();
+    let listener = t!(TcpListener::bind(&addr));
+
+    t!(listener.set_tos(tos));
+    assert_eq!(tos, t!(listener.tos()));
+
+    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+
+    t!(stream.set_tos(tos));
+    assert_eq!(tos, t!(stream.tos()));
+}
+
+#[test]
+#[cfg_attr(target_env = "sgx", ignore)]
 fn set_nonblocking() {
     let addr = next_test_ip4();
     let listener = t!(TcpListener::bind(&addr));
