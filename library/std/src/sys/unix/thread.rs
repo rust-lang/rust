@@ -156,7 +156,7 @@ impl Thread {
                 zx_thread_self(),
                 ZX_PROP_NAME,
                 name.as_ptr() as *const libc::c_void,
-                libc::strlen(name.as_ptr()),
+                name.to_bytes().len(),
             );
         }
     }
