@@ -1507,7 +1507,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     cx,
                     self.layout,
                     variant_info,
-                    NoTag,
+                    None,
                     self_metadata,
                     self.span,
                 );
@@ -1539,13 +1539,13 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 ..
             } => {
                 let tag_info = if fallback {
-                    RegularTag {
+                    Some(DirectTag {
                         tag_field: Field::from(tag_field),
                         tag_type_metadata: self.tag_type_metadata.unwrap(),
-                    }
+                    })
                 } else {
                     // This doesn't matter in this case.
-                    NoTag
+                    None
                 };
                 variants
                     .iter_enumerated()
@@ -1606,7 +1606,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         cx,
                         variant,
                         variant_info_for(dataful_variant),
-                        OptimizedTag,
+                        Some(NicheTag),
                         self.containing_scope,
                         self.span,
                     );
@@ -1681,7 +1681,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                     cx,
                                     variant,
                                     variant_info,
-                                    OptimizedTag,
+                                    Some(NicheTag),
                                     self_metadata,
                                     self.span,
                                 );
@@ -1771,14 +1771,10 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
     }
 }
 
-// FIXME: terminology here should be aligned with `abi::TagEncoding`.
-// `OptimizedTag` is `TagEncoding::Niche`, `RegularTag` is `TagEncoding::Direct`.
-// `NoTag` should be removed; users should use `Option<EnumTagInfo>` instead.
 #[derive(Copy, Clone)]
 enum EnumTagInfo<'ll> {
-    RegularTag { tag_field: Field, tag_type_metadata: &'ll DIType },
-    OptimizedTag,
-    NoTag,
+    DirectTag { tag_field: Field, tag_type_metadata: &'ll DIType },
+    NicheTag,
 }
 
 #[derive(Copy, Clone)]
@@ -1859,7 +1855,7 @@ fn describe_enum_variant(
     cx: &CodegenCx<'ll, 'tcx>,
     layout: layout::TyAndLayout<'tcx>,
     variant: VariantInfo<'_, 'tcx>,
-    discriminant_info: EnumTagInfo<'ll>,
+    discriminant_info: Option<EnumTagInfo<'ll>>,
     containing_scope: &'ll DIScope,
     span: Span,
 ) -> (&'ll DICompositeType, MemberDescriptionFactory<'ll, 'tcx>) {
@@ -1882,7 +1878,7 @@ fn describe_enum_variant(
     let (offsets, args) = if use_enum_fallback(cx) {
         // If this is not a univariant enum, there is also the discriminant field.
         let (discr_offset, discr_arg) = match discriminant_info {
-            RegularTag { tag_field, .. } => {
+            Some(DirectTag { tag_field, .. }) => {
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
                 let offset = enum_layout.fields.offset(tag_field.as_usize());
@@ -1919,7 +1915,7 @@ fn describe_enum_variant(
         offsets,
         args,
         tag_type_metadata: match discriminant_info {
-            RegularTag { tag_type_metadata, .. } => Some(tag_type_metadata),
+            Some(DirectTag { tag_type_metadata, .. }) => Some(tag_type_metadata),
             _ => None,
         },
         span,
