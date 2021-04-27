@@ -10,6 +10,12 @@ interface InlayHintStyle {
     toDecoration(hint: ra.InlayHint, conv: lc.Protocol2CodeConverter): vscode.DecorationOptions;
 };
 
+interface InlayHintsStyles {
+    typeHints: InlayHintStyle;
+    paramHints: InlayHintStyle;
+    chainingHints: InlayHintStyle;
+}
+
 
 export function activateInlayHints(ctx: Ctx) {
     const maybeUpdater = {
@@ -45,7 +51,7 @@ export function activateInlayHints(ctx: Ctx) {
     maybeUpdater.onConfigChange().catch(console.error);
 }
 
-function createHintStyle(ctx: Ctx, hintKind: "type" | "parameter" | "chaining"): InlayHintStyle {
+function createHintStyle(hintKind: "type" | "parameter" | "chaining", smallerHints: boolean): InlayHintStyle {
     // U+200C is a zero-width non-joiner to prevent the editor from forming a ligature
     // between code and type hints
     const [pos, render] = ({
@@ -53,8 +59,6 @@ function createHintStyle(ctx: Ctx, hintKind: "type" | "parameter" | "chaining"):
         parameter: ["before", (label: string) => `${label}: `],
         chaining: ["after", (label: string) => `\u{200c}: ${label}`],
     } as const)[hintKind];
-
-    const smallerHints = ctx.config.inlayHints.smallerHints;
 
     const fg = new vscode.ThemeColor(`rust_analyzer.inlayHints.foreground.${hintKind}Hints`);
     const bg = new vscode.ThemeColor(`rust_analyzer.inlayHints.background.${hintKind}Hints`);
@@ -77,14 +81,23 @@ function createHintStyle(ctx: Ctx, hintKind: "type" | "parameter" | "chaining"):
     };
 }
 
+const smallHintsStyles = {
+    typeHints: createHintStyle("type", true),
+    paramHints: createHintStyle("parameter", true),
+    chainingHints: createHintStyle("chaining", true),
+};
+
+const biggerHintsStyles = {
+    typeHints: createHintStyle("type", false),
+    paramHints: createHintStyle("parameter", false),
+    chainingHints: createHintStyle("chaining", false),
+};
+
 class HintsUpdater implements Disposable {
     private sourceFiles = new Map<string, RustSourceFile>(); // map Uri -> RustSourceFile
     private readonly disposables: Disposable[] = [];
-    private inlayHintsStyles!: {
-        typeHints: InlayHintStyle;
-        paramHints: InlayHintStyle;
-        chainingHints: InlayHintStyle;
-    };
+    private pendingDisposeDecorations: undefined | InlayHintsStyles = undefined;
+    private inlayHintsStyles!: InlayHintsStyles;
 
     constructor(private readonly ctx: Ctx) {
         vscode.window.onDidChangeVisibleTextEditors(
@@ -125,14 +138,12 @@ class HintsUpdater implements Disposable {
     }
 
     updateInlayHintsStyles() {
-        this.inlayHintsStyles?.typeHints.decorationType.dispose();
-        this.inlayHintsStyles?.paramHints.decorationType.dispose();
-        this.inlayHintsStyles?.chainingHints.decorationType.dispose();
-        this.inlayHintsStyles = {
-            typeHints: createHintStyle(this.ctx, "type"),
-            paramHints: createHintStyle(this.ctx, "parameter"),
-            chainingHints: createHintStyle(this.ctx, "chaining"),
-        };
+        const inlayHintsStyles = this.ctx.config.inlayHints.smallerHints ? smallHintsStyles : biggerHintsStyles;
+
+        if (inlayHintsStyles !== this.inlayHintsStyles) {
+            this.pendingDisposeDecorations = this.inlayHintsStyles;
+            this.inlayHintsStyles = inlayHintsStyles;
+        }
     }
 
     syncCacheAndRenderHints() {
@@ -183,6 +194,12 @@ class HintsUpdater implements Disposable {
 
     private renderDecorations(editor: RustEditor, decorations: InlaysDecorations) {
         const { typeHints, paramHints, chainingHints } = this.inlayHintsStyles;
+        if (this.pendingDisposeDecorations !== undefined) {
+            const { typeHints, paramHints, chainingHints } = this.pendingDisposeDecorations;
+            editor.setDecorations(typeHints.decorationType, []);
+            editor.setDecorations(paramHints.decorationType, []);
+            editor.setDecorations(chainingHints.decorationType, []);
+        }
         editor.setDecorations(typeHints.decorationType, decorations.type);
         editor.setDecorations(paramHints.decorationType, decorations.param);
         editor.setDecorations(chainingHints.decorationType, decorations.chaining);
