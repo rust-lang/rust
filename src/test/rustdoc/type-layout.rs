@@ -31,6 +31,10 @@ pub struct X(usize);
 // @!has - ' bytes'
 pub struct Y(u8);
 
+// @has type_layout/struct.Z.html 'Size: '
+// @has - '0 bytes'
+pub struct Z;
+
 // @!has type_layout/struct.Generic.html 'Size: '
 pub struct Generic<T>(T);
 
