@@ -4,6 +4,10 @@
 
 use std::ops::{Deref, RangeFrom};
 
+fn cloned_instead_of_copied() {
+    let _ = [1].iter().cloned();
+}
+
 fn option_as_ref_deref() {
     let mut opt = Some(String::from("123"));
 

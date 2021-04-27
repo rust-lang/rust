@@ -1077,7 +1077,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || box from_over_into::FromOverInto::new(msrv));
     store.register_late_pass(move || box use_self::UseSelf::new(msrv));
     store.register_late_pass(move || box missing_const_for_fn::MissingConstForFn::new(msrv));
-    store.register_late_pass(move || box needless_question_mark::NeedlessQuestionMark::new(msrv));
+    store.register_late_pass(move || box needless_question_mark::NeedlessQuestionMark);
     store.register_late_pass(move || box casts::Casts::new(msrv));
     store.register_early_pass(move || box unnested_or_patterns::UnnestedOrPatterns::new(msrv));
 

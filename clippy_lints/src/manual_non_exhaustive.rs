@@ -1,7 +1,7 @@
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::meets_msrv;
 use clippy_utils::source::snippet_opt;
+use clippy_utils::{meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_ast::ast::{FieldDef, Item, ItemKind, Variant, VariantData, VisibilityKind};
 use rustc_errors::Applicability;
@@ -9,8 +9,6 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
-
-const MANUAL_NON_EXHAUSTIVE_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual implementations of the non-exhaustive pattern.
@@ -76,7 +74,7 @@ impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
 
 impl EarlyLintPass for ManualNonExhaustive {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !meets_msrv(self.msrv.as_ref(), &MANUAL_NON_EXHAUSTIVE_MSRV) {
+        if !meets_msrv(self.msrv.as_ref(), &msrvs::NON_EXHAUSTIVE) {
             return;
         }
 

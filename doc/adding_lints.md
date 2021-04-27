@@ -390,17 +390,23 @@ pass.
 
 ## Specifying the lint's minimum supported Rust version (MSRV)
 
-Projects supporting older versions of Rust would need to disable a lint if it
-targets features present in later versions. Support for this can be added by
-specifying an MSRV in your lint like so,
+Sometimes a lint makes suggestions that require a certain version of Rust. For example, the `manual_strip` lint suggests
+using `str::strip_prefix` and `str::strip_suffix` which is only available after Rust 1.45. In such cases, you need to
+ensure that the MSRV configured for the project is >= the MSRV of the required Rust feature. If multiple features are
+required, just use the one with a lower MSRV.
+
+First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`](/clippy_utils/src/msrvs.rs). This can be
+accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
-const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
+msrv_aliases! {
+    ..
+    1,45,0 { STR_STRIP_PREFIX }
+}
 ```
 
-The project's MSRV will also have to be an attribute in the lint so you'll have
-to add a struct and constructor for your lint. The project's MSRV needs to be
-passed when the lint is registered in `lib.rs`
+In order to access the project-configured MSRV, you need to have an `msrv` field in the LintPass struct, and a
+constructor to initialize the field. The `msrv` value is passed to the constructor in `clippy_lints/lib.rs`.
 
 ```rust
 pub struct ManualStrip {
@@ -415,11 +421,11 @@ impl ManualStrip {
 }
 ```
 
-The project's MSRV can then be matched against the lint's `msrv` in the LintPass
+The project's MSRV can then be matched against the feature MSRV in the LintPass
 using the `meets_msrv` utility function.
 
 ``` rust
-if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
+if !meets_msrv(self.msrv.as_ref(), &msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```

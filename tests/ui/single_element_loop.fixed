@@ -8,4 +8,9 @@ fn main() {
         let item = &item1;
         println!("{}", item);
     }
+
+    {
+        let item = &item1;
+        println!("{:?}", item);
+    }
 }
