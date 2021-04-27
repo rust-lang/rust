@@ -53,11 +53,12 @@ macro_rules! hash_substruct {
 }
 
 macro_rules! top_level_options {
-    (pub struct Options { $(
+    ( $( #[$top_level_attr:meta] )* pub struct Options { $(
         $( #[$attr:meta] )*
         $opt:ident : $t:ty [$dep_tracking_marker:ident],
     )* } ) => (
         #[derive(Clone)]
+        $( #[$top_level_attr] )*
         pub struct Options {
             $(
                 $( #[$attr] )*
@@ -93,38 +94,38 @@ macro_rules! top_level_options {
     );
 }
 
-// The top-level command-line options struct.
-//
-// For each option, one has to specify how it behaves with regard to the
-// dependency tracking system of incremental compilation. This is done via the
-// square-bracketed directive after the field type. The options are:
-//
-// [TRACKED]
-// A change in the given field will cause the compiler to completely clear the
-// incremental compilation cache before proceeding.
-//
-// [TRACKED_NO_CRATE_HASH]
-// Same as [TRACKED], but will not affect the crate hash. This is useful for options that only
-// affect the incremental cache.
-//
-// [UNTRACKED]
-// Incremental compilation is not influenced by this option.
-//
-// [SUBSTRUCT]
-// Second-level sub-structs containing more options.
-//
-// If you add a new option to this struct or one of the sub-structs like
-// `CodegenOptions`, think about how it influences incremental compilation. If in
-// doubt, specify [TRACKED], which is always "correct" but might lead to
-// unnecessary re-compilation.
 top_level_options!(
+    /// The top-level command-line options struct.
+    ///
+    /// For each option, one has to specify how it behaves with regard to the
+    /// dependency tracking system of incremental compilation. This is done via the
+    /// square-bracketed directive after the field type. The options are:
+    ///
+    /// - `[TRACKED]`
+    /// A change in the given field will cause the compiler to completely clear the
+    /// incremental compilation cache before proceeding.
+    ///
+    /// - `[TRACKED_NO_CRATE_HASH]`
+    /// Same as `[TRACKED]`, but will not affect the crate hash. This is useful for options that only
+    /// affect the incremental cache.
+    ///
+    /// - `[UNTRACKED]`
+    /// Incremental compilation is not influenced by this option.
+    ///
+    /// - `[SUBSTRUCT]`
+    /// Second-level sub-structs containing more options.
+    ///
+    /// If you add a new option to this struct or one of the sub-structs like
+    /// `CodegenOptions`, think about how it influences incremental compilation. If in
+    /// doubt, specify `[TRACKED]`, which is always "correct" but might lead to
+    /// unnecessary re-compilation.
     pub struct Options {
-        // The crate config requested for the session, which may be combined
-        // with additional crate configurations during the compile process.
+        /// The crate config requested for the session, which may be combined
+        /// with additional crate configurations during the compile process.
         crate_types: Vec<CrateType> [TRACKED],
         optimize: OptLevel [TRACKED],
-        // Include the `debug_assertions` flag in dependency tracking, since it
-        // can influence whether overflow checks are done or not.
+        /// Include the `debug_assertions` flag in dependency tracking, since it
+        /// can influence whether overflow checks are done or not.
         debug_assertions: bool [TRACKED],
         debuginfo: DebugInfo [TRACKED],
         lint_opts: Vec<(String, lint::Level)> [TRACKED],
@@ -140,43 +141,43 @@ top_level_options!(
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
 
-        // If `Some`, enable incremental compilation, using the given
-        // directory to store intermediate results.
+        /// If `Some`, enable incremental compilation, using the given
+        /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
 
         debugging_opts: DebuggingOptions [SUBSTRUCT],
         prints: Vec<PrintRequest> [UNTRACKED],
-        // Determines which borrow checker(s) to run. This is the parsed, sanitized
-        // version of `debugging_opts.borrowck`, which is just a plain string.
+        /// Determines which borrow checker(s) to run. This is the parsed, sanitized
+        /// version of `debugging_opts.borrowck`, which is just a plain string.
         borrowck_mode: BorrowckMode [UNTRACKED],
         cg: CodegenOptions [SUBSTRUCT],
         externs: Externs [UNTRACKED],
         extern_dep_specs: ExternDepSpecs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
-        // An optional name to use as the crate for std during std injection,
-        // written `extern crate name as std`. Defaults to `std`. Used by
-        // out-of-tree drivers.
+        /// An optional name to use as the crate for std during std injection,
+        /// written `extern crate name as std`. Defaults to `std`. Used by
+        /// out-of-tree drivers.
         alt_std_name: Option<String> [TRACKED],
-        // Indicates how the compiler should treat unstable features.
+        /// Indicates how the compiler should treat unstable features.
         unstable_features: UnstableFeatures [TRACKED],
 
-        // Indicates whether this run of the compiler is actually rustdoc. This
-        // is currently just a hack and will be removed eventually, so please
-        // try to not rely on this too much.
+        /// Indicates whether this run of the compiler is actually rustdoc. This
+        /// is currently just a hack and will be removed eventually, so please
+        /// try to not rely on this too much.
         actually_rustdoc: bool [TRACKED],
 
-        // Control path trimming.
+        /// Control path trimming.
         trimmed_def_paths: TrimmedDefPaths [TRACKED],
 
-        // Specifications of codegen units / ThinLTO which are forced as a
-        // result of parsing command line options. These are not necessarily
-        // what rustc was invoked with, but massaged a bit to agree with
-        // commands like `--emit llvm-ir` which they're often incompatible with
-        // if we otherwise use the defaults of rustc.
+        /// Specifications of codegen units / ThinLTO which are forced as a
+        /// result of parsing command line options. These are not necessarily
+        /// what rustc was invoked with, but massaged a bit to agree with
+        /// commands like `--emit llvm-ir` which they're often incompatible with
+        /// if we otherwise use the defaults of rustc.
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
         cli_forced_thinlto_off: bool [UNTRACKED],
 
-        // Remap source path prefixes in all output (messages, object files, debug, etc.).
+        /// Remap source path prefixes in all output (messages, object files, debug, etc.).
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [TRACKED_NO_CRATE_HASH],
         /// Base directory containing the `src/` for the Rust standard library, and
         /// potentially `rustc` as well, if we can can find it. Right now it's always
@@ -189,11 +190,11 @@ top_level_options!(
 
         edition: Edition [TRACKED],
 
-        // `true` if we're emitting JSON blobs about each artifact produced
-        // by the compiler.
+        /// `true` if we're emitting JSON blobs about each artifact produced
+        /// by the compiler.
         json_artifact_notifications: bool [TRACKED],
 
-        // `true` if we're emitting a JSON blob containing the unused externs
+        /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: bool [UNTRACKED],
 
         pretty: Option<PpMode> [UNTRACKED],
@@ -212,7 +213,7 @@ macro_rules! options {
     ($struct_name:ident, $setter_name:ident, $defaultfn:ident,
      $buildfn:ident, $prefix:expr, $outputname:expr,
      $stat:ident, $mod_desc:ident, $mod_set:ident,
-     $($opt:ident : $t:ty = (
+     $($( #[$attr:meta] )* $opt:ident : $t:ty = (
         $init:expr,
         $parse:ident,
         [$dep_tracking_marker:ident],
@@ -223,7 +224,7 @@ macro_rules! options {
     pub struct $struct_name { $(pub $opt: $t),* }
 
     pub fn $defaultfn() -> $struct_name {
-        $struct_name { $($opt: $init),* }
+        $struct_name { $( $( #[$attr] )* $opt: $init),* }
     }
 
     pub fn $buildfn(matches: &getopts::Matches, error_format: ErrorOutputType) -> $struct_name
@@ -1177,7 +1178,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     self_profile: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "run the self profiler and output the raw event data"),
-    // keep this in sync with the event filter names in librustc_data_structures/profiling.rs
+    /// keep this in sync with the event filter names in librustc_data_structures/profiling.rs
     self_profile_events: Option<Vec<String>> = (None, parse_opt_comma_list, [UNTRACKED],
         "specify the events recorded by the self profiler;
         for example: `-Z self-profile-events=default,query-keys`
@@ -1189,7 +1190,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "show spans for compiler debugging (expr|pat|ty)"),
     span_debug: bool = (false, parse_bool, [UNTRACKED],
         "forward proc_macro::Span's `Debug` impl to `Span`"),
-    // o/w tests have closure@path
+    /// o/w tests have closure@path
     span_free_formats: bool = (false, parse_bool, [UNTRACKED],
         "exclude spans when debug-printing compiler state (default: no)"),
     src_hash_algorithm: Option<SourceFileHashAlgorithm> = (None, parse_src_file_hash, [TRACKED],
@@ -1210,10 +1211,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
-    // We default to 1 here since we want to behave like
-    // a sequential compiler for now. This'll likely be adjusted
-    // in the future. Note that -Zthreads=0 is the way to get
-    // the num_cpus behavior.
+    /// We default to 1 here since we want to behave like
+    /// a sequential compiler for now. This'll likely be adjusted
+    /// in the future. Note that -Zthreads=0 is the way to get
+    /// the num_cpus behavior.
     threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
     time: bool = (false, parse_bool, [UNTRACKED],
