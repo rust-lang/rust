@@ -1959,7 +1959,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
             ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
             ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
-            ("cloned", []) => cloned_instead_of_copied::check(cx, expr, recv, span),
+            ("cloned", []) => cloned_instead_of_copied::check(cx, expr, recv, span, msrv),
             ("collect", []) => match method_call!(recv) {
                 Some(("cloned", [recv2], _)) => iter_cloned_collect::check(cx, expr, recv2),
                 Some(("map", [m_recv, m_arg], _)) => {
