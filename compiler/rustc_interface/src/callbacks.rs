@@ -28,7 +28,9 @@ fn span_debug(span: rustc_span::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result
 fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
     tls::with_opt(|tcx| {
         if let Some(tcx) = tcx {
-            let _ = tcx.source_span(def_id);
+            let _span = tcx.source_span(def_id);
+            // Sanity check: relative span's parent must be an absolute span.
+            debug_assert_eq!(_span.data_untracked().parent, None);
         }
     })
 }

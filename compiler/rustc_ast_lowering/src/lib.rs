@@ -788,7 +788,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             node_id,
             DefPathData::LifetimeNs(str_name),
             ExpnId::root(),
-            span,
+            span.with_parent(None),
         );
 
         hir::GenericParam {
@@ -1520,7 +1520,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().name),
                         ExpnId::root(),
-                        span,
+                        span.with_parent(None),
                     );
 
                     let (name, kind) = match name {
