@@ -1,10 +1,11 @@
+use clean::AttributesExt;
+
 use std::cmp::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
-use rustc_middle::dep_graph::DepContext;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
@@ -284,16 +285,14 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
             clean::ImportItem(ref import) => {
                 let (stab, stab_tags) = if let Some(import_def_id) = import.source.did {
-                    let import_attrs = Box::new(clean::Attributes::from_ast(
-                        cx.tcx().sess().diagnostic(),
-                        cx.tcx().get_attrs(import_def_id),
-                        None,
-                    ));
+                    let ast_attrs = cx.tcx().get_attrs(import_def_id);
+                    let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs, None));
 
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item {
                         def_id: import_def_id,
                         attrs: import_attrs,
+                        cfg: ast_attrs.cfg(cx.tcx().sess.diagnostic()),
                         ..myitem.clone()
                     };
 
@@ -400,12 +399,12 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
         tags += &tag_html("unstable", "", "Experimental");
     }
 
-    let cfg = match (&item.attrs.cfg, parent.attrs.cfg.as_ref()) {
+    let cfg = match (&item.cfg, parent.cfg.as_ref()) {
         (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    debug!("Portability {:?} - {:?} = {:?}", item.attrs.cfg, parent.attrs.cfg, cfg);
+    debug!("Portability {:?} - {:?} = {:?}", item.cfg, parent.cfg, cfg);
     if let Some(ref cfg) = cfg {
         tags += &tag_html("portability", &cfg.render_long_plain(), &cfg.render_short_html());
     }

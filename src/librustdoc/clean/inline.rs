@@ -1,6 +1,7 @@
 //! Support for inlining external documentation into the current AST.
 
 use std::iter::once;
+use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
@@ -14,7 +15,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use crate::clean::{self, Attributes, GetDefId, ToSource};
+use crate::clean::{self, Attributes, AttributesExt, GetDefId, ToSource};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
@@ -119,12 +120,16 @@ crate fn try_inline(
         _ => return None,
     };
 
-    let target_attrs = load_attrs(cx, did);
-    let attrs = box merge_attrs(cx, Some(parent_module), target_attrs, attrs_clone);
-
+    let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs_clone);
     cx.inlined.insert(did);
-    let what_rustc_thinks = clean::Item::from_def_id_and_parts(did, Some(name), kind, cx);
-    ret.push(clean::Item { attrs, ..what_rustc_thinks });
+    ret.push(clean::Item::from_def_id_and_attrs_and_parts(
+        did,
+        Some(name),
+        kind,
+        box attrs,
+        cx,
+        cfg,
+    ));
     Some(ret)
 }
 
@@ -288,22 +293,24 @@ fn merge_attrs(
     parent_module: Option<DefId>,
     old_attrs: Attrs<'_>,
     new_attrs: Option<Attrs<'_>>,
-) -> clean::Attributes {
+) -> (clean::Attributes, Option<Arc<clean::cfg::Cfg>>) {
     // NOTE: If we have additional attributes (from a re-export),
     // always insert them first. This ensure that re-export
     // doc comments show up before the original doc comments
     // when we render them.
     if let Some(inner) = new_attrs {
-        if let Some(new_id) = parent_module {
-            let diag = cx.sess().diagnostic();
-            Attributes::from_ast(diag, old_attrs, Some((inner, new_id)))
-        } else {
-            let mut both = inner.to_vec();
-            both.extend_from_slice(old_attrs);
-            both.clean(cx)
-        }
+        let mut both = inner.to_vec();
+        both.extend_from_slice(old_attrs);
+        (
+            if let Some(new_id) = parent_module {
+                Attributes::from_ast(old_attrs, Some((inner, new_id)))
+            } else {
+                Attributes::from_ast(&both, None)
+            },
+            both.cfg(cx.sess().diagnostic()),
+        )
     } else {
-        old_attrs.clean(cx)
+        (old_attrs.clean(cx), old_attrs.cfg(cx.sess().diagnostic()))
     }
 }
 
@@ -414,8 +421,8 @@ crate fn build_impl(
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 
-    let attrs = box merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
-    debug!("merged_attrs={:?}", attrs);
+    let (merged_attrs, cfg) = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
+    debug!("merged_attrs={:?}", merged_attrs);
 
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
@@ -432,8 +439,9 @@ crate fn build_impl(
             synthetic: false,
             blanket_impl: None,
         }),
-        attrs,
+        box merged_attrs,
         cx,
+        cfg,
     ));
 }
 
@@ -479,6 +487,7 @@ fn build_module(
                         },
                         true,
                     )),
+                    cfg: None,
                 });
             } else if let Some(i) = try_inline(cx, did, item.res, item.ident.name, None, visited) {
                 items.extend(i)

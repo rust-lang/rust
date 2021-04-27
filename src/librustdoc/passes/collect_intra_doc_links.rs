@@ -853,7 +853,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
         });
 
-        if item.is_mod() && item.attrs.inner_docs {
+        let inner_docs = item.inner_docs(self.cx.tcx);
+
+        if item.is_mod() && inner_docs {
             self.mod_ids.push(item.def_id);
         }
 
@@ -880,7 +882,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         }
 
         Some(if item.is_mod() {
-            if !item.attrs.inner_docs {
+            if !inner_docs {
                 self.mod_ids.push(item.def_id);
             }
 
@@ -1050,6 +1052,8 @@ impl LinkCollector<'_, '_> {
             };
         let mut path_str = &*path_str;
 
+        let inner_docs = item.inner_docs(self.cx.tcx);
+
         // In order to correctly resolve intra-doc links we need to
         // pick a base AST node to work from.  If the documentation for
         // this module came from an inner comment (//!) then we anchor
@@ -1061,11 +1065,8 @@ impl LinkCollector<'_, '_> {
         // we've already pushed this node onto the resolution stack but
         // for outer comments we explicitly try and resolve against the
         // parent_node first.
-        let base_node = if item.is_mod() && item.attrs.inner_docs {
-            self.mod_ids.last().copied()
-        } else {
-            parent_node
-        };
+        let base_node =
+            if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
 
         let mut module_id = if let Some(id) = base_node {
             id

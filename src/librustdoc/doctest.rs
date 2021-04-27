@@ -26,7 +26,7 @@ use std::str;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use crate::clean::Attributes;
+use crate::clean::{types::AttributesExt, Attributes};
 use crate::config::Options;
 use crate::html::markdown::{self, ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
@@ -1092,9 +1092,10 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         sp: Span,
         nested: F,
     ) {
-        let attrs = self.tcx.hir().attrs(hir_id);
-        let mut attrs = Attributes::from_ast(self.sess.diagnostic(), attrs, None);
-        if let Some(ref cfg) = attrs.cfg {
+        let ast_attrs = self.tcx.hir().attrs(hir_id);
+        let mut attrs = Attributes::from_ast(ast_attrs, None);
+
+        if let Some(ref cfg) = ast_attrs.cfg(self.sess.diagnostic()) {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;
             }
@@ -1110,8 +1111,8 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             // Use the outermost invocation, so that doctest names come from where the docs were written.
-            let span = attrs
-                .span
+            let span = ast_attrs
+                .span()
                 .map(|span| span.ctxt().outer_expn().expansion_cause().unwrap_or(span))
                 .unwrap_or(DUMMY_SP);
             self.collector.set_position(span);

@@ -18,7 +18,7 @@ use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
 use super::{print_sidebar, settings, AllTypes, NameDoc, StylePath, BASIC_KEYWORDS};
 
-use crate::clean::{self, AttributesExt};
+use crate::clean;
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;

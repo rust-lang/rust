@@ -126,6 +126,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 synthetic: true,
                 blanket_impl: None,
             }),
+            cfg: None,
         })
     }
 

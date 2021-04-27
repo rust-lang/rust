@@ -1,15 +1,16 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
+use crate::clean;
 use crate::clean::types::{
-    FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
+    AttributesExt, FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
 };
-use crate::clean::{self, AttributesExt};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::short_markdown_summary;
@@ -30,6 +31,7 @@ crate enum ExternalLocation {
 crate fn extern_location(
     e: &clean::ExternalCrate,
     extern_url: Option<&str>,
+    ast_attrs: &[ast::Attribute],
     dst: &Path,
     tcx: TyCtxt<'_>,
 ) -> ExternalLocation {
@@ -50,7 +52,7 @@ crate fn extern_location(
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    e.attrs
+    ast_attrs
         .lists(sym::doc)
         .filter(|a| a.has_name(sym::html_root_url))
         .filter_map(|a| a.value_str())

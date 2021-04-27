@@ -164,10 +164,12 @@ impl Cache {
             };
             let name = e.name(tcx);
             let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
-            self.extern_locations
-                .insert(n, (name, src_root, extern_location(e, extern_url, &dst, tcx)));
-
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
+            self.extern_locations.insert(
+                n,
+                (name, src_root, extern_location(e, extern_url, tcx.get_attrs(did), &dst, tcx)),
+            );
+
             self.external_paths.insert(did, (vec![name.to_string()], ItemType::Module));
         }
 

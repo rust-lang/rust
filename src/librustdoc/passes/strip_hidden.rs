@@ -2,8 +2,8 @@ use rustc_hir::def_id::DefIdSet;
 use rustc_span::symbol::sym;
 use std::mem;
 
-use crate::clean::Item;
-use crate::clean::{self, AttributesExt, NestedAttributesExt};
+use crate::clean;
+use crate::clean::{Item, NestedAttributesExt};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 use crate::passes::{ImplStripper, Pass};

@@ -73,7 +73,6 @@ crate struct TraitWithExtraInfo {
 #[derive(Clone, Debug)]
 crate struct ExternalCrate {
     crate crate_num: CrateNum,
-    crate attrs: Attributes,
 }
 
 impl ExternalCrate {
@@ -220,11 +219,13 @@ crate struct Item {
     /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
     crate def_id: DefId,
+
+    crate cfg: Option<Arc<Cfg>>,
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Item, 40);
+rustc_data_structures::static_assert_size!(Item, 48);
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -236,6 +237,7 @@ impl fmt::Debug for Item {
             .field("kind", &self.kind)
             .field("visibility", &self.visibility)
             .field("def_id", def_id)
+            .field("cfg", &self.cfg)
             .finish()
     }
 }
@@ -261,6 +263,10 @@ impl Item {
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
         if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id) }
+    }
+
+    crate fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
+        if self.is_fake() { false } else { tcx.get_attrs(self.def_id).inner_docs() }
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -306,12 +312,15 @@ impl Item {
         kind: ItemKind,
         cx: &mut DocContext<'_>,
     ) -> Item {
+        let ast_attrs = cx.tcx.get_attrs(def_id);
+
         Self::from_def_id_and_attrs_and_parts(
             def_id,
             name,
             kind,
-            box cx.tcx.get_attrs(def_id).clean(cx),
+            box ast_attrs.clean(cx),
             cx,
+            ast_attrs.cfg(cx.sess().diagnostic()),
         )
     }
 
@@ -321,6 +330,7 @@ impl Item {
         kind: ItemKind,
         attrs: Box<Attributes>,
         cx: &mut DocContext<'_>,
+        cfg: Option<Arc<Cfg>>,
     ) -> Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
@@ -330,6 +340,7 @@ impl Item {
             name,
             attrs,
             visibility: cx.tcx.visibility(def_id).clean(cx),
+            cfg,
         }
     }
 
@@ -663,11 +674,71 @@ impl<'a> Iterator for ListAttributesIter<'a> {
 crate trait AttributesExt {
     /// Finds an attribute as List and returns the list of attributes nested inside.
     fn lists(&self, name: Symbol) -> ListAttributesIter<'_>;
+
+    fn span(&self) -> Option<rustc_span::Span>;
+
+    fn inner_docs(&self) -> bool;
+
+    fn other_attrs(&self) -> Vec<ast::Attribute>;
+
+    fn cfg(&self, diagnostic: &::rustc_errors::Handler) -> Option<Arc<Cfg>>;
 }
 
 impl AttributesExt for [ast::Attribute] {
     fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
         ListAttributesIter { attrs: self.iter(), current_list: Vec::new().into_iter(), name }
+    }
+
+    /// Return the span of the first doc-comment, if it exists.
+    fn span(&self) -> Option<rustc_span::Span> {
+        self.iter().find(|attr| attr.doc_str().is_some()).map(|attr| attr.span)
+    }
+
+    /// Returns whether the first doc-comment is an inner attribute.
+    ///
+    //// If there are no doc-comments, return true.
+    /// FIXME(#78591): Support both inner and outer attributes on the same item.
+    fn inner_docs(&self) -> bool {
+        self.iter().find(|a| a.doc_str().is_some()).map_or(true, |a| a.style == AttrStyle::Inner)
+    }
+
+    fn other_attrs(&self) -> Vec<ast::Attribute> {
+        self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
+    }
+
+    fn cfg(&self, diagnostic: &::rustc_errors::Handler) -> Option<Arc<Cfg>> {
+        let mut cfg = Cfg::True;
+
+        for attr in self.iter() {
+            if attr.doc_str().is_none() && attr.has_name(sym::doc) {
+                if let Some(mi) = attr.meta() {
+                    if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
+                        // Extracted #[doc(cfg(...))]
+                        match Cfg::parse(cfg_mi) {
+                            Ok(new_cfg) => cfg &= new_cfg,
+                            Err(e) => diagnostic.span_err(e.span, e.msg),
+                        }
+                    }
+                }
+            }
+        }
+
+        for attr in self.lists(sym::target_feature) {
+            if attr.has_name(sym::enable) {
+                if let Some(feat) = attr.value_str() {
+                    let meta = attr::mk_name_value_item_str(
+                        Ident::with_dummy_span(sym::target_feature),
+                        feat,
+                        DUMMY_SP,
+                    );
+                    if let Ok(feat_cfg) = Cfg::parse(&meta) {
+                        cfg &= feat_cfg;
+                    }
+                }
+            }
+        }
+
+        if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
     }
 }
 
@@ -777,9 +848,6 @@ impl<'a> FromIterator<&'a DocFragment> for String {
 crate struct Attributes {
     crate doc_strings: Vec<DocFragment>,
     crate other_attrs: Vec<ast::Attribute>,
-    crate cfg: Option<Arc<Cfg>>,
-    crate span: Option<rustc_span::Span>,
-    crate inner_docs: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -811,6 +879,10 @@ pub struct RenderedLink {
 }
 
 impl Attributes {
+    crate fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
+        self.other_attrs.lists(name)
+    }
+
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
     crate fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
         use rustc_ast::NestedMetaItem::MetaItem;
@@ -890,13 +962,10 @@ impl Attributes {
     }
 
     crate fn from_ast(
-        diagnostic: &::rustc_errors::Handler,
         attrs: &[ast::Attribute],
         additional_attrs: Option<(&[ast::Attribute], DefId)>,
     ) -> Attributes {
         let mut doc_strings: Vec<DocFragment> = vec![];
-        let mut sp = None;
-        let mut cfg = Cfg::True;
         let mut doc_line = 0;
 
         fn update_need_backline(doc_strings: &mut Vec<DocFragment>, frag: &DocFragment) {
@@ -940,21 +1009,11 @@ impl Attributes {
 
                 doc_strings.push(frag);
 
-                if sp.is_none() {
-                    sp = Some(attr.span);
-                }
                 None
             } else {
                 if attr.has_name(sym::doc) {
                     if let Some(mi) = attr.meta() {
-                        if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
-                            // Extracted #[doc(cfg(...))]
-                            match Cfg::parse(cfg_mi) {
-                                Ok(new_cfg) => cfg &= new_cfg,
-                                Err(e) => diagnostic.span_err(e.span, e.msg),
-                            }
-                        } else if let Some((filename, contents)) = Attributes::extract_include(&mi)
-                        {
+                        if let Some((filename, contents)) = Attributes::extract_include(&mi) {
                             let line = doc_line;
                             doc_line += contents.as_str().lines().count();
                             let frag = DocFragment {
@@ -984,35 +1043,7 @@ impl Attributes {
             .filter_map(clean_attr)
             .collect();
 
-        // treat #[target_feature(enable = "feat")] attributes as if they were
-        // #[doc(cfg(target_feature = "feat"))] attributes as well
-        for attr in attrs.lists(sym::target_feature) {
-            if attr.has_name(sym::enable) {
-                if let Some(feat) = attr.value_str() {
-                    let meta = attr::mk_name_value_item_str(
-                        Ident::with_dummy_span(sym::target_feature),
-                        feat,
-                        DUMMY_SP,
-                    );
-                    if let Ok(feat_cfg) = Cfg::parse(&meta) {
-                        cfg &= feat_cfg;
-                    }
-                }
-            }
-        }
-
-        let inner_docs = attrs
-            .iter()
-            .find(|a| a.doc_str().is_some())
-            .map_or(true, |a| a.style == AttrStyle::Inner);
-
-        Attributes {
-            doc_strings,
-            other_attrs,
-            cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
-            span: sp,
-            inner_docs,
-        }
+        Attributes { doc_strings, other_attrs }
     }
 
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
@@ -1078,8 +1109,6 @@ impl Attributes {
 impl PartialEq for Attributes {
     fn eq(&self, rhs: &Self) -> bool {
         self.doc_strings == rhs.doc_strings
-            && self.cfg == rhs.cfg
-            && self.span == rhs.span
             && self
                 .other_attrs
                 .iter()
@@ -1093,17 +1122,9 @@ impl Eq for Attributes {}
 impl Hash for Attributes {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.doc_strings.hash(hasher);
-        self.cfg.hash(hasher);
-        self.span.hash(hasher);
         for attr in &self.other_attrs {
             attr.id.hash(hasher);
         }
-    }
-}
-
-impl AttributesExt for Attributes {
-    fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
-        self.other_attrs.lists(name)
     }
 }
 
@@ -1269,7 +1290,6 @@ crate struct FnDecl {
     crate inputs: Arguments,
     crate output: FnRetTy,
     crate c_variadic: bool,
-    crate attrs: Attributes,
 }
 
 impl FnDecl {

@@ -608,17 +608,12 @@ fn document_item_info(
 }
 
 fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<String> {
-    let cfg = match (&item.attrs.cfg, parent.and_then(|p| p.attrs.cfg.as_ref())) {
+    let cfg = match (&item.cfg, parent.and_then(|p| p.cfg.as_ref())) {
         (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
         (cfg, _) => cfg.as_deref().cloned(),
     };
 
-    debug!(
-        "Portability {:?} - {:?} = {:?}",
-        item.attrs.cfg,
-        parent.and_then(|p| p.attrs.cfg.as_ref()),
-        cfg
-    );
+    debug!("Portability {:?} - {:?} = {:?}", item.cfg, parent.and_then(|p| p.cfg.as_ref()), cfg);
 
     Some(format!("<div class=\"stab portability\">{}</div>", cfg?.render_long_html()))
 }

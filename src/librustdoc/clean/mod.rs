@@ -84,9 +84,8 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
 }
 
 impl Clean<ExternalCrate> for CrateNum {
-    fn clean(&self, cx: &mut DocContext<'_>) -> ExternalCrate {
-        let root = DefId { krate: *self, index: CRATE_DEF_INDEX };
-        ExternalCrate { crate_num: *self, attrs: cx.tcx.get_attrs(root).clean(cx) }
+    fn clean(&self, _cx: &mut DocContext<'_>) -> ExternalCrate {
+        ExternalCrate { crate_num: *self }
     }
 }
 
@@ -123,8 +122,8 @@ impl Clean<Item> for doctree::Module<'_> {
 }
 
 impl Clean<Attributes> for [ast::Attribute] {
-    fn clean(&self, cx: &mut DocContext<'_>) -> Attributes {
-        Attributes::from_ast(cx.sess().diagnostic(), self, None)
+    fn clean(&self, _cx: &mut DocContext<'_>) -> Attributes {
+        Attributes::from_ast(self, None)
     }
 }
 
@@ -850,7 +849,6 @@ where
             inputs: (self.0.inputs, self.1).clean(cx),
             output: self.0.output.clean(cx),
             c_variadic: self.0.c_variadic,
-            attrs: Attributes::default(),
         }
     }
 }
@@ -862,7 +860,6 @@ impl<'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
 
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),
-            attrs: Attributes::default(),
             c_variadic: sig.skip_binder().c_variadic,
             inputs: Arguments {
                 values: sig
@@ -2001,6 +1998,7 @@ fn clean_extern_crate(
             return items;
         }
     }
+
     // FIXME: using `from_def_id_and_kind` breaks `rustdoc/masked` for some reason
     vec![Item {
         name: Some(name),
@@ -2008,6 +2006,7 @@ fn clean_extern_crate(
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
+        cfg: attrs.cfg(cx.sess().diagnostic()),
     }]
 }
 

@@ -41,7 +41,7 @@ impl JsonRenderer<'_> {
             .map(rustc_ast_pretty::pprust::attribute_to_string)
             .collect();
         let span = item.span(self.tcx);
-        let clean::Item { name, attrs: _, kind: _, visibility, def_id } = item;
+        let clean::Item { name, attrs: _, kind: _, visibility, def_id, cfg: _ } = item;
         let inner = match *item.kind {
             clean::StrippedItem(_) => return None,
             _ => from_clean_item(item, self.tcx),
@@ -421,7 +421,7 @@ impl FromWithTcx<clean::BareFunctionDecl> for FunctionPointer {
 
 impl FromWithTcx<clean::FnDecl> for FnDecl {
     fn from_tcx(decl: clean::FnDecl, tcx: TyCtxt<'_>) -> Self {
-        let clean::FnDecl { inputs, output, c_variadic, attrs: _ } = decl;
+        let clean::FnDecl { inputs, output, c_variadic } = decl;
         FnDecl {
             inputs: inputs
                 .values
