@@ -1,0 +1,18 @@
+    1|       |// Enables `no_coverage` on the entire crate
+    2|       |#![feature(no_coverage)]
+    3|       |
+    4|       |#[no_coverage]
+    5|       |fn do_not_add_coverage_1() {
+    6|       |    println!("called but not covered");
+    7|       |}
+    8|       |
+    9|       |#[no_coverage]
+   10|       |fn do_not_add_coverage_2() {
+   11|       |    println!("called but not covered");
+   12|       |}
+   13|       |
+   14|      1|fn main() {
+   15|      1|    do_not_add_coverage_1();
+   16|      1|    do_not_add_coverage_2();
+   17|      1|}
+

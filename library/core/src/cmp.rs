@@ -274,6 +274,7 @@ pub trait Eq: PartialEq<Self> {
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
+    #[cfg_attr(not(bootstrap), feature(no_coverage))]
     #[cfg_attr(not(bootstrap), no_coverage)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

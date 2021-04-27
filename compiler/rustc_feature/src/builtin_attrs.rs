@@ -264,7 +264,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Code generation:
     ungated!(inline, AssumedUsed, template!(Word, List: "always|never")),
-    ungated!(no_coverage, AssumedUsed, template!(Word)),
     ungated!(cold, AssumedUsed, template!(Word)),
     ungated!(no_builtins, AssumedUsed, template!(Word)),
     ungated!(target_feature, AssumedUsed, template!(List: r#"enable = "name""#)),
@@ -273,6 +272,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         no_sanitize, AssumedUsed,
         template!(List: "address, memory, thread"),
         experimental!(no_sanitize)
+    ),
+    ungated!(
+        // Not exclusively gated at the crate level (though crate-level is
+        // supported). The feature can alternatively be enabled on individual
+        // functions.
+        no_coverage, AssumedUsed,
+        template!(Word),
     ),
 
     // FIXME: #14408 assume docs are used since rustdoc looks at them.
