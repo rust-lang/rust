@@ -15,7 +15,7 @@ use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::util::{Discr, IntTypeExt, Representability};
+use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, ParamEnv, RegionKind, ToPredicate, Ty, TyCtxt};
 use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
@@ -25,6 +25,7 @@ use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::opaque_types::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode};
+use rustc_ty_utils::representability::{self, Representability};
 
 use std::iter;
 use std::ops::ControlFlow;
@@ -1188,7 +1189,7 @@ pub(super) fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: LocalD
     // recursive type. It is only necessary to throw an error on those that
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
-    match rty.is_representable(tcx, sp) {
+    match representability::ty_is_representable(tcx, rty, sp) {
         Representability::SelfRecursive(spans) => {
             recursive_type_with_infinite_size_error(tcx, item_def_id.to_def_id(), spans);
             return false;
