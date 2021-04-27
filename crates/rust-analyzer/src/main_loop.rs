@@ -571,6 +571,12 @@ impl GlobalState {
                 this.cancel(id);
                 Ok(())
             })?
+            .on::<lsp_types::notification::WorkDoneProgressCancel>(|_this, _params| {
+                // Just ignore this. It is OK to continue sending progress
+                // notifications for this token, as the client can't know when
+                // we accepted notification.
+                Ok(())
+            })?
             .on::<lsp_types::notification::DidOpenTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
                     if this
