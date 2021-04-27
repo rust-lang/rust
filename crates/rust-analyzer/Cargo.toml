@@ -33,7 +33,7 @@ serde_path_to_error = "0.1"
 threadpool = "1.7.1"
 rayon = "1.5"
 mimalloc = { version = "0.1.19", default-features = false, optional = true }
-lsp-server = "0.5.0"
+lsp-server = "0.5.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.2", default-features = false, features = ["env-filter", "registry"] }
 tracing-tree = { version = "0.1.4" }
