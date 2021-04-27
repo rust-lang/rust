@@ -2,7 +2,7 @@ use crate::consts::{constant, Constant};
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::{eq_expr_value, higher, match_def_path, meets_msrv, paths};
+use clippy_utils::{eq_expr_value, higher, match_def_path, meets_msrv, msrvs, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
@@ -16,8 +16,6 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
 use rustc_span::Span;
-
-const MANUAL_STRIP_MSRV: RustcVersion = RustcVersion::new(1, 45, 0);
 
 declare_clippy_lint! {
     /// **What it does:**
@@ -74,7 +72,7 @@ enum StripKind {
 
 impl<'tcx> LateLintPass<'tcx> for ManualStrip {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &MANUAL_STRIP_MSRV) {
+        if !meets_msrv(self.msrv.as_ref(), &msrvs::STR_STRIP_PREFIX) {
             return;
         }
 

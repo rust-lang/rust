@@ -1,15 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_lang_ctor;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, meets_msrv};
+use clippy_utils::{differing_macro_contexts, is_lang_ctor};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::{Body, Expr, ExprKind, LangItem, MatchSource, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_semver::RustcVersion;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -63,21 +61,7 @@ declare_clippy_lint! {
     "Suggest `value.inner_option` instead of `Some(value.inner_option?)`. The same goes for `Result<T, E>`."
 }
 
-const NEEDLESS_QUESTION_MARK_RESULT_MSRV: RustcVersion = RustcVersion::new(1, 13, 0);
-const NEEDLESS_QUESTION_MARK_OPTION_MSRV: RustcVersion = RustcVersion::new(1, 22, 0);
-
-pub struct NeedlessQuestionMark {
-    msrv: Option<RustcVersion>,
-}
-
-impl NeedlessQuestionMark {
-    #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv }
-    }
-}
-
-impl_lint_pass!(NeedlessQuestionMark => [NEEDLESS_QUESTION_MARK]);
+declare_lint_pass!(NeedlessQuestionMark => [NEEDLESS_QUESTION_MARK]);
 
 #[derive(Debug)]
 enum SomeOkCall<'a> {
@@ -111,7 +95,7 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
             _ => return,
         };
 
-        if let Some(ok_some_call) = is_some_or_ok_call(self, cx, e) {
+        if let Some(ok_some_call) = is_some_or_ok_call(cx, e) {
             emit_lint(cx, &ok_some_call);
         }
     }
@@ -127,14 +111,12 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
 
         if_chain! {
             if let Some(expr) = expr_opt;
-            if let Some(ok_some_call) = is_some_or_ok_call(self, cx, expr);
+            if let Some(ok_some_call) = is_some_or_ok_call(cx, expr);
             then {
                 emit_lint(cx, &ok_some_call);
             }
         };
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn emit_lint(cx: &LateContext<'_>, expr: &SomeOkCall<'_>) {
@@ -153,11 +135,7 @@ fn emit_lint(cx: &LateContext<'_>, expr: &SomeOkCall<'_>) {
     );
 }
 
-fn is_some_or_ok_call<'a>(
-    nqml: &NeedlessQuestionMark,
-    cx: &'a LateContext<'_>,
-    expr: &'a Expr<'_>,
-) -> Option<SomeOkCall<'a>> {
+fn is_some_or_ok_call<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'_>) -> Option<SomeOkCall<'a>> {
     if_chain! {
         // Check outer expression matches CALL_IDENT(ARGUMENT) format
         if let ExprKind::Call(path, args) = &expr.kind;
@@ -188,8 +166,7 @@ fn is_some_or_ok_call<'a>(
             let inner_is_some = is_type_diagnostic_item(cx, inner_ty, sym::option_type);
 
             // Check for Option MSRV
-            let meets_option_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_OPTION_MSRV);
-            if outer_is_some && inner_is_some && meets_option_msrv {
+            if outer_is_some && inner_is_some {
                 return Some(SomeOkCall::SomeCall(expr, inner_expr));
             }
 
@@ -202,8 +179,7 @@ fn is_some_or_ok_call<'a>(
             let does_not_call_from = !has_implicit_error_from(cx, expr, inner_expr);
 
             // Must meet Result MSRV
-            let meets_result_msrv = meets_msrv(nqml.msrv.as_ref(), &NEEDLESS_QUESTION_MARK_RESULT_MSRV);
-            if outer_is_result && inner_is_result && does_not_call_from && meets_result_msrv {
+            if outer_is_result && inner_is_result && does_not_call_from {
                 return Some(SomeOkCall::OkCall(expr, inner_expr));
             }
         }

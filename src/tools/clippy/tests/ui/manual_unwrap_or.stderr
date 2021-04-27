@@ -141,5 +141,15 @@ LL | |         Err(_) => "Alice",
 LL | |     };
    | |_____^ help: replace with: `Ok::<&str, &str>("Bob").unwrap_or("Alice")`
 
-error: aborting due to 13 previous errors
+error: this pattern reimplements `Option::unwrap_or`
+  --> $DIR/manual_unwrap_or.rs:201:17
+   |
+LL |           let _ = match some_macro!() {
+   |  _________________^
+LL | |             Some(val) => val,
+LL | |             None => 0,
+LL | |         };
+   | |_________^ help: replace with: `some_macro!().unwrap_or(0)`
+
+error: aborting due to 14 previous errors
 

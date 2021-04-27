@@ -2,7 +2,7 @@ use crate::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, single_segment_path};
+use clippy_utils::{get_parent_expr, in_constant, is_integer_const, meets_msrv, msrvs, single_segment_path};
 use clippy_utils::{higher, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
@@ -159,8 +159,6 @@ declare_clippy_lint! {
     "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"
 }
 
-const MANUAL_RANGE_CONTAINS_MSRV: RustcVersion = RustcVersion::new(1, 35, 0);
-
 pub struct Ranges {
     msrv: Option<RustcVersion>,
 }
@@ -187,7 +185,7 @@ impl<'tcx> LateLintPass<'tcx> for Ranges {
                 check_range_zip_with_len(cx, path, args, expr.span);
             },
             ExprKind::Binary(ref op, l, r) => {
-                if meets_msrv(self.msrv.as_ref(), &MANUAL_RANGE_CONTAINS_MSRV) {
+                if meets_msrv(self.msrv.as_ref(), &msrvs::RANGE_CONTAINS) {
                     check_possible_range_contains(cx, op.node, l, r, expr);
                 }
             },

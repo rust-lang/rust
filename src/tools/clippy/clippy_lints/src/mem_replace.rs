@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::{in_macro, is_diag_trait_item, is_lang_ctor, match_def_path, meets_msrv, paths};
+use clippy_utils::{in_macro, is_diag_trait_item, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -256,8 +256,6 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
     }
 }
 
-const MEM_REPLACE_WITH_DEFAULT_MSRV: RustcVersion = RustcVersion::new(1, 40, 0);
-
 pub struct MemReplace {
     msrv: Option<RustcVersion>,
 }
@@ -281,7 +279,7 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);
                 check_replace_with_uninit(cx, src, dest, expr.span);
-                if meets_msrv(self.msrv.as_ref(), &MEM_REPLACE_WITH_DEFAULT_MSRV) {
+                if meets_msrv(self.msrv.as_ref(), &msrvs::MEM_TAKE) {
                     check_replace_with_default(cx, src, dest, expr.span);
                 }
             }

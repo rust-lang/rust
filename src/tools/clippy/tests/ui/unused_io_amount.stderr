@@ -36,5 +36,33 @@ error: written amount is not handled
 LL |     s.write_vectored(&[io::IoSlice::new(&[])])?;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: read amount is not handled. Use `Read::read_exact` instead
+  --> $DIR/unused_io_amount.rs:28:5
+   |
+LL |     reader.read(&mut result).ok()?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled. Use `Read::read_exact` instead
+  --> $DIR/unused_io_amount.rs:37:5
+   |
+LL |     reader.read(&mut result).or_else(|err| Err(err))?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled. Use `Read::read_exact` instead
+  --> $DIR/unused_io_amount.rs:49:5
+   |
+LL |     reader.read(&mut result).or(Err(Error::Kind))?;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: read amount is not handled. Use `Read::read_exact` instead
+  --> $DIR/unused_io_amount.rs:56:5
+   |
+LL | /     reader
+LL | |         .read(&mut result)
+LL | |         .or(Err(Error::Kind))
+LL | |         .or(Err(Error::Kind))
+LL | |         .expect("error");
+   | |________________________^
+
+error: aborting due to 10 previous errors
 
