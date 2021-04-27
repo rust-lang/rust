@@ -603,6 +603,48 @@ mod prim_pointer {}
 /// }
 /// ```
 ///
+/// Future language versions might start treating the `array.into_iter()`
+/// syntax on editions 2015 and 2018 the same as on edition 2021. So code using
+/// those older editions should still be written with this change in mind, to
+/// prevent breakage in the future. The safest way to accomplish this is to
+/// avoid the `into_iter` syntax on those editions. If an edition update is not
+/// viable/desired, there are multiple alternatives:
+/// * use `iter`, equivalent to the old behavior, creating references
+/// * use [`array::IntoIter`], equivalent to the post-2021 behavior (Rust 1.51+)
+/// * replace `for ... in array.into_iter() {` with `for ... in array {`,
+///   equivalent to the post-2021 behavior (Rust 1.53+)
+///
+/// ```rust,edition2018
+/// use std::array::IntoIter;
+///
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This iterates by reference:
+/// for item in array.iter() {
+///     let x: &i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // This iterates by value:
+/// for item in IntoIter::new(array) {
+///     let x: i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // This iterates by value:
+/// for item in array {
+///     let x: i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // IntoIter can also start a chain.
+/// // This iterates by value:
+/// for item in IntoIter::new(array).enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+/// ```
+///
 /// [slice]: prim@slice
 /// [`Debug`]: fmt::Debug
 /// [`Hash`]: hash::Hash
