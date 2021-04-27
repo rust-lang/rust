@@ -36,11 +36,6 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         alloc: &'a Allocation,
         range: Range<usize>,
     ) {
-        /// Allocations larger than this will only be codegen'd as entirely initialized or entirely undef.
-        /// This avoids compile time regressions when an alloc would have many chunks,
-        /// e.g. for `[(u64, u8); N]`, which has undef padding in each element.
-        const MAX_PARTIALLY_UNDEF_SIZE: usize = 1024;
-
         let mut chunks = alloc
             .init_mask()
             .range_as_init_chunks(Size::from_bytes(range.start), Size::from_bytes(range.end));
@@ -57,21 +52,30 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
             }
         };
 
-        if range.len() > MAX_PARTIALLY_UNDEF_SIZE {
+        // Generating partially-uninit consts inhibits optimizations, so it is disabled by default.
+        // See https://github.com/rust-lang/rust/issues/84565.
+        let allow_partially_uninit =
+            match cx.sess().opts.debugging_opts.partially_uninit_const_threshold {
+                Some(max) => range.len() <= max,
+                None => false,
+            };
+
+        if allow_partially_uninit {
+            llvals.extend(chunks.map(chunk_to_llval));
+        } else {
             let llval = match (chunks.next(), chunks.next()) {
                 (Some(chunk), None) => {
                     // exactly one chunk, either fully init or fully uninit
                     chunk_to_llval(chunk)
                 }
                 _ => {
-                    // partially uninit
+                    // partially uninit, codegen as if it was initialized
+                    // (using some arbitrary value for uninit bytes)
                     let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(range);
                     cx.const_bytes(bytes)
                 }
             };
             llvals.push(llval);
-        } else {
-            llvals.extend(chunks.map(chunk_to_llval));
         }
     }
 

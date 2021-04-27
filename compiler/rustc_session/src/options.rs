@@ -1186,6 +1186,9 @@ options! {
         "support compiling tests with panic=abort (default: no)"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
+    partially_uninit_const_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+        "allow generating const initializers with mixed init/uninit bytes, \
+        and set the maximum total size of a const allocation for which this is allowed (default: never)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some performance-related statistics (default: no)"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
