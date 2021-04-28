@@ -59,6 +59,9 @@ impl FlagComputation {
     {
         let mut computation = FlagComputation::new();
 
+        // In some cases, there are binders with variables that are unused (e.g., `for<'a> fn(u32)`).
+        // Set the flag to represent the `'a` in this example. Note that if there are late bound types
+        // or consts, this flag will also get set.
         if !value.bound_vars().is_empty() {
             computation.flags = computation.flags | TypeFlags::HAS_RE_LATE_BOUND;
         }
