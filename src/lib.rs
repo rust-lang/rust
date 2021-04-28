@@ -1,4 +1,11 @@
-#![feature(rustc_private, decl_macro, never_type, hash_drain_filter, vec_into_raw_parts)]
+#![feature(
+    rustc_private,
+    decl_macro,
+    never_type,
+    hash_drain_filter,
+    vec_into_raw_parts,
+    once_cell,
+)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
