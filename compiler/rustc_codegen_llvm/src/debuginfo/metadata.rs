@@ -1457,7 +1457,6 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
     enum_type: Ty<'tcx>,
     layout: TyAndLayout<'tcx>,
     tag_type_metadata: Option<&'ll DIType>,
-    containing_scope: &'ll DIScope,
     common_members: Vec<Option<&'ll DIType>>,
     span: Span,
 }
@@ -1488,11 +1487,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
         // This will always find the metadata in the type map.
         let fallback = use_enum_fallback(cx);
-        let self_metadata = if fallback {
-            self.containing_scope
-        } else {
-            type_metadata(cx, self.enum_type, self.span)
-        };
+        let self_metadata = type_metadata(cx, self.enum_type, self.span);
 
         match self.layout.variants {
             Variants::Single { index } => {
@@ -1607,7 +1602,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         variant,
                         variant_info_for(dataful_variant),
                         Some(NicheTag),
-                        self.containing_scope,
+                        self_metadata,
                         self.span,
                     );
 
@@ -2085,7 +2080,6 @@ fn prepare_enum_metadata(
                 enum_type,
                 layout,
                 tag_type_metadata: discriminant_type_metadata,
-                containing_scope,
                 common_members: vec![],
                 span,
             }),
@@ -2238,7 +2232,6 @@ fn prepare_enum_metadata(
             enum_type,
             layout,
             tag_type_metadata: None,
-            containing_scope,
             common_members: outer_fields,
             span,
         }),
