@@ -63,6 +63,10 @@ macro_rules! declare_features {
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
+
+            pub fn unordered_const_ty_params(&self) -> bool {
+                self.const_generics || self.const_generics_defaults
+            }
         }
     };
 }
@@ -624,14 +628,14 @@ declare_features! (
     /// Allows macro attributes to observe output of `#[derive]`.
     (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
 
-    /// Allows `pub` on `macro_rules` items.
-    (active, pub_macro_rules, "1.52.0", Some(78855), None),
-
     /// Allows the use of type alias impl trait in function return positions
     (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
 
     /// Allows associated types in inherent impls.
     (active, inherent_associated_types, "1.52.0", Some(8995), None),
+
+    // Allows setting the threshold for the `large_assignments` lint.
+    (active, large_assignments, "1.52.0", Some(83518), None),
 
     /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
     (active, c_unwind, "1.52.0", Some(74990), None),
@@ -641,6 +645,12 @@ declare_features! (
 
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
+
+    /// Allows trait bounds in `const fn`.
+    (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
+
+    /// Allows unsizing coercions in `const fn`.
+    (active, const_fn_unsize, "1.53.0", Some(64992), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

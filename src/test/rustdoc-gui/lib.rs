@@ -29,7 +29,9 @@ pub struct Foo;
 
 impl Foo {
     #[must_use]
-    pub fn must_use(&self) -> bool { true }
+    pub fn must_use(&self) -> bool {
+        true
+    }
 }
 
 /// Just a normal enum.
@@ -85,3 +87,7 @@ pub trait AnotherOne {
 /// let x = 12;
 /// ```
 pub fn check_list_code_block() {}
+
+pub enum AnEnum {
+    WithVariants { and: usize, sub: usize, variants: usize },
+}

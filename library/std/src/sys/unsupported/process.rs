@@ -5,7 +5,7 @@ use crate::marker::PhantomData;
 use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 
 pub use crate::ffi::OsString as EnvKey;
@@ -94,21 +94,21 @@ impl fmt::Debug for Command {
     }
 }
 
-pub struct ExitStatus(Void);
+pub struct ExitStatus(!);
 
 impl ExitStatus {
     pub fn success(&self) -> bool {
-        match self.0 {}
+        self.0
     }
 
     pub fn code(&self) -> Option<i32> {
-        match self.0 {}
+        self.0
     }
 }
 
 impl Clone for ExitStatus {
     fn clone(&self) -> ExitStatus {
-        match self.0 {}
+        self.0
     }
 }
 
@@ -116,7 +116,7 @@ impl Copy for ExitStatus {}
 
 impl PartialEq for ExitStatus {
     fn eq(&self, _other: &ExitStatus) -> bool {
-        match self.0 {}
+        self.0
     }
 }
 
@@ -124,13 +124,13 @@ impl Eq for ExitStatus {}
 
 impl fmt::Debug for ExitStatus {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {}
+        self.0
     }
 }
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.0 {}
+        self.0
     }
 }
 
@@ -146,23 +146,23 @@ impl ExitCode {
     }
 }
 
-pub struct Process(Void);
+pub struct Process(!);
 
 impl Process {
     pub fn id(&self) -> u32 {
-        match self.0 {}
+        self.0
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
-        match self.0 {}
+        self.0
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
-        match self.0 {}
+        self.0
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
-        match self.0 {}
+        self.0
     }
 }
 

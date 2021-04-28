@@ -9,7 +9,7 @@ use crate::sync::Once;
 use crate::sys;
 use crate::sys::c;
 use crate::sys_common::net;
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
 use libc::{c_int, c_long, c_ulong, c_void};
@@ -26,23 +26,28 @@ pub mod netc {
 
 pub struct Socket(c::SOCKET);
 
+static INIT: Once = Once::new();
+
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
 pub fn init() {
-    static START: Once = Once::new();
-
-    START.call_once(|| unsafe {
+    INIT.call_once(|| unsafe {
         let mut data: c::WSADATA = mem::zeroed();
         let ret = c::WSAStartup(
             0x202, // version 2.2
             &mut data,
         );
         assert_eq!(ret, 0);
-
-        let _ = sys_common::at_exit(|| {
-            c::WSACleanup();
-        });
     });
+}
+
+pub fn cleanup() {
+    if INIT.is_completed() {
+        // only close the socket interface if it has actually been started
+        unsafe {
+            c::WSACleanup();
+        }
+    }
 }
 
 /// Returns the last error from the Windows socket interface.

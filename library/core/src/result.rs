@@ -228,7 +228,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
-use crate::ops::{self, Deref, DerefMut};
+use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
@@ -506,8 +506,8 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Applies a function to the contained value (if [`Ok`]),
-    /// or returns the provided default (if [`Err`]).
+    /// Returns the provided default (if [`Err`]), or
+    /// applies a function to the contained value (if [`Ok`]),
     ///
     /// Arguments passed to `map_or` are eagerly evaluated; if you are passing
     /// the result of a function call, it is recommended to use [`map_or_else`],
@@ -533,9 +533,9 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Maps a `Result<T, E>` to `U` by applying a function to a
-    /// contained [`Ok`] value, or a fallback function to a
-    /// contained [`Err`] value.
+    /// Maps a `Result<T, E>` to `U` by applying a fallback function to a
+    /// contained [`Err`] value, or a default function to a
+    /// contained [`Ok`] value.
     ///
     /// This function can be used to unpack a successful result
     /// while handling an error.
@@ -1644,5 +1644,34 @@ impl<T, E> ops::Try for Result<T, E> {
     #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E> ops::TryV2 for Result<T, E> {
+    type Output = T;
+    type Residual = Result<convert::Infallible, E>;
+
+    #[inline]
+    fn from_output(output: Self::Output) -> Self {
+        Ok(output)
+    }
+
+    #[inline]
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        match self {
+            Ok(v) => ControlFlow::Continue(v),
+            Err(e) => ControlFlow::Break(Err(e)),
+        }
+    }
+}
+
+#[unstable(feature = "try_trait_v2", issue = "84277")]
+impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+    #[inline]
+    fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
+        match residual {
+            Err(e) => Err(From::from(e)),
+        }
     }
 }

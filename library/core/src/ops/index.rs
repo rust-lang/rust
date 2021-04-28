@@ -61,6 +61,10 @@ pub trait Index<Idx: ?Sized> {
     type Output: ?Sized;
 
     /// Performs the indexing (`container[index]`) operation.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the index is out of bounds.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     fn index(&self, index: Idx) -> &Self::Output;
@@ -161,6 +165,10 @@ see chapter in The Book <https://doc.rust-lang.org/book/ch08-02-strings.html#ind
 #[doc(alias = "[]")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// Performs the mutable indexing (`container[index]`) operation.
+    ///
+    /// # Panics
+    ///
+    /// May panic if the index is out of bounds.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
     fn index_mut(&mut self, index: Idx) -> &mut Self::Output;

@@ -296,7 +296,9 @@ impl GenericArg<'_> {
         match self {
             GenericArg::Lifetime(_) => ast::ParamKindOrd::Lifetime,
             GenericArg::Type(_) => ast::ParamKindOrd::Type,
-            GenericArg::Const(_) => ast::ParamKindOrd::Const { unordered: feats.const_generics },
+            GenericArg::Const(_) => {
+                ast::ParamKindOrd::Const { unordered: feats.unordered_const_ty_params() }
+            }
         }
     }
 }
@@ -2201,7 +2203,7 @@ impl PrimTy {
 
     /// Like [`PrimTy::name`], but returns a &str instead of a symbol.
     ///
-    /// Used by rustdoc.
+    /// Used by clippy.
     pub fn name_str(self) -> &'static str {
         match self {
             PrimTy::Int(i) => i.name_str(),

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::{match_path, paths};
+use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
@@ -28,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     _ => None,
                 });
                 then {
-                    if is_any_trait(inner) {
+                    if is_any_trait(cx, inner) {
                         // Ignore `Box<Any>` types; see issue #1884 for details.
                         return false;
                     }
@@ -84,13 +84,14 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
 }
 
 // Returns true if given type is `Any` trait.
-fn is_any_trait(t: &hir::Ty<'_>) -> bool {
+fn is_any_trait(cx: &LateContext<'_>, t: &hir::Ty<'_>) -> bool {
     if_chain! {
         if let TyKind::TraitObject(traits, ..) = t.kind;
         if !traits.is_empty();
+        if let Some(trait_did) = traits[0].trait_ref.trait_def_id();
         // Only Send/Sync can be used as additional traits, so it is enough to
         // check only the first trait.
-        if match_path(traits[0].trait_ref.path, &paths::ANY_TRAIT);
+        if match_def_path(cx, trait_did, &paths::ANY_TRAIT);
         then {
             return true;
         }

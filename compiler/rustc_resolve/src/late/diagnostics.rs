@@ -930,7 +930,14 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
                     if let Some(span) = self.def_span(def_id) {
-                        err.span_help(span, msg);
+                        if let Ok(snip) = self.r.session.source_map().span_to_snippet(span) {
+                            // The span contains a type alias so we should be able to
+                            // replace `type` with `trait`.
+                            let snip = snip.replacen("type", "trait", 1);
+                            err.span_suggestion(span, msg, snip, Applicability::MaybeIncorrect);
+                        } else {
+                            err.span_help(span, msg);
+                        }
                     } else {
                         err.help(msg);
                     }

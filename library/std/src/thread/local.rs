@@ -100,7 +100,7 @@ pub struct LocalKey<T: 'static> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: 'static> fmt::Debug for LocalKey<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("LocalKey { .. }")
+        f.debug_struct("LocalKey").finish_non_exhaustive()
     }
 }
 
@@ -217,7 +217,7 @@ macro_rules! __thread_local_inner {
                         //   so now.
                         0 => {
                             $crate::thread::__FastLocalKeyInner::<$t>::register_dtor(
-                                &VAL as *const _ as *mut u8,
+                                $crate::ptr::addr_of_mut!(VAL) as *mut u8,
                                 destroy,
                             );
                             STATE = 1;
@@ -472,7 +472,7 @@ pub mod statik {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 
@@ -537,7 +537,7 @@ pub mod fast {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 
@@ -651,7 +651,7 @@ pub mod os {
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            f.pad("Key { .. }")
+            f.debug_struct("Key").finish_non_exhaustive()
         }
     }
 

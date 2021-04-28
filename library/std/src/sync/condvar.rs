@@ -2,9 +2,8 @@
 mod tests;
 
 use crate::fmt;
-use crate::sync::{mutex, MutexGuard, PoisonError};
+use crate::sync::{mutex, poison, LockResult, MutexGuard, PoisonError};
 use crate::sys_common::condvar as sys;
-use crate::sys_common::poison::{self, LockResult};
 use crate::time::{Duration, Instant};
 
 /// A type indicating whether a timed wait on a condition variable returned
@@ -548,7 +547,7 @@ impl Condvar {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Condvar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Condvar { .. }")
+        f.debug_struct("Condvar").finish_non_exhaustive()
     }
 }
 

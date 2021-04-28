@@ -12,7 +12,7 @@ RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
 
 # Download and build a single-file stress test benchmark on perf.rust-lang.org.
 function pgo_perf_benchmark {
-    local PERF=e095f5021bf01cf3800f50b3a9f14a9683eb3e4e
+    local PERF=9442def56a39d742bf27ebcc3e0614cf117e1bc2
     local github_prefix=https://raw.githubusercontent.com/rust-lang/rustc-perf/$PERF
     local name=$1
     curl -o /tmp/$name.rs $github_prefix/collector/benchmarks/$name/src/lib.rs

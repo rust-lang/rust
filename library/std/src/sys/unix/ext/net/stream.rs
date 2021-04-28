@@ -654,6 +654,7 @@ impl<'a> io::Write for &'a UnixStream {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixStream {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
@@ -661,6 +662,7 @@ impl AsRawFd for UnixStream {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixStream {
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixStream {
         UnixStream(Socket::from_inner(fd))
     }
@@ -668,6 +670,7 @@ impl FromRawFd for UnixStream {
 
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixStream {
+    #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
     }

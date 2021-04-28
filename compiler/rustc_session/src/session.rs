@@ -83,6 +83,12 @@ impl Limit {
     }
 }
 
+impl From<usize> for Limit {
+    fn from(value: usize) -> Self {
+        Self::new(value)
+    }
+}
+
 impl fmt::Display for Limit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -142,6 +148,10 @@ pub struct Session {
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: OnceCell<Limit>,
+
+    /// The size at which the `large_assignments` lint starts
+    /// being emitted.
+    pub move_size_limit: OnceCell<usize>,
 
     /// The maximum length of types during monomorphization.
     pub type_length_limit: OnceCell<Limit>,
@@ -350,6 +360,11 @@ impl Session {
     #[inline]
     pub fn recursion_limit(&self) -> Limit {
         self.recursion_limit.get().copied().unwrap()
+    }
+
+    #[inline]
+    pub fn move_size_limit(&self) -> usize {
+        self.move_size_limit.get().copied().unwrap()
     }
 
     #[inline]
@@ -1414,6 +1429,7 @@ pub fn build_session(
         features: OnceCell::new(),
         lint_store: OnceCell::new(),
         recursion_limit: OnceCell::new(),
+        move_size_limit: OnceCell::new(),
         type_length_limit: OnceCell::new(),
         const_eval_limit: OnceCell::new(),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),

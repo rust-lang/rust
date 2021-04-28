@@ -461,15 +461,6 @@ impl Step for Std {
         // create correct links between crates because rustdoc depends on the
         // existence of the output directories to know if it should be a local
         // or remote link.
-        //
-        // There's also a mild hack here where we build the first crate in this
-        // list, core, twice. This is currently necessary to make sure that
-        // cargo's cached rustc/rustdoc versions are up to date which means
-        // cargo won't delete the out_dir we create for the stampfile.
-        // Essentially any crate could go into the first slot here as it's
-        // output directory will be deleted by us (as cargo will purge the stamp
-        // file during the first slot's run), and core is relatively fast to
-        // build so works OK to fill this 'dummy' slot.
         let krates = ["core", "alloc", "std", "proc_macro", "test"];
         for krate in &krates {
             run_cargo_rustdoc_for(krate);
@@ -479,12 +470,16 @@ impl Step for Std {
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
         for path in builder.paths.iter().map(components_simplified) {
-            if path.get(0) == Some(&"library") {
-                let requested_crate = &path[1];
-                if krates.contains(&requested_crate) {
-                    let index = out.join(requested_crate).join("index.html");
-                    open(builder, &index);
-                }
+            let requested_crate = if path.get(0) == Some(&"library") {
+                &path[1]
+            } else if !path.is_empty() {
+                &path[0]
+            } else {
+                continue;
+            };
+            if krates.contains(&requested_crate) {
+                let index = out.join(requested_crate).join("index.html");
+                open(builder, &index);
             }
         }
     }

@@ -1,5 +1,5 @@
 // Test that const fn is illegal in a trait declaration, whether or
-// not a default is provided.
+// not a default is provided, and even with the feature gate.
 
 #![feature(const_fn)]
 

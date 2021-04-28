@@ -252,7 +252,8 @@ details.rustdoc-toggle > summary::before {
 	color: #929292;
 }
 
-.module-item .stab {
+.module-item .stab,
+.import-item .stab {
 	color: #000;
 }
 

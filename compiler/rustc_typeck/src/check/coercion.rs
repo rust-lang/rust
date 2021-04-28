@@ -973,6 +973,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
+            // Intrinsics are not coercible to function pointers.
+            if a_sig.abi() == Abi::RustIntrinsic
+                || a_sig.abi() == Abi::PlatformIntrinsic
+                || b_sig.abi() == Abi::RustIntrinsic
+                || b_sig.abi() == Abi::PlatformIntrinsic
+            {
+                return Err(TypeError::IntrinsicCast);
+            }
             // The signature must match.
             let a_sig = self.normalize_associated_types_in(new.span, a_sig);
             let b_sig = self.normalize_associated_types_in(new.span, b_sig);
@@ -1486,7 +1494,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if let (Some((expr, _)), Some((fn_decl, _, _))) =
             (expression, fcx.get_node_fn_decl(parent_item))
         {
-            fcx.suggest_missing_return_expr(&mut err, expr, fn_decl, expected, found, parent_id);
+            fcx.suggest_missing_break_or_return_expr(
+                &mut err, expr, fn_decl, expected, found, id, parent_id,
+            );
         }
 
         if let (Some(sp), Some(fn_output)) = (fcx.ret_coercion_span.get(), fn_output) {

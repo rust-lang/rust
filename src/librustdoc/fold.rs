@@ -81,7 +81,7 @@ crate trait DocFolder: Sized {
 
     fn fold_mod(&mut self, m: Module) -> Module {
         Module {
-            is_crate: m.is_crate,
+            span: m.span,
             items: m.items.into_iter().filter_map(|i| self.fold_item(i)).collect(),
         }
     }

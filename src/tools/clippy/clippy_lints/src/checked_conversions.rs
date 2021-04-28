@@ -2,7 +2,7 @@
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{meets_msrv, SpanlessEq};
+use clippy_utils::{meets_msrv, msrvs, SpanlessEq};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -11,8 +11,6 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-
-const CHECKED_CONVERSIONS_MSRV: RustcVersion = RustcVersion::new(1, 34, 0);
 
 declare_clippy_lint! {
     /// **What it does:** Checks for explicit bounds checking when casting.
@@ -58,7 +56,7 @@ impl_lint_pass!(CheckedConversions => [CHECKED_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
-        if !meets_msrv(self.msrv.as_ref(), &CHECKED_CONVERSIONS_MSRV) {
+        if !meets_msrv(self.msrv.as_ref(), &msrvs::TRY_FROM) {
             return;
         }
 
@@ -323,7 +321,7 @@ fn get_implementing_type<'a>(path: &QPath<'_>, candidates: &'a [&str], function:
         if let [int] = &*tp.segments;
         then {
             let name = &int.ident.name.as_str();
-            candidates.iter().find(|c| name == *c).cloned()
+            candidates.iter().find(|c| name == *c).copied()
         } else {
             None
         }
@@ -337,7 +335,7 @@ fn int_ty_to_sym<'tcx>(path: &QPath<'_>) -> Option<&'tcx str> {
         if let [ty] = &*path.segments;
         then {
             let name = &ty.ident.name.as_str();
-            INTS.iter().find(|c| name == *c).cloned()
+            INTS.iter().find(|c| name == *c).copied()
         } else {
             None
         }

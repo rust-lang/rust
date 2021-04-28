@@ -71,14 +71,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
+        let span = krate.item.inner;
         let mut top_level_module = self.visit_mod_contents(
-            krate.item.inner,
-            &Spanned { span: rustc_span::DUMMY_SP, node: hir::VisibilityKind::Public },
+            span,
+            &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item,
             self.cx.tcx.crate_name,
         );
-        top_level_module.is_crate = true;
         // Attach the crate's exported macros to the top-level module.
         // In the case of macros 2.0 (`pub macro`), and for built-in `derive`s or attributes as
         // well (_e.g._, `Copy`), these are wrongly bundled in there too, so we need to fix that by
@@ -130,7 +130,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn visit_mod_contents(
         &mut self,
         span: Span,
-        vis: &'tcx hir::Visibility<'_>,
+        vis: &hir::Visibility<'_>,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
@@ -150,7 +150,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om
     }
 
-    /// Tries to resolve the target of a `crate use` statement and inlines the
+    /// Tries to resolve the target of a `pub use` statement and inlines the
     /// target if it is defined locally and would not be documented otherwise,
     /// or when it is specifically requested with `please_inline`.
     /// (the latter is the case when the import is marked `doc(inline)`)
@@ -183,7 +183,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             || use_attrs.lists(sym::doc).has_word(sym::hidden);
 
         // For cross-crate impl inlining we need to know whether items are
-        // reachable in documentation -- a previously nonreachable item can be
+        // reachable in documentation -- a previously unreachable item can be
         // made reachable by cross-crate inlining which we're checking here.
         // (this is done here because we need to know this upfront).
         if !res_did.is_local() && !is_no_inline {

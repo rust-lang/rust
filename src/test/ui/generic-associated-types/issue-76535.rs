@@ -36,4 +36,6 @@ impl SuperTrait for SuperStruct {
 
 fn main() {
     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+    //~^ ERROR the trait `SuperTrait` cannot be made into an object
+    //~^^ ERROR the trait `SuperTrait` cannot be made into an object
 }

@@ -22,14 +22,14 @@ mod iter;
 pub use iter::IntoIter;
 
 /// Converts a reference to `T` into a reference to an array of length 1 (without copying).
-#[unstable(feature = "array_from_ref", issue = "77101")]
+#[stable(feature = "array_from_ref", since = "1.53.0")]
 pub fn from_ref<T>(s: &T) -> &[T; 1] {
     // SAFETY: Converting `&T` to `&[T; 1]` is sound.
     unsafe { &*(s as *const T).cast::<[T; 1]>() }
 }
 
 /// Converts a mutable reference to `T` into a mutable reference to an array of length 1 (without copying).
-#[unstable(feature = "array_from_ref", issue = "77101")]
+#[stable(feature = "array_from_ref", since = "1.53.0")]
 pub fn from_mut<T>(s: &mut T) -> &mut [T; 1] {
     // SAFETY: Converting `&mut T` to `&mut [T; 1]` is sound.
     unsafe { &mut *(s as *mut T).cast::<[T; 1]>() }
@@ -152,6 +152,28 @@ impl<T: Hash, const N: usize> Hash for [T; N] {
 impl<T: fmt::Debug, const N: usize> fmt::Debug for [T; N] {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&&self[..], f)
+    }
+}
+
+// Note: the `#[rustc_skip_array_during_method_dispatch]` on `trait IntoIterator`
+// hides this implementation from explicit `.into_iter()` calls on editions < 2021,
+// so those calls will still resolve to the slice implementation, by reference.
+#[cfg(not(bootstrap))]
+#[stable(feature = "array_into_iter_impl", since = "1.53.0")]
+impl<T, const N: usize> IntoIterator for [T; N] {
+    type Item = T;
+    type IntoIter = IntoIter<T, N>;
+
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the array (from start to end). The array cannot be used after calling
+    /// this unless `T` implements `Copy`, so the whole array is copied.
+    ///
+    /// Arrays have special behavior when calling `.into_iter()` prior to the
+    /// 2021 edition -- see the [array] Editions section for more information.
+    ///
+    /// [array]: prim@array
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter::new(self)
     }
 }
 

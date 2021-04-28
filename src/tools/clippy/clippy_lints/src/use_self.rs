@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{in_macro, meets_msrv};
+use clippy_utils::{in_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -61,8 +61,6 @@ pub struct UseSelf {
     msrv: Option<RustcVersion>,
     stack: Vec<StackItem>,
 }
-
-const USE_SELF_MSRV: RustcVersion = RustcVersion::new(1, 37, 0);
 
 impl UseSelf {
     #[must_use]
@@ -236,7 +234,10 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
-        if in_macro(hir_ty.span) | in_impl(cx, hir_ty) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+        if in_macro(hir_ty.span)
+            || in_impl(cx, hir_ty)
+            || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS)
+        {
             return;
         }
 
@@ -288,7 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             }
         }
 
-        if in_macro(expr.span) | !meets_msrv(self.msrv.as_ref(), &USE_SELF_MSRV) {
+        if in_macro(expr.span) || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS) {
             return;
         }
 

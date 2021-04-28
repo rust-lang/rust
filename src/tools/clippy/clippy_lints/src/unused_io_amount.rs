@@ -41,29 +41,39 @@ impl<'tcx> LateLintPass<'tcx> for UnusedIoAmount {
         };
 
         match expr.kind {
-            hir::ExprKind::Match(res, _, _) if is_try(expr).is_some() => {
+            hir::ExprKind::Match(res, _, _) if is_try(cx, expr).is_some() => {
                 if let hir::ExprKind::Call(func, args) = res.kind {
                     if matches!(
                         func.kind,
                         hir::ExprKind::Path(hir::QPath::LangItem(hir::LangItem::TryIntoResult, _))
                     ) {
-                        check_method_call(cx, &args[0], expr);
+                        check_map_error(cx, &args[0], expr);
                     }
                 } else {
-                    check_method_call(cx, res, expr);
+                    check_map_error(cx, res, expr);
                 }
             },
-
             hir::ExprKind::MethodCall(path, _, args, _) => match &*path.ident.as_str() {
                 "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
-                    check_method_call(cx, &args[0], expr);
+                    check_map_error(cx, &args[0], expr);
                 },
                 _ => (),
             },
-
             _ => (),
         }
     }
+}
+
+fn check_map_error(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {
+    let mut call = call;
+    while let hir::ExprKind::MethodCall(ref path, _, ref args, _) = call.kind {
+        if matches!(&*path.ident.as_str(), "or" | "or_else" | "ok") {
+            call = &args[0];
+        } else {
+            break;
+        }
+    }
+    check_method_call(cx, call, expr);
 }
 
 fn check_method_call(cx: &LateContext<'_>, call: &hir::Expr<'_>, expr: &hir::Expr<'_>) {

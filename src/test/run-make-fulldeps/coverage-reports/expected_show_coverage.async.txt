@@ -1,6 +1,6 @@
     1|       |#![allow(unused_assignments, dead_code)]
     2|       |
-    3|       |// compile-flags: --edition=2018 -C opt-level=1 # fix in rustc_mir/monomorphize/partitioning/mod.rs
+    3|       |// compile-flags: --edition=2018 -C opt-level=1
     4|       |
     5|      1|async fn c(x: u8) -> u8 {
     6|      1|    if x == 8 {

@@ -2,7 +2,6 @@
 #![feature(allocator_api)]
 #![feature(allocator_api_internals)]
 #![feature(array_chunks)]
-#![feature(array_from_ref)]
 #![feature(array_methods)]
 #![feature(array_map)]
 #![feature(array_windows)]

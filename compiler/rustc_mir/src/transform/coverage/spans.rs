@@ -11,7 +11,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 
 use rustc_span::source_map::original_sp;
-use rustc_span::{BytePos, Span, SyntaxContext};
+use rustc_span::{BytePos, Span};
 
 use std::cmp::Ordering;
 
@@ -240,7 +240,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// to be).
     pub(super) fn generate_coverage_spans(
         mir_body: &'a mir::Body<'tcx>,
-        fn_sig_span: Span,
+        fn_sig_span: Span, // Ensured to be same SourceFile and SyntaxContext as `body_span`
         body_span: Span,
         basic_coverage_blocks: &'a CoverageGraph,
     ) -> Vec<CoverageSpan> {
@@ -717,11 +717,21 @@ pub(super) fn filtered_terminator_span(
         | TerminatorKind::FalseEdge { .. }
         | TerminatorKind::Goto { .. } => None,
 
+        // Call `func` operand can have a more specific span when part of a chain of calls
+        | TerminatorKind::Call { ref func, .. } => {
+            let mut span = terminator.source_info.span;
+            if let mir::Operand::Constant(box constant) = func {
+                if constant.span.lo() > span.lo() {
+                    span = span.with_lo(constant.span.lo());
+                }
+            }
+            Some(function_source_span(span, body_span))
+        }
+
         // Retain spans from all other terminators
         TerminatorKind::Resume
         | TerminatorKind::Abort
         | TerminatorKind::Return
-        | TerminatorKind::Call { .. }
         | TerminatorKind::Yield { .. }
         | TerminatorKind::GeneratorDrop
         | TerminatorKind::FalseUnwind { .. }
@@ -733,6 +743,6 @@ pub(super) fn filtered_terminator_span(
 
 #[inline]
 fn function_source_span(span: Span, body_span: Span) -> Span {
-    let span = original_sp(span, body_span).with_ctxt(SyntaxContext::root());
+    let span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
     if body_span.contains(span) { span } else { body_span }
 }

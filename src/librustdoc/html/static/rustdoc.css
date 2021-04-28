@@ -116,6 +116,8 @@ h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	padding-bottom: 6px;
 }
 h1.fqn {
+	display: flex;
+	width: 100%;
 	border-bottom: 1px dashed;
 	margin-top: 0;
 }
@@ -456,6 +458,13 @@ nav.sub {
 	margin: 0px;
 	padding: 0px;
 	font-weight: normal;
+}
+
+h1.fqn > .out-of-band {
+	float: unset;
+	flex: 1;
+	text-align: right;
+	margin-left: 8px;
 }
 
 h3.impl > .out-of-band {
@@ -868,7 +877,8 @@ body.blur > :not(#help) {
 		0 -1px 0 black;
 }
 
-.module-item .stab {
+.module-item .stab,
+.import-item .stab {
 	border-radius: 3px;
 	display: inline-block;
 	font-size: 80%;
@@ -879,7 +889,8 @@ body.blur > :not(#help) {
 	vertical-align: text-bottom;
 }
 
-.module-item.unstable {
+.module-item.unstable,
+.import-item.unstable {
 	opacity: 0.65;
 }
 
@@ -1035,10 +1046,11 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 }
 
 .sub-variant, .sub-variant > h3 {
-	margin-top: 1px !important;
+	margin-top: 0px !important;
+	padding-top: 1px;
 }
 
-#main > .sub-variant > h3 {
+#main > details > .sub-variant > h3 {
 	font-size: 15px;
 	margin-left: 25px;
 	margin-bottom: 5px;
@@ -1448,10 +1460,6 @@ h4 > .notable-traits {
 		padding: 0;
 	}
 
-	.content .in-band {
-		width: 100%;
-	}
-
 	.content h4 > .out-of-band {
 		position: inherit;
 	}
@@ -1562,6 +1570,10 @@ h4 > .notable-traits {
 	}
 
 	.impl > .collapse-toggle {
+		left: -10px;
+	}
+
+	.item-list > details.rustdoc-toggle > summary:not(.hideme)::before {
 		left: -10px;
 	}
 
@@ -1779,6 +1791,7 @@ details.rustdoc-toggle > summary::before {
 	font-weight: 300;
 	font-size: 0.8em;
 	letter-spacing: 1px;
+	cursor: pointer;
 }
 
 details.rustdoc-toggle > summary.hideme::before {
@@ -1786,7 +1799,8 @@ details.rustdoc-toggle > summary.hideme::before {
 }
 
 details.rustdoc-toggle > summary:not(.hideme)::before {
-	float: left;
+	position: absolute;
+	left: -23px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show

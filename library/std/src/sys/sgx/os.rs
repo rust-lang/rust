@@ -5,12 +5,13 @@ use crate::error::Error as StdError;
 use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
+use crate::marker::PhantomData;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::Mutex;
 use crate::sync::Once;
-use crate::sys::{decode_error_kind, sgx_ineffective, unsupported, Void};
+use crate::sys::{decode_error_kind, sgx_ineffective, unsupported};
 use crate::vec;
 
 pub fn errno() -> i32 {
@@ -35,7 +36,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
     sgx_ineffective(())
 }
 
-pub struct SplitPaths<'a>(&'a Void);
+pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
@@ -44,7 +45,7 @@ pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> {
-        match *self.0 {}
+        self.0
     }
 }
 

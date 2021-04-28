@@ -1,0 +1,8 @@
+error: fatal error triggered by #[rustc_error]
+  --> $DIR/const_fn_unsize.rs:16:1
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -13,7 +13,6 @@ use crate::pin::Pin;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
-use crate::sys_common;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 
 type LocalStream = Arc<Mutex<Vec<u8>>>;
@@ -373,7 +372,7 @@ impl Stdin {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Stdin { .. }")
+        f.debug_struct("Stdin").finish_non_exhaustive()
     }
 }
 
@@ -467,7 +466,7 @@ impl BufRead for StdinLock<'_> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdinLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("StdinLock { .. }")
+        f.debug_struct("StdinLock").finish_non_exhaustive()
     }
 }
 
@@ -507,6 +506,8 @@ pub struct Stdout {
 pub struct StdoutLock<'a> {
     inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
 }
+
+static STDOUT: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = SyncOnceCell::new();
 
 /// Constructs a new handle to the standard output of the current process.
 ///
@@ -549,31 +550,25 @@ pub struct StdoutLock<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> =
-        SyncOnceCell::new();
-
-    fn cleanup() {
-        if let Some(instance) = INSTANCE.get() {
-            // Flush the data and disable buffering during shutdown
-            // by replacing the line writer by one with zero
-            // buffering capacity.
-            // We use try_lock() instead of lock(), because someone
-            // might have leaked a StdoutLock, which would
-            // otherwise cause a deadlock here.
-            if let Some(lock) = Pin::static_ref(instance).try_lock() {
-                *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
-            }
-        }
-    }
-
     Stdout {
-        inner: Pin::static_ref(&INSTANCE).get_or_init_pin(
-            || unsafe {
-                let _ = sys_common::at_exit(cleanup);
-                ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw())))
-            },
+        inner: Pin::static_ref(&STDOUT).get_or_init_pin(
+            || unsafe { ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw()))) },
             |mutex| unsafe { mutex.init() },
         ),
+    }
+}
+
+pub fn cleanup() {
+    if let Some(instance) = STDOUT.get() {
+        // Flush the data and disable buffering during shutdown
+        // by replacing the line writer by one with zero
+        // buffering capacity.
+        // We use try_lock() instead of lock(), because someone
+        // might have leaked a StdoutLock, which would
+        // otherwise cause a deadlock here.
+        if let Some(lock) = Pin::static_ref(instance).try_lock() {
+            *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+        }
     }
 }
 
@@ -607,7 +602,7 @@ impl Stdout {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdout {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Stdout { .. }")
+        f.debug_struct("Stdout").finish_non_exhaustive()
     }
 }
 
@@ -689,7 +684,7 @@ impl Write for StdoutLock<'_> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdoutLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("StdoutLock { .. }")
+        f.debug_struct("StdoutLock").finish_non_exhaustive()
     }
 }
 
@@ -804,7 +799,7 @@ impl Stderr {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stderr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("Stderr { .. }")
+        f.debug_struct("Stderr").finish_non_exhaustive()
     }
 }
 
@@ -886,7 +881,7 @@ impl Write for StderrLock<'_> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StderrLock<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad("StderrLock { .. }")
+        f.debug_struct("StderrLock").finish_non_exhaustive()
     }
 }
 

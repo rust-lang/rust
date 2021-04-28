@@ -1,4 +1,4 @@
-//! Contains utilities for generating suggestions for borrowck errors related to unsatisified
+//! Contains utilities for generating suggestions for borrowck errors related to unsatisfied
 //! outlives constraints.
 
 use std::collections::BTreeMap;

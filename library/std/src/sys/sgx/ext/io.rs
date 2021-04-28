@@ -63,12 +63,14 @@ pub trait TryIntoRawFd: Sized {
 }
 
 impl AsRawFd for net::TcpStream {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         *self.as_inner().as_inner().as_inner().as_inner()
     }
 }
 
 impl AsRawFd for net::TcpListener {
+    #[inline]
     fn as_raw_fd(&self) -> RawFd {
         *self.as_inner().as_inner().as_inner().as_inner()
     }
@@ -87,6 +89,7 @@ pub struct TcpStreamMetadata {
 impl FromRawFd for net::TcpStream {
     type Metadata = TcpStreamMetadata;
 
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd, metadata: Self::Metadata) -> net::TcpStream {
         let fd = sys::fd::FileDesc::from_inner(fd);
         let socket = sys::net::Socket::from_inner((fd, metadata.local_addr));
@@ -105,6 +108,7 @@ pub struct TcpListenerMetadata {
 impl FromRawFd for net::TcpListener {
     type Metadata = TcpListenerMetadata;
 
+    #[inline]
     unsafe fn from_raw_fd(fd: RawFd, metadata: Self::Metadata) -> net::TcpListener {
         let fd = sys::fd::FileDesc::from_inner(fd);
         let socket = sys::net::Socket::from_inner((fd, metadata.local_addr));
@@ -113,6 +117,7 @@ impl FromRawFd for net::TcpListener {
 }
 
 impl TryIntoRawFd for net::TcpStream {
+    #[inline]
     fn try_into_raw_fd(self) -> Result<RawFd, Self> {
         let (socket, peer_addr) = self.into_inner().into_inner();
         match socket.try_into_inner() {
@@ -126,6 +131,7 @@ impl TryIntoRawFd for net::TcpStream {
 }
 
 impl TryIntoRawFd for net::TcpListener {
+    #[inline]
     fn try_into_raw_fd(self) -> Result<RawFd, Self> {
         match self.into_inner().into_inner().try_into_inner() {
             Ok(fd) => Ok(fd.into_inner()),

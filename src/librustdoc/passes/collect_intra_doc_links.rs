@@ -37,8 +37,6 @@ use crate::html::markdown::{markdown_links, MarkdownLink};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
 use crate::passes::Pass;
 
-use super::span_of_attrs;
-
 mod early;
 crate use early::IntraLinkCrateLoader;
 
@@ -855,7 +853,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
         });
 
-        if item.is_mod() && item.attrs.inner_docs {
+        let inner_docs = item.inner_docs(self.cx.tcx);
+
+        if item.is_mod() && inner_docs {
             self.mod_ids.push(item.def_id);
         }
 
@@ -882,7 +882,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         }
 
         Some(if item.is_mod() {
-            if !item.attrs.inner_docs {
+            if !inner_docs {
                 self.mod_ids.push(item.def_id);
             }
 
@@ -1052,6 +1052,8 @@ impl LinkCollector<'_, '_> {
             };
         let mut path_str = &*path_str;
 
+        let inner_docs = item.inner_docs(self.cx.tcx);
+
         // In order to correctly resolve intra-doc links we need to
         // pick a base AST node to work from.  If the documentation for
         // this module came from an inner comment (//!) then we anchor
@@ -1063,11 +1065,8 @@ impl LinkCollector<'_, '_> {
         // we've already pushed this node onto the resolution stack but
         // for outer comments we explicitly try and resolve against the
         // parent_node first.
-        let base_node = if item.is_mod() && item.attrs.inner_docs {
-            self.mod_ids.last().copied()
-        } else {
-            parent_node
-        };
+        let base_node =
+            if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
 
         let mut module_id = if let Some(id) = base_node {
             id
@@ -1242,7 +1241,7 @@ impl LinkCollector<'_, '_> {
                             &ori_link.range,
                             &item.attrs,
                         )
-                        .unwrap_or_else(|| span_of_attrs(&item.attrs).unwrap_or(item.span.inner()));
+                        .unwrap_or_else(|| item.attr_span(self.cx.tcx));
 
                         rustc_session::parse::feature_err(
                             &self.cx.tcx.sess.parse_sess,
@@ -1695,13 +1694,12 @@ fn report_diagnostic(
         }
     };
 
-    let attrs = &item.attrs;
-    let sp = span_of_attrs(attrs).unwrap_or(item.span.inner());
+    let sp = item.attr_span(tcx);
 
     tcx.struct_span_lint_hir(lint, hir_id, sp, |lint| {
         let mut diag = lint.build(msg);
 
-        let span = super::source_span_for_markdown_range(tcx, dox, link_range, attrs);
+        let span = super::source_span_for_markdown_range(tcx, dox, link_range, &item.attrs);
 
         if let Some(sp) = span {
             diag.set_span(sp);

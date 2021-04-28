@@ -670,6 +670,9 @@ pub enum ObjectSafetyViolation {
 
     /// Associated const.
     AssocConst(Symbol, Span),
+
+    /// GAT
+    GAT(Symbol, Span),
 }
 
 impl ObjectSafetyViolation {
@@ -715,6 +718,9 @@ impl ObjectSafetyViolation {
                 format!("it contains associated `const` `{}`", name).into()
             }
             ObjectSafetyViolation::AssocConst(..) => "it contains this associated `const`".into(),
+            ObjectSafetyViolation::GAT(name, _) => {
+                format!("it contains the generic associated type `{}`", name).into()
+            }
         }
     }
 
@@ -773,6 +779,7 @@ impl ObjectSafetyViolation {
                 );
             }
             ObjectSafetyViolation::AssocConst(name, _)
+            | ObjectSafetyViolation::GAT(name, _)
             | ObjectSafetyViolation::Method(name, ..) => {
                 err.help(&format!("consider moving `{}` to another trait", name));
             }
@@ -786,6 +793,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::SupertraitSelf(spans)
             | ObjectSafetyViolation::SizedSelf(spans) => spans.clone(),
             ObjectSafetyViolation::AssocConst(_, span)
+            | ObjectSafetyViolation::GAT(_, span)
             | ObjectSafetyViolation::Method(_, _, span)
                 if *span != DUMMY_SP =>
             {

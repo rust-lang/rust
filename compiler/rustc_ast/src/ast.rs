@@ -100,6 +100,7 @@ pub struct Path {
 }
 
 impl PartialEq<Symbol> for Path {
+    #[inline]
     fn eq(&self, symbol: &Symbol) -> bool {
         self.segments.len() == 1 && { self.segments[0].ident.name == *symbol }
     }
@@ -1345,7 +1346,7 @@ pub enum ExprKind {
     Field(P<Expr>, Ident),
     /// An indexing operation (e.g., `foo[2]`).
     Index(P<Expr>, P<Expr>),
-    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assingment).
+    /// A range (e.g., `1..2`, `1..`, `..2`, `1..=2`, `..=2`; and `..` in destructuring assignment).
     Range(Option<P<Expr>>, Option<P<Expr>>, RangeLimits),
     /// An underscore, used in destructuring assignment to ignore a value.
     Underscore,

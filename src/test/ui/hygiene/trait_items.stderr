@@ -1,6 +1,9 @@
 error[E0599]: no method named `f` found for unit type `()` in the current scope
   --> $DIR/trait_items.rs:17:24
    |
+LL |         fn f(&self) {}
+   |            - the method is available for `()` here
+...
 LL |     fn f() { ::baz::m!(); }
    |              ------------ in this macro invocation
 ...

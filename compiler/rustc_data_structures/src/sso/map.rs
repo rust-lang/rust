@@ -18,11 +18,8 @@ use std::ops::Index;
 // for reasonably small arrays that stay
 // small in vast majority of cases.
 //
-// '8' is choosen as a sane default, to be
+// '8' is chosen as a sane default, to be
 // reevaluated later.
-//
-// Note: As of now ArrayVec design prevents
-//       us from making it user-customizable.
 const SSO_ARRAY_SIZE: usize = 8;
 
 /// Small-storage-optimized implementation of a map.
@@ -70,7 +67,7 @@ const SSO_ARRAY_SIZE: usize = 8;
 
 #[derive(Clone)]
 pub enum SsoHashMap<K, V> {
-    Array(ArrayVec<[(K, V); SSO_ARRAY_SIZE]>),
+    Array(ArrayVec<(K, V), SSO_ARRAY_SIZE>),
     Map(FxHashMap<K, V>),
 }
 
@@ -411,7 +408,7 @@ where
 
 impl<K, V> IntoIterator for SsoHashMap<K, V> {
     type IntoIter = EitherIter<
-        <ArrayVec<[(K, V); 8]> as IntoIterator>::IntoIter,
+        <ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
         <FxHashMap<K, V> as IntoIterator>::IntoIter,
     >;
     type Item = <Self::IntoIter as Iterator>::Item;
@@ -441,7 +438,7 @@ fn adapt_array_mut_it<K, V>(pair: &'a mut (K, V)) -> (&'a K, &'a mut V) {
 impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
     type IntoIter = EitherIter<
         std::iter::Map<
-            <&'a ArrayVec<[(K, V); 8]> as IntoIterator>::IntoIter,
+            <&'a ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
             fn(&'a (K, V)) -> (&'a K, &'a V),
         >,
         <&'a FxHashMap<K, V> as IntoIterator>::IntoIter,
@@ -459,7 +456,7 @@ impl<'a, K, V> IntoIterator for &'a SsoHashMap<K, V> {
 impl<'a, K, V> IntoIterator for &'a mut SsoHashMap<K, V> {
     type IntoIter = EitherIter<
         std::iter::Map<
-            <&'a mut ArrayVec<[(K, V); 8]> as IntoIterator>::IntoIter,
+            <&'a mut ArrayVec<(K, V), 8> as IntoIterator>::IntoIter,
             fn(&'a mut (K, V)) -> (&'a K, &'a mut V),
         >,
         <&'a mut FxHashMap<K, V> as IntoIterator>::IntoIter,

@@ -22,7 +22,7 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::paths;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, match_path};
+use clippy_utils::{differing_macro_contexts, match_def_path};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for public `impl` or `fn` missing generalization
@@ -333,12 +333,13 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
             if let ExprKind::Call(fun, args) = e.kind;
             if let ExprKind::Path(QPath::TypeRelative(ty, method)) = fun.kind;
             if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
+            if let Some(ty_did) = ty_path.res.opt_def_id();
             then {
                 if !TyS::same_type(self.target.ty(), self.maybe_typeck_results.unwrap().expr_ty(e)) {
                     return;
                 }
 
-                if match_path(ty_path, &paths::HASHMAP) {
+                if match_def_path(self.cx, ty_did, &paths::HASHMAP) {
                     if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
@@ -351,7 +352,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                             ),
                         );
                     }
-                } else if match_path(ty_path, &paths::HASHSET) {
+                } else if match_def_path(self.cx, ty_did, &paths::HASHSET) {
                     if method.ident.name == sym::new {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());

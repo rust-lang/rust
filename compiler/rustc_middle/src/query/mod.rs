@@ -564,7 +564,7 @@ rustc_queries! {
     }
 
     /// Collects the associated items defined on a trait or impl.
-    query associated_items(key: DefId) -> ty::AssociatedItems<'tcx> {
+    query associated_items(key: DefId) -> ty::AssocItems<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "collecting associated items of {}", tcx.def_path_str(key) }
     }
@@ -1280,7 +1280,7 @@ rustc_queries! {
         desc { "testing if a region is late bound" }
     }
     /// For a given item (like a struct), gets the default lifetimes to be used
-    /// for each paramter if a trait object were to be passed for that parameter.
+    /// for each parameter if a trait object were to be passed for that parameter.
     /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
     /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
     query object_lifetime_defaults_map(_: LocalDefId)

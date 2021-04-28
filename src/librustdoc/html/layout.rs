@@ -68,7 +68,7 @@ crate fn render<T: Print, S: Print>(
     </style>\
 </head>\
 <body class=\"rustdoc {css_class}\">\
-    <!--[if lte IE 8]>\
+    <!--[if lte IE 11]>\
     <div class=\"warning\">\
         This old browser is unsupported and will most likely display funky \
         things.\
@@ -110,7 +110,6 @@ crate fn render<T: Print, S: Print>(
     </nav>\
     <section id=\"main\" class=\"content\">{content}</section>\
     <section id=\"search\" class=\"content hidden\"></section>\
-    <section class=\"footer\"></section>\
     {after_content}\
     <div id=\"rustdoc-vars\" data-root-path=\"{root_path}\" data-current-crate=\"{krate}\" \
        data-search-index-js=\"{root_path}search-index{suffix}.js\" \

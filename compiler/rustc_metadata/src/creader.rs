@@ -511,8 +511,11 @@ impl<'a> CrateLoader<'a> {
         if dep.is_none() {
             self.used_extern_options.insert(name);
         }
-        self.maybe_resolve_crate(name, dep_kind, dep)
-            .unwrap_or_else(|err| err.report(self.sess, span))
+        self.maybe_resolve_crate(name, dep_kind, dep).unwrap_or_else(|err| {
+            let missing_core =
+                self.maybe_resolve_crate(sym::core, CrateDepKind::Explicit, None).is_err();
+            err.report(&self.sess, span, missing_core)
+        })
     }
 
     fn maybe_resolve_crate<'b>(

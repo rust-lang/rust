@@ -62,6 +62,8 @@ cfg_if::cfg_if! {
         use crate::os::redox as platform;
         #[cfg(target_os = "solaris")]
         use crate::os::solaris as platform;
+        #[cfg(target_os = "vxworks")]
+        use crate::os::vxworks as platform;
     }
 }
 

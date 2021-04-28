@@ -109,6 +109,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     );
                 }
             }
+            (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
+                let body = tcx.hir().body(cnst.value.body);
+                if let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
+                    body.value.kind
+                {
+                    if let Res::Def(DefKind::Fn { .. }, id) = path.res {
+                        err.help(&format!(
+                            "`{}` is a function item, not a type",
+                            tcx.item_name(id)
+                        ));
+                        err.help("function item types cannot be named directly");
+                    }
+                }
+            }
             _ => {}
         }
 
@@ -286,7 +300,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                                         ParamKindOrd::Const {
                                                             unordered: tcx
                                                                 .features()
-                                                                .const_generics,
+                                                                .unordered_const_ty_params(),
                                                         }
                                                     }
                                                 },
@@ -309,7 +323,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                             GenericArg::Lifetime(_) => ParamKindOrd::Lifetime,
                                             GenericArg::Type(_) => ParamKindOrd::Type,
                                             GenericArg::Const(_) => ParamKindOrd::Const {
-                                                unordered: tcx.features().const_generics,
+                                                unordered: tcx
+                                                    .features()
+                                                    .unordered_const_ty_params(),
                                             },
                                         }),
                                         Some(&format!(

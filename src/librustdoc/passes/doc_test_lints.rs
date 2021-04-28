@@ -3,7 +3,7 @@
 //! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests
 //! - PRIVATE_DOC_TESTS: this lint is **STABLE** and looks for private items with doctests.
 
-use super::{span_of_attrs, Pass};
+use super::Pass;
 use crate::clean;
 use crate::clean::*;
 use crate::core::DocContext;
@@ -97,7 +97,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
     if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
         if should_have_doc_example(cx, &item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
-            let sp = span_of_attrs(&item.attrs).unwrap_or(item.span.inner());
+            let sp = item.attr_span(cx.tcx);
             cx.tcx.struct_span_lint_hir(
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
@@ -109,7 +109,7 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
-            span_of_attrs(&item.attrs).unwrap_or(item.span.inner()),
+            item.attr_span(cx.tcx),
             |lint| lint.build("documentation test in private item").emit(),
         );
     }

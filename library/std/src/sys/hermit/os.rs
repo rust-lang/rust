@@ -9,7 +9,7 @@ use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::Mutex;
 use crate::sys::hermit::abi;
-use crate::sys::{unsupported, Void};
+use crate::sys::unsupported;
 use crate::sys_common::os_str_bytes::*;
 use crate::vec;
 
@@ -29,7 +29,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
     unsupported()
 }
 
-pub struct SplitPaths<'a>(&'a Void);
+pub struct SplitPaths<'a>(!, PhantomData<&'a ()>);
 
 pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
@@ -38,7 +38,7 @@ pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> {
-        match *self.0 {}
+        self.0
     }
 }
 
@@ -110,8 +110,10 @@ pub fn init_environment(env: *const *const i8) {
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
+
+impl !Send for Env {}
+impl !Sync for Env {}
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
@@ -134,7 +136,7 @@ pub fn env() -> Env {
             result.push((key.clone(), value.clone()));
         }
 
-        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
+        return Env { iter: result.into_iter() };
     }
 }
 

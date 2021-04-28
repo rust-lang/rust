@@ -75,19 +75,21 @@ impl_stable_hash_via_hash!(OptLevel);
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
 /// and taking other command line options into account.
+///
+/// Note that linker plugin-based LTO is a different mechanism entirely.
 #[derive(Clone, PartialEq)]
 pub enum Lto {
-    /// Don't do any LTO whatsoever
+    /// Don't do any LTO whatsoever.
     No,
 
-    /// Do a full crate graph LTO with ThinLTO
+    /// Do a full-crate-graph (inter-crate) LTO with ThinLTO.
     Thin,
 
-    /// Do a local graph LTO with ThinLTO (only relevant for multiple codegen
-    /// units).
+    /// Do a local ThinLTO (intra-crate, over the CodeGen Units of the local crate only). This is
+    /// only relevant if multiple CGUs are used.
     ThinLocal,
 
-    /// Do a full crate graph LTO with "fat" LTO
+    /// Do a full-crate-graph (inter-crate) LTO with "fat" LTO.
     Fat,
 }
 
@@ -795,7 +797,7 @@ pub const fn default_lib_output() -> CrateType {
     CrateType::Rlib
 }
 
-pub fn default_configuration(sess: &Session) -> CrateConfig {
+fn default_configuration(sess: &Session) -> CrateConfig {
     let end = &sess.target.endian;
     let arch = &sess.target.arch;
     let wordsz = sess.target.pointer_width.to_string();
@@ -890,7 +892,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
     user_cfg
 }
 
-pub fn build_target_config(opts: &Options, target_override: Option<Target>) -> Target {
+pub(super) fn build_target_config(opts: &Options, target_override: Option<Target>) -> Target {
     let target_result = target_override.map_or_else(|| Target::search(&opts.target_triple), Ok);
     let target = target_result.unwrap_or_else(|e| {
         early_error(

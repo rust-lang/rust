@@ -134,6 +134,8 @@ declare_features! (
            which is available from cargo build scripts with `cargo:rustc-link-arg` now")),
     /// Allows using `#[main]` to replace the entrypoint `#[lang = "start"]` calls.
     (removed, main, "1.53.0", Some(29634), None, None),
+    (removed, pub_macro_rules, "1.53.0", Some(78855), None,
+     Some("removed due to being incomplete, in particular it does not work across crates")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

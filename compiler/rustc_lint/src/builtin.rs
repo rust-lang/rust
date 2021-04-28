@@ -3022,7 +3022,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
             false
         }
 
-        /// test if experssion is the literal `0`
+        /// test if expression is the literal `0`
         fn is_zero(expr: &hir::Expr<'_>) -> bool {
             match &expr.kind {
                 rustc_hir::ExprKind::Lit(ref lit) => {

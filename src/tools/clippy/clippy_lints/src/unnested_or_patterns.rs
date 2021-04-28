@@ -1,11 +1,8 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
+use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::over;
-use clippy_utils::{
-    ast_utils::{eq_field_pat, eq_id, eq_pat, eq_path},
-    meets_msrv,
-};
+use clippy_utils::{meets_msrv, msrvs, over};
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
@@ -54,8 +51,6 @@ declare_clippy_lint! {
     "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`"
 }
 
-const UNNESTED_OR_PATTERNS_MSRV: RustcVersion = RustcVersion::new(1, 53, 0);
-
 #[derive(Clone, Copy)]
 pub struct UnnestedOrPatterns {
     msrv: Option<RustcVersion>,
@@ -72,13 +67,13 @@ impl_lint_pass!(UnnestedOrPatterns => [UNNESTED_OR_PATTERNS]);
 
 impl EarlyLintPass for UnnestedOrPatterns {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, a: &ast::Arm) {
-        if meets_msrv(self.msrv.as_ref(), &UNNESTED_OR_PATTERNS_MSRV) {
+        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &a.pat);
         }
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if meets_msrv(self.msrv.as_ref(), &UNNESTED_OR_PATTERNS_MSRV) {
+        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
             if let ast::ExprKind::Let(pat, _) = &e.kind {
                 lint_unnested_or_patterns(cx, pat);
             }
@@ -86,13 +81,13 @@ impl EarlyLintPass for UnnestedOrPatterns {
     }
 
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &ast::Param) {
-        if meets_msrv(self.msrv.as_ref(), &UNNESTED_OR_PATTERNS_MSRV) {
+        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &p.pat);
         }
     }
 
     fn check_local(&mut self, cx: &EarlyContext<'_>, l: &ast::Local) {
-        if meets_msrv(self.msrv.as_ref(), &UNNESTED_OR_PATTERNS_MSRV) {
+        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &l.pat);
         }
     }

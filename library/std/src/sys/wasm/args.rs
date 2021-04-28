@@ -1,25 +1,21 @@
 use crate::ffi::OsString;
-use crate::marker::PhantomData;
+use crate::fmt;
 use crate::vec;
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
-    // On wasm these should always be null, so there's nothing for us to do here
-}
-
-pub unsafe fn cleanup() {}
-
 pub fn args() -> Args {
-    Args { iter: Vec::new().into_iter(), _dont_send_or_sync_me: PhantomData }
+    Args { iter: Vec::new().into_iter() }
 }
 
 pub struct Args {
     iter: vec::IntoIter<OsString>,
-    _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
-impl Args {
-    pub fn inner_debug(&self) -> &[OsString] {
-        self.iter.as_slice()
+impl !Send for Args {}
+impl !Sync for Args {}
+
+impl fmt::Debug for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.iter.as_slice().fmt(f)
     }
 }
 

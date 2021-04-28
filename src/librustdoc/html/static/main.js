@@ -455,6 +455,15 @@ function hideThemeButtonState() {
         handleHashes(ev);
     }
 
+    function openParentDetails(elem) {
+        while (elem) {
+            if (elem.tagName === "DETAILS") {
+                elem.open = true;
+            }
+            elem = elem.parentNode;
+        }
+    }
+
     function expandSection(id) {
         var elem = document.getElementById(id);
         if (elem && isHidden(elem)) {
@@ -469,6 +478,10 @@ function hideThemeButtonState() {
                     // The element is not visible, we need to make it appear!
                     collapseDocs(collapses[0], "show");
                 }
+                // Open all ancestor <details> to make this element visible.
+                openParentDetails(h3.parentNode);
+            } else {
+                openParentDetails(elem.parentNode);
             }
         }
     }
@@ -905,7 +918,6 @@ function hideThemeButtonState() {
             return;
         }
         if (hasClass(innerToggle, "will-expand")) {
-            updateLocalStorage("rustdoc-collapse", "false");
             removeClass(innerToggle, "will-expand");
             onEachLazy(document.getElementsByTagName("details"), function(e) {
                 e.open = true;
@@ -920,7 +932,6 @@ function hideThemeButtonState() {
                 });
             }
         } else {
-            updateLocalStorage("rustdoc-collapse", "true");
             addClass(innerToggle, "will-expand");
             onEachLazy(document.getElementsByTagName("details"), function(e) {
                 e.open = false;
@@ -1009,7 +1020,7 @@ function hideThemeButtonState() {
             if (hasClass(relatedDoc, "item-info")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
-            if (hasClass(relatedDoc, "docblock") || hasClass(relatedDoc, "sub-variant")) {
+            if (hasClass(relatedDoc, "docblock")) {
                 if (mode === "toggle") {
                     if (hasClass(relatedDoc, "hidden-by-usual-hider")) {
                         action = "show";
@@ -1075,36 +1086,14 @@ function hideThemeButtonState() {
         }
     }
 
-    function collapser(e, collapse) {
+    function collapseNonInherent(e) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
         if (n.id.match(/^impl(?:-\d+)?$/) === null) {
             // Automatically minimize all non-inherent impls
-            if (collapse || hasClass(n, "impl")) {
+            if (hasClass(n, "impl")) {
                 collapseDocs(e, "hide");
-            }
-        }
-    }
-
-    function autoCollapse(collapse) {
-        if (collapse) {
-            toggleAllDocs(true);
-        } else if (getSettingValue("auto-hide-trait-implementations") !== "false") {
-            var impl_list = document.getElementById("trait-implementations-list");
-
-            if (impl_list !== null) {
-                onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
-                });
-            }
-
-            var blanket_list = document.getElementById("blanket-implementations-list");
-
-            if (blanket_list !== null) {
-                onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapser(e, collapse);
-                });
             }
         }
     }
@@ -1167,6 +1156,22 @@ function hideThemeButtonState() {
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
         var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
+        var hideTraitImplementations =
+            getSettingValue("auto-hide-trait-implementations") !== "false";
+
+        var impl_list = document.getElementById("trait-implementations-list");
+        if (impl_list !== null) {
+            onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
+                collapseNonInherent(e);
+            });
+        }
+
+        var blanket_list = document.getElementById("blanket-implementations-list");
+        if (blanket_list !== null) {
+            onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
+                collapseNonInherent(e);
+            });
+        }
 
         var func = function(e) {
             var next = e.nextElementSibling;
@@ -1196,31 +1201,18 @@ function hideThemeButtonState() {
             if (!next) {
                 return;
             }
-            if (hasClass(e, "impl") &&
-                (next.getElementsByClassName("method").length > 0 ||
-                 next.getElementsByClassName("associatedconstant").length > 0)) {
-                var newToggle = toggle.cloneNode(true);
-                insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
-                // In case the option "auto-collapse implementors" is not set to false, we collapse
-                // all implementors.
-                if (hideImplementors === true && e.parentNode.id === "implementors-list") {
-                    collapseDocs(newToggle, "hide");
-                }
-            }
         };
 
         onEachLazy(document.getElementsByClassName("method"), func);
         onEachLazy(document.getElementsByClassName("associatedconstant"), func);
-        onEachLazy(document.getElementsByClassName("impl"), funcImpl);
         var impl_call = function() {};
-        // Large items are hidden by default in the HTML. If the setting overrides that, show 'em.
-        if (!hideLargeItemContents) {
-            onEachLazy(document.getElementsByTagName("details"), function (e) {
-                if (hasClass(e, "type-contents-toggle")) {
-                    e.open = true;
-                }
-            });
-        }
+        onEachLazy(document.getElementsByTagName("details"), function (e) {
+            var showLargeItem = !hideLargeItemContents && hasClass(e, "type-contents-toggle");
+            var showImplementor = !hideImplementors && hasClass(e, "implementors-toggle");
+            if (showLargeItem || showImplementor) {
+                e.open = true;
+            }
+        });
         if (hideMethodDocs === true) {
             impl_call = function(e, newToggle) {
                 if (e.id.match(/^impl(?:-\d+)?$/) === null) {
@@ -1281,7 +1273,7 @@ function hideThemeButtonState() {
         if (currentType) {
             currentType = currentType.getElementsByClassName("rust")[0];
             if (currentType) {
-                currentType.classList.forEach(function(item) {
+                onEachLazy(currentType.classList, function(item) {
                     if (item !== "main") {
                         className = item;
                         return true;
@@ -1318,8 +1310,6 @@ function hideThemeButtonState() {
                 if (hasClass(e, "type-decl")) {
                     // We do something special for these
                     return;
-                } else if (hasClass(e, "sub-variant")) {
-                    otherMessage = "&nbsp;Show&nbsp;fields";
                 } else if (hasClass(e, "non-exhaustive")) {
                     otherMessage = "&nbsp;This&nbsp;";
                     if (hasClass(e, "non-exhaustive-struct")) {
@@ -1351,9 +1341,6 @@ function hideThemeButtonState() {
         }
 
         onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
-        onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
-
-        autoCollapse(getSettingValue("collapse") === "true");
 
         var pageId = getPageId();
         if (pageId !== null) {
@@ -1427,9 +1414,9 @@ function hideThemeButtonState() {
             // errors in mobile browsers).
             if (e.tagName === "H2" || e.tagName === "H3") {
                 var nextTagName = e.nextElementSibling.tagName;
-                if (nextTagName == "H2" || nextTagName == "H3") {
+                if (nextTagName === "H2" || nextTagName === "H3") {
                     e.nextElementSibling.style.display = "flex";
-                } else {
+                } else if (nextTagName !== "DETAILS") {
                     e.nextElementSibling.style.display = "block";
                 }
             }

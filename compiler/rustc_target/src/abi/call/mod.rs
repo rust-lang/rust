@@ -73,8 +73,8 @@ mod attr_impl {
 }
 
 /// Sometimes an ABI requires small integers to be extended to a full or partial register. This enum
-/// defines if this extension should be zero-extension or sign-extension when necssary. When it is
-/// not necesary to extend the argument, this enum is ignored.
+/// defines if this extension should be zero-extension or sign-extension when necessary. When it is
+/// not necessary to extend the argument, this enum is ignored.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ArgExtension {
     None,

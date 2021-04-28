@@ -2483,7 +2483,7 @@ declare_lint! {
     ///
     /// On x86, `asm!` uses the intel assembly syntax by default. While this
     /// can be switched using assembler directives like `.att_syntax`, using the
-    /// `att_syntax` option is recomended instead because it will also properly
+    /// `att_syntax` option is recommended instead because it will also properly
     /// prefix register placeholders with `%` as required by AT&T syntax.
     pub BAD_ASM_STYLE,
     Warn,
@@ -2678,7 +2678,7 @@ declare_lint! {
     /// Statics with an uninhabited type can never be initialized, so they are impossible to define.
     /// However, this can be side-stepped with an `extern static`, leading to problems later in the
     /// compiler which assumes that there are no initialized uninhabited places (such as locals or
-    /// statics). This was accientally allowed, but is being phased out.
+    /// statics). This was accidentally allowed, but is being phased out.
     pub UNINHABITED_STATIC,
     Warn,
     "uninhabited static",
@@ -2877,6 +2877,39 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `large_assignments` lint detects when objects of large
+    /// types are being moved around.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (can crash on some platforms)
+    /// let x = [0; 50000];
+    /// let y = x;
+    /// ```
+    ///
+    /// produces:
+    ///
+    /// ```text
+    /// warning: moving a large value
+    ///   --> $DIR/move-large.rs:1:3
+    ///   let y = x;
+    ///           - Copied large value here
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// When using a large type in a plain assignment or in a function
+    /// argument, idiomatic code can be inefficient.
+    /// Ideally appropriate optimizations would resolve this, but such
+    /// optimizations are only done in a best-effort manner.
+    /// This lint will trigger on all sites of large moves and thus allow the
+    /// user to resolve them in code.
+    pub LARGE_ASSIGNMENTS,
+    Warn,
+    "detects large moves or copies",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -2962,6 +2995,7 @@ declare_lint_pass! {
         LEGACY_DERIVE_HELPERS,
         PROC_MACRO_BACK_COMPAT,
         OR_PATTERNS_BACK_COMPAT,
+        LARGE_ASSIGNMENTS,
     ]
 }
 

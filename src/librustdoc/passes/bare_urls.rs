@@ -1,4 +1,4 @@
-use super::{span_of_attrs, Pass};
+use super::Pass;
 use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
@@ -69,8 +69,7 @@ impl<'a, 'tcx> DocFolder for BareUrlsLinter<'a, 'tcx> {
         if !dox.is_empty() {
             let report_diag = |cx: &DocContext<'_>, msg: &str, url: &str, range: Range<usize>| {
                 let sp = super::source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)
-                    .or_else(|| span_of_attrs(&item.attrs))
-                    .unwrap_or(item.span.inner());
+                    .unwrap_or_else(|| item.attr_span(cx.tcx));
                 cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, |lint| {
                     lint.build(msg)
                         .note("bare URLs are not automatically turned into clickable links")

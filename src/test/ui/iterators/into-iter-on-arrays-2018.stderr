@@ -1,0 +1,42 @@
+warning: this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-2018.rs:14:34
+   |
+LL |     let _: Iter<'_, i32> = array.into_iter();
+   |                                  ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = note: `#[warn(array_into_iter)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+
+warning: this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-2018.rs:18:44
+   |
+LL |     let _: Iter<'_, i32> = Box::new(array).into_iter();
+   |                                            ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+
+warning: 2 warnings emitted
+
+Future incompatibility report: Future breakage date: None, diagnostic:
+warning: this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-2018.rs:14:34
+   |
+LL |     let _: Iter<'_, i32> = array.into_iter();
+   |                                  ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = note: `#[warn(array_into_iter)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+
+Future breakage date: None, diagnostic:
+warning: this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter` (due to autoref coercions), but that might change in the future when `IntoIterator` impls for arrays are added.
+  --> $DIR/into-iter-on-arrays-2018.rs:18:44
+   |
+LL |     let _: Iter<'_, i32> = Box::new(array).into_iter();
+   |                                            ^^^^^^^^^ help: use `.iter()` instead of `.into_iter()` to avoid ambiguity: `iter`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #66145 <https://github.com/rust-lang/rust/issues/66145>
+

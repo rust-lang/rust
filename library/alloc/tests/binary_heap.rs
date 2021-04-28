@@ -386,10 +386,23 @@ fn assert_covariance() {
 
 #[test]
 fn test_retain() {
-    let mut a = BinaryHeap::from(vec![-10, -5, 1, 2, 4, 13]);
-    a.retain(|x| x % 2 == 0);
+    let mut a = BinaryHeap::from(vec![100, 10, 50, 1, 2, 20, 30]);
+    a.retain(|&x| x != 2);
 
-    assert_eq!(a.into_sorted_vec(), [-10, 2, 4])
+    // Check that 20 moved into 10's place.
+    assert_eq!(a.clone().into_vec(), [100, 20, 50, 1, 10, 30]);
+
+    a.retain(|_| true);
+
+    assert_eq!(a.clone().into_vec(), [100, 20, 50, 1, 10, 30]);
+
+    a.retain(|&x| x < 50);
+
+    assert_eq!(a.clone().into_vec(), [30, 20, 10, 1]);
+
+    a.retain(|_| false);
+
+    assert!(a.is_empty());
 }
 
 // old binaryheap failed this test

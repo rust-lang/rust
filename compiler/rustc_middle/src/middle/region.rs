@@ -235,18 +235,6 @@ pub struct ScopeTree {
     /// escape into 'static and should have no local cleanup scope.
     rvalue_scopes: FxHashMap<hir::ItemLocalId, Option<Scope>>,
 
-    /// Encodes the hierarchy of fn bodies. Every fn body (including
-    /// closures) forms its own distinct region hierarchy, rooted in
-    /// the block that is the fn body. This map points from the ID of
-    /// that root block to the ID of the root block for the enclosing
-    /// fn, if any. Thus the map structures the fn bodies into a
-    /// hierarchy based on their lexical mapping. This is used to
-    /// handle the relationships between regions in a fn and in a
-    /// closure defined by that fn. See the "Modeling closures"
-    /// section of the README in infer::region_constraints for
-    /// more details.
-    closure_tree: FxHashMap<hir::ItemLocalId, hir::ItemLocalId>,
-
     /// If there are any `yield` nested within a scope, this map
     /// stores the `Span` of the last one and its index in the
     /// postorder of the Visitor traversal on the HIR.
@@ -356,23 +344,6 @@ impl ScopeTree {
         self.destruction_scopes.get(&n).cloned()
     }
 
-    /// Records that `sub_closure` is defined within `sup_closure`. These IDs
-    /// should be the ID of the block that is the fn body, which is
-    /// also the root of the region hierarchy for that fn.
-    pub fn record_closure_parent(
-        &mut self,
-        sub_closure: hir::ItemLocalId,
-        sup_closure: hir::ItemLocalId,
-    ) {
-        debug!(
-            "record_closure_parent(sub_closure={:?}, sup_closure={:?})",
-            sub_closure, sup_closure
-        );
-        assert!(sub_closure != sup_closure);
-        let previous = self.closure_tree.insert(sub_closure, sup_closure);
-        assert!(previous.is_none());
-    }
-
     pub fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.item_local_id());
@@ -474,7 +445,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
             ref var_map,
             ref destruction_scopes,
             ref rvalue_scopes,
-            ref closure_tree,
             ref yield_in_scope,
         } = *self;
 
@@ -488,7 +458,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
         var_map.hash_stable(hcx, hasher);
         destruction_scopes.hash_stable(hcx, hasher);
         rvalue_scopes.hash_stable(hcx, hasher);
-        closure_tree.hash_stable(hcx, hasher);
         yield_in_scope.hash_stable(hcx, hasher);
     }
 }

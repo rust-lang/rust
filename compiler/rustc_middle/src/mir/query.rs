@@ -19,10 +19,8 @@ use super::{Field, SourceInfo};
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationKind {
-    /// Only permitted in regular `fn`s, prohibited in `const fn`s.
+    /// Unsafe operation outside `unsafe`.
     General,
-    /// Permitted both in `const fn`s and regular `fn`s.
-    GeneralAndConstFn,
     /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
     /// Has to be handled as a lint for backwards compatibility.
     UnsafeFn,

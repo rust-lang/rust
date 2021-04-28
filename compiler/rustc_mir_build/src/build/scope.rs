@@ -618,6 +618,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         } else {
             assert!(value.is_none(), "`return` and `break` should have a destination");
+            if self.tcx.sess.instrument_coverage() {
+                // Unlike `break` and `return`, which push an `Assign` statement to MIR, from which
+                // a Coverage code region can be generated, `continue` needs no `Assign`; but
+                // without one, the `InstrumentCoverage` MIR pass cannot generate a code region for
+                // `continue`. Coverage will be missing unless we add a dummy `Assign` to MIR.
+                self.add_dummy_assignment(&span, block, source_info);
+            }
         }
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
@@ -641,6 +648,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::Resume);
 
         self.cfg.start_new_block().unit()
+    }
+
+    // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
+    // statement.
+    fn add_dummy_assignment(&mut self, span: &Span, block: BasicBlock, source_info: SourceInfo) {
+        let local_decl = LocalDecl::new(self.tcx.mk_unit(), *span).internal();
+        let temp_place = Place::from(self.local_decls.push(local_decl));
+        self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
     }
 
     crate fn exit_top_scope(
