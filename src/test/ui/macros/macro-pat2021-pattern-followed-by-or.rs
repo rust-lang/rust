@@ -1,11 +1,12 @@
-#![feature(edition_macro_pats)]
+// edition:2021
+
 #![allow(unused_macros)]
-macro_rules! foo { ($x:pat2021 | $y:pat2021) => {} } //~ ERROR `$x:pat2021` is followed by `|`, which is not allowed for `pat2021` fragments
-macro_rules! baz { ($x:pat2015 | $y:pat2015) => {} } // should be ok
-macro_rules! qux { ($x:pat2015 | $y:pat2021) => {} } // should be ok
-macro_rules! ogg { ($x:pat2021 | $y:pat2015) => {} } //~ ERROR `$x:pat2021` is followed by `|`, which is not allowed for `pat2021` fragments
+macro_rules! foo { ($x:pat | $y:pat) => {} } //~ ERROR `$x:pat` is followed by `|`, which is not allowed for `pat` fragments
+macro_rules! baz { ($x:pat_param | $y:pat_param) => {} } // should be ok
+macro_rules! qux { ($x:pat_param | $y:pat) => {} } // should be ok
+macro_rules! ogg { ($x:pat | $y:pat_param) => {} } //~ ERROR `$x:pat` is followed by `|`, which is not allowed for `pat` fragments
 macro_rules! match_any {
-    ( $expr:expr , $( $( $pat:pat2021 )|+ => $expr_arm:pat2021 ),+ ) => { //~ ERROR  `$pat:pat2021` may be followed by `|`, which is not allowed for `pat2021` fragments
+    ( $expr:expr , $( $( $pat:pat)|+ => $expr_arm:pat),+ ) => { //~ ERROR  `$pat:pat` may be followed by `|`, which is not allowed for `pat` fragments
         match $expr {
             $(
                 $( $pat => $expr_arm, )+
