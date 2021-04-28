@@ -3,9 +3,7 @@ mod tests;
 
 use crate::cell::UnsafeCell;
 use crate::fmt;
-use crate::mem;
 use crate::ops::{Deref, DerefMut};
-use crate::ptr;
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
 use crate::sys_common::mutex as sys;
 
@@ -376,23 +374,8 @@ impl<T: ?Sized> Mutex<T> {
     where
         T: Sized,
     {
-        // We know statically that there are no outstanding references to
-        // `self` so there's no need to lock the inner mutex.
-        //
-        // To get the inner value, we'd like to call `data.into_inner()`,
-        // but because `Mutex` impl-s `Drop`, we can't move out of it, so
-        // we'll have to destructure it manually instead.
-        unsafe {
-            // Like `let Mutex { inner, poison, data } = self`.
-            let (inner, poison, data) = {
-                let Mutex { ref inner, ref poison, ref data } = self;
-                (ptr::read(inner), ptr::read(poison), ptr::read(data))
-            };
-            mem::forget(self);
-            drop(inner);
-
-            poison::map_result(poison.borrow(), |_| data.into_inner())
-        }
+        let data = self.data.into_inner();
+        poison::map_result(self.poison.borrow(), |_| data)
     }
 
     /// Returns a mutable reference to the underlying data.
