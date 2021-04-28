@@ -834,7 +834,7 @@ function hideThemeButtonState() {
             // (like "Send" and "Sync").
             var inlined_types = new Set();
             onEachLazy(synthetic_implementors.getElementsByClassName("impl"), function(el) {
-                var aliases = el.getAttribute("aliases");
+                var aliases = el.getAttribute("data-aliases");
                 if (!aliases) {
                     return;
                 }
