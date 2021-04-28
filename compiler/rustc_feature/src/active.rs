@@ -628,9 +628,6 @@ declare_features! (
     /// Allows macro attributes to observe output of `#[derive]`.
     (active, macro_attributes_in_derive_output, "1.51.0", Some(81119), None),
 
-    /// Allows `pub` on `macro_rules` items.
-    (active, pub_macro_rules, "1.52.0", Some(78855), None),
-
     /// Allows the use of type alias impl trait in function return positions
     (active, min_type_alias_impl_trait, "1.52.0", Some(63063), None),
 
