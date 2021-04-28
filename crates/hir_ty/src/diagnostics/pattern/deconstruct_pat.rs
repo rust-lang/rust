@@ -109,6 +109,7 @@ impl Constructor {
         }
     }
 
+    /// Determines the constructor that the given pattern can be specialized to.
     pub(super) fn from_pat(cx: &MatchCheckCtx<'_>, pat: PatId) -> Self {
         match &cx.pattern_arena.borrow()[pat] {
             Pat::Bind { .. } | Pat::Wild => Wildcard,
@@ -312,7 +313,6 @@ impl SplitWildcard {
             //
             // The exception is: if we are at the top-level, for example in an empty match, we
             // sometimes prefer reporting the list of constructors instead of just `_`.
-
             let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(&pcx.ty);
             let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
                 Missing

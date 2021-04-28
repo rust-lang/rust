@@ -179,6 +179,7 @@ impl FromIterator<PatId> for PatStack {
     }
 }
 
+/// A 2D matrix.
 #[derive(Clone)]
 pub(super) struct Matrix {
     patterns: Vec<PatStack>,
@@ -321,6 +322,10 @@ impl SubPatSet {
             }
             _ => panic!("bug"),
         }
+
+        if self.is_full() {
+            *self = Full;
+        }
     }
 
     /// Returns a list of the spans of the unreachable subpatterns. If `self` is empty (i.e. the
@@ -449,14 +454,37 @@ impl Usefulness {
     ) -> Self {
         match self {
             WithWitnesses(witnesses) if witnesses.is_empty() => WithWitnesses(witnesses),
-            WithWitnesses(w) => {
+            WithWitnesses(witnesses) => {
                 let new_witnesses = if matches!(ctor, Constructor::Missing) {
                     let mut split_wildcard = SplitWildcard::new(pcx);
                     split_wildcard.split(pcx, matrix.head_ctors(pcx.cx));
+                    // Construct for each missing constructor a "wild" version of this
+                    // constructor, that matches everything that can be built with
+                    // it. For example, if `ctor` is a `Constructor::Variant` for
+                    // `Option::Some`, we get the pattern `Some(_)`.
+                    let new_patterns: Vec<_> = split_wildcard
+                        .iter_missing(pcx)
+                        .map(|missing_ctor| {
+                            Fields::wildcards(pcx, missing_ctor).apply(pcx, missing_ctor)
+                        })
+                        .collect();
+                    witnesses
+                        .into_iter()
+                        .flat_map(|witness| {
+                            new_patterns.iter().map(move |pat| {
+                                let mut witness = witness.clone();
+                                witness.0.push(pat.clone());
+                                witness
+                            })
+                        })
+                        .collect()
                 } else {
-                    todo!("Usefulness::apply_constructor({:?})", ctor)
+                    witnesses
+                        .into_iter()
+                        .map(|witness| witness.apply_constructor(pcx, &ctor, ctor_wild_subpatterns))
+                        .collect()
                 };
-                todo!("Usefulness::apply_constructor({:?})", ctor)
+                WithWitnesses(new_witnesses)
             }
             NoWitnesses(subpats) => NoWitnesses(subpats.unspecialize(ctor_wild_subpatterns.len())),
         }
@@ -469,6 +497,39 @@ enum WitnessPreference {
     LeaveOutWitness,
 }
 
+/// A witness of non-exhaustiveness for error reporting, represented
+/// as a list of patterns (in reverse order of construction) with
+/// wildcards inside to represent elements that can take any inhabitant
+/// of the type as a value.
+///
+/// A witness against a list of patterns should have the same types
+/// and length as the pattern matched against. Because Rust `match`
+/// is always against a single pattern, at the end the witness will
+/// have length 1, but in the middle of the algorithm, it can contain
+/// multiple patterns.
+///
+/// For example, if we are constructing a witness for the match against
+///
+/// ```
+/// struct Pair(Option<(u32, u32)>, bool);
+///
+/// match (p: Pair) {
+///    Pair(None, _) => {}
+///    Pair(_, false) => {}
+/// }
+/// ```
+///
+/// We'll perform the following steps:
+/// 1. Start with an empty witness
+///     `Witness(vec![])`
+/// 2. Push a witness `true` against the `false`
+///     `Witness(vec![true])`
+/// 3. Push a witness `Some(_)` against the `None`
+///     `Witness(vec![true, Some(_)])`
+/// 4. Apply the `Pair` constructor to the witnesses
+///     `Witness(vec![Pair(Some(_), true)])`
+///
+/// The final `Pair(Some(_), true)` is then the resulting witness.
 #[derive(Clone, Debug)]
 pub(crate) struct Witness(Vec<Pat>);
 
@@ -560,7 +621,7 @@ fn is_useful(
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
     // FIXME(Nadrieril): Hack to work around type normalization issues (see rust-lang/rust#72476).
-    // TODO(iDawer): ty.as_reference()
+    // TODO(iDawer): ty.strip_references()  ?
     let ty = matrix.heads().next().map_or(cx.type_of(v.head()), |r| cx.type_of(r));
     let pcx = PatCtxt { cx, ty, is_top_level };
 
@@ -643,6 +704,11 @@ pub(crate) struct UsefulnessReport {
     pub(crate) non_exhaustiveness_witnesses: Vec<Pat>,
 }
 
+/// The entrypoint for the usefulness algorithm. Computes whether a match is exhaustive and which
+/// of its arms are reachable.
+///
+/// Note: the input patterns must have been lowered through
+/// `check_match::MatchVisitor::lower_pattern`.
 pub(crate) fn compute_match_usefulness(
     cx: &MatchCheckCtx<'_>,
     arms: &[MatchArm],
@@ -670,14 +736,10 @@ pub(crate) fn compute_match_usefulness(
 
     let wild_pattern = cx.pattern_arena.borrow_mut().alloc(Pat::Wild, &cx.infer[cx.match_expr]);
     let v = PatStack::from_pattern(wild_pattern);
-    let usefulness = is_useful(cx, &matrix, &v, LeaveOutWitness, false, true);
+    let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
-        // TODO: ConstructWitness
-        // WithWitnesses(pats) => pats.into_iter().map(Witness::single_pattern).collect(),
-        // NoWitnesses(_) => panic!("bug"),
-        NoWitnesses(subpats) if subpats.is_empty() => Vec::new(),
-        NoWitnesses(subpats) => vec![Pat::Wild],
-        WithWitnesses(..) => panic!("bug"),
+        WithWitnesses(pats) => pats.into_iter().map(Witness::single_pattern).collect(),
+        NoWitnesses(_) => panic!("bug"),
     };
     UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
 }

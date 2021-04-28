@@ -378,7 +378,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         } else {
             &infer.type_of_expr[match_expr]
         };
-        eprintln!("ExprValidator::validate_match2({:?})", match_expr_ty.kind(&Interner));
+        // eprintln!("ExprValidator::validate_match2({:?})", match_expr_ty.kind(&Interner));
 
         let pattern_arena = usefulness::PatternArena::clone_from(&body.pats);
         let cx = usefulness::MatchCheckCtx {
@@ -408,6 +408,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         // }
 
         let witnesses = report.non_exhaustiveness_witnesses;
+        eprintln!("compute_match_usefulness(..) -> {:?}", &witnesses);
         if !witnesses.is_empty() {
             if let Ok(source_ptr) = source_map.expr_syntax(id) {
                 let root = source_ptr.file_syntax(db.upcast());
