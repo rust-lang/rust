@@ -82,6 +82,10 @@ impl Buffer {
         self.buffer.push_str(s);
     }
 
+    crate fn push_buffer(&mut self, other: Buffer) {
+        self.buffer.push_str(&other.buffer);
+    }
+
     // Intended for consumption by write! and writeln! (std::fmt) but without
     // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
     // import).

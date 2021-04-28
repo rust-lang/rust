@@ -1281,99 +1281,6 @@ fn render_impl(
     let trait_ = i.trait_did_full(cache).map(|did| &traits[&did]);
     let mut close_tags = String::new();
 
-    if render_mode == RenderMode::Normal {
-        let id = cx.derive_id(match i.inner_impl().trait_ {
-            Some(ref t) => {
-                if is_on_foreign_type {
-                    get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
-                } else {
-                    format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx))))
-                }
-            }
-            None => "impl".to_string(),
-        });
-        let aliases = if aliases.is_empty() {
-            String::new()
-        } else {
-            format!(" aliases=\"{}\"", aliases.join(","))
-        };
-        if let Some(use_absolute) = use_absolute {
-            write!(
-                w,
-                "<details class=\"rustdoc-toggle implementors-toggle\" open>\
-                     <summary>\
-                         <h3 id=\"{}\" class=\"impl\"{}>\
-                             <code class=\"in-band\">",
-                id, aliases
-            );
-            close_tags.insert_str(0, "</details>");
-            write!(w, "{}", i.inner_impl().print(use_absolute, cx));
-            if show_def_docs {
-                for it in &i.inner_impl().items {
-                    if let clean::TypedefItem(ref tydef, _) = *it.kind {
-                        w.write_str("<span class=\"where fmt-newline\">  ");
-                        assoc_type(
-                            w,
-                            it,
-                            &[],
-                            Some(&tydef.type_),
-                            AssocItemLink::Anchor(None),
-                            "",
-                            cx,
-                        );
-                        w.write_str(";</span>");
-                    }
-                }
-            }
-            w.write_str("</code>");
-        } else {
-            write!(
-                w,
-                "<details class=\"rustdoc-toggle implementors-toggle\" open>\
-                     <summary>\
-                         <h3 id=\"{}\" class=\"impl\"{}>\
-                             <code class=\"in-band\">{}</code>",
-                id,
-                aliases,
-                i.inner_impl().print(false, cx)
-            );
-            close_tags.insert_str(0, "</details>");
-        }
-        write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
-        render_stability_since_raw(
-            w,
-            i.impl_item.stable_since(tcx).as_deref(),
-            i.impl_item.const_stable_since(tcx).as_deref(),
-            outer_version,
-            outer_const_version,
-        );
-        write_srclink(cx, &i.impl_item, w);
-        w.write_str("</h3></summary>");
-
-        if trait_.is_some() {
-            if let Some(portability) = portability(&i.impl_item, Some(parent)) {
-                write!(w, "<div class=\"item-info\">{}</div>", portability);
-            }
-        }
-
-        if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
-            let mut ids = cx.id_map.borrow_mut();
-            write!(
-                w,
-                "<div class=\"docblock\">{}</div>",
-                Markdown(
-                    &*dox,
-                    &i.impl_item.links(cx),
-                    &mut ids,
-                    cx.shared.codes,
-                    cx.shared.edition(),
-                    &cx.shared.playground
-                )
-                .into_string()
-            );
-        }
-    }
-
     fn doc_impl_item(
         w: &mut Buffer,
         cx: &Context<'_>,
@@ -1549,11 +1456,10 @@ fn render_impl(
         }
     }
 
-    w.write_str("<div class=\"impl-items\">");
-    close_tags.insert_str(0, "</div>");
+    let mut impl_items = Buffer::empty_from(w);
     for trait_item in &i.inner_impl().items {
         doc_impl_item(
-            w,
+            &mut impl_items,
             cx,
             trait_item,
             if trait_.is_some() { &i.impl_item } else { parent },
@@ -1609,7 +1515,7 @@ fn render_impl(
     if show_default_items {
         if let Some(t) = trait_ {
             render_default_items(
-                w,
+                &mut impl_items,
                 cx,
                 &t.trait_,
                 &i.inner_impl(),
@@ -1620,6 +1526,111 @@ fn render_impl(
                 show_def_docs,
             );
         }
+    }
+    let details_str = if impl_items.is_empty() {
+        ""
+    } else {
+        "<details class=\"rustdoc-toggle implementors-toggle\" open><summary>"
+    };
+    if render_mode == RenderMode::Normal {
+        let id = cx.derive_id(match i.inner_impl().trait_ {
+            Some(ref t) => {
+                if is_on_foreign_type {
+                    get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
+                } else {
+                    format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx))))
+                }
+            }
+            None => "impl".to_string(),
+        });
+        let aliases = if aliases.is_empty() {
+            String::new()
+        } else {
+            format!(" aliases=\"{}\"", aliases.join(","))
+        };
+        if let Some(use_absolute) = use_absolute {
+            write!(
+                w,
+                "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">",
+                details_str, id, aliases
+            );
+            if !impl_items.is_empty() {
+                close_tags.insert_str(0, "</details>");
+            }
+            write!(w, "{}", i.inner_impl().print(use_absolute, cx));
+            if show_def_docs {
+                for it in &i.inner_impl().items {
+                    if let clean::TypedefItem(ref tydef, _) = *it.kind {
+                        w.write_str("<span class=\"where fmt-newline\">  ");
+                        assoc_type(
+                            w,
+                            it,
+                            &[],
+                            Some(&tydef.type_),
+                            AssocItemLink::Anchor(None),
+                            "",
+                            cx,
+                        );
+                        w.write_str(";</span>");
+                    }
+                }
+            }
+            w.write_str("</code>");
+        } else {
+            write!(
+                w,
+                "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
+                details_str,
+                id,
+                aliases,
+                i.inner_impl().print(false, cx)
+            );
+            if !impl_items.is_empty() {
+                close_tags.insert_str(0, "</details>");
+            }
+        }
+        write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+        render_stability_since_raw(
+            w,
+            i.impl_item.stable_since(tcx).as_deref(),
+            i.impl_item.const_stable_since(tcx).as_deref(),
+            outer_version,
+            outer_const_version,
+        );
+        write_srclink(cx, &i.impl_item, w);
+        if impl_items.is_empty() {
+            w.write_str("</h3>");
+        } else {
+            w.write_str("</h3></summary>");
+        }
+
+        if trait_.is_some() {
+            if let Some(portability) = portability(&i.impl_item, Some(parent)) {
+                write!(w, "<div class=\"item-info\">{}</div>", portability);
+            }
+        }
+
+        if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
+            let mut ids = cx.id_map.borrow_mut();
+            write!(
+                w,
+                "<div class=\"docblock\">{}</div>",
+                Markdown(
+                    &*dox,
+                    &i.impl_item.links(cx),
+                    &mut ids,
+                    cx.shared.codes,
+                    cx.shared.edition(),
+                    &cx.shared.playground
+                )
+                .into_string()
+            );
+        }
+    }
+    if !impl_items.is_empty() {
+        w.write_str("<div class=\"impl-items\">");
+        w.push_buffer(impl_items);
+        close_tags.insert_str(0, "</div>");
     }
     w.write_str(&close_tags);
 }
