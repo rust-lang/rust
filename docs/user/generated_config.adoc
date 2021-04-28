@@ -234,11 +234,6 @@ site.
 --
 Whether to show inlay type hints for variables.
 --
-[[rust-analyzer.inlayHints.smallerHints]]rust-analyzer.inlayHints.smallerHints (default: `true`)::
-+
---
-Whether inlay hints font size should be smaller than editor's font size.
---
 [[rust-analyzer.lens.debug]]rust-analyzer.lens.debug (default: `true`)::
 +
 --

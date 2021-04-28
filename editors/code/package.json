@@ -283,6 +283,11 @@
                     "default": true,
                     "description": "Whether to show inlay hints."
                 },
+                "rust-analyzer.inlayHints.smallerHints": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether inlay hints font size should be smaller than editor's font size."
+                },
                 "rust-analyzer.updates.channel": {
                     "type": "string",
                     "enum": [
@@ -353,7 +358,7 @@
                         "Use [MS C++ tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)"
                     ]
                 },
-                "rust-analyzer.debug.sourceFileMap": {                    
+                "rust-analyzer.debug.sourceFileMap": {
                     "type": ["object", "string"],
                     "const": "auto",
                     "description": "Optional source file mappings passed to the debug engine.",
@@ -651,11 +656,6 @@
                 },
                 "rust-analyzer.inlayHints.typeHints": {
                     "markdownDescription": "Whether to show inlay type hints for variables.",
-                    "default": true,
-                    "type": "boolean"
-                },
-                "rust-analyzer.inlayHints.smallerHints": {
-                    "markdownDescription": "Whether inlay hints font size should be smaller than editor's font size.",
                     "default": true,
                     "type": "boolean"
                 },
