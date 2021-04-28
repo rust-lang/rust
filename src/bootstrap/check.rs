@@ -280,7 +280,7 @@ impl Step for CodegenBackend {
 }
 
 macro_rules! tool_check_step {
-    ($name:ident, $path:expr, $source_type:expr) => {
+    ($name:ident, $path:literal, $($alias:literal, )* $source_type:path) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub target: TargetSelection,
@@ -292,7 +292,7 @@ macro_rules! tool_check_step {
             const DEFAULT: bool = true;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.path($path)
+                run.paths(&[ $path, $($alias),* ])
             }
 
             fn make_run(run: RunConfig<'_>) {
@@ -361,7 +361,7 @@ macro_rules! tool_check_step {
     };
 }
 
-tool_check_step!(Rustdoc, "src/tools/rustdoc", SourceType::InTree);
+tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
 // Clippy is a hybrid. It is an external tool, but uses a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
