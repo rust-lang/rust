@@ -152,13 +152,41 @@ fn high_byte(
     }
 }
 
+fn rbx_reserved(
+    arch: InlineAsmArch,
+    _has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
+) -> Result<(), &'static str> {
+    match arch {
+        InlineAsmArch::X86 => Ok(()),
+        InlineAsmArch::X86_64 => {
+            Err("rbx is used internally by LLVM and cannot be used as an operand for inline asm")
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn esi_reserved(
+    arch: InlineAsmArch,
+    _has_feature: impl FnMut(&str) -> bool,
+    _target: &Target,
+) -> Result<(), &'static str> {
+    match arch {
+        InlineAsmArch::X86 => {
+            Err("esi is used internally by LLVM and cannot be used as an operand for inline asm")
+        }
+        InlineAsmArch::X86_64 => Ok(()),
+        _ => unreachable!(),
+    }
+}
+
 def_regs! {
     X86 X86InlineAsmReg X86InlineAsmRegClass {
         ax: reg, reg_abcd = ["ax", "eax", "rax"],
-        bx: reg, reg_abcd = ["bx", "ebx", "rbx"],
+        bx: reg, reg_abcd = ["bx", "ebx", "rbx"] % rbx_reserved,
         cx: reg, reg_abcd = ["cx", "ecx", "rcx"],
         dx: reg, reg_abcd = ["dx", "edx", "rdx"],
-        si: reg = ["si", "esi", "rsi"],
+        si: reg = ["si", "esi", "rsi"] % esi_reserved,
         di: reg = ["di", "edi", "rdi"],
         r8: reg = ["r8", "r8w", "r8d"] % x86_64_only,
         r9: reg = ["r9", "r9w", "r9d"] % x86_64_only,
