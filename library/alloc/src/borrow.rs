@@ -324,7 +324,7 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     }
 }
 
-#[unstable(feature = "cow_dedup", issue = "none")]
+#[unstable(feature = "cow_to_borrow_if", issue = "none")]
 impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     /// Replaces an owned value with the given borrowed value if it satisfies a
     /// condition. Returns the owned value if any.
@@ -340,19 +340,19 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     /// Replace an owned string if its lowercase form is equal to `"moo"`.
     ///
     /// ```
-    /// # #![feature(cow_dedup)]
+    /// # #![feature(cow_to_borrow_if)]
     /// # use std::borrow::Cow;
     /// let mut cow: Cow<'_, str> = Cow::Owned(String::from("Moo"));
     /// let moo = "moo";
-    /// assert_eq!(Cow::dedup_by(&mut cow, moo, |o| o.to_lowercase() == moo), Some(String::from("Moo")));
-    /// assert_eq!(Cow::dedup_by(&mut cow, moo, |o| o.to_lowercase() == moo), None);
+    /// assert_eq!(Cow::to_borrow_if(&mut cow, moo, |o| o.to_lowercase() == moo), Some(String::from("Moo")));
+    /// assert_eq!(Cow::to_borrow_if(&mut cow, moo, |o| o.to_lowercase() == moo), None);
     /// assert_eq!(cow, Cow::Borrowed("moo"));
     /// ```
-    #[unstable(feature = "cow_dedup", issue = "none")]
-    pub fn dedup_by<'b: 'a>(
+    #[unstable(feature = "cow_to_borrow_if", issue = "none")]
+    pub fn to_borrow_if<'b: 'a>(
         this: &mut Cow<'a, B>,
         sub: &'b B,
-        func: impl FnOnce(&B) -> bool,
+        func: impl FnOnce(&<B as ToOwned>::Owned) -> bool,
     ) -> Option<<B as ToOwned>::Owned> {
         match *this {
             Owned(ref o) if func(o) => Some(core::mem::replace(this, Borrowed(sub)).into_owned()),
@@ -361,7 +361,7 @@ impl<'a, B: ?Sized + ToOwned> Cow<'a, B> {
     }
 }
 
-#[unstable(feature = "cow_dedup", issue = "none")]
+#[unstable(feature = "cow_to_borrow_if", issue = "none")]
 impl<'a, B: ?Sized> Cow<'a, B>
 where
     B: ToOwned,
@@ -378,16 +378,16 @@ where
     /// Replace an owned string if it's equal to `"moo"`.
     /// 
     /// ```
-    /// # #![feature(cow_dedup)]
+    /// # #![feature(cow_to_borrow_if)]
     /// # use std::borrow::Cow;
     /// let mut cow: Cow<'_, str> = Cow::Owned(String::from("moo"));
     /// let moo = "moo";
-    /// assert_eq!(Cow::dedup(&mut cow, moo), Some(moo.to_string()));
+    /// assert_eq!(Cow::to_borrow_if_eq(&mut cow, moo), Some(moo.to_string()));
     /// assert_eq!(cow, Cow::Borrowed("moo"));
     /// ```
-    #[unstable(feature = "cow_dedup", issue = "none")]
-    pub fn dedup<'b: 'a>(this: &mut Cow<'a, B>, sub: &'b B) -> Option<<B as ToOwned>::Owned> {
-        Cow::dedup_by(this, sub, |o| o == sub)
+    #[unstable(feature = "cow_to_borrow_if", issue = "none")]
+    pub fn to_borrow_if_eq<'b: 'a>(this: &mut Cow<'a, B>, sub: &'b B) -> Option<<B as ToOwned>::Owned> {
+        Cow::to_borrow_if(this, sub, |o| o == sub)
     }
 }
 
