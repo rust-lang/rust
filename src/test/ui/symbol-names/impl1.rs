@@ -74,3 +74,7 @@ fn main() {
         }
     };
 }
+
+// FIXME(katie): The 32-bit symbol hash probably needs updating as well, but I'm slightly unsure
+// about how to do that. This comment is here so that we don't break the test due to error messages
+// including incorrect line numbers.
