@@ -82,10 +82,16 @@ use super::Utf8Error;
 /// assert_eq!("💖", sparkle_heart);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
-    run_utf8_validation(v)?;
-    // SAFETY: Just ran validation.
-    Ok(unsafe { from_utf8_unchecked(v) })
+#[rustc_const_unstable(feature = "const_str_from_utf8", issue = "none")]
+#[rustc_allow_const_fn_unstable(str_internals)]
+#[rustc_allow_const_fn_unstable(const_str_from_utf8_unchecked)]
+pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
+    // ? is not available in const
+    match run_utf8_validation(v) {
+        // SAFETY: Just ran validation.
+        Ok(_) => Ok(unsafe { from_utf8_unchecked(v) }),
+        Err(e) => Err(e),
+    }
 }
 
 /// Converts a mutable slice of bytes to a mutable string slice.
@@ -119,10 +125,16 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// See the docs for [`Utf8Error`] for more details on the kinds of
 /// errors that can be returned.
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
-    run_utf8_validation(v)?;
-    // SAFETY: Just ran validation.
-    Ok(unsafe { from_utf8_unchecked_mut(v) })
+#[rustc_const_unstable(feature = "const_str_from_utf8", issue = "none")]
+#[rustc_allow_const_fn_unstable(str_internals)]
+#[rustc_allow_const_fn_unstable(const_str_from_utf8_unchecked)]
+pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
+    // ? is not available in const
+    match run_utf8_validation(v) {
+        // SAFETY: Just ran validation.
+        Ok(_) => Ok(unsafe { from_utf8_unchecked_mut(v) }),
+        Err(e) => Err(e),
+    }
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -183,7 +195,8 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// ```
 #[inline]
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
+#[rustc_const_unstable(feature = "const_str_from_utf8_unchecked", issue = "75196")]
+pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     // SAFETY: the caller must guarantee that the bytes `v`
     // are valid UTF-8, thus the cast to `*mut str` is safe.
     // Also, the pointer dereference is safe because that pointer

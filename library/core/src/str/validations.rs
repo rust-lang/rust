@@ -105,21 +105,25 @@ const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
 
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
-fn contains_nonascii(x: usize) -> bool {
+const fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
 /// Walks through `v` checking that it's a valid UTF-8 sequence,
 /// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
 #[inline(always)]
-pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
+#[rustc_const_unstable(feature = "str_internals", issue = "none")]
+pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut index = 0;
     let len = v.len();
 
     let usize_bytes = mem::size_of::<usize>();
     let ascii_block_size = 2 * usize_bytes;
     let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };
-    let align = v.as_ptr().align_offset(usize_bytes);
+    // FIXME(lf-) align_offset is not const fn yet, so we do it manually
+    let mask = usize_bytes - 1;
+    // SAFETY: uh help pls
+    let align = (usize_bytes - (unsafe { v.as_ptr() as usize } & mask)) & mask;
 
     while index < len {
         let old_offset = index;
@@ -230,7 +234,7 @@ pub(super) fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
 }
 
 // https://tools.ietf.org/html/rfc3629
-static UTF8_CHAR_WIDTH: [u8; 256] = [
+const UTF8_CHAR_WIDTH: [u8; 256] = [
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, // 0x1F
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
