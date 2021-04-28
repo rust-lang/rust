@@ -2661,6 +2661,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     let mut inline_span = None;
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
+    let mut no_coverage_feature_enabled = false;
+    let mut no_coverage_attr = None;
     for attr in attrs.iter() {
         if tcx.sess.check_name(attr, sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
@@ -2724,6 +2726,15 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
         } else if tcx.sess.check_name(attr, sym::no_mangle) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        } else if attr.has_name(sym::feature) {
+            if let Some(list) = attr.meta_item_list() {
+                if list.iter().any(|nested_meta_item| nested_meta_item.has_name(sym::no_coverage)) {
+                    tcx.sess.mark_attr_used(attr);
+                    no_coverage_feature_enabled = true;
+                }
+            }
+        } else if tcx.sess.check_name(attr, sym::no_coverage) {
+            no_coverage_attr = Some(attr);
         } else if tcx.sess.check_name(attr, sym::rustc_std_internal_symbol) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         } else if tcx.sess.check_name(attr, sym::used) {
@@ -2931,6 +2942,23 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 },
                 None => None,
             };
+        }
+    }
+
+    if let Some(no_coverage_attr) = no_coverage_attr {
+        if tcx.sess.features_untracked().no_coverage || no_coverage_feature_enabled {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_COVERAGE
+        } else {
+            let mut err = feature_err(
+                &tcx.sess.parse_sess,
+                sym::no_coverage,
+                no_coverage_attr.span,
+                "the `#[no_coverage]` attribute is an experimental feature",
+            );
+            if tcx.sess.parse_sess.unstable_features.is_nightly_build() {
+                err.help("or, alternatively, add `#[feature(no_coverage)]` to the function");
+            }
+            err.emit();
         }
     }
 

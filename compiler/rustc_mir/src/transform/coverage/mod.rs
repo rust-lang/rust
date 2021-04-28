@@ -23,6 +23,7 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::hir;
 use rustc_middle::hir::map::blocks::FnLikeNode;
 use rustc_middle::ich::StableHashingContext;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{
     self, BasicBlock, BasicBlockData, Coverage, SourceInfo, Statement, StatementKind, Terminator,
@@ -85,6 +86,11 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
                 return;
             }
             _ => {}
+        }
+
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(mir_source.def_id());
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+            return;
         }
 
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());

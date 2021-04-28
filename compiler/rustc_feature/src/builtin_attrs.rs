@@ -273,6 +273,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, memory, thread"),
         experimental!(no_sanitize)
     ),
+    ungated!(
+        // Not exclusively gated at the crate level (though crate-level is
+        // supported). The feature can alternatively be enabled on individual
+        // functions.
+        no_coverage, AssumedUsed,
+        template!(Word),
+    ),
 
     // FIXME: #14408 assume docs are used since rustdoc looks at them.
     ungated!(doc, AssumedUsed, template!(List: "hidden|inline|...", NameValueStr: "string")),

@@ -646,6 +646,10 @@ declare_features! (
     /// Allows `extern "wasm" fn`
     (active, wasm_abi, "1.53.0", Some(83788), None),
 
+    /// Allows function attribute `#[no_coverage]`, to bypass coverage
+    /// instrumentation of that function.
+    (active, no_coverage, "1.53.0", Some(84605), None),
+
     /// Allows trait bounds in `const fn`.
     (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
 
