@@ -330,7 +330,6 @@ symbols! {
         bridge,
         bswap,
         c_str,
-        c_unwind,
         c_variadic,
         call,
         call_mut,

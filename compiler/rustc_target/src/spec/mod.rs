@@ -1284,31 +1284,24 @@ impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
     pub fn adjust_abi(&self, abi: Abi) -> Abi {
         match abi {
-            Abi::System { unwind } => {
+            Abi::System => {
                 if self.is_like_windows && self.arch == "x86" {
-                    Abi::Stdcall { unwind }
+                    Abi::Stdcall
                 } else {
-                    Abi::C { unwind }
+                    Abi::C
                 }
             }
             // These ABI kinds are ignored on non-x86 Windows targets.
             // See https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
             // and the individual pages for __stdcall et al.
-            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => {
-                if self.is_like_windows && self.arch != "x86" { Abi::C { unwind } } else { abi }
-            }
-            Abi::Fastcall | Abi::Vectorcall => {
-                if self.is_like_windows && self.arch != "x86" {
-                    Abi::C { unwind: false }
-                } else {
-                    abi
-                }
+            Abi::Stdcall | Abi::Fastcall | Abi::Vectorcall | Abi::Thiscall => {
+                if self.is_like_windows && self.arch != "x86" { Abi::C } else { abi }
             }
             Abi::EfiApi => {
                 if self.arch == "x86_64" {
                     Abi::Win64
                 } else {
-                    Abi::C { unwind: false }
+                    Abi::C
                 }
             }
             abi => abi,
