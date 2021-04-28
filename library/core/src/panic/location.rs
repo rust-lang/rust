@@ -83,18 +83,6 @@ impl<'a> Location<'a> {
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()
     }
-}
-
-impl<'a> Location<'a> {
-    #![unstable(
-        feature = "panic_internals",
-        reason = "internal details of the implementation of the `panic!` and related macros",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
-        Location { file, line, col }
-    }
 
     /// Returns the name of the source file from which the panic originated.
     ///
@@ -176,6 +164,18 @@ impl<'a> Location<'a> {
     #[stable(feature = "panic_col", since = "1.25.0")]
     pub fn column(&self) -> u32 {
         self.col
+    }
+}
+
+#[unstable(
+    feature = "panic_internals",
+    reason = "internal details of the implementation of the `panic!` and related macros",
+    issue = "none"
+)]
+impl<'a> Location<'a> {
+    #[doc(hidden)]
+    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
+        Location { file, line, col }
     }
 }
 
