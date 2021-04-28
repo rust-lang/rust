@@ -10,7 +10,7 @@
   | Unexecuted instantiation: <issue_84561::Foo as core::cmp::PartialEq>::ne
   ------------------
     5|       |struct Foo(u32);
-    6|      1|fn test2() {
+    6|      1|fn test3() {
     7|      1|    let is_true = std::env::args().len() == 1;
     8|      1|    let bar = Foo(1);
     9|      1|    assert_eq!(bar, Foo(1));
@@ -173,8 +173,24 @@
   160|      1|    debug!("debug is enabled");
   161|      1|}
   162|       |
-  163|      1|fn main() {
-  164|      1|    test1();
-  165|      1|    test2();
-  166|      1|}
+  163|       |macro_rules! call_debug {
+  164|       |    ($($arg:tt)+) => (
+  165|      1|        fn call_print(s: &str) {
+  166|      1|            print!("{}", s);
+  167|      1|        }
+  168|       |
+  169|       |        call_print("called from call_debug: ");
+  170|       |        debug!($($arg)+);
+  171|       |    );
+  172|       |}
+  173|       |
+  174|      1|fn test2() {
+  175|      1|    call_debug!("debug is enabled");
+  176|      1|}
+  177|       |
+  178|      1|fn main() {
+  179|      1|    test1();
+  180|      1|    test2();
+  181|      1|    test3();
+  182|      1|}
 

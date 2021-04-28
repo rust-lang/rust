@@ -13,6 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map::original_sp;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
+use std::cell::RefCell;
 use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
@@ -68,6 +69,7 @@ impl CoverageStatement {
 pub(super) struct CoverageSpan {
     pub span: Span,
     pub expn_span: Span,
+    pub current_macro_or_none: RefCell<Option<Option<Symbol>>>,
     pub bcb: BasicCoverageBlock,
     pub coverage_statements: Vec<CoverageStatement>,
     pub is_closure: bool,
@@ -78,6 +80,7 @@ impl CoverageSpan {
         Self {
             span: fn_sig_span,
             expn_span: fn_sig_span,
+            current_macro_or_none: Default::default(),
             bcb: START_BCB,
             coverage_statements: vec![],
             is_closure: false,
@@ -103,6 +106,7 @@ impl CoverageSpan {
         Self {
             span,
             expn_span,
+            current_macro_or_none: Default::default(),
             bcb,
             coverage_statements: vec![CoverageStatement::Statement(bb, span, stmt_index)],
             is_closure,
@@ -118,6 +122,7 @@ impl CoverageSpan {
         Self {
             span,
             expn_span,
+            current_macro_or_none: Default::default(),
             bcb,
             coverage_statements: vec![CoverageStatement::Terminator(bb, span)],
             is_closure: false,
@@ -174,15 +179,19 @@ impl CoverageSpan {
             .join("\n")
     }
 
-    /// If the span is part of a macro, and the macro is visible (expands directly to the given
-    /// body_span), returns the macro name symbol.
+    /// If the span is part of a macro, returns the macro name symbol.
     pub fn current_macro(&self) -> Option<Symbol> {
-        if let ExpnKind::Macro(MacroKind::Bang, current_macro) =
-            self.expn_span.ctxt().outer_expn_data().kind
-        {
-            return Some(current_macro);
-        }
-        None
+        self.current_macro_or_none
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                if let ExpnKind::Macro(MacroKind::Bang, current_macro) =
+                    self.expn_span.ctxt().outer_expn_data().kind
+                {
+                    return Some(current_macro);
+                }
+                None
+            })
+            .map(|symbol| symbol)
     }
 
     /// If the span is part of a macro, and the macro is visible (expands directly to the given
@@ -474,8 +483,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                 self.curr().expn_span.ctxt() != prev_expn_span.ctxt()
             }) {
                 let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
-                let after_macro_bang = merged_prefix_len
-                    + BytePos(visible_macro.to_string().bytes().count() as u32 + 1);
+                let after_macro_bang =
+                    merged_prefix_len + BytePos(visible_macro.as_str().bytes().count() as u32 + 1);
                 let mut macro_name_cov = self.curr().clone();
                 self.curr_mut().span =
                     self.curr().span.with_lo(self.curr().span.lo() + after_macro_bang);
@@ -766,6 +775,9 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 }
 
+/// See `function_source_span()` for a description of the two returned spans.
+/// If the MIR `Statement` is not contributive to computing coverage spans,
+/// returns `None`.
 pub(super) fn filtered_statement_span(
     statement: &'a Statement<'tcx>,
     body_span: Span,
@@ -811,6 +823,9 @@ pub(super) fn filtered_statement_span(
     }
 }
 
+/// See `function_source_span()` for a description of the two returned spans.
+/// If the MIR `Terminator` is not contributive to computing coverage spans,
+/// returns `None`.
 pub(super) fn filtered_terminator_span(
     terminator: &'a Terminator<'tcx>,
     body_span: Span,
@@ -854,8 +869,21 @@ pub(super) fn filtered_terminator_span(
     }
 }
 
-/// Returns the span within the function source body, and the given span, which will be different
-/// if the given span is an expansion (macro, syntactic sugar, etc.).
+/// Returns two spans from the given span (the span associated with a
+/// `Statement` or `Terminator`):
+///
+///   1. An extrapolated span (pre-expansion[^1]) corresponding to a range within
+///      the function's body source. This span is guaranteed to be contained
+///      within, or equal to, the `body_span`. If the extrapolated span is not
+///      contained within the `body_span`, the `body_span` is returned.
+///   2. The actual `span` value from the `Statement`, before expansion.
+///
+/// Only the first span is used when computing coverage code regions. The second
+/// span is useful if additional expansion data is needed (such as to look up
+/// the macro name for a composed span within that macro).)
+///
+/// [^1]Expansions result from Rust syntax including macros, syntactic
+/// sugar, etc.).
 #[inline]
 fn function_source_span(span: Span, body_span: Span) -> (Span, Span) {
     let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());

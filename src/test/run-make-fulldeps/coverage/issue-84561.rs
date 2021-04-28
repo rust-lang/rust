@@ -3,7 +3,7 @@
 // expect-exit-status-101
 #[derive(PartialEq, Eq)]
 struct Foo(u32);
-fn test2() {
+fn test3() {
     let is_true = std::env::args().len() == 1;
     let bar = Foo(1);
     assert_eq!(bar, Foo(1));
@@ -160,7 +160,23 @@ fn test1() {
     debug!("debug is enabled");
 }
 
+macro_rules! call_debug {
+    ($($arg:tt)+) => (
+        fn call_print(s: &str) {
+            print!("{}", s);
+        }
+
+        call_print("called from call_debug: ");
+        debug!($($arg)+);
+    );
+}
+
+fn test2() {
+    call_debug!("debug is enabled");
+}
+
 fn main() {
     test1();
     test2();
+    test3();
 }
