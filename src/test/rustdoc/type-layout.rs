@@ -35,8 +35,16 @@ pub struct Y(u8);
 // @has - '0 bytes'
 pub struct Z;
 
-// @!has type_layout/struct.Generic.html 'Size: '
+// We can't compute layout for generic types.
+// @has type_layout/struct.Generic.html 'Unable to compute type layout, possibly due to this type having generic parameters'
+// @!has - 'Size: '
 pub struct Generic<T>(T);
+
+// We *can*, however, compute layout for types that are only generic over lifetimes,
+// because lifetimes are a type-system construct.
+// @has type_layout/struct.GenericLifetimes.html 'Size: '
+// @has - ' bytes'
+pub struct GenericLifetimes<'a>(&'a str);
 
 // @has type_layout/struct.Unsized.html 'Size: '
 // @has - '(unsized)'
