@@ -13,20 +13,10 @@ impl Thread {
         unsupported()
     }
 
-    pub fn yield_now() {
-        // do nothing
-    }
+    pub fn yield_now() {}
 
-    pub fn set_name(_name: &CStr) {
-        // nope
-    }
+    pub fn set_name(_name: &CStr) {}
 
-    #[cfg(not(target_feature = "atomics"))]
-    pub fn sleep(_dur: Duration) {
-        panic!("can't sleep");
-    }
-
-    #[cfg(target_feature = "atomics")]
     pub fn sleep(dur: Duration) {
         use crate::arch::wasm32;
         use crate::cmp;
@@ -46,9 +36,7 @@ impl Thread {
         }
     }
 
-    pub fn join(self) {
-        self.0
-    }
+    pub fn join(self) {}
 }
 
 pub mod guard {
@@ -61,11 +49,9 @@ pub mod guard {
     }
 }
 
-// This is only used by atomics primitives when the `atomics` feature is
-// enabled. In that mode we currently just use our own thread-local to store our
+// We currently just use our own thread-local to store our
 // current thread's ID, and then we lazily initialize it to something allocated
 // from a global counter.
-#[cfg(target_feature = "atomics")]
 pub fn my_id() -> u32 {
     use crate::sync::atomic::{AtomicU32, Ordering::SeqCst};
 

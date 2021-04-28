@@ -37,7 +37,6 @@ pub mod pipe;
 pub mod process;
 #[path = "../unsupported/stdio.rs"]
 pub mod stdio;
-pub mod thread;
 #[path = "../unsupported/thread_local_dtor.rs"]
 pub mod thread_local_dtor;
 #[path = "../unsupported/thread_local_key.rs"]
@@ -57,6 +56,8 @@ cfg_if::cfg_if! {
         pub mod rwlock;
         #[path = "futex_atomics.rs"]
         pub mod futex;
+        #[path = "thread_atomics.rs"]
+        pub mod thread;
     } else {
         #[path = "../unsupported/condvar.rs"]
         pub mod condvar;
@@ -64,6 +65,8 @@ cfg_if::cfg_if! {
         pub mod mutex;
         #[path = "../unsupported/rwlock.rs"]
         pub mod rwlock;
+        #[path = "../unsupported/thread.rs"]
+        pub mod thread;
     }
 }
 
