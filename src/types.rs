@@ -571,13 +571,23 @@ impl Rewrite for ast::GenericParam {
         if let ast::GenericParamKind::Const {
             ref ty,
             kw_span: _,
-            default: _,
+            default,
         } = &self.kind
         {
             result.push_str("const ");
             result.push_str(rewrite_ident(context, self.ident));
             result.push_str(": ");
             result.push_str(&ty.rewrite(context, shape)?);
+            if let Some(default) = default {
+                let eq_str = match context.config.type_punctuation_density() {
+                    TypeDensity::Compressed => "=",
+                    TypeDensity::Wide => " = ",
+                };
+                result.push_str(eq_str);
+                let budget = shape.width.checked_sub(result.len())?;
+                let rewrite = default.rewrite(context, Shape::legacy(budget, shape.indent))?;
+                result.push_str(&rewrite);
+            }
         } else {
             result.push_str(rewrite_ident(context, self.ident));
         }
