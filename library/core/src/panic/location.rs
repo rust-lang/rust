@@ -4,6 +4,8 @@ use crate::fmt;
 ///
 /// This structure is created by [`PanicInfo::location()`].
 ///
+/// [`PanicInfo::location()`]: crate::panic::PanicInfo::location
+///
 /// # Examples
 ///
 /// ```should_panic

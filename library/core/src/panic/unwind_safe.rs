@@ -15,6 +15,8 @@ use crate::task::{Context, Poll};
 /// purpose of this trait is to encode what types are safe to cross a [`catch_unwind`]
 /// boundary with no fear of unwind safety.
 ///
+/// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
+///
 /// ## What is unwind safety?
 ///
 /// In Rust a function can "return" early if it either panics or calls a
@@ -115,6 +117,8 @@ pub auto trait RefUnwindSafe {}
 /// specific usage of [`catch_unwind`] if unwind safety is specifically taken into
 /// account. This wrapper struct is useful for a quick and lightweight
 /// annotation that a variable is indeed unwind safe.
+///
+/// [`catch_unwind`]: ../../std/panic/fn.catch_unwind.html
 ///
 /// # Examples
 ///
