@@ -752,7 +752,7 @@ pub fn args() -> Args {
 /// does on macOS and Windows.
 ///
 /// Note that the returned iterator will not check if the arguments to the
-/// process are valid Unicode. To ensure UTF-8 validity,
+/// process are valid Unicode. If you want to panic on invalid UTF-8,
 /// use the [`args`] function instead.
 ///
 /// # Examples
