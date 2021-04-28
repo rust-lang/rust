@@ -27,6 +27,11 @@ use crate::{
     line_index::OffsetEncoding, lsp_ext::supports_utf8,
 };
 
+// Defines the server-side configuration of the rust-analyzer. We generate
+// *parts* of VS Code's `package.json` config from this.
+//
+// However, editor specific config, which the server doesn't know about, should
+// be specified directly in `package.json`.
 config_data! {
     struct ConfigData {
         /// The strategy to use when inserting new imports or merging imports.
@@ -145,8 +150,6 @@ config_data! {
         inlayHints_parameterHints: bool     = "true",
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints: bool          = "true",
-        /// Whether inlay hints font size should be smaller than editor's font size.
-        inlayHints_smallerHints: bool       = "true",
 
         /// Whether to show `Debug` lens. Only applies when
         /// `#rust-analyzer.lens.enable#` is set.
