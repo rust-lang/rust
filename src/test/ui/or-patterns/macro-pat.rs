@@ -1,7 +1,5 @@
 // run-pass
 // edition:2021
-// ignore-test
-// FIXME(mark-i-m): enable this test again when 2021 machinery is available
 
 use Foo::*;
 
