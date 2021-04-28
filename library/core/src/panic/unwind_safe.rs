@@ -281,6 +281,7 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // SAFETY: pin projection. AssertUnwindSafe follows structural pinning.
         let pinned_field = unsafe { Pin::map_unchecked_mut(self, |x| &mut x.0) };
         F::poll(pinned_field, cx)
     }
@@ -291,6 +292,7 @@ impl<S: Stream> Stream for AssertUnwindSafe<S> {
     type Item = S::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<S::Item>> {
+        // SAFETY: pin projection. AssertUnwindSafe follows structural pinning.
         unsafe { self.map_unchecked_mut(|x| &mut x.0) }.poll_next(cx)
     }
 
