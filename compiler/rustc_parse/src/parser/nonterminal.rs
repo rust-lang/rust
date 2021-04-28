@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
                 },
                 _ => false,
             },
-            NonterminalKind::PatParam { .. } | NonterminalKind::Pat2021 { .. } => {
+            NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 match token.kind {
                 token::Ident(..) |                  // box, ref, mut, and other identifiers (can stricten)
                 token::OpenDelim(token::Paren) |    // tuple pattern
@@ -76,7 +76,7 @@ impl<'a> Parser<'a> {
                 token::Lt |                         // path (UFCS constant)
                 token::BinOp(token::Shl) => true,   // path (double UFCS)
                 // leading vert `|` or-pattern
-                token::BinOp(token::Or) =>  matches!(kind, NonterminalKind::Pat2021 {..}),
+                token::BinOp(token::Or) =>  matches!(kind, NonterminalKind::PatWithOr {..}),
                 token::Interpolated(ref nt) => may_be_ident(nt),
                 _ => false,
             }
@@ -120,10 +120,10 @@ impl<'a> Parser<'a> {
                     return Err(self.struct_span_err(self.token.span, "expected a statement"));
                 }
             },
-            NonterminalKind::PatParam { .. } | NonterminalKind::Pat2021 { .. } => {
+            NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
                     NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None),
-                    NonterminalKind::Pat2021 { .. } => {
+                    NonterminalKind::PatWithOr { .. } => {
                         this.parse_pat_allow_top_alt(None, RecoverComma::No)
                     }
                     _ => unreachable!(),

@@ -849,7 +849,6 @@ symbols! {
         partial_ord,
         passes,
         pat,
-        pat2021,
         pat_param,
         path,
         pattern_parentheses,

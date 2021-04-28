@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(edition_macro_pats)]
 #![deny(or_patterns_back_compat)]
 #![allow(unused_macros)]
 macro_rules! foo { ($x:pat | $y:pat) => {} } //~ ERROR the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro

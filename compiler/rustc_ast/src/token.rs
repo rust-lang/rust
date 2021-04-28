@@ -693,11 +693,7 @@ pub enum NonterminalKind {
         /// edition of the span. This is used for diagnostics.
         inferred: bool,
     },
-    Pat2021 {
-        /// Keep track of whether the user used `:pat_param` or `:pat` and we inferred it from the
-        /// edition of the span. This is used for diagnostics.
-        inferred: bool,
-    },
+    PatWithOr,
     Expr,
     Ty,
     Ident,
@@ -724,10 +720,9 @@ impl NonterminalKind {
                 Edition::Edition2015 | Edition::Edition2018 => {
                     NonterminalKind::PatParam { inferred: true }
                 }
-                Edition::Edition2021 => NonterminalKind::Pat2021 { inferred: true },
+                Edition::Edition2021 => NonterminalKind::PatWithOr,
             },
             sym::pat_param => NonterminalKind::PatParam { inferred: false },
-            sym::pat2021 => NonterminalKind::Pat2021 { inferred: false },
             sym::expr => NonterminalKind::Expr,
             sym::ty => NonterminalKind::Ty,
             sym::ident => NonterminalKind::Ident,
@@ -746,9 +741,7 @@ impl NonterminalKind {
             NonterminalKind::Block => sym::block,
             NonterminalKind::Stmt => sym::stmt,
             NonterminalKind::PatParam { inferred: false } => sym::pat_param,
-            NonterminalKind::Pat2021 { inferred: false } => sym::pat2021,
-            NonterminalKind::PatParam { inferred: true }
-            | NonterminalKind::Pat2021 { inferred: true } => sym::pat,
+            NonterminalKind::PatParam { inferred: true } | NonterminalKind::PatWithOr => sym::pat,
             NonterminalKind::Expr => sym::expr,
             NonterminalKind::Ty => sym::ty,
             NonterminalKind::Ident => sym::ident,
