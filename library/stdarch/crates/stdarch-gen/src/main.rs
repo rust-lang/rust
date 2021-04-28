@@ -349,6 +349,7 @@ enum Suffix {
     OutSuffix,
     Lane,
     In2,
+    In2Lane,
 }
 
 #[derive(Clone, Copy)]
@@ -847,6 +848,7 @@ fn gen_aarch64(
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
+        In2Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[2])),
     };
     let current_fn = if let Some(current_fn) = current_fn.clone() {
         if link_aarch64.is_some() {
@@ -1259,6 +1261,7 @@ fn gen_arm(
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[1])),
         In2 => format!("{}{}", current_name, type_to_suffix(in_t[2])),
+        In2Lane => format!("{}{}", current_name, type_to_lane_suffixes(out_t, in_t[2])),
     };
     let current_aarch64 = current_aarch64
         .clone()
@@ -2216,6 +2219,8 @@ mod test {
             suffix = Lane;
         } else if line.starts_with("in2-suffix") {
             suffix = In2;
+        } else if line.starts_with("in2-lane-suffixes") {
+            suffix = In2Lane;
         } else if line.starts_with("a = ") {
             a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
         } else if line.starts_with("b = ") {

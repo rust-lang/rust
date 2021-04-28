@@ -1222,6 +1222,68 @@ generate float64x*_t
 arm = vmla.
 generate float*_t
 
+/// Vector multiply accumulate with scalar
+name = vmla
+n-suffix
+multi_fn = vmla-self-noext, a, b, {vdup-nself-noext, c}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3
+validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+
+aarch64 = mla
+arm = vmla.
+generate int16x4_t:int16x4_t:i16:int16x4_t, int16x8_t:int16x8_t:i16:int16x8_t, int32x2_t:int32x2_t:i32:int32x2_t, int32x4_t:int32x4_t:i32:int32x4_t
+generate uint16x4_t:uint16x4_t:u16:uint16x4_t, uint16x8_t:uint16x8_t:u16:uint16x8_t, uint32x2_t:uint32x2_t:u32:uint32x2_t, uint32x4_t:uint32x4_t:u32:uint32x4_t
+
+/// Vector multiply accumulate with scalar
+name = vmla
+n-suffix
+multi_fn = vmla-self-noext, a, b, {vdup-nself-noext, c}
+a = 0., 1., 2., 3.
+b = 2., 2., 2., 2.
+c = 3.
+validate 6., 7., 8., 9.
+
+aarch64 = fmul
+arm = vmla.
+generate float32x2_t:float32x2_t:f32:float32x2_t, float32x4_t:float32x4_t:f32:float32x4_t
+
+/// Vector multiply accumulate with scalar
+name = vmla
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmla-self-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+
+aarch64 = mla
+arm = vmla.
+generate int16x4_t, int16x4_t:int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x8_t:int16x4_t:int16x8_t, int16x8_t
+generate int32x2_t, int32x2_t:int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x4_t:int32x2_t:int32x4_t, int32x4_t
+generate uint16x4_t, uint16x4_t:uint16x4_t:uint16x8_t:uint16x4_t, uint16x8_t:uint16x8_t:uint16x4_t:uint16x8_t, uint16x8_t
+generate uint32x2_t, uint32x2_t:uint32x2_t:uint32x4_t:uint32x2_t, uint32x4_t:uint32x4_t:uint32x2_t:uint32x4_t, uint32x4_t
+
+/// Vector multiply accumulate with scalar
+name = vmla
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmla-self-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 0., 1., 2., 3.
+b = 2., 2., 2., 2.
+c = 0., 3., 0., 0.
+n = 1
+validate 6., 7., 8., 9.
+
+aarch64 = fmul
+arm = vmla.
+generate float32x2_t, float32x2_t:float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x4_t:float32x2_t:float32x4_t, float32x4_t
+
 /// Signed multiply-add long
 name = vmlal
 multi_fn = simd_add, a, {vmull-self-noext, b, c}
@@ -1245,6 +1307,41 @@ validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
 arm = vmlal.s
 aarch64 = umlal
 generate uint16x8_t:uint8x8_t:uint8x8_t:uint16x8_t, uint32x4_t:uint16x4_t:uint16x4_t:uint32x4_t, uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t
+
+/// Vector widening multiply accumulate with scalar
+name = vmlal
+n-suffix
+multi_fn = vmlal-self-noext, a, b, {vdup-nself-noext, c}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3
+validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+
+arm = vmlal.s
+aarch64 = smlal
+generate int32x4_t:int16x4_t:i16:int32x4_t, int64x2_t:int32x2_t:i32:int64x2_t
+aarch64 = umlal
+generate uint32x4_t:uint16x4_t:u16:uint32x4_t, uint64x2_t:uint32x2_t:u32:uint64x2_t
+
+/// Vector widening multiply accumulate with scalar
+name = vmlal_lane
+in2-suffix
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmlal-self-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+
+arm = vmlal.s
+aarch64 = smlal
+generate int32x4_t:int16x4_t:int16x4_t:int32x4_t, int32x4_t:int16x4_t:int16x8_t:int32x4_t
+generate int64x2_t:int32x2_t:int32x2_t:int64x2_t, int64x2_t:int32x2_t:int32x4_t:int64x2_t
+aarch64 = umlal
+generate uint32x4_t:uint16x4_t:uint16x4_t:uint32x4_t, uint32x4_t:uint16x4_t:uint16x8_t:uint32x4_t
+generate uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t, uint64x2_t:uint32x2_t:uint32x4_t:uint64x2_t
 
 /// Signed multiply-add long
 name = vmlal_high
@@ -1276,6 +1373,39 @@ validate 8, 9, 10, 11, 12, 13, 14, 15
 aarch64 = umlal2
 generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
 
+/// Multiply-add long
+name = vmlal_high_n
+no-q
+multi_fn = vmlal_high-noqself-noext, a, b, {vdupq_n-noqself-noext, c}
+a = 8, 7, 6, 5, 4, 3, 2, 1
+b = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+c = 2
+validate 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = smlal2
+generate int32x4_t:int16x8_t:i16:int32x4_t, int64x2_t:int32x4_t:i32:int64x2_t
+aarch64 = umlal2
+generate uint32x4_t:uint16x8_t:u16:uint32x4_t, uint64x2_t:uint32x4_t:u32:uint64x2_t
+
+/// Multiply-add long
+name = vmlal_high_lane
+in2-suffix
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmlal_high-noqself-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 8, 7, 6, 5, 4, 3, 2, 1
+b = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+c = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = smlal2
+generate int32x4_t:int16x8_t:int16x4_t:int32x4_t, int32x4_t:int16x8_t:int16x8_t:int32x4_t
+generate int64x2_t:int32x4_t:int32x2_t:int64x2_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+aarch64 = umlal2
+generate uint32x4_t:uint16x8_t:uint16x4_t:uint32x4_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t
+generate uint64x2_t:uint32x4_t:uint32x2_t:uint64x2_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
+
 /// Multiply-subtract from accumulator
 name = vmls
 multi_fn = simd_sub, a, {simd_mul, b, c}
@@ -1302,6 +1432,68 @@ generate float64x*_t
 arm = vmls.
 generate float*_t
 
+/// Vector multiply subtract with scalar
+name = vmls
+n-suffix
+multi_fn = vmls-self-noext, a, b, {vdup-nself-noext, c}
+a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = mls
+arm = vmls.
+generate int16x4_t:int16x4_t:i16:int16x4_t, int16x8_t:int16x8_t:i16:int16x8_t, int32x2_t:int32x2_t:i32:int32x2_t, int32x4_t:int32x4_t:i32:int32x4_t
+generate uint16x4_t:uint16x4_t:u16:uint16x4_t, uint16x8_t:uint16x8_t:u16:uint16x8_t, uint32x2_t:uint32x2_t:u32:uint32x2_t, uint32x4_t:uint32x4_t:u32:uint32x4_t
+
+/// Vector multiply subtract with scalar
+name = vmls
+n-suffix
+multi_fn = vmls-self-noext, a, b, {vdup-nself-noext, c}
+a = 6., 7., 8., 9.
+b = 2., 2., 2., 2.
+c = 3.
+validate 0., 1., 2., 3.
+
+aarch64 = fmul
+arm = vmls.
+generate float32x2_t:float32x2_t:f32:float32x2_t, float32x4_t:float32x4_t:f32:float32x4_t
+
+/// Vector multiply subtract with scalar
+name = vmls
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmls-self-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+aarch64 = mls
+arm = vmls.
+generate int16x4_t, int16x4_t:int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x8_t:int16x4_t:int16x8_t, int16x8_t
+generate int32x2_t, int32x2_t:int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x4_t:int32x2_t:int32x4_t, int32x4_t
+generate uint16x4_t, uint16x4_t:uint16x4_t:uint16x8_t:uint16x4_t, uint16x8_t:uint16x8_t:uint16x4_t:uint16x8_t, uint16x8_t
+generate uint32x2_t, uint32x2_t:uint32x2_t:uint32x4_t:uint32x2_t, uint32x4_t:uint32x4_t:uint32x2_t:uint32x4_t, uint32x4_t
+
+/// Vector multiply subtract with scalar
+name = vmls
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmls-self-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 6., 7., 8., 9.
+b = 2., 2., 2., 2.
+c = 0., 3., 0., 0.
+n = 1
+validate 0., 1., 2., 3.
+
+aarch64 = fmul
+arm = vmls.
+generate float32x2_t, float32x2_t:float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x4_t:float32x2_t:float32x4_t, float32x4_t
+
 /// Signed multiply-subtract long
 name = vmlsl
 multi_fn = simd_sub, a, {vmull-self-noext, b, c}
@@ -1314,7 +1506,7 @@ arm = vmlsl.s
 aarch64 = smlsl
 generate int16x8_t:int8x8_t:int8x8_t:int16x8_t, int32x4_t:int16x4_t:int16x4_t:int32x4_t, int64x2_t:int32x2_t:int32x2_t:int64x2_t
 
-/// Signed multiply-subtract long
+/// Unsigned multiply-subtract long
 name = vmlsl
 multi_fn = simd_sub, a, {vmull-self-noext, b, c}
 a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
@@ -1325,6 +1517,41 @@ validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 arm = vmlsl.s
 aarch64 = umlsl
 generate uint16x8_t:uint8x8_t:uint8x8_t:uint16x8_t, uint32x4_t:uint16x4_t:uint16x4_t:uint32x4_t, uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t
+
+/// Vector widening multiply subtract with scalar
+name = vmlsl
+n-suffix
+multi_fn = vmlsl-self-noext, a, b, {vdup-nself-noext, c}
+a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 3
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+arm = vmlsl.s
+aarch64 = smlsl
+generate int32x4_t:int16x4_t:i16:int32x4_t, int64x2_t:int32x2_t:i32:int64x2_t
+aarch64 = umlsl
+generate uint32x4_t:uint16x4_t:u16:uint32x4_t, uint64x2_t:uint32x2_t:u32:uint64x2_t
+
+/// Vector widening multiply subtract with scalar
+name = vmlsl_lane
+in2-suffix
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmlsl-self-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21
+b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+c = 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+
+arm = vmlsl.s
+aarch64 = smlsl
+generate int32x4_t:int16x4_t:int16x4_t:int32x4_t, int32x4_t:int16x4_t:int16x8_t:int32x4_t
+generate int64x2_t:int32x2_t:int32x2_t:int64x2_t, int64x2_t:int32x2_t:int32x4_t:int64x2_t
+aarch64 = umlsl
+generate uint32x4_t:uint16x4_t:uint16x4_t:uint32x4_t, uint32x4_t:uint16x4_t:uint16x8_t:uint32x4_t
+generate uint64x2_t:uint32x2_t:uint32x2_t:uint64x2_t, uint64x2_t:uint32x2_t:uint32x4_t:uint64x2_t
 
 /// Signed multiply-subtract long
 name = vmlsl_high
@@ -1355,6 +1582,39 @@ validate 14, 13, 12, 11, 10, 9, 8, 7
 
 aarch64 = umlsl2
 generate uint16x8_t:uint8x16_t:uint8x16_t:uint16x8_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
+
+/// Multiply-subtract long
+name = vmlsl_high_n
+no-q
+multi_fn = vmlsl_high-noqself-noext, a, b, {vdupq_n-noqself-noext, c}
+a = 14, 15, 16, 17, 18, 19, 20, 21
+b = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+c = 2
+validate 14, 13, 12, 11, 10, 9, 8, 7
+
+aarch64 = smlsl2
+generate int32x4_t:int16x8_t:i16:int32x4_t, int64x2_t:int32x4_t:i32:int64x2_t
+aarch64 = umlsl2
+generate uint32x4_t:uint16x8_t:u16:uint32x4_t, uint64x2_t:uint32x4_t:u32:uint64x2_t
+
+/// Multiply-subtract long
+name = vmlsl_high_lane
+in2-suffix
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vmlsl_high-noqself-noext, a, b, {simd_shuffle-in_len-noext, c, c, {dup-in_len-LANE as u32}}
+a = 14, 15, 16, 17, 18, 19, 20, 21
+b = 3, 3, 0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7
+c = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 14, 13, 12, 11, 10, 9, 8, 7
+
+aarch64 = smlsl2
+generate int32x4_t:int16x8_t:int16x4_t:int32x4_t, int32x4_t:int16x8_t:int16x8_t:int32x4_t
+generate int64x2_t:int32x4_t:int32x2_t:int64x2_t, int64x2_t:int32x4_t:int32x4_t:int64x2_t
+aarch64 = umlsl2
+generate uint32x4_t:uint16x8_t:uint16x4_t:uint32x4_t, uint32x4_t:uint16x8_t:uint16x8_t:uint32x4_t
+generate uint64x2_t:uint32x4_t:uint32x2_t:uint64x2_t, uint64x2_t:uint32x4_t:uint32x4_t:uint64x2_t
 
 /// Extract narrow
 name = vmovn_high

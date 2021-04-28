@@ -2950,6 +2950,118 @@ pub unsafe fn vmlal_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uin
     vmlal_u32(a, b, c)
 }
 
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlal2))]
+pub unsafe fn vmlal_high_n_s16(a: int32x4_t, b: int16x8_t, c: i16) -> int32x4_t {
+    vmlal_high_s16(a, b, vdupq_n_s16(c))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlal2))]
+pub unsafe fn vmlal_high_n_s32(a: int64x2_t, b: int32x4_t, c: i32) -> int64x2_t {
+    vmlal_high_s32(a, b, vdupq_n_s32(c))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlal2))]
+pub unsafe fn vmlal_high_n_u16(a: uint32x4_t, b: uint16x8_t, c: u16) -> uint32x4_t {
+    vmlal_high_u16(a, b, vdupq_n_u16(c))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlal2))]
+pub unsafe fn vmlal_high_n_u32(a: uint64x2_t, b: uint32x4_t, c: u32) -> uint64x2_t {
+    vmlal_high_u32(a, b, vdupq_n_u32(c))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
+    static_assert_imm2!(LANE);
+    vmlal_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
+    static_assert_imm3!(LANE);
+    vmlal_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
+    static_assert_imm1!(LANE);
+    vmlal_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
+    static_assert_imm2!(LANE);
+    vmlal_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x4_t) -> uint32x4_t {
+    static_assert_imm2!(LANE);
+    vmlal_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
+    static_assert_imm3!(LANE);
+    vmlal_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x2_t) -> uint64x2_t {
+    static_assert_imm1!(LANE);
+    vmlal_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-add long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlal2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlal_high_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
+    static_assert_imm2!(LANE);
+    vmlal_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
 /// Floating-point multiply-subtract from accumulator
 #[inline]
 #[target_feature(enable = "neon")]
@@ -3024,6 +3136,118 @@ pub unsafe fn vmlsl_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uin
     let b: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
     let c: uint32x2_t = simd_shuffle2(c, c, [2, 3]);
     vmlsl_u32(a, b, c)
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlsl2))]
+pub unsafe fn vmlsl_high_n_s16(a: int32x4_t, b: int16x8_t, c: i16) -> int32x4_t {
+    vmlsl_high_s16(a, b, vdupq_n_s16(c))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlsl2))]
+pub unsafe fn vmlsl_high_n_s32(a: int64x2_t, b: int32x4_t, c: i32) -> int64x2_t {
+    vmlsl_high_s32(a, b, vdupq_n_s32(c))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlsl2))]
+pub unsafe fn vmlsl_high_n_u16(a: uint32x4_t, b: uint16x8_t, c: u16) -> uint32x4_t {
+    vmlsl_high_u16(a, b, vdupq_n_u16(c))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlsl2))]
+pub unsafe fn vmlsl_high_n_u32(a: uint64x2_t, b: uint32x4_t, c: u32) -> uint64x2_t {
+    vmlsl_high_u32(a, b, vdupq_n_u32(c))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
+    static_assert_imm2!(LANE);
+    vmlsl_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
+    static_assert_imm3!(LANE);
+    vmlsl_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
+    static_assert_imm1!(LANE);
+    vmlsl_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
+    static_assert_imm2!(LANE);
+    vmlsl_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x4_t) -> uint32x4_t {
+    static_assert_imm2!(LANE);
+    vmlsl_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
+    static_assert_imm3!(LANE);
+    vmlsl_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x2_t) -> uint64x2_t {
+    static_assert_imm1!(LANE);
+    vmlsl_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+}
+
+/// Multiply-subtract long
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umlsl2, LANE = 1))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vmlsl_high_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
+    static_assert_imm2!(LANE);
+    vmlsl_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Extract narrow
@@ -9751,6 +9975,126 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_n_s16() {
+        let a: i32x4 = i32x4::new(8, 7, 6, 5);
+        let b: i16x8 = i16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: i16 = 2;
+        let e: i32x4 = i32x4::new(8, 9, 10, 11);
+        let r: i32x4 = transmute(vmlal_high_n_s16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_n_s32() {
+        let a: i64x2 = i64x2::new(8, 7);
+        let b: i32x4 = i32x4::new(3, 3, 0, 1);
+        let c: i32 = 2;
+        let e: i64x2 = i64x2::new(8, 9);
+        let r: i64x2 = transmute(vmlal_high_n_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_n_u16() {
+        let a: u32x4 = u32x4::new(8, 7, 6, 5);
+        let b: u16x8 = u16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: u16 = 2;
+        let e: u32x4 = u32x4::new(8, 9, 10, 11);
+        let r: u32x4 = transmute(vmlal_high_n_u16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_n_u32() {
+        let a: u64x2 = u64x2::new(8, 7);
+        let b: u32x4 = u32x4::new(3, 3, 0, 1);
+        let c: u32 = 2;
+        let e: u64x2 = u64x2::new(8, 9);
+        let r: u64x2 = transmute(vmlal_high_n_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_lane_s16() {
+        let a: i32x4 = i32x4::new(8, 7, 6, 5);
+        let b: i16x8 = i16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: i16x4 = i16x4::new(0, 2, 0, 0);
+        let e: i32x4 = i32x4::new(8, 9, 10, 11);
+        let r: i32x4 = transmute(vmlal_high_lane_s16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_laneq_s16() {
+        let a: i32x4 = i32x4::new(8, 7, 6, 5);
+        let b: i16x8 = i16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: i16x8 = i16x8::new(0, 2, 0, 0, 0, 0, 0, 0);
+        let e: i32x4 = i32x4::new(8, 9, 10, 11);
+        let r: i32x4 = transmute(vmlal_high_laneq_s16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_lane_s32() {
+        let a: i64x2 = i64x2::new(8, 7);
+        let b: i32x4 = i32x4::new(3, 3, 0, 1);
+        let c: i32x2 = i32x2::new(0, 2);
+        let e: i64x2 = i64x2::new(8, 9);
+        let r: i64x2 = transmute(vmlal_high_lane_s32::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_laneq_s32() {
+        let a: i64x2 = i64x2::new(8, 7);
+        let b: i32x4 = i32x4::new(3, 3, 0, 1);
+        let c: i32x4 = i32x4::new(0, 2, 0, 0);
+        let e: i64x2 = i64x2::new(8, 9);
+        let r: i64x2 = transmute(vmlal_high_laneq_s32::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_lane_u16() {
+        let a: u32x4 = u32x4::new(8, 7, 6, 5);
+        let b: u16x8 = u16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: u16x4 = u16x4::new(0, 2, 0, 0);
+        let e: u32x4 = u32x4::new(8, 9, 10, 11);
+        let r: u32x4 = transmute(vmlal_high_lane_u16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_laneq_u16() {
+        let a: u32x4 = u32x4::new(8, 7, 6, 5);
+        let b: u16x8 = u16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: u16x8 = u16x8::new(0, 2, 0, 0, 0, 0, 0, 0);
+        let e: u32x4 = u32x4::new(8, 9, 10, 11);
+        let r: u32x4 = transmute(vmlal_high_laneq_u16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_lane_u32() {
+        let a: u64x2 = u64x2::new(8, 7);
+        let b: u32x4 = u32x4::new(3, 3, 0, 1);
+        let c: u32x2 = u32x2::new(0, 2);
+        let e: u64x2 = u64x2::new(8, 9);
+        let r: u64x2 = transmute(vmlal_high_lane_u32::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlal_high_laneq_u32() {
+        let a: u64x2 = u64x2::new(8, 7);
+        let b: u32x4 = u32x4::new(3, 3, 0, 1);
+        let c: u32x4 = u32x4::new(0, 2, 0, 0);
+        let e: u64x2 = u64x2::new(8, 9);
+        let r: u64x2 = transmute(vmlal_high_laneq_u32::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vmls_f64() {
         let a: f64 = 6.;
         let b: f64 = 2.;
@@ -9827,6 +10171,126 @@ mod test {
         let c: u32x4 = u32x4::new(3, 3, 0, 1);
         let e: u64x2 = u64x2::new(14, 13);
         let r: u64x2 = transmute(vmlsl_high_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_n_s16() {
+        let a: i32x4 = i32x4::new(14, 15, 16, 17);
+        let b: i16x8 = i16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: i16 = 2;
+        let e: i32x4 = i32x4::new(14, 13, 12, 11);
+        let r: i32x4 = transmute(vmlsl_high_n_s16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_n_s32() {
+        let a: i64x2 = i64x2::new(14, 15);
+        let b: i32x4 = i32x4::new(3, 3, 0, 1);
+        let c: i32 = 2;
+        let e: i64x2 = i64x2::new(14, 13);
+        let r: i64x2 = transmute(vmlsl_high_n_s32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_n_u16() {
+        let a: u32x4 = u32x4::new(14, 15, 16, 17);
+        let b: u16x8 = u16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: u16 = 2;
+        let e: u32x4 = u32x4::new(14, 13, 12, 11);
+        let r: u32x4 = transmute(vmlsl_high_n_u16(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_n_u32() {
+        let a: u64x2 = u64x2::new(14, 15);
+        let b: u32x4 = u32x4::new(3, 3, 0, 1);
+        let c: u32 = 2;
+        let e: u64x2 = u64x2::new(14, 13);
+        let r: u64x2 = transmute(vmlsl_high_n_u32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_lane_s16() {
+        let a: i32x4 = i32x4::new(14, 15, 16, 17);
+        let b: i16x8 = i16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: i16x4 = i16x4::new(0, 2, 0, 0);
+        let e: i32x4 = i32x4::new(14, 13, 12, 11);
+        let r: i32x4 = transmute(vmlsl_high_lane_s16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_laneq_s16() {
+        let a: i32x4 = i32x4::new(14, 15, 16, 17);
+        let b: i16x8 = i16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: i16x8 = i16x8::new(0, 2, 0, 0, 0, 0, 0, 0);
+        let e: i32x4 = i32x4::new(14, 13, 12, 11);
+        let r: i32x4 = transmute(vmlsl_high_laneq_s16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_lane_s32() {
+        let a: i64x2 = i64x2::new(14, 15);
+        let b: i32x4 = i32x4::new(3, 3, 0, 1);
+        let c: i32x2 = i32x2::new(0, 2);
+        let e: i64x2 = i64x2::new(14, 13);
+        let r: i64x2 = transmute(vmlsl_high_lane_s32::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_laneq_s32() {
+        let a: i64x2 = i64x2::new(14, 15);
+        let b: i32x4 = i32x4::new(3, 3, 0, 1);
+        let c: i32x4 = i32x4::new(0, 2, 0, 0);
+        let e: i64x2 = i64x2::new(14, 13);
+        let r: i64x2 = transmute(vmlsl_high_laneq_s32::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_lane_u16() {
+        let a: u32x4 = u32x4::new(14, 15, 16, 17);
+        let b: u16x8 = u16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: u16x4 = u16x4::new(0, 2, 0, 0);
+        let e: u32x4 = u32x4::new(14, 13, 12, 11);
+        let r: u32x4 = transmute(vmlsl_high_lane_u16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_laneq_u16() {
+        let a: u32x4 = u32x4::new(14, 15, 16, 17);
+        let b: u16x8 = u16x8::new(3, 3, 0, 1, 0, 1, 2, 3);
+        let c: u16x8 = u16x8::new(0, 2, 0, 0, 0, 0, 0, 0);
+        let e: u32x4 = u32x4::new(14, 13, 12, 11);
+        let r: u32x4 = transmute(vmlsl_high_laneq_u16::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_lane_u32() {
+        let a: u64x2 = u64x2::new(14, 15);
+        let b: u32x4 = u32x4::new(3, 3, 0, 1);
+        let c: u32x2 = u32x2::new(0, 2);
+        let e: u64x2 = u64x2::new(14, 13);
+        let r: u64x2 = transmute(vmlsl_high_lane_u32::<1>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmlsl_high_laneq_u32() {
+        let a: u64x2 = u64x2::new(14, 15);
+        let b: u32x4 = u32x4::new(3, 3, 0, 1);
+        let c: u32x4 = u32x4::new(0, 2, 0, 0);
+        let e: u64x2 = u64x2::new(14, 13);
+        let r: u64x2 = transmute(vmlsl_high_laneq_u32::<1>(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 
