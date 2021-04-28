@@ -71,7 +71,6 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`&str`]: str
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
-#[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
@@ -417,6 +416,19 @@ impl Default for OsString {
     #[inline]
     fn default() -> OsString {
         OsString::new()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for OsString {
+    #[inline]
+    fn clone(&self) -> Self {
+        OsString { inner: self.inner.clone() }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.inner.clone_from(&source.inner)
     }
 }
 
