@@ -544,3 +544,15 @@ impl fmt::Display for ToUppercase {
         fmt::Display::fmt(&self.0, f)
     }
 }
+
+/// The error type returned when a checked char conversion fails.
+#[stable(feature = "u8_from_char", since = "1.59.0")]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct TryFromCharError(pub(crate) ());
+
+#[stable(feature = "u8_from_char", since = "1.59.0")]
+impl fmt::Display for TryFromCharError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "unicode code point out of range".fmt(fmt)
+    }
+}

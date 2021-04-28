@@ -478,6 +478,9 @@ impl Error for char::DecodeUtf16Error {
     }
 }
 
+#[stable(feature = "u8_from_char", since = "1.59.0")]
+impl Error for char::TryFromCharError {}
+
 #[unstable(feature = "map_try_insert", issue = "82766")]
 impl<'a, K: Debug + Ord, V: Debug> Error
     for crate::collections::btree_map::OccupiedError<'a, K, V>
