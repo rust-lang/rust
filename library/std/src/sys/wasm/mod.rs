@@ -48,15 +48,15 @@ pub use crate::sys_common::os_str_bytes as os_str;
 
 cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
-        #[path = "condvar_atomics.rs"]
+        #[path = "atomics/condvar.rs"]
         pub mod condvar;
-        #[path = "mutex_atomics.rs"]
+        #[path = "atomics/mutex.rs"]
         pub mod mutex;
-        #[path = "rwlock_atomics.rs"]
+        #[path = "atomics/rwlock.rs"]
         pub mod rwlock;
-        #[path = "futex_atomics.rs"]
+        #[path = "atomics/futex.rs"]
         pub mod futex;
-        #[path = "thread_atomics.rs"]
+        #[path = "atomics/thread.rs"]
         pub mod thread;
     } else {
         #[path = "../unsupported/condvar.rs"]
