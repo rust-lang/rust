@@ -14,7 +14,7 @@ itertools = "0.9"
 tracing = "0.1"
 libc = "0.2.50"
 jobserver = "0.1.22"
-tempfile = "3.1"
+tempfile = "3.2"
 pathdiff = "0.2.0"
 
 rustc_serialize = { path = "../rustc_serialize" }

@@ -45,7 +45,7 @@ rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
-tempfile = "3.0.5"
+tempfile = "3.2"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["libloaderapi"] }
