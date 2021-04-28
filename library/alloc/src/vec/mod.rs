@@ -2124,8 +2124,6 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// ## Examples
     ///
     /// ```
-    /// #![feature(vec_extend_from_within)]
-    ///
     /// let mut vec = vec![0, 1, 2, 3, 4];
     ///
     /// vec.extend_from_within(2..);
@@ -2137,7 +2135,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// vec.extend_from_within(4..8);
     /// assert_eq!(vec, [0, 1, 2, 3, 4, 2, 3, 4, 0, 1, 4, 2, 3, 4]);
     /// ```
-    #[unstable(feature = "vec_extend_from_within", issue = "81656")]
+    #[stable(feature = "vec_extend_from_within", since = "1.53.0")]
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
