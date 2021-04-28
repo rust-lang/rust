@@ -42,7 +42,8 @@ macro_rules! nonzero_integers {
             pub struct $Ty($Int);
 
             impl $Ty {
-                /// Creates a non-zero without checking the value.
+                /// Creates a non-zero without checking whether the value is non-zero.
+                /// This results in undefined behaviour if the value is zero.
                 ///
                 /// # Safety
                 ///
@@ -291,7 +292,9 @@ macro_rules! nonzero_unsigned_operations {
         $(
             impl $Ty {
                 /// Add an unsigned integer to a non-zero value.
-                /// Return [`None`] on overflow.
+                /// Check for overflow and return [`None`] on overflow
+                /// As a consequence, the result cannot wrap to zero.
+                ///
                 ///
                 /// # Examples
                 ///
@@ -354,7 +357,9 @@ macro_rules! nonzero_unsigned_operations {
 
                 /// Add an unsigned integer to a non-zero value,
                 /// assuming overflow cannot occur.
-                /// This results in undefined behaviour when
+                /// Overflow is unchecked, and it is undefined behaviour to overflow
+                /// *even if the result would wrap to a non-zero value*.
+                /// The behaviour is undefined as soon as
                 #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`")]
                 #[doc = concat!(" or `self + rhs < ", stringify!($Int), "::MIN`.")]
                 ///
@@ -381,8 +386,9 @@ macro_rules! nonzero_unsigned_operations {
                 }
 
                 /// Returns the smallest power of two greater than or equal to n.
-                /// If the next power of two is greater than the type’s maximum value,
-                /// [`None`] is returned, otherwise the power of two is wrapped in [`Some`].
+                /// Check for overflow and return [`None`]
+                /// if the next power of two is greater than the type’s maximum value.
+                /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
                 ///
@@ -462,8 +468,9 @@ macro_rules! nonzero_signed_operations {
                 }
 
                 /// Checked absolute value.
-                /// Returns [`None`] if
+                /// Check for overflow and returns [`None`] if
                 #[doc = concat!("`self == ", stringify!($Int), "::MIN`.")]
+                /// The result cannot be zero.
                 ///
                 /// # Example
                 ///
@@ -647,7 +654,8 @@ macro_rules! nonzero_unsigned_signed_operations {
         $(
             impl $Ty {
                 /// Multiply two non-zero integers together.
-                /// Return [`None`] on overflow.
+                /// Check for overflow and return [`None`] on overflow.
+                /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
                 ///
@@ -712,7 +720,9 @@ macro_rules! nonzero_unsigned_signed_operations {
 
                 /// Multiply two non-zero integers together,
                 /// assuming overflow cannot occur.
-                /// This results in undefined behavior when
+                /// Overflow is unchecked, and it is undefined behaviour to overflow
+                /// *even if the result would wrap to a non-zero value*.
+                /// The behaviour is undefined as soon as
                 #[doc = concat!("`self * rhs > ", stringify!($Int), "::MAX`, ")]
                 #[doc = concat!("or `self * rhs < ", stringify!($Int), "::MIN`.")]
                 ///
@@ -739,7 +749,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 }
 
                 /// Raise non-zero value to an integer power.
-                /// Return [`None`] on overflow.
+                /// Check for overflow and return [`None`] on overflow.
+                /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
                 ///
