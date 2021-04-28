@@ -554,10 +554,8 @@ fn typeck_with_fallback<'tcx>(
                                 _ => false,
                             }) =>
                         {
-                            fcx.next_ty_var(TypeVariableOrigin {
-                                kind: TypeVariableOriginKind::MiscVariable,
-                                span,
-                            })
+                            // Inline assembly constants must be integers.
+                            fcx.next_int_var()
                         }
                         _ => fallback(),
                     },
