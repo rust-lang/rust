@@ -494,7 +494,7 @@ impl TcpStream {
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_tos(96).expect("set_tos call failed");
     /// ```
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    #[unstable(feature = "tos")]
     pub fn set_tos(&self, tos: u32) -> io::Result<()> {
         self.0.set_tos(tos)
     }
@@ -513,7 +513,7 @@ impl TcpStream {
     /// stream.set_tos(96).expect("set_tos call failed");
     /// assert_eq!(stream.tos().unwrap_or(0), 96);
     /// ```
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    #[unstable(feature = "tos")]
     pub fn tos(&self) -> io::Result<u32> {
         self.0.tos()
     }
@@ -890,7 +890,7 @@ impl TcpListener {
     /// listener.set_tos(96).expect("could not set TOS");
     /// assert_eq!(listener.tos().unwrap_or(0), 96);
     /// ```
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    #[unstable(feature = "tos")]
     pub fn tos(&self) -> io::Result<u32> {
         self.0.tos()
     }

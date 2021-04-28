@@ -581,7 +581,7 @@ impl UdpSocket {
     /// socket.set_tos(96).expect("set_tos call failed");
     /// assert_eq!(socket.tos().unwrap(), 96);
     /// ```
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
+    #[unstable(feature = "tos")]
     pub fn tos(&self) -> io::Result<u32> {
         self.0.tos()
     }
