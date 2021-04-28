@@ -42,5 +42,6 @@ impl<K, V: Default> MapLike<K, V> for Source {
 fn main() {
     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
-    //~^^ ERROR type mismatch resolving
+    //~^^ the trait `MapLike` cannot be made into an object
+    //~^^ the trait `MapLike` cannot be made into an object
 }
