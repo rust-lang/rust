@@ -382,6 +382,7 @@ mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 pub use crate::utils::conf::Conf;
+use crate::utils::conf::TryConf;
 
 /// Register all pre expansion lints
 ///
@@ -421,8 +422,7 @@ pub fn read_conf(sess: &Session) -> Conf {
         file_name
     };
 
-    let (conf, errors) = utils::conf::read(&file_name);
-
+    let TryConf { conf, errors } = utils::conf::read(&file_name);
     // all conf errors are non-fatal, we just use the default conf in case of error
     for error in errors {
         sess.struct_err(&format!(
