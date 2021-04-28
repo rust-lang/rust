@@ -21,8 +21,7 @@
 //! - libunwind may have platform-specific code.
 //! - other crates in the std facade may not.
 //! - std may have platform-specific code in the following places:
-//!   - `sys/unix/`
-//!   - `sys/windows/`
+//!   - `sys/`
 //!   - `os/`
 //!
 //! `std/sys_common` should _not_ contain platform-specific code.
@@ -36,34 +35,30 @@ use std::path::Path;
 
 // Paths that may contain platform-specific code.
 const EXCEPTION_PATHS: &[&str] = &[
-    // std crates
     "library/panic_abort",
     "library/panic_unwind",
     "library/unwind",
-    "library/std/src/sys/", // Platform-specific code for std lives here.
-    // This has the trailing slash so that sys_common is not excepted.
-    "library/std/src/os", // Platform-specific public interfaces
-    "library/rtstartup",  // Not sure what to do about this. magic stuff for mingw
-    // Integration test for platform-specific run-time feature detection:
-    "library/std/tests/run-time-detect.rs",
-    "library/std/src/net/test.rs",
-    "library/std/src/net/addr",
-    "library/std/src/net/udp",
-    "library/std/src/sys_common/remutex.rs",
-    "library/std/src/sync/mutex.rs",
-    "library/std/src/sync/rwlock.rs",
-    "library/term", // Not sure how to make this crate portable, but test crate needs it.
-    "library/test", // Probably should defer to unstable `std::sys` APIs.
-    // std testing crates, okay for now at least
-    "library/core/tests",
-    "library/alloc/tests/lib.rs",
-    "library/alloc/benches/lib.rs",
+    "library/rtstartup", // Not sure what to do about this. magic stuff for mingw
+    "library/term",      // Not sure how to make this crate portable, but test crate needs it.
+    "library/test",      // Probably should defer to unstable `std::sys` APIs.
     // The `VaList` implementation must have platform specific code.
     // The Windows implementation of a `va_list` is always a character
     // pointer regardless of the target architecture. As a result,
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
     "library/core/src/ffi.rs",
+    "library/std/src/sys/", // Platform-specific code for std lives here.
+    "library/std/src/os",   // Platform-specific public interfaces
+    // Temporary `std` exceptions
+    // FIXME: platform-specific code should be moved to `sys`
+    "library/std/src/io/copy.rs",
+    "library/std/src/io/stdio.rs",
+    "library/std/src/f32.rs",
+    "library/std/src/f64.rs",
+    "library/std/src/path.rs",
+    "library/std/src/thread/available_concurrency.rs",
+    "library/std/src/sys_common", // Should only contain abstractions over platforms
+    "library/std/src/net/test.rs", // Utility helpers for tests
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
@@ -82,6 +77,11 @@ pub fn check(path: &Path, bad: &mut bool) {
             return;
         }
 
+        // exclude tests and benchmarks as some platforms do not support all tests
+        if filestr.contains("tests") || filestr.contains("benches") {
+            return;
+        }
+
         check_cfgs(contents, &file, bad, &mut saw_target_arch, &mut saw_cfg_bang);
     });
 
@@ -96,9 +96,6 @@ fn check_cfgs(
     saw_target_arch: &mut bool,
     saw_cfg_bang: &mut bool,
 ) {
-    // For now it's ok to have platform-specific code after 'mod tests'.
-    let mod_tests_idx = find_test_mod(contents);
-    let contents = &contents[..mod_tests_idx];
     // Pull out all `cfg(...)` and `cfg!(...)` strings.
     let cfgs = parse_cfgs(contents);
 
@@ -149,39 +146,22 @@ fn check_cfgs(
             continue;
         }
 
+        // exclude tests as some platforms do not support all tests
+        if cfg.contains("test") {
+            continue;
+        }
+
         err(idx, cfg);
     }
 }
 
-fn find_test_mod(contents: &str) -> usize {
-    if let Some(mod_tests_idx) = contents.find("mod tests") {
-        // Also capture a previous line indicating that "mod tests" is cfg'd out.
-        let prev_newline_idx = contents[..mod_tests_idx].rfind('\n').unwrap_or(mod_tests_idx);
-        let prev_newline_idx = contents[..prev_newline_idx].rfind('\n');
-        if let Some(nl) = prev_newline_idx {
-            let prev_line = &contents[nl + 1..mod_tests_idx];
-            if prev_line.contains("cfg(all(test, not(target_os")
-                || prev_line.contains("cfg(all(test, not(any(target_os")
-            {
-                nl
-            } else {
-                mod_tests_idx
-            }
-        } else {
-            mod_tests_idx
-        }
-    } else {
-        contents.len()
-    }
-}
-
-fn parse_cfgs<'a>(contents: &'a str) -> Vec<(usize, &'a str)> {
+fn parse_cfgs(contents: &str) -> Vec<(usize, &str)> {
     let candidate_cfgs = contents.match_indices("cfg");
     let candidate_cfg_idxs = candidate_cfgs.map(|(i, _)| i);
     // This is puling out the indexes of all "cfg" strings
     // that appear to be tokens followed by a parenthesis.
     let cfgs = candidate_cfg_idxs.filter(|i| {
-        let pre_idx = i.saturating_sub(*i);
+        let pre_idx = i.saturating_sub(1);
         let succeeds_non_ident = !contents
             .as_bytes()
             .get(pre_idx)
