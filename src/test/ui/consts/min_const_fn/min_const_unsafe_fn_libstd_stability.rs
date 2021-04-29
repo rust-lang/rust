@@ -3,7 +3,7 @@
             we're apparently really bad at it",
             issue = "none")]
 
-#![feature(const_fn, const_fn_floating_point_arithmetic, foo, foo2)]
+#![feature(const_fn_floating_point_arithmetic, foo, foo2)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -25,7 +25,7 @@ const unsafe fn bar2() -> u32 { unsafe { foo2() } } //~ ERROR not yet stable as 
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
-// conformity is required, even with `const_fn` feature gate
+// conformity is required
 const unsafe fn bar3() -> u32 { (5f32 + 6f32) as u32 }
 //~^ ERROR const-stable function cannot use `#[feature(const_fn_floating_point_arithmetic)]`
 

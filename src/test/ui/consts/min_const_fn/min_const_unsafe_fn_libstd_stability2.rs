@@ -3,7 +3,7 @@
             we're apparently really bad at it",
             issue = "none")]
 
-#![feature(const_fn, foo, foo2)]
+#![feature(foo, foo2)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]

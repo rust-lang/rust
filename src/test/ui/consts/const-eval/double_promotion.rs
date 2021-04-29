@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(const_fn, rustc_attrs)]
+#![feature(rustc_attrs)]
 
 #[rustc_args_required_const(0)]
 pub const fn a(value: u8) -> u8 {

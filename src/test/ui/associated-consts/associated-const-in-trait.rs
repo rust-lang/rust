@@ -1,6 +1,6 @@
 // #29924
 
-#![feature(const_fn, associated_consts)]
+#![feature(associated_consts)]
 
 trait Trait {
     const N: usize;
