@@ -1,6 +1,4 @@
 // min-llvm-version: 10.0.1
-// FIXME(#84025): codegen-units=1 leads to linkage errors
-// compile-flags: -C codegen-units=2
 // only-x86_64
 // only-linux
 // run-pass
