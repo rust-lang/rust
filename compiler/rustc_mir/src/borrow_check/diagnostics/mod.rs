@@ -608,6 +608,7 @@ impl UseSpans<'_> {
         }
     }
 
+    /// Returns the span of `self`, in the case of a `ClosureUse` returns the `path_span`
     pub(super) fn var_or_use_path_span(self) -> Span {
         match self {
             UseSpans::ClosureUse { path_span: span, .. }
@@ -620,6 +621,7 @@ impl UseSpans<'_> {
         }
     }
 
+    /// Returns the span of `self`, in the case of a `ClosureUse` returns the `capture_kind_span`
     pub(super) fn var_or_use(self) -> Span {
         match self {
             UseSpans::ClosureUse { capture_kind_span: span, .. }
