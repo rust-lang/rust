@@ -314,11 +314,28 @@ impl SubPatSet {
         }
 
         match (&mut *self, other) {
-            (Seq { .. }, Seq { .. }) => {
-                todo!()
+            (Seq { subpats: s_set }, Seq { subpats: mut o_set }) => {
+                s_set.retain(|i, s_sub_set| {
+                    // Missing entries count as full.
+                    let o_sub_set = o_set.remove(&i).unwrap_or(Full);
+                    s_sub_set.union(o_sub_set);
+                    // We drop full entries.
+                    !s_sub_set.is_full()
+                });
+                // Everything left in `o_set` is missing from `s_set`, i.e. counts as full. Since
+                // unioning with full returns full, we can drop those entries.
             }
-            (Alt { .. }, Alt { .. }) => {
-                todo!()
+            (Alt { subpats: s_set, .. }, Alt { subpats: mut o_set, .. }) => {
+                s_set.retain(|i, s_sub_set| {
+                    // Missing entries count as empty.
+                    let o_sub_set = o_set.remove(&i).unwrap_or(Empty);
+                    s_sub_set.union(o_sub_set);
+                    // We drop empty entries.
+                    !s_sub_set.is_empty()
+                });
+                // Everything left in `o_set` is missing from `s_set`, i.e. counts as empty. Since
+                // unioning with empty changes nothing, we can take those entries as is.
+                s_set.extend(o_set);
             }
             _ => panic!("bug"),
         }
@@ -328,9 +345,38 @@ impl SubPatSet {
         }
     }
 
-    /// Returns a list of the spans of the unreachable subpatterns. If `self` is empty (i.e. the
+    /// Returns a list of the unreachable subpatterns. If `self` is empty (i.e. the
     /// whole pattern is unreachable) we return `None`.
-    fn list_unreachable_spans(&self) -> Option<Vec<()>> {
+    fn list_unreachable_subpatterns(&self, cx: &MatchCheckCtx<'_>) -> Option<Vec<PatId>> {
+        /// Panics if `set.is_empty()`.
+        fn fill_subpats(
+            set: &SubPatSet,
+            unreachable_pats: &mut Vec<PatId>,
+            cx: &MatchCheckCtx<'_>,
+        ) {
+            match set {
+                SubPatSet::Empty => panic!("bug"),
+                SubPatSet::Full => {}
+                SubPatSet::Seq { subpats } => {
+                    for (_, sub_set) in subpats {
+                        fill_subpats(sub_set, unreachable_pats, cx);
+                    }
+                }
+                SubPatSet::Alt { subpats, pat, alt_count, .. } => {
+                    let expanded = pat.expand_or_pat(cx);
+                    for i in 0..*alt_count {
+                        let sub_set = subpats.get(&i).unwrap_or(&SubPatSet::Empty);
+                        if sub_set.is_empty() {
+                            // Found a unreachable subpattern.
+                            unreachable_pats.push(expanded[i]);
+                        } else {
+                            fill_subpats(sub_set, unreachable_pats, cx);
+                        }
+                    }
+                }
+            }
+        }
+
         if self.is_empty() {
             return None;
         }
@@ -338,7 +384,9 @@ impl SubPatSet {
             // No subpatterns are unreachable.
             return Some(Vec::new());
         }
-        todo!()
+        let mut unreachable_pats = Vec::new();
+        fill_subpats(self, &mut unreachable_pats, cx);
+        Some(unreachable_pats)
     }
 
     /// When `self` refers to a patstack that was obtained from specialization, after running
@@ -691,10 +739,11 @@ pub(crate) enum Reachability {
     /// The arm is reachable. This additionally carries a set of or-pattern branches that have been
     /// found to be unreachable despite the overall arm being reachable. Used only in the presence
     /// of or-patterns, otherwise it stays empty.
-    Reachable(Vec<()>),
+    Reachable(Vec<PatId>),
     /// The arm is unreachable.
     Unreachable,
 }
+
 /// The output of checking a match for exhaustiveness and arm reachability.
 pub(crate) struct UsefulnessReport {
     /// For each arm of the input, whether that arm is reachable after the arms above it.
@@ -726,7 +775,7 @@ pub(crate) fn compute_match_usefulness(
             let reachability = match usefulness {
                 NoWitnesses(subpats) if subpats.is_empty() => Reachability::Unreachable,
                 NoWitnesses(subpats) => {
-                    Reachability::Reachable(subpats.list_unreachable_spans().unwrap())
+                    Reachability::Reachable(subpats.list_unreachable_subpatterns(cx).unwrap())
                 }
                 WithWitnesses(..) => panic!("bug"),
             };
