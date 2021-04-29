@@ -2,33 +2,10 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use rustc_ast::ast::{LitKind, MetaItemKind, NestedMetaItem};
-use rustc_span::source_map;
-use source_map::Span;
 use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{env, fmt, fs, io};
-
-/// Gets the configuration file from arguments.
-pub fn file_from_args(args: &[NestedMetaItem]) -> Result<Option<PathBuf>, (&'static str, Span)> {
-    for arg in args.iter().filter_map(NestedMetaItem::meta_item) {
-        if arg.has_name(sym!(conf_file)) {
-            return match arg.kind {
-                MetaItemKind::Word | MetaItemKind::List(_) => Err(("`conf_file` must be a named value", arg.span)),
-                MetaItemKind::NameValue(ref value) => {
-                    if let LitKind::Str(ref file, _) = value.kind {
-                        Ok(Some(file.to_string().into()))
-                    } else {
-                        Err(("`conf_file` value must be a string", value.span))
-                    }
-                },
-            };
-        }
-    }
-
-    Ok(None)
-}
 
 /// Error from reading a configuration file.
 #[derive(Debug)]
