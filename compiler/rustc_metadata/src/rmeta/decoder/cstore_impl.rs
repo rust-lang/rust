@@ -461,10 +461,6 @@ impl CStore {
         self.get_crate_data(def_id.krate).module_expansion(def_id.index, sess)
     }
 
-    pub fn num_def_ids(&self, cnum: CrateNum) -> usize {
-        self.get_crate_data(cnum).num_def_ids()
-    }
-
     pub fn item_attrs(&self, def_id: DefId, sess: &Session) -> Vec<ast::Attribute> {
         self.get_crate_data(def_id.krate).get_item_attrs(def_id.index, sess).collect()
     }

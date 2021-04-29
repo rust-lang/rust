@@ -113,7 +113,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             name: None,
             attrs: Default::default(),
             visibility: Inherited,
-            def_id: self.cx.next_def_id(item_def_id.krate),
+            def_id: FakeDefId::new_fake(item_def_id.krate),
             kind: box ImplItem(Impl {
                 span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,

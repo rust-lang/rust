@@ -18,7 +18,8 @@ use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
 use super::{print_sidebar, settings, AllTypes, NameDoc, StylePath, BASIC_KEYWORDS};
 
-use crate::clean::{self, ExternalCrate};
+use crate::clean;
+use crate::clean::ExternalCrate;
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -218,7 +219,7 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id) {
+            if let Some(&(ref names, ty)) = self.cache.paths.get(&it.def_id.expect_real()) {
                 let mut path = String::new();
                 for name in &names[..names.len() - 1] {
                     path.push_str(name);

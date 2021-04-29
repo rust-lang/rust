@@ -87,11 +87,6 @@ impl DefPathTable {
         hash
     }
 
-    /// Used by librustdoc for fake DefIds.
-    pub fn num_def_ids(&self) -> usize {
-        self.index_to_key.len()
-    }
-
     pub fn enumerated_keys_and_path_hashes(
         &self,
     ) -> impl Iterator<Item = (DefIndex, &DefKey, &DefPathHash)> + '_ {

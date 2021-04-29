@@ -7,7 +7,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{
-    FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
+    FakeDefId, FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
 };
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -39,7 +39,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 name: item.name.unwrap().to_string(),
                 path: fqp[..fqp.len() - 1].join("::"),
                 desc: item.doc_value().map_or_else(String::new, |s| short_markdown_summary(&s)),
-                parent: Some(did),
+                parent: Some(did.into()),
                 parent_idx: None,
                 search_type: get_index_search_type(&item, cache, tcx),
                 aliases: item.attrs.get_doc_aliases(),
@@ -82,7 +82,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                 defid_to_pathid.insert(defid, pathid);
                 lastpathid += 1;
 
-                if let Some(&(ref fqp, short)) = paths.get(&defid) {
+                if let Some(&(ref fqp, short)) = paths.get(&defid.expect_real()) {
                     crate_paths.push((short, fqp.last().unwrap().clone()));
                     Some(pathid)
                 } else {
@@ -214,7 +214,7 @@ crate fn get_index_search_type<'tcx>(
 
 fn get_index_type(clean_type: &clean::Type, cache: &Cache) -> RenderType {
     RenderType {
-        ty: clean_type.def_id_full(cache),
+        ty: clean_type.def_id_full(cache).map(FakeDefId::new_real),
         idx: None,
         name: get_index_type_name(clean_type, true).map(|s| s.as_str().to_ascii_lowercase()),
         generics: get_generics(clean_type, cache),
@@ -256,7 +256,7 @@ fn get_generics(clean_type: &clean::Type, cache: &Cache) -> Option<Vec<Generic>>
             .filter_map(|t| {
                 get_index_type_name(t, false).map(|name| Generic {
                     name: name.as_str().to_ascii_lowercase(),
-                    defid: t.def_id_full(cache),
+                    defid: t.def_id_full(cache).map(FakeDefId::new_real),
                     idx: None,
                 })
             })

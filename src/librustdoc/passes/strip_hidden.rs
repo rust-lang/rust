@@ -1,9 +1,8 @@
-use rustc_hir::def_id::DefIdSet;
 use rustc_span::symbol::sym;
 use std::mem;
 
 use crate::clean;
-use crate::clean::{Item, NestedAttributesExt};
+use crate::clean::{FakeDefIdSet, Item, NestedAttributesExt};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, StripItem};
 use crate::passes::{ImplStripper, Pass};
@@ -16,7 +15,7 @@ crate const STRIP_HIDDEN: Pass = Pass {
 
 /// Strip items marked `#[doc(hidden)]`
 crate fn strip_hidden(krate: clean::Crate, _: &mut DocContext<'_>) -> clean::Crate {
-    let mut retained = DefIdSet::default();
+    let mut retained = FakeDefIdSet::default();
 
     // strip all #[doc(hidden)] items
     let krate = {
@@ -30,7 +29,7 @@ crate fn strip_hidden(krate: clean::Crate, _: &mut DocContext<'_>) -> clean::Cra
 }
 
 struct Stripper<'a> {
-    retained: &'a mut DefIdSet,
+    retained: &'a mut FakeDefIdSet,
     update_retained: bool,
 }
 

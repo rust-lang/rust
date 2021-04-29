@@ -270,14 +270,18 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         w,
                         "<tr><td><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(myitem.def_id, &*src.as_str(), cx),
+                        anchor(myitem.def_id.expect_real(), &*src.as_str(), cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
                         "<tr><td><code>{}extern crate {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
-                        anchor(myitem.def_id, &*myitem.name.as_ref().unwrap().as_str(), cx),
+                        anchor(
+                            myitem.def_id.expect_real(),
+                            &*myitem.name.as_ref().unwrap().as_str(),
+                            cx
+                        ),
                     ),
                 }
                 w.write_str("</code></td></tr>");
@@ -290,7 +294,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item {
-                        def_id: import_def_id,
+                        def_id: import_def_id.into(),
                         attrs: import_attrs,
                         cfg: ast_attrs.cfg(cx.tcx().sess.diagnostic()),
                         ..myitem.clone()
@@ -629,7 +633,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     }
 
     // If there are methods directly on this trait object, render them here.
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All);
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All);
 
     if let Some(implementors) = cx.cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
@@ -752,7 +756,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         path = if it.def_id.is_local() {
             cx.current.join("/")
         } else {
-            let (ref path, _) = cx.cache.external_paths[&it.def_id];
+            let (ref path, _) = cx.cache.external_paths[&it.def_id.expect_real()];
             path[..path.len() - 1].join("/")
         },
         ty = it.type_(),
@@ -778,7 +782,7 @@ fn item_trait_alias(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clea
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::OpaqueTy) {
@@ -799,7 +803,7 @@ fn item_opaque_ty(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean:
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Typedef) {
@@ -820,7 +824,7 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {
@@ -866,7 +870,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             document(w, cx, field, Some(it));
         }
     }
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
@@ -1000,7 +1004,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             render_stability_since(w, variant, it, cx.tcx());
         }
     }
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
@@ -1049,7 +1053,7 @@ fn item_proc_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, m: &clean
 
 fn item_primitive(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
     document(w, cx, it, None);
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::Constant) {
@@ -1137,7 +1141,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             }
         }
     }
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
@@ -1166,7 +1170,7 @@ fn item_foreign_type(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {
 
     document(w, cx, it, None);
 
-    render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
+    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
 }
 
 fn item_keyword(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item) {

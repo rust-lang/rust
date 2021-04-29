@@ -191,7 +191,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx.cache.access_levels.map.insert(did, AccessLevel::Public);
+                        self.cx.cache.access_levels.map.insert(did.into(), AccessLevel::Public);
                     }
                 }
             }
@@ -203,7 +203,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false,
         };
 
-        let is_private = !self.cx.cache.access_levels.is_public(res_did);
+        let is_private = !self.cx.cache.access_levels.is_public(res_did.into());
         let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.

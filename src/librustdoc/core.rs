@@ -6,7 +6,7 @@ use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::HirId;
 use rustc_hir::{
     intravisit::{self, NestedVisitorMap, Visitor},
@@ -26,13 +26,11 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use std::cell::RefCell;
-use std::collections::hash_map::Entry;
 use std::mem;
 use std::rc::Rc;
 
-use crate::clean;
 use crate::clean::inline::build_external_trait;
-use crate::clean::{TraitWithExtraInfo, MAX_DEF_IDX};
+use crate::clean::{self, FakeDefId, TraitWithExtraInfo};
 use crate::config::{Options as RustdocOptions, OutputFormat, RenderOptions};
 use crate::formats::cache::Cache;
 use crate::passes::{self, Condition::*, ConditionalPass};
@@ -66,7 +64,6 @@ crate struct DocContext<'tcx> {
     crate ct_substs: FxHashMap<DefId, clean::Constant>,
     /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
     crate impl_trait_bounds: FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>,
-    crate fake_def_ids: FxHashMap<CrateNum, DefIndex>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     crate generated_synthetics: FxHashSet<(Ty<'tcx>, DefId)>,
@@ -81,7 +78,7 @@ crate struct DocContext<'tcx> {
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
-    crate inlined: FxHashSet<DefId>,
+    crate inlined: FxHashSet<FakeDefId>,
     /// Used by `calculate_doc_coverage`.
     crate output_format: OutputFormat,
 }
@@ -129,54 +126,14 @@ impl<'tcx> DocContext<'tcx> {
         r
     }
 
-    /// Create a new "fake" [`DefId`].
-    ///
-    /// This is an ugly hack, but it's the simplest way to handle synthetic impls without greatly
-    /// refactoring either rustdoc or [`rustc_middle`]. In particular, allowing new [`DefId`]s
-    /// to be registered after the AST is constructed would require storing the [`DefId`] mapping
-    /// in a [`RefCell`], decreasing the performance for normal compilation for very little gain.
-    ///
-    /// Instead, we construct "fake" [`DefId`]s, which start immediately after the last `DefId`.
-    /// In the [`Debug`] impl for [`clean::Item`], we explicitly check for fake `DefId`s,
-    /// as we'll end up with a panic if we use the `DefId` `Debug` impl for fake `DefId`s.
-    ///
-    /// [`RefCell`]: std::cell::RefCell
-    /// [`Debug`]: std::fmt::Debug
-    /// [`clean::Item`]: crate::clean::types::Item
-    crate fn next_def_id(&mut self, crate_num: CrateNum) -> DefId {
-        let def_index = match self.fake_def_ids.entry(crate_num) {
-            Entry::Vacant(e) => {
-                let num_def_idx = {
-                    let num_def_idx = if crate_num == LOCAL_CRATE {
-                        self.tcx.hir().definitions().def_path_table().num_def_ids()
-                    } else {
-                        self.resolver.borrow_mut().access(|r| r.cstore().num_def_ids(crate_num))
-                    };
-
-                    DefIndex::from_usize(num_def_idx)
-                };
-
-                MAX_DEF_IDX.with(|m| {
-                    m.borrow_mut().insert(crate_num, num_def_idx);
-                });
-                e.insert(num_def_idx)
-            }
-            Entry::Occupied(e) => e.into_mut(),
-        };
-        *def_index = *def_index + 1;
-
-        DefId { krate: crate_num, index: *def_index }
-    }
-
     /// Like `hir().local_def_id_to_hir_id()`, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<HirId> {
-        if MAX_DEF_IDX.with(|m| {
-            m.borrow().get(&def_id.krate).map(|&idx| idx <= def_id.index).unwrap_or(false)
-        }) {
-            None
-        } else {
-            def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+    crate fn as_local_hir_id(tcx: TyCtxt<'_>, def_id: FakeDefId) -> Option<HirId> {
+        match def_id {
+            FakeDefId::Real(real_id) => {
+                real_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
+            }
+            FakeDefId::Fake(_, _) => None,
         }
     }
 }
@@ -419,7 +376,6 @@ crate fn run_global_ctxt(
         lt_substs: Default::default(),
         ct_substs: Default::default(),
         impl_trait_bounds: Default::default(),
-        fake_def_ids: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits: tcx
             .all_traits(LOCAL_CRATE)
@@ -630,12 +586,12 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
 /// for `impl Trait` in argument position.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 crate enum ImplTraitParam {
-    DefId(DefId),
+    DefId(FakeDefId),
     ParamIndex(u32),
 }
 
-impl From<DefId> for ImplTraitParam {
-    fn from(did: DefId) -> Self {
+impl From<FakeDefId> for ImplTraitParam {
+    fn from(did: FakeDefId) -> Self {
         ImplTraitParam::DefId(did)
     }
 }
