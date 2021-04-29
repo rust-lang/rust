@@ -117,9 +117,12 @@ h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 }
 h1.fqn {
 	display: flex;
-	width: 100%;
 	border-bottom: 1px dashed;
 	margin-top: 0;
+
+	/* workaround to keep flex from breaking below 700 px width due to the float: right on the nav
+	   above the h1 */
+	padding-left: 1px;
 }
 h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
@@ -385,17 +388,9 @@ nav.sub {
 	position: relative;
 }
 
-#results {
-	position: absolute;
-	right: 0;
-	left: 0;
-	overflow: auto;
-}
-
 #results > table {
 	width: 100%;
 	table-layout: fixed;
-	margin-bottom: 40px;
 }
 
 .content pre.line-numbers {
@@ -453,18 +448,12 @@ nav.sub {
 }
 
 .content .out-of-band {
-	float: right;
+	flex-grow: 0;
+	text-align: right;
 	font-size: 23px;
 	margin: 0px;
-	padding: 0px;
+	padding: 0 0 0 12px;
 	font-weight: normal;
-}
-
-h1.fqn > .out-of-band {
-	float: unset;
-	flex: 1;
-	text-align: right;
-	margin-left: 8px;
 }
 
 h3.impl > .out-of-band {
@@ -486,6 +475,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 
 .content .in-band {
+	flex-grow: 1;
 	margin: 0px;
 	padding: 0px;
 }
@@ -1482,10 +1472,6 @@ h4 > .notable-traits {
 
 	.anchor {
 		display: none !important;
-	}
-
-	h1.fqn {
-		overflow: initial;
 	}
 
 	.theme-picker {
