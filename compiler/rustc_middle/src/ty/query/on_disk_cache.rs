@@ -1185,20 +1185,27 @@ where
 
     assert!(Q::query_state(tcx).all_inactive());
     let cache = Q::query_cache(tcx);
-    cache.iter_results(|results| {
-        for (key, value, dep_node) in results {
-            if Q::cache_on_disk(tcx, &key, Some(value)) {
-                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
+    let mut res = Ok(());
+    cache.iter_results(&mut |key, value, dep_node| {
+        if res.is_err() {
+            return;
+        }
+        if Q::cache_on_disk(tcx, &key, Some(value)) {
+            let dep_node = SerializedDepNodeIndex::new(dep_node.index());
 
-                // Record position of the cache entry.
-                query_result_index
-                    .push((dep_node, AbsoluteBytePos::new(encoder.encoder.position())));
+            // Record position of the cache entry.
+            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.encoder.position())));
 
-                // Encode the type check tables with the `SerializedDepNodeIndex`
-                // as tag.
-                encoder.encode_tagged(dep_node, value)?;
+            // Encode the type check tables with the `SerializedDepNodeIndex`
+            // as tag.
+            match encoder.encode_tagged(dep_node, value) {
+                Ok(()) => {}
+                Err(e) => {
+                    res = Err(e);
+                }
             }
         }
-        Ok(())
-    })
+    });
+
+    res
 }

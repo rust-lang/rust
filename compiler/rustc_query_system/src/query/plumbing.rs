@@ -73,12 +73,7 @@ impl<C: QueryCache> QueryCacheStore<C> {
         (QueryLookup { key_hash, shard }, lock)
     }
 
-    pub fn iter_results<R>(
-        &self,
-        f: impl for<'a> FnOnce(
-            &'a mut dyn Iterator<Item = (&'a C::Key, &'a C::Value, DepNodeIndex)>,
-        ) -> R,
-    ) -> R {
+    pub fn iter_results(&self, f: &mut dyn FnMut(&C::Key, &C::Value, DepNodeIndex)) {
         self.cache.iter(&self.shards, f)
     }
 }

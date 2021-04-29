@@ -49,13 +49,11 @@ pub trait QueryCache: QueryStorage {
         index: DepNodeIndex,
     ) -> Self::Stored;
 
-    fn iter<R>(
+    fn iter(
         &self,
         shards: &Sharded<Self::Sharded>,
-        f: impl for<'a> FnOnce(
-            &'a mut dyn Iterator<Item = (&'a Self::Key, &'a Self::Value, DepNodeIndex)>,
-        ) -> R,
-    ) -> R;
+        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
+    );
 }
 
 pub struct DefaultCacheSelector;
@@ -124,14 +122,17 @@ where
         value
     }
 
-    fn iter<R>(
+    fn iter(
         &self,
         shards: &Sharded<Self::Sharded>,
-        f: impl for<'a> FnOnce(&'a mut dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)>) -> R,
-    ) -> R {
+        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
+    ) {
         let shards = shards.lock_shards();
-        let mut results = shards.iter().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
-        f(&mut results)
+        for shard in shards.iter() {
+            for (k, v) in shard.iter() {
+                f(k, &v.0, v.1);
+            }
+        }
     }
 }
 
@@ -207,13 +208,16 @@ where
         &value.0
     }
 
-    fn iter<R>(
+    fn iter(
         &self,
         shards: &Sharded<Self::Sharded>,
-        f: impl for<'a> FnOnce(&'a mut dyn Iterator<Item = (&'a K, &'a V, DepNodeIndex)>) -> R,
-    ) -> R {
+        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
+    ) {
         let shards = shards.lock_shards();
-        let mut results = shards.iter().flat_map(|shard| shard.iter()).map(|(k, v)| (k, &v.0, v.1));
-        f(&mut results)
+        for shard in shards.iter() {
+            for (k, v) in shard.iter() {
+                f(k, &v.0, v.1);
+            }
+        }
     }
 }
