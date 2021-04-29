@@ -583,6 +583,19 @@ name = "clippy-mini-macro-test"
 version = "0.2.0"
 
 [[package]]
+name = "clippy_dev"
+version = "0.0.1"
+dependencies = [
+ "bytecount",
+ "clap",
+ "itertools 0.9.0",
+ "opener",
+ "regex",
+ "shell-escape",
+ "walkdir",
+]
+
+[[package]]
 name = "clippy_lints"
 version = "0.1.53"
 dependencies = [

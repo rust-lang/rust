@@ -1627,6 +1627,11 @@ impl Cargo {
     pub fn add_rustc_lib_path(&mut self, builder: &Builder<'_>, compiler: Compiler) {
         builder.add_rustc_lib_path(compiler, &mut self.command);
     }
+
+    pub fn current_dir(&mut self, dir: &Path) -> &mut Cargo {
+        self.command.current_dir(dir);
+        self
+    }
 }
 
 impl From<Cargo> for Command {
