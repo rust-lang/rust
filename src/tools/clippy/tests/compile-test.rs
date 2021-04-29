@@ -83,14 +83,7 @@ fn default_config() -> compiletest::Config {
         third_party_crates(),
     ));
 
-    config.build_base = if cargo::is_rustc_test_suite() {
-        // This make the stderr files go to clippy OUT_DIR on rustc repo build dir
-        let mut path = PathBuf::from(env!("OUT_DIR"));
-        path.push("test_build_base");
-        path
-    } else {
-        host_lib().join("test_build_base")
-    };
+    config.build_base = host_lib().join("test_build_base");
     config.rustc_path = clippy_driver_path();
     config
 }
