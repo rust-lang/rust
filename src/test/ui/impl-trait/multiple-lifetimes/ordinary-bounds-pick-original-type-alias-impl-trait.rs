@@ -3,10 +3,9 @@
 // revisions: migrate mir
 //[mir]compile-flags: -Z borrowck=mir
 
-#![feature(member_constraints)]
 #![feature(min_type_alias_impl_trait)]
-trait Trait<'a, 'b> { }
-impl<T> Trait<'_, '_> for T { }
+trait Trait<'a, 'b> {}
+impl<T> Trait<'_, '_> for T {}
 
 // Here we wind up selecting `'a` and `'b` in the hidden type because
 // those are the types that appear in the original values.
@@ -28,4 +27,4 @@ fn upper_bounds<'a, 'b>(a: &'a u8, b: &'b u8) -> Foo<'a, 'b> {
     (a, b)
 }
 
-fn main() { }
+fn main() {}

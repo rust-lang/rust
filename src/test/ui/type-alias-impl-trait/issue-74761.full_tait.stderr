@@ -1,5 +1,5 @@
 warning: the feature `type_alias_impl_trait` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/issue-74761.rs:4:32
+  --> $DIR/issue-74761.rs:3:32
    |
 LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    |                                ^^^^^^^^^^^^^^^^^^^^^
@@ -8,13 +8,13 @@ LL | #![cfg_attr(full_tait, feature(type_alias_impl_trait))]
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
 
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-74761.rs:11:6
+  --> $DIR/issue-74761.rs:10:6
    |
 LL | impl<'a, 'b> A for () {
    |      ^^ unconstrained lifetime parameter
 
 error[E0207]: the lifetime parameter `'b` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-74761.rs:11:10
+  --> $DIR/issue-74761.rs:10:10
    |
 LL | impl<'a, 'b> A for () {
    |          ^^ unconstrained lifetime parameter
