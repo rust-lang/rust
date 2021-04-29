@@ -104,7 +104,7 @@ macro_rules! impl_float_reductions {
 
 macro_rules! impl_full_mask_reductions {
     { $name:ident, $bits_ty:ident } => {
-        impl<const LANES: usize> $name<LANES>
+        impl<T: crate::Mask, const LANES: usize> $name<T, LANES>
         where
             crate::$bits_ty<LANES>: crate::LanesAtMost32
         {
@@ -125,7 +125,8 @@ macro_rules! impl_opaque_mask_reductions {
     { $name:ident, $bits_ty:ident } => {
         impl<const LANES: usize> $name<LANES>
         where
-            crate::$bits_ty<LANES>: crate::LanesAtMost32
+            crate::$bits_ty<LANES>: crate::LanesAtMost32,
+            $name<LANES>: crate::Mask,
         {
             /// Returns true if any lane is set, or false otherwise.
             #[inline]

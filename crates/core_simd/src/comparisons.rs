@@ -7,6 +7,7 @@ macro_rules! implement_mask_ops {
             where
                 crate::$vector<LANES>: LanesAtMost32,
                 crate::$inner_ty<LANES>: LanesAtMost32,
+                crate::$mask<LANES>: crate::Mask,
             {
                 /// Test if each lane is equal to the corresponding lane in `other`.
                 #[inline]

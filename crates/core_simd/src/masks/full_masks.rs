@@ -1,5 +1,8 @@
 //! Masks that take up full SIMD vector registers.
 
+use crate::Mask;
+use core::marker::PhantomData;
+
 macro_rules! define_mask {
     {
         $(#[$attr:meta])*
@@ -8,20 +11,19 @@ macro_rules! define_mask {
         );
     } => {
         $(#[$attr])*
-        #[derive(Default, PartialEq, PartialOrd, Eq, Ord, Hash)]
         #[repr(transparent)]
-        pub struct $name<const $lanes: usize>(crate::$type<$lanes2>)
+        pub struct $name<T: Mask, const $lanes: usize>(crate::$type<$lanes2>, PhantomData<T>)
         where
             crate::$type<LANES>: crate::LanesAtMost32;
 
         impl_full_mask_reductions! { $name, $type }
 
-        impl<const LANES: usize> Copy for $name<LANES>
+        impl<T: Mask, const LANES: usize> Copy for $name<T, LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {}
 
-        impl<const LANES: usize> Clone for $name<LANES>
+        impl<T: Mask, const LANES: usize> Clone for $name<T, LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {
@@ -31,18 +33,53 @@ macro_rules! define_mask {
             }
         }
 
-        impl<const LANES: usize> $name<LANES>
+        impl<T: Mask, const LANES: usize> PartialEq for $name<T, LANES>
+        where
+            crate::$type<LANES>: crate::LanesAtMost32,
+        {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        impl<T: Mask, const LANES: usize> PartialOrd for $name<T, LANES>
+        where
+            crate::$type<LANES>: crate::LanesAtMost32,
+        {
+            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+                self.0.partial_cmp(&other.0)
+            }
+        }
+
+        impl<T: Mask, const LANES: usize> Eq for $name<T, LANES>
+        where
+            crate::$type<LANES>: crate::LanesAtMost32,
+        {}
+
+        impl<T: Mask, const LANES: usize> Ord for $name<T, LANES>
+        where
+            crate::$type<LANES>: crate::LanesAtMost32,
+        {
+            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+                self.0.cmp(&other.0)
+            }
+        }
+
+        impl<T: Mask, const LANES: usize> $name<T, LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {
             pub fn splat(value: bool) -> Self {
-                Self(<crate::$type<LANES>>::splat(
-                    if value {
-                        -1
-                    } else {
-                        0
-                    }
-                ))
+                Self(
+                    <crate::$type<LANES>>::splat(
+                        if value {
+                            -1
+                        } else {
+                            0
+                        }
+                    ),
+                    PhantomData,
+                )
             }
 
             #[inline]
@@ -66,96 +103,70 @@ macro_rules! define_mask {
 
             #[inline]
             pub unsafe fn from_int_unchecked(value: crate::$type<LANES>) -> Self {
-                Self(value)
+                Self(value, PhantomData)
             }
 
             #[inline]
-            pub fn to_bitmask(self) -> u64 {
-                let mask: <crate::$type<LANES> as crate::LanesAtMost32>::BitMask = unsafe { crate::intrinsics::simd_bitmask(self.0) };
-                mask.into()
+            pub fn to_bitmask<U: crate::Mask>(self) -> U::BitMask {
+                unsafe {
+                    // TODO remove the transmute when rustc is more flexible
+                    assert_eq!(core::mem::size_of::<U::IntBitMask>(), core::mem::size_of::<U::BitMask>());
+                    let mask: U::IntBitMask = crate::intrinsics::simd_bitmask(self.0);
+                    core::mem::transmute_copy(&mask)
+                }
             }
         }
 
-        impl<const LANES: usize> core::convert::From<$name<LANES>> for crate::$type<LANES>
+        impl<T: Mask, const LANES: usize> core::convert::From<$name<T, LANES>> for crate::$type<LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {
-            fn from(value: $name<LANES>) -> Self {
+            fn from(value: $name<T, LANES>) -> Self {
                 value.0
             }
         }
 
-        impl<const LANES: usize> core::ops::BitAnd for $name<LANES>
+        impl<T: Mask, const LANES: usize> core::ops::BitAnd for $name<T, LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
             fn bitand(self, rhs: Self) -> Self {
-                Self(self.0 & rhs.0)
+                Self(self.0 & rhs.0, PhantomData)
             }
         }
 
-        impl<const LANES: usize> core::ops::BitOr for $name<LANES>
+        impl<T: Mask, const LANES: usize> core::ops::BitOr for $name<T, LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
             fn bitor(self, rhs: Self) -> Self {
-                Self(self.0 | rhs.0)
+                Self(self.0 | rhs.0, PhantomData)
             }
         }
 
-        impl<const LANES: usize> core::ops::BitXor for $name<LANES>
+        impl<T: Mask, const LANES: usize> core::ops::BitXor for $name<T, LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {
             type Output = Self;
             #[inline]
             fn bitxor(self, rhs: Self) -> Self::Output {
-                Self(self.0 ^ rhs.0)
+                Self(self.0 ^ rhs.0, PhantomData)
             }
         }
 
-        impl<const LANES: usize> core::ops::Not for $name<LANES>
+        impl<T: Mask, const LANES: usize> core::ops::Not for $name<T, LANES>
         where
             crate::$type<LANES>: crate::LanesAtMost32,
         {
-            type Output = $name<LANES>;
+            type Output = Self;
             #[inline]
             fn not(self) -> Self::Output {
-                Self(!self.0)
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitAndAssign for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            #[inline]
-            fn bitand_assign(&mut self, rhs: Self) {
-                self.0 &= rhs.0;
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitOrAssign for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            #[inline]
-            fn bitor_assign(&mut self, rhs: Self) {
-                self.0 |= rhs.0;
-            }
-        }
-
-        impl<const LANES: usize> core::ops::BitXorAssign for $name<LANES>
-        where
-            crate::$type<LANES>: crate::LanesAtMost32,
-        {
-            #[inline]
-            fn bitxor_assign(&mut self, rhs: Self) {
-                self.0 ^= rhs.0;
+                Self(!self.0, PhantomData)
             }
         }
     }

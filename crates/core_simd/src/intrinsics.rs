@@ -79,6 +79,9 @@ extern "platform-intrinsic" {
 
     // truncate integer vector to bitmask
     pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
+
+    // select
+    pub(crate) fn simd_select_bitmask<T, U>(m: T, a: U, b: U) -> U;
 }
 
 #[cfg(feature = "std")]

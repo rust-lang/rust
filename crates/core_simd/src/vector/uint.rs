@@ -1,6 +1,5 @@
 #![allow(non_camel_case_types)]
 
-
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_unsigned_vector {
     { $name:ident, $type:ty } => {
