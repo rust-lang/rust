@@ -423,6 +423,15 @@ fn map_lib_features(
                         continue;
                     }};
                 }
+
+                lazy_static::lazy_static! {
+                    static ref COMMENT_LINE: Regex = Regex::new(r"^\s*//").unwrap();
+                }
+                // exclude commented out lines
+                if COMMENT_LINE.is_match(line) {
+                    continue;
+                }
+
                 if let Some((ref name, ref mut f)) = becoming_feature {
                     if f.tracking_issue.is_none() {
                         f.tracking_issue = find_attr_val(line, "issue").and_then(handle_issue_none);
