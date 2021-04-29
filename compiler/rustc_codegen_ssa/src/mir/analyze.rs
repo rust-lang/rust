@@ -333,15 +333,22 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CleanupKind {
     NotCleanup,
-    Funclet,
-    Internal { funclet: mir::BasicBlock },
+    Funclet {
+        /// If `true`, there is at least one unwind/cleanup edge to this block.
+        /// On GNU, landing pads are only needed for unwind/cleanup edges, while
+        /// on MSVC, every funclet has to start with a cleanup pad.
+        unwind_may_land_here: bool,
+    },
+    Internal {
+        funclet: mir::BasicBlock,
+    },
 }
 
 impl CleanupKind {
     pub fn funclet_bb(self, for_bb: mir::BasicBlock) -> Option<mir::BasicBlock> {
         match self {
             CleanupKind::NotCleanup => None,
-            CleanupKind::Funclet => Some(for_bb),
+            CleanupKind::Funclet { .. } => Some(for_bb),
             CleanupKind::Internal { funclet } => Some(funclet),
         }
     }
@@ -374,7 +381,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                             "cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
                             bb, data, unwind
                         );
-                        result[unwind] = CleanupKind::Funclet;
+                        result[unwind] = CleanupKind::Funclet { unwind_may_land_here: true };
                     }
                 }
             }
@@ -405,7 +412,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
         for (bb, data) in traversal::reverse_postorder(mir) {
             let funclet = match result[bb] {
                 CleanupKind::NotCleanup => continue,
-                CleanupKind::Funclet => bb,
+                CleanupKind::Funclet { .. } => bb,
                 CleanupKind::Internal { funclet } => funclet,
             };
 
@@ -414,6 +421,8 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                 bb, data, result[bb], funclet
             );
 
+            // FIXME(eddyb) ensure there are no unwind/cleanup edges *between*
+            // cleanup blocks, as everything else assumes they're impossible.
             for &succ in data.terminator().successors() {
                 let kind = result[succ];
                 debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}", funclet, succ, kind);
@@ -421,7 +430,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                     CleanupKind::NotCleanup => {
                         result[succ] = CleanupKind::Internal { funclet };
                     }
-                    CleanupKind::Funclet => {
+                    CleanupKind::Funclet { .. } => {
                         if funclet != succ {
                             set_successor(funclet, succ);
                         }
@@ -435,7 +444,7 @@ pub fn cleanup_kinds(mir: &mir::Body<'_>) -> IndexVec<mir::BasicBlock, CleanupKi
                                 "promoting {:?} to a funclet and updating {:?}",
                                 succ, succ_funclet
                             );
-                            result[succ] = CleanupKind::Funclet;
+                            result[succ] = CleanupKind::Funclet { unwind_may_land_here: false };
                             set_successor(succ_funclet, succ);
                             set_successor(funclet, succ);
                         }

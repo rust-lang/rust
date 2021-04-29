@@ -1,3 +1,4 @@
+use super::analyze::CleanupKind;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Immediate, Pair, Ref};
 use super::place::PlaceRef;
@@ -20,8 +21,8 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
+use rustc_target::abi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, LayoutOf};
 use rustc_target::spec::abi::Abi;
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
@@ -49,16 +50,22 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     ) -> (Bx::BasicBlock, bool) {
         let span = self.terminator.source_info.span;
         let lltarget = fx.blocks[target];
-        let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
-        match (self.funclet_bb, target_funclet) {
+        let target_cleanup_kind = fx.cleanup_kinds[target];
+        match (self.funclet_bb, target_cleanup_kind.funclet_bb(target)) {
             (None, None) => (lltarget, false),
             (Some(f), Some(t_f)) if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) => {
                 (lltarget, false)
             }
-            // jump *into* cleanup - need a landing pad if GNU
-            (None, Some(_)) => (fx.landing_pad_to(target), false),
+            // Unwind *into* cleanup - need a landing/cleanup pad.
+            (None, Some(_)) => {
+                assert_eq!(
+                    target_cleanup_kind,
+                    CleanupKind::Funclet { unwind_may_land_here: true }
+                );
+                (fx.landing_pads[target].unwrap(), false)
+            }
             (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", self.terminator),
-            (Some(_), Some(_)) => (fx.landing_pad_to(target), true),
+            (Some(_), Some(_)) => (fx.landing_pads[target].unwrap(), true),
         }
     }
 
@@ -155,14 +162,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(funclet) = helper.funclet(self) {
             bx.cleanup_ret(funclet, None);
         } else {
-            let slot = self.get_personality_slot(&mut bx);
+            // FIXME(eddyb) consider not using `PlaceRef` for `slot`, to avoid
+            // having to take apart (and later put back together) the pair.
+            let slot = self.personality_slot.unwrap();
             let lp0 = slot.project_field(&mut bx, 0);
             let lp0 = bx.load_operand(lp0).immediate();
             let lp1 = slot.project_field(&mut bx, 1);
             let lp1 = bx.load_operand(lp1).immediate();
             slot.storage_dead(&mut bx);
 
-            let mut lp = bx.const_undef(self.landing_pad_type());
+            let mut lp = bx.cx().const_undef(bx.cx().type_landing_pad());
             lp = bx.insert_value(lp, lp0, 0);
             lp = bx.insert_value(lp, lp1, 1);
             bx.resume(lp);
@@ -1176,59 +1185,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
         self.caller_location.unwrap_or_else(|| span_to_caller_location(source_info.span))
-    }
-
-    fn get_personality_slot(&mut self, bx: &mut Bx) -> PlaceRef<'tcx, Bx::Value> {
-        let cx = bx.cx();
-        if let Some(slot) = self.personality_slot {
-            slot
-        } else {
-            let layout = cx.layout_of(
-                cx.tcx().intern_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types.u8), cx.tcx().types.i32]),
-            );
-            let slot = PlaceRef::alloca(bx, layout);
-            self.personality_slot = Some(slot);
-            slot
-        }
-    }
-
-    /// Returns the landing-pad wrapper around the given basic block.
-    ///
-    /// No-op in MSVC SEH scheme.
-    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> Bx::BasicBlock {
-        if let Some(block) = self.landing_pads[target_bb] {
-            return block;
-        }
-
-        let block = self.blocks[target_bb];
-        let landing_pad = self.landing_pad_uncached(block);
-        self.landing_pads[target_bb] = Some(landing_pad);
-        landing_pad
-    }
-
-    fn landing_pad_uncached(&mut self, target_bb: Bx::BasicBlock) -> Bx::BasicBlock {
-        if base::wants_msvc_seh(self.cx.sess()) {
-            span_bug!(self.mir.span, "landing pad was not inserted?")
-        }
-
-        let mut bx = self.new_block("cleanup");
-
-        let llpersonality = self.cx.eh_personality();
-        let llretty = self.landing_pad_type();
-        let lp = bx.landing_pad(llretty, llpersonality, 1);
-        bx.set_cleanup(lp);
-
-        let slot = self.get_personality_slot(&mut bx);
-        slot.storage_live(&mut bx);
-        Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
-
-        bx.br(target_bb);
-        bx.llbb()
-    }
-
-    fn landing_pad_type(&self) -> Bx::Type {
-        let cx = self.cx;
-        cx.type_struct(&[cx.type_i8p(), cx.type_i32()], false)
     }
 
     fn unreachable_block(&mut self) -> Bx::BasicBlock {

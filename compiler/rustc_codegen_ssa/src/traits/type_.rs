@@ -50,6 +50,11 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
         self.type_ptr_to_ext(self.type_i8(), address_space)
     }
 
+    // FIXME(eddyb) maybe the backend should get to control this?
+    fn type_landing_pad(&self) -> Self::Type {
+        self.type_struct(&[self.type_i8p(), self.type_i32()], false)
+    }
+
     fn type_int(&self) -> Self::Type {
         match &self.sess().target.c_int_width[..] {
             "16" => self.type_i16(),

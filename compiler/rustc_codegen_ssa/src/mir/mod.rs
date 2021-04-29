@@ -6,7 +6,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
-use rustc_target::abi::HasDataLayout;
+use rustc_target::abi::{HasDataLayout, LayoutOf};
 
 use std::iter;
 
@@ -40,7 +40,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// value used for C++ unwinding, which must filter by type: we
     /// don't really care about it very much. Anyway, this value
     /// contains an alloca into which the personality is stored and
-    /// then later loaded when generating the DIVERGE_BLOCK.
+    /// then later loaded when generating `resume` terminators.
     personality_slot: Option<PlaceRef<'tcx, Bx::Value>>,
 
     /// A `Block` for each MIR `BasicBlock`
@@ -145,15 +145,29 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut bx = Bx::new_block(cx, llfn, "start");
 
-    if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
+    let personality_slot = if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
-    }
+
+        if base::wants_msvc_seh(bx.sess()) {
+            // MSVC doesn't use landing pads.
+            None
+        } else {
+            // FIXME(eddyb) the use of `PlaceRef` requires a Rust type, and taking apart
+            // (and later putting back together) the pair, instead of treating it opaquely.
+            let layout = cx.layout_of(
+                cx.tcx().intern_tup(&[cx.tcx().mk_mut_ptr(cx.tcx().types.u8), cx.tcx().types.i32]),
+            );
+            Some(PlaceRef::alloca(&mut bx, layout))
+        }
+    } else {
+        None
+    };
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors()[mir::START_BLOCK].is_empty();
-    let block_bxs: IndexVec<mir::BasicBlock, Bx::BasicBlock> = mir
+    let block_llbbs: IndexVec<mir::BasicBlock, Bx::BasicBlock> = mir
         .basic_blocks()
         .indices()
         .map(|bb| {
@@ -165,15 +179,16 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         })
         .collect();
 
-    let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
+    let (landing_pads, funclets) =
+        landing_pads_and_funclets(&mir, &mut bx, &cleanup_kinds, &block_llbbs, personality_slot);
     let mut fx = FunctionCx {
         instance,
         mir,
         llfn,
         fn_abi,
         cx,
-        personality_slot: None,
-        blocks: block_bxs,
+        personality_slot,
+        blocks: block_llbbs,
         unreachable_block: None,
         cleanup_kinds,
         landing_pads,
@@ -273,24 +288,51 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn landing_pads_and_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     mir: &'tcx mir::Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
+    block_llbbs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
+    personality_slot: Option<PlaceRef<'tcx, Bx::Value>>,
 ) -> (
     IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
     IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
 ) {
-    iter::zip(block_bxs.iter_enumerated(), cleanup_kinds)
+    iter::zip(block_llbbs.iter_enumerated(), cleanup_kinds)
         .map(|((bb, &llbb), cleanup_kind)| {
             match *cleanup_kind {
-                CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}
+                CleanupKind::Funclet { .. } if base::wants_msvc_seh(bx.sess()) => {
+                    // (cont'd below, outside the `match`)
+                }
+
+                // GNU requires a landing pad *only* when unwinding into
+                // cleanup blocks, not when branching between them.
+                CleanupKind::Funclet { unwind_may_land_here: true } => {
+                    let mut bx = bx.build_sibling_block("cleanup");
+                    let pad_bb = bx.llbb();
+
+                    let llpersonality = bx.cx().eh_personality();
+                    let llretty = bx.cx().type_landing_pad();
+                    let lp = bx.landing_pad(llretty, llpersonality, 1);
+                    bx.set_cleanup(lp);
+
+                    // FIXME(eddyb) consider not using `PlaceRef` for `slot`, to avoid
+                    // having to take apart (and later put back together) the pair.
+                    let slot = personality_slot.unwrap();
+                    slot.storage_live(&mut bx);
+                    OperandValue::Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1))
+                        .store(&mut bx, slot);
+
+                    bx.br(llbb);
+
+                    return (Some(pad_bb), None);
+                }
+
                 _ => return (None, None),
             }
 
             let funclet;
-            let ret_llbb;
+            let pad_llbb;
             match mir[bb].terminator.as_ref().map(|t| &t.kind) {
                 // This is a basic block that we're aborting the program for,
                 // notably in an `extern` function. These basic blocks are inserted
@@ -315,7 +357,7 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 Some(&mir::TerminatorKind::Abort) => {
                     let mut cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
                     let mut cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
-                    ret_llbb = cs_bx.llbb();
+                    pad_llbb = cs_bx.llbb();
 
                     let cs = cs_bx.catch_switch(None, None, 1);
                     cs_bx.add_handler(cs, cp_bx.llbb());
@@ -333,13 +375,13 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 }
                 _ => {
                     let mut cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
-                    ret_llbb = cleanup_bx.llbb();
+                    pad_llbb = cleanup_bx.llbb();
                     funclet = cleanup_bx.cleanup_pad(None, &[]);
                     cleanup_bx.br(llbb);
                 }
             };
 
-            (Some(ret_llbb), Some(funclet))
+            (Some(pad_llbb), Some(funclet))
         })
         .unzip()
 }
