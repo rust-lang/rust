@@ -943,7 +943,7 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
         intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
         let crate_disambiguator = tcx.sess.local_crate_disambiguator();
-        let cmdline_args = tcx.sess.opts.dep_tracking_hash();
+        let cmdline_args = tcx.sess.opts.dep_tracking_hash(true);
         collector.finalize_and_compute_crate_hash(crate_disambiguator, &*tcx.cstore, cmdline_args)
     };
 

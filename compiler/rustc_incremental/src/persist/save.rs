@@ -219,7 +219,7 @@ pub fn build_dep_graph(
     }
 
     // First encode the commandline arguments hash
-    if let Err(err) = sess.opts.dep_tracking_hash().encode(&mut encoder) {
+    if let Err(err) = sess.opts.dep_tracking_hash(false).encode(&mut encoder) {
         sess.err(&format!(
             "failed to write dependency graph hash `{}`: {}",
             path_buf.display(),
