@@ -1089,6 +1089,27 @@ pub(crate) fn generic_defaults_query(
     defaults
 }
 
+pub(crate) fn generic_defaults_recover(
+    db: &dyn HirDatabase,
+    _cycle: &[String],
+    def: &GenericDefId,
+) -> Arc<[Binders<Ty>]> {
+    let generic_params = generics(db.upcast(), *def);
+
+    // we still need one default per parameter
+    let defaults = generic_params
+        .iter()
+        .enumerate()
+        .map(|(idx, _)| {
+            let ty = TyKind::Error.intern(&Interner);
+
+            crate::make_only_type_binders(idx, ty)
+        })
+        .collect();
+
+    defaults
+}
+
 fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let data = db.function_data(def);
     let resolver = def.resolver(db.upcast());
