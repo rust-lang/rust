@@ -31,6 +31,10 @@ impl IntRange {
         }
     }
 
+    fn is_singleton(&self) -> bool {
+        todo!()
+    }
+
     /// See `Constructor::is_covered_by`
     fn is_covered_by(&self, other: &Self) -> bool {
         todo!()
@@ -66,8 +70,19 @@ pub(super) enum Constructor {
     Variant(EnumVariantId),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
+    /// Ranges of floating-point literal values (`2.0..=5.2`).
+    FloatRange(ToDo),
+    /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
+    Str(ToDo),
     /// Array and slice patterns.
     Slice(Slice),
+    /// Constants that must not be matched structurally. They are treated as black
+    /// boxes for the purposes of exhaustiveness: we must not inspect them, and they
+    /// don't count towards making a match exhaustive.
+    Opaque,
+    /// Fake extra constructor for enums that aren't allowed to be matched exhaustively. Also used
+    /// for those types for which we cannot list constructors explicitly, like `f64` and `str`.
+    NonExhaustive,
     /// Stands for constructors that are not seen in the matrix, as explained in the documentation
     /// for [`SplitWildcard`].
     Missing,
@@ -154,7 +169,9 @@ impl Constructor {
             }
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
-            IntRange(_) => todo!("Constructor::split IntRange"),
+            IntRange(ctor_range) if !ctor_range.is_singleton() => {
+                todo!("Constructor::split IntRange")
+            }
             Slice(_) => todo!("Constructor::split Slice"),
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
@@ -177,11 +194,24 @@ impl Constructor {
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
 
-            (Constructor::IntRange(_), Constructor::IntRange(_)) => todo!(),
+            (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
+            (FloatRange(..), FloatRange(..)) => {
+                todo!()
+            }
+            (Str(self_val), Str(other_val)) => {
+                todo!()
+            }
+            (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
-            (Constructor::Slice(_), Constructor::Slice(_)) => todo!(),
+            // We are trying to inspect an opaque constant. Thus we skip the row.
+            (Opaque, _) | (_, Opaque) => false,
+            // Only a wildcard pattern can match the special extra constructor.
+            (NonExhaustive, _) => false,
 
-            _ => panic!("bug"),
+            _ => panic!(
+                "bug: trying to compare incompatible constructors {:?} and {:?}",
+                self, other
+            ),
         }
     }
 
@@ -206,8 +236,11 @@ impl Constructor {
                 .iter()
                 .filter_map(|c| c.as_slice())
                 .any(|other| slice.is_covered_by(other)),
-
-            _ => todo!(),
+            // This constructor is never covered by anything else
+            NonExhaustive => false,
+            Str(..) | FloatRange(..) | Opaque | Missing | Wildcard => {
+                panic!("bug: found unexpected ctor in all_ctors: {:?}", self)
+            }
         }
     }
 }
@@ -425,8 +458,11 @@ impl Fields {
                 }
                 _ => panic!("Unexpected type for `Single` constructor: {:?}", ty),
             },
-            Missing | Wildcard => Fields::Vec(Default::default()),
-            _ => todo!(),
+            Slice(slice) => {
+                todo!()
+            }
+            Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Missing
+            | Wildcard => Fields::Vec(Default::default()),
         };
         ret
     }
@@ -492,12 +528,18 @@ impl Fields {
                 // TyKind::BoundVar(_) => {}
                 // TyKind::InferenceVar(_, _) => {}
             },
-
-            _ => todo!(),
-            // Constructor::IntRange(_) => {}
-            // Constructor::Slice(_) => {}
-            // Missing => {}
-            // Wildcard => {}
+            Constructor::Slice(slice) => {
+                todo!()
+            }
+            Str(_) => todo!(),
+            FloatRange(..) => todo!(),
+            Constructor::IntRange(_) => todo!(),
+            NonExhaustive => Pat::Wild,
+            Wildcard => Pat::Wild,
+            Opaque => panic!("bug: we should not try to apply an opaque constructor"),
+            Missing => panic!(
+                "bug: trying to apply the `Missing` constructor; this should have been done in `apply_constructors`"
+            ),
         }
     }
 
