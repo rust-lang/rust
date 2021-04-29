@@ -124,6 +124,10 @@ pub fn vars() -> Vars {
 /// variables at the time of this invocation. Modifications to environment
 /// variables afterwards will not be reflected in the returned iterator.
 ///
+/// Note that the returned iterator will not check if the environment variables
+/// are valid Unicode. If you want to panic on invalid UTF-8,
+/// use the [`vars`] function instead.
+///
 /// # Examples
 ///
 /// ```
@@ -180,8 +184,9 @@ impl fmt::Debug for VarsOs {
 ///
 /// # Errors
 ///
-/// * Environment variable is not present
-/// * Environment variable is not valid unicode
+/// Errors if the environment variable is not present.
+/// Errors if the environment variable is not valid Unicode. If this is not desired, consider using
+/// [`var_os`].
 ///
 /// # Panics
 ///
@@ -220,6 +225,10 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// This function may panic if `key` is empty, contains an ASCII equals sign
 /// `'='` or the NUL character `'\0'`, or when the value contains the NUL
 /// character.
+///
+/// Note that the method will not check if the environment variable
+/// is valid Unicode. If you want to have an error on invalid UTF-8,
+/// use the [`var`] function instead.
 ///
 /// # Examples
 ///
