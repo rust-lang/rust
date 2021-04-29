@@ -171,6 +171,12 @@ impl fmt::Display for Debugger {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PanicStrategy {
+    Unwind,
+    Abort,
+}
+
 /// Configuration for compiletest
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -261,6 +267,10 @@ pub struct Config {
 
     /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Option<String>,
+
+    /// What panic strategy the target is built with.  Unwind supports Abort, but
+    /// not vice versa.
+    pub target_panic: PanicStrategy,
 
     /// Target system to be tested
     pub target: String,
