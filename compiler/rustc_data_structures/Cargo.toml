@@ -32,7 +32,6 @@ tempfile = "3.2"
 
 [dependencies.parking_lot]
 version = "0.11"
-features = ["nightly"]
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["fileapi", "psapi"] }
