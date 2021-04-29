@@ -315,17 +315,20 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                         ),
                     )
                 } else {
-                    tcx.sess
-                        .struct_span_err(
-                            hir_ty.span,
-                            &format!(
-                                "{} is forbidden as the type of a const generic parameter",
-                                unsupported_type
-                            ),
-                        )
-                        .note("the only supported types are integers, `bool` and `char`")
-                        .help("more complex types are supported with `#![feature(const_generics)]`")
-                        .emit()
+                    let mut err = tcx.sess.struct_span_err(
+                        hir_ty.span,
+                        &format!(
+                            "{} is forbidden as the type of a const generic parameter",
+                            unsupported_type
+                        ),
+                    );
+                    err.note("the only supported types are integers, `bool` and `char`");
+                    if tcx.sess.is_nightly_build() {
+                        err.help(
+                            "more complex types are supported with `#![feature(const_generics)]`",
+                        );
+                    }
+                    err.emit()
                 }
             };
 
