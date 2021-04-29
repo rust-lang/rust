@@ -9,12 +9,16 @@
 extern crate proc_macro;
 
 mod cmp;
+mod parse;
 
 use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn run(input: TokenStream) -> TokenStream {
     assert!(input.is_empty());
+
     cmp::test();
+    parse::test();
+
     TokenStream::new()
 }
