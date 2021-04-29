@@ -1,0 +1,96 @@
+SOURCE_FILE@0..96
+  STRUCT@0..28
+    STRUCT_KW@0..6 "struct"
+    WHITESPACE@6..7 " "
+    NAME@7..8
+      IDENT@7..8 "A"
+    GENERIC_PARAM_LIST@8..27
+      L_ANGLE@8..9 "<"
+      CONST_PARAM@9..26
+        CONST_KW@9..14 "const"
+        WHITESPACE@14..15 " "
+        NAME@15..16
+          IDENT@15..16 "N"
+        COLON@16..17 ":"
+        WHITESPACE@17..18 " "
+        PATH_TYPE@18..21
+          PATH@18..21
+            PATH_SEGMENT@18..21
+              NAME_REF@18..21
+                IDENT@18..21 "i32"
+        WHITESPACE@21..22 " "
+        EQ@22..23 "="
+        WHITESPACE@23..24 " "
+        CONST_ARG@24..26
+          PREFIX_EXPR@24..26
+            MINUS@24..25 "-"
+            LITERAL@25..26
+              INT_NUMBER@25..26 "1"
+      R_ANGLE@26..27 ">"
+    SEMICOLON@27..28 ";"
+  WHITESPACE@28..29 "\n"
+  STRUCT@29..57
+    STRUCT_KW@29..35 "struct"
+    WHITESPACE@35..36 " "
+    NAME@36..37
+      IDENT@36..37 "B"
+    GENERIC_PARAM_LIST@37..56
+      L_ANGLE@37..38 "<"
+      CONST_PARAM@38..55
+        CONST_KW@38..43 "const"
+        WHITESPACE@43..44 " "
+        NAME@44..45
+          IDENT@44..45 "N"
+        COLON@45..46 ":"
+        WHITESPACE@46..47 " "
+        PATH_TYPE@47..50
+          PATH@47..50
+            PATH_SEGMENT@47..50
+              NAME_REF@47..50
+                IDENT@47..50 "i32"
+        WHITESPACE@50..51 " "
+        EQ@51..52 "="
+        WHITESPACE@52..53 " "
+        CONST_ARG@53..55
+          BLOCK_EXPR@53..55
+            L_CURLY@53..54 "{"
+            R_CURLY@54..55 "}"
+      R_ANGLE@55..56 ">"
+    SEMICOLON@56..57 ";"
+  WHITESPACE@57..58 "\n"
+  STRUCT@58..95
+    STRUCT_KW@58..64 "struct"
+    WHITESPACE@64..65 " "
+    NAME@65..66
+      IDENT@65..66 "C"
+    GENERIC_PARAM_LIST@66..94
+      L_ANGLE@66..67 "<"
+      CONST_PARAM@67..93
+        CONST_KW@67..72 "const"
+        WHITESPACE@72..73 " "
+        NAME@73..74
+          IDENT@73..74 "N"
+        COLON@74..75 ":"
+        WHITESPACE@75..76 " "
+        PATH_TYPE@76..79
+          PATH@76..79
+            PATH_SEGMENT@76..79
+              NAME_REF@76..79
+                IDENT@76..79 "i32"
+        WHITESPACE@79..80 " "
+        EQ@80..81 "="
+        WHITESPACE@81..82 " "
+        CONST_ARG@82..93
+          PATH_EXPR@82..93
+            PATH@82..93
+              PATH@82..86
+                PATH_SEGMENT@82..86
+                  NAME_REF@82..86
+                    IDENT@82..86 "some"
+              COLON2@86..88 "::"
+              PATH_SEGMENT@88..93
+                NAME_REF@88..93
+                  IDENT@88..93 "CONST"
+      R_ANGLE@93..94 ">"
+    SEMICOLON@94..95 ";"
+  WHITESPACE@95..96 "\n"
