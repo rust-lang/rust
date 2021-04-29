@@ -1245,9 +1245,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     pub fn build_block(&self, bb: mir::BasicBlock) -> Bx {
-        let mut bx = Bx::with_cx(self.cx);
-        bx.position_at_end(self.blocks[bb]);
-        bx
+        Bx::position_at_end(Bx::unpositioned(self.cx), self.blocks[bb])
     }
 
     fn make_return_dest(

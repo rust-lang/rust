@@ -40,14 +40,22 @@ pub trait BuilderMethods<'a, 'tcx>:
     + HasParamEnv<'tcx>
     + HasTargetSpec
 {
+    /// IR builder (like `Self`) that doesn't have a set (insert) position, and
+    /// cannot be used until positioned (which converted it to `Self`).
+    // FIXME(eddyb) maybe move this associated type to a different trait, and/or
+    // provide an `UnpositionedBuilderMethods` trait for operations involving it.
+    type Unpositioned;
+
+    fn unpositioned(cx: &'a Self::CodegenCx) -> Self::Unpositioned;
+    fn position_at_end(bx: Self::Unpositioned, llbb: Self::BasicBlock) -> Self;
+    fn into_unpositioned(self) -> Self::Unpositioned;
+
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Function, name: &'b str) -> Self;
-    fn with_cx(cx: &'a Self::CodegenCx) -> Self;
     fn build_sibling_block(&self, name: &str) -> Self;
     fn cx(&self) -> &Self::CodegenCx;
     fn llbb(&self) -> Self::BasicBlock;
     fn set_span(&mut self, span: Span);
 
-    fn position_at_end(&mut self, llbb: Self::BasicBlock);
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);

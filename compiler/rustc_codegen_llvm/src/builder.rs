@@ -117,21 +117,36 @@ macro_rules! builder_methods_for_value_instructions {
     }
 }
 
+// HACK(eddyb) this is an easy way to avoid a complex relationship between
+// `Builder` and `UnpositionedBuilder`, even if it seems lopsided.
+pub struct UnpositionedBuilder<'a, 'll, 'tcx>(Builder<'a, 'll, 'tcx>);
+
 impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
+    type Unpositioned = UnpositionedBuilder<'a, 'll, 'tcx>;
+
+    fn unpositioned(cx: &'a CodegenCx<'ll, 'tcx>) -> Self::Unpositioned {
+        // Create a fresh builder from the crate context.
+        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
+        UnpositionedBuilder(Builder { llbuilder, cx })
+    }
+
+    fn position_at_end(bx: Self::Unpositioned, llbb: &'ll BasicBlock) -> Self {
+        unsafe {
+            llvm::LLVMPositionBuilderAtEnd(bx.0.llbuilder, llbb);
+        }
+        bx.0
+    }
+
+    fn into_unpositioned(self) -> Self::Unpositioned {
+        UnpositionedBuilder(self)
+    }
+
     fn new_block<'b>(cx: &'a CodegenCx<'ll, 'tcx>, llfn: &'ll Value, name: &'b str) -> Self {
-        let mut bx = Builder::with_cx(cx);
         let llbb = unsafe {
             let name = SmallCStr::new(name);
             llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, name.as_ptr())
         };
-        bx.position_at_end(llbb);
-        bx
-    }
-
-    fn with_cx(cx: &'a CodegenCx<'ll, 'tcx>) -> Self {
-        // Create a fresh builder from the crate context.
-        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(cx.llcx) };
-        Builder { llbuilder, cx }
+        Self::position_at_end(Self::unpositioned(cx), llbb)
     }
 
     fn build_sibling_block(&self, name: &str) -> Self {
@@ -143,12 +158,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn set_span(&mut self, _span: Span) {}
-
-    fn position_at_end(&mut self, llbb: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMPositionBuilderAtEnd(self.llbuilder, llbb);
-        }
-    }
 
     fn ret_void(&mut self) {
         unsafe {
@@ -384,9 +393,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
-        let mut bx = Builder::with_cx(self.cx);
-        bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
-        bx.dynamic_alloca(ty, align)
+        let entry_llbb = unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) };
+        Self::position_at_start(Self::unpositioned(self.cx), entry_llbb).dynamic_alloca(ty, align)
     }
 
     fn dynamic_alloca(&mut self, ty: &'ll Type, align: Align) -> &'ll Value {
@@ -1169,10 +1177,11 @@ impl Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMGetBasicBlockParent(self.llbb()) }
     }
 
-    fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
+    fn position_at_start(bx: UnpositionedBuilder<'a, 'll, 'tcx>, llbb: &'ll BasicBlock) -> Self {
         unsafe {
-            llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
+            llvm::LLVMRustPositionBuilderAtStart(bx.0.llbuilder, llbb);
         }
+        bx.0
     }
 
     pub fn minnum(&mut self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
