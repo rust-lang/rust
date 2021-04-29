@@ -91,6 +91,12 @@ pub struct LexError {
     _inner: (),
 }
 
+impl LexError {
+    fn new() -> Self {
+        LexError { _inner: () }
+    }
+}
+
 #[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
 impl fmt::Display for LexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1168,6 +1174,28 @@ impl Literal {
         }
 
         self.0.subspan(cloned_bound(range.start_bound()), cloned_bound(range.end_bound())).map(Span)
+    }
+}
+
+/// Parse a single literal from its stringified representation.
+///
+/// In order to parse successfully, the input string must not contain anything
+/// but the literal token. Specifically, it must not contain whitespace or
+/// comments in addition to the literal.
+///
+/// The resulting literal token will have a `Span::call_site()` span.
+///
+/// NOTE: some errors may cause panics instead of returning `LexError`. We
+/// reserve the right to change these errors into `LexError`s later.
+#[stable(feature = "proc_macro_literal_parse", since = "1.54.0")]
+impl FromStr for Literal {
+    type Err = LexError;
+
+    fn from_str(src: &str) -> Result<Self, LexError> {
+        match bridge::client::Literal::from_str(src) {
+            Ok(literal) => Ok(Literal(literal)),
+            Err(()) => Err(LexError::new()),
+        }
     }
 }
 
