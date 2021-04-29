@@ -1,5 +1,9 @@
 use hir_def::{
-    expr::{Pat, PatId},
+    expr::{Pat, PatId, RecordFieldPat},
+    find_path::find_path,
+    item_scope::ItemInNs,
+    path::Path,
+    type_ref::Mutability,
     AttrDefId, EnumVariantId, HasModule, VariantId,
 };
 
@@ -126,19 +130,25 @@ impl Constructor {
 
     /// Determines the constructor that the given pattern can be specialized to.
     pub(super) fn from_pat(cx: &MatchCheckCtx<'_>, pat: PatId) -> Self {
+        let ty = cx.type_of(pat);
         match &cx.pattern_arena.borrow()[pat] {
             Pat::Bind { .. } | Pat::Wild => Wildcard,
             Pat::Tuple { .. } | Pat::Ref { .. } | Pat::Box { .. } => Single,
+            Pat::Record { .. } | Pat::Path(_) | Pat::TupleStruct { .. } => {
+                let variant_id =
+                    cx.infer.variant_resolution_for_pat(pat).unwrap_or_else(|| todo!());
+                match variant_id {
+                    VariantId::EnumVariantId(id) => Variant(id),
+                    VariantId::StructId(_) | VariantId::UnionId(_) => Single,
+                }
+            }
 
+            Pat::Or(..) => panic!("bug: Or-pattern should have been expanded earlier on."),
             pat => todo!("Constructor::from_pat {:?}", pat),
             // Pat::Missing => {}
-            // Pat::Or(_) => {}
-            // Pat::Record { path, args, ellipsis } => {}
             // Pat::Range { start, end } => {}
             // Pat::Slice { prefix, slice, suffix } => {}
-            // Pat::Path(_) => {}
             // Pat::Lit(_) => {}
-            // Pat::TupleStruct { path, args, ellipsis } => {}
             // Pat::ConstBlock(_) => {}
         }
     }
@@ -435,7 +445,8 @@ impl Fields {
                     } else {
                         let variant_id = constructor.variant_id_for_adt(*adt, cx);
                         let variant = variant_id.variant_data(cx.db.upcast());
-                        let adt_is_local = variant_id.module(cx.db.upcast()).krate() == cx.krate;
+                        let adt_is_local =
+                            variant_id.module(cx.db.upcast()).krate() == cx.module.krate();
                         // Whether we must not match the fields of this variant exhaustively.
                         let is_non_exhaustive =
                             is_field_list_non_exhaustive(variant_id, cx) && !adt_is_local;
@@ -490,43 +501,44 @@ impl Fields {
             Single | Variant(_) => match pcx.ty.kind(&Interner) {
                 TyKind::Adt(..) | TyKind::Tuple(..) => {
                     // We want the real indices here.
-                    // TODO indices
+                    // TODO indices and ellipsis interaction, tests
                     let subpatterns = subpatterns_and_indices.iter().map(|&(_, pat)| pat).collect();
 
                     if let Some((adt, substs)) = pcx.ty.as_adt() {
-                        if let hir_def::AdtId::EnumId(_) = adt {
-                            todo!()
-                        } else {
-                            todo!()
+                        let item = ItemInNs::Types(adt.into());
+                        let path = find_path(pcx.cx.db.upcast(), item, pcx.cx.module)
+                            .map(|mpath| Path::from_known_path(mpath, Vec::new()).into());
+                        match adt {
+                            hir_def::AdtId::EnumId(_) => todo!(),
+                            hir_def::AdtId::StructId(id) => {
+                                let variant_data = &pcx.cx.db.struct_data(id).variant_data;
+                                let args = subpatterns_and_indices
+                                    .iter()
+                                    .zip(variant_data.fields().iter())
+                                    .map(|(&(_, pat), (_, field_data))| RecordFieldPat {
+                                        name: field_data.name.clone(),
+                                        pat,
+                                    })
+                                    .collect();
+                                Pat::Record { path, args, ellipsis: false }
+                            }
+                            hir_def::AdtId::UnionId(_) => todo!(),
                         }
                     } else {
-                        // TODO ellipsis
                         Pat::Tuple { args: subpatterns, ellipsis: None }
                     }
                 }
-
-                _ => todo!(),
-                // TyKind::AssociatedType(_, _) => {}
-                // TyKind::Scalar(_) => {}
-                // TyKind::Array(_, _) => {}
-                // TyKind::Slice(_) => {}
-                // TyKind::Raw(_, _) => {}
-                // TyKind::Ref(_, _, _) => {}
-                // TyKind::OpaqueType(_, _) => {}
-                // TyKind::FnDef(_, _) => {}
-                // TyKind::Str => {}
-                // TyKind::Never => {}
-                // TyKind::Closure(_, _) => {}
-                // TyKind::Generator(_, _) => {}
-                // TyKind::GeneratorWitness(_, _) => {}
-                // TyKind::Foreign(_) => {}
-                // TyKind::Error => {}
-                // TyKind::Placeholder(_) => {}
-                // TyKind::Dyn(_) => {}
-                // TyKind::Alias(_) => {}
-                // TyKind::Function(_) => {}
-                // TyKind::BoundVar(_) => {}
-                // TyKind::InferenceVar(_, _) => {}
+                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+                // be careful to reconstruct the correct constant pattern here. However a string
+                // literal pattern will never be reported as a non-exhaustiveness witness, so we
+                // can ignore this issue.
+                TyKind::Ref(..) => {
+                    Pat::Ref { pat: subpatterns.next().unwrap(), mutability: Mutability::Shared }
+                }
+                TyKind::Slice(..) | TyKind::Array(..) => {
+                    panic!("bug: bad slice pattern {:?} {:?}", ctor, pcx.ty)
+                }
+                _ => Pat::Wild,
             },
             Constructor::Slice(slice) => {
                 todo!()
@@ -537,9 +549,9 @@ impl Fields {
             NonExhaustive => Pat::Wild,
             Wildcard => Pat::Wild,
             Opaque => panic!("bug: we should not try to apply an opaque constructor"),
-            Missing => panic!(
-                "bug: trying to apply the `Missing` constructor; this should have been done in `apply_constructors`"
-            ),
+            Missing => {
+                panic!("bug: trying to apply the `Missing` constructor; this should have been done in `apply_constructors`")
+            }
         }
     }
 
@@ -628,30 +640,31 @@ impl Fields {
         cx: &MatchCheckCtx<'_>,
     ) -> Self {
         match &cx.pattern_arena.borrow()[pat] {
-            Pat::Ref { pat: subpattern, .. } => {
+            Pat::Ref { pat: subpattern, .. } | Pat::Box { inner: subpattern } => {
                 assert_eq!(self.len(), 1);
                 Fields::from_single_pattern(*subpattern)
             }
-            Pat::Tuple { args: subpatterns, ellipsis } => {
+            Pat::Tuple { args, ellipsis } | Pat::TupleStruct { args, ellipsis, .. } => {
                 // FIXME(iDawer) handle ellipsis.
                 // XXX(iDawer): in rustc, this is handled by HIR->TypedHIR lowering
                 // rustc_mir_build::thir::pattern::PatCtxt::lower_tuple_subpats(..)
-                self.replace_with_fieldpats(subpatterns.iter().copied())
+                self.replace_with_fieldpats(args.iter().copied())
             }
-
-            Pat::Wild => self.clone(),
-            pat => todo!("Fields::replace_with_pattern_arguments({:?})", pat),
-            // Pat::Missing => {}
-            // Pat::Or(_) => {}
-            // Pat::Record { path, args, ellipsis } => {}
-            // Pat::Range { start, end } => {}
-            // Pat::Slice { prefix, slice, suffix } => {}
-            // Pat::Path(_) => {}
-            // Pat::Lit(_) => {}
-            // Pat::Bind { mode, name, subpat } => {}
-            // Pat::TupleStruct { path, args, ellipsis } => {}
-            // Pat::Box { inner } => {}
-            // Pat::ConstBlock(_) => {}
+            Pat::Record { args, ellipsis, .. } => {
+                // FIXME(iDawer) handle ellipsis.
+                self.replace_with_fieldpats(args.iter().map(|field_pat| field_pat.pat))
+            }
+            Pat::Slice { .. } => {
+                todo!()
+            }
+            Pat::Missing
+            | Pat::Wild
+            | Pat::Or(_)
+            | Pat::Range { .. }
+            | Pat::Path(_)
+            | Pat::Lit(_)
+            | Pat::Bind { .. }
+            | Pat::ConstBlock(_) => self.clone(),
         }
     }
 }

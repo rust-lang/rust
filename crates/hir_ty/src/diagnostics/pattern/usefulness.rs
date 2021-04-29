@@ -3,11 +3,7 @@
 
 use std::{cell::RefCell, iter::FromIterator, ops::Index, sync::Arc};
 
-use base_db::CrateId;
-use hir_def::{
-    body::Body,
-    expr::{ExprId, Pat, PatId},
-};
+use hir_def::{ModuleId, body::Body, expr::{ExprId, Pat, PatId}};
 use la_arena::Arena;
 use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashMap;
@@ -24,7 +20,7 @@ use self::{
 };
 
 pub(crate) struct MatchCheckCtx<'a> {
-    pub(crate) krate: CrateId,
+    pub(crate) module: ModuleId,
     pub(crate) match_expr: ExprId,
     pub(crate) body: Arc<Body>,
     pub(crate) infer: &'a InferenceResult,

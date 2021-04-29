@@ -382,7 +382,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let pattern_arena = usefulness::PatternArena::clone_from(&body.pats);
         let cx = usefulness::MatchCheckCtx {
-            krate: self.owner.module(db.upcast()).krate(),
+            module: self.owner.module(db.upcast()),
             match_expr,
             body,
             infer: &infer,
