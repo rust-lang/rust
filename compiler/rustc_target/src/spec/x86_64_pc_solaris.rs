@@ -6,7 +6,8 @@ pub fn target() -> Target {
     base.cpu = "x86-64".to_string();
     base.vendor = "pc".to_string();
     base.max_atomic_width = Some(64);
-    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
+    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
+    base.stack_probes = StackProbeType::Call;
 
     Target {
         llvm_target: "x86_64-pc-solaris".to_string(),
