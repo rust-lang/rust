@@ -614,7 +614,8 @@ mod prim_pointer {}
 /// * replace `for ... in array.into_iter() {` with `for ... in array {`,
 ///   equivalent to the post-2021 behavior (Rust 1.53+)
 ///
-/// ```rust,edition2018
+#[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
+#[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
 /// use std::array::IntoIter;
 ///
 /// let array: [i32; 3] = [0; 3];
