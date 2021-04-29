@@ -5,7 +5,10 @@ set -eu
 # This is not a very smart script
 if [ $# != 2 ]; then
   echo "usage: $0 <since> <number-of-prs-merged>"
-  if [ $# = 1 ] ; then
+  if [ $# = 0 ]; then
+    echo "help: you can find the last check-in at" \
+         "https://rust-lang.zulipchat.com/#narrow/stream/238009-t-compiler.2Fmeetings/search/wg-rustc-dev-guide"
+  elif [ $# = 1 ] ; then
     echo "help: you can find the number of PRs merged at" \
          "https://github.com/rust-lang/rustc-dev-guide/pulls?q=is%3Apr+is%3Amerged+updated%3A%3E$1"
   fi
