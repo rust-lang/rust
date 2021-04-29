@@ -1,4 +1,4 @@
-use proc_macro::{LineColumn, Punct};
+use proc_macro::{LineColumn, Punct, Spacing};
 
 pub fn test() {
     test_line_column_ord();
@@ -14,8 +14,8 @@ fn test_line_column_ord() {
 }
 
 fn test_punct_eq() {
-    // Good enough if it typechecks, since proc_macro::Punct can't exist in a test.
-    fn _check(punct: Punct) {
-        let _ = punct == ':';
-    }
+    let colon_alone = Punct::new(':', Spacing::Alone);
+    assert_eq!(colon_alone, ':');
+    let colon_joint = Punct::new(':', Spacing::Joint);
+    assert_eq!(colon_joint, ':');
 }
