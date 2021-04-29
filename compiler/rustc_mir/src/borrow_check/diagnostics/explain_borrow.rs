@@ -112,7 +112,7 @@ impl BorrowExplanation {
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
                 // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
-                if path_span.map_or(true, |path_span| path_span == var_or_use_span) {
+                if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
                     err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
                 } else {
                     // path_span must be `Some` as otherwise the if condition is true
