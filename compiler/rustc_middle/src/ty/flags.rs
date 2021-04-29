@@ -59,6 +59,10 @@ impl FlagComputation {
     {
         let mut computation = FlagComputation::new();
 
+        if !value.bound_vars().is_empty() {
+            computation.flags = computation.flags | TypeFlags::HAS_RE_LATE_BOUND;
+        }
+
         f(&mut computation, value.skip_binder());
 
         self.add_flags(computation.flags);
