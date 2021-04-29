@@ -3,6 +3,7 @@
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::sys::unsupported;
 use crate::time::Duration;
 
@@ -61,6 +62,13 @@ impl Thread {
     pub fn join(self) {
         self.0
     }
+}
+
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    Err(io::Error::new_const(
+        io::ErrorKind::NotFound,
+        &"The number of hardware threads is not known for the target platform",
+    ))
 }
 
 pub mod guard {

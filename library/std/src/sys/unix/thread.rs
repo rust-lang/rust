@@ -2,6 +2,7 @@ use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::ptr;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
@@ -195,6 +196,88 @@ impl Drop for Thread {
     fn drop(&mut self) {
         let ret = unsafe { libc::pthread_detach(self.id) };
         debug_assert_eq!(ret, 0);
+    }
+}
+
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    cfg_if::cfg_if! {
+        if #[cfg(any(
+            target_os = "android",
+            target_os = "emscripten",
+            target_os = "fuchsia",
+            target_os = "ios",
+            target_os = "linux",
+            target_os = "macos",
+            target_os = "solaris",
+            target_os = "illumos",
+        ))] {
+            match unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) } {
+                -1 => Err(io::Error::last_os_error()),
+                0 => Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform")),
+                cpus => Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) }),
+            }
+        } else if #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))] {
+            use crate::ptr;
+
+            let mut cpus: libc::c_uint = 0;
+            let mut cpus_size = crate::mem::size_of_val(&cpus);
+
+            unsafe {
+                cpus = libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as libc::c_uint;
+            }
+
+            // Fallback approach in case of errors or no hardware threads.
+            if cpus < 1 {
+                let mut mib = [libc::CTL_HW, libc::HW_NCPU, 0, 0];
+                let res = unsafe {
+                    libc::sysctl(
+                        mib.as_mut_ptr(),
+                        2,
+                        &mut cpus as *mut _ as *mut _,
+                        &mut cpus_size as *mut _ as *mut _,
+                        ptr::null_mut(),
+                        0,
+                    )
+                };
+
+                // Handle errors if any.
+                if res == -1 {
+                    return Err(io::Error::last_os_error());
+                } else if cpus == 0 {
+                    return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
+                }
+            }
+            Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
+        } else if #[cfg(target_os = "openbsd")] {
+            use crate::ptr;
+
+            let mut cpus: libc::c_uint = 0;
+            let mut cpus_size = crate::mem::size_of_val(&cpus);
+            let mut mib = [libc::CTL_HW, libc::HW_NCPU, 0, 0];
+
+            let res = unsafe {
+                libc::sysctl(
+                    mib.as_mut_ptr(),
+                    2,
+                    &mut cpus as *mut _ as *mut _,
+                    &mut cpus_size as *mut _ as *mut _,
+                    ptr::null_mut(),
+                    0,
+                )
+            };
+
+            // Handle errors if any.
+            if res == -1 {
+                return Err(io::Error::last_os_error());
+            } else if cpus == 0 {
+                return Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"));
+            }
+
+            Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
+        } else {
+            // FIXME: implement on vxWorks, Redox, Haiku, l4re
+            Err(io::Error::new_const(io::ErrorKind::NotFound, &"The number of hardware threads is not known for the target platform"))
+        }
     }
 }
 

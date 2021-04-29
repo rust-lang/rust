@@ -3,6 +3,7 @@
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
+use crate::num::NonZeroUsize;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::thread_local_dtor::run_dtors;
 use crate::time::Duration;
@@ -93,6 +94,13 @@ impl Thread {
         mem::forget(self);
         id
     }
+}
+
+pub fn available_concurrency() -> io::Result<NonZeroUsize> {
+    Err(io::Error::new_const(
+        io::ErrorKind::NotFound,
+        &"The number of hardware threads is not known for the target platform",
+    ))
 }
 
 pub mod guard {
