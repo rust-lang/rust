@@ -388,13 +388,6 @@ nav.sub {
 	position: relative;
 }
 
-#results {
-	position: absolute;
-	right: 0;
-	left: 0;
-	overflow: auto;
-}
-
 #results > table {
 	width: 100%;
 	table-layout: fixed;
