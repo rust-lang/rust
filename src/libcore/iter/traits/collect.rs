@@ -209,11 +209,11 @@ pub trait FromIterator<A>: Sized {
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
     #[stable(feature = "rust1", since = "1.0.0")]
-    type Item;
+    type Item = Self::IntoIter::Item;
 
     /// Which kind of iterator are we turning this into?
     #[stable(feature = "rust1", since = "1.0.0")]
-    type IntoIter: Iterator<Item=Self::Item>;
+    type IntoIter: Iterator;
 
     /// Creates an iterator from a value.
     ///
