@@ -51,11 +51,11 @@ impl<'a> MatchCheckCtx<'a> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub(super) struct PatCtxt<'a> {
     pub(super) cx: &'a MatchCheckCtx<'a>,
     /// Type of the current column under investigation.
-    pub(super) ty: Ty,
+    pub(super) ty: &'a Ty,
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
@@ -223,7 +223,7 @@ impl Matrix {
     /// This computes `S(constructor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: &PatCtxt<'_>,
+        pcx: PatCtxt<'_>,
         ctor: &Constructor,
         ctor_wild_subpatterns: &Fields,
     ) -> Matrix {
@@ -447,7 +447,7 @@ impl Usefulness {
     /// with the results of specializing with the other constructors.
     fn apply_constructor(
         self,
-        pcx: &PatCtxt<'_>,
+        pcx: PatCtxt<'_>,
         matrix: &Matrix,
         ctor: &Constructor,
         ctor_wild_subpatterns: &Fields,
@@ -555,7 +555,7 @@ impl Witness {
     /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
     fn apply_constructor(
         mut self,
-        pcx: &PatCtxt<'_>,
+        pcx: PatCtxt<'_>,
         ctor: &Constructor,
         ctor_wild_subpatterns: &Fields,
     ) -> Self {
@@ -623,7 +623,7 @@ fn is_useful(
     // FIXME(Nadrieril): Hack to work around type normalization issues (see rust-lang/rust#72476).
     // TODO(iDawer): ty.strip_references()  ?
     let ty = matrix.heads().next().map_or(cx.type_of(v.head()), |r| cx.type_of(r));
-    let pcx = PatCtxt { cx, ty, is_top_level };
+    let pcx = PatCtxt { cx, ty: &ty, is_top_level };
 
     // If the first pattern is an or-pattern, expand it.
     let ret = if v.head().is_or_pat(cx) {
@@ -657,20 +657,20 @@ fn is_useful(
         // }
 
         // We split the head constructor of `v`.
-        let split_ctors = v_ctor.split(&pcx, matrix.head_ctors(cx));
+        let split_ctors = v_ctor.split(pcx, matrix.head_ctors(cx));
         // For each constructor, we compute whether there's a value that starts with it that would
         // witness the usefulness of `v`.
         let start_matrix = matrix;
         let usefulnesses = split_ctors.into_iter().map(|ctor| {
             // debug!("specialize({:?})", ctor);
             // We cache the result of `Fields::wildcards` because it is used a lot.
-            let ctor_wild_subpatterns = Fields::wildcards(&pcx, &ctor);
+            let ctor_wild_subpatterns = Fields::wildcards(pcx, &ctor);
             let spec_matrix =
-                start_matrix.specialize_constructor(&pcx, &ctor, &ctor_wild_subpatterns);
+                start_matrix.specialize_constructor(pcx, &ctor, &ctor_wild_subpatterns);
             let v = v.pop_head_constructor(&ctor_wild_subpatterns, cx);
             let usefulness =
                 is_useful(cx, &spec_matrix, &v, witness_preference, is_under_guard, false);
-            usefulness.apply_constructor(&pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
+            usefulness.apply_constructor(pcx, start_matrix, &ctor, &ctor_wild_subpatterns)
         });
         Usefulness::merge(witness_preference, usefulnesses)
     };

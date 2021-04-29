@@ -373,12 +373,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
             db.body_with_source_map(self.owner);
 
-        let match_expr_ty = if infer.type_of_expr[match_expr].is_unknown() {
+        let _match_expr_ty = if infer.type_of_expr[match_expr].is_unknown() {
             return;
         } else {
             &infer.type_of_expr[match_expr]
         };
-        // eprintln!("ExprValidator::validate_match2({:?})", match_expr_ty.kind(&Interner));
+        // eprintln!("ExprValidator::validate_match2({:?})", _match_expr_ty.kind(&Interner));
 
         let pattern_arena = usefulness::PatternArena::clone_from(&body.pats);
         let cx = usefulness::MatchCheckCtx {

@@ -143,7 +143,7 @@ impl Constructor {
     /// matrix, unless all of them are.
     pub(super) fn split<'a>(
         &self,
-        pcx: &PatCtxt<'_>,
+        pcx: PatCtxt<'_>,
         ctors: impl Iterator<Item = &'a Constructor> + Clone,
     ) -> SmallVec<[Self; 1]> {
         match self {
@@ -166,7 +166,7 @@ impl Constructor {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(super) fn is_covered_by(&self, pcx: &PatCtxt<'_>, other: &Self) -> bool {
+    pub(super) fn is_covered_by(&self, pcx: PatCtxt<'_>, other: &Self) -> bool {
         // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
@@ -188,7 +188,7 @@ impl Constructor {
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
     /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
     /// assumed to have been split from a wildcard.
-    fn is_covered_by_any(&self, pcx: &PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
+    fn is_covered_by_any(&self, pcx: PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
         if used_ctors.is_empty() {
             return false;
         }
@@ -236,7 +236,7 @@ pub(super) struct SplitWildcard {
 }
 
 impl SplitWildcard {
-    pub(super) fn new(pcx: &PatCtxt<'_>) -> Self {
+    pub(super) fn new(pcx: PatCtxt<'_>) -> Self {
         // let cx = pcx.cx;
         // let make_range = |start, end| IntRange(todo!());
 
@@ -260,7 +260,7 @@ impl SplitWildcard {
     /// do what you want.
     pub(super) fn split<'a>(
         &mut self,
-        pcx: &PatCtxt<'_>,
+        pcx: PatCtxt<'_>,
         ctors: impl Iterator<Item = &'a Constructor> + Clone,
     ) {
         // Since `all_ctors` never contains wildcards, this won't recurse further.
@@ -270,21 +270,21 @@ impl SplitWildcard {
     }
 
     /// Whether there are any value constructors for this type that are not present in the matrix.
-    fn any_missing(&self, pcx: &PatCtxt<'_>) -> bool {
+    fn any_missing(&self, pcx: PatCtxt<'_>) -> bool {
         self.iter_missing(pcx).next().is_some()
     }
 
     /// Iterate over the constructors for this type that are not present in the matrix.
     pub(super) fn iter_missing<'a>(
         &'a self,
-        pcx: &'a PatCtxt<'_>,
+        pcx: PatCtxt<'a>,
     ) -> impl Iterator<Item = &'a Constructor> {
         self.all_ctors.iter().filter(move |ctor| !ctor.is_covered_by_any(pcx, &self.matrix_ctors))
     }
 
     /// Return the set of constructors resulting from splitting the wildcard. As explained at the
     /// top of the file, if any constructors are missing we can ignore the present ones.
-    fn into_ctors(self, pcx: &PatCtxt<'_>) -> SmallVec<[Constructor; 1]> {
+    fn into_ctors(self, pcx: PatCtxt<'_>) -> SmallVec<[Constructor; 1]> {
         if self.any_missing(pcx) {
             // Some constructors are missing, thus we can specialize with the special `Missing`
             // constructor, which stands for those constructors that are not seen in the matrix,
@@ -313,7 +313,7 @@ impl SplitWildcard {
             //
             // The exception is: if we are at the top-level, for example in an empty match, we
             // sometimes prefer reporting the list of constructors instead of just `_`.
-            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(&pcx.ty);
+            let report_when_all_missing = pcx.is_top_level && !IntRange::is_integral(pcx.ty);
             let ctor = if !self.matrix_ctors.is_empty() || report_when_all_missing {
                 Missing
             } else {
@@ -381,8 +381,8 @@ impl Fields {
         Fields::Vec(pats)
     }
 
-    pub(crate) fn wildcards(pcx: &PatCtxt<'_>, constructor: &Constructor) -> Self {
-        let ty = &pcx.ty;
+    pub(crate) fn wildcards(pcx: PatCtxt<'_>, constructor: &Constructor) -> Self {
+        let ty = pcx.ty;
         let cx = pcx.cx;
         let wildcard_from_ty = |ty| cx.alloc_pat(Pat::Wild, ty);
 
@@ -446,7 +446,7 @@ impl Fields {
     /// `ty`: `Option<bool>`
     /// `self`: `[false]`
     /// returns `Some(false)`
-    pub(super) fn apply(self, pcx: &PatCtxt<'_>, ctor: &Constructor) -> Pat {
+    pub(super) fn apply(self, pcx: PatCtxt<'_>, ctor: &Constructor) -> Pat {
         let subpatterns_and_indices = self.patterns_and_indices();
         let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p);
 
