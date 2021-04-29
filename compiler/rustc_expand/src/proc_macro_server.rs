@@ -19,6 +19,11 @@ use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 use smallvec::{smallvec, SmallVec};
 use std::ops::{Bound, Range};
+use std::{path, ascii, panic};
+use pm::bridge::{
+    server, DelimSpan, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
+};
+use pm::{Delimiter, Level, LineColumn};
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -402,8 +407,8 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             .insert((Symbol::intern(var), value.map(Symbol::intern)));
     }
 
-    fn track_path(&mut self, path: &str) {
-        self.sess().file_depinfo.borrow_mut().insert(Symbol::intern(path));
+    fn track_fs_path(&mut self, path: &str) {
+        self.sess().file_depinfo.borrow_mut().insert(path::PathBuf::from(path));
     }
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, ()> {

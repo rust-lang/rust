@@ -1458,9 +1458,34 @@ impl fmt::Debug for Literal {
     }
 }
 
-/// Tracked access to environment variables.
-#[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
-pub mod tracked_env {
+#[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
+/// Tracked access to env and path.
+pub mod tracked {
+    #[unstable(feature = "proc_macro_tracked_path", issue = "73921")]
+    use std::path::Path;
+
+    /// Track a file as if it was a dependency.
+    ///
+    /// The file is located relative to the current file where the proc-macro
+    /// is used (similarly to how modules are found). The provided path is
+    /// interpreted in a platform-specific way at compile time. So, for
+    /// instance, an invocation with a Windows path
+    /// containing backslashes `\` would not compile correctly on Unix.
+    ///
+    /// Errors if the provided `Path` cannot be encoded as a `str`
+    ///
+    /// Commonly used for tracking asset preprocessing.
+    #[unstable(feature = "proc_macro_tracked_path", issue = "73921")]
+    pub fn path<P: AsRef<Path>>(path: P) -> Result<(), ()> {
+        let path: &Path = path.as_ref();
+        if let Some(path) = path.to_str() {
+            crate::bridge::client::FreeFunctions::track_fs_path(path);
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
     use std::env::{self, VarError};
     use std::ffi::OsStr;
 
@@ -1469,25 +1494,11 @@ pub mod tracked_env {
     /// compilation, and will be able to rerun the build when the value of that variable changes.
     /// Besides the dependency tracking this function should be equivalent to `env::var` from the
     /// standard library, except that the argument must be UTF-8.
-    #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
-    pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
+    #[unstable(feature = "proc_macro_tracked_env", issue = "74690")]
+    pub fn env_var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
         let value = env::var(key);
         crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
-    }
-}
-
-/// Tracked access to additional files.
-#[unstable(feature = "track_path", issue = "99515")]
-pub mod tracked_path {
-
-    /// Track a file explicitly.
-    ///
-    /// Commonly used for tracking asset preprocessing.
-    #[unstable(feature = "track_path", issue = "99515")]
-    pub fn path<P: AsRef<str>>(path: P) {
-        let path: &str = path.as_ref();
-        crate::bridge::client::FreeFunctions::track_path(path);
     }
 }

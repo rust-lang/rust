@@ -16,6 +16,7 @@ use std::mem;
 use std::ops::Bound;
 use std::ops::Range;
 use std::panic;
+use std::path;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Once;
 use std::thread;
@@ -56,7 +57,7 @@ macro_rules! with_api {
             FreeFunctions {
                 fn drop($self: $S::FreeFunctions);
                 fn track_env_var(var: &str, value: Option<&str>);
-                fn track_path(path: &str);
+                fn track_fs_path(path: &str);
                 fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
                 fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
             },
@@ -300,6 +301,7 @@ mark_noop! {
     LitKind,
     Level,
     Spacing,
+    path::PathBuf,
 }
 
 rpc_encode_decode!(
