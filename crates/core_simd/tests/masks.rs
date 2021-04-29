@@ -70,10 +70,10 @@ macro_rules! test_mask_api {
             fn to_bitmask() {
                 let values = [
                     true, false, false, true, false, false, true, false,
-                    false, false, false, false, false, false, false, false,
+                    true, true, false, false, false, false, false, true,
                 ];
                 let mask = core_simd::$name::<16>::from_array(values);
-                assert_eq!(mask.to_bitmask(), [0b01001001, 0]);
+                assert_eq!(mask.to_bitmask(), [0b01001001, 0b10000011]);
             }
         }
     }

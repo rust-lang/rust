@@ -112,7 +112,18 @@ macro_rules! define_mask {
                     // TODO remove the transmute when rustc is more flexible
                     assert_eq!(core::mem::size_of::<U::IntBitMask>(), core::mem::size_of::<U::BitMask>());
                     let mask: U::IntBitMask = crate::intrinsics::simd_bitmask(self.0);
-                    core::mem::transmute_copy(&mask)
+                    let mut bitmask: U::BitMask = core::mem::transmute_copy(&mask);
+
+                    // There is a bug where LLVM appears to implement this operation with the wrong
+                    // bit order.
+                    // TODO fix this in a better way
+                    if cfg!(any(target_arch = "mips", target_arch = "mips64")) {
+                        for x in bitmask.as_mut() {
+                            *x = x.reverse_bits();
+                        }
+                    }
+
+                    bitmask
                 }
             }
         }
