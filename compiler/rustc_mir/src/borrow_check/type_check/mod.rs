@@ -97,7 +97,7 @@ mod relate_tys;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
-/// be proven. This result is includes liveness constraints that
+/// be proven. This result includes liveness constraints that
 /// ensure that regions appearing in the types of all local variables
 /// are live at all points where that local variable may later be
 /// used.
