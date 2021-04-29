@@ -1047,6 +1047,44 @@ impl<T> Option<T> {
     {
         Some(f(self?, other?))
     }
+
+    /// Merges `self` with anpther `Option`.
+    ///
+    /// Returns
+    /// - `Some(f(l, r))` if both options are `Some(_)`
+    /// - `Some(x)` if either of the options is `Some(x)` and the other is `None`
+    /// - `None` if both options are `None`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_merge)]
+    /// use std::ops::Add;
+    /// use std::cmp::min;
+    ///
+    /// let x = Some(2);
+    /// let y = Some(4);
+    ///
+    /// assert_eq!(x.merge(y, Add::add), Some(6));
+    /// assert_eq!(x.merge(y, min), Some(2));
+    ///
+    /// assert_eq!(x.merge(None, Add::add), x);
+    /// assert_eq!(None.merge(y, min), y);
+    ///
+    /// assert_eq!(None.merge(None, i32::add), None);
+    /// ```
+    ///
+    #[unstable(feature = "option_merge", issue = "none")]
+    pub fn merge<F>(self, other: Option<T>, f: F) -> Option<T>
+    where
+        F: FnOnce(T, T) -> T,
+    {
+        match (self, other) {
+            (Some(l), Some(r)) => Some(f(l, r)),
+            (x @ Some(_), None) | (None, x @ Some(_)) => x,
+            (None, None) => None,
+        }
+    }
 }
 
 impl<T: Copy> Option<&T> {
