@@ -1,13 +1,12 @@
 use std::collections::BTreeMap;
 use std::mem;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
 
 use crate::clean::{self, GetDefId};
 use crate::fold::DocFolder;
@@ -71,7 +70,7 @@ crate struct Cache {
     crate implementors: FxHashMap<DefId, Vec<Impl>>,
 
     /// Cache of where external crate documentation can be found.
-    crate extern_locations: FxHashMap<CrateNum, (Symbol, PathBuf, ExternalLocation)>,
+    crate extern_locations: FxHashMap<CrateNum, ExternalLocation>,
 
     /// Cache of where documentation for primitives can be found.
     crate primitive_locations: FxHashMap<clean::PrimitiveType, DefId>,
@@ -157,10 +156,7 @@ impl Cache {
             let name = e.name(tcx);
             let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
-            self.extern_locations.insert(
-                n,
-                (name, e.src_root(tcx), e.location(extern_url, tcx.get_attrs(did), &dst, tcx)),
-            );
+            self.extern_locations.insert(n, e.location(extern_url, &dst, tcx));
             self.external_paths.insert(did, (vec![name.to_string()], ItemType::Module));
         }
 

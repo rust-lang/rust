@@ -18,7 +18,7 @@ use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
 use super::{print_sidebar, settings, AllTypes, NameDoc, StylePath, BASIC_KEYWORDS};
 
-use crate::clean;
+use crate::clean::{self, ExternalCrate};
 use crate::config::RenderOptions;
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
@@ -304,12 +304,16 @@ impl<'tcx> Context<'tcx> {
             }
         } else {
             let (krate, src_root) = match *self.cache.extern_locations.get(&cnum)? {
-                (name, ref src, ExternalLocation::Local) => (name, src),
-                (name, ref src, ExternalLocation::Remote(ref s)) => {
-                    root = s.to_string();
-                    (name, src)
+                ExternalLocation::Local => {
+                    let e = ExternalCrate { crate_num: cnum };
+                    (e.name(self.tcx()), e.src_root(self.tcx()))
                 }
-                (_, _, ExternalLocation::Unknown) => return None,
+                ExternalLocation::Remote(ref s) => {
+                    root = s.to_string();
+                    let e = ExternalCrate { crate_num: cnum };
+                    (e.name(self.tcx()), e.src_root(self.tcx()))
+                }
+                ExternalLocation::Unknown => return None,
             };
 
             sources::clean_path(&src_root, file, false, |component| {

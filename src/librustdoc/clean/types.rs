@@ -106,38 +106,39 @@ impl ExternalCrate {
     crate fn location(
         &self,
         extern_url: Option<&str>,
-        ast_attrs: &[ast::Attribute],
         dst: &std::path::Path,
         tcx: TyCtxt<'_>,
     ) -> ExternalLocation {
         use ExternalLocation::*;
+
+        fn to_remote(url: impl ToString) -> ExternalLocation {
+            let mut url = url.to_string();
+            if !url.ends_with('/') {
+                url.push('/');
+            }
+            Remote(url)
+        }
+
         // See if there's documentation generated into the local directory
+        // WARNING: since rustdoc creates these directories as it generates documentation, this check is only accurate before rendering starts.
+        // Make sure to call `location()` by that time.
         let local_location = dst.join(&*self.name(tcx).as_str());
         if local_location.is_dir() {
             return Local;
         }
 
         if let Some(url) = extern_url {
-            let mut url = url.to_string();
-            if !url.ends_with('/') {
-                url.push('/');
-            }
-            return Remote(url);
+            return to_remote(url);
         }
 
         // Failing that, see if there's an attribute specifying where to find this
         // external crate
-        ast_attrs
+        let did = DefId { krate: self.crate_num, index: CRATE_DEF_INDEX };
+        tcx.get_attrs(did)
             .lists(sym::doc)
             .filter(|a| a.has_name(sym::html_root_url))
             .filter_map(|a| a.value_str())
-            .map(|url| {
-                let mut url = url.to_string();
-                if !url.ends_with('/') {
-                    url.push('/')
-                }
-                Remote(url)
-            })
+            .map(to_remote)
             .next()
             .unwrap_or(Unknown) // Well, at least we tried.
     }
@@ -433,7 +434,7 @@ impl Item {
                         let relative_to = &cx.current;
                         if let Some(ref fragment) = *fragment {
                             let url = match cx.cache().extern_locations.get(&self.def_id.krate) {
-                                Some(&(_, _, ExternalLocation::Local)) => {
+                                Some(ExternalLocation::Local) => {
                                     if relative_to[0] == "std" {
                                         let depth = relative_to.len() - 1;
                                         "../".repeat(depth)
@@ -442,10 +443,10 @@ impl Item {
                                         format!("{}std/", "../".repeat(depth))
                                     }
                                 }
-                                Some(&(_, _, ExternalLocation::Remote(ref s))) => {
+                                Some(ExternalLocation::Remote(ref s)) => {
                                     format!("{}/std/", s.trim_end_matches('/'))
                                 }
-                                Some(&(_, _, ExternalLocation::Unknown)) | None => format!(
+                                Some(ExternalLocation::Unknown) | None => format!(
                                     "https://doc.rust-lang.org/{}/std/",
                                     crate::doc_rust_lang_org_channel(),
                                 ),
