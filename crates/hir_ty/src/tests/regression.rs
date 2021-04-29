@@ -1012,3 +1012,33 @@ fn lifetime_from_chalk_during_deref() {
         "#,
     )
 }
+
+#[test]
+fn issue_8686() {
+    check_infer(
+        r#"
+pub trait Try: FromResidual {
+    type Output;
+    type Residual;
+}
+pub trait FromResidual<R = <Self as Try>::Residual> {
+     fn from_residual(residual: R) -> Self;
+}
+
+struct ControlFlow<B, C>;
+impl<B, C> Try for ControlFlow<B, C> {
+    type Output = C;
+    type Residual = ControlFlow<B, !>;
+}
+impl<B, C> FromResidual for ControlFlow<B, C> {
+    fn from_residual(r: ControlFlow<B, !>) -> Self { ControlFlow }
+}
+
+fn test() {
+    ControlFlow::from_residual(ControlFlow::<u32, !>);
+}
+        "#,
+        expect![[r#"
+        "#]],
+    );
+}
