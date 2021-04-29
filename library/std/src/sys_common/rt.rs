@@ -1,4 +1,5 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(unused_macros)]
 
 use crate::sync::Once;
 use crate::sys;
@@ -38,6 +39,14 @@ pub fn cleanup() {
     });
 }
 
+macro_rules! rterr {
+    ($($t:tt)*) => {
+        if let Some(mut out) = crate::sys::stdio::panic_output() {
+            let _ = crate::io::Write::write_fmt(&mut out, format_args!($($t)*));
+        }
+    }
+}
+
 macro_rules! rtabort {
     ($($t:tt)*) => (crate::sys_common::util::abort(format_args!($($t)*)))
 }
@@ -50,7 +59,6 @@ macro_rules! rtassert {
     };
 }
 
-#[allow(unused_macros)] // not used on all platforms
 macro_rules! rtunwrap {
     ($ok:ident, $e:expr) => {
         match $e {
