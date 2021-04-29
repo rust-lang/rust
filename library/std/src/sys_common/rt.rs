@@ -48,7 +48,12 @@ macro_rules! rterr {
 }
 
 macro_rules! rtabort {
-    ($($t:tt)*) => (crate::sys_common::util::abort(format_args!($($t)*)))
+    ($($t:tt)*) => {
+        {
+            rterr!("fatal runtime error: {}\n", format_args!($($t)*));
+            crate::sys::abort_internal();
+        }
+    }
 }
 
 macro_rules! rtassert {
