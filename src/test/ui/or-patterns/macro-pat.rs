@@ -3,6 +3,7 @@
 
 use Foo::*;
 
+#[allow(dead_code)]
 #[derive(Eq, PartialEq, Debug)]
 enum Foo {
     A(u64),
