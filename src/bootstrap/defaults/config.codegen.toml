@@ -11,3 +11,5 @@ assertions = true
 debug-logging = true
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
 incremental = true
+# Print backtrace on internal compiler errors during bootstrap
+backtrace-on-ice = true

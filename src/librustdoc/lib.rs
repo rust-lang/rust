@@ -16,7 +16,7 @@
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
-#![deny(rustc::internal)]
+#![warn(rustc::internal)]
 
 #[macro_use]
 extern crate lazy_static;
