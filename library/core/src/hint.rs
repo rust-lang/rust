@@ -128,7 +128,7 @@ pub fn spin_loop() {
         #[cfg(target_arch = "aarch64")]
         {
             // SAFETY: the `cfg` attr ensures that we only execute this on aarch64 targets.
-            unsafe { crate::arch::aarch64::__yield() };
+            unsafe { crate::arch::aarch64::__isb(crate::arch::aarch64::SY) };
         }
         #[cfg(target_arch = "arm")]
         {
