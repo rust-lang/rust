@@ -332,6 +332,10 @@ impl InferenceTable {
                 | (TyKind::Slice(ty1), TyKind::Slice(ty2)) => self.unify_inner(ty1, ty2, depth + 1),
                 _ => true, /* we checked equals_ctor already */
             }
+        } else if let (TyKind::Closure(.., substs1), TyKind::Closure(.., substs2)) =
+            (ty1.kind(&Interner), ty2.kind(&Interner))
+        {
+            self.unify_substs(substs1, substs2, depth + 1)
         } else {
             self.unify_inner_trivial(&ty1, &ty2, depth)
         }
