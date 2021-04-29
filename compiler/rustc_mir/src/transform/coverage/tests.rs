@@ -1,6 +1,10 @@
 //! This crate hosts a selection of "unit tests" for components of the `InstrumentCoverage` MIR
 //! pass.
 //!
+//! ```shell
+//! ./x.py test --keep-stage 1 compiler/rustc_mir --test-args '--show-output coverage'
+//! ```
+//!
 //! The tests construct a few "mock" objects, as needed, to support the `InstrumentCoverage`
 //! functions and algorithms. Mocked objects include instances of `mir::Body`; including
 //! `Terminator`s of various `kind`s, and `Span` objects. Some functions used by or used on
@@ -679,10 +683,15 @@ fn test_make_bcb_counters() {
         let mut basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
         let mut coverage_spans = Vec::new();
         for (bcb, data) in basic_coverage_blocks.iter_enumerated() {
-            if let Some(span) =
+            if let Some((span, expn_span)) =
                 spans::filtered_terminator_span(data.terminator(&mir_body), body_span)
             {
-                coverage_spans.push(spans::CoverageSpan::for_terminator(span, bcb, data.last_bb()));
+                coverage_spans.push(spans::CoverageSpan::for_terminator(
+                    span,
+                    expn_span,
+                    bcb,
+                    data.last_bb(),
+                ));
             }
         }
         let mut coverage_counters = counters::CoverageCounters::new(0);
