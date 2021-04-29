@@ -59,6 +59,15 @@ fn generic_arg(p: &mut Parser) {
             expressions::literal(p);
             m.complete(p, CONST_ARG);
         }
+        // test const_generic_negated_literal
+        // fn f() { S::<-1> }
+        T![-] => {
+            let lm = p.start();
+            p.bump(T![-]);
+            expressions::literal(p);
+            lm.complete(p, PREFIX_EXPR);
+            m.complete(p, CONST_ARG);
+        }
         _ => {
             types::type_(p);
             m.complete(p, TYPE_ARG);
