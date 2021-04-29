@@ -155,12 +155,10 @@ pub fn getcwd() -> io::Result<PathBuf> {
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let p: &OsStr = p.as_ref();
     let p = CString::new(p.as_bytes())?;
-    unsafe {
-        match libc::chdir(p.as_ptr()) == (0 as c_int) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
-        }
+    if unsafe { libc::chdir(p.as_ptr()) } != 0 {
+        return Err(io::Error::last_os_error());
     }
+    Ok(())
 }
 
 pub struct SplitPaths<'a> {
