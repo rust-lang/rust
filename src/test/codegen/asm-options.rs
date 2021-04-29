@@ -10,7 +10,7 @@
 #[no_mangle]
 pub unsafe fn pure(x: i32) {
     let y: i32;
-    asm!("", out("ax") y, in("bx") x, options(pure, nomem));
+    asm!("", out("ax") y, in("cx") x, options(pure, nomem));
 }
 
 // CHECK-LABEL: @noreturn

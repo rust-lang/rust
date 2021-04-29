@@ -98,7 +98,6 @@ def_regs! {
         r5: reg, reg_thumb = ["r5", "v2"],
         r7: reg, reg_thumb = ["r7", "v4"] % frame_pointer_r7,
         r8: reg = ["r8", "v5"],
-        r9: reg = ["r9", "v6", "rfp"],
         r10: reg = ["r10", "sl"],
         r11: reg = ["r11", "fp"] % frame_pointer_r11,
         r12: reg = ["r12", "ip"],
@@ -185,6 +184,8 @@ def_regs! {
         q15: qreg = ["q15"],
         #error = ["r6", "v3"] =>
             "r6 is used internally by LLVM and cannot be used as an operand for inline asm",
+        #error = ["r9", "v6", "rfp"] =>
+            "r9 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r13", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r15", "pc"] =>
