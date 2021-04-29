@@ -70,6 +70,16 @@ fn const_param(p: &mut Parser, m: Marker) {
     p.bump(T![const]);
     name(p);
     types::ascription(p);
+
+    // test const_param_defaults
+    // struct A<const N: i32 = -1>;
+    // struct B<const N: i32 = {}>;
+    // struct C<const N: i32 = some::CONST>;
+    if p.at(T![=]) {
+        p.bump(T![=]);
+        type_args::const_arg(p);
+    }
+
     m.complete(p, CONST_PARAM);
 }
 
