@@ -259,6 +259,7 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
 pub fn compute_stamp_hash(config: &Config) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
+    config.run.hash(&mut hash);
 
     match config.debugger {
         Some(Debugger::Cdb) => {
