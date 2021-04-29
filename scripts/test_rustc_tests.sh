@@ -38,6 +38,7 @@ rm src/test/ui/threads-sendsync/task-stderr.rs
 rm src/test/ui/numbers-arithmetic/int-abs-overflow.rs
 rm src/test/ui/drop/drop-trait-enum.rs
 rm src/test/ui/numbers-arithmetic/issue-8460.rs
+rm src/test/incremental/change_crate_dep_kind.rs # requires -Cpanic=unwind
 
 rm src/test/ui/issues/issue-28950.rs # depends on stack size optimizations
 rm src/test/ui/init-large-type.rs # same
@@ -57,7 +58,6 @@ rm src/test/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and n
 
 rm src/test/incremental/hashes/inline_asm.rs # inline asm
 rm src/test/incremental/issue-72386.rs # same
-rm src/test/incremental/change_crate_dep_kind.rs # requires -Cpanic=unwind
 rm src/test/incremental/issue-49482.rs # same
 rm src/test/incremental/issue-54059.rs # same
 rm src/test/incremental/lto.rs # requires lto
@@ -72,6 +72,7 @@ rm -r src/test/run-pass-valgrind/unsized-locals
 
 rm src/test/ui/json-bom-plus-crlf-multifile.rs # differing warning
 rm src/test/ui/json-bom-plus-crlf.rs # same
+rm src/test/ui/match/issue-82392.rs # differing error
 rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux dep
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
