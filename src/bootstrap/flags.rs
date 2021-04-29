@@ -294,12 +294,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                     "force {check,build,run}-pass tests to this mode.",
                     "check | build | run",
                 );
-                opts.optopt(
-                    "",
-                    "run",
-                    "whether to execute run-* tests",
-                    "auto | always | never",
-                );
+                opts.optopt("", "run", "whether to execute run-* tests", "auto | always | never");
                 opts.optflag(
                     "",
                     "rustfix-coverage",
