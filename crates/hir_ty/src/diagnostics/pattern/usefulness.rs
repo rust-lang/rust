@@ -1,5 +1,5 @@
 // Based on rust-lang/rust 1.52.0-nightly (25c15cdbe 2021-04-22)
-// rust/compiler/rustc_mir_build/src/thir/pattern/usefulness.rs
+// https://github.com/rust-lang/rust/blob/25c15cdbe/compiler/rustc_mir_build/src/thir/pattern/usefulness.rs
 
 use std::{cell::RefCell, iter::FromIterator, ops::Index, sync::Arc};
 
@@ -245,6 +245,33 @@ impl Matrix {
     }
 }
 
+/// Given a pattern or a pattern-stack, this struct captures a set of its subpatterns. We use that
+/// to track reachable sub-patterns arising from or-patterns. In the absence of or-patterns this
+/// will always be either `Empty` (the whole pattern is unreachable) or `Full` (the whole pattern
+/// is reachable). When there are or-patterns, some subpatterns may be reachable while others
+/// aren't. In this case the whole pattern still counts as reachable, but we will lint the
+/// unreachable subpatterns.
+///
+/// This supports a limited set of operations, so not all possible sets of subpatterns can be
+/// represented. That's ok, we only want the ones that make sense for our usage.
+///
+/// What we're doing is illustrated by this:
+/// ```
+/// match (true, 0) {
+///     (true, 0) => {}
+///     (_, 1) => {}
+///     (true | false, 0 | 1) => {}
+/// }
+/// ```
+/// When we try the alternatives of the `true | false` or-pattern, the last `0` is reachable in the
+/// `false` alternative but not the `true`. So overall it is reachable. By contrast, the last `1`
+/// is not reachable in either alternative, so we want to signal this to the user.
+/// Therefore we take the union of sets of reachable patterns coming from different alternatives in
+/// order to figure out which subpatterns are overall reachable.
+///
+/// Invariant: we try to construct the smallest representation we can. In particular if
+/// `self.is_empty()` we ensure that `self` is `Empty`, and same with `Full`. This is not important
+/// for correctness currently.
 #[derive(Debug, Clone)]
 enum SubPatSet {
     /// The empty set. This means the pattern is unreachable.
@@ -397,7 +424,24 @@ impl SubPatSet {
             Full => Full,
             Empty => Empty,
             Seq { subpats } => {
-                todo!()
+                // We gather the first `arity` subpatterns together and shift the remaining ones.
+                let mut new_subpats = FxHashMap::default();
+                let mut new_subpats_first_col = FxHashMap::default();
+                for (i, sub_set) in subpats {
+                    if i < arity {
+                        // The first `arity` indices are now part of the pattern in the first
+                        // column.
+                        new_subpats_first_col.insert(i, sub_set);
+                    } else {
+                        // Indices after `arity` are simply shifted
+                        new_subpats.insert(i - arity + 1, sub_set);
+                    }
+                }
+                // If `new_subpats_first_col` has no entries it counts as full, so we can omit it.
+                if !new_subpats_first_col.is_empty() {
+                    new_subpats.insert(0, Seq { subpats: new_subpats_first_col });
+                }
+                Seq { subpats: new_subpats }
             }
             Alt { .. } => panic!("bug"),
         }
@@ -417,7 +461,31 @@ impl SubPatSet {
     /// containing `false`. After `unsplit_or_pat`, we want the set to contain `None` and `false`.
     /// This is what this function does.
     fn unsplit_or_pat(mut self, alt_id: usize, alt_count: usize, pat: PatId) -> Self {
-        todo!()
+        use SubPatSet::*;
+        if self.is_empty() {
+            return Empty;
+        }
+
+        // Subpatterns coming from inside the or-pattern alternative itself, e.g. in `None | Some(0
+        // | 1)`.
+        let set_first_col = match &mut self {
+            Full => Full,
+            Seq { subpats } => subpats.remove(&0).unwrap_or(Full),
+            Empty => unreachable!(),
+            Alt { .. } => panic!("bug"), // `self` is a patstack
+        };
+        let mut subpats_first_col = FxHashMap::default();
+        subpats_first_col.insert(alt_id, set_first_col);
+        let set_first_col = Alt { subpats: subpats_first_col, pat, alt_count };
+
+        let mut subpats = match self {
+            Full => FxHashMap::default(),
+            Seq { subpats } => subpats,
+            Empty => unreachable!(),
+            Alt { .. } => panic!("bug"), // `self` is a patstack
+        };
+        subpats.insert(0, set_first_col);
+        Seq { subpats }
     }
 }
 
