@@ -1,10 +1,9 @@
 // edition:2018
 // run-pass
 
-// Test that a feature gate is needed to use `impl Trait` as the
-// return type of an async.
-
-#![feature(member_constraints)]
+// Test member constraints that appear in the `impl Trait`
+// return type of an async function.
+// (This used to require a feature gate.)
 
 trait Trait<'a, 'b> { }
 impl<T> Trait<'_, '_> for T { }
