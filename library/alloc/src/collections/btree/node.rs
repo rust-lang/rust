@@ -89,7 +89,7 @@ impl<K, V> LeafNode<K, V> {
 
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
 /// behind `BoxedNode`s to prevent dropping uninitialized keys and values. Any pointer to an
-/// `InternalNode` can be directly casted to a pointer to the underlying `LeafNode` portion of the
+/// `InternalNode` can be directly cast to a pointer to the underlying `LeafNode` portion of the
 /// node, allowing code to act on leaf and internal nodes generically without having to even check
 /// which of the two a pointer is pointing at. This property is enabled by the use of `repr(C)`.
 #[repr(C)]
@@ -408,7 +408,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
-    /// Temporarily takes out another, mutable reference to the same node. Beware, as
+    /// Temporarily takes out another mutable reference to the same node. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
     ///
@@ -759,7 +759,7 @@ impl<BorrowType, K, V, NodeType, HandleType> PartialEq
 impl<BorrowType, K, V, NodeType, HandleType>
     Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
-    /// Temporarily takes out another, immutable handle on the same location.
+    /// Temporarily takes out another immutable handle on the same location.
     pub fn reborrow(&self) -> Handle<NodeRef<marker::Immut<'_>, K, V, NodeType>, HandleType> {
         // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
         Handle { node: self.node.reborrow(), idx: self.idx, _marker: PhantomData }
@@ -767,7 +767,7 @@ impl<BorrowType, K, V, NodeType, HandleType>
 }
 
 impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
-    /// Temporarily takes out another, mutable handle on the same location. Beware, as
+    /// Temporarily takes out another mutable handle on the same location. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
     ///
