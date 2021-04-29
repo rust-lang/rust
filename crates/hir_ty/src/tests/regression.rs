@@ -1039,6 +1039,14 @@ fn test() {
 }
         "#,
         expect![[r#"
+            144..152 'residual': R
+            365..366 'r': ControlFlow<B, !>
+            395..410 '{ ControlFlow }': ControlFlow<B, C>
+            397..408 'ControlFlow': ControlFlow<B, C>
+            424..482 '{     ...!>); }': ()
+            430..456 'Contro...sidual': fn from_residual<ControlFlow<u32, {unknown}>, ControlFlow<u32, !>>(ControlFlow<u32, !>) -> ControlFlow<u32, {unknown}>
+            430..479 'Contro...2, !>)': ControlFlow<u32, {unknown}>
+            457..478 'Contro...32, !>': ControlFlow<u32, !>
         "#]],
     );
 }

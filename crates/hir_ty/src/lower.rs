@@ -414,17 +414,16 @@ impl<'a> TyLoweringContext<'a> {
                     self.lower_trait_ref_from_resolved_path(trait_, resolved_segment, self_ty);
                 let ty = if remaining_segments.len() == 1 {
                     let segment = remaining_segments.first().unwrap();
-                    let found = associated_type_by_name_including_super_traits(
-                        self.db,
-                        trait_ref,
-                        &segment.name,
-                    );
+                    let found = self
+                        .db
+                        .trait_data(trait_ref.hir_trait_id())
+                        .associated_type_by_name(&segment.name);
                     match found {
-                        Some((super_trait_ref, associated_ty)) => {
+                        Some(associated_ty) => {
                             // FIXME handle type parameters on the segment
                             TyKind::Alias(AliasTy::Projection(ProjectionTy {
                                 associated_ty_id: to_assoc_type_id(associated_ty),
-                                substitution: super_trait_ref.substitution,
+                                substitution: trait_ref.substitution,
                             }))
                             .intern(&Interner)
                         }
