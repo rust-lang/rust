@@ -85,6 +85,10 @@ impl EarlyProps {
                     props.ignore = true;
                 }
 
+                if !config.run_enabled() && config.parse_name_directive(ln, "needs-run-enabled") {
+                    props.ignore = true;
+                }
+
                 if !rustc_has_sanitizer_support
                     && config.parse_name_directive(ln, "needs-sanitizer-support")
                 {

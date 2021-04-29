@@ -369,11 +369,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_if_enabled(&self) -> WillExecute {
-        let enabled = self.config.run.unwrap_or_else(|| {
-            // Auto-detect whether to run based on the platform.
-            !self.config.target.ends_with("-fuchsia")
-        });
-        if enabled { WillExecute::Yes } else { WillExecute::Disabled }
+        if self.config.run_enabled() { WillExecute::Yes } else { WillExecute::Disabled }
     }
 
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {

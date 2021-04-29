@@ -351,6 +351,15 @@ pub struct Config {
     pub npm: Option<String>,
 }
 
+impl Config {
+    pub fn run_enabled(&self) -> bool {
+        self.run.unwrap_or_else(|| {
+            // Auto-detect whether to run based on the platform.
+            !self.target.ends_with("-fuchsia")
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TestPaths {
     pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
