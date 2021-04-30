@@ -374,8 +374,19 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         data_ctx.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
-            // FIXME set correct segment for Mach-O files
-            data_ctx.set_segment_section("", &*section_name);
+            let (segment_name, section_name) = if tcx.sess.target.is_like_osx {
+                if let Some(names) = section_name.split_once(',') {
+                    names
+                } else {
+                    tcx.sess.fatal(&format!(
+                        "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
+                        section_name
+                    ));
+                }
+            } else {
+                ("", &*section_name)
+            };
+            data_ctx.set_segment_section(segment_name, section_name);
         }
 
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
