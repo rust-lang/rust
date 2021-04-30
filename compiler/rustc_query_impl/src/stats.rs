@@ -50,13 +50,12 @@ where
         key_type: type_name::<C::Key>(),
         value_size: mem::size_of::<C::Value>(),
         value_type: type_name::<C::Value>(),
-        entry_count: map.iter_results(|results| results.count()),
+        entry_count: 0,
         local_def_id_keys: None,
     };
-    map.iter_results(|results| {
-        for (key, _, _) in results {
-            key.key_stats(&mut stats)
-        }
+    map.iter_results(&mut |key, _, _| {
+        stats.entry_count += 1;
+        key.key_stats(&mut stats)
     });
     stats
 }
