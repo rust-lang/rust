@@ -509,7 +509,7 @@ impl Field {
     /// placeholder types for type parameters). This is good for showing
     /// signature help, but not so good to actually get the type of the field
     /// when you actually have a variable of the struct.
-    pub fn signature_ty(&self, db: &dyn HirDatabase) -> Type {
+    pub fn ty(&self, db: &dyn HirDatabase) -> Type {
         let var_id = self.parent.into();
         let generic_def_id: GenericDefId = match self.parent {
             VariantDef::Struct(it) => it.id.into(),
@@ -1984,7 +1984,7 @@ impl Type {
         None
     }
 
-    pub fn type_parameters(&self) -> impl Iterator<Item = Type> + '_ {
+    pub fn type_arguments(&self) -> impl Iterator<Item = Type> + '_ {
         self.ty
             .strip_references()
             .as_adt()

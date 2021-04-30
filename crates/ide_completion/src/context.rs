@@ -347,7 +347,7 @@ impl<'a> CompletionContext<'a> {
                                 .and_then(|node| ast::RecordExprField::cast(node))
                                 .and_then(|rf| self.sema.resolve_record_field(&rf).zip(Some(rf)))
                                 .map(|(f, rf)|(
-                                    Some(f.0.signature_ty(self.db)),
+                                    Some(f.0.ty(self.db)),
                                     rf.field_name().map(NameOrNameRef::NameRef),
                                 ))
                                 .unwrap_or((None, None))
@@ -357,7 +357,7 @@ impl<'a> CompletionContext<'a> {
                             self.sema
                                 .resolve_record_field(&it)
                                 .map(|f|(
-                                    Some(f.0.signature_ty(self.db)),
+                                    Some(f.0.ty(self.db)),
                                     it.field_name().map(NameOrNameRef::NameRef),
                                 ))
                                 .unwrap_or((None, None))

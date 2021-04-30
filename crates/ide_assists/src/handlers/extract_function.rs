@@ -1183,7 +1183,7 @@ fn make_ret_ty(ctx: &AssistContext, module: hir::Module, fun: &Function) -> Opti
         }
         FlowHandler::Try { kind: TryKind::Result { ty: parent_ret_ty } } => {
             let handler_ty = parent_ret_ty
-                .type_parameters()
+                .type_arguments()
                 .nth(1)
                 .map(|ty| make_ty(&ty, ctx, module))
                 .unwrap_or_else(make::ty_unit);
