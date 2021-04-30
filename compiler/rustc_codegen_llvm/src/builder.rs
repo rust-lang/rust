@@ -552,7 +552,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let next = body_bx.inbounds_gep(current, &[self.const_usize(1)]);
         body_bx.br(header_bx.llbb());
-        header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
+        Self::add_incoming_to_phi(current, &[next], &[body_bx.llbb()]);
 
         next_bx
     }
@@ -1395,17 +1395,15 @@ impl Builder<'a, 'll, 'tcx> {
         vals: &[&'ll Value],
         bbs: &[&'ll BasicBlock],
     ) -> &'ll Value {
-        assert_eq!(vals.len(), bbs.len());
         let phi = unsafe { llvm::LLVMBuildPhi(self.llbuilder, ty, UNNAMED) };
-        unsafe {
-            llvm::LLVMAddIncoming(phi, vals.as_ptr(), bbs.as_ptr(), vals.len() as c_uint);
-            phi
-        }
+        Self::add_incoming_to_phi(phi, vals, bbs);
+        phi
     }
 
-    fn add_incoming_to_phi(&mut self, phi: &'ll Value, val: &'ll Value, bb: &'ll BasicBlock) {
+    fn add_incoming_to_phi(phi: &'ll Value, vals: &[&'ll Value], bbs: &[&'ll BasicBlock]) {
+        assert_eq!(vals.len(), bbs.len());
         unsafe {
-            llvm::LLVMAddIncoming(phi, &val, &bb, 1 as c_uint);
+            llvm::LLVMAddIncoming(phi, vals.as_ptr(), bbs.as_ptr(), vals.len() as c_uint);
         }
     }
 
