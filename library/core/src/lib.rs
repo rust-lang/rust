@@ -169,6 +169,10 @@
 #![feature(int_error_matching)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+// allow using `core::` in intra-doc links
+#[allow(unused_extern_crates)]
+extern crate self as core;
+
 #[prelude_import]
 #[allow(unused)]
 use prelude::v1::*;
