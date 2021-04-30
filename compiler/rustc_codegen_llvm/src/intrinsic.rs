@@ -75,13 +75,13 @@ fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: Symbol) -> Option<&'ll Va
 
 impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn codegen_intrinsic_call(
-        &mut self,
+        mut self,
         instance: ty::Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, &'ll Value>],
         llresult: &'ll Value,
         span: Span,
-    ) {
+    ) -> Self {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
@@ -97,10 +97,10 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let name = tcx.item_name(def_id);
         let name_str = &*name.as_str();
 
-        let llret_ty = self.layout_of(ret_ty).llvm_type(self);
+        let llret_ty = self.layout_of(ret_ty).llvm_type(&self);
         let result = PlaceRef::new_sized(llresult, fn_abi.ret.layout);
 
-        let simple = get_simple_intrinsic(self, name);
+        let simple = get_simple_intrinsic(&self, name);
         let llval = match name {
             _ if simple.is_some() => self.call(
                 simple.unwrap(),
@@ -118,13 +118,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             kw::Try => {
                 try_intrinsic(
-                    self,
+                    &mut self,
                     args[0].immediate(),
                     args[1].immediate(),
                     args[2].immediate(),
                     llresult,
                 );
-                return;
+                return self;
             }
             sym::breakpoint => {
                 let llfn = self.get_intrinsic(&("llvm.debugtrap"));
@@ -135,7 +135,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 self.call(intrinsic, &[args[0].immediate(), args[1].immediate()], None, None)
             }
             sym::va_arg => {
-                match fn_abi.ret.layout.abi {
+                let (new_bx, val) = match fn_abi.ret.layout.abi {
                     abi::Abi::Scalar(ref scalar) => {
                         match scalar.value {
                             Primitive::Int(..) => {
@@ -144,8 +144,10 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                     // less than 4 bytes in length. If it is, promote
                                     // the integer to a `i32` and truncate the result
                                     // back to the smaller type.
-                                    let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
-                                    self.trunc(promoted_result, llret_ty)
+                                    let (mut new_bx, promoted_result) =
+                                        emit_va_arg(self, args[0], tcx.types.i32);
+                                    let val = new_bx.trunc(promoted_result, llret_ty);
+                                    (new_bx, val)
                                 } else {
                                     emit_va_arg(self, args[0], ret_ty)
                                 }
@@ -158,14 +160,16 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         }
                     }
                     _ => bug!("the va_arg intrinsic does not work with non-scalar types"),
-                }
+                };
+                self = new_bx;
+                val
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = substs.type_at(0);
                 let mut ptr = args[0].immediate();
                 if let PassMode::Cast(ty) = fn_abi.ret.mode {
-                    ptr = self.pointercast(ptr, self.type_ptr_to(ty.llvm_type(self)));
+                    ptr = self.pointercast(ptr, self.type_ptr_to(ty.llvm_type(&self)));
                 }
                 let load = self.volatile_load(ptr);
                 let align = if name == sym::unaligned_volatile_load {
@@ -180,13 +184,13 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
-                args[1].val.volatile_store(self, dst);
-                return;
+                args[1].val.volatile_store(&mut self, dst);
+                return self;
             }
             sym::unaligned_volatile_store => {
                 let dst = args[0].deref(self.cx());
-                args[1].val.unaligned_volatile_store(self, dst);
-                return;
+                args[1].val.unaligned_volatile_store(&mut self, dst);
+                return self;
             }
             sym::prefetch_read_data
             | sym::prefetch_write_data
@@ -224,7 +228,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             | sym::saturating_add
             | sym::saturating_sub => {
                 let ty = arg_tys[0];
-                match int_type_width_signed(ty, self) {
+                match int_type_width_signed(ty, &self) {
                     Some((width, signed)) => match name {
                         sym::ctlz | sym::cttz => {
                             let y = self.const_bool(false);
@@ -296,15 +300,17 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 name, ty
                             ),
                         );
-                        return;
+                        return self;
                     }
                 }
             }
 
             _ if name_str.starts_with("simd_") => {
-                match generic_simd_intrinsic(self, name, callee_ty, args, ret_ty, llret_ty, span) {
+                match generic_simd_intrinsic(
+                    &mut self, name, callee_ty, args, ret_ty, llret_ty, span,
+                ) {
                     Ok(llval) => llval,
-                    Err(()) => return,
+                    Err(()) => return self,
                 }
             }
 
@@ -313,15 +319,17 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
         if !fn_abi.ret.is_ignore() {
             if let PassMode::Cast(ty) = fn_abi.ret.mode {
-                let ptr_llty = self.type_ptr_to(ty.llvm_type(self));
+                let ptr_llty = self.type_ptr_to(ty.llvm_type(&self));
                 let ptr = self.pointercast(result.llval, ptr_llty);
                 self.store(llval, ptr, result.align);
             } else {
-                OperandRef::from_immediate_or_packed_pair(self, llval, result.layout)
+                OperandRef::from_immediate_or_packed_pair(&mut self, llval, result.layout)
                     .val
-                    .store(self, result);
+                    .store(&mut self, result);
             }
         }
+
+        self
     }
 
     fn abort(&mut self) {

@@ -49,13 +49,13 @@ fn memset_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_intrinsic_call(
-        bx: &mut Bx,
+        mut bx: Bx,
         instance: ty::Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Bx::Value>],
         llresult: Bx::Value,
         span: Span,
-    ) {
+    ) -> Bx {
         let callee_ty = instance.ty(bx.tcx(), ty::ParamEnv::reveal_all());
 
         let (def_id, substs) = match *callee_ty.kind() {
@@ -76,11 +76,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llval = match name {
             sym::assume => {
                 bx.assume(args[0].immediate());
-                return;
+                return bx;
             }
             sym::abort => {
                 bx.abort();
-                return;
+                return bx;
             }
 
             sym::va_start => bx.va_start(args[0].immediate()),
@@ -88,7 +88,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::size_of_val => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (llsize, _) = glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
+                    let (llsize, _) = glue::size_and_align_of_dst(&mut bx, tp_ty, Some(meta));
                     llsize
                 } else {
                     bx.const_usize(bx.layout_of(tp_ty).size.bytes())
@@ -97,7 +97,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::min_align_of_val => {
                 let tp_ty = substs.type_at(0);
                 if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (_, llalign) = glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
+                    let (_, llalign) = glue::size_and_align_of_dst(&mut bx, tp_ty, Some(meta));
                     llalign
                 } else {
                     bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
@@ -113,7 +113,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .tcx()
                     .const_eval_instance(ty::ParamEnv::reveal_all(), instance, None)
                     .unwrap();
-                OperandRef::from_const(bx, value, ret_ty).immediate_or_packed_pair(bx)
+                OperandRef::from_const(&mut bx, value, ret_ty).immediate_or_packed_pair(&mut bx)
             }
             sym::offset => {
                 let ptr = args[0].immediate();
@@ -127,7 +127,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             sym::copy => {
                 copy_intrinsic(
-                    bx,
+                    &mut bx,
                     true,
                     false,
                     substs.type_at(0),
@@ -135,23 +135,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     args[0].immediate(),
                     args[2].immediate(),
                 );
-                return;
+                return bx;
             }
             sym::write_bytes => {
                 memset_intrinsic(
-                    bx,
+                    &mut bx,
                     false,
                     substs.type_at(0),
                     args[0].immediate(),
                     args[1].immediate(),
                     args[2].immediate(),
                 );
-                return;
+                return bx;
             }
 
             sym::volatile_copy_nonoverlapping_memory => {
                 copy_intrinsic(
-                    bx,
+                    &mut bx,
                     false,
                     true,
                     substs.type_at(0),
@@ -159,11 +159,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     args[1].immediate(),
                     args[2].immediate(),
                 );
-                return;
+                return bx;
             }
             sym::volatile_copy_memory => {
                 copy_intrinsic(
-                    bx,
+                    &mut bx,
                     true,
                     true,
                     substs.type_at(0),
@@ -171,28 +171,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     args[1].immediate(),
                     args[2].immediate(),
                 );
-                return;
+                return bx;
             }
             sym::volatile_set_memory => {
                 memset_intrinsic(
-                    bx,
+                    &mut bx,
                     true,
                     substs.type_at(0),
                     args[0].immediate(),
                     args[1].immediate(),
                     args[2].immediate(),
                 );
-                return;
+                return bx;
             }
             sym::volatile_store => {
                 let dst = args[0].deref(bx.cx());
-                args[1].val.volatile_store(bx, dst);
-                return;
+                args[1].val.volatile_store(&mut bx, dst);
+                return bx;
             }
             sym::unaligned_volatile_store => {
                 let dst = args[0].deref(bx.cx());
-                args[1].val.unaligned_volatile_store(bx, dst);
-                return;
+                args[1].val.unaligned_volatile_store(&mut bx, dst);
+                return bx;
             }
             sym::add_with_overflow
             | sym::sub_with_overflow
@@ -223,12 +223,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let val = bx.from_immediate(val);
                             let overflow = bx.from_immediate(overflow);
 
-                            let dest = result.project_field(bx, 0);
+                            let dest = result.project_field(&mut bx, 0);
                             bx.store(val, dest.llval, dest.align);
-                            let dest = result.project_field(bx, 1);
+                            let dest = result.project_field(&mut bx, 1);
                             bx.store(overflow, dest.llval, dest.align);
 
-                            return;
+                            return bx;
                         }
                         sym::exact_div => {
                             if signed {
@@ -292,7 +292,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 name, ty
                             ),
                         );
-                        return;
+                        return bx;
                     }
                 }
             }
@@ -316,7 +316,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 name, arg_tys[0]
                             ),
                         );
-                        return;
+                        return bx;
                     }
                 }
             }
@@ -333,7 +333,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             arg_tys[0]
                         ),
                     );
-                    return;
+                    return bx;
                 }
                 let (_width, signed) = match int_type_width_signed(ret_ty, bx.tcx()) {
                     Some(pair) => pair,
@@ -348,7 +348,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 ret_ty
                             ),
                         );
-                        return;
+                        return bx;
                     }
                 };
                 if signed {
@@ -360,7 +360,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::discriminant_value => {
                 if ret_ty.is_integral() {
-                    args[0].deref(bx.cx()).codegen_get_discr(bx, ret_ty)
+                    args[0].deref(bx.cx()).codegen_get_discr(&mut bx, ret_ty)
                 } else {
                     span_bug!(span, "Invalid discriminant type for `{:?}`", arg_tys[0])
                 }
@@ -429,13 +429,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let val = bx.from_immediate(val);
                             let success = bx.from_immediate(success);
 
-                            let dest = result.project_field(bx, 0);
+                            let dest = result.project_field(&mut bx, 0);
                             bx.store(val, dest.llval, dest.align);
-                            let dest = result.project_field(bx, 1);
+                            let dest = result.project_field(&mut bx, 1);
                             bx.store(success, dest.llval, dest.align);
-                            return;
+                            return bx;
                         } else {
-                            return invalid_monomorphization(ty);
+                            invalid_monomorphization(ty);
+                            return bx;
                         }
                     }
 
@@ -459,7 +460,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 result
                             }
                         } else {
-                            return invalid_monomorphization(ty);
+                            invalid_monomorphization(ty);
+                            return bx;
                         }
                     }
 
@@ -477,20 +479,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 val = bx.ptrtoint(val, bx.type_isize());
                             }
                             bx.atomic_store(val, ptr, order, size);
-                            return;
+                            return bx;
                         } else {
-                            return invalid_monomorphization(ty);
+                            invalid_monomorphization(ty);
+                            return bx;
                         }
                     }
 
                     "fence" => {
                         bx.atomic_fence(order, SynchronizationScope::CrossThread);
-                        return;
+                        return bx;
                     }
 
                     "singlethreadfence" => {
                         bx.atomic_fence(order, SynchronizationScope::SingleThread);
-                        return;
+                        return bx;
                     }
 
                     // These are all AtomicRMW ops
@@ -525,7 +528,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                             bx.atomic_rmw(atom_op, ptr, val, order)
                         } else {
-                            return invalid_monomorphization(ty);
+                            invalid_monomorphization(ty);
+                            return bx;
                         }
                     }
                 }
@@ -533,8 +537,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::nontemporal_store => {
                 let dst = args[0].deref(bx.cx());
-                args[1].val.nontemporal_store(bx, dst);
-                return;
+                args[1].val.nontemporal_store(&mut bx, dst);
+                return bx;
             }
 
             sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {
@@ -566,8 +570,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             _ => {
                 // Need to use backend-specific things in the implementation.
-                bx.codegen_intrinsic_call(instance, fn_abi, args, llresult, span);
-                return;
+                return bx.codegen_intrinsic_call(instance, fn_abi, args, llresult, span);
             }
         };
 
@@ -577,11 +580,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let ptr = bx.pointercast(result.llval, ptr_llty);
                 bx.store(llval, ptr, result.align);
             } else {
-                OperandRef::from_immediate_or_packed_pair(bx, llval, result.layout)
+                OperandRef::from_immediate_or_packed_pair(&mut bx, llval, result.layout)
                     .val
-                    .store(bx, result);
+                    .store(&mut bx, result);
             }
         }
+
+        bx
     }
 }
 

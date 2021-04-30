@@ -9,13 +9,13 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     /// and in `library/core/src/intrinsics.rs`; if you need access to any LLVM intrinsics,
     /// add them to `compiler/rustc_codegen_llvm/src/context.rs`.
     fn codegen_intrinsic_call(
-        &mut self,
+        self,
         instance: ty::Instance<'tcx>,
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OperandRef<'tcx, Self::Value>],
         llresult: Self::Value,
         span: Span,
-    );
+    ) -> Self;
 
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);

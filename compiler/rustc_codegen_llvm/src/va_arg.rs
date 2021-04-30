@@ -169,39 +169,49 @@ fn emit_aapcs_va_arg(
 }
 
 pub(super) fn emit_va_arg(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+    mut bx: Builder<'a, 'll, 'tcx>,
     addr: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
-) -> &'ll Value {
+) -> (Builder<'a, 'll, 'tcx>, &'ll Value) {
     // Determine the va_arg implementation to use. The LLVM va_arg instruction
     // is lacking in some instances, so we should only use it as a fallback.
     let target = &bx.cx.tcx.sess.target;
     let arch = &bx.cx.tcx.sess.target.arch;
-    match &**arch {
+    let val = match &**arch {
         // Windows x86
         "x86" if target.is_like_windows => {
-            emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), false)
+            emit_ptr_va_arg(&mut bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), false)
         }
         // Generic x86
-        "x86" => emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), true),
+        "x86" => {
+            emit_ptr_va_arg(&mut bx, addr, target_ty, false, Align::from_bytes(4).unwrap(), true)
+        }
         // Windows AArch64
         "aarch64" if target.is_like_windows => {
-            emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
+            emit_ptr_va_arg(&mut bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), false)
         }
         // macOS / iOS AArch64
         "aarch64" if target.is_like_osx => {
-            emit_ptr_va_arg(bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
+            emit_ptr_va_arg(&mut bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
         }
-        "aarch64" => emit_aapcs_va_arg(bx, addr, target_ty),
+        "aarch64" => emit_aapcs_va_arg(&mut bx, addr, target_ty),
         // Windows x86_64
         "x86_64" if target.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();
             let indirect: bool = target_ty_size > 8 || !target_ty_size.is_power_of_two();
-            emit_ptr_va_arg(bx, addr, target_ty, indirect, Align::from_bytes(8).unwrap(), false)
+            emit_ptr_va_arg(
+                &mut bx,
+                addr,
+                target_ty,
+                indirect,
+                Align::from_bytes(8).unwrap(),
+                false,
+            )
         }
         // For all other architecture/OS combinations fall back to using
         // the LLVM va_arg instruction.
         // https://llvm.org/docs/LangRef.html#va-arg-instruction
         _ => bx.va_arg(addr.immediate(), bx.cx.layout_of(target_ty).llvm_type(bx.cx)),
-    }
+    };
+    (bx, val)
 }
