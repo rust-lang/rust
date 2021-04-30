@@ -90,10 +90,12 @@ fn emit_ptr_va_arg(
 }
 
 fn emit_aapcs_va_arg(
-    bx: &mut Builder<'a, 'll, 'tcx>,
+    mut bx: Builder<'a, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
     target_ty: Ty<'tcx>,
-) -> &'ll Value {
+) -> (Builder<'a, 'll, 'tcx>, &'ll Value) {
+    let cx = bx.cx;
+
     // Implementation of the AAPCS64 calling convention for va_args see
     // https://github.com/ARM-software/abi-aa/blob/master/aapcs64/aapcs64.rst
     let va_list_addr = list.immediate();
@@ -101,7 +103,9 @@ fn emit_aapcs_va_arg(
 
     let mut maybe_reg = bx.build_sibling_block("va_arg.maybe_reg");
     let mut in_reg = bx.build_sibling_block("va_arg.in_reg");
+    let in_reg_llbb = in_reg.llbb();
     let mut on_stack = bx.build_sibling_block("va_arg.on_stack");
+    let on_stack_llbb = on_stack.llbb();
     let mut end = bx.build_sibling_block("va_arg.end");
     let zero = bx.const_i32(0);
     let offset_align = Align::from_bytes(4).unwrap();
@@ -127,10 +131,10 @@ fn emit_aapcs_va_arg(
     // the offset again.
 
     if gr_type && layout.align.abi.bytes() > 8 {
-        reg_off_v = maybe_reg.add(reg_off_v, bx.const_i32(15));
-        reg_off_v = maybe_reg.and(reg_off_v, bx.const_i32(-16));
+        reg_off_v = maybe_reg.add(reg_off_v, cx.const_i32(15));
+        reg_off_v = maybe_reg.and(reg_off_v, cx.const_i32(-16));
     }
-    let new_reg_off_v = maybe_reg.add(reg_off_v, bx.const_i32(slot_size as i32));
+    let new_reg_off_v = maybe_reg.add(reg_off_v, cx.const_i32(slot_size as i32));
 
     maybe_reg.store(new_reg_off_v, reg_off, offset_align);
 
@@ -140,16 +144,16 @@ fn emit_aapcs_va_arg(
     maybe_reg.cond_br(use_stack, &on_stack.llbb(), &in_reg.llbb());
 
     let top = in_reg.struct_gep(va_list_addr, reg_top_index);
-    let top = in_reg.load(top, bx.tcx().data_layout.pointer_align.abi);
+    let top = in_reg.load(top, cx.tcx().data_layout.pointer_align.abi);
 
     // reg_value = *(@top + reg_off_v);
     let mut reg_addr = in_reg.gep(top, &[reg_off_v]);
-    if bx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
+    if cx.tcx().sess.target.endian == Endian::Big && layout.size.bytes() != slot_size {
         // On big-endian systems the value is right-aligned in its slot.
-        let offset = bx.const_i32((slot_size - layout.size.bytes()) as i32);
+        let offset = cx.const_i32((slot_size - layout.size.bytes()) as i32);
         reg_addr = in_reg.gep(reg_addr, &[offset]);
     }
-    let reg_addr = in_reg.bitcast(reg_addr, bx.cx.type_ptr_to(layout.llvm_type(bx)));
+    let reg_addr = in_reg.bitcast(reg_addr, cx.type_ptr_to(layout.llvm_type(cx)));
     let reg_value = in_reg.load(reg_addr, layout.align.abi);
     in_reg.br(&end.llbb());
 
@@ -159,13 +163,12 @@ fn emit_aapcs_va_arg(
     on_stack.br(&end.llbb());
 
     let val = end.phi(
-        layout.immediate_llvm_type(bx),
+        layout.immediate_llvm_type(cx),
         &[reg_value, stack_value],
-        &[&in_reg.llbb(), &on_stack.llbb()],
+        &[&in_reg_llbb, &on_stack_llbb],
     );
 
-    *bx = end;
-    val
+    (end, val)
 }
 
 pub(super) fn emit_va_arg(
@@ -194,7 +197,11 @@ pub(super) fn emit_va_arg(
         "aarch64" if target.is_like_osx => {
             emit_ptr_va_arg(&mut bx, addr, target_ty, false, Align::from_bytes(8).unwrap(), true)
         }
-        "aarch64" => emit_aapcs_va_arg(&mut bx, addr, target_ty),
+        "aarch64" => {
+            let (new_bx, val) = emit_aapcs_va_arg(bx, addr, target_ty);
+            bx = new_bx;
+            val
+        }
         // Windows x86_64
         "x86_64" if target.is_like_windows => {
             let target_ty_size = bx.cx.size_of(target_ty).bytes();

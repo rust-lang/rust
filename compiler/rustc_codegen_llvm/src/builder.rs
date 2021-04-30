@@ -161,58 +161,63 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn set_span(&mut self, _span: Span) {}
 
-    fn ret_void(&mut self) {
+    fn ret_void(self) -> Self::Unpositioned {
         unsafe {
             llvm::LLVMBuildRetVoid(self.llbuilder);
         }
+        self.into_unpositioned()
     }
 
-    fn ret(&mut self, v: &'ll Value) {
+    fn ret(self, v: &'ll Value) -> Self::Unpositioned {
         unsafe {
             llvm::LLVMBuildRet(self.llbuilder, v);
         }
+        self.into_unpositioned()
     }
 
-    fn br(&mut self, dest: &'ll BasicBlock) {
+    fn br(self, dest: &'ll BasicBlock) -> Self::Unpositioned {
         unsafe {
             llvm::LLVMBuildBr(self.llbuilder, dest);
         }
+        self.into_unpositioned()
     }
 
     fn cond_br(
-        &mut self,
+        self,
         cond: &'ll Value,
         then_llbb: &'ll BasicBlock,
         else_llbb: &'ll BasicBlock,
-    ) {
+    ) -> Self::Unpositioned {
         unsafe {
             llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb);
         }
+        self.into_unpositioned()
     }
 
     fn switch(
-        &mut self,
+        self,
         v: &'ll Value,
         else_llbb: &'ll BasicBlock,
         cases: impl ExactSizeIterator<Item = (u128, &'ll BasicBlock)>,
-    ) {
+    ) -> Self::Unpositioned {
         let switch =
             unsafe { llvm::LLVMBuildSwitch(self.llbuilder, v, else_llbb, cases.len() as c_uint) };
         for (on_val, dest) in cases {
             let on_val = self.const_uint_big(self.val_ty(v), on_val);
             unsafe { llvm::LLVMAddCase(switch, on_val, dest) }
         }
+        self.into_unpositioned()
     }
 
     fn invoke(
-        &mut self,
+        mut self,
         llfn: &'ll Value,
         args: &[&'ll Value],
         then: &'ll BasicBlock,
         catch: &'ll BasicBlock,
         funclet: Option<&Funclet<'ll>>,
         fn_abi_for_attrs: Option<&FnAbi<'tcx, Ty<'tcx>>>,
-    ) -> &'ll Value {
+    ) -> (Self::Unpositioned, &'ll Value) {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
         let args = self.check_call("invoke", llfn, args);
@@ -232,15 +237,16 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             )
         };
         if let Some(fn_abi) = fn_abi_for_attrs {
-            fn_abi.apply_attrs_callsite(self, invoke);
+            fn_abi.apply_attrs_callsite(&mut self, invoke);
         }
-        invoke
+        (self.into_unpositioned(), invoke)
     }
 
-    fn unreachable(&mut self) {
+    fn unreachable(self) -> Self::Unpositioned {
         unsafe {
             llvm::LLVMBuildUnreachable(self.llbuilder);
         }
+        self.into_unpositioned()
     }
 
     builder_methods_for_value_instructions! {
@@ -530,29 +536,33 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
     ) -> Self {
-        let zero = self.const_usize(0);
-        let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let cx = self.cx;
+        let original_llbb = self.llbb();
+
+        let start = dest.project_index(&mut self, cx.const_usize(0)).llval;
+        let end = dest.project_index(&mut self, cx.const_usize(count)).llval;
 
         let mut header_bx = self.build_sibling_block("repeat_loop_header");
+        let header_llbb = header_bx.llbb();
         let mut body_bx = self.build_sibling_block("repeat_loop_body");
+        let body_llbb = body_bx.llbb();
         let next_bx = self.build_sibling_block("repeat_loop_next");
 
+        let current_llty = cx.val_ty(start);
         self.br(header_bx.llbb());
-        let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
+        let current = header_bx.phi(current_llty, &[start], &[original_llbb]);
 
         let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
         header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
 
-        let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
+        let align = dest.align.restrict_for_offset(dest.layout.field(cx, 0).size);
         cg_elem
             .val
             .store(&mut body_bx, PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(current, &[self.const_usize(1)]);
-        body_bx.br(header_bx.llbb());
-        Self::add_incoming_to_phi(current, &[next], &[body_bx.llbb()]);
+        let next = body_bx.inbounds_gep(current, &[cx.const_usize(1)]);
+        body_bx.br(header_llbb);
+        Self::add_incoming_to_phi(current, &[next], &[body_llbb]);
 
         next_bx
     }
@@ -958,8 +968,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn resume(&mut self, exn: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMBuildResume(self.llbuilder, exn) }
+    fn resume(self, exn: &'ll Value) -> (Self::Unpositioned, &'ll Value) {
+        let resume = unsafe { llvm::LLVMBuildResume(self.llbuilder, exn) };
+        (self.into_unpositioned(), resume)
     }
 
     fn cleanup_pad(&mut self, parent: Option<&'ll Value>, args: &[&'ll Value]) -> Funclet<'ll> {
@@ -977,13 +988,13 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn cleanup_ret(
-        &mut self,
+        self,
         funclet: &Funclet<'ll>,
         unwind: Option<&'ll BasicBlock>,
-    ) -> &'ll Value {
+    ) -> (Self::Unpositioned, &'ll Value) {
         let ret =
             unsafe { llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind) };
-        ret.expect("LLVM does not have support for cleanupret")
+        (self.into_unpositioned(), ret.expect("LLVM does not have support for cleanupret"))
     }
 
     fn catch_pad(&mut self, parent: &'ll Value, args: &[&'ll Value]) -> Funclet<'ll> {
@@ -1001,11 +1012,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn catch_switch(
-        &mut self,
+        self,
         parent: Option<&'ll Value>,
         unwind: Option<&'ll BasicBlock>,
         handlers: &[&'ll BasicBlock],
-    ) -> &'ll Value {
+    ) -> (Self::Unpositioned, &'ll Value) {
         let name = cstr!("catchswitch");
         let ret = unsafe {
             llvm::LLVMRustBuildCatchSwitch(
@@ -1022,7 +1033,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::LLVMRustAddHandler(catch_switch, handler);
             }
         }
-        catch_switch
+        (self.into_unpositioned(), catch_switch)
     }
 
     fn set_personality_fn(&mut self, personality: &'ll Value) {

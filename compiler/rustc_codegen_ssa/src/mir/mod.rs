@@ -262,6 +262,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Remove blocks that haven't been visited, or have no
     // predecessors.
+    // FIXME(eddyb) shouldn't need to create a positioned `Bx` just to
+    // call `delete_basic_block` on it.
+    let mut bx = fx.build_block(mir::START_BLOCK);
     for bb in mir.basic_blocks().indices() {
         // Unreachable block
         if !visited.contains(bb.index()) {
@@ -313,11 +316,11 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 //          bar();
                 //      }
                 Some(&mir::TerminatorKind::Abort) => {
-                    let mut cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
+                    let cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
                     let mut cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
                     ret_llbb = cs_bx.llbb();
 
-                    let cs = cs_bx.catch_switch(None, None, &[cp_bx.llbb()]);
+                    let (_, cs) = cs_bx.catch_switch(None, None, &[cp_bx.llbb()]);
 
                     // The "null" here is actually a RTTI type descriptor for the
                     // C++ personality function, but `catch (...)` has no type so

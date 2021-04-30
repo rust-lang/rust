@@ -74,9 +74,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
             debug!("llblock: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
-            let mut trampoline = fx.new_block(name);
+            let trampoline = fx.new_block(name);
+            let trampoline_llbb = trampoline.llbb();
             trampoline.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
-            trampoline.llbb()
+            trampoline_llbb
         } else {
             lltarget
         }
@@ -85,16 +86,16 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     fn funclet_br<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
-        bx: &mut Bx,
+        bx: Bx,
         target: mir::BasicBlock,
-    ) {
+    ) -> Bx::Unpositioned {
         let (lltarget, is_cleanupret) = self.lltarget(fx, target);
         if is_cleanupret {
             // micro-optimization: generate a `ret` rather than a jump
             // to a trampoline.
-            bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
+            bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget)).0
         } else {
-            bx.br(lltarget);
+            bx.br(lltarget)
         }
     }
 
@@ -103,25 +104,25 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
-        bx: &mut Bx,
+        mut bx: Bx,
         fn_abi: FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
-    ) {
+    ) -> Bx::Unpositioned {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
         if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
-            let ret_bx = if let Some((_, target)) = destination {
+            let ret_llbb = if let Some((_, target)) = destination {
                 fx.blocks[target]
             } else {
                 fx.unreachable_block()
             };
-            let invokeret = bx.invoke(
+            let (unpositioned_bx, invokeret) = bx.invoke(
                 fn_ptr,
                 &llargs,
-                ret_bx,
+                ret_llbb,
                 self.llblock(fx, cleanup),
                 self.funclet(fx),
                 Some(&fn_abi),
@@ -132,6 +133,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 fx.set_debug_loc(&mut ret_bx, self.terminator.source_info);
                 fx.store_return(&mut ret_bx, ret_dest, &fn_abi.ret, invokeret);
             }
+
+            unpositioned_bx
         } else {
             let llret = bx.call(fn_ptr, &llargs, self.funclet(fx), Some(&fn_abi));
             if fx.mir[self.bb].is_cleanup {
@@ -143,10 +146,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
-                fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
-                self.funclet_br(fx, bx, target);
+                fx.store_return(&mut bx, ret_dest, &fn_abi.ret, llret);
+                self.funclet_br(fx, bx, target)
             } else {
-                bx.unreachable();
+                bx.unreachable()
             }
         }
     }
@@ -155,9 +158,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 /// Codegen implementations for some terminator variants.
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
-    fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, mut bx: Bx) {
+    fn codegen_resume_terminator(
+        &mut self,
+        helper: TerminatorCodegenHelper<'tcx>,
+        mut bx: Bx,
+    ) -> Bx::Unpositioned {
         if let Some(funclet) = helper.funclet(self) {
-            bx.cleanup_ret(funclet, None);
+            bx.cleanup_ret(funclet, None).0
         } else {
             let slot = self.get_personality_slot(&mut bx);
             let lp0 = slot.project_field(&mut bx, 0);
@@ -169,7 +176,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let mut lp = bx.const_undef(self.landing_pad_type());
             lp = bx.insert_value(lp, lp0, 0);
             lp = bx.insert_value(lp, lp1, 1);
-            bx.resume(lp);
+            bx.resume(lp).0
         }
     }
 
@@ -180,7 +187,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         discr: &mir::Operand<'tcx>,
         switch_ty: Ty<'tcx>,
         targets: &SwitchTargets,
-    ) {
+    ) -> Bx::Unpositioned {
         let discr = self.codegen_operand(&mut bx, &discr);
         // `switch_ty` is redundant, sanity-check that.
         assert_eq!(discr.layout.ty, switch_ty);
@@ -201,18 +208,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
                 let llval = bx.const_uint_big(switch_llty, test_value);
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
-                bx.cond_br(cmp, lltrue, llfalse);
+                bx.cond_br(cmp, lltrue, llfalse)
             }
         } else {
             bx.switch(
                 discr.immediate(),
                 helper.llblock(self, targets.otherwise()),
                 target_iter.map(|(value, target)| (value, helper.llblock(self, target))),
-            );
+            )
         }
     }
 
-    fn codegen_return_terminator(&mut self, mut bx: Bx) {
+    fn codegen_return_terminator(&mut self, mut bx: Bx) -> Bx::Unpositioned {
         // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
@@ -232,13 +239,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.abort();
             // `abort` does not terminate the block, so we still need to generate
             // an `unreachable` terminator after it.
-            bx.unreachable();
-            return;
+            return bx.unreachable();
         }
         let llval = match self.fn_abi.ret.mode {
             PassMode::Ignore | PassMode::Indirect { .. } => {
-                bx.ret_void();
-                return;
+                return bx.ret_void();
             }
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
@@ -275,7 +280,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.load(addr, self.fn_abi.ret.layout.align.abi)
             }
         };
-        bx.ret(llval);
+        bx.ret(llval)
     }
 
     fn codegen_drop_terminator(
@@ -285,15 +290,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
-    ) {
+    ) -> Bx::Unpositioned {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            return helper.funclet_br(self, bx, target);
         }
 
         let place = self.codegen_place(&mut bx, location.as_ref());
@@ -320,15 +324,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => (bx.get_fn_addr(drop_fn), FnAbi::of_instance(&bx, drop_fn, &[])),
         };
-        helper.do_call(
-            self,
-            &mut bx,
-            fn_abi,
-            drop_fn,
-            args,
-            Some((ReturnDest::Nothing, target)),
-            unwind,
-        );
+        helper.do_call(self, bx, fn_abi, drop_fn, args, Some((ReturnDest::Nothing, target)), unwind)
     }
 
     fn codegen_assert_terminator(
@@ -341,7 +337,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         msg: &mir::AssertMessage<'tcx>,
         target: mir::BasicBlock,
         cleanup: Option<mir::BasicBlock>,
-    ) {
+    ) -> Bx::Unpositioned {
         let span = terminator.source_info.span;
         let cond = self.codegen_operand(&mut bx, cond).immediate();
         let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
@@ -361,8 +357,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Don't codegen the panic block if success if known.
         if const_cond == Some(expected) {
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            return helper.funclet_br(self, bx, target);
         }
 
         // Pass the condition through llvm.expect for branch hinting.
@@ -409,20 +404,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llfn = bx.get_fn_addr(instance);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
+        helper.do_call(self, bx, fn_abi, llfn, &args, None, cleanup)
     }
 
-    /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
+    /// Returns `Ok` if this is indeed a panic intrinsic and codegen is done,
+    /// otherwise returns `Err(bx)`, having not touched `bx`.
     fn codegen_panic_intrinsic(
         &mut self,
         helper: &TerminatorCodegenHelper<'tcx>,
-        bx: &mut Bx,
+        mut bx: Bx,
         intrinsic: Option<Symbol>,
         instance: Option<Instance<'tcx>>,
         source_info: mir::SourceInfo,
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
-    ) -> bool {
+    ) -> Result<Bx::Unpositioned, Bx> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
@@ -445,11 +441,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let do_panic = match intrinsic {
                 Inhabited => layout.abi.is_uninhabited(),
                 // We unwrap as the error type is `!`.
-                ZeroValid => !layout.might_permit_raw_init(bx, /*zero:*/ true).unwrap(),
+                ZeroValid => !layout.might_permit_raw_init(&bx, /*zero:*/ true).unwrap(),
                 // We unwrap as the error type is `!`.
-                UninitValid => !layout.might_permit_raw_init(bx, /*zero:*/ false).unwrap(),
+                UninitValid => !layout.might_permit_raw_init(&bx, /*zero:*/ false).unwrap(),
             };
-            if do_panic {
+            Ok(if do_panic {
                 let msg_str = with_no_trimmed_paths(|| {
                     if layout.abi.is_uninhabited() {
                         // Use this error even for the other intrinsics as it is more precise.
@@ -461,14 +457,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 });
                 let msg = bx.const_str(Symbol::intern(&msg_str));
-                let location = self.get_caller_location(bx, source_info).immediate();
+                let location = self.get_caller_location(&mut bx, source_info).immediate();
 
                 // Obtain the panic entry point.
                 // FIXME: dedup this with `codegen_assert_terminator` above.
                 let def_id =
                     common::langcall(bx.tcx(), Some(source_info.span), "", LangItem::Panic);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_abi = FnAbi::of_instance(bx, instance, &[]);
+                let fn_abi = FnAbi::of_instance(&bx, instance, &[]);
                 let llfn = bx.get_fn_addr(instance);
 
                 // Codegen the actual panic invoke/call.
@@ -480,15 +476,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &[msg.0, msg.1, location],
                     destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
                     cleanup,
-                );
+                )
             } else {
                 // a NOP
                 let target = destination.as_ref().unwrap().1;
                 helper.funclet_br(self, bx, target)
-            }
-            true
+            })
         } else {
-            false
+            Err(bx)
         }
     }
 
@@ -502,7 +497,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         destination: &Option<(mir::Place<'tcx>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
         fn_span: Span,
-    ) {
+    ) -> Bx::Unpositioned {
         let source_info = terminator.source_info;
         let span = source_info.span;
 
@@ -527,8 +522,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let &(_, target) = destination.as_ref().unwrap();
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            return helper.funclet_br(self, bx, target);
         }
 
         // FIXME(eddyb) avoid computing this if possible, when `instance` is
@@ -558,10 +552,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if intrinsic == Some(sym::transmute) {
-            if let Some(destination_ref) = destination.as_ref() {
+            return if let Some(destination_ref) = destination.as_ref() {
                 let &(dest, target) = destination_ref;
                 self.codegen_transmute(&mut bx, &args[0], dest);
-                helper.funclet_br(self, &mut bx, target);
+                helper.funclet_br(self, bx, target)
             } else {
                 // If we are trying to transmute to an uninhabited type,
                 // it is likely there is no allotted destination. In fact,
@@ -570,22 +564,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // into an uninhabited type is impossible, so anything following
                 // it must be unreachable.
                 assert_eq!(fn_abi.ret.layout.abi, abi::Abi::Uninhabited);
-                bx.unreachable();
-            }
-            return;
+                bx.unreachable()
+            };
         }
 
-        if self.codegen_panic_intrinsic(
+        bx = match self.codegen_panic_intrinsic(
             &helper,
-            &mut bx,
+            bx,
             intrinsic,
             instance,
             source_info,
             destination,
             cleanup,
         ) {
-            return;
-        }
+            Ok(unpositioned_bx) => return unpositioned_bx,
+            Err(bx) => bx,
+        };
 
         // The arguments we'll be passing. Plus one to account for outptr, if used.
         let arg_count = fn_abi.args.len() + fn_abi.ret.is_indirect() as usize;
@@ -600,17 +594,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if intrinsic == Some(sym::caller_location) {
-            if let Some((_, target)) = destination.as_ref() {
-                let location = self
-                    .get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
+            let &(_, target) = destination.as_ref().unwrap();
+            let location =
+                self.get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
 
-                if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
-                    location.val.store(&mut bx, tmp);
-                }
-                self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
-                helper.funclet_br(self, &mut bx, *target);
+            if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
+                location.val.store(&mut bx, tmp);
             }
-            return;
+            self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
+            return helper.funclet_br(self, bx, target);
         }
 
         match intrinsic {
@@ -667,13 +659,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
                 }
 
-                if let Some((_, target)) = *destination {
-                    helper.funclet_br(self, &mut bx, target);
+                return if let Some((_, target)) = *destination {
+                    helper.funclet_br(self, bx, target)
                 } else {
-                    bx.unreachable();
-                }
-
-                return;
+                    bx.unreachable()
+                };
             }
         }
 
@@ -786,13 +776,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         helper.do_call(
             self,
-            &mut bx,
+            bx,
             fn_abi,
             fn_ptr,
             &llargs,
             destination.as_ref().map(|&(_, target)| (ret_dest, target)),
             cleanup,
-        );
+        )
     }
 
     fn codegen_asm_terminator(
@@ -805,7 +795,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         options: ast::InlineAsmOptions,
         line_spans: &[Span],
         destination: Option<mir::BasicBlock>,
-    ) {
+    ) -> Bx::Unpositioned {
         let span = terminator.source_info.span;
 
         let operands: Vec<_> = operands
@@ -882,9 +872,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx.codegen_inline_asm(template, &operands, options, line_spans);
 
         if let Some(target) = destination {
-            helper.funclet_br(self, &mut bx, target);
+            helper.funclet_br(self, bx, target)
         } else {
-            bx.unreachable();
+            bx.unreachable()
         }
     }
 }
@@ -909,7 +899,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mut bx: Bx,
         bb: mir::BasicBlock,
         terminator: &'tcx mir::Terminator<'tcx>,
-    ) {
+    ) -> Bx::Unpositioned {
         debug!("codegen_terminator: {:?}", terminator);
 
         // Create the cleanup bundle, if needed.
@@ -924,7 +914,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.abort();
                 // `abort` does not terminate the block, so we still need to generate
                 // an `unreachable` terminator after it.
-                bx.unreachable();
+                bx.unreachable()
             }
 
             mir::TerminatorKind::Goto { target } => {
@@ -939,30 +929,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.sideeffect();
                 }
 
-                helper.funclet_br(self, &mut bx, target);
+                helper.funclet_br(self, bx, target)
             }
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, switch_ty, targets);
+                self.codegen_switchint_terminator(helper, bx, discr, switch_ty, targets)
             }
 
-            mir::TerminatorKind::Return => {
-                self.codegen_return_terminator(bx);
-            }
+            mir::TerminatorKind::Return => self.codegen_return_terminator(bx),
 
-            mir::TerminatorKind::Unreachable => {
-                bx.unreachable();
-            }
+            mir::TerminatorKind::Unreachable => bx.unreachable(),
 
             mir::TerminatorKind::Drop { place, target, unwind } => {
-                self.codegen_drop_terminator(helper, bx, place, target, unwind);
+                self.codegen_drop_terminator(helper, bx, place, target, unwind)
             }
 
-            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
-                self.codegen_assert_terminator(
+            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => self
+                .codegen_assert_terminator(
                     helper, bx, terminator, cond, expected, msg, target, cleanup,
-                );
-            }
+                ),
 
             mir::TerminatorKind::DropAndReplace { .. } => {
                 bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
@@ -975,18 +960,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
                 from_hir_call: _,
                 fn_span,
-            } => {
-                self.codegen_call_terminator(
-                    helper,
-                    bx,
-                    terminator,
-                    func,
-                    args,
-                    destination,
-                    cleanup,
-                    fn_span,
-                );
-            }
+            } => self.codegen_call_terminator(
+                helper,
+                bx,
+                terminator,
+                func,
+                args,
+                destination,
+                cleanup,
+                fn_span,
+            ),
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("generator ops in codegen")
             }
@@ -1000,18 +983,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 options,
                 line_spans,
                 destination,
-            } => {
-                self.codegen_asm_terminator(
-                    helper,
-                    bx,
-                    terminator,
-                    template,
-                    operands,
-                    options,
-                    line_spans,
-                    destination,
-                );
-            }
+            } => self.codegen_asm_terminator(
+                helper,
+                bx,
+                terminator,
+                template,
+                operands,
+                options,
+                line_spans,
+                destination,
+            ),
         }
     }
 
@@ -1216,6 +1197,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let mut bx = self.new_block("cleanup");
+        let landing_pad_llbb = bx.llbb();
 
         let llpersonality = self.cx.eh_personality();
         let llretty = self.landing_pad_type();
@@ -1227,7 +1209,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
 
         bx.br(target_bb);
-        bx.llbb()
+
+        landing_pad_llbb
     }
 
     fn landing_pad_type(&self) -> Bx::Type {
@@ -1237,10 +1220,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn unreachable_block(&mut self) -> Bx::BasicBlock {
         self.unreachable_block.unwrap_or_else(|| {
-            let mut bx = self.new_block("unreachable");
+            let bx = self.new_block("unreachable");
+            let llbb = bx.llbb();
             bx.unreachable();
-            self.unreachable_block = Some(bx.llbb());
-            bx.llbb()
+            self.unreachable_block = Some(llbb);
+            llbb
         })
     }
 
