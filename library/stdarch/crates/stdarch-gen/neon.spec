@@ -338,7 +338,7 @@ generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t,
 
 /// Signed compare bitwise Test bits nonzero
 name = vtst
-multi_fn = simd_and, c:in_t
+multi_fn = simd_and, c:in_t, a, b
 multi_fn = fixed, d:in_t
 multi_fn = simd_ne, c, transmute(d)
 a = MIN, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, MAX
@@ -354,7 +354,7 @@ generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8
 
 /// Unsigned compare bitwise Test bits nonzero
 name = vtst
-multi_fn = simd_and, c:in_t
+multi_fn = simd_and, c:in_t, a, b
 multi_fn = fixed, d:in_t
 multi_fn = simd_ne, c, transmute(d)
 a = MIN, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, MAX
@@ -1864,6 +1864,18 @@ aarch64 = mul
 fn = simd_mul
 generate int*_t, uint*_t
 
+/// Polynomial multiply
+name = vmul
+a = 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3
+b = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+validate 1, 6, 3, 12, 5, 10, 7, 24, 9, 30, 11, 20, 13, 18, 15, 48
+
+aarch64 = pmul
+link-aarch64 = pmul._EXT_
+arm = vmul
+link-arm = vmulp._EXT_
+generate poly8x8_t, poly8x16_t
+
 /// Multiply
 name = vmul
 fn = simd_mul
@@ -1876,6 +1888,108 @@ generate float64x*_t
 
 arm = vmul.
 generate float*_t
+
+/// Vector multiply by scalar
+name = vmul
+out-n-suffix
+multi_fn = simd_mul, a, {vdup-nout-noext, b}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2
+validate 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32
+
+arm = vmul
+aarch64 = mul
+generate int16x4_t:i16:int16x4_t, int16x8_t:i16:int16x8_t, int32x2_t:i32:int32x2_t, int32x4_t:i32:int32x4_t
+generate uint16x4_t:u16:uint16x4_t, uint16x8_t:u16:uint16x8_t, uint32x2_t:u32:uint32x2_t, uint32x4_t:u32:uint32x4_t
+
+/// Vector multiply by scalar
+name = vmul
+out-n-suffix
+multi_fn = simd_mul, a, {vdup-nout-noext, b}
+a = 1., 2., 3., 4.
+b = 2.
+validate 2., 4., 6., 8.
+
+aarch64 = fmul
+generate float64x1_t:f64:float64x1_t, float64x2_t:f64:float64x2_t
+
+arm = vmul
+generate float32x2_t:f32:float32x2_t, float32x4_t:f32:float32x4_t
+
+/// Multiply
+name = vmul
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_mul, a, {simd_shuffle-out_len-noext, b, b, {dup-out_len-LANE as u32}}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32
+
+aarch64 = mul
+arm = vmul
+generate int16x4_t, int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x4_t:int16x8_t, int16x8_t
+generate int32x2_t, int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x2_t:int32x4_t, int32x4_t
+generate uint16x4_t, uint16x4_t:uint16x8_t:uint16x4_t, uint16x8_t:uint16x4_t:uint16x8_t, uint16x8_t
+generate uint32x2_t, uint32x2_t:uint32x4_t:uint32x2_t, uint32x4_t:uint32x2_t:uint32x4_t, uint32x4_t
+
+/// Floating-point multiply
+name = vmul
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_mul, a, {transmute--<element_t _>, {simd_extract, b, LANE as u32}}
+a = 1., 2., 3., 4.
+b = 2., 0., 0., 0.
+n = 0
+validate 2., 4., 6., 8.
+
+aarch64 = fmul
+generate float64x1_t, float64x1_t:float64x2_t:float64x1_t
+
+/// Floating-point multiply
+name = vmul
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_mul, a, {simd_shuffle-out_len-noext, b, b, {dup-out_len-LANE as u32}}
+a = 1., 2., 3., 4.
+b = 2., 0., 0., 0.
+n = 0
+validate 2., 4., 6., 8.
+
+aarch64 = fmul
+generate float64x2_t:float64x1_t:float64x2_t, float64x2_t
+
+arm = vmul
+generate float32x2_t, float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x2_t:float32x4_t, float32x4_t
+
+/// Floating-point multiply
+name = vmuls_lane
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_extract, b:f32, b, LANE as u32
+multi_fn = a * b
+a = 1.
+b = 2., 0., 0., 0.
+n = 0
+validate 2.
+aarch64 = fmul
+generate f32:float32x2_t:f32, f32:float32x4_t:f32
+
+/// Floating-point multiply
+name = vmuld_lane
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_extract, b:f64, b, LANE as u32
+multi_fn = a * b
+a = 1.
+b = 2., 0.
+n = 0
+validate 2.
+aarch64 = fmul
+generate f64:float64x1_t:f64, f64:float64x2_t:f64
 
 /// Signed multiply long
 name = vmull
@@ -1942,6 +2056,21 @@ link-aarch64 = pmull._EXT_
 generate poly8x8_t:poly8x8_t:poly16x8_t
 
 /// Polynomial multiply long
+name = vmull
+no-q
+a = 15
+b = 3
+validate 17
+target = crypto
+
+aarch64 = pmull
+link-aarch64 = pmull64:p64:p64:p64:int8x16_t
+arm = vmull
+link-arm = vmullp.v2i64:int64x1_t:int64x1_t:int64x1_t:int64x2_t
+//generate p64:p64:p128
+
+
+/// Polynomial multiply long
 name = vmull_high
 no-q
 multi_fn = simd_shuffle-out_len-noext, a:half, a, a, {fixed-half-right}
@@ -1954,6 +2083,144 @@ validate 9, 30, 11, 20, 13, 18, 15, 48
 
 aarch64 = pmull
 generate poly8x16_t:poly8x16_t:poly16x8_t
+
+/// Polynomial multiply long
+name = vmull_high
+no-q
+multi_fn = vmull-noqself-noext, {simd_extract, a, 1}, {simd_extract, b, 1}
+a = 1, 15
+b = 1, 3
+validate 17
+target = crypto
+
+aarch64 = pmull2
+//generate poly64x2_t:poly64x2_t:p128
+
+/// Vector long multiply with scalar
+name = vmull
+n-suffix
+multi_fn = vmull-in0-noext, a, {vdup-nin0-noext, b}
+a = 1, 2, 3, 4, 5, 6, 7, 8
+b = 2
+validate 2, 4, 6, 8, 10, 12, 14, 16
+
+arm = vmull
+aarch64 = smull
+generate int16x4_t:i16:int32x4_t, int32x2_t:i32:int64x2_t
+aarch64 = umull
+generate uint16x4_t:u16:uint32x4_t, uint32x2_t:u32:uint64x2_t
+
+/// Vector long multiply by scalar
+name = vmull_lane
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = vmull-in0-noext, a, {simd_shuffle-in0_len-noext, b, b, {dup-in0_len-LANE as u32}}
+a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+b = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32
+
+arm = vmull
+aarch64 = smull
+generate int16x4_t:int16x4_t:int32x4_t, int16x4_t:int16x8_t:int32x4_t
+generate int32x2_t:int32x2_t:int64x2_t, int32x2_t:int32x4_t:int64x2_t
+aarch64 = umull
+generate uint16x4_t:uint16x4_t:uint32x4_t, uint16x4_t:uint16x8_t:uint32x4_t
+generate uint32x2_t:uint32x2_t:uint64x2_t, uint32x2_t:uint32x4_t:uint64x2_t
+
+/// Multiply long
+name = vmull_high_n
+no-q
+multi_fn = vmull_high-noqself-noext, a, {vdup-nin0-noext, b}
+a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
+b = 2
+validate 18, 20, 22, 24, 26, 28, 30, 32
+
+aarch64 = smull2
+generate int16x8_t:i16:int32x4_t, int32x4_t:i32:int64x2_t
+aarch64 = umull2
+generate uint16x8_t:u16:uint32x4_t, uint32x4_t:u32:uint64x2_t
+
+/// Multiply long
+name = vmull_high_lane
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = vmull_high-noqself-noext, a, {simd_shuffle-in0_len-noext, b, b, {dup-in0_len-LANE as u32}}
+a = 1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16
+b = 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+n = 1
+validate 18, 20, 22, 24, 26, 28, 30, 32
+
+aarch64 = smull2
+generate int16x8_t:int16x4_t:int32x4_t, int16x8_t:int16x8_t:int32x4_t
+generate int32x4_t:int32x2_t:int64x2_t, int32x4_t:int32x4_t:int64x2_t
+aarch64 = umull2
+generate uint16x8_t:uint16x4_t:uint32x4_t, uint16x8_t:uint16x8_t:uint32x4_t
+generate uint32x4_t:uint32x2_t:uint64x2_t, uint32x4_t:uint32x4_t:uint64x2_t
+
+/// Floating-point multiply extended
+name = vmulx
+a = 1., 2., 3., 4.
+b = 2., 2., 2., 2.
+validate 2., 4., 6., 8.
+
+aarch64 = fmulx
+link-aarch64 = fmulx._EXT_
+generate float*_t, float64x*_t
+
+/// Floating-point multiply extended
+name = vmulx
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = vmulx-in0-noext, a, {transmute--<element_t _>, {simd_extract, b, LANE as u32}}
+a = 1.
+b = 2., 0.
+n = 0
+validate 2.
+
+aarch64 = fmulx
+generate float64x1_t, float64x1_t:float64x2_t:float64x1_t
+
+/// Floating-point multiply extended
+name = vmulx
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = vmulx-in0-noext, a, {simd_shuffle-in0_len-noext, b, b, {dup-in0_len-LANE as u32}}
+a = 1., 2., 3., 4.
+b = 2., 0., 0., 0.
+n = 0
+validate 2., 4., 6., 8.
+
+aarch64 = fmulx
+generate float32x2_t, float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x2_t:float32x4_t, float32x4_t
+generate float64x2_t:float64x1_t:float64x2_t, float64x2_t
+
+/// Floating-point multiply extended
+name = vmulx
+a = 2.
+b = 3.
+validate 6.
+
+aarch64 = fmulx
+link-aarch64 = fmulx._EXT_
+generate f32, f64
+
+/// Floating-point multiply extended
+name = vmulx
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = vmulx-out-noext, a, {simd_extract, b, LANE as u32}
+
+a = 2.
+b = 3., 0., 0., 0.
+n = 0
+validate 6.
+
+aarch64 = fmulx
+generate f32:float32x2_t:f32, f32:float32x4_t:f32, f64:float64x1_t:f64, f64:float64x2_t:f64
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
 name = vfma
@@ -2142,7 +2409,7 @@ generate uint32x4_t:u64
 name = vsubhn
 no-q
 multi_fn = fixed, c:in_t
-multi_fn = simd_cast, {simd_shr, {simd_sub}, transmute(c)}
+multi_fn = simd_cast, {simd_shr, {simd_sub, a, b}, transmute(c)}
 a = MAX, MIN, 1, 1, MAX, MIN, 1, 1
 b = 1, 0, 0, 0, 1, 0, 0, 0
 fixed = HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS, HFBITS

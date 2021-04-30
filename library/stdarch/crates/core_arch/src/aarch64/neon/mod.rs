@@ -108,9 +108,6 @@ extern "C" {
     #[link_name = "llvm.aarch64.neon.usqadd.v2i64"]
     fn vsqaddq_u64_(a: uint64x2_t, b: int64x2_t) -> uint64x2_t;
 
-    #[link_name = "llvm.aarch64.neon.pmull64"]
-    fn vmull_p64_(a: i64, b: i64) -> int8x16_t;
-
     #[link_name = "llvm.aarch64.neon.addp.v8i16"]
     fn vpaddq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
     #[link_name = "llvm.aarch64.neon.addp.v4i32"]
@@ -1148,14 +1145,6 @@ pub unsafe fn vaddlv_u8(a: uint8x8_t) -> u16 {
 #[cfg_attr(test, assert_instr(uaddlv))]
 pub unsafe fn vaddlvq_u8(a: uint8x16_t) -> u16 {
     vaddlvq_u8_(a) as u16
-}
-
-/// Polynomial multiply long
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(pmull))]
-pub unsafe fn vmull_p64(a: p64, b: p64) -> p128 {
-    transmute(vmull_p64_(transmute(a), transmute(b)))
 }
 
 /// Vector add.
@@ -3260,36 +3249,6 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vmull_p64() {
-        // FIXME: I've a hard time writing a test for this as the documentation
-        // from arm is a bit thin as to waht exactly it does
-        let a: i64 = 8;
-        let b: i64 = 7;
-        let e: i128 = 56;
-        let r: i128 = transmute(vmull_p64(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-
-        /*
-        let a: i64 = 5;
-        let b: i64 = 5;
-        let e: i128 = 25;
-        let r: i128 = transmute(vmull_p64(a, b));
-
-        assert_eq!(r, e);
-        let a: i64 = 6;
-        let b: i64 = 6;
-        let e: i128 = 36;
-        let r: i128 = transmute(vmull_p64(a, b));
-        assert_eq!(r, e);
-
-        let a: i64 = 7;
-        let b: i64 = 6;
-        let e: i128 = 42;
-        let r: i128 = transmute(vmull_p64(a, b));
-        assert_eq!(r, e);
-        */
-    }
     #[simd_test(enable = "neon")]
     unsafe fn test_vadd_f64() {
         let a = 1.;
