@@ -243,14 +243,18 @@ pub struct CoverageSpans<'a, 'tcx> {
     /// iteration.
     some_curr: Option<CoverageSpan>,
 
-    /// The original `span` for `curr`, in case the `curr` span is modified.
+    /// The original `span` for `curr`, in case `curr.span()` is modified. The `curr_original_span`
+    /// **must not be mutated** (except when advancing to the next `curr`), even if `curr.span()`
+    /// is mutated.
     curr_original_span: Span,
 
     /// The CoverageSpan from a prior iteration; typically assigned from that iteration's `curr`.
     /// If that `curr` was discarded, `prev` retains its value from the previous iteration.
     some_prev: Option<CoverageSpan>,
 
-    /// Assigned from `curr_original_span` from the previous iteration.
+    /// Assigned from `curr_original_span` from the previous iteration. The `prev_original_span`
+    /// **must not be mutated** (except when advancing to the next `prev`), even if `prev.span()`
+    /// is mutated.
     prev_original_span: Span,
 
     /// A copy of the expn_span from the prior iteration.
@@ -400,8 +404,12 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             } else if self.curr().is_closure {
                 self.carve_out_span_for_closure();
             } else if self.prev_original_span == self.curr().span {
-                // Note that this compares the new span to `prev_original_span`, which may not
-                // be the full `prev.span` (if merged during the previous iteration).
+                // Note that this compares the new (`curr`) span to `prev_original_span`.
+                // In this branch, the actual span byte range of `prev_original_span` is not
+                // important. What is important is knowing whether the new `curr` span was
+                // **originally** the same as the original span of `prev()`. The original spans
+                // reflect their original sort order, and for equal spans, conveys a partial
+                // ordering based on CFG dominator priority.
                 if self.prev().is_macro_expansion() && self.curr().is_macro_expansion() {
                     // Macros that expand to include branching (such as
                     // `assert_eq!()`, `assert_ne!()`, `info!()`, `debug!()`, or
@@ -663,10 +671,13 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             self.push_refined_span(pre_closure);
         }
         if has_post_closure_span {
-            // Update prev.span to start after the closure (and discard curr)
+            // Mutate `prev.span()` to start after the closure (and discard curr).
+            // (**NEVER** update `prev_original_span` because it affects the assumptions
+            // about how the `CoverageSpan`s are ordered.)
             self.prev_mut().span = self.prev().span.with_lo(right_cutoff);
-            self.prev_original_span = self.prev().span;
+            debug!("  Mutated prev.span to start after the closure. prev={:?}", self.prev());
             for dup in pending_dups.iter_mut() {
+                debug!("    ...and at least one overlapping dup={:?}", dup);
                 dup.span = dup.span.with_lo(right_cutoff);
             }
             self.pending_dups.append(&mut pending_dups);
@@ -678,8 +689,14 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 
     /// Called if `curr.span` equals `prev_original_span` (and potentially equal to all
-    /// `pending_dups` spans, if any); but keep in mind, `prev.span` may start at a `Span.lo()` that
-    /// is less than (further left of) `prev_original_span.lo()`.
+    /// `pending_dups` spans, if any). Keep in mind, `prev.span()` may have been changed.
+    /// If prev.span() was merged into other spans (with matching BCB, for instance),
+    /// `prev.span.hi()` will be greater than (further right of) `prev_original_span.hi()`.
+    /// If prev.span() was split off to the right of a closure, prev.span().lo() will be
+    /// greater than prev_original_span.lo(). The actual span of `prev_original_span` is
+    /// not as important as knowing that `prev()` **used to have the same span** as `curr(),
+    /// which means their sort order is still meaningful for determinating the dominator
+    /// relationship.
     ///
     /// When two `CoverageSpan`s have the same `Span`, dominated spans can be discarded; but if
     /// neither `CoverageSpan` dominates the other, both (or possibly more than two) are held,
