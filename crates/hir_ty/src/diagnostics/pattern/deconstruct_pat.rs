@@ -135,6 +135,7 @@ impl Constructor {
             Pat::Bind { .. } | Pat::Wild => Wildcard,
             Pat::Tuple { .. } | Pat::Ref { .. } | Pat::Box { .. } => Single,
             Pat::Record { .. } | Pat::Path(_) | Pat::TupleStruct { .. } => {
+                // TODO: path to const
                 let variant_id =
                     cx.infer.variant_resolution_for_pat(pat).unwrap_or_else(|| todo!());
                 match variant_id {
@@ -144,8 +145,8 @@ impl Constructor {
             }
 
             Pat::Or(..) => panic!("bug: Or-pattern should have been expanded earlier on."),
+            Pat::Missing => todo!("Fail gracefully when there is an error in a pattern"),
             pat => todo!("Constructor::from_pat {:?}", pat),
-            // Pat::Missing => {}
             // Pat::Range { start, end } => {}
             // Pat::Slice { prefix, slice, suffix } => {}
             // Pat::Lit(_) => {}
@@ -280,7 +281,7 @@ pub(super) struct SplitWildcard {
 
 impl SplitWildcard {
     pub(super) fn new(pcx: PatCtxt<'_>) -> Self {
-        // let cx = pcx.cx;
+        let cx = pcx.cx;
         // let make_range = |start, end| IntRange(todo!());
 
         // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
@@ -292,9 +293,62 @@ impl SplitWildcard {
         // Invariant: this is empty if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind(&Interner) {
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(_)), _) => todo!(),
+            TyKind::Scalar(Scalar::Bool) => todo!(),
+            // TyKind::Array(..) if ... => todo!(),
+            TyKind::Array(..) | TyKind::Slice(..) => todo!(),
+            &TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref _substs) => {
+                let enum_data = cx.db.enum_data(enum_id);
+
+                // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
+                // additional "unknown" constructor.
+                // There is no point in enumerating all possible variants, because the user can't
+                // actually match against them all themselves. So we always return only the fictitious
+                // constructor.
+                // E.g., in an example like:
+                //
+                // ```
+                //     let err: io::ErrorKind = ...;
+                //     match err {
+                //         io::ErrorKind::NotFound => {},
+                //     }
+                // ```
+                //
+                // we don't want to show every possible IO error, but instead have only `_` as the
+                // witness.
+                let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(enum_id);
+
+                // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
+                // as though it had an "unknown" constructor to avoid exposing its emptiness. The
+                // exception is if the pattern is at the top level, because we want empty matches to be
+                // considered exhaustive.
+                let is_secretly_empty = enum_data.variants.is_empty()
+                    && !cx.feature_exhaustive_patterns()
+                    && !pcx.is_top_level;
+
+                if is_secretly_empty || is_declared_nonexhaustive {
+                    smallvec![NonExhaustive]
+                } else if cx.feature_exhaustive_patterns() {
+                    // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                    // uninhabited.
+                    todo!()
+                } else {
+                    enum_data
+                        .variants
+                        .iter()
+                        .map(|(local_id, ..)| Variant(EnumVariantId { parent: enum_id, local_id }))
+                        .collect()
+                }
+            }
+            TyKind::Scalar(Scalar::Char) => todo!(),
+            TyKind::Scalar(Scalar::Int(..)) | TyKind::Scalar(Scalar::Uint(..)) => todo!(),
+            TyKind::Never if !cx.feature_exhaustive_patterns() && !pcx.is_top_level => {
+                smallvec![NonExhaustive]
+            }
+            TyKind::Never => SmallVec::new(),
+            _ if cx.is_uninhabited(&pcx.ty) => SmallVec::new(),
             TyKind::Adt(..) | TyKind::Tuple(..) | TyKind::Ref(..) => smallvec![Single],
-            _ => todo!(),
+            // This type is one for which we cannot list constructors, like `str` or `f64`.
+            _ => smallvec![NonExhaustive],
         };
         SplitWildcard { matrix_ctors: Vec::new(), all_ctors }
     }
@@ -496,7 +550,7 @@ impl Fields {
     pub(super) fn apply(self, pcx: PatCtxt<'_>, ctor: &Constructor) -> Pat {
         let subpatterns_and_indices = self.patterns_and_indices();
         let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p);
-        // TODO witnesses are not yet used 
+        // TODO witnesses are not yet used
         const TODO: Pat = Pat::Wild;
 
         match ctor {

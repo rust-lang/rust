@@ -3,7 +3,11 @@
 
 use std::{cell::RefCell, iter::FromIterator, ops::Index, sync::Arc};
 
-use hir_def::{ModuleId, body::Body, expr::{ExprId, Pat, PatId}};
+use hir_def::{
+    body::Body,
+    expr::{ExprId, Pat, PatId},
+    HasModule, ModuleId,
+};
 use la_arena::Arena;
 use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashMap;
@@ -33,6 +37,21 @@ impl<'a> MatchCheckCtx<'a> {
     pub(super) fn is_uninhabited(&self, ty: &Ty) -> bool {
         // FIXME(iDawer) implement exhaustive_patterns feature. More info in:
         // Tracking issue for RFC 1872: exhaustive_patterns feature https://github.com/rust-lang/rust/issues/51085
+        false
+    }
+
+    /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
+    pub(super) fn is_foreign_non_exhaustive_enum(&self, enum_id: hir_def::EnumId) -> bool {
+        let has_non_exhaustive_attr =
+            self.db.attrs(enum_id.into()).by_key("non_exhaustive").exists();
+        let is_local =
+            hir_def::AdtId::from(enum_id).module(self.db.upcast()).krate() == self.module.krate();
+        has_non_exhaustive_attr && !is_local
+    }
+
+    // Rust feature described as "Allows exhaustive pattern matching on types that contain uninhabited types."
+    pub(super) fn feature_exhaustive_patterns(&self) -> bool {
+        // TODO
         false
     }
 

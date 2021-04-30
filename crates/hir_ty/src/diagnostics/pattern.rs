@@ -76,4 +76,49 @@ fn main(v: S) {
 "#,
         );
     }
+
+    #[test]
+    fn c_enum() {
+        check_diagnostics(
+            r#"
+enum E { A, B }
+fn main(v: E) {
+    match v { E::A | E::B => {} }
+    match v { _           => {} }
+    match v { E::A        => {} }
+        //^ Missing match arm
+    match v {                   }
+        //^ Missing match arm
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn enum_() {
+        check_diagnostics(
+            r#"
+struct A; struct B;
+enum E { Tuple(A, B), Struct{ a: A, b: B } }
+fn main(v: E) {
+    match v {
+        E::Tuple(a, b)    => {}
+        E::Struct{ a, b } => {}
+    }
+    match v {
+        E::Tuple(_, _) => {}
+        E::Struct{..}  => {}
+    }
+    match v {
+        E::Tuple(..) => {}
+        _ => {}
+    }
+    match v { E::Tuple(..) => {} }
+        //^ Missing match arm
+    match v { }
+        //^ Missing match arm
+}
+"#,
+        );
+    }
 }
