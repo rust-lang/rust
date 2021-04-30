@@ -1490,6 +1490,8 @@ function hideThemeButtonState() {
     searchState.setup();
 }());
 
+let reset_button_timeout;
+
 function copy_path(but) {
     var parent = but.parentElement;
     var path = [];
@@ -1513,4 +1515,12 @@ function copy_path(but) {
     document.body.removeChild(el);
 
     but.textContent = '✓';
+    
+    window.clearTimeout(reset_button_timeout);
+    
+    function reset_button() {
+        but.textContent = '⎘';
+    }
+    
+    reset_button_timeout = window.setTimeout(reset_button, 1000);
 }
