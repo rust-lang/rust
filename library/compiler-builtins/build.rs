@@ -543,7 +543,7 @@ mod c {
                     &[(1, "relax"), (2, "acq"), (3, "rel"), (4, "acq_rel")]
                 {
                     let library_name = format!(
-                        "liboutline_atomic_helper_{}_{}_{}.a",
+                        "liboutline_atomic_helper_{}{}_{}.a",
                         instruction_type, size, model_name
                     );
                     let sym = format!("__aarch64_{}{}_{}", instruction_type, size, model_name);
