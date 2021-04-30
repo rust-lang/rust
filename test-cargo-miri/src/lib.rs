@@ -14,3 +14,7 @@ pub fn make_true() -> bool {
     issue_1760::use_the_dependency!();
     issue_1691::use_me()
 }
+
+pub fn main() {
+    println!("imported main");
+}
