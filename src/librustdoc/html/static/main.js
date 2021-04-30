@@ -1493,7 +1493,7 @@ function hideThemeButtonState() {
 (function () {
     var reset_button_timeout = null;
 
-    function copy_path(but) {
+    window.copy_path = function(but) {
         var parent = but.parentElement;
         var path = [];
 
@@ -1527,5 +1527,5 @@ function hideThemeButtonState() {
         }
 
         reset_button_timeout = window.setTimeout(reset_button, 1000);
-    }
+    };
 }());
