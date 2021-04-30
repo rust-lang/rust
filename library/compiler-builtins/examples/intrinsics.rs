@@ -6,7 +6,7 @@
 #![allow(unused_features)]
 #![cfg_attr(thumb, no_main)]
 #![deny(dead_code)]
-#![feature(test)]
+#![feature(bench_black_box)]
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]
