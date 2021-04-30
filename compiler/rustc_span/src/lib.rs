@@ -2032,7 +2032,7 @@ where
             return;
         }
 
-        let span = self.decode();
+        let span = self.data_untracked();
         span.ctxt.hash_stable(ctx, hasher);
         span.parent.hash_stable(ctx, hasher);
 
@@ -2042,7 +2042,7 @@ where
         }
 
         if let Some(parent) = span.parent {
-            let def_span = ctx.def_span(parent).decode();
+            let def_span = ctx.def_span(parent).data_untracked();
             if def_span.contains(span) {
                 // This span is enclosed in a definition: only hash the relative position.
                 Hash::hash(&TAG_RELATIVE_SPAN, hasher);

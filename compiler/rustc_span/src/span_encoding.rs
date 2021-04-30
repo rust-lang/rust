@@ -101,7 +101,7 @@ impl Span {
 
     #[inline]
     pub fn data(self) -> SpanData {
-        let data = self.decode();
+        let data = self.data_untracked();
         if let Some(parent) = data.parent {
             (*SPAN_TRACK)(parent);
         }
@@ -111,7 +111,7 @@ impl Span {
     /// Internal function to translate between an encoded span and the expanded representation.
     /// This function must not be used outside the incremental engine.
     #[inline]
-    pub fn decode(self) -> SpanData {
+    pub fn data_untracked(self) -> SpanData {
         if self.len_or_tag != LEN_TAG {
             // Inline format.
             debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
