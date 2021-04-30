@@ -1490,37 +1490,42 @@ function hideThemeButtonState() {
     searchState.setup();
 }());
 
-let reset_button_timeout;
+(function () {
+    var reset_button_timeout = null;
 
-function copy_path(but) {
-    var parent = but.parentElement;
-    var path = [];
+    function copy_path(but) {
+        var parent = but.parentElement;
+        var path = [];
 
-    onEach(parent.childNodes, function(child) {
-        if (child.tagName === 'A') {
-            path.push(child.textContent);
+        onEach(parent.childNodes, function(child) {
+            if (child.tagName === 'A') {
+                path.push(child.textContent);
+            }
+        });
+
+        var el = document.createElement('textarea');
+        el.value = 'use ' + path.join('::') + ';';
+        el.setAttribute('readonly', '');
+        // To not make it appear on the screen.
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+
+        but.textContent = '✓';
+
+        if (reset_button_timeout !== null) {
+            window.clearTimeout(reset_button_timeout);
         }
-    });
 
-    var el = document.createElement('textarea');
-    el.value = 'use ' + path.join('::') + ';';
-    el.setAttribute('readonly', '');
-    // To not make it appear on the screen.
-    el.style.position = 'absolute';
-    el.style.left = '-9999px';
+        function reset_button() {
+            but.textContent = '⎘';
+            reset_button_timeout = null;
+        }
 
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-
-    but.textContent = '✓';
-    
-    window.clearTimeout(reset_button_timeout);
-    
-    function reset_button() {
-        but.textContent = '⎘';
+        reset_button_timeout = window.setTimeout(reset_button, 1000);
     }
-    
-    reset_button_timeout = window.setTimeout(reset_button, 1000);
-}
+}());
