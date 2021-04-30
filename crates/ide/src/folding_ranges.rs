@@ -20,6 +20,7 @@ pub enum FoldKind {
     Consts,
     Statics,
     Array,
+    WhereClause,
 }
 
 #[derive(Debug)]
@@ -35,6 +36,7 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut visited_mods = FxHashSet::default();
     let mut visited_consts = FxHashSet::default();
     let mut visited_statics = FxHashSet::default();
+    let mut visited_where_clauses = FxHashSet::default();
     // regions can be nested, here is a LIFO buffer
     let mut regions_starts: Vec<TextSize> = vec![];
 
@@ -107,6 +109,15 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 if node.kind() == STATIC && !visited_statics.contains(&node) {
                     if let Some(range) = contiguous_range_for_group(&node, &mut visited_statics) {
                         res.push(Fold { range, kind: FoldKind::Statics })
+                    }
+                }
+
+                // Fold where clause
+                if node.kind() == WHERE_CLAUSE && !visited_where_clauses.contains(&node) {
+                    if let Some(range) =
+                        contiguous_range_for_where(&node, &mut visited_where_clauses)
+                    {
+                        res.push(Fold { range, kind: FoldKind::WhereClause })
                     }
                 }
             }
@@ -241,6 +252,28 @@ fn contiguous_range_for_comment(
     }
 }
 
+fn contiguous_range_for_where(
+    node: &SyntaxNode,
+    visited: &mut FxHashSet<SyntaxNode>,
+) -> Option<TextRange> {
+    let first_where_pred = node.first_child();
+    let last_where_pred = node.last_child();
+
+    if first_where_pred != last_where_pred {
+        let mut it = node.descendants_with_tokens();
+        if let (Some(_where_clause), Some(where_kw), Some(last_comma)) =
+            (it.next(), it.next(), it.last())
+        {
+            let start = where_kw.text_range().end();
+            let end = last_comma.text_range().end();
+
+            visited.insert(node.clone());
+            return Some(TextRange::new(start, end));
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use test_utils::extract_tags;
@@ -272,6 +305,7 @@ mod tests {
                 FoldKind::Consts => "consts",
                 FoldKind::Statics => "statics",
                 FoldKind::Array => "array",
+                FoldKind::WhereClause => "whereclause",
             };
             assert_eq!(kind, &attr.unwrap());
         }
@@ -511,6 +545,25 @@ const SECOND_CONST: &str = "second";</fold>
 <fold statics>static FIRST_STATIC: &str = "first";
 static SECOND_STATIC: &str = "second";</fold>
             "#,
+        )
+    }
+
+    #[test]
+    fn fold_where_clause() {
+        // fold multi-line and don't fold single line.
+        check(
+            r#"
+fn foo()
+where<fold whereclause>
+    A: Foo,
+    B: Foo,
+    C: Foo,
+    D: Foo,</fold> {}
+
+fn bar()
+where
+    A: Bar, {}
+"#,
         )
     }
 }
