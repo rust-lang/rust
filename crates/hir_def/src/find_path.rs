@@ -130,7 +130,8 @@ fn find_path_inner(
     }
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
-    for (name, def_id) in root.def_map(db).extern_prelude() {
+    let root_def_map = root.def_map(db);
+    for (name, def_id) in root_def_map.extern_prelude() {
         if item == ItemInNs::Types(*def_id) {
             let name = scope_name.unwrap_or_else(|| name.clone());
             return Some(ModPath::from_segments(PathKind::Plain, vec![name]));
@@ -138,7 +139,8 @@ fn find_path_inner(
     }
 
     // - if the item is in the prelude, return the name from there
-    if let Some(prelude_module) = def_map.prelude() {
+    if let Some(prelude_module) = root_def_map.prelude() {
+        // Preludes in block DefMaps are ignored, only the crate DefMap is searched
         let prelude_def_map = prelude_module.def_map(db);
         let prelude_scope: &crate::item_scope::ItemScope =
             &prelude_def_map[prelude_module.local_id].scope;
@@ -1055,6 +1057,30 @@ fn f() {
             "dep",
             "dep",
             "dep",
+        );
+    }
+
+    #[test]
+    fn prelude_with_inner_items() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std
+fn f() {
+    fn inner() {}
+    $0
+}
+//- /std.rs crate:std
+pub mod prelude {
+    pub enum Option { None }
+    pub use Option::*;
+}
+#[prelude_import]
+pub use prelude::*;
+        "#,
+            "None",
+            "None",
+            "None",
+            "None",
         );
     }
 }
