@@ -601,11 +601,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 }
 
-impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    fn apply_attrs_callsite(&mut self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, callsite: Self::Value) {
-        fn_abi.apply_attrs_callsite(self, callsite)
-    }
-
+impl AbiBuilderMethods for Builder<'_, '_, '_> {
     fn get_param(&self, index: usize) -> Self::Value {
         llvm::get_param(self.llfn(), index as c_uint)
     }

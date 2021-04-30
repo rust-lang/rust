@@ -118,9 +118,14 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             } else {
                 fx.unreachable_block()
             };
-            let invokeret =
-                bx.invoke(fn_ptr, &llargs, ret_bx, self.llblock(fx, cleanup), self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_abi, invokeret);
+            let invokeret = bx.invoke(
+                fn_ptr,
+                &llargs,
+                ret_bx,
+                self.llblock(fx, cleanup),
+                self.funclet(fx),
+                Some(&fn_abi),
+            );
 
             if let Some((ret_dest, target)) = destination {
                 let mut ret_bx = fx.build_block(target);
@@ -128,8 +133,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 fx.store_return(&mut ret_bx, ret_dest, &fn_abi.ret, invokeret);
             }
         } else {
-            let llret = bx.call(fn_ptr, &llargs, self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_abi, llret);
+            let llret = bx.call(fn_ptr, &llargs, self.funclet(fx), Some(&fn_abi));
             if fx.mir[self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline
                 // drop glue. Also, when there is a deeply-nested

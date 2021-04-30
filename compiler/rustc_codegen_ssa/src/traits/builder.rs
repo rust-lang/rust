@@ -16,6 +16,7 @@ use crate::MemFlags;
 use rustc_middle::ty::layout::{HasParamEnv, TyAndLayout};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Abi, Align, Scalar, Size};
 use rustc_target::spec::HasTargetSpec;
 
@@ -33,7 +34,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods
     + ArgAbiMethods<'tcx>
-    + AbiBuilderMethods<'tcx>
+    + AbiBuilderMethods
     + IntrinsicCallMethods<'tcx>
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods
@@ -78,6 +79,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
         funclet: Option<&Self::Funclet>,
+        fn_abi_for_attrs: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> Self::Value;
     fn unreachable(&mut self);
 
@@ -295,6 +297,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         llfn: Self::Value,
         args: &[Self::Value],
         funclet: Option<&Self::Funclet>,
+        fn_abi_for_attrs: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> Self::Value;
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 

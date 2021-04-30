@@ -1,3 +1,4 @@
+use crate::abi::FnAbiLlvmExt;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, False};
@@ -18,6 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
+use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{self, Align, Size};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -209,6 +211,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         then: &'ll BasicBlock,
         catch: &'ll BasicBlock,
         funclet: Option<&Funclet<'ll>>,
+        fn_abi_for_attrs: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> &'ll Value {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
@@ -216,7 +219,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
-        unsafe {
+        let invoke = unsafe {
             llvm::LLVMRustBuildInvoke(
                 self.llbuilder,
                 llfn,
@@ -227,7 +230,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 bundle,
                 UNNAMED,
             )
+        };
+        if let Some(fn_abi) = fn_abi_for_attrs {
+            fn_abi.apply_attrs_callsite(self, invoke);
         }
+        invoke
     }
 
     fn unreachable(&mut self) {
@@ -374,7 +381,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         };
 
         let intrinsic = self.get_intrinsic(&name);
-        let res = self.call(intrinsic, &[lhs, rhs], None);
+        let res = self.call(intrinsic, &[lhs, rhs], None, None);
         (self.extract_value(res, 0), self.extract_value(res, 1))
     }
 
@@ -684,7 +691,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let int_width = self.cx.int_width(dest_ty);
             let name = format!("llvm.fptoui.sat.i{}.f{}", int_width, float_width);
             let intrinsic = self.get_intrinsic(&name);
-            return Some(self.call(intrinsic, &[val], None));
+            return Some(self.call(intrinsic, &[val], None, None));
         }
 
         None
@@ -697,7 +704,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let int_width = self.cx.int_width(dest_ty);
             let name = format!("llvm.fptosi.sat.i{}.f{}", int_width, float_width);
             let intrinsic = self.get_intrinsic(&name);
-            return Some(self.call(intrinsic, &[val], None));
+            return Some(self.call(intrinsic, &[val], None, None));
         }
 
         None
@@ -732,7 +739,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 };
                 if let Some(name) = name {
                     let intrinsic = self.get_intrinsic(name);
-                    return self.call(intrinsic, &[val], None);
+                    return self.call(intrinsic, &[val], None, None);
                 }
             }
         }
@@ -755,7 +762,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 };
                 if let Some(name) = name {
                     let intrinsic = self.get_intrinsic(name);
-                    return self.call(intrinsic, &[val], None);
+                    return self.call(intrinsic, &[val], None, None);
                 }
             }
         }
@@ -1130,6 +1137,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         llfn: &'ll Value,
         args: &[&'ll Value],
         funclet: Option<&Funclet<'ll>>,
+        fn_abi_for_attrs: Option<&FnAbi<'tcx, Ty<'tcx>>>,
     ) -> &'ll Value {
         debug!("call {:?} with args ({:?})", llfn, args);
 
@@ -1137,7 +1145,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let bundle = funclet.map(|funclet| funclet.bundle());
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
-        unsafe {
+        let call = unsafe {
             llvm::LLVMRustBuildCall(
                 self.llbuilder,
                 llfn,
@@ -1145,7 +1153,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 bundle,
             )
+        };
+        if let Some(fn_abi) = fn_abi_for_attrs {
+            fn_abi.apply_attrs_callsite(self, call);
         }
+        call
     }
 
     fn zext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
@@ -1374,7 +1386,7 @@ impl Builder<'a, 'll, 'tcx> {
         let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
 
         let ptr = self.pointercast(ptr, self.cx.type_i8p());
-        self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
+        self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None, None);
     }
 
     pub(crate) fn phi(
