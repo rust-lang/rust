@@ -1495,10 +1495,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
         } else {
             type_metadata(cx, self.enum_type, self.span)
         };
-        let flags = match self.enum_type.kind() {
-            ty::Generator(..) => DIFlags::FlagArtificial,
-            _ => DIFlags::FlagZero,
-        };
 
         match self.layout.variants {
             Variants::Single { index } => {
@@ -1533,7 +1529,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     offset: Size::ZERO,
                     size: self.layout.size,
                     align: self.layout.align.abi,
-                    flags,
+                    flags: DIFlags::FlagZero,
                     discriminant: None,
                     source_info: variant_info.source_info(cx),
                 }]
@@ -1588,7 +1584,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             offset: Size::ZERO,
                             size: self.layout.size,
                             align: self.layout.align.abi,
-                            flags,
+                            flags: DIFlags::FlagZero,
                             discriminant: Some(
                                 self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val
                                     as u64,
@@ -1672,7 +1668,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         offset: Size::ZERO,
                         size: variant.size,
                         align: variant.align.abi,
-                        flags,
+                        flags: DIFlags::FlagZero,
                         discriminant: None,
                         source_info: variant_info.source_info(cx),
                     }]
@@ -1723,7 +1719,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                 offset: Size::ZERO,
                                 size: self.layout.size,
                                 align: self.layout.align.abi,
-                                flags,
+                                flags: DIFlags::FlagZero,
                                 discriminant: niche_value,
                                 source_info: variant_info.source_info(cx),
                             }
@@ -1855,13 +1851,6 @@ impl<'tcx> VariantInfo<'_, 'tcx> {
         }
         None
     }
-
-    fn is_artificial(&self) -> bool {
-        match self {
-            VariantInfo::Generator { .. } => true,
-            VariantInfo::Adt(..) => false,
-        }
-    }
 }
 
 /// Returns a tuple of (1) `type_metadata_stub` of the variant, (2) a
@@ -1887,8 +1876,7 @@ fn describe_enum_variant(
             &variant_name,
             unique_type_id,
             Some(containing_scope),
-            // FIXME(tmandry): This doesn't seem to have any effect.
-            if variant.is_artificial() { DIFlags::FlagArtificial } else { DIFlags::FlagZero },
+            DIFlags::FlagZero,
         )
     });
 
@@ -1951,11 +1939,6 @@ fn prepare_enum_metadata(
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let tcx = cx.tcx;
     let enum_name = compute_debuginfo_type_name(tcx, enum_type, false);
-    // FIXME(tmandry): This doesn't seem to have any effect.
-    let enum_flags = match enum_type.kind() {
-        ty::Generator(..) => DIFlags::FlagArtificial,
-        _ => DIFlags::FlagZero,
-    };
 
     let containing_scope = get_namespace_for_item(cx, enum_def_id);
     // FIXME: This should emit actual file metadata for the enum, but we
@@ -2088,7 +2071,7 @@ fn prepare_enum_metadata(
                     UNKNOWN_LINE_NUMBER,
                     layout.size.bits(),
                     layout.align.abi.bits() as u32,
-                    enum_flags,
+                    DIFlags::FlagZero,
                     None,
                     0, // RuntimeLang
                     unique_type_id_str.as_ptr().cast(),
@@ -2210,7 +2193,7 @@ fn prepare_enum_metadata(
             UNKNOWN_LINE_NUMBER,
             layout.size.bits(),
             layout.align.abi.bits() as u32,
-            enum_flags,
+            DIFlags::FlagZero,
             discriminator_metadata,
             empty_array,
             variant_part_unique_type_id_str.as_ptr().cast(),
@@ -2239,7 +2222,7 @@ fn prepare_enum_metadata(
                 UNKNOWN_LINE_NUMBER,
                 layout.size.bits(),
                 layout.align.abi.bits() as u32,
-                enum_flags,
+                DIFlags::FlagZero,
                 None,
                 type_array,
                 0,

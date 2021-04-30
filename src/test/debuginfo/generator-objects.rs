@@ -1,22 +1,26 @@
 // Require a gdb that can read DW_TAG_variant_part.
 // min-gdb-version: 8.2
 
+// LLDB without native Rust support cannot read DW_TAG_variant_part,
+// so it prints nothing for generators. But those tests are kept to
+// ensure that LLDB won't crash at least (like #57822).
+
 // compile-flags:-g
 
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run
 // gdb-command:print b
-// gdb-check:$1 = <error reading variable>
+// gdb-check:$1 = generator_objects::main::generator-0::Unresumed(0x[...])
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$2 = <error reading variable>
+// gdb-check:$2 = generator_objects::main::generator-0::Suspend0{c: 6, d: 7, __0: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$3 = <error reading variable>
+// gdb-check:$3 = generator_objects::main::generator-0::Suspend1{c: 7, d: 8, __0: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$4 = <error reading variable>
+// gdb-check:$4 = generator_objects::main::generator-0::Returned(0x[...])
 
 // === LLDB TESTS ==================================================================================
 

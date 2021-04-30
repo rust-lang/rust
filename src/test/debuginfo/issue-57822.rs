@@ -14,7 +14,7 @@
 // gdb-check:$1 = issue_57822::main::closure-1 (issue_57822::main::closure-0 (1))
 
 // gdb-command:print b
-// gdb-check:$2 = <error reading variable>
+// gdb-check:$2 = issue_57822::main::generator-3::Unresumed(issue_57822::main::generator-2::Unresumed(2))
 
 // === LLDB TESTS ==================================================================================
 
