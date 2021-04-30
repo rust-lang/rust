@@ -496,6 +496,8 @@ impl Fields {
     pub(super) fn apply(self, pcx: PatCtxt<'_>, ctor: &Constructor) -> Pat {
         let subpatterns_and_indices = self.patterns_and_indices();
         let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p);
+        // TODO witnesses are not yet used 
+        const TODO: Pat = Pat::Wild;
 
         match ctor {
             Single | Variant(_) => match pcx.ty.kind(&Interner) {
@@ -509,7 +511,7 @@ impl Fields {
                         let path = find_path(pcx.cx.db.upcast(), item, pcx.cx.module)
                             .map(|mpath| Path::from_known_path(mpath, Vec::new()).into());
                         match adt {
-                            hir_def::AdtId::EnumId(_) => todo!(),
+                            hir_def::AdtId::EnumId(id) => TODO,
                             hir_def::AdtId::StructId(id) => {
                                 let variant_data = &pcx.cx.db.struct_data(id).variant_data;
                                 let args = subpatterns_and_indices
@@ -522,7 +524,7 @@ impl Fields {
                                     .collect();
                                 Pat::Record { path, args, ellipsis: false }
                             }
-                            hir_def::AdtId::UnionId(_) => todo!(),
+                            hir_def::AdtId::UnionId(_) => Pat::Wild,
                         }
                     } else {
                         Pat::Tuple { args: subpatterns, ellipsis: None }
@@ -540,12 +542,10 @@ impl Fields {
                 }
                 _ => Pat::Wild,
             },
-            Constructor::Slice(slice) => {
-                todo!()
-            }
-            Str(_) => todo!(),
-            FloatRange(..) => todo!(),
-            Constructor::IntRange(_) => todo!(),
+            Constructor::Slice(slice) => TODO,
+            Str(_) => TODO,
+            FloatRange(..) => TODO,
+            Constructor::IntRange(_) => TODO,
             NonExhaustive => Pat::Wild,
             Wildcard => Pat::Wild,
             Opaque => panic!("bug: we should not try to apply an opaque constructor"),
