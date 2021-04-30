@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, if_sequence, is_else_clause, paths, SpanlessEq};
-use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
+use clippy_utils::{get_trait_def_id, if_sequence, in_constant, is_else_clause, paths, SpanlessEq};
+use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
             return;
         }
 
-        if parent_node_is_if_const_fn(cx, expr) {
+        if in_constant(cx, expr.hir_id) {
             return;
         }
 
@@ -126,12 +126,4 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
 
 fn kind_is_cmp(kind: BinOpKind) -> bool {
     matches!(kind, BinOpKind::Lt | BinOpKind::Gt | BinOpKind::Eq)
-}
-
-fn parent_node_is_if_const_fn(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    match cx.tcx.hir().find(cx.tcx.hir().get_parent_item(expr.hir_id)) {
-        Some(Node::Item(item)) => rustc_mir::const_eval::is_const_fn(cx.tcx, item.def_id.to_def_id()),
-        Some(Node::ImplItem(impl_item)) => rustc_mir::const_eval::is_const_fn(cx.tcx, impl_item.def_id.to_def_id()),
-        _ => false,
-    }
 }
