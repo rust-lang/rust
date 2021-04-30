@@ -459,6 +459,12 @@ impl Options {
             test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
 
         let should_test = matches.opt_present("test");
+        let no_run = matches.opt_present("no-run");
+
+        if !should_test && no_run {
+            diag.struct_err("option --no-run should be used with --test").emit();
+            return Err(1);
+        }
 
         let output =
             matches.opt_str("o").map(|s| PathBuf::from(&s)).unwrap_or_else(|| PathBuf::from("doc"));
@@ -629,7 +635,6 @@ impl Options {
         let document_hidden = matches.opt_present("document-hidden-items");
         let run_check = matches.opt_present("check");
         let generate_redirect_map = matches.opt_present("generate-redirect-map");
-        let no_run = matches.opt_present("no-run");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
