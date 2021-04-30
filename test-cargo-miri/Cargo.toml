@@ -23,3 +23,7 @@ serde_derive = "1.0" # not actually used, but exercises some unique code path (`
 
 [lib]
 test = false # test that this is respected (will show in the output)
+
+[[test]]
+name = "main"
+harness = false
