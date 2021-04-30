@@ -688,6 +688,7 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     pub const TOKEN_READ: DWORD = 0x20008;
 
+    #[link(name="kernel32")]
     extern "system" {
         #[link_name = "SystemFunction036"]
         pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
@@ -744,6 +745,7 @@ if #[cfg(target_vendor = "uwp")] {
         pub Directory: BOOLEAN,
     }
 
+    #[link(name="kernel32")]
     extern "system" {
         pub fn GetFileInformationByHandleEx(hFile: HANDLE,
                                             fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
@@ -756,6 +758,7 @@ if #[cfg(target_vendor = "uwp")] {
 }
 
 // Shared between Desktop & UWP
+#[link(name = "kernel32")]
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD, lpWSAData: LPWSADATA) -> c_int;
     pub fn WSACleanup() -> c_int;
