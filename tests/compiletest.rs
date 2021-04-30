@@ -1,7 +1,3 @@
-#![feature(custom_test_frameworks)]
-// Custom test runner, to avoid libtest being wrapped around compiletest which wraps libtest.
-#![test_runner(test_runner)]
-
 use std::env;
 use std::path::PathBuf;
 
@@ -83,7 +79,7 @@ fn get_target() -> String {
     env::var("MIRI_TEST_TARGET").unwrap_or_else(|_| get_host())
 }
 
-fn test_runner(_tests: &[&()]) {
+fn main() {
     // Add a test env var to do environment communication tests.
     env::set_var("MIRI_ENV_VAR_TEST", "0");
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
