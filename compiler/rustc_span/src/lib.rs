@@ -521,11 +521,11 @@ impl Span {
     }
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
-        self.data().ctxt
+        self.data_untracked().ctxt
     }
     #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
-        self.data().with_ctxt(ctxt)
+        self.data_untracked().with_ctxt(ctxt)
     }
     #[inline]
     pub fn parent(self) -> Option<LocalDefId> {
@@ -539,7 +539,7 @@ impl Span {
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
     pub fn is_dummy(self) -> bool {
-        self.data().is_dummy()
+        self.data_untracked().is_dummy()
     }
 
     /// Returns `true` if this span comes from a macro or desugaring.
@@ -561,20 +561,20 @@ impl Span {
     /// Returns a new span representing an empty span at the beginning of this span.
     #[inline]
     pub fn shrink_to_lo(self) -> Span {
-        let span = self.data();
+        let span = self.data_untracked();
         span.with_hi(span.lo)
     }
     /// Returns a new span representing an empty span at the end of this span.
     #[inline]
     pub fn shrink_to_hi(self) -> Span {
-        let span = self.data();
+        let span = self.data_untracked();
         span.with_lo(span.hi)
     }
 
     #[inline]
     /// Returns `true` if `hi == lo`.
     pub fn is_empty(&self) -> bool {
-        let span = self.data();
+        let span = self.data_untracked();
         span.hi == span.lo
     }
 
