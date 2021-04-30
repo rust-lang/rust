@@ -83,8 +83,8 @@ def_regs! {
         x13: reg = ["x13", "w13"],
         x14: reg = ["x14", "w14"],
         x15: reg = ["x15", "w15"],
+        x16: reg = ["x16", "w16"],
         x17: reg = ["x17", "w17"],
-        x18: reg = ["x18", "w18"],
         x20: reg = ["x20", "w20"],
         x21: reg = ["x21", "w21"],
         x22: reg = ["x22", "w22"],
@@ -127,8 +127,8 @@ def_regs! {
         v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29"],
         v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30"],
         v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31"],
-        #error = ["x16", "w16"] =>
-            "x16 is used internally by LLVM and cannot be used as an operand for inline asm",
+        #error = ["x18", "w18"] =>
+            "x18 is used as a reserved register on some targets and cannot be used as an operand for inline asm",
         #error = ["x19", "w19"] =>
             "x19 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x29", "w29", "fp", "wfp"] =>

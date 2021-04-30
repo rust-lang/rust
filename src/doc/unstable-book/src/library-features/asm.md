@@ -681,7 +681,6 @@ Some registers cannot be used for input or output operands:
 | x86 | `mm[0-7]` | MMX registers are not currently supported (but may be in the future). |
 | x86 | `st([0-7])` | x87 registers are not currently supported (but may be in the future). |
 | AArch64 | `xzr` | This is a constant zero register which can't be modified. |
-| AArch64 | `x16` | This is used internally by LLVM for speculative load hardening. |
 | ARM | `pc` | This is the program counter, not a real register. |
 | ARM | `r9` | This is a reserved register on some ARM targets. |
 | MIPS | `$0` or `$zero` | This is a constant zero register which can't be modified. |
@@ -695,8 +694,8 @@ Some registers cannot be used for input or output operands:
 
 In some cases LLVM will allocate a "reserved register" for `reg` operands even though this register cannot be explicitly specified. Assembly code making use of reserved registers should be careful since `reg` operands may alias with those registers. Reserved registers are the frame pointer and base pointer
 - The frame pointer and LLVM base pointer on all architectures.
-- `x16` on AArch64.
-- `r6` and `r9` on ARM.
+- `r9` on ARM.
+- `x18` on AArch64.
 
 ## Template modifiers
 
