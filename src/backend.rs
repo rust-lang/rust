@@ -17,11 +17,11 @@ use gimli::SectionId;
 use crate::debuginfo::{DebugReloc, DebugRelocName};
 
 pub(crate) trait WriteMetadata {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, is_like_osx: bool);
+    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>);
 }
 
 impl WriteMetadata for object::write::Object {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, _is_like_osx: bool) {
+    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>) {
         let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
         let section_id = self.add_section(segment, b".rustc".to_vec(), object::SectionKind::Data);
         let offset = self.append_section_data(section_id, &data, 1);

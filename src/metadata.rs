@@ -80,6 +80,5 @@ pub(crate) fn write_metadata<O: WriteMetadata>(tcx: TyCtxt<'_>, object: &mut O) 
     object.add_rustc_section(
         rustc_middle::middle::exported_symbols::metadata_symbol_name(tcx),
         compressed,
-        tcx.sess.target.is_like_osx,
     );
 }
