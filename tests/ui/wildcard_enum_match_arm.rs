@@ -99,6 +99,7 @@ fn main() {
         ErrorKind::Other => {},
         ErrorKind::UnexpectedEof => {},
         ErrorKind::Unsupported => {},
+        ErrorKind::OutOfMemory => {},
         _ => {},
     }
 }
