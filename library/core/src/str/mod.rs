@@ -195,11 +195,11 @@ impl str {
         // 0 and len are always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
-        if index == 0 || index == self.len() {
+        if index == 0 {
             return true;
         }
         match self.as_bytes().get(index) {
-            None => false,
+            None => index == self.len(),
             // This is bit magic equivalent to: b < 128 || b >= 192
             Some(&b) => (b as i8) >= -0x40,
         }
