@@ -20,7 +20,7 @@ use crate::mem;
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
-#[path = "../unsupported/cmath.rs"]
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 #[path = "../unsupported/condvar.rs"]
 pub mod condvar;
