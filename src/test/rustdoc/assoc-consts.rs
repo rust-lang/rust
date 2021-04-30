@@ -88,12 +88,14 @@ impl Qux for Bar {
     /// Docs for QUX1 in impl.
     const QUX1: i8 = 5;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT0"]' 'const QUX_DEFAULT0: u16'
-    // @has - '//*[@class="docblock hidden"]' "Docs for QUX_DEFAULT12 in trait."
+    // @!has - '//div[@class="impl-items"]/details[@open=""]//*[@class="docblock"]' "Docs for QUX_DEFAULT12 in trait."
+    // @has - '//div[@class="impl-items"]/details//*[@class="docblock"]' "Docs for QUX_DEFAULT12 in trait."
     const QUX_DEFAULT0: u16 = 6;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT1"]' 'const QUX_DEFAULT1: i16'
     // @has - '//*[@class="docblock"]' "Docs for QUX_DEFAULT1 in impl."
     /// Docs for QUX_DEFAULT1 in impl.
     const QUX_DEFAULT1: i16 = 7;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT2"]' 'const QUX_DEFAULT2: u32'
-    // @has - '//*[@class="docblock hidden"]' "Docs for QUX_DEFAULT2 in trait."
+    // @!has - '//div[@class="impl-items"]/details[@open=""]//*[@class="docblock"]' "Docs for QUX_DEFAULT2 in trait."
+    // @has - '//div[@class="impl-items"]/details//*[@class="docblock"]' "Docs for QUX_DEFAULT2 in trait."
 }
