@@ -1,6 +1,8 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 
+use std::iter;
+
 use chalk_ir::{fold::Shift, BoundVar, DebruijnIndex};
 use hir_def::{
     db::DefDatabase,
@@ -14,8 +16,12 @@ use hir_def::{
     AssocContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId,
 };
 use hir_expand::name::{name, Name};
+use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, Interner, Substitution, TraitRef, TraitRefExt, TyKind, WhereClause};
+use crate::{
+    db::HirDatabase, ChalkTraitId, Interner, Substitution, TraitRef, TraitRefExt, TyKind,
+    WhereClause,
+};
 
 fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     let resolver = trait_.resolver(db);
@@ -102,25 +108,35 @@ pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> Vec<TraitId> {
 /// `all_super_traits` is that we keep track of type parameters; for example if
 /// we have `Self: Trait<u32, i32>` and `Trait<T, U>: OtherTrait<U>` we'll get
 /// `Self: OtherTrait<i32>`.
-pub(super) fn all_super_trait_refs(db: &dyn HirDatabase, trait_ref: TraitRef) -> Vec<TraitRef> {
-    // FIXME: replace by Chalk's `super_traits`, maybe make this a query
+pub(super) fn all_super_trait_refs(db: &dyn HirDatabase, trait_ref: TraitRef) -> SuperTraits {
+    SuperTraits { db, seen: iter::once(trait_ref.trait_id).collect(), stack: vec![trait_ref] }
+}
 
-    // we need to take care a bit here to avoid infinite loops in case of cycles
-    // (i.e. if we have `trait A: B; trait B: A;`)
-    let mut result = vec![trait_ref];
-    let mut i = 0;
-    while i < result.len() {
-        let t = &result[i];
-        // yeah this is quadratic, but trait hierarchies should be flat
-        // enough that this doesn't matter
-        for tt in direct_super_trait_refs(db, t) {
-            if !result.iter().any(|tr| tr.trait_id == tt.trait_id) {
-                result.push(tt);
-            }
-        }
-        i += 1;
+pub(super) struct SuperTraits<'a> {
+    db: &'a dyn HirDatabase,
+    stack: Vec<TraitRef>,
+    seen: FxHashSet<ChalkTraitId>,
+}
+
+impl<'a> SuperTraits<'a> {
+    fn elaborate(&mut self, trait_ref: &TraitRef) {
+        let mut trait_refs = direct_super_trait_refs(self.db, trait_ref);
+        trait_refs.retain(|tr| !self.seen.contains(&tr.trait_id));
+        self.stack.extend(trait_refs);
     }
-    result
+}
+
+impl<'a> Iterator for SuperTraits<'a> {
+    type Item = TraitRef;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(next) = self.stack.pop() {
+            self.elaborate(&next);
+            Some(next)
+        } else {
+            None
+        }
+    }
 }
 
 pub(super) fn associated_type_by_name_including_super_traits(
@@ -128,7 +144,7 @@ pub(super) fn associated_type_by_name_including_super_traits(
     trait_ref: TraitRef,
     name: &Name,
 ) -> Option<(TraitRef, TypeAliasId)> {
-    all_super_trait_refs(db, trait_ref).into_iter().find_map(|t| {
+    all_super_trait_refs(db, trait_ref).find_map(|t| {
         let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })

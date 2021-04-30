@@ -70,6 +70,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_environment(&self, def: GenericDefId) -> Arc<crate::TraitEnvironment>;
 
     #[salsa::invoke(crate::lower::generic_defaults_query)]
+    #[salsa::cycle(crate::lower::generic_defaults_recover)]
     fn generic_defaults(&self, def: GenericDefId) -> Arc<[Binders<Ty>]>;
 
     #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
