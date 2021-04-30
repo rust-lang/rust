@@ -660,7 +660,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
 
-                    let sp = self.tcx.sess.source_map().start_point(ex.span);
+                    let sp = self.tcx.sess.source_map().start_point(ex.span).with_parent(None);
                     if let Some(sp) =
                         self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
                     {

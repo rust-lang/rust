@@ -653,17 +653,19 @@ impl Handler {
     /// Retrieve a stashed diagnostic with `steal_diagnostic`.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
         let mut inner = self.inner.borrow_mut();
-        inner.stash((span, key), diag);
+        inner.stash((span.with_parent(None), key), diag);
     }
 
     /// Steal a previously stashed diagnostic with the given `Span` and [`StashKey`] as the key.
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         let mut inner = self.inner.borrow_mut();
-        inner.steal((span, key)).map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
+        inner
+            .steal((span.with_parent(None), key))
+            .map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
     }
 
     pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
-        self.inner.borrow().stashed_diagnostics.get(&(span, key)).is_some()
+        self.inner.borrow().stashed_diagnostics.get(&(span.with_parent(None), key)).is_some()
     }
 
     /// Emit all stashed diagnostics.
