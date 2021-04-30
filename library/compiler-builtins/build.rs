@@ -538,7 +538,7 @@ mod c {
         // Ideally, this would be a Vec of object files, but cc doesn't make it *entirely*
         // trivial to build an individual object.
         let mut atomics_libraries = Vec::new();
-        for instruction_type in &["cas", "cwp", "ldadd", "ldclr", "ldeor", "ldset"] {
+        for instruction_type in &["cas", "swp", "ldadd", "ldclr", "ldeor", "ldset"] {
             for size in &[1, 2, 4, 8, 16] {
                 if *size == 16 && *instruction_type != "cas" {
                     continue;
