@@ -124,6 +124,20 @@ pub struct ResolverOutputs {
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Symbol, bool>,
+    pub main_def: Option<MainDefinition>,
+}
+
+#[derive(Clone, Copy)]
+pub struct MainDefinition {
+    pub res: Res<ast::NodeId>,
+    pub is_import: bool,
+    pub span: Span,
+}
+
+impl MainDefinition {
+    pub fn opt_fn_def_id(self) -> Option<DefId> {
+        if let Res::Def(DefKind::Fn, def_id) = self.res { Some(def_id) } else { None }
+    }
 }
 
 /// The "header" of an impl is everything outside the body: a Self type, a trait

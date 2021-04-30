@@ -50,7 +50,7 @@ use rustc_middle::hir::exports::ExportMap;
 use rustc_middle::middle::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, DefIdTree, ResolverOutputs};
+use rustc_middle::ty::{self, DefIdTree, MainDefinition, ResolverOutputs};
 use rustc_session::lint;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
@@ -1021,6 +1021,8 @@ pub struct Resolver<'a> {
     trait_impl_items: FxHashSet<LocalDefId>,
 
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
+
+    main_def: Option<MainDefinition>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1348,6 +1350,7 @@ impl<'a> Resolver<'a> {
             next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
             legacy_const_generic_args: Default::default(),
+            main_def: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1382,6 +1385,7 @@ impl<'a> Resolver<'a> {
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let maybe_unused_extern_crates = self.maybe_unused_extern_crates;
         let glob_map = self.glob_map;
+        let main_def = self.main_def;
         ResolverOutputs {
             definitions,
             cstore: Box::new(self.crate_loader.into_cstore()),
@@ -1396,6 +1400,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
+            main_def,
         }
     }
 
@@ -1414,6 +1419,7 @@ impl<'a> Resolver<'a> {
                 .iter()
                 .map(|(ident, entry)| (ident.name, entry.introduced_by_item))
                 .collect(),
+            main_def: self.main_def.clone(),
         }
     }
 
@@ -1459,6 +1465,7 @@ impl<'a> Resolver<'a> {
             self.session.time("finalize_imports", || ImportResolver { r: self }.finalize_imports());
             self.session.time("finalize_macro_resolutions", || self.finalize_macro_resolutions());
             self.session.time("late_resolve_crate", || self.late_resolve_crate(krate));
+            self.session.time("resolve_main", || self.resolve_main());
             self.session.time("resolve_check_unused", || self.check_unused(krate));
             self.session.time("resolve_report_errors", || self.report_errors(krate));
             self.session.time("resolve_postprocess", || self.crate_loader.postprocess(krate));
@@ -3349,6 +3356,32 @@ impl<'a> Resolver<'a> {
             }
         }
         None
+    }
+
+    fn resolve_main(&mut self) {
+        let module = self.graph_root;
+        let ident = Ident::with_dummy_span(sym::main);
+        let parent_scope = &ParentScope::module(module, self);
+
+        let name_binding = match self.resolve_ident_in_module(
+            ModuleOrUniformRoot::Module(module),
+            ident,
+            ValueNS,
+            parent_scope,
+            false,
+            DUMMY_SP,
+        ) {
+            Ok(name_binding) => name_binding,
+            _ => return,
+        };
+
+        let res = name_binding.res();
+        let is_import = name_binding.is_import();
+        let span = name_binding.span;
+        if let Res::Def(DefKind::Fn, _) = res {
+            self.record_use(ident, ValueNS, name_binding, false);
+        }
+        self.main_def = Some(MainDefinition { res, is_import, span });
     }
 }
 

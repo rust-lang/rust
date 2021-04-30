@@ -634,6 +634,7 @@ symbols! {
         impl_macros,
         impl_trait_in_bindings,
         import_shadowing,
+        imported_main,
         in_band_lifetimes,
         include,
         include_bytes,

@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -348,12 +348,29 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
 ) -> Option<Bx::Function> {
     let main_def_id = cx.tcx().entry_fn(LOCAL_CRATE).map(|(def_id, _)| def_id)?;
-    let instance = Instance::mono(cx.tcx(), main_def_id.to_def_id());
+    let main_is_local = main_def_id.is_local();
+    let instance = Instance::mono(cx.tcx(), main_def_id);
 
-    if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
+    if main_is_local {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
-        return None;
+        if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
+            return None;
+        }
+    } else {
+        // FIXME: Add support for non-local main fn codegen
+        let span = cx.tcx().main_def.unwrap().span;
+        let n = 28937;
+        cx.sess()
+            .struct_span_err(span, "entry symbol `main` from foreign crate is not yet supported.")
+            .note(&format!(
+                "see issue #{} <https://github.com/rust-lang/rust/issues/{}> \
+                 for more information",
+                n, n,
+            ))
+            .emit();
+        cx.sess().abort_if_errors();
+        bug!();
     }
 
     let main_llfn = cx.get_fn_addr(instance);
@@ -366,7 +383,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         rust_main: Bx::Value,
-        rust_main_def_id: LocalDefId,
+        rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,

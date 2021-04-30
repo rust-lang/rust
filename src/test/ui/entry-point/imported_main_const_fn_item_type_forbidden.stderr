@@ -1,0 +1,17 @@
+error[E0601]: `main` function not found in crate `imported_main_const_fn_item_type_forbidden`
+  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:1:1
+   |
+LL | / #![feature(imported_main)]
+LL | | #![feature(min_type_alias_impl_trait, impl_trait_in_bindings)]
+LL | | #![allow(incomplete_features)]
+LL | |
+...  |
+LL | |
+LL | | use foo::BAR as main;
+   | |_____----------------^ consider adding a `main` function to `$DIR/imported_main_const_fn_item_type_forbidden.rs`
+   |       |
+   |       non-function item at `crate::main` is found
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0601`.
