@@ -71,7 +71,10 @@ impl UnwindContext {
         }
     }
 
-    #[cfg(feature = "jit")]
+    #[cfg(all(feature = "jit", windows))]
+    pub(crate) unsafe fn register_jit(self, _jit_module: &cranelift_jit::JITModule) {}
+
+    #[cfg(all(feature = "jit", not(windows)))]
     pub(crate) unsafe fn register_jit(self, jit_module: &cranelift_jit::JITModule) {
         let mut eh_frame = EhFrame::from(super::emit::WriterRelocate::new(self.endian));
         self.frame_table.write_eh_frame(&mut eh_frame).unwrap();
