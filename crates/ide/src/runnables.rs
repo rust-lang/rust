@@ -304,11 +304,11 @@ fn module_def_doctest(sema: &Semantics<RootDatabase>, def: hir::ModuleDef) -> Op
                         let name = adt.name(sema.db);
                         let idx = path.rfind(':').map_or(0, |idx| idx + 1);
                         let (prefix, suffix) = path.split_at(idx);
-                        let mut ty_params = ty.type_parameters().peekable();
-                        let params = if ty_params.peek().is_some() {
+                        let mut ty_args = ty.type_arguments().peekable();
+                        let params = if ty_args.peek().is_some() {
                             format!(
                                 "<{}>",
-                                ty_params.format_with(", ", |ty, cb| cb(&ty.display(sema.db)))
+                                ty_args.format_with(", ", |ty, cb| cb(&ty.display(sema.db)))
                             )
                         } else {
                             String::new()

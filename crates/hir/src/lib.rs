@@ -1984,7 +1984,7 @@ impl Type {
         None
     }
 
-    pub fn type_parameters(&self) -> impl Iterator<Item = Type> + '_ {
+    pub fn type_arguments(&self) -> impl Iterator<Item = Type> + '_ {
         self.ty
             .strip_references()
             .as_adt()

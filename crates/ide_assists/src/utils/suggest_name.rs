@@ -227,7 +227,7 @@ fn name_of_type(ty: &hir::Type, db: &RootDatabase) -> Option<String> {
         let name = adt.name(db).to_string();
 
         if WRAPPER_TYPES.contains(&name.as_str()) {
-            let inner_ty = ty.type_parameters().next()?;
+            let inner_ty = ty.type_arguments().next()?;
             return name_of_type(&inner_ty, db);
         }
 
