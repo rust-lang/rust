@@ -38,6 +38,7 @@ rm src/test/ui/threads-sendsync/task-stderr.rs
 rm src/test/ui/numbers-arithmetic/int-abs-overflow.rs
 rm src/test/ui/drop/drop-trait-enum.rs
 rm src/test/ui/numbers-arithmetic/issue-8460.rs
+rm src/test/incremental/change_crate_dep_kind.rs # requires -Cpanic=unwind
 
 rm src/test/ui/issues/issue-28950.rs # depends on stack size optimizations
 rm src/test/ui/init-large-type.rs # same
@@ -47,6 +48,7 @@ rm src/test/ui/issues/issue-51947.rs # same
 rm src/test/ui/numbers-arithmetic/saturating-float-casts.rs # intrinsic gives different but valid result
 rm src/test/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm src/test/ui/mir/mir_raw_fat_ptr.rs # same
+rm src/test/ui/consts/issue-33537.rs # same
 rm src/test/ui/async-await/async-fn-size-moved-locals.rs # -Cpanic=abort shrinks some generator by one byte
 rm src/test/ui/async-await/async-fn-size-uninit-locals.rs # same
 rm src/test/ui/generator/size-moved-locals.rs # same
@@ -56,10 +58,12 @@ rm src/test/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and n
 
 rm src/test/incremental/hashes/inline_asm.rs # inline asm
 rm src/test/incremental/issue-72386.rs # same
-rm src/test/incremental/change_crate_dep_kind.rs # requires -Cpanic=unwind
 rm src/test/incremental/issue-49482.rs # same
 rm src/test/incremental/issue-54059.rs # same
 rm src/test/incremental/lto.rs # requires lto
+
+rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
+rm -r src/test/run-make/unstable-flag-required # same
 
 rm src/test/pretty/asm.rs # inline asm
 rm src/test/pretty/raw-str-nonexpr.rs # same
@@ -68,6 +72,7 @@ rm -r src/test/run-pass-valgrind/unsized-locals
 
 rm src/test/ui/json-bom-plus-crlf-multifile.rs # differing warning
 rm src/test/ui/json-bom-plus-crlf.rs # same
+rm src/test/ui/match/issue-82392.rs # differing error
 rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux dep
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition

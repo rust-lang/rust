@@ -63,16 +63,16 @@ pub(crate) fn import_function<'tcx>(
     module: &mut dyn Module,
     inst: Instance<'tcx>,
 ) -> FuncId {
-    let name = tcx.symbol_name(inst).name.to_string();
+    let name = tcx.symbol_name(inst).name;
     let sig = get_function_sig(tcx, module.isa().triple(), inst);
-    module.declare_function(&name, Linkage::Import, &sig).unwrap()
+    module.declare_function(name, Linkage::Import, &sig).unwrap()
 }
 
 impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     /// Instance must be monomorphized
     pub(crate) fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
-        let func_id = import_function(self.tcx, self.cx.module, inst);
-        let func_ref = self.cx.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_id = import_function(self.tcx, self.module, inst);
+        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
 
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", inst));
@@ -89,8 +89,8 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         args: &[Value],
     ) -> &[Value] {
         let sig = Signature { params, returns, call_conv: CallConv::triple_default(self.triple()) };
-        let func_id = self.cx.module.declare_function(&name, Linkage::Import, &sig).unwrap();
-        let func_ref = self.cx.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
+        let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
             self.add_comment(call_inst, format!("easy_call {}", name));
@@ -295,7 +295,6 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
 pub(crate) fn codegen_terminator_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     span: Span,
-    current_block: Block,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: Option<(Place<'tcx>, BasicBlock)>,
@@ -357,7 +356,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .map(|inst| fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD))
         .unwrap_or(false);
     if is_cold {
-        fx.cold_blocks.insert(current_block);
+        // FIXME Mark current_block block as cold once Cranelift supports it
     }
 
     // Unpack arguments tuple for closures

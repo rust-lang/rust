@@ -13,8 +13,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     let def_id = instance.def_id();
     let substs = instance.substs;
 
-    let intrinsic = fx.tcx.item_name(def_id).as_str();
-    let intrinsic = &intrinsic[..];
+    let intrinsic = fx.tcx.item_name(def_id);
 
     intrinsic_match! {
         fx, intrinsic, substs, args,
@@ -65,10 +64,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
-        _ if intrinsic.starts_with("simd_shuffle"), (c x, c y, o idx) {
+        _ if intrinsic.as_str().starts_with("simd_shuffle"), (c x, c y, o idx) {
             validate_simd_type!(fx, intrinsic, span, x.layout().ty);
 
-            let n: u16 = intrinsic["simd_shuffle".len()..].parse().unwrap();
+            let n: u16 = intrinsic.as_str()["simd_shuffle".len()..].parse().unwrap();
 
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();

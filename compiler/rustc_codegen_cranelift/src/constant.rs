@@ -2,7 +2,7 @@
 
 use rustc_span::DUMMY_SP;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
@@ -15,10 +15,10 @@ use cranelift_module::*;
 
 use crate::prelude::*;
 
-#[derive(Default)]
 pub(crate) struct ConstantCx {
     todo: Vec<TodoItem>,
     done: FxHashSet<DataId>,
+    anon_allocs: FxHashMap<AllocId, DataId>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -28,6 +28,10 @@ enum TodoItem {
 }
 
 impl ConstantCx {
+    pub(crate) fn new() -> Self {
+        ConstantCx { todo: vec![], done: FxHashSet::default(), anon_allocs: FxHashMap::default() }
+    }
+
     pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut dyn Module) {
         //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
@@ -74,8 +78,10 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     all_constants_ok
 }
 
-pub(crate) fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
+pub(crate) fn codegen_static(tcx: TyCtxt<'_>, module: &mut dyn Module, def_id: DefId) {
+    let mut constants_cx = ConstantCx::new();
     constants_cx.todo.push(TodoItem::Static(def_id));
+    constants_cx.finalize(tcx, module);
 }
 
 pub(crate) fn codegen_tls_ref<'tcx>(
@@ -83,8 +89,8 @@ pub(crate) fn codegen_tls_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
-    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("tls {:?}", def_id));
     }
@@ -97,8 +103,8 @@ fn codegen_static_ref<'tcx>(
     def_id: DefId,
     layout: TyAndLayout<'tcx>,
 ) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
-    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("{:?}", def_id));
     }
@@ -182,28 +188,31 @@ pub(crate) fn codegen_const_value<'tcx>(
                     let alloc_kind = fx.tcx.get_global_alloc(ptr.alloc_id);
                     let base_addr = match alloc_kind {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            fx.cx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
-                            let data_id =
-                                data_id_for_alloc_id(fx.cx.module, ptr.alloc_id, alloc.mutability);
+                            fx.constants_cx.todo.push(TodoItem::Alloc(ptr.alloc_id));
+                            let data_id = data_id_for_alloc_id(
+                                &mut fx.constants_cx,
+                                fx.module,
+                                ptr.alloc_id,
+                                alloc.mutability,
+                            );
                             let local_data_id =
-                                fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                                fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             if fx.clif_comments.enabled() {
                                 fx.add_comment(local_data_id, format!("{:?}", ptr.alloc_id));
                             }
                             fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                         }
                         Some(GlobalAlloc::Function(instance)) => {
-                            let func_id =
-                                crate::abi::import_function(fx.tcx, fx.cx.module, instance);
+                            let func_id = crate::abi::import_function(fx.tcx, fx.module, instance);
                             let local_func_id =
-                                fx.cx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
+                                fx.module.declare_func_in_func(func_id, &mut fx.bcx.func);
                             fx.bcx.ins().func_addr(fx.pointer_type, local_func_id)
                         }
                         Some(GlobalAlloc::Static(def_id)) => {
                             assert!(fx.tcx.is_static(def_id));
-                            let data_id = data_id_for_static(fx.tcx, fx.cx.module, def_id, false);
+                            let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
                             let local_data_id =
-                                fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+                                fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                             if fx.clif_comments.enabled() {
                                 fx.add_comment(local_data_id, format!("{:?}", def_id));
                             }
@@ -243,10 +252,11 @@ fn pointer_for_allocation<'tcx>(
     alloc: &'tcx Allocation,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
-    fx.cx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
-    let data_id = data_id_for_alloc_id(fx.cx.module, alloc_id, alloc.mutability);
+    fx.constants_cx.todo.push(TodoItem::Alloc(alloc_id));
+    let data_id =
+        data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, alloc.mutability);
 
-    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(local_data_id, format!("{:?}", alloc_id));
     }
@@ -255,18 +265,14 @@ fn pointer_for_allocation<'tcx>(
 }
 
 fn data_id_for_alloc_id(
+    cx: &mut ConstantCx,
     module: &mut dyn Module,
     alloc_id: AllocId,
     mutability: rustc_hir::Mutability,
 ) -> DataId {
-    module
-        .declare_data(
-            &format!(".L__alloc_{:x}", alloc_id.0),
-            Linkage::Local,
-            mutability == rustc_hir::Mutability::Mut,
-            false,
-        )
-        .unwrap()
+    *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
+        module.declare_anonymous_data(mutability == rustc_hir::Mutability::Mut, false).unwrap()
+    })
 }
 
 fn data_id_for_static(
@@ -344,7 +350,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function(_) | GlobalAlloc::Static(_) => unreachable!(),
                 };
-                let data_id = data_id_for_alloc_id(module, alloc_id, alloc.mutability);
+                let data_id = data_id_for_alloc_id(cx, module, alloc_id, alloc.mutability);
                 (data_id, alloc, None)
             }
             TodoItem::Static(def_id) => {
@@ -397,7 +403,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 }
                 GlobalAlloc::Memory(target_alloc) => {
                     cx.todo.push(TodoItem::Alloc(reloc));
-                    data_id_for_alloc_id(module, reloc, target_alloc.mutability)
+                    data_id_for_alloc_id(cx, module, reloc, target_alloc.mutability)
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
@@ -419,8 +425,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             data_ctx.write_data_addr(offset.bytes() as u32, global_value, addend as i64);
         }
 
-        // FIXME don't duplicate definitions in lazy jit mode
-        let _ = module.define_data(data_id, &data_ctx);
+        module.define_data(data_id, &data_ctx).unwrap();
         cx.done.insert(data_id);
     }
 
