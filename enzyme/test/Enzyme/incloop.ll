@@ -165,7 +165,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK: for.body:                                         ; preds = %for.body, %for.body.preheader
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %for.body.preheader ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %6 = mul nuw nsw i64 %0, %iv
+; CHECK-NEXT:   %6 = mul i64 %0, %iv
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %a, i64 %6
 ; CHECK-NEXT:   %7 = load double, double* %arrayidx, align 8, !tbaa !2
 ; CHECK-NEXT:   store double 0.000000e+00, double* %arrayidx, align 8, !tbaa !2
@@ -203,7 +203,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %invertfor.cond.cleanup.loopexit
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap4.zext, %invertfor.cond.cleanup.loopexit ], [ %19, %incinvertfor.body ]
 ; CHECK-NEXT:   %_unwrap5 = zext i32 %b to i64
-; CHECK-NEXT:   %_unwrap6 = mul nuw nsw i64 %_unwrap5, %"iv'ac.0"
+; CHECK-NEXT:   %_unwrap6 = mul i64 %_unwrap5, %"iv'ac.0"
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"a'", i64 %_unwrap6
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %12 = getelementptr inbounds double, double* %_cache.0, i64 %"iv'ac.0"

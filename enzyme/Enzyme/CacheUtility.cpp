@@ -223,22 +223,6 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
       if (NewIV == PN) {
         continue;
       }
-      if (auto BO = dyn_cast<BinaryOperator>(NewIV)) {
-        if (BO->getOpcode() == BinaryOperator::Add ||
-            BO->getOpcode() == BinaryOperator::Mul) {
-          BO->setHasNoSignedWrap(true);
-          BO->setHasNoUnsignedWrap(true);
-        }
-        for (int i = 0; i < 2; ++i) {
-          if (auto BO2 = dyn_cast<BinaryOperator>(BO->getOperand(i))) {
-            if (BO2->getOpcode() == BinaryOperator::Add ||
-                BO2->getOpcode() == BinaryOperator::Mul) {
-              BO2->setHasNoSignedWrap(true);
-              BO2->setHasNoUnsignedWrap(true);
-            }
-          }
-        }
-      }
 
       replacer(PN, NewIV);
       IVsToRemove.push_back(PN);

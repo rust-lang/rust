@@ -47,9 +47,9 @@
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
-#include "llvm/CodeGen/UnreachableBlockElim.h"
-
+#include "llvm/Analysis/DependenceAnalysis.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
+#include "llvm/CodeGen/UnreachableBlockElim.h"
 
 #include "llvm/Analysis/CFLSteensAliasAnalysis.h"
 
@@ -97,6 +97,8 @@
 
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
+#include "llvm/Analysis/ScalarEvolutionAliasAnalysis.h"
 
 #include "CacheUtility.h"
 
@@ -669,11 +671,14 @@ PreProcessCache::PreProcessCache() {
   FAM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
 
+  FAM.registerPass([] { return DependenceAnalysis(); });
+
   // Explicitly chose AA passes that are stateless
   // and will not be invalidated
   FAM.registerPass([] { return TypeBasedAA(); });
   FAM.registerPass([] { return BasicAA(); });
   MAM.registerPass([] { return GlobalsAA(); });
+
   // SCEVAA causes some breakage/segfaults
   // disable for now, consider enabling in future
   // FAM.registerPass([] { return SCEVAA(); });

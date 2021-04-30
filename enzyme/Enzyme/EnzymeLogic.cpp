@@ -32,6 +32,7 @@
 #include "SCEV/ScalarEvolution.h"
 #include "SCEV/ScalarEvolutionExpander.h"
 
+#include "llvm/Analysis/DependenceAnalysis.h"
 #include <deque>
 
 #include "llvm/IR/BasicBlock.h"
@@ -92,6 +93,7 @@ bool is_load_uncacheable(
 struct CacheAnalysis {
   AAResults &AA;
   Function *oldFunc;
+  ScalarEvolution &SE;
   LoopInfo &OrigLI;
   DominatorTree &DT;
   TargetLibraryInfo &TLI;
@@ -100,11 +102,11 @@ struct CacheAnalysis {
   bool topLevel;
   std::map<Value *, bool> seen;
   CacheAnalysis(
-      AAResults &AA, Function *oldFunc, LoopInfo &OrigLI, DominatorTree &OrigDT,
-      TargetLibraryInfo &TLI,
+      AAResults &AA, Function *oldFunc, ScalarEvolution &SE, LoopInfo &OrigLI,
+      DominatorTree &OrigDT, TargetLibraryInfo &TLI,
       const SmallPtrSetImpl<const Instruction *> &unnecessaryInstructions,
       const std::map<Argument *, bool> &uncacheable_args, bool topLevel)
-      : AA(AA), oldFunc(oldFunc), OrigLI(OrigLI), DT(OrigDT), TLI(TLI),
+      : AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), DT(OrigDT), TLI(TLI),
         unnecessaryInstructions(unnecessaryInstructions),
         uncacheable_args(uncacheable_args), topLevel(topLevel) {}
 
@@ -252,6 +254,123 @@ struct CacheAnalysis {
         if (!writesToMemoryReadBy(AA, &li, inst2)) {
           return false;
         }
+
+        if (auto SI = dyn_cast<StoreInst>(inst2)) {
+
+          const SCEV *LS = SE.getSCEV(li.getPointerOperand());
+          const SCEV *SS = SE.getSCEV(SI->getPointerOperand());
+          if (SS != SE.getCouldNotCompute()) {
+
+            // llvm::errs() << *inst2 << " - " << li << "\n";
+            // llvm::errs() << *SS << " - " << *LS << "\n";
+            const auto &DL = li.getModule()->getDataLayout();
+
+#if LLVM_VERSION_MAJOR >= 10
+            auto TS = SE.getConstant(
+                APInt(64, DL.getTypeStoreSize(li.getType()).getFixedSize()));
+#else
+            auto TS = SE.getConstant(
+                APInt(64, DL.getTypeStoreSize(li.getType())));
+#endif
+            for (auto lim = LS; lim != SE.getCouldNotCompute();) {
+              // [start load, L+Size] [S, S+Size]
+              for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
+                // llvm::errs() << " *** " << *lsub << "|" << *slim << "|" <<
+                // *lim << "\n";
+                if (SE.isKnownNonNegative(lsub)) {
+                  return false;
+                }
+                if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
+                  if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
+                    slim = arL->getStart();
+                    continue;
+                  } else if (SE.isKnownNonPositive(
+                                 arL->getStepRecurrence(SE))) {
+#if LLVM_VERSION_MAJOR >= 12
+                    auto bd =
+                        SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
+#else
+                    auto bd = SE.getBackedgeTakenCount(arL->getLoop());
+#endif
+                    if (bd == SE.getCouldNotCompute())
+                      break;
+                    slim = arL->evaluateAtIteration(bd, SE);
+                    continue;
+                  }
+                }
+                break;
+              }
+
+              if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
+                if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
+#if LLVM_VERSION_MAJOR >= 12
+                  auto bd = SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
+#else
+                  auto bd = SE.getBackedgeTakenCount(arL->getLoop());
+#endif
+                  if (bd == SE.getCouldNotCompute())
+                    break;
+                  lim = arL->evaluateAtIteration(bd, SE);
+                  continue;
+                } else if (SE.isKnownNonPositive(arL->getStepRecurrence(SE))) {
+                  lim = arL->getStart();
+                  continue;
+                }
+              }
+              break;
+            }
+            for (auto lim = LS; lim != SE.getCouldNotCompute();) {
+              // [S, S+Size][start load, L+Size]
+              for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
+                // llvm::errs() << " $$$ " << *lsub << "|" << *slim << "|" <<
+                // *lim << "\n";
+                if (SE.isKnownNonNegative(lsub)) {
+                  return false;
+                }
+                if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
+                  if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
+#if LLVM_VERSION_MAJOR >= 12
+                    auto bd =
+                        SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
+#else
+                    auto bd = SE.getBackedgeTakenCount(arL->getLoop());
+#endif
+                    if (bd == SE.getCouldNotCompute())
+                      break;
+                    slim = arL->evaluateAtIteration(bd, SE);
+                    continue;
+                  } else if (SE.isKnownNonPositive(
+                                 arL->getStepRecurrence(SE))) {
+                    slim = arL->getStart();
+                    continue;
+                  }
+                }
+                break;
+              }
+
+              if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
+                if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
+                  lim = arL->getStart();
+                  continue;
+                } else if (SE.isKnownNonPositive(arL->getStepRecurrence(SE))) {
+#if LLVM_VERSION_MAJOR >= 12
+                  auto bd = SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
+#else
+                  auto bd = SE.getBackedgeTakenCount(arL->getLoop());
+#endif
+                  if (bd == SE.getCouldNotCompute())
+                    break;
+                  lim = arL->evaluateAtIteration(bd, SE);
+                  continue;
+                }
+              }
+              break;
+            }
+          }
+        }
+
         if (auto II = dyn_cast<IntrinsicInst>(inst2)) {
           if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0 ||
               II->getIntrinsicID() == Intrinsic::amdgcn_s_barrier) {
@@ -1309,9 +1428,10 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc, gutils->OrigLI,
-                   gutils->OrigDT, TLI, unnecessaryInstructionsTmp,
-                   _uncacheable_argsPP,
+  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc,
+                   PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
+                   gutils->OrigLI, gutils->OrigDT, TLI,
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP,
                    /*topLevel*/ false);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
@@ -2434,9 +2554,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     for (auto &I : *BB)
       unnecessaryInstructionsTmp.insert(&I);
   }
-  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc, gutils->OrigLI,
-                   gutils->OrigDT, TLI, unnecessaryInstructionsTmp,
-                   _uncacheable_argsPP, topLevel);
+  CacheAnalysis CA(gutils->OrigAA, gutils->oldFunc,
+                   PPC.FAM.getResult<ScalarEvolutionAnalysis>(*gutils->oldFunc),
+                   gutils->OrigLI, gutils->OrigDT, TLI,
+                   unnecessaryInstructionsTmp, _uncacheable_argsPP, topLevel);
   const std::map<CallInst *, const std::map<Argument *, bool>>
       uncacheable_args_map =
           (augmenteddata) ? augmenteddata->uncacheable_args_map
