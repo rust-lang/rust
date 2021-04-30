@@ -26,6 +26,7 @@ Inline assembly is currently supported on the following architectures:
 - AArch64
 - RISC-V
 - NVPTX
+- PowerPC
 - Hexagon
 - MIPS32r2 and MIPS64r2
 - wasm32
@@ -459,7 +460,7 @@ options := "options(" option *["," option] [","] ")"
 asm := "asm!(" format_string *("," format_string) *("," [ident "="] operand) ["," options] [","] ")"
 ```
 
-The macro will initially be supported only on ARM, AArch64, Hexagon, x86, x86-64 and RISC-V targets. Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
+The macro will initially be supported only on ARM, AArch64, Hexagon, PowerPC, x86, x86-64 and RISC-V targets. Support for more targets may be added in the future. The compiler will emit an error if `asm!` is used on an unsupported target.
 
 [format-syntax]: https://doc.rust-lang.org/std/fmt/#syntax
 
@@ -565,6 +566,9 @@ Here is the list of currently supported register classes:
 | RISC-V | `reg` | `x1`, `x[5-7]`, `x[9-15]`, `x[16-31]` (non-RV32E) | `r` |
 | RISC-V | `freg` | `f[0-31]` | `f` |
 | Hexagon | `reg` | `r[0-28]` | `r` |
+| PowerPC | `reg` | `r[0-31]` | `r` |
+| PowerPC | `reg_nonzero` | | `r[1-31]` | `b` |
+| PowerPC | `freg` | `f[0-31]` | `f` |
 | wasm32 | `local` | None\* | `r` |
 
 > **Note**: On x86 we treat `reg_byte` differently from `reg` because the compiler can allocate `al` and `ah` separately whereas `reg` reserves the whole register.
@@ -607,6 +611,9 @@ Each register class has constraints on which value types they can be used with. 
 | RISC-V | `freg` | `f` | `f32` |
 | RISC-V | `freg` | `d` | `f64` |
 | Hexagon | `reg` | None | `i8`, `i16`, `i32`, `f32` |
+| PowerPC | `reg` | None | `i8`, `i16`, `i32` |
+| PowerPC | `reg_nonzero` | None | `i8`, `i16`, `i32` |
+| PowerPC | `freg` | None | `f32`, `f64` |
 | wasm32 | `local` | None | `i8` `i16` `i32` `i64` `f32` `f64` |
 
 > **Note**: For the purposes of the above table pointers, function pointers and `isize`/`usize` are treated as the equivalent integer type (`i16`/`i32`/`i64` depending on the target).
@@ -744,6 +751,9 @@ The supported modifiers are a subset of LLVM's (and GCC's) [asm template argumen
 | RISC-V | `reg` | None | `x1` | None |
 | RISC-V | `freg` | None | `f0` | None |
 | Hexagon | `reg` | None | `r0` | None |
+| PowerPC | `reg` | None | `0` | None |
+| PowerPC | `reg_nonzero` | None | `3` | `b` |
+| PowerPC | `freg` | None | `0` | None |
 
 > Notes:
 > - on ARM `e` / `f`: this prints the low or high doubleword register name of a NEON quad (128-bit) register.
