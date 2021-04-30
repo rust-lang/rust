@@ -93,7 +93,7 @@ impl<'a> EnumRender<'a> {
             .variant
             .fields(self.ctx.db())
             .into_iter()
-            .map(|field| (field.name(self.ctx.db()), field.signature_ty(self.ctx.db())));
+            .map(|field| (field.name(self.ctx.db()), field.ty(self.ctx.db())));
 
         match self.variant_kind {
             StructKind::Tuple | StructKind::Unit => format!(

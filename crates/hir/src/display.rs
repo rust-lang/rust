@@ -170,7 +170,7 @@ impl HirDisplay for Field {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         write_visibility(self.parent.module(f.db).id, self.visibility(f.db), f)?;
         write!(f, "{}: ", self.name(f.db))?;
-        self.signature_ty(f.db).hir_fmt(f)
+        self.ty(f.db).hir_fmt(f)
     }
 }
 
