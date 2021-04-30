@@ -884,3 +884,29 @@ impl DirBuilderExt for fs::DirBuilder {
         self
     }
 }
+
+/// Change the root directory of the current process to the specified path.
+///
+/// This typically requires privileges, such as root or a specific capability.
+///
+/// This does not change the current working directory; you should call
+/// [`std::env::set_current_dir`][`crate::env::set_current_dir`] afterwards.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(unix_chroot)]
+/// use std::os::unix::fs;
+///
+/// fn main() -> std::io::Result<()> {
+///     fs::chroot("/sandbox")?;
+///     std::env::set_current_dir("/")?;
+///     // continue working in sandbox
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "unix_chroot", issue = "84715")]
+#[cfg(not(target_os = "fuchsia"))]
+pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
+    sys::fs::chroot(dir.as_ref())
+}

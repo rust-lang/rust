@@ -1328,3 +1328,10 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     })?;
     Ok(bytes_copied as u64)
 }
+
+#[cfg(not(target_os = "fuchsia"))]
+pub fn chroot(dir: &Path) -> io::Result<()> {
+    let dir = cstr(dir)?;
+    cvt(unsafe { libc::chroot(dir.as_ptr()) })?;
+    Ok(())
+}
