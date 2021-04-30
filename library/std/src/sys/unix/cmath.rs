@@ -1,32 +1,33 @@
 #![cfg(not(test))]
 
-use libc::{c_double, c_float};
+// These symbols are all defined by `libm`,
+// or by `compiler-builtins` on unsupported platforms.
 
 extern "C" {
-    pub fn acos(n: c_double) -> c_double;
-    pub fn acosf(n: c_float) -> c_float;
-    pub fn asin(n: c_double) -> c_double;
-    pub fn asinf(n: c_float) -> c_float;
-    pub fn atan(n: c_double) -> c_double;
-    pub fn atan2(a: c_double, b: c_double) -> c_double;
-    pub fn atan2f(a: c_float, b: c_float) -> c_float;
-    pub fn atanf(n: c_float) -> c_float;
-    pub fn cbrt(n: c_double) -> c_double;
-    pub fn cbrtf(n: c_float) -> c_float;
-    pub fn cosh(n: c_double) -> c_double;
-    pub fn coshf(n: c_float) -> c_float;
-    pub fn expm1(n: c_double) -> c_double;
-    pub fn expm1f(n: c_float) -> c_float;
-    pub fn fdim(a: c_double, b: c_double) -> c_double;
-    pub fn fdimf(a: c_float, b: c_float) -> c_float;
-    pub fn hypot(x: c_double, y: c_double) -> c_double;
-    pub fn hypotf(x: c_float, y: c_float) -> c_float;
-    pub fn log1p(n: c_double) -> c_double;
-    pub fn log1pf(n: c_float) -> c_float;
-    pub fn sinh(n: c_double) -> c_double;
-    pub fn sinhf(n: c_float) -> c_float;
-    pub fn tan(n: c_double) -> c_double;
-    pub fn tanf(n: c_float) -> c_float;
-    pub fn tanh(n: c_double) -> c_double;
-    pub fn tanhf(n: c_float) -> c_float;
+    pub fn acos(n: f64) -> f64;
+    pub fn acosf(n: f32) -> f32;
+    pub fn asin(n: f64) -> f64;
+    pub fn asinf(n: f32) -> f32;
+    pub fn atan(n: f64) -> f64;
+    pub fn atan2(a: f64, b: f64) -> f64;
+    pub fn atan2f(a: f32, b: f32) -> f32;
+    pub fn atanf(n: f32) -> f32;
+    pub fn cbrt(n: f64) -> f64;
+    pub fn cbrtf(n: f32) -> f32;
+    pub fn cosh(n: f64) -> f64;
+    pub fn coshf(n: f32) -> f32;
+    pub fn expm1(n: f64) -> f64;
+    pub fn expm1f(n: f32) -> f32;
+    pub fn fdim(a: f64, b: f64) -> f64;
+    pub fn fdimf(a: f32, b: f32) -> f32;
+    pub fn hypot(x: f64, y: f64) -> f64;
+    pub fn hypotf(x: f32, y: f32) -> f32;
+    pub fn log1p(n: f64) -> f64;
+    pub fn log1pf(n: f32) -> f32;
+    pub fn sinh(n: f64) -> f64;
+    pub fn sinhf(n: f32) -> f32;
+    pub fn tan(n: f64) -> f64;
+    pub fn tanf(n: f32) -> f32;
+    pub fn tanh(n: f64) -> f64;
+    pub fn tanhf(n: f32) -> f32;
 }
