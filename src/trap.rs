@@ -4,7 +4,6 @@ use crate::prelude::*;
 
 fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
     let puts = fx
-        .cx
         .module
         .declare_function(
             "puts",
@@ -16,13 +15,12 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, '_>, msg: &str) {
             },
         )
         .unwrap();
-    let puts = fx.cx.module.declare_func_in_func(puts, &mut fx.bcx.func);
+    let puts = fx.module.declare_func_in_func(puts, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(puts, "puts");
     }
 
-    let symbol_name = fx.tcx.symbol_name(fx.instance);
-    let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg);
+    let real_msg = format!("trap at {:?} ({}): {}\0", fx.instance, fx.symbol_name, msg);
     let msg_ptr = fx.anonymous_str("trap", &real_msg);
     fx.bcx.ins().call(puts, &[msg_ptr]);
 }

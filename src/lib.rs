@@ -1,4 +1,4 @@
-#![feature(rustc_private, decl_macro, never_type, hash_drain_filter)]
+#![feature(rustc_private, decl_macro, never_type, hash_drain_filter, vec_into_raw_parts)]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -23,7 +23,6 @@ extern crate rustc_target;
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::str::FromStr;
 
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
@@ -34,9 +33,10 @@ use rustc_middle::ty::query::Providers;
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
 
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 
-use crate::constant::ConstantCx;
+pub use crate::config::*;
 use crate::prelude::*;
 
 mod abi;
@@ -49,6 +49,7 @@ mod cast;
 mod codegen_i128;
 mod common;
 mod compiler_builtins;
+mod config;
 mod constant;
 mod debuginfo;
 mod discriminant;
@@ -87,7 +88,6 @@ mod prelude {
 
     pub(crate) use rustc_index::vec::Idx;
 
-    pub(crate) use cranelift_codegen::entity::EntitySet;
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::types;
@@ -119,94 +119,35 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
     }
 }
 
-struct CodegenCx<'m, 'tcx: 'm> {
+/// The codegen context holds any information shared between the codegen of individual functions
+/// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
+struct CodegenCx<'tcx> {
     tcx: TyCtxt<'tcx>,
-    module: &'m mut dyn Module,
     global_asm: String,
-    constants_cx: ConstantCx,
     cached_context: Context,
-    vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
     debug_context: Option<DebugContext<'tcx>>,
-    unwind_context: UnwindContext<'tcx>,
+    unwind_context: UnwindContext,
 }
 
-impl<'m, 'tcx> CodegenCx<'m, 'tcx> {
+impl<'tcx> CodegenCx<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
         backend_config: BackendConfig,
-        module: &'m mut dyn Module,
+        isa: &dyn TargetIsa,
         debug_info: bool,
     ) -> Self {
-        let unwind_context = UnwindContext::new(
-            tcx,
-            module.isa(),
-            matches!(backend_config.codegen_mode, CodegenMode::Aot),
-        );
-        let debug_context =
-            if debug_info { Some(DebugContext::new(tcx, module.isa())) } else { None };
+        assert_eq!(pointer_ty(tcx), isa.pointer_type());
+
+        let unwind_context =
+            UnwindContext::new(tcx, isa, matches!(backend_config.codegen_mode, CodegenMode::Aot));
+        let debug_context = if debug_info { Some(DebugContext::new(tcx, isa)) } else { None };
         CodegenCx {
             tcx,
-            module,
             global_asm: String::new(),
-            constants_cx: ConstantCx::default(),
             cached_context: Context::new(),
-            vtables: FxHashMap::default(),
             debug_context,
             unwind_context,
         }
-    }
-
-    fn finalize(self) -> (String, Option<DebugContext<'tcx>>, UnwindContext<'tcx>) {
-        self.constants_cx.finalize(self.tcx, self.module);
-        (self.global_asm, self.debug_context, self.unwind_context)
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum CodegenMode {
-    Aot,
-    Jit,
-    JitLazy,
-}
-
-impl Default for CodegenMode {
-    fn default() -> Self {
-        CodegenMode::Aot
-    }
-}
-
-impl FromStr for CodegenMode {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "aot" => Ok(CodegenMode::Aot),
-            "jit" => Ok(CodegenMode::Jit),
-            "jit-lazy" => Ok(CodegenMode::JitLazy),
-            _ => Err(format!("Unknown codegen mode `{}`", s)),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Default)]
-pub struct BackendConfig {
-    pub codegen_mode: CodegenMode,
-}
-
-impl BackendConfig {
-    fn from_opts(opts: &[String]) -> Result<Self, String> {
-        let mut config = BackendConfig::default();
-        for opt in opts {
-            if let Some((name, value)) = opt.split_once('=') {
-                match name {
-                    "mode" => config.codegen_mode = value.parse()?,
-                    _ => return Err(format!("Unknown option `{}`", name)),
-                }
-            } else {
-                return Err(format!("Invalid option `{}`", opt));
-            }
-        }
-        Ok(config)
     }
 }
 
@@ -240,13 +181,23 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        let config = if let Some(config) = self.config {
+        tcx.sess.abort_if_errors();
+        let config = if let Some(config) = self.config.clone() {
             config
         } else {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.fatal(&err))
         };
-        driver::codegen_crate(tcx, metadata, need_metadata_module, config)
+        match config.codegen_mode {
+            CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
+            CodegenMode::Jit | CodegenMode::JitLazy => {
+                #[cfg(feature = "jit")]
+                let _: ! = driver::jit::run_jit(tcx, config);
+
+                #[cfg(not(feature = "jit"))]
+                tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+            }
+        }
     }
 
     fn join_codegen(
@@ -284,7 +235,7 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     sess.target.llvm_target.parse().unwrap()
 }
 
-fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
@@ -292,9 +243,8 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
     flags_builder.enable("is_pic").unwrap();
     flags_builder.set("enable_probestack", "false").unwrap(); // __cranelift_probestack is not provided
-    let enable_verifier =
-        cfg!(debug_assertions) || std::env::var("CG_CLIF_ENABLE_VERIFIER").is_ok();
-    flags_builder.set("enable_verifier", if enable_verifier { "true" } else { "false" }).unwrap();
+    let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
+    flags_builder.set("enable_verifier", enable_verifier).unwrap();
 
     let tls_model = match target_triple.binary_format {
         BinaryFormat::Elf => "elf_gd",
@@ -322,10 +272,28 @@ fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
     let flags = settings::Flags::new(flags_builder);
 
     let variant = cranelift_codegen::isa::BackendVariant::MachInst;
-    let mut isa_builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
-    // Don't use "haswell", as it implies `has_lzcnt`.macOS CI is still at Ivy Bridge EP, so `lzcnt`
-    // is interpreted as `bsr`.
-    isa_builder.enable("nehalem").unwrap();
+
+    let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
+        Some("native") => {
+            let builder = cranelift_native::builder_with_options(variant, true).unwrap();
+            builder
+        }
+        Some(value) => {
+            let mut builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
+            if let Err(_) = builder.enable(value) {
+                sess.fatal("The specified target cpu isn't currently supported by Cranelift.");
+            }
+            builder
+        }
+        None => {
+            let mut builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
+            // Don't use "haswell" as the default, as it implies `has_lzcnt`.
+            // macOS CI is still at Ivy Bridge EP, so `lzcnt` is interpreted as `bsr`.
+            builder.enable("nehalem").unwrap();
+            builder
+        }
+    };
+    
     isa_builder.finish(flags)
 }
 

@@ -56,7 +56,7 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.39"
+version = "0.1.40"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -132,9 +132,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.91"
+version = "0.2.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8916b1f6ca17130ec6568feccee27c156ad12037880833a3b842a823236502e7"
+checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -167,6 +167,7 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
+ "alloc",
  "cfg-if",
  "compiler_builtins",
  "core",
@@ -242,8 +243,20 @@ dependencies = [
  "panic_abort",
  "panic_unwind",
  "rustc-demangle",
+ "std_detect",
  "unwind",
  "wasi",
+]
+
+[[package]]
+name = "std_detect"
+version = "0.1.5"
+dependencies = [
+ "cfg-if",
+ "compiler_builtins",
+ "libc",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]

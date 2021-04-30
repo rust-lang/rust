@@ -45,7 +45,7 @@ index d95b5b7f17f..00b6f0e3635 100644
  [dependencies]
  core = { path = "../core" }
 -compiler_builtins = { version = "0.1.39", features = ['rustc-dep-of-std'] }
-+compiler_builtins = { version = "0.1.39", features = ['rustc-dep-of-std', 'no-asm'] }
++compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std', 'no-asm'] }
 
  [dev-dependencies]
  rand = "0.7"

@@ -2,29 +2,16 @@
 
 use crate::prelude::*;
 
-mod code_layout;
 pub(crate) mod peephole;
-mod stack2reg;
 
 pub(crate) fn optimize_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     ctx: &mut Context,
-    cold_blocks: &EntitySet<Block>,
     clif_comments: &mut crate::pretty_clif::CommentWriter,
 ) {
-    // The code_layout optimization is very cheap.
-    self::code_layout::optimize_function(ctx, cold_blocks);
+    // FIXME classify optimizations over opt levels once we have more
 
-    if tcx.sess.opts.optimize == rustc_session::config::OptLevel::No {
-        return; // FIXME classify optimizations over opt levels
-    }
-
-    // FIXME(#1142) stack2reg miscompiles lewton
-    if false {
-        self::stack2reg::optimize_function(ctx, clif_comments);
-    }
-
-    crate::pretty_clif::write_clif_file(tcx, "stack2reg", None, instance, &ctx, &*clif_comments);
+    crate::pretty_clif::write_clif_file(tcx, "preopt", None, instance, &ctx, &*clif_comments);
     crate::base::verify_func(tcx, &*clif_comments, &ctx.func);
 }

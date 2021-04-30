@@ -5,23 +5,23 @@ use std::convert::{TryFrom, TryInto};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::Session;
 
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_module::FuncId;
+use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
 use object::write::*;
 use object::{RelocationEncoding, SectionKind, SymbolFlags};
-
-use cranelift_object::{ObjectBuilder, ObjectModule, ObjectProduct};
 
 use gimli::SectionId;
 
 use crate::debuginfo::{DebugReloc, DebugRelocName};
 
 pub(crate) trait WriteMetadata {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, is_like_osx: bool);
+    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>);
 }
 
 impl WriteMetadata for object::write::Object {
-    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>, _is_like_osx: bool) {
+    fn add_rustc_section(&mut self, symbol_name: String, data: Vec<u8>) {
         let segment = self.segment_name(object::write::StandardSegment::Data).to_vec();
         let section_id = self.add_section(segment, b".rustc".to_vec(), object::SectionKind::Data);
         let offset = self.append_section_data(section_id, &data, 1);
@@ -113,7 +113,7 @@ impl WriteDebugInfo for ObjectProduct {
 }
 
 pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object)) -> Vec<u8> {
-    let triple = crate::build_isa(sess).triple().clone();
+    let triple = crate::target_triple(sess);
 
     let binary_format = match triple.binary_format {
         target_lexicon::BinaryFormat::Elf => object::BinaryFormat::Elf,
@@ -141,13 +141,9 @@ pub(crate) fn with_object(sess: &Session, name: &str, f: impl FnOnce(&mut Object
     metadata_object.write().unwrap()
 }
 
-pub(crate) fn make_module(sess: &Session, name: String) -> ObjectModule {
-    let mut builder = ObjectBuilder::new(
-        crate::build_isa(sess),
-        name + ".o",
-        cranelift_module::default_libcall_names(),
-    )
-    .unwrap();
+pub(crate) fn make_module(sess: &Session, isa: Box<dyn TargetIsa>, name: String) -> ObjectModule {
+    let mut builder =
+        ObjectBuilder::new(isa, name + ".o", cranelift_module::default_libcall_names()).unwrap();
     // Unlike cg_llvm, cg_clif defaults to disabling -Zfunction-sections. For cg_llvm binary size
     // is important, while cg_clif cares more about compilation times. Enabling -Zfunction-sections
     // can easily double the amount of time necessary to perform linking.
