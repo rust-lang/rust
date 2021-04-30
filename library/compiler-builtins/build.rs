@@ -526,13 +526,8 @@ mod c {
         // That said, it's unclear how useful this added complexity will be, so just do the simple
         // thing for now.
         let outlined_atomics_file = builtins_dir.join("aarch64/lse.S");
-
-        // A stable release hasn't been made with lse.S yet. Until we pick that up, do nothing.
-        if !outlined_atomics_file.exists() {
-            return vec![];
-        }
-
         println!("cargo:rerun-if-changed={}", outlined_atomics_file.display());
+
         let out_dir: PathBuf = env::var("OUT_DIR").unwrap().into();
 
         // Ideally, this would be a Vec of object files, but cc doesn't make it *entirely*
