@@ -88,8 +88,8 @@ jobs:
     - run: rustup component add llvm-tools-preview
     - name: Download compiler-rt reference sources
       run: |
-        curl -L -o code.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/10.0-2020-05-05.tar.gz
-        tar xzf code.tar.gz --strip-components 1 llvm-project-rustc-10.0-2020-05-05/compiler-rt
+        curl -L -o code.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/12.0-2021-04-15.tar.gz
+        tar xzf code.tar.gz --strip-components 1 llvm-project-rustc-12.0-2021-04-15/compiler-rt
         echo RUST_COMPILER_RT_ROOT=./compiler-rt >> $GITHUB_ENV
       shell: bash
 
