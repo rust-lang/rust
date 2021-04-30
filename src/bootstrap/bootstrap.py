@@ -414,10 +414,13 @@ class RustBuild(object):
             filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
             self._download_component_helper(filename, "rustc", tarball_suffix, stage0)
-            filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
-                                              tarball_suffix)
-            self._download_component_helper(filename, "cargo", tarball_suffix)
-            if not stage0:
+            # download-rustc doesn't need its own cargo, it can just use beta's.
+            if stage0:
+                filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
+                                                tarball_suffix)
+                self._download_component_helper(filename, "cargo", tarball_suffix)
+                self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
+            else:
                 filename = "rustc-dev-{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
                 self._download_component_helper(
                     filename, "rustc-dev", tarball_suffix, stage0
@@ -425,7 +428,6 @@ class RustBuild(object):
 
             self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
             self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
-            self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
             lib_dir = "{}/lib".format(bin_root)
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
