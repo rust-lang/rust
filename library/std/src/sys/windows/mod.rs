@@ -90,6 +90,24 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         | c::ERROR_RUNLEVEL_SWITCH_TIMEOUT
         | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return TimedOut,
         c::ERROR_CALL_NOT_IMPLEMENTED => return Unsupported,
+        | c::ERROR_RUNLEVEL_SWITCH_AGENT_TIMEOUT => return TimedOut,
+        c::ERROR_CALL_NOT_IMPLEMENTED => return Unsupported,
+        c::ERROR_HOST_UNREACHABLE => return HostUnreachable,
+        c::ERROR_NETWORK_UNREACHABLE => return NetworkUnreachable,
+        c::ERROR_DIRECTORY => return NotADirectory,
+        c::ERROR_DIRECTORY_NOT_SUPPORTED => return IsADirectory,
+        c::ERROR_DIR_NOT_EMPTY => return DirectoryNotEmpty,
+        c::ERROR_WRITE_PROTECT => return ReadOnlyFilesystem,
+        c::ERROR_DISK_FULL
+        | c::ERROR_HANDLE_DISK_FULL => return StorageFull,
+        c::ERROR_SEEK_ON_DEVICE => return NotSeekable,
+        c::ERROR_DISK_QUOTA_EXCEEDED => return FilesystemQuotaExceeded,
+        c::ERROR_FILE_TOO_LARGE => return FileTooLarge,
+        c::ERROR_BUSY => return ResourceBusy,
+        c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
+        c::ERROR_NOT_SAME_DEVICE => return CrossesDevices,
+        c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
+        c::ERROR_FILENAME_EXCED_RANGE => return FilenameTooLong,
         _ => {}
     }
 
@@ -104,6 +122,9 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::WSAENOTCONN => NotConnected,
         c::WSAEWOULDBLOCK => WouldBlock,
         c::WSAETIMEDOUT => TimedOut,
+        c::WSAEHOSTUNREACH => HostUnreachable,
+        c::WSAENETDOWN => NetworkDown,
+        c::WSAENETUNREACH => NetworkUnreachable,
 
         _ => Uncategorized,
     }
