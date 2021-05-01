@@ -13,6 +13,7 @@ LL | struct Foo<'a, A> {}
    |                ^ unused parameter
    |
    = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `A` to be a const parameter, use `const A: usize` instead
 
 error: aborting due to 2 previous errors
 
