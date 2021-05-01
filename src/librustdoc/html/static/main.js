@@ -1490,27 +1490,42 @@ function hideThemeButtonState() {
     searchState.setup();
 }());
 
-function copy_path(but) {
-    var parent = but.parentElement;
-    var path = [];
+(function () {
+    var reset_button_timeout = null;
 
-    onEach(parent.childNodes, function(child) {
-        if (child.tagName === 'A') {
-            path.push(child.textContent);
+    window.copy_path = function(but) {
+        var parent = but.parentElement;
+        var path = [];
+
+        onEach(parent.childNodes, function(child) {
+            if (child.tagName === 'A') {
+                path.push(child.textContent);
+            }
+        });
+
+        var el = document.createElement('textarea');
+        el.value = 'use ' + path.join('::') + ';';
+        el.setAttribute('readonly', '');
+        // To not make it appear on the screen.
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+
+        but.textContent = '✓';
+
+        if (reset_button_timeout !== null) {
+            window.clearTimeout(reset_button_timeout);
         }
-    });
 
-    var el = document.createElement('textarea');
-    el.value = 'use ' + path.join('::') + ';';
-    el.setAttribute('readonly', '');
-    // To not make it appear on the screen.
-    el.style.position = 'absolute';
-    el.style.left = '-9999px';
+        function reset_button() {
+            but.textContent = '⎘';
+            reset_button_timeout = null;
+        }
 
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-
-    but.textContent = '✓';
-}
+        reset_button_timeout = window.setTimeout(reset_button, 1000);
+    };
+}());
