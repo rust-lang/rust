@@ -1,5 +1,16 @@
 # Target Tier Policy
 
+## Table of Contents
+
+* [General](#general)
+* [Tier 3 target policy](#tier-3-target-policy)
+* [Tier 2 target policy](#tier-2-target-policy)
+  * [Tier 2 with host tools](#tier-2-with-host-tools)
+* [Tier 1 target policy](#tier-1-target-policy)
+  * [Tier 1 with host tools](#tier-1-with-host-tools)
+
+## General
+
 Rust provides three tiers of target support:
 
 - Rust provides no guarantees about tier 3 targets; they exist in the codebase,
