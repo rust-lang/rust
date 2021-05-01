@@ -11,8 +11,9 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 
 use rustc_span::source_map::original_sp;
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol};
 
+use std::cell::RefCell;
 use std::cmp::Ordering;
 
 #[derive(Debug, Copy, Clone)]
@@ -67,6 +68,8 @@ impl CoverageStatement {
 #[derive(Debug, Clone)]
 pub(super) struct CoverageSpan {
     pub span: Span,
+    pub expn_span: Span,
+    pub current_macro_or_none: RefCell<Option<Option<Symbol>>>,
     pub bcb: BasicCoverageBlock,
     pub coverage_statements: Vec<CoverageStatement>,
     pub is_closure: bool,
@@ -74,12 +77,20 @@ pub(super) struct CoverageSpan {
 
 impl CoverageSpan {
     pub fn for_fn_sig(fn_sig_span: Span) -> Self {
-        Self { span: fn_sig_span, bcb: START_BCB, coverage_statements: vec![], is_closure: false }
+        Self {
+            span: fn_sig_span,
+            expn_span: fn_sig_span,
+            current_macro_or_none: Default::default(),
+            bcb: START_BCB,
+            coverage_statements: vec![],
+            is_closure: false,
+        }
     }
 
     pub fn for_statement(
         statement: &Statement<'tcx>,
         span: Span,
+        expn_span: Span,
         bcb: BasicCoverageBlock,
         bb: BasicBlock,
         stmt_index: usize,
@@ -94,15 +105,24 @@ impl CoverageSpan {
 
         Self {
             span,
+            expn_span,
+            current_macro_or_none: Default::default(),
             bcb,
             coverage_statements: vec![CoverageStatement::Statement(bb, span, stmt_index)],
             is_closure,
         }
     }
 
-    pub fn for_terminator(span: Span, bcb: BasicCoverageBlock, bb: BasicBlock) -> Self {
+    pub fn for_terminator(
+        span: Span,
+        expn_span: Span,
+        bcb: BasicCoverageBlock,
+        bb: BasicBlock,
+    ) -> Self {
         Self {
             span,
+            expn_span,
+            current_macro_or_none: Default::default(),
             bcb,
             coverage_statements: vec![CoverageStatement::Terminator(bb, span)],
             is_closure: false,
@@ -158,6 +178,38 @@ impl CoverageSpan {
             .collect::<Vec<_>>()
             .join("\n")
     }
+
+    /// If the span is part of a macro, returns the macro name symbol.
+    pub fn current_macro(&self) -> Option<Symbol> {
+        self.current_macro_or_none
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                if let ExpnKind::Macro(MacroKind::Bang, current_macro) =
+                    self.expn_span.ctxt().outer_expn_data().kind
+                {
+                    return Some(current_macro);
+                }
+                None
+            })
+            .map(|symbol| symbol)
+    }
+
+    /// If the span is part of a macro, and the macro is visible (expands directly to the given
+    /// body_span), returns the macro name symbol.
+    pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
+        if let Some(current_macro) = self.current_macro() {
+            if self.expn_span.parent().unwrap_or_else(|| bug!("macro must have a parent")).ctxt()
+                == body_span.ctxt()
+            {
+                return Some(current_macro);
+            }
+        }
+        None
+    }
+
+    pub fn is_macro_expansion(&self) -> bool {
+        self.current_macro().is_some()
+    }
 }
 
 /// Converts the initial set of `CoverageSpan`s (one per MIR `Statement` or `Terminator`) into a
@@ -191,15 +243,22 @@ pub struct CoverageSpans<'a, 'tcx> {
     /// iteration.
     some_curr: Option<CoverageSpan>,
 
-    /// The original `span` for `curr`, in case the `curr` span is modified.
+    /// The original `span` for `curr`, in case `curr.span()` is modified. The `curr_original_span`
+    /// **must not be mutated** (except when advancing to the next `curr`), even if `curr.span()`
+    /// is mutated.
     curr_original_span: Span,
 
     /// The CoverageSpan from a prior iteration; typically assigned from that iteration's `curr`.
     /// If that `curr` was discarded, `prev` retains its value from the previous iteration.
     some_prev: Option<CoverageSpan>,
 
-    /// Assigned from `curr_original_span` from the previous iteration.
+    /// Assigned from `curr_original_span` from the previous iteration. The `prev_original_span`
+    /// **must not be mutated** (except when advancing to the next `prev`), even if `prev.span()`
+    /// is mutated.
     prev_original_span: Span,
+
+    /// A copy of the expn_span from the prior iteration.
+    prev_expn_span: Option<Span>,
 
     /// One or more `CoverageSpan`s with the same `Span` but different `BasicCoverageBlock`s, and
     /// no `BasicCoverageBlock` in this list dominates another `BasicCoverageBlock` in the list.
@@ -255,15 +314,13 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             curr_original_span: Span::with_root_ctxt(BytePos(0), BytePos(0)),
             some_prev: None,
             prev_original_span: Span::with_root_ctxt(BytePos(0), BytePos(0)),
+            prev_expn_span: None,
             pending_dups: Vec::new(),
         };
 
         let sorted_spans = coverage_spans.mir_to_initial_sorted_coverage_spans();
 
         coverage_spans.sorted_spans_iter = Some(sorted_spans.into_iter());
-        coverage_spans.some_prev = coverage_spans.sorted_spans_iter.as_mut().unwrap().next();
-        coverage_spans.prev_original_span =
-            coverage_spans.some_prev.as_ref().expect("at least one span").span;
 
         coverage_spans.to_refined_spans()
     }
@@ -317,10 +374,14 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// de-duplicated `CoverageSpan`s.
     fn to_refined_spans(mut self) -> Vec<CoverageSpan> {
         while self.next_coverage_span() {
-            if self.curr().is_mergeable(self.prev()) {
+            if self.some_prev.is_none() {
+                debug!("  initial span");
+                self.check_invoked_macro_name_span();
+            } else if self.curr().is_mergeable(self.prev()) {
                 debug!("  same bcb (and neither is a closure), merge with prev={:?}", self.prev());
                 let prev = self.take_prev();
                 self.curr_mut().merge_from(prev);
+                self.check_invoked_macro_name_span();
             // Note that curr.span may now differ from curr_original_span
             } else if self.prev_ends_before_curr() {
                 debug!(
@@ -329,7 +390,8 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                     self.prev()
                 );
                 let prev = self.take_prev();
-                self.refined_spans.push(prev);
+                self.push_refined_span(prev);
+                self.check_invoked_macro_name_span();
             } else if self.prev().is_closure {
                 // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
                 // next iter
@@ -342,20 +404,45 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             } else if self.curr().is_closure {
                 self.carve_out_span_for_closure();
             } else if self.prev_original_span == self.curr().span {
-                // Note that this compares the new span to `prev_original_span`, which may not
-                // be the full `prev.span` (if merged during the previous iteration).
-                self.hold_pending_dups_unless_dominated();
+                // Note that this compares the new (`curr`) span to `prev_original_span`.
+                // In this branch, the actual span byte range of `prev_original_span` is not
+                // important. What is important is knowing whether the new `curr` span was
+                // **originally** the same as the original span of `prev()`. The original spans
+                // reflect their original sort order, and for equal spans, conveys a partial
+                // ordering based on CFG dominator priority.
+                if self.prev().is_macro_expansion() && self.curr().is_macro_expansion() {
+                    // Macros that expand to include branching (such as
+                    // `assert_eq!()`, `assert_ne!()`, `info!()`, `debug!()`, or
+                    // `trace!()) typically generate callee spans with identical
+                    // ranges (typically the full span of the macro) for all
+                    // `BasicBlocks`. This makes it impossible to distinguish
+                    // the condition (`if val1 != val2`) from the optional
+                    // branched statements (such as the call to `panic!()` on
+                    // assert failure). In this case it is better (or less
+                    // worse) to drop the optional branch bcbs and keep the
+                    // non-conditional statements, to count when reached.
+                    debug!(
+                        "  curr and prev are part of a macro expansion, and curr has the same span \
+                        as prev, but is in a different bcb. Drop curr and keep prev for next iter. \
+                        prev={:?}",
+                        self.prev()
+                    );
+                    self.take_curr();
+                } else {
+                    self.hold_pending_dups_unless_dominated();
+                }
             } else {
                 self.cutoff_prev_at_overlapping_curr();
+                self.check_invoked_macro_name_span();
             }
         }
 
         debug!("    AT END, adding last prev={:?}", self.prev());
         let prev = self.take_prev();
-        let CoverageSpans { pending_dups, mut refined_spans, .. } = self;
+        let pending_dups = self.pending_dups.split_off(0);
         for dup in pending_dups {
             debug!("    ...adding at least one pending dup={:?}", dup);
-            refined_spans.push(dup);
+            self.push_refined_span(dup);
         }
 
         // Async functions wrap a closure that implements the body to be executed. The enclosing
@@ -365,21 +452,60 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
         // excluded. The closure's `Return` is the only one that will be counted. This provides
         // adequate coverage, and more intuitive counts. (Avoids double-counting the closing brace
         // of the function body.)
-        let body_ends_with_closure = if let Some(last_covspan) = refined_spans.last() {
+        let body_ends_with_closure = if let Some(last_covspan) = self.refined_spans.last() {
             last_covspan.is_closure && last_covspan.span.hi() == self.body_span.hi()
         } else {
             false
         };
 
         if !body_ends_with_closure {
-            refined_spans.push(prev);
+            self.push_refined_span(prev);
         }
 
         // Remove `CoverageSpan`s derived from closures, originally added to ensure the coverage
         // regions for the current function leave room for the closure's own coverage regions
         // (injected separately, from the closure's own MIR).
-        refined_spans.retain(|covspan| !covspan.is_closure);
-        refined_spans
+        self.refined_spans.retain(|covspan| !covspan.is_closure);
+        self.refined_spans
+    }
+
+    fn push_refined_span(&mut self, covspan: CoverageSpan) {
+        let len = self.refined_spans.len();
+        if len > 0 {
+            let last = &mut self.refined_spans[len - 1];
+            if last.is_mergeable(&covspan) {
+                debug!(
+                    "merging new refined span with last refined span, last={:?}, covspan={:?}",
+                    last, covspan
+                );
+                last.merge_from(covspan);
+                return;
+            }
+        }
+        self.refined_spans.push(covspan)
+    }
+
+    fn check_invoked_macro_name_span(&mut self) {
+        if let Some(visible_macro) = self.curr().visible_macro(self.body_span) {
+            if self.prev_expn_span.map_or(true, |prev_expn_span| {
+                self.curr().expn_span.ctxt() != prev_expn_span.ctxt()
+            }) {
+                let merged_prefix_len = self.curr_original_span.lo() - self.curr().span.lo();
+                let after_macro_bang =
+                    merged_prefix_len + BytePos(visible_macro.as_str().bytes().count() as u32 + 1);
+                let mut macro_name_cov = self.curr().clone();
+                self.curr_mut().span =
+                    self.curr().span.with_lo(self.curr().span.lo() + after_macro_bang);
+                macro_name_cov.span =
+                    macro_name_cov.span.with_hi(macro_name_cov.span.lo() + after_macro_bang);
+                debug!(
+                    "  and curr starts a new macro expansion, so add a new span just for \
+                            the macro `{}!`, new span={:?}",
+                    visible_macro, macro_name_cov
+                );
+                self.push_refined_span(macro_name_cov);
+            }
+        }
     }
 
     // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
@@ -401,14 +527,17 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                     .iter()
                     .enumerate()
                     .filter_map(move |(index, statement)| {
-                        filtered_statement_span(statement, self.body_span).map(|span| {
-                            CoverageSpan::for_statement(statement, span, bcb, bb, index)
-                        })
+                        filtered_statement_span(statement, self.body_span).map(
+                            |(span, expn_span)| {
+                                CoverageSpan::for_statement(
+                                    statement, span, expn_span, bcb, bb, index,
+                                )
+                            },
+                        )
                     })
-                    .chain(
-                        filtered_terminator_span(data.terminator(), self.body_span)
-                            .map(|span| CoverageSpan::for_terminator(span, bcb, bb)),
-                    )
+                    .chain(filtered_terminator_span(data.terminator(), self.body_span).map(
+                        |(span, expn_span)| CoverageSpan::for_terminator(span, expn_span, bcb, bb),
+                    ))
             })
             .collect()
     }
@@ -461,7 +590,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                     let pending_dups = self.pending_dups.split_off(0);
                     for dup in pending_dups.into_iter() {
                         debug!("    ...adding at least one pending={:?}", dup);
-                        self.refined_spans.push(dup);
+                        self.push_refined_span(dup);
                     }
                 } else {
                     self.pending_dups.clear();
@@ -473,12 +602,13 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// Advance `prev` to `curr` (if any), and `curr` to the next `CoverageSpan` in sorted order.
     fn next_coverage_span(&mut self) -> bool {
         if let Some(curr) = self.some_curr.take() {
+            self.prev_expn_span = Some(curr.expn_span);
             self.some_prev = Some(curr);
             self.prev_original_span = self.curr_original_span;
         }
         while let Some(curr) = self.sorted_spans_iter.as_mut().unwrap().next() {
             debug!("FOR curr={:?}", curr);
-            if self.prev_starts_after_next(&curr) {
+            if self.some_prev.is_some() && self.prev_starts_after_next(&curr) {
                 debug!(
                     "  prev.span starts after curr.span, so curr will be dropped (skipping past \
                     closure?); prev={:?}",
@@ -535,29 +665,38 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                 for mut dup in pending_dups.iter().cloned() {
                     dup.span = dup.span.with_hi(left_cutoff);
                     debug!("    ...and at least one pre_closure dup={:?}", dup);
-                    self.refined_spans.push(dup);
+                    self.push_refined_span(dup);
                 }
             }
-            self.refined_spans.push(pre_closure);
+            self.push_refined_span(pre_closure);
         }
         if has_post_closure_span {
-            // Update prev.span to start after the closure (and discard curr)
+            // Mutate `prev.span()` to start after the closure (and discard curr).
+            // (**NEVER** update `prev_original_span` because it affects the assumptions
+            // about how the `CoverageSpan`s are ordered.)
             self.prev_mut().span = self.prev().span.with_lo(right_cutoff);
-            self.prev_original_span = self.prev().span;
+            debug!("  Mutated prev.span to start after the closure. prev={:?}", self.prev());
             for dup in pending_dups.iter_mut() {
+                debug!("    ...and at least one overlapping dup={:?}", dup);
                 dup.span = dup.span.with_lo(right_cutoff);
             }
             self.pending_dups.append(&mut pending_dups);
             let closure_covspan = self.take_curr();
-            self.refined_spans.push(closure_covspan); // since self.prev() was already updated
+            self.push_refined_span(closure_covspan); // since self.prev() was already updated
         } else {
             pending_dups.clear();
         }
     }
 
     /// Called if `curr.span` equals `prev_original_span` (and potentially equal to all
-    /// `pending_dups` spans, if any); but keep in mind, `prev.span` may start at a `Span.lo()` that
-    /// is less than (further left of) `prev_original_span.lo()`.
+    /// `pending_dups` spans, if any). Keep in mind, `prev.span()` may have been changed.
+    /// If prev.span() was merged into other spans (with matching BCB, for instance),
+    /// `prev.span.hi()` will be greater than (further right of) `prev_original_span.hi()`.
+    /// If prev.span() was split off to the right of a closure, prev.span().lo() will be
+    /// greater than prev_original_span.lo(). The actual span of `prev_original_span` is
+    /// not as important as knowing that `prev()` **used to have the same span** as `curr(),
+    /// which means their sort order is still meaningful for determinating the dominator
+    /// relationship.
     ///
     /// When two `CoverageSpan`s have the same `Span`, dominated spans can be discarded; but if
     /// neither `CoverageSpan` dominates the other, both (or possibly more than two) are held,
@@ -640,7 +779,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
             } else {
                 debug!("  ... adding modified prev={:?}", self.prev());
                 let prev = self.take_prev();
-                self.refined_spans.push(prev);
+                self.push_refined_span(prev);
             }
         } else {
             // with `pending_dups`, `prev` cannot have any statements that don't overlap
@@ -653,10 +792,13 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 }
 
+/// See `function_source_span()` for a description of the two returned spans.
+/// If the MIR `Statement` is not contributive to computing coverage spans,
+/// returns `None`.
 pub(super) fn filtered_statement_span(
     statement: &'a Statement<'tcx>,
     body_span: Span,
-) -> Option<Span> {
+) -> Option<(Span, Span)> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -698,10 +840,13 @@ pub(super) fn filtered_statement_span(
     }
 }
 
+/// See `function_source_span()` for a description of the two returned spans.
+/// If the MIR `Terminator` is not contributive to computing coverage spans,
+/// returns `None`.
 pub(super) fn filtered_terminator_span(
     terminator: &'a Terminator<'tcx>,
     body_span: Span,
-) -> Option<Span> {
+) -> Option<(Span, Span)> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from
@@ -741,8 +886,23 @@ pub(super) fn filtered_terminator_span(
     }
 }
 
+/// Returns two spans from the given span (the span associated with a
+/// `Statement` or `Terminator`):
+///
+///   1. An extrapolated span (pre-expansion[^1]) corresponding to a range within
+///      the function's body source. This span is guaranteed to be contained
+///      within, or equal to, the `body_span`. If the extrapolated span is not
+///      contained within the `body_span`, the `body_span` is returned.
+///   2. The actual `span` value from the `Statement`, before expansion.
+///
+/// Only the first span is used when computing coverage code regions. The second
+/// span is useful if additional expansion data is needed (such as to look up
+/// the macro name for a composed span within that macro).)
+///
+/// [^1]Expansions result from Rust syntax including macros, syntactic
+/// sugar, etc.).
 #[inline]
-fn function_source_span(span: Span, body_span: Span) -> Span {
-    let span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
-    if body_span.contains(span) { span } else { body_span }
+fn function_source_span(span: Span, body_span: Span) -> (Span, Span) {
+    let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
+    (if body_span.contains(original_span) { original_span } else { body_span }, span)
 }
