@@ -940,13 +940,14 @@ impl Tester for Collector {
                 let report_unused_externs = |uext| {
                     unused_externs.lock().unwrap().push(uext);
                 };
+                let no_run = config.no_run || options.no_run;
                 let res = run_test(
                     &test,
                     &cratename,
                     line,
                     options,
                     config.should_panic,
-                    config.no_run,
+                    no_run,
                     config.test_harness,
                     runtool,
                     runtool_args,

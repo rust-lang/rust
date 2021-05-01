@@ -120,6 +120,8 @@ crate struct Options {
     /// For example, using ignore-foo to ignore running the doctest on any target that
     /// contains "foo" as a substring
     crate enable_per_target_ignores: bool,
+    /// Do not run doctests, compile them if should_test is active.
+    crate no_run: bool,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -197,6 +199,7 @@ impl fmt::Debug for Options {
             .field("runtool_args", &self.runtool_args)
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .field("run_check", &self.run_check)
+            .field("no_run", &self.no_run)
             .finish()
     }
 }
@@ -466,6 +469,12 @@ impl Options {
             test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
 
         let should_test = matches.opt_present("test");
+        let no_run = matches.opt_present("no-run");
+
+        if !should_test && no_run {
+            diag.err("the `--test` flag must be passed to enable `--no-run`");
+            return Err(1);
+        }
 
         let output =
             matches.opt_str("o").map(|s| PathBuf::from(&s)).unwrap_or_else(|| PathBuf::from("doc"));
@@ -666,6 +675,7 @@ impl Options {
             enable_per_target_ignores,
             test_builder,
             run_check,
+            no_run,
             render_options: RenderOptions {
                 output,
                 external_html,
