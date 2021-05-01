@@ -1282,6 +1282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut infer_args_for_err = FxHashSet::default();
 
+        let mut explicit_late_bound = ExplicitLateBound::No;
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
             let generics = tcx.generics_of(def_id);
@@ -1290,17 +1291,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            if let GenericArgCountResult {
-                correct: Err(GenericArgCountMismatch { reported: Some(_), .. }),
-                ..
-            } = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
+            let arg_count = <dyn AstConv<'_>>::check_generic_arg_count_for_call(
                 tcx,
                 span,
                 def_id,
                 &generics,
                 seg,
                 IsMethodCall::No,
-            ) {
+            );
+
+            if let ExplicitLateBound::Yes = arg_count.explicit_late_bound {
+                explicit_late_bound = ExplicitLateBound::Yes;
+            }
+
+            if let Err(GenericArgCountMismatch { reported: Some(_), .. }) = arg_count.correct {
                 infer_args_for_err.insert(index);
                 self.set_tainted_by_errors(); // See issue #53251.
             }
@@ -1357,7 +1361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = tcx.type_of(def_id);
 
         let arg_count = GenericArgCountResult {
-            explicit_late_bound: ExplicitLateBound::No,
+            explicit_late_bound,
             correct: if infer_args_for_err.is_empty() {
                 Ok(())
             } else {
