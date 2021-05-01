@@ -212,7 +212,7 @@ top_level_options!(
 macro_rules! options {
     ($struct_name:ident, $setter_name:ident, $defaultfn:ident,
      $buildfn:ident, $prefix:expr, $outputname:expr,
-     $stat:ident, $mod_desc:ident, $mod_set:ident,
+     $stat:ident,
      $($( #[$attr:meta] )* $opt:ident : $t:ty = (
         $init:expr,
         $parse:ident,
@@ -849,7 +849,7 @@ mod parse {
 
 options! {CodegenOptions, CodegenSetter, basic_codegen_options,
           build_codegen_options, "C", "codegen",
-          CG_OPTIONS, cg_type_desc, cgsetters,
+          CG_OPTIONS,
 
     // This list is in alphabetical order.
     //
@@ -959,7 +959,7 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           build_debugging_options, "Z", "debugging",
-          DB_OPTIONS, db_type_desc, dbsetters,
+          DB_OPTIONS,
 
     // This list is in alphabetical order.
     //
