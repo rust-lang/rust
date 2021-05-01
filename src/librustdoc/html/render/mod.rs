@@ -1457,8 +1457,8 @@ fn render_impl(
     }
 
     fn render_default_items(
-        w: &mut Buffer,
-        tmp_w: &mut Buffer,
+        boring: &mut Buffer,
+        interesting: &mut Buffer,
         cx: &Context<'_>,
         t: &clean::Trait,
         i: &clean::Impl,
@@ -1477,8 +1477,8 @@ fn render_impl(
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
             doc_impl_item(
-                w,
-                tmp_w,
+                boring,
+                interesting,
                 cx,
                 trait_item,
                 parent,
@@ -1513,10 +1513,14 @@ fn render_impl(
             );
         }
     }
-    let details_str = if impl_items.is_empty() && default_impl_items.is_empty() {
-        ""
-    } else {
-        "<details class=\"rustdoc-toggle implementors-toggle\" open><summary>"
+    let toggled = !impl_items.is_empty() || !default_impl_items.is_empty();
+    let open_details = |close_tags: &mut String| {
+        if toggled {
+            close_tags.insert_str(0, "</details>");
+            "<details class=\"rustdoc-toggle implementors-toggle\" open><summary>"
+        } else {
+            ""
+        }
     };
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
@@ -1538,11 +1542,10 @@ fn render_impl(
             write!(
                 w,
                 "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">",
-                details_str, id, aliases
+                open_details(&mut close_tags),
+                id,
+                aliases
             );
-            if !impl_items.is_empty() || !default_impl_items.is_empty() {
-                close_tags.insert_str(0, "</details>");
-            }
             write!(w, "{}", i.inner_impl().print(use_absolute, cx));
             if show_def_docs {
                 for it in &i.inner_impl().items {
@@ -1566,14 +1569,11 @@ fn render_impl(
             write!(
                 w,
                 "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
-                details_str,
+                open_details(&mut close_tags),
                 id,
                 aliases,
                 i.inner_impl().print(false, cx)
             );
-            if !impl_items.is_empty() || !default_impl_items.is_empty() {
-                close_tags.insert_str(0, "</details>");
-            }
         }
         write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
         render_stability_since_raw(
@@ -1584,7 +1584,7 @@ fn render_impl(
             outer_const_version,
         );
         write_srclink(cx, &i.impl_item, w);
-        if impl_items.is_empty() && default_impl_items.is_empty() {
+        if !toggled {
             w.write_str("</h3>");
         } else {
             w.write_str("</h3></summary>");
@@ -1613,7 +1613,7 @@ fn render_impl(
             );
         }
     }
-    if !impl_items.is_empty() || !default_impl_items.is_empty() {
+    if toggled {
         w.write_str("<div class=\"impl-items\">");
         w.push_buffer(default_impl_items);
         if trait_.is_some() && !impl_items.is_empty() {
