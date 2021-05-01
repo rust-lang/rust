@@ -1707,6 +1707,31 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         ..
                     } = source_file_to_import;
 
+                    // If this file is under $sysroot/lib/rustlib/src/ but has not been remapped
+                    // during rust bootstrapping by `remap-debuginfo = true`, and the user
+                    // wish to simulate that behaviour by -Z simulate-remapped-rust-src-base,
+                    // then we change `name` to a similar state as if the rust was bootstrapped
+                    // with `remap-debuginfo = true`.
+                    // This is useful for testing so that tests about the effects of
+                    // `try_to_translate_virtual_to_real` don't have to worry about how the
+                    // compiler is bootstrapped.
+                    if let Some(virtual_dir) =
+                        &sess.opts.debugging_opts.simulate_remapped_rust_src_base
+                    {
+                        if let Some(real_dir) = &sess.opts.real_rust_source_base_dir {
+                            if let rustc_span::FileName::Real(ref mut old_name) = name {
+                                if let rustc_span::RealFileName::LocalPath(local) = old_name {
+                                    if let Ok(rest) = local.strip_prefix(real_dir) {
+                                        *old_name = rustc_span::RealFileName::Remapped {
+                                            local_path: None,
+                                            virtual_name: virtual_dir.join(rest),
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // If this file's path has been remapped to `/rustc/$hash`,
                     // we might be able to reverse that (also see comments above,
                     // on `try_to_translate_virtual_to_real`).
