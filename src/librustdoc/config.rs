@@ -462,7 +462,7 @@ impl Options {
         let no_run = matches.opt_present("no-run");
 
         if !should_test && no_run {
-            diag.struct_err("option --no-run should be used with --test").emit();
+            diag.err("the `--test` flag must be passed to enable `--no-run`");
             return Err(1);
         }
 
