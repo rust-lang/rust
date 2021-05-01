@@ -720,9 +720,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// ## On `packed` structs
 ///
-/// It is currently impossible to create raw pointers to unaligned fields
-/// of a packed struct.
-///
 /// Attempting to create a raw pointer to an `unaligned` struct field with
 /// an expression such as `&packed.unaligned as *const FieldType` creates an
 /// intermediate unaligned reference before converting that to a raw pointer.
@@ -730,6 +727,28 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// as the compiler always expects references to be properly aligned.
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
+///
+/// To create a pointer to an unaligned struct field safely, instead use
+/// [`addr_of!`] to create the pointer to the field without creating an
+/// intermediate reference. See [`addr_of!`] for more information.
+///
+/// An example of how to use [`addr_of!`] and `read_unaligned` to read a
+/// pointer to a packed struct field is:
+///
+/// ```
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let packed = Packed { f1: 1, f2: 2 };
+/// // `&packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::addr_of!(packed.f2);
+/// assert_eq!(unsafe { raw_f2.read_unaligned() }, 2);
+/// ```
 ///
 /// An example of what not to do and how this relates to `read_unaligned` is:
 ///
@@ -762,7 +781,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// ```
 ///
 /// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
-// FIXME: Update docs based on outcome of RFC #2582 and friends.
 ///
 /// # Examples
 ///
@@ -916,9 +934,6 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// ## On `packed` structs
 ///
-/// It is currently impossible to create raw pointers to unaligned fields
-/// of a packed struct.
-///
 /// Attempting to create a raw pointer to an `unaligned` struct field with
 /// an expression such as `&packed.unaligned as *const FieldType` creates an
 /// intermediate unaligned reference before converting that to a raw pointer.
@@ -926,6 +941,29 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// as the compiler always expects references to be properly aligned.
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
+///
+/// To create a pointer to an unaligned struct field safely, instead use
+/// [`addr_of_mut!`] to create the pointer to the field without creating an
+/// intermediate reference. See [`addr_of_mut!`] for more information.
+///
+/// An example of how to use [`addr_of_mut!`] and `write_unaligned` to write to
+/// a pointer to a packed struct field is:
+///
+/// ```
+/// use std::ptr;
+///
+/// #[repr(packed)]
+/// struct Packed {
+///     f1: u8,
+///     f2: u16,
+/// }
+///
+/// let mut packed = Packed { f1: 1, f2: 2 };
+/// // `&mut packed.f2` would create an unaligned reference, and thus be Undefined Behavior!
+/// let raw_f2 = ptr::addr_of_mut!(packed.f2);
+/// unsafe { raw_f2.write_unaligned(42); }
+/// assert_eq!({packed.f2}, 42); // `{...}` forces copying the field instead of creating a reference.
+/// ```
 ///
 /// An example of what not to do and how this relates to `write_unaligned` is:
 ///
@@ -956,7 +994,6 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// ```
 ///
 /// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
-// FIXME: Update docs based on outcome of RFC #2582 and friends.
 ///
 /// # Examples
 ///
