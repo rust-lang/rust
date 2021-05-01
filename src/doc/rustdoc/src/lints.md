@@ -294,7 +294,7 @@ warning: unclosed HTML tag `h1`
 warning: 2 warnings emitted
 ```
 
-## invalid_rust_codeblock
+## invalid_rust_codeblocks
 
 This lint **warns by default**. It detects Rust code blocks in documentation
 examples that are invalid (e.g. empty, not parsable as Rust). For example:
@@ -322,7 +322,7 @@ warning: Rust code block is empty
 4 | | /// ```
 | |_______^
 |
-= note: `#[warn(rustdoc::invalid_rust_codeblock)]` on by default
+= note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
 
 warning: Rust code block is empty
 --> src/lib.rs:8:5
