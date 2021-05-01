@@ -14,7 +14,7 @@
 // gdb-check:$1 = issue_57822::main::closure-1 (issue_57822::main::closure-0 (1))
 
 // gdb-command:print b
-// gdb-check:$2 = issue_57822::main::generator-3 {__0: issue_57822::main::generator-2 {__0: 2, <<variant>>: {[...]}}, <<variant>>: {[...]}}
+// gdb-check:$2 = issue_57822::main::generator-3::Unresumed(issue_57822::main::generator-2::Unresumed(2))
 
 // === LLDB TESTS ==================================================================================
 
@@ -24,7 +24,7 @@
 // lldbg-check:(issue_57822::main::closure-1) $0 = { 0 = { 0 = 1 } }
 
 // lldb-command:print b
-// lldbg-check:(issue_57822::main::generator-3) $1 = { 0 = { 0 = 2 } }
+// lldbg-check:(issue_57822::main::generator-3) $1 =
 
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
 #![omit_gdb_pretty_printer_section]
