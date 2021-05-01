@@ -211,7 +211,7 @@ pub use self::unsize::DispatchFromDyn;
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
 pub use self::control_flow::ControlFlow;
 
-/// [`TryV1`] and [`TryV2`] have different associated type names,
+/// `TryV1` and `TryV2` have different associated type names,
 /// so rather than need `bootstrap` checks all over the library,
 /// centralize the difference to this one trait alias.
 ///

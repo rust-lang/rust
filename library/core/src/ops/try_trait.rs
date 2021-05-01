@@ -222,7 +222,7 @@ pub trait Try: FromResidual {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
 
-/// Used to specify which residuals can be converted into which [`Try`] types.
+/// Used to specify which residuals can be converted into which [`crate::ops::Try`] types.
 ///
 /// Every `Try` type needs to be recreatable from its own associated
 /// `Residual` type, but can also have additional `FromResidual` implementations
