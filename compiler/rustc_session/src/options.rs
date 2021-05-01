@@ -299,7 +299,6 @@ macro_rules! options {
         pub const parse_opt_pathbuf: &str = "a path";
         pub const parse_pathbuf_push: &str = parse_opt_pathbuf;
         pub const parse_list: &str = "a space-separated list of strings";
-        pub const parse_opt_list: &str = parse_list;
         pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
         pub const parse_number: &str = "a number";
         pub const parse_opt_number: &str = parse_number;
@@ -429,18 +428,6 @@ macro_rules! options {
             match v {
                 Some(s) => {
                     slot.extend(s.split_whitespace().map(|s| s.to_string()));
-                    true
-                },
-                None => false,
-            }
-        }
-
-        fn parse_opt_list(slot: &mut Option<Vec<String>>, v: Option<&str>)
-                      -> bool {
-            match v {
-                Some(s) => {
-                    let v = s.split_whitespace().map(|s| s.to_string()).collect();
-                    *slot = Some(v);
                     true
                 },
                 None => false,
