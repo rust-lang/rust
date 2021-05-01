@@ -186,6 +186,11 @@ pub enum ErrorKind {
     /// This means that the operation can never succeed.
     #[stable(feature = "unsupported_error", since = "1.53.0")]
     Unsupported,
+
+    /// An operation could not be completed, because it failed
+    /// to allocate enough memory.
+    #[stable(feature = "out_of_memory_error", since = "1.53.0")]
+    OutOfMemory,
 }
 
 impl ErrorKind {
@@ -210,6 +215,7 @@ impl ErrorKind {
             ErrorKind::Other => "other os error",
             ErrorKind::UnexpectedEof => "unexpected end of file",
             ErrorKind::Unsupported => "unsupported",
+            ErrorKind::OutOfMemory => "out of memory",
         }
     }
 }
