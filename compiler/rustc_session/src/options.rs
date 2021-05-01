@@ -313,7 +313,6 @@ mod desc {
     pub const parse_opt_string: &str = parse_string;
     pub const parse_string_push: &str = parse_string;
     pub const parse_opt_pathbuf: &str = "a path";
-    pub const parse_pathbuf_push: &str = parse_opt_pathbuf;
     pub const parse_list: &str = "a space-separated list of strings";
     pub const parse_opt_comma_list: &str = "a comma-separated list of strings";
     pub const parse_number: &str = "a number";
@@ -354,7 +353,6 @@ mod desc {
         "one of supported split-debuginfo modes (`off` or `dsymutil`)";
 }
 
-#[allow(dead_code)]
 mod parse {
     crate use super::*;
     use std::str::FromStr;
@@ -439,16 +437,6 @@ mod parse {
         match v {
             Some(s) => {
                 slot.push(s.to_string());
-                true
-            }
-            None => false,
-        }
-    }
-
-    crate fn parse_pathbuf_push(slot: &mut Vec<PathBuf>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                slot.push(PathBuf::from(s));
                 true
             }
             None => false,
