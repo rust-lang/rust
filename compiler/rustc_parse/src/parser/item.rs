@@ -1399,6 +1399,37 @@ impl<'a> Parser<'a> {
         Ok(a_var)
     }
 
+    fn expect_field_ty_separator(&mut self) -> PResult<'a, ()> {
+        if let Err(mut err) = self.expect(&token::Colon) {
+            let sm = self.sess.source_map();
+            let eq_typo = self.token.kind == token::Eq && self.look_ahead(1, |t| t.is_path_start());
+            let semi_typo = self.token.kind == token::Semi
+                && self.look_ahead(1, |t| {
+                    t.is_path_start()
+                    // We check that we are in a situation like `foo; bar` to avoid bad suggestions
+                    // when there's no type and `;` was used instead of a comma.
+                    && match (sm.lookup_line(self.token.span.hi()), sm.lookup_line(t.span.lo())) {
+                        (Ok(l), Ok(r)) => l.line == r.line,
+                        _ => true,
+                    }
+                });
+            if eq_typo || semi_typo {
+                self.bump();
+                // Gracefully handle small typos.
+                err.span_suggestion_short(
+                    self.prev_token.span,
+                    "field names and their types are separated with `:`",
+                    ":".to_string(),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+            } else {
+                return Err(err);
+            }
+        }
+        Ok(())
+    }
+
     /// Parses a structure field.
     fn parse_name_and_ty(
         &mut self,
@@ -1408,8 +1439,21 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
-        self.expect(&token::Colon)?;
+        self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
+        if self.token.kind == token::Eq {
+            self.bump();
+            let const_expr = self.parse_anon_const_expr()?;
+            let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
+            self.struct_span_err(sp, "default values on `struct` fields aren't supported")
+                .span_suggestion(
+                    sp,
+                    "remove this unsupported default value",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
         Ok(FieldDef {
             span: lo.to(self.prev_token.span),
             ident: Some(name),

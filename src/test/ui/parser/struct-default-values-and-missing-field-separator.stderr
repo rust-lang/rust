@@ -1,0 +1,92 @@
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:9:16
+   |
+LL |     field1: i32 = 42,
+   |                ^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:10:14
+   |
+LL |     field2: E = E::A,
+   |              ^^^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:11:16
+   |
+LL |     field3: i32 = 1 + 2,
+   |                ^^^^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:12:16
+   |
+LL |     field4: i32 = { 1 + 2 },
+   |                ^^^^^^^^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:13:14
+   |
+LL |     field5: E = foo(42),
+   |              ^^^^^^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:14:14
+   |
+LL |     field6: E = { foo(42) },
+   |              ^^^^^^^^^^^^^^ help: remove this unsupported default value
+
+error: expected `,`, or `}`, found `field2`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:18:16
+   |
+LL |     field1: i32
+   |                ^ help: try adding a comma: `,`
+
+error: expected `,`, or `}`, found `field3`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:19:14
+   |
+LL |     field2: E
+   |              ^ help: try adding a comma: `,`
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:20:16
+   |
+LL |     field3: i32 = 1 + 2,
+   |                ^^^^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:21:16
+   |
+LL |     field4: i32 = { 1 + 2 },
+   |                ^^^^^^^^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:22:14
+   |
+LL |     field5: E = foo(42),
+   |              ^^^^^^^^^^ help: remove this unsupported default value
+
+error: default values on `struct` fields aren't supported
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:23:14
+   |
+LL |     field6: E = { foo(42) },
+   |              ^^^^^^^^^^^^^^ help: remove this unsupported default value
+
+error: expected `:`, found `=`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:27:12
+   |
+LL |     field1 = i32,
+   |            ^
+   |            |
+   |            expected `:`
+   |            help: field names and their types are separated with `:`
+
+error: expected `:`, found `;`
+  --> $DIR/struct-default-values-and-missing-field-separator.rs:28:11
+   |
+LL |     field2; E,
+   |           ^
+   |           |
+   |           expected `:`
+   |           help: field names and their types are separated with `:`
+
+error: aborting due to 14 previous errors
+
