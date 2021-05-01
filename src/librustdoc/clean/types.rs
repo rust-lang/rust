@@ -2150,13 +2150,21 @@ crate struct Impl {
     crate span: Span,
     crate unsafety: hir::Unsafety,
     crate generics: Generics,
-    crate provided_trait_methods: FxHashSet<Symbol>,
     crate trait_: Option<Type>,
     crate for_: Type,
     crate items: Vec<Item>,
     crate negative_polarity: bool,
     crate synthetic: bool,
     crate blanket_impl: Option<Type>,
+}
+
+impl Impl {
+    crate fn provided_trait_methods(&self, tcx: TyCtxt<'_>) -> FxHashSet<Symbol> {
+        self.trait_
+            .def_id()
+            .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
+            .unwrap_or_default()
+    }
 }
 
 #[derive(Clone, Debug)]

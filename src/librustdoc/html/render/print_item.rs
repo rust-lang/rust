@@ -669,10 +669,9 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
 
             for implementor in foreign {
-                let assoc_link = AssocItemLink::GotoSource(
-                    implementor.impl_item.def_id,
-                    &implementor.inner_impl().provided_trait_methods,
-                );
+                let provided_methods = implementor.inner_impl().provided_trait_methods(cx.tcx());
+                let assoc_link =
+                    AssocItemLink::GotoSource(implementor.impl_item.def_id, &provided_methods);
                 render_impl(
                     w,
                     cx,

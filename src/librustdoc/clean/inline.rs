@@ -414,16 +414,10 @@ crate fn build_impl(
         record_extern_trait(cx, trait_did);
     }
 
-    let provided = trait_
-        .def_id()
-        .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
-        .unwrap_or_default();
-
-    debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
-
     let (merged_attrs, cfg) = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
     debug!("merged_attrs={:?}", merged_attrs);
 
+    debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
@@ -431,7 +425,6 @@ crate fn build_impl(
             span: clean::types::rustc_span(did, cx.tcx),
             unsafety: hir::Unsafety::Normal,
             generics,
-            provided_trait_methods: provided,
             trait_,
             for_,
             items: trait_items,

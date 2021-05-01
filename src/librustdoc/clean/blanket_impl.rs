@@ -92,12 +92,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 }
 
                 self.cx.generated_synthetics.insert((ty, trait_def_id));
-                let provided_trait_methods = self
-                    .cx
-                    .tcx
-                    .provided_trait_methods(trait_def_id)
-                    .map(|meth| meth.ident.name)
-                    .collect();
 
                 impls.push(Item {
                     name: None,
@@ -112,7 +106,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             self.cx.tcx.explicit_predicates_of(impl_def_id),
                         )
                             .clean(self.cx),
-                        provided_trait_methods,
                         // FIXME(eddyb) compute both `trait_` and `for_` from
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
