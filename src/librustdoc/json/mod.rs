@@ -17,7 +17,7 @@ use rustc_session::Session;
 
 use rustdoc_json_types as types;
 
-use crate::clean;
+use crate::clean::{self, ExternalCrate};
 use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -218,12 +218,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .cache
                 .extern_locations
                 .iter()
-                .map(|(k, v)| {
+                .map(|(crate_num, external_location)| {
+                    let e = ExternalCrate { crate_num: *crate_num };
                     (
-                        k.as_u32(),
+                        crate_num.as_u32(),
                         types::ExternalCrate {
-                            name: v.0.to_string(),
-                            html_root_url: match &v.2 {
+                            name: e.name(self.tcx).to_string(),
+                            html_root_url: match external_location {
                                 ExternalLocation::Remote(s) => Some(s.clone()),
                                 _ => None,
                             },
