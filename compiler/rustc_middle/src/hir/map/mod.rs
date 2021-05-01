@@ -1,8 +1,11 @@
 use self::collector::NodeCollector;
 
-use crate::hir::{Owner, OwnerNodes};
+use crate::hir::{HirOwnerData, IndexedHir};
+use crate::middle::cstore::CrateStore;
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -11,7 +14,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::Idx;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -20,22 +23,6 @@ use rustc_target::spec::abi::Abi;
 
 pub mod blocks;
 mod collector;
-
-/// Represents an entry and its parent `HirId`.
-#[derive(Copy, Clone, Debug)]
-pub struct Entry<'hir> {
-    parent: HirId,
-    node: Node<'hir>,
-}
-
-impl<'hir> Entry<'hir> {
-    fn parent_node(self) -> Option<HirId> {
-        match self.node {
-            Node::Crate(_) => None,
-            _ => Some(self.parent),
-        }
-    }
-}
 
 fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     match node {
@@ -86,20 +73,6 @@ fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
     }
 }
 
-#[derive(Debug)]
-pub(super) struct HirOwnerData<'hir> {
-    pub(super) signature: Option<&'hir Owner<'hir>>,
-    pub(super) with_bodies: Option<&'hir mut OwnerNodes<'hir>>,
-}
-
-#[derive(Debug)]
-pub struct IndexedHir<'hir> {
-    /// The SVH of the local crate.
-    pub crate_hash: Svh,
-
-    pub(super) map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
-}
-
 #[derive(Copy, Clone)]
 pub struct Map<'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -129,10 +102,48 @@ impl<'hir> Iterator for ParentHirIterator<'_, 'hir> {
             }
 
             self.current_id = parent_id;
-            if let Some(entry) = self.map.find_entry(parent_id) {
-                return Some((parent_id, entry.node));
+            if let Some(node) = self.map.find(parent_id) {
+                return Some((parent_id, node));
             }
-            // If this `HirId` doesn't have an `Entry`, skip it and look for its `parent_id`.
+            // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
+        }
+    }
+}
+
+/// An iterator that walks up the ancestor tree of a given `HirId`.
+/// Constructed using `tcx.hir().parent_owner_iter(hir_id)`.
+pub struct ParentOwnerIterator<'map, 'hir> {
+    current_id: HirId,
+    map: &'map Map<'hir>,
+}
+
+impl<'hir> Iterator for ParentOwnerIterator<'_, 'hir> {
+    type Item = (HirId, Node<'hir>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current_id.local_id.index() != 0 {
+            self.current_id.local_id = ItemLocalId::new(0);
+            if let Some(node) = self.map.find(self.current_id) {
+                return Some((self.current_id, node));
+            }
+        }
+        if self.current_id == CRATE_HIR_ID {
+            return None;
+        }
+        loop {
+            // There are nodes that do not have entries, so we need to skip them.
+            let parent_id = self.map.def_key(self.current_id.owner).parent;
+
+            let parent_id = parent_id.map_or(CRATE_HIR_ID.owner, |local_def_index| {
+                let def_id = LocalDefId { local_def_index };
+                self.map.local_def_id_to_hir_id(def_id).owner
+            });
+            self.current_id = HirId::make_owner(parent_id);
+
+            // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
+            if let Some(node) = self.map.find(self.current_id) {
+                return Some((self.current_id, node));
+            }
         }
     }
 }
@@ -165,7 +176,7 @@ impl<'hir> Map<'hir> {
             bug!(
                 "local_def_id: no entry for `{:?}`, which has a map of `{:?}`",
                 hir_id,
-                self.find_entry(hir_id)
+                self.find(hir_id)
             )
         })
     }
@@ -272,27 +283,60 @@ impl<'hir> Map<'hir> {
             .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", local_def_id))
     }
 
-    fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
+    pub fn find_parent_node(&self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
-            let owner = self.tcx.hir_owner(id.owner);
-            owner.map(|owner| Entry { parent: owner.parent, node: owner.node })
+            Some(self.tcx.hir_owner_parent(id.owner))
         } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner);
-            owner.and_then(|owner| {
-                let node = owner.nodes[id.local_id].as_ref();
-                // FIXME(eddyb) use a single generic type instead of having both
-                // `Entry` and `ParentedNode`, which are effectively the same.
-                // Alternatively, rewrite code using `Entry` to use `ParentedNode`.
-                node.map(|node| Entry {
-                    parent: HirId { owner: id.owner, local_id: node.parent },
-                    node: node.node,
-                })
-            })
+            let owner = self.tcx.hir_owner_nodes(id.owner)?;
+            let node = owner.nodes[id.local_id].as_ref()?;
+            let hir_id = HirId { owner: id.owner, local_id: node.parent };
+            Some(hir_id)
         }
     }
 
-    fn get_entry(&self, id: HirId) -> Entry<'hir> {
-        self.find_entry(id).unwrap()
+    pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
+        self.find_parent_node(hir_id).unwrap_or(CRATE_HIR_ID)
+    }
+
+    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
+    pub fn find(&self, id: HirId) -> Option<Node<'hir>> {
+        if id.local_id == ItemLocalId::from_u32(0) {
+            let owner = self.tcx.hir_owner(id.owner)?;
+            Some(owner.node)
+        } else {
+            let owner = self.tcx.hir_owner_nodes(id.owner)?;
+            let node = owner.nodes[id.local_id].as_ref()?;
+            Some(node.node)
+        }
+    }
+
+    /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
+    pub fn get(&self, id: HirId) -> Node<'hir> {
+        self.find(id).unwrap_or_else(|| bug!("couldn't find hir id {} in the HIR map", id))
+    }
+
+    pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
+        id.as_local().and_then(|id| self.find(self.local_def_id_to_hir_id(id)))
+    }
+
+    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
+        self.get_if_local(id).and_then(|node| match &node {
+            Node::ImplItem(impl_item) => Some(&impl_item.generics),
+            Node::TraitItem(trait_item) => Some(&trait_item.generics),
+            Node::Item(Item {
+                kind:
+                    ItemKind::Fn(_, generics, _)
+                    | ItemKind::TyAlias(_, generics)
+                    | ItemKind::Enum(_, generics)
+                    | ItemKind::Struct(_, generics)
+                    | ItemKind::Union(_, generics)
+                    | ItemKind::Trait(_, _, generics, ..)
+                    | ItemKind::TraitAlias(generics, _)
+                    | ItemKind::Impl(Impl { generics, .. }),
+                ..
+            }) => Some(generics),
+            _ => None,
+        })
     }
 
     pub fn item(&self, id: ItemId) -> &'hir Item<'hir> {
@@ -457,7 +501,7 @@ impl<'hir> Map<'hir> {
 
     pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = self.local_def_id_to_hir_id(module);
-        match self.get_entry(hir_id).node {
+        match self.get(hir_id) {
             Node::Item(&Item { span, kind: ItemKind::Mod(ref m), .. }) => (m, span, hir_id),
             Node::Crate(item) => (&item, item.inner, hir_id),
             node => panic!("not a module: {:?}", node),
@@ -496,58 +540,16 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
-    pub fn get(&self, id: HirId) -> Node<'hir> {
-        self.find(id).unwrap_or_else(|| bug!("couldn't find hir id {} in the HIR map", id))
-    }
-
-    pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        id.as_local().and_then(|id| self.find(self.local_def_id_to_hir_id(id)))
-    }
-
-    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
-        self.get_if_local(id).and_then(|node| match &node {
-            Node::ImplItem(impl_item) => Some(&impl_item.generics),
-            Node::TraitItem(trait_item) => Some(&trait_item.generics),
-            Node::Item(Item {
-                kind:
-                    ItemKind::Fn(_, generics, _)
-                    | ItemKind::TyAlias(_, generics)
-                    | ItemKind::Enum(_, generics)
-                    | ItemKind::Struct(_, generics)
-                    | ItemKind::Union(_, generics)
-                    | ItemKind::Trait(_, _, generics, ..)
-                    | ItemKind::TraitAlias(generics, _)
-                    | ItemKind::Impl(Impl { generics, .. }),
-                ..
-            }) => Some(generics),
-            _ => None,
-        })
-    }
-
-    /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
-    pub fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
-        self.find_entry(hir_id).map(|entry| entry.node)
-    }
-
-    /// Similar to `get_parent`; returns the parent HIR Id, or just `hir_id` if there
-    /// is no parent. Note that the parent may be `CRATE_HIR_ID`, which is not itself
-    /// present in the map, so passing the return value of `get_parent_node` to
-    /// `get` may in fact panic.
-    /// This function returns the immediate parent in the HIR, whereas `get_parent`
-    /// returns the enclosing item. Note that this might not be the actual parent
-    /// node in the HIR -- some kinds of nodes are not in the map and these will
-    /// never appear as the parent node. Thus, you can always walk the parent nodes
-    /// from a node to the root of the HIR (unless you get back the same ID here,
-    /// which can happen if the ID is not in the map itself or is just weird).
-    pub fn get_parent_node(&self, hir_id: HirId) -> HirId {
-        self.get_entry(hir_id).parent_node().unwrap_or(hir_id)
-    }
-
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
     pub fn parent_iter(&self, current_id: HirId) -> ParentHirIterator<'_, 'hir> {
         ParentHirIterator { current_id, map: self }
+    }
+
+    /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
+    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    pub fn parent_owner_iter(&self, current_id: HirId) -> ParentOwnerIterator<'_, 'hir> {
+        ParentOwnerIterator { current_id, map: self }
     }
 
     /// Checks if the node is left-hand side of an assignment.
@@ -570,7 +572,7 @@ impl<'hir> Map<'hir> {
     /// Whether `hir_id` corresponds to a `mod` or a crate.
     pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
         matches!(
-            self.get_entry(hir_id).node,
+            self.get(hir_id),
             Node::Item(Item { kind: ItemKind::Mod(_), .. }) | Node::Crate(..)
         )
     }
@@ -600,8 +602,8 @@ impl<'hir> Map<'hir> {
     pub fn get_return_block(&self, id: HirId) -> Option<HirId> {
         let mut iter = self.parent_iter(id).peekable();
         let mut ignore_tail = false;
-        if let Some(entry) = self.find_entry(id) {
-            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = entry.node {
+        if let Some(node) = self.find(id) {
+            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = node {
                 // When dealing with `return` statements, we don't care about climbing only tail
                 // expressions.
                 ignore_tail = true;
@@ -638,23 +640,23 @@ impl<'hir> Map<'hir> {
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
     pub fn get_parent_item(&self, hir_id: HirId) -> HirId {
-        for (hir_id, node) in self.parent_iter(hir_id) {
-            match node {
-                Node::Crate(_)
-                | Node::Item(_)
-                | Node::ForeignItem(_)
-                | Node::TraitItem(_)
-                | Node::ImplItem(_) => return hir_id,
-                _ => {}
+        for (hir_id, node) in self.parent_owner_iter(hir_id) {
+            if let Node::Crate(_)
+            | Node::Item(_)
+            | Node::ForeignItem(_)
+            | Node::TraitItem(_)
+            | Node::ImplItem(_) = node
+            {
+                return hir_id;
             }
         }
-        hir_id
+        CRATE_HIR_ID
     }
 
     /// Returns the `HirId` of `id`'s nearest module parent, or `id` itself if no
     /// module parent is in this map.
     pub(super) fn get_module_parent_node(&self, hir_id: HirId) -> HirId {
-        for (hir_id, node) in self.parent_iter(hir_id) {
+        for (hir_id, node) in self.parent_owner_iter(hir_id) {
             if let Node::Item(&Item { kind: ItemKind::Mod(_), .. }) = node {
                 return hir_id;
             }
@@ -728,12 +730,8 @@ impl<'hir> Map<'hir> {
 
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {
         let parent = self.get_parent_item(hir_id);
-        if let Some(entry) = self.find_entry(parent) {
-            if let Entry {
-                node: Node::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }),
-                ..
-            } = entry
-            {
+        if let Some(node) = self.find(parent) {
+            if let Node::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) = node {
                 return *abi;
             }
         }
@@ -827,7 +825,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn opt_span(&self, hir_id: HirId) -> Option<Span> {
-        let span = match self.find_entry(hir_id)?.node {
+        let span = match self.find(hir_id)? {
             Node::Param(param) => param.span,
             Node::Item(item) => match &item.kind {
                 ItemKind::Fn(sig, _, _) => sig.span,
@@ -876,7 +874,7 @@ impl<'hir> Map<'hir> {
     /// Like `hir.span()`, but includes the body of function items
     /// (instead of just the function header)
     pub fn span_with_body(&self, hir_id: HirId) -> Span {
-        match self.find_entry(hir_id).map(|entry| entry.node) {
+        match self.find(hir_id) {
             Some(Node::TraitItem(item)) => item.span,
             Some(Node::ImplItem(impl_item)) => impl_item.span,
             Some(Node::Item(item)) => item.span,
@@ -935,19 +933,78 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
 
     let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
-    let (map, crate_hash) = {
-        let hcx = tcx.create_stable_hashing_context();
+    let hcx = tcx.create_stable_hashing_context();
+    let mut collector =
+        NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
+    intravisit::walk_crate(&mut collector, tcx.untracked_crate);
 
-        let mut collector =
-            NodeCollector::root(tcx.sess, &**tcx.arena, tcx.untracked_crate, &tcx.definitions, hcx);
-        intravisit::walk_crate(&mut collector, tcx.untracked_crate);
+    let map = collector.finalize_and_compute_crate_hash();
+    tcx.arena.alloc(map)
+}
 
-        let crate_disambiguator = tcx.sess.local_crate_disambiguator();
-        let cmdline_args = tcx.sess.opts.dep_tracking_hash(true);
-        collector.finalize_and_compute_crate_hash(crate_disambiguator, &*tcx.cstore, cmdline_args)
-    };
+pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
+    let mut hir_body_nodes: Vec<_> = tcx
+        .index_hir(crate_num)
+        .map
+        .iter_enumerated()
+        .filter_map(|(def_id, hod)| {
+            let def_path_hash = tcx.definitions.def_path_hash(def_id);
+            let hash = hod.with_bodies.as_ref()?.hash;
+            Some((def_path_hash, hash))
+        })
+        .collect();
+    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
-    tcx.arena.alloc(IndexedHir { crate_hash, map })
+    let node_hashes = hir_body_nodes.iter().fold(
+        Fingerprint::ZERO,
+        |combined_fingerprint, &(def_path_hash, fingerprint)| {
+            combined_fingerprint.combine(def_path_hash.0.combine(fingerprint))
+        },
+    );
+
+    let upstream_crates = upstream_crates(&*tcx.cstore);
+
+    // We hash the final, remapped names of all local source files so we
+    // don't have to include the path prefix remapping commandline args.
+    // If we included the full mapping in the SVH, we could only have
+    // reproducible builds by compiling from the same directory. So we just
+    // hash the result of the mapping instead of the mapping itself.
+    let mut source_file_names: Vec<_> = tcx
+        .sess
+        .source_map()
+        .files()
+        .iter()
+        .filter(|source_file| source_file.cnum == LOCAL_CRATE)
+        .map(|source_file| source_file.name_hash)
+        .collect();
+
+    source_file_names.sort_unstable();
+
+    let mut hcx = tcx.create_stable_hashing_context();
+    let mut stable_hasher = StableHasher::new();
+    node_hashes.hash_stable(&mut hcx, &mut stable_hasher);
+    upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
+    source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
+    tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
+    tcx.sess.local_crate_disambiguator().to_fingerprint().hash_stable(&mut hcx, &mut stable_hasher);
+
+    let crate_hash: Fingerprint = stable_hasher.finish();
+    Svh::new(crate_hash.to_smaller_hash())
+}
+
+fn upstream_crates(cstore: &dyn CrateStore) -> Vec<(Symbol, Fingerprint, Svh)> {
+    let mut upstream_crates: Vec<_> = cstore
+        .crates_untracked()
+        .iter()
+        .map(|&cnum| {
+            let name = cstore.crate_name_untracked(cnum);
+            let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
+            let hash = cstore.crate_hash_untracked(cnum);
+            (name, disambiguator, hash)
+        })
+        .collect();
+    upstream_crates.sort_unstable_by_key(|&(name, dis, _)| (name.as_str(), dis));
+    upstream_crates
 }
 
 fn hir_id_to_string(map: &Map<'_>, id: HirId) -> String {

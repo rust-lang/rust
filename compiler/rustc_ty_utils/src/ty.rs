@@ -1,5 +1,4 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use rustc_middle::hir::map as hir_map;
@@ -400,10 +399,6 @@ fn original_crate_name(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Symbol {
     tcx.crate_name
 }
 
-fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
-    tcx.index_hir(crate_num).crate_hash
-}
-
 fn instance_def_size_estimate<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance_def: ty::InstanceDef<'tcx>,
@@ -551,7 +546,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         trait_of_item,
         crate_disambiguator,
         original_crate_name,
-        crate_hash,
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,

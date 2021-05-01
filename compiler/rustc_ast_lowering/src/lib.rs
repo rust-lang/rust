@@ -165,7 +165,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     type_def_lifetime_params: DefIdMap<usize>,
 
-    current_hir_id_owner: Vec<(LocalDefId, u32)>,
+    current_hir_id_owner: (LocalDefId, u32),
     item_local_id_counters: NodeMap<u32>,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
@@ -321,7 +321,7 @@ pub fn lower_crate<'a, 'hir>(
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
         current_module: CRATE_DEF_ID,
-        current_hir_id_owner: vec![(CRATE_DEF_ID, 0)],
+        current_hir_id_owner: (CRATE_DEF_ID, 0),
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,
@@ -594,9 +594,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .insert(owner, HIR_ID_COUNTER_LOCKED)
             .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
         let def_id = self.resolver.local_def_id(owner);
-        self.current_hir_id_owner.push((def_id, counter));
+        let old_owner = std::mem::replace(&mut self.current_hir_id_owner, (def_id, counter));
         let ret = f(self);
-        let (new_def_id, new_counter) = self.current_hir_id_owner.pop().unwrap();
+        let (new_def_id, new_counter) =
+            std::mem::replace(&mut self.current_hir_id_owner, old_owner);
 
         debug_assert!(def_id == new_def_id);
         debug_assert!(new_counter >= counter);
@@ -614,8 +615,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
         self.lower_node_id_generic(ast_node_id, |this| {
-            let &mut (owner, ref mut local_id_counter) =
-                this.current_hir_id_owner.last_mut().unwrap();
+            let &mut (owner, ref mut local_id_counter) = &mut this.current_hir_id_owner;
             let local_id = *local_id_counter;
             *local_id_counter += 1;
             hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
@@ -868,10 +868,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // wouldn't have been added yet.
                     let generics = this.lower_generics_mut(
                         generics,
-                        ImplTraitContext::Universal(
-                            &mut params,
-                            this.current_hir_id_owner.last().unwrap().0,
-                        ),
+                        ImplTraitContext::Universal(&mut params, this.current_hir_id_owner.0),
                     );
                     let res = f(this, &mut params);
                     (params, (generics, res))
@@ -1077,7 +1074,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AssocTyConstraintKind::Bound { ref bounds } => {
                 let mut capturable_lifetimes;
-                let mut parent_def_id = self.current_hir_id_owner.last().unwrap().0;
+                let mut parent_def_id = self.current_hir_id_owner.0;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let (desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
@@ -1198,7 +1195,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             // Construct a AnonConst where the expr is the "ty"'s path.
 
-                            let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
+                            let parent_def_id = self.current_hir_id_owner.0;
                             let node_id = self.resolver.next_node_id();
 
                             // Add a definition for the in-band const def.
@@ -1814,10 +1811,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if let Some((_, ibty)) = &mut in_band_ty_params {
                     this.lower_ty_direct(
                         &param.ty,
-                        ImplTraitContext::Universal(
-                            ibty,
-                            this.current_hir_id_owner.last().unwrap().0,
-                        ),
+                        ImplTraitContext::Universal(ibty, this.current_hir_id_owner.0),
                     )
                 } else {
                     this.lower_ty_direct(&param.ty, ImplTraitContext::disallowed())

@@ -28,7 +28,7 @@ rustc_queries! {
 
     /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
     /// Avoid calling this query directly.
-    query index_hir(_: CrateNum) -> &'tcx map::IndexedHir<'tcx> {
+    query index_hir(_: CrateNum) -> &'tcx crate::hir::IndexedHir<'tcx> {
         eval_always
         no_hash
         desc { "index HIR" }
@@ -50,6 +50,15 @@ rustc_queries! {
     query hir_owner(key: LocalDefId) -> Option<&'tcx crate::hir::Owner<'tcx>> {
         eval_always
         desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
+    }
+
+    /// Gives access to the HIR node's parent for the HIR owner `key`.
+    ///
+    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// Avoid calling this query directly.
+    query hir_owner_parent(key: LocalDefId) -> hir::HirId {
+        eval_always
+        desc { |tcx| "HIR parent of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     /// Gives access to the HIR nodes and bodies inside the HIR owner `key`.
