@@ -141,7 +141,9 @@ impl FlagComputation {
             &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
-                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {}
+                    ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                        self.add_flags(TypeFlags::HAS_TY_FRESH)
+                    }
 
                     ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
                         self.add_flags(TypeFlags::HAS_TY_INFER)
@@ -278,7 +280,7 @@ impl FlagComputation {
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
-                    InferConst::Fresh(_) => {}
+                    InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
                     InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
                 }
             }
