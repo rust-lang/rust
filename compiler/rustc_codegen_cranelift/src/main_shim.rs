@@ -1,6 +1,9 @@
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_hir::LangItem;
+use rustc_middle::ty::subst::GenericArg;
+use rustc_middle::ty::AssocKind;
 use rustc_session::config::EntryFnType;
+use rustc_span::symbol::Ident;
 
 use crate::prelude::*;
 
@@ -9,9 +12,10 @@ use crate::prelude::*;
 pub(crate) fn maybe_create_entry_wrapper(
     tcx: TyCtxt<'_>,
     module: &mut impl Module,
-    unwind_context: &mut UnwindContext<'_>,
+    unwind_context: &mut UnwindContext,
+    is_jit: bool,
 ) {
-    let (main_def_id, use_start_lang_item) = match tcx.entry_fn(LOCAL_CRATE) {
+    let (main_def_id, is_main_fn) = match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, entry_ty)) => (
             def_id,
             match entry_ty {
@@ -23,18 +27,19 @@ pub(crate) fn maybe_create_entry_wrapper(
     };
 
     let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
-    if module.get_name(&*tcx.symbol_name(instance).name).is_none() {
+    if !is_jit && module.get_name(&*tcx.symbol_name(instance).name).is_none() {
         return;
     }
 
-    create_entry_fn(tcx, module, unwind_context, main_def_id, use_start_lang_item);
+    create_entry_fn(tcx, module, unwind_context, main_def_id, is_jit, is_main_fn);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
         m: &mut impl Module,
-        unwind_context: &mut UnwindContext<'_>,
+        unwind_context: &mut UnwindContext,
         rust_main_def_id: DefId,
-        use_start_lang_item: bool,
+        ignore_lang_start_wrapper: bool,
+        is_main_fn: bool,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -57,9 +62,9 @@ pub(crate) fn maybe_create_entry_wrapper(
 
         let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
 
-        let main_name = tcx.symbol_name(instance).name.to_string();
+        let main_name = tcx.symbol_name(instance).name;
         let main_sig = get_function_sig(tcx, m.isa().triple(), instance);
-        let main_func_id = m.declare_function(&main_name, Linkage::Import, &main_sig).unwrap();
+        let main_func_id = m.declare_function(main_name, Linkage::Import, &main_sig).unwrap();
 
         let mut ctx = Context::new();
         ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig);
@@ -74,7 +79,47 @@ pub(crate) fn maybe_create_entry_wrapper(
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
-            let call_inst = if use_start_lang_item {
+            let result = if is_main_fn && ignore_lang_start_wrapper {
+                // regular main fn, but ignoring #[lang = "start"] as we are running in the jit
+                // FIXME set program arguments somehow
+                let call_inst = bcx.ins().call(main_func_ref, &[]);
+                let call_results = bcx.func.dfg.inst_results(call_inst).to_owned();
+
+                let termination_trait = tcx.require_lang_item(LangItem::Termination, None);
+                let report = tcx
+                    .associated_items(termination_trait)
+                    .find_by_name_and_kind(
+                        tcx,
+                        Ident::from_str("report"),
+                        AssocKind::Fn,
+                        termination_trait,
+                    )
+                    .unwrap();
+                let report = Instance::resolve(
+                    tcx,
+                    ParamEnv::reveal_all(),
+                    report.def_id,
+                    tcx.mk_substs([GenericArg::from(main_ret_ty)].iter()),
+                )
+                .unwrap()
+                .unwrap();
+
+                let report_name = tcx.symbol_name(report).name;
+                let report_sig = get_function_sig(tcx, m.isa().triple(), report);
+                let report_func_id =
+                    m.declare_function(report_name, Linkage::Import, &report_sig).unwrap();
+                let report_func_ref = m.declare_func_in_func(report_func_id, &mut bcx.func);
+
+                // FIXME do proper abi handling instead of expecting the pass mode to be identical
+                // for returns and arguments.
+                let report_call_inst = bcx.ins().call(report_func_ref, &call_results);
+                let res = bcx.func.dfg.inst_results(report_call_inst)[0];
+                match m.target_config().pointer_type() {
+                    types::I32 => res,
+                    types::I64 => bcx.ins().sextend(types::I64, res),
+                    _ => unimplemented!("16bit systems are not yet supported"),
+                }
+            } else if is_main_fn {
                 let start_def_id = tcx.require_lang_item(LangItem::Start, None);
                 let start_instance = Instance::resolve(
                     tcx,
@@ -90,13 +135,14 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
-                bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv])
+                let call_inst = bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv]);
+                bcx.inst_results(call_inst)[0]
             } else {
                 // using user-defined start fn
-                bcx.ins().call(main_func_ref, &[arg_argc, arg_argv])
+                let call_inst = bcx.ins().call(main_func_ref, &[arg_argc, arg_argv]);
+                bcx.inst_results(call_inst)[0]
             };
 
-            let result = bcx.inst_results(call_inst)[0];
             bcx.ins().return_(&[result]);
             bcx.seal_all_blocks();
             bcx.finalize();
