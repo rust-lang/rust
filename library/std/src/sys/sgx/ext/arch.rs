@@ -32,9 +32,12 @@ pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> 
         let error;
 
         asm!(
+            // rbx is reserved by LLVM
+            "xchg {0}, rbx",
             "enclu",
+            "mov rbx, {0}",
+            inout(reg) request => _,
             inlateout("eax") ENCLU_EGETKEY => error,
-            in("rbx") request,
             in("rcx") out.as_mut_ptr(),
             options(nostack),
         );
@@ -60,9 +63,12 @@ pub fn ereport(
         let mut report = MaybeUninit::uninit();
 
         asm!(
+            // rbx is reserved by LLVM
+            "xchg {0}, rbx",
             "enclu",
+            "mov rbx, {0}",
+            inout(reg) targetinfo => _,
             in("eax") ENCLU_EREPORT,
-            in("rbx") targetinfo,
             in("rcx") reportdata,
             in("rdx") report.as_mut_ptr(),
             options(preserves_flags, nostack),

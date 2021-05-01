@@ -85,8 +85,6 @@ def_regs! {
         x15: reg = ["x15", "w15"],
         x16: reg = ["x16", "w16"],
         x17: reg = ["x17", "w17"],
-        x18: reg = ["x18", "w18"],
-        x19: reg = ["x19", "w19"],
         x20: reg = ["x20", "w20"],
         x21: reg = ["x21", "w21"],
         x22: reg = ["x22", "w22"],
@@ -96,7 +94,7 @@ def_regs! {
         x26: reg = ["x26", "w26"],
         x27: reg = ["x27", "w27"],
         x28: reg = ["x28", "w28"],
-        x30: reg = ["x30", "w30", "lr"],
+        x30: reg = ["x30", "w30", "lr", "wlr"],
         v0: vreg, vreg_low16 = ["v0", "b0", "h0", "s0", "d0", "q0"],
         v1: vreg, vreg_low16 = ["v1", "b1", "h1", "s1", "d1", "q1"],
         v2: vreg, vreg_low16 = ["v2", "b2", "h2", "s2", "d2", "q2"],
@@ -129,7 +127,11 @@ def_regs! {
         v29: vreg = ["v29", "b29", "h29", "s29", "d29", "q29"],
         v30: vreg = ["v30", "b30", "h30", "s30", "d30", "q30"],
         v31: vreg = ["v31", "b31", "h31", "s31", "d31", "q31"],
-        #error = ["x29", "fp"] =>
+        #error = ["x18", "w18"] =>
+            "x18 is used as a reserved register on some targets and cannot be used as an operand for inline asm",
+        #error = ["x19", "w19"] =>
+            "x19 is used internally by LLVM and cannot be used as an operand for inline asm",
+        #error = ["x29", "w29", "fp", "wfp"] =>
             "the frame pointer cannot be used as an operand for inline asm",
         #error = ["sp", "wsp"] =>
             "the stack pointer cannot be used as an operand for inline asm",

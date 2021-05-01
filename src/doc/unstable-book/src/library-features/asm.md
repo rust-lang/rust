@@ -535,20 +535,20 @@ Here is the list of currently supported register classes:
 
 | Architecture | Register class | Registers | LLVM constraint code |
 | ------------ | -------------- | --------- | -------------------- |
-| x86 | `reg` | `ax`, `bx`, `cx`, `dx`, `si`, `di`, `r[8-15]` (x86-64 only) | `r` |
+| x86 | `reg` | `ax`, `bx`, `cx`, `dx`, `si`, `di`, `bp`, `r[8-15]` (x86-64 only) | `r` |
 | x86 | `reg_abcd` | `ax`, `bx`, `cx`, `dx` | `Q` |
 | x86-32 | `reg_byte` | `al`, `bl`, `cl`, `dl`, `ah`, `bh`, `ch`, `dh` | `q` |
-| x86-64 | `reg_byte`\* | `al`, `bl`, `cl`, `dl`, `sil`, `dil`, `r[8-15]b` | `q` |
+| x86-64 | `reg_byte`\* | `al`, `bl`, `cl`, `dl`, `sil`, `dil`, `bpl`, `r[8-15]b` | `q` |
 | x86 | `xmm_reg` | `xmm[0-7]` (x86) `xmm[0-15]` (x86-64) | `x` |
 | x86 | `ymm_reg` | `ymm[0-7]` (x86) `ymm[0-15]` (x86-64) | `x` |
 | x86 | `zmm_reg` | `zmm[0-7]` (x86) `zmm[0-31]` (x86-64) | `v` |
 | x86 | `kreg` | `k[1-7]` | `Yk` |
-| AArch64 | `reg` | `x[0-28]`, `x30` | `r` |
+| AArch64 | `reg` | `x[0-30]` | `r` |
 | AArch64 | `vreg` | `v[0-31]` | `w` |
 | AArch64 | `vreg_low16` | `v[0-15]` | `x` |
-| ARM | `reg` | `r[0-5]` `r7`\*, `r[8-10]`, `r11`\*, `r12`, `r14` | `r` |
+| ARM | `reg` | `r[0-12]`, `r14` | `r` |
 | ARM (Thumb) | `reg_thumb` | `r[0-r7]` | `l` |
-| ARM (ARM) | `reg_thumb` | `r[0-r10]`, `r12`, `r14` | `l` |
+| ARM (ARM) | `reg_thumb` | `r[0-r12]`, `r14` | `l` |
 | ARM | `sreg` | `s[0-31]` | `t` |
 | ARM | `sreg_low16` | `s[0-15]` | `x` |
 | ARM | `dreg` | `d[0-31]` | `w` |
@@ -573,9 +573,7 @@ Here is the list of currently supported register classes:
 >
 > Note #3: NVPTX doesn't have a fixed register set, so named registers are not supported.
 >
-> Note #4: On ARM the frame pointer is either `r7` or `r11` depending on the platform.
->
-> Note #5: WebAssembly doesn't have registers, so named registers are not supported.
+> Note #4: WebAssembly doesn't have registers, so named registers are not supported.
 
 Additional register classes may be added in the future based on demand (e.g. MMX, x87, etc).
 
@@ -677,13 +675,14 @@ Some registers cannot be used for input or output operands:
 | All | `sp` | The stack pointer must be restored to its original value at the end of an asm code block. |
 | All | `bp` (x86), `x29` (AArch64), `x8` (RISC-V), `fr` (Hexagon), `$fp` (MIPS) | The frame pointer cannot be used as an input or output. |
 | ARM | `r7` or `r11` | On ARM the frame pointer can be either `r7` or `r11` depending on the target. The frame pointer cannot be used as an input or output. |
-| ARM | `r6` | `r6` is used internally by LLVM as a base pointer and therefore cannot be used as an input or output. |
+| All | `si` (x86-32), `bx` (x86-64), `r6` (ARM), `x19` (AArch64), `r19` (Hexagon), `x9` (RISC-V) | This is used internally by LLVM as a "base pointer" for functions with complex stack frames. |
 | x86 | `k0` | This is a constant zero register which can't be modified. |
 | x86 | `ip` | This is the program counter, not a real register. |
 | x86 | `mm[0-7]` | MMX registers are not currently supported (but may be in the future). |
 | x86 | `st([0-7])` | x87 registers are not currently supported (but may be in the future). |
 | AArch64 | `xzr` | This is a constant zero register which can't be modified. |
 | ARM | `pc` | This is the program counter, not a real register. |
+| ARM | `r9` | This is a reserved register on some ARM targets. |
 | MIPS | `$0` or `$zero` | This is a constant zero register which can't be modified. |
 | MIPS | `$1` or `$at` | Reserved for assembler. |
 | MIPS | `$26`/`$k0`, `$27`/`$k1` | OS-reserved registers. |
@@ -693,9 +692,10 @@ Some registers cannot be used for input or output operands:
 | RISC-V | `gp`, `tp` | These registers are reserved and cannot be used as inputs or outputs. |
 | Hexagon | `lr` | This is the link register which cannot be used as an input or output. |
 
-In some cases LLVM will allocate a "reserved register" for `reg` operands even though this register cannot be explicitly specified. Assembly code making use of reserved registers should be careful since `reg` operands may alias with those registers. Reserved registers are:
-- The frame pointer on all architectures.
-- `r6` on ARM.
+In some cases LLVM will allocate a "reserved register" for `reg` operands even though this register cannot be explicitly specified. Assembly code making use of reserved registers should be careful since `reg` operands may alias with those registers. Reserved registers are the frame pointer and base pointer
+- The frame pointer and LLVM base pointer on all architectures.
+- `r9` on ARM.
+- `x18` on AArch64.
 
 ## Template modifiers
 
