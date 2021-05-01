@@ -6,7 +6,7 @@ use crate::{
     console::{ConsoleTestState, OutputLocation},
     test_result::TestResult,
     time,
-    types::TestDesc,
+    types::{TestDesc, TestType},
 };
 
 pub struct JunitFormatter<T> {
@@ -70,13 +70,15 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
             state.failed, state.total, state.ignored
         ))?;
         for (desc, result, duration) in std::mem::replace(&mut self.results, Vec::new()) {
+            let (class_name, test_name) = parse_class_name(&desc);
             match result {
                 TestResult::TrIgnored => { /* no-op */ }
                 TestResult::TrFailed => {
                     self.write_message(&*format!(
-                        "<testcase classname=\"test.global\" \
+                        "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\">",
-                        desc.name.as_slice(),
+                        class_name,
+                        test_name,
                         duration.as_secs()
                     ))?;
                     self.write_message("<failure type=\"assert\"/>")?;
@@ -85,9 +87,10 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
 
                 TestResult::TrFailedMsg(ref m) => {
                     self.write_message(&*format!(
-                        "<testcase classname=\"test.global\" \
+                        "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\">",
-                        desc.name.as_slice(),
+                        class_name,
+                        test_name,
                         duration.as_secs()
                     ))?;
                     self.write_message(&*format!("<failure message=\"{}\" type=\"assert\"/>", m))?;
@@ -96,9 +99,10 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
 
                 TestResult::TrTimedFail => {
                     self.write_message(&*format!(
-                        "<testcase classname=\"test.global\" \
+                        "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\">",
-                        desc.name.as_slice(),
+                        class_name,
+                        test_name,
                         duration.as_secs()
                     ))?;
                     self.write_message("<failure type=\"timeout\"/>")?;
@@ -107,18 +111,18 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
 
                 TestResult::TrBench(ref b) => {
                     self.write_message(&*format!(
-                        "<testcase classname=\"benchmark.global\" \
+                        "<testcase classname=\"benchmark::{}\" \
                          name=\"{}\" time=\"{}\" />",
-                        desc.name.as_slice(),
-                        b.ns_iter_summ.sum
+                        class_name, test_name, b.ns_iter_summ.sum
                     ))?;
                 }
 
                 TestResult::TrOk | TestResult::TrAllowedFail => {
                     self.write_message(&*format!(
-                        "<testcase classname=\"test.global\" \
+                        "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\"/>",
-                        desc.name.as_slice(),
+                        class_name,
+                        test_name,
                         duration.as_secs()
                     ))?;
                 }
@@ -131,4 +135,40 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
 
         Ok(state.failed == 0)
     }
+}
+
+fn parse_class_name(desc: &TestDesc) -> (String, String) {
+    match desc.test_type {
+        TestType::UnitTest => parse_class_name_unit(desc),
+        TestType::DocTest => parse_class_name_doc(desc),
+        TestType::IntegrationTest => parse_class_name_integration(desc),
+        TestType::Unknown => (String::from("unknown"), String::from(desc.name.as_slice())),
+    }
+}
+
+fn parse_class_name_unit(desc: &TestDesc) -> (String, String) {
+    // Module path => classname
+    // Function name => name
+    let module_segments: Vec<&str> = desc.name.as_slice().split("::").collect();
+    let (class_name, test_name) = match module_segments[..] {
+        [test] => (String::from("crate"), String::from(test)),
+        [ref path @ .., test] => (path.join("::"), String::from(test)),
+        [..] => unreachable!(),
+    };
+    (class_name, test_name)
+}
+
+fn parse_class_name_doc(desc: &TestDesc) -> (String, String) {
+    // File path => classname
+    // Line # => test name
+    let segments: Vec<&str> = desc.name.as_slice().split(" - ").collect();
+    let (class_name, test_name) = match segments[..] {
+        [file, line] => (String::from(file.trim()), String::from(line.trim())),
+        [..] => unreachable!(),
+    };
+    (class_name, test_name)
+}
+
+fn parse_class_name_integration(desc: &TestDesc) -> (String, String) {
+    (String::from("integration"), String::from(desc.name.as_slice()))
 }
