@@ -200,7 +200,7 @@ running 31 tests
 test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 ```
 
-You should have one ore more `.profraw` files now, one for each test binary. Run the `profdata` tool to merge them:
+You should have one or more `.profraw` files now, one for each test binary. Run the `profdata` tool to merge them:
 
 ```shell
 $ cargo profdata -- merge \
