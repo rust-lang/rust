@@ -167,9 +167,9 @@ impl Step for Cargotest {
     /// This tool in `src/tools` will check out a few Rust projects and run `cargo
     /// test` to ensure that we don't regress the test suites there.
     fn run(self, builder: &Builder<'_>) {
-        let compiler = builder.compiler(self.stage, self.host);
-        builder.ensure(compile::Rustc { compiler, target: compiler.host });
-        let cargo = builder.ensure(tool::Cargo { compiler, target: compiler.host });
+        let bootstrap_compiler = builder.compiler(0, self.host);
+        let cargo = builder
+            .ensure(tool::Cargo { compiler: bootstrap_compiler, target: bootstrap_compiler.host });
 
         // Note that this is a short, cryptic, and not scoped directory name. This
         // is currently to minimize the length of path on Windows where we otherwise
@@ -179,13 +179,14 @@ impl Step for Cargotest {
 
         let _time = util::timeit(&builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
+        let test_compiler = builder.compiler(self.stage, self.host);
         try_run(
             builder,
             cmd.arg(&cargo)
                 .arg(&out_dir)
                 .args(builder.config.cmd.test_args())
-                .env("RUSTC", builder.rustc(compiler))
-                .env("RUSTDOC", builder.rustdoc(compiler)),
+                .env("RUSTC", builder.rustc(test_compiler))
+                .env("RUSTDOC", builder.rustdoc(test_compiler)),
         );
     }
 }

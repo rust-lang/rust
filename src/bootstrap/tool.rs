@@ -595,7 +595,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+            compiler: run.builder.compiler(0, run.builder.config.build),
             target: run.target,
         });
     }
@@ -606,7 +606,7 @@ impl Step for Cargo {
                 compiler: self.compiler,
                 target: self.target,
                 tool: "cargo",
-                mode: Mode::ToolRustc,
+                mode: Mode::ToolBootstrap,
                 path: "src/tools/cargo",
                 is_optional_tool: false,
                 source_type: SourceType::Submodule,
@@ -621,7 +621,7 @@ impl Step for Cargo {
                 compiler: self.compiler,
                 target: self.target,
                 tool: name,
-                mode: Mode::ToolRustc,
+                mode: Mode::ToolBootstrap,
                 path,
                 is_optional_tool: true,
                 source_type: SourceType::Submodule,
