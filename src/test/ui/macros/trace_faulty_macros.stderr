@@ -19,7 +19,7 @@ LL |     my_faulty_macro!();
    |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_faulty_macro! {  }`
-   = note: to `my_faulty_macro ! (bcd) ;`
+   = note: to `my_faulty_macro! (bcd) ;`
    = note: expanding `my_faulty_macro! { bcd }`
 
 error: recursion limit reached while expanding `my_recursive_macro!`
@@ -41,13 +41,13 @@ LL |     my_recursive_macro!();
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
    = note: expanding `my_recursive_macro! {  }`
-   = note: to `my_recursive_macro ! () ;`
+   = note: to `my_recursive_macro! () ;`
 
 error: expected expression, found `A { a: a, b: 0, c: _, .. }`
   --> $DIR/trace_faulty_macros.rs:16:9
@@ -73,7 +73,7 @@ LL |     let a = pat_macro!();
    |             ^^^^^^^^^^^^
    |
    = note: expanding `pat_macro! {  }`
-   = note: to `pat_macro ! (A { a : a, b : 0, c : _, .. }) ;`
+   = note: to `pat_macro! (A { a : a, b : 0, c : _, .. }) ;`
    = note: expanding `pat_macro! { A { a : a, b : 0, c : _, .. } }`
    = note: to `A { a: a, b: 0, c: _, .. }`
 

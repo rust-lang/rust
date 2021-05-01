@@ -8,7 +8,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
 PRINT-ATTR INPUT (DISPLAY): #[print_target_and_args(second_outer)] impl Bar < { 1 > 0 } > for Foo <
 { true } >
 {
-    # ! [print_target_and_args(first_inner)] # !
+    #! [print_target_and_args(first_inner)] #!
     [print_target_and_args(second_inner)]
 }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
@@ -182,7 +182,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
 ]
 PRINT-ATTR INPUT (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } >
 {
-    # ! [print_target_and_args(first_inner)] # !
+    #! [print_target_and_args(first_inner)] #!
     [print_target_and_args(second_inner)]
 }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
@@ -330,7 +330,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } >
-{ # ! [print_target_and_args(second_inner)] }
+{ #! [print_target_and_args(second_inner)] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "impl",
