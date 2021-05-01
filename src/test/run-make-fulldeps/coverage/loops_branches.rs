@@ -12,7 +12,7 @@ impl std::fmt::Debug for DebugTest {
                 while true {
                 }
             }
-            write!(f, "error")?;
+            write!(f, "cool")?;
         } else {
         }
 
@@ -21,7 +21,7 @@ impl std::fmt::Debug for DebugTest {
                 if false {
                     while true {}
                 }
-                write!(f, "error")?;
+                write!(f, "cool")?;
             } else {
             }
         }
@@ -38,7 +38,7 @@ impl std::fmt::Display for DisplayTest {
             if false {
                 while true {}
             }
-            write!(f, "error")?;
+            write!(f, "cool")?;
         }
         for i in 0..10 {
             if false {
@@ -46,7 +46,7 @@ impl std::fmt::Display for DisplayTest {
                 if false {
                     while true {}
                 }
-                write!(f, "error")?;
+                write!(f, "cool")?;
             }
         }
         Ok(())

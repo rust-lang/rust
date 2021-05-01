@@ -558,7 +558,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
 
         if did_remove_blocks {
             // We have dead blocks now, so remove those.
-            simplify::remove_dead_blocks(body);
+            simplify::remove_dead_blocks(tcx, body);
         }
     }
 }

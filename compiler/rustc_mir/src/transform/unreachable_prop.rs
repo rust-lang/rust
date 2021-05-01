@@ -60,7 +60,11 @@ impl MirPass<'_> for UnreachablePropagation {
         }
 
         if replaced {
-            simplify::remove_dead_blocks(body);
+            simplify::remove_dead_blocks_with_coverage(
+                tcx,
+                body,
+                simplify::DroppedCoverage::SaveUnreachable,
+            );
         }
     }
 }

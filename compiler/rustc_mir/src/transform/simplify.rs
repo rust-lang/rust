@@ -29,6 +29,7 @@
 
 use crate::transform::MirPass;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
@@ -46,9 +47,17 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(body: &mut Body<'_>) {
+pub fn simplify_cfg(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
+    simplify_cfg_with_coverage(tcx, body, DroppedCoverage::AssertNone);
+}
+
+pub fn simplify_cfg_with_coverage(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'_>,
+    dropped_coverage: DroppedCoverage,
+) {
     CfgSimplifier::new(body).simplify();
-    remove_dead_blocks(body);
+    remove_dead_blocks_with_coverage(tcx, body, dropped_coverage);
 
     // FIXME: Should probably be moved into some kind of pass manager
     body.basic_blocks_mut().raw.shrink_to_fit();
@@ -59,10 +68,29 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body.source);
-        simplify_cfg(body);
+        simplify_cfg_with_coverage(tcx, body, DroppedCoverage::SaveUnreachable);
     }
+}
+
+/// How to handle `Coverage` statements in dropped `BasicBlocks`.
+pub enum DroppedCoverage {
+    /// Allow the `Coverage` statement(s) in a dropped `BasicBlock` to be
+    /// dropped as well. (This may be because the `Coverage` statement was
+    /// already cloned.)
+    Allow,
+
+    /// Assert that there are none. The current or most recent MIR pass(es)
+    /// should not have done anything that would have resulted in an
+    /// unreachable block with a `Coverage` statement.
+    AssertNone,
+
+    /// Assume the `Coverage` statement(s) in a dropped `BacicBlock` are part
+    /// of a dead code region. Save them in the `START_BLOCK` but mark `Counter`
+    /// coverage as `is_dead` so they are not incremented. (Expressions from
+    /// dead blocks should already add up to zero.)
+    SaveUnreachable,
 }
 
 pub struct CfgSimplifier<'a, 'tcx> {
@@ -286,7 +314,15 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(body: &mut Body<'_>) {
+pub fn remove_dead_blocks(tcx: TyCtxt<'tcx>, body: &mut Body<'_>) {
+    remove_dead_blocks_with_coverage(tcx, body, DroppedCoverage::AssertNone);
+}
+
+pub fn remove_dead_blocks_with_coverage(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'_>,
+    dropped_coverage: DroppedCoverage,
+) {
     let reachable = traversal::reachable_as_bitset(body);
     let num_blocks = body.basic_blocks().len();
     if num_blocks == reachable.count() {
@@ -306,12 +342,63 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
         }
         used_blocks += 1;
     }
+
+    if tcx.sess.instrument_coverage() {
+        use DroppedCoverage::*;
+        match dropped_coverage {
+            Allow => {}
+            AssertNone => assert_no_unreachable_coverage(basic_blocks, used_blocks),
+            SaveUnreachable => save_unreachable_coverage(basic_blocks, used_blocks),
+        }
+    }
+
     basic_blocks.raw.truncate(used_blocks);
 
     for block in basic_blocks {
         for target in block.terminator_mut().successors_mut() {
             *target = replacements[target.index()];
         }
+    }
+}
+
+fn assert_no_unreachable_coverage(
+    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
+    first_dead_block: usize,
+) {
+    for dead_block in first_dead_block..basic_blocks.len() {
+        for statement in &basic_blocks[BasicBlock::new(dead_block)].statements {
+            assert!(
+                !matches!(statement.kind, StatementKind::Coverage(..)),
+                "Dead blocks should not have `Coverage` statements at this stage."
+            );
+        }
+    }
+}
+
+fn save_unreachable_coverage(
+    basic_blocks: &mut IndexVec<BasicBlock, BasicBlockData<'_>>,
+    first_dead_block: usize,
+) {
+    // retain coverage info for dead blocks, so coverage reports will still
+    // report `0` executions for the uncovered code regions.
+    let mut dropped_coverage = Vec::new();
+    for dead_block in first_dead_block..basic_blocks.len() {
+        for statement in basic_blocks[BasicBlock::new(dead_block)].statements.iter() {
+            if let StatementKind::Coverage(coverage) = &statement.kind {
+                if let Some(code_region) = &coverage.code_region {
+                    dropped_coverage.push((statement.source_info, code_region.clone()));
+                }
+            }
+        }
+    }
+    for (source_info, code_region) in dropped_coverage {
+        basic_blocks[START_BLOCK].statements.push(Statement {
+            source_info,
+            kind: StatementKind::Coverage(box Coverage {
+                kind: CoverageKind::Unreachable,
+                code_region: Some(code_region),
+            }),
+        })
     }
 }
 
