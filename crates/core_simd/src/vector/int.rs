@@ -30,6 +30,7 @@ macro_rules! impl_integer_vector {
         where
             Self: crate::LanesAtMost32,
             crate::$mask_impl_ty<LANES>: crate::LanesAtMost32,
+            crate::$mask_ty<LANES>: crate::Mask,
         {
             /// Returns true for each positive lane and false if it is zero or negative.
             pub fn is_positive(self) -> crate::$mask_ty<LANES> {

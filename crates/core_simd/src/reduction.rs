@@ -103,18 +103,16 @@ macro_rules! impl_float_reductions {
 }
 
 macro_rules! impl_full_mask_reductions {
-    { $name:ident, $inner:ident } => {
-        impl<const LANES: usize> crate::$name<LANES>
+    { $name:ident, $bits_ty:ident } => {
+        impl<T: crate::Mask, const LANES: usize> $name<T, LANES>
         where
-            crate::$inner<LANES>: crate::LanesAtMost32
+            crate::$bits_ty<LANES>: crate::LanesAtMost32
         {
-            /// Returns true if any lane is set, or false otherwise.
             #[inline]
             pub fn any(self) -> bool {
                 unsafe { crate::intrinsics::simd_reduce_any(self.to_int()) }
             }
 
-            /// Returns true if all lanes are set, or false otherwise.
             #[inline]
             pub fn all(self) -> bool {
                 unsafe { crate::intrinsics::simd_reduce_all(self.to_int()) }
@@ -124,10 +122,11 @@ macro_rules! impl_full_mask_reductions {
 }
 
 macro_rules! impl_opaque_mask_reductions {
-    { $name:ident, $inner:ident, $bits_ty:ident } => {
+    { $name:ident, $bits_ty:ident } => {
         impl<const LANES: usize> $name<LANES>
         where
-            $bits_ty<LANES>: crate::LanesAtMost32
+            crate::$bits_ty<LANES>: crate::LanesAtMost32,
+            $name<LANES>: crate::Mask,
         {
             /// Returns true if any lane is set, or false otherwise.
             #[inline]
@@ -141,22 +140,5 @@ macro_rules! impl_opaque_mask_reductions {
                 self.0.all()
             }
         }
-    }
-}
-
-impl<const LANES: usize> crate::BitMask<LANES>
-where
-    crate::BitMask<LANES>: crate::LanesAtMost32,
-{
-    /// Returns true if any lane is set, or false otherwise.
-    #[inline]
-    pub fn any(self) -> bool {
-        self != Self::splat(false)
-    }
-
-    /// Returns true if all lanes are set, or false otherwise.
-    #[inline]
-    pub fn all(self) -> bool {
-        self == Self::splat(true)
     }
 }

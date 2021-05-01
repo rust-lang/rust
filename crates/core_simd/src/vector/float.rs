@@ -42,6 +42,7 @@ macro_rules! impl_float_vector {
             Self: crate::LanesAtMost32,
             crate::$bits_ty<LANES>: crate::LanesAtMost32,
             crate::$mask_impl_ty<LANES>: crate::LanesAtMost32,
+            crate::$mask_ty<LANES>: crate::Mask,
         {
             /// Returns true for each lane if it has a positive sign, including
             /// `+0.0`, `NaN`s with positive sign bit and positive infinity.
