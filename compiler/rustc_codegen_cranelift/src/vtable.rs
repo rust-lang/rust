@@ -72,15 +72,15 @@ pub(crate) fn get_vtable<'tcx>(
     layout: TyAndLayout<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let data_id = if let Some(data_id) = fx.cx.vtables.get(&(layout.ty, trait_ref)) {
+    let data_id = if let Some(data_id) = fx.vtables.get(&(layout.ty, trait_ref)) {
         *data_id
     } else {
         let data_id = build_vtable(fx, layout, trait_ref);
-        fx.cx.vtables.insert((layout.ty, trait_ref), data_id);
+        fx.vtables.insert((layout.ty, trait_ref), data_id);
         data_id
     };
 
-    let local_data_id = fx.cx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
+    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }
 
@@ -94,7 +94,7 @@ fn build_vtable<'tcx>(
 
     let drop_in_place_fn = import_function(
         tcx,
-        fx.cx.module,
+        fx.module,
         Instance::resolve_drop_in_place(tcx, layout.ty).polymorphize(fx.tcx),
     );
 
@@ -111,7 +111,7 @@ fn build_vtable<'tcx>(
         opt_mth.map(|(def_id, substs)| {
             import_function(
                 tcx,
-                fx.cx.module,
+                fx.module,
                 Instance::resolve_for_vtable(tcx, ParamEnv::reveal_all(), def_id, substs)
                     .unwrap()
                     .polymorphize(fx.tcx),
@@ -132,34 +132,16 @@ fn build_vtable<'tcx>(
 
     for (i, component) in components.into_iter().enumerate() {
         if let Some(func_id) = component {
-            let func_ref = fx.cx.module.declare_func_in_data(func_id, &mut data_ctx);
+            let func_ref = fx.module.declare_func_in_data(func_id, &mut data_ctx);
             data_ctx.write_function_addr((i * usize_size) as u32, func_ref);
         }
     }
 
     data_ctx.set_align(fx.tcx.data_layout.pointer_align.pref.bytes());
 
-    let data_id = fx
-        .cx
-        .module
-        .declare_data(
-            &format!(
-                "__vtable.{}.for.{:?}.{}",
-                trait_ref
-                    .as_ref()
-                    .map(|trait_ref| format!("{:?}", trait_ref.skip_binder()).into())
-                    .unwrap_or(std::borrow::Cow::Borrowed("???")),
-                layout.ty,
-                fx.cx.vtables.len(),
-            ),
-            Linkage::Local,
-            false,
-            false,
-        )
-        .unwrap();
+    let data_id = fx.module.declare_anonymous_data(false, false).unwrap();
 
-    // FIXME don't duplicate definitions in lazy jit mode
-    let _ = fx.cx.module.define_data(data_id, &data_ctx);
+    fx.module.define_data(data_id, &data_ctx).unwrap();
 
     data_id
 }

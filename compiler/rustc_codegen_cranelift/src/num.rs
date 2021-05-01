@@ -271,14 +271,17 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                         let val_hi = fx.bcx.ins().umulhi(lhs, rhs);
                         fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0)
                     } else {
+                        // Based on LLVM's instruction sequence for compiling
+                        // a.checked_mul(b).is_some() to riscv64gc:
+                        // mulh    a2, a0, a1
+                        // mul     a0, a0, a1
+                        // srai    a0, a0, 63
+                        // xor     a0, a0, a2
+                        // snez    a0, a0
                         let val_hi = fx.bcx.ins().smulhi(lhs, rhs);
-                        let not_all_zero = fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0);
-                        let not_all_ones = fx.bcx.ins().icmp_imm(
-                            IntCC::NotEqual,
-                            val_hi,
-                            u64::try_from((1u128 << ty.bits()) - 1).unwrap() as i64,
-                        );
-                        fx.bcx.ins().band(not_all_zero, not_all_ones)
+                        let val_sign = fx.bcx.ins().sshr_imm(val, i64::from(ty.bits() - 1));
+                        let xor = fx.bcx.ins().bxor(val_hi, val_sign);
+                        fx.bcx.ins().icmp_imm(IntCC::NotEqual, xor, 0)
                     };
                     (val, has_overflow)
                 }

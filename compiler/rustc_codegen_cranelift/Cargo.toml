@@ -9,12 +9,13 @@ crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
-cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind", "x64"] }
+cranelift-codegen = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", features = ["unwind"] }
 cranelift-frontend = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-module = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
+cranelift-native = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
 cranelift-jit = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main", optional = true }
 cranelift-object = { git = "https://github.com/bytecodealliance/wasmtime/", branch = "main" }
-target-lexicon = "0.11.0"
+target-lexicon = "0.12.0"
 gimli = { version = "0.23.0", default-features = false, features = ["write"]}
 object = { version = "0.23.0", default-features = false, features = ["std", "read_core", "write", "archive", "coff", "elf", "macho", "pe"] }
 
@@ -28,6 +29,7 @@ smallvec = "1.6.1"
 #cranelift-codegen = { path = "../wasmtime/cranelift/codegen" }
 #cranelift-frontend = { path = "../wasmtime/cranelift/frontend" }
 #cranelift-module = { path = "../wasmtime/cranelift/module" }
+#cranelift-native = { path = ../wasmtime/cranelift/native" }
 #cranelift-jit = { path = "../wasmtime/cranelift/jit" }
 #cranelift-object = { path = "../wasmtime/cranelift/object" }
 

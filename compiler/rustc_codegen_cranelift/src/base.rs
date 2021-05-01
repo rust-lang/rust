@@ -6,9 +6,14 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiExt;
 use rustc_target::abi::call::FnAbi;
 
+use crate::constant::ConstantCx;
 use crate::prelude::*;
 
-pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: Instance<'tcx>) {
+pub(crate) fn codegen_fn<'tcx>(
+    cx: &mut crate::CodegenCx<'tcx>,
+    module: &mut dyn Module,
+    instance: Instance<'tcx>,
+) {
     let tcx = cx.tcx;
 
     let _inst_guard =
@@ -18,9 +23,9 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     let mir = tcx.instance_mir(instance.def);
 
     // Declare function
-    let name = tcx.symbol_name(instance).name.to_string();
-    let sig = get_function_sig(tcx, cx.module.isa().triple(), instance);
-    let func_id = cx.module.declare_function(&name, Linkage::Local, &sig).unwrap();
+    let symbol_name = tcx.symbol_name(instance);
+    let sig = get_function_sig(tcx, module.isa().triple(), instance);
+    let func_id = module.declare_function(symbol_name.name, Linkage::Local, &sig).unwrap();
 
     cx.cached_context.clear();
 
@@ -39,15 +44,19 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
         (0..mir.basic_blocks().len()).map(|_| bcx.create_block()).collect();
 
     // Make FunctionCx
-    let pointer_type = cx.module.target_config().pointer_type();
+    let pointer_type = module.target_config().pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
     let mut fx = FunctionCx {
         cx,
+        module,
         tcx,
         pointer_type,
+        vtables: FxHashMap::default(),
+        constants_cx: ConstantCx::new(),
 
         instance,
+        symbol_name,
         mir,
         fn_abi: Some(FnAbi::of_instance(&RevealAllLayoutCx(tcx), instance, &[])),
 
@@ -55,7 +64,6 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
         block_map,
         local_map: IndexVec::with_capacity(mir.local_decls.len()),
         caller_location: None, // set by `codegen_fn_prelude`
-        cold_blocks: EntitySet::new(),
 
         clif_comments,
         source_info_set: indexmap::IndexSet::new(),
@@ -90,7 +98,8 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     let mut clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
-    let cold_blocks = fx.cold_blocks;
+
+    fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
     // Store function in context
     let context = &mut cx.cached_context;
@@ -103,21 +112,15 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
 
     // Perform rust specific optimizations
     tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(
-            tcx,
-            instance,
-            context,
-            &cold_blocks,
-            &mut clif_comments,
-        );
+        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
     });
 
     // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
     // instruction, which doesn't have an encoding.
     context.compute_cfg();
     context.compute_domtree();
-    context.eliminate_unreachable_code(cx.module.isa()).unwrap();
-    context.dce(cx.module.isa()).unwrap();
+    context.eliminate_unreachable_code(module.isa()).unwrap();
+    context.dce(module.isa()).unwrap();
     // Some Cranelift optimizations expect the domtree to not yet be computed and as such don't
     // invalidate it when it would change.
     context.domtree.clear();
@@ -125,7 +128,6 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
 
     // Define function
-    let module = &mut cx.module;
     tcx.sess.time("define function", || {
         module
             .define_function(func_id, context, &mut NullTrapSink {}, &mut NullStackMapSink {})
@@ -136,7 +138,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     crate::pretty_clif::write_clif_file(
         tcx,
         "opt",
-        Some(cx.module.isa()),
+        Some(module.isa()),
         instance,
         &context,
         &clif_comments,
@@ -145,13 +147,13 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
     if let Some(disasm) = &context.mach_compile_result.as_ref().unwrap().disasm {
         crate::pretty_clif::write_ir_file(
             tcx,
-            &format!("{}.vcode", tcx.symbol_name(instance).name),
+            || format!("{}.vcode", tcx.symbol_name(instance).name),
             |file| file.write_all(disasm.as_bytes()),
         )
     }
 
     // Define debuginfo for function
-    let isa = cx.module.isa();
+    let isa = module.isa();
     let debug_context = &mut cx.debug_context;
     let unwind_context = &mut cx.unwind_context;
     tcx.sess.time("generate debug info", || {
@@ -159,7 +161,7 @@ pub(crate) fn codegen_fn<'tcx>(cx: &mut crate::CodegenCx<'_, 'tcx>, instance: In
             debug_context.define_function(
                 instance,
                 func_id,
-                &name,
+                symbol_name.name,
                 isa,
                 context,
                 &source_info_set,
@@ -205,9 +207,8 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
             // Unwinding after panicking is not supported
             continue;
 
-            // FIXME once unwinding is supported uncomment next lines
-            // // Unwinding is unlikely to happen, so mark cleanup block's as cold.
-            // fx.cold_blocks.insert(block);
+            // FIXME Once unwinding is supported and Cranelift supports marking blocks as cold, do
+            // so for cleanup blocks.
         }
 
         fx.bcx.ins().nop();
@@ -262,7 +263,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
 
                 let target = fx.get_block(*target);
                 let failure = fx.bcx.create_block();
-                fx.cold_blocks.insert(failure);
+                // FIXME Mark failure block as cold once Cranelift supports it
 
                 if *expected {
                     fx.bcx.ins().brz(cond, failure, &[]);
@@ -355,14 +356,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                 from_hir_call: _,
             } => {
                 fx.tcx.sess.time("codegen call", || {
-                    crate::abi::codegen_terminator_call(
-                        fx,
-                        *fn_span,
-                        block,
-                        func,
-                        args,
-                        *destination,
-                    )
+                    crate::abi::codegen_terminator_call(fx, *fn_span, func, args, *destination)
                 });
             }
             TerminatorKind::InlineAsm {
@@ -664,7 +658,7 @@ fn codegen_stmt<'tcx>(
                         // FIXME use emit_small_memset where possible
                         let addr = lval.to_ptr().get_addr(fx);
                         let val = operand.load_scalar(fx);
-                        fx.bcx.call_memset(fx.cx.module.target_config(), addr, val, times);
+                        fx.bcx.call_memset(fx.module.target_config(), addr, val, times);
                     } else {
                         let loop_block = fx.bcx.create_block();
                         let loop_block2 = fx.bcx.create_block();
@@ -750,85 +744,15 @@ fn codegen_stmt<'tcx>(
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::LlvmInlineAsm(asm) => {
-            use rustc_span::symbol::Symbol;
-            let LlvmInlineAsm { asm, outputs, inputs } = &**asm;
-            let rustc_hir::LlvmInlineAsmInner {
-                asm: asm_code,         // Name
-                outputs: output_names, // Vec<LlvmInlineAsmOutput>
-                inputs: input_names,   // Vec<Name>
-                clobbers,              // Vec<Name>
-                volatile,              // bool
-                alignstack,            // bool
-                dialect: _,
-                asm_str_style: _,
-            } = asm;
-            match asm_code.as_str().trim() {
+            match asm.asm.asm.as_str().trim() {
                 "" => {
                     // Black box
                 }
-                "mov %rbx, %rsi\n                  cpuid\n                  xchg %rbx, %rsi" => {
-                    assert_eq!(input_names, &[Symbol::intern("{eax}"), Symbol::intern("{ecx}")]);
-                    assert_eq!(output_names.len(), 4);
-                    for (i, c) in (&["={eax}", "={esi}", "={ecx}", "={edx}"]).iter().enumerate() {
-                        assert_eq!(&output_names[i].constraint.as_str(), c);
-                        assert!(!output_names[i].is_rw);
-                        assert!(!output_names[i].is_indirect);
-                    }
-
-                    assert_eq!(clobbers, &[]);
-
-                    assert!(!volatile);
-                    assert!(!alignstack);
-
-                    assert_eq!(inputs.len(), 2);
-                    let leaf = codegen_operand(fx, &inputs[0].1).load_scalar(fx); // %eax
-                    let subleaf = codegen_operand(fx, &inputs[1].1).load_scalar(fx); // %ecx
-
-                    let (eax, ebx, ecx, edx) =
-                        crate::intrinsics::codegen_cpuid_call(fx, leaf, subleaf);
-
-                    assert_eq!(outputs.len(), 4);
-                    codegen_place(fx, outputs[0])
-                        .write_cvalue(fx, CValue::by_val(eax, fx.layout_of(fx.tcx.types.u32)));
-                    codegen_place(fx, outputs[1])
-                        .write_cvalue(fx, CValue::by_val(ebx, fx.layout_of(fx.tcx.types.u32)));
-                    codegen_place(fx, outputs[2])
-                        .write_cvalue(fx, CValue::by_val(ecx, fx.layout_of(fx.tcx.types.u32)));
-                    codegen_place(fx, outputs[3])
-                        .write_cvalue(fx, CValue::by_val(edx, fx.layout_of(fx.tcx.types.u32)));
-                }
-                "xgetbv" => {
-                    assert_eq!(input_names, &[Symbol::intern("{ecx}")]);
-
-                    assert_eq!(output_names.len(), 2);
-                    for (i, c) in (&["={eax}", "={edx}"]).iter().enumerate() {
-                        assert_eq!(&output_names[i].constraint.as_str(), c);
-                        assert!(!output_names[i].is_rw);
-                        assert!(!output_names[i].is_indirect);
-                    }
-
-                    assert_eq!(clobbers, &[]);
-
-                    assert!(!volatile);
-                    assert!(!alignstack);
-
-                    crate::trap::trap_unimplemented(fx, "_xgetbv arch intrinsic is not supported");
-                }
-                // ___chkstk, ___chkstk_ms and __alloca are only used on Windows
-                _ if fx.tcx.symbol_name(fx.instance).name.starts_with("___chkstk") => {
-                    crate::trap::trap_unimplemented(fx, "Stack probes are not supported");
-                }
-                _ if fx.tcx.symbol_name(fx.instance).name == "__alloca" => {
-                    crate::trap::trap_unimplemented(fx, "Alloca is not supported");
-                }
-                // Used in sys::windows::abort_internal
-                "int $$0x29" => {
-                    crate::trap::trap_unimplemented(fx, "Windows abort");
-                }
-                _ => fx
-                    .tcx
-                    .sess
-                    .span_fatal(stmt.source_info.span, "Inline assembly is not supported"),
+                _ => fx.tcx.sess.span_fatal(
+                    stmt.source_info.span,
+                    "Legacy `llvm_asm!` inline assembly is not supported. \
+                    Try using the new `asm!` instead.",
+                ),
             }
         }
         StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
@@ -844,7 +768,7 @@ fn codegen_stmt<'tcx>(
             let elem_size: u64 = pointee.size.bytes();
             let bytes =
                 if elem_size != 1 { fx.bcx.ins().imul_imm(count, elem_size as i64) } else { count };
-            fx.bcx.call_memcpy(fx.cx.module.target_config(), dst, src, bytes);
+            fx.bcx.call_memcpy(fx.module.target_config(), dst, src, bytes);
         }
     }
 }
