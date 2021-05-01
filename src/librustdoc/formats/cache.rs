@@ -1,21 +1,19 @@
 use std::collections::BTreeMap;
 use std::mem;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::source_map::FileName;
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
 
 use crate::clean::{self, GetDefId};
 use crate::fold::DocFolder;
 use crate::formats::item_type::ItemType;
 use crate::formats::Impl;
 use crate::html::markdown::short_markdown_summary;
-use crate::html::render::cache::{extern_location, get_index_search_type, ExternalLocation};
+use crate::html::render::cache::{get_index_search_type, ExternalLocation};
 use crate::html::render::IndexItem;
 
 /// This cache is used to store information about the [`clean::Crate`] being
@@ -72,7 +70,7 @@ crate struct Cache {
     crate implementors: FxHashMap<DefId, Vec<Impl>>,
 
     /// Cache of where external crate documentation can be found.
-    crate extern_locations: FxHashMap<CrateNum, (Symbol, PathBuf, ExternalLocation)>,
+    crate extern_locations: FxHashMap<CrateNum, ExternalLocation>,
 
     /// Cache of where documentation for primitives can be found.
     crate primitive_locations: FxHashMap<clean::PrimitiveType, DefId>,
@@ -155,21 +153,10 @@ impl Cache {
         // Cache where all our extern crates are located
         // FIXME: this part is specific to HTML so it'd be nice to remove it from the common code
         for &(n, ref e) in &krate.externs {
-            let src_root = match e.src(tcx) {
-                FileName::Real(ref p) => match p.local_path().parent() {
-                    Some(p) => p.to_path_buf(),
-                    None => PathBuf::new(),
-                },
-                _ => PathBuf::new(),
-            };
             let name = e.name(tcx);
             let extern_url = extern_html_root_urls.get(&*name.as_str()).map(|u| &**u);
             let did = DefId { krate: n, index: CRATE_DEF_INDEX };
-            self.extern_locations.insert(
-                n,
-                (name, src_root, extern_location(e, extern_url, tcx.get_attrs(did), &dst, tcx)),
-            );
-
+            self.extern_locations.insert(n, e.location(extern_url, &dst, tcx));
             self.external_paths.insert(did, (vec![name.to_string()], ItemType::Module));
         }
 

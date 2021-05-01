@@ -16,7 +16,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, utils::find_nearest_parent_module, PrimitiveType};
+use crate::clean::{self, utils::find_nearest_parent_module, ExternalCrate, PrimitiveType};
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
@@ -465,14 +465,14 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Option<(String, ItemType, Vec<Str
                 fqp,
                 shortty,
                 match cache.extern_locations[&did.krate] {
-                    (.., ExternalLocation::Remote(ref s)) => {
+                    ExternalLocation::Remote(ref s) => {
                         let s = s.trim_end_matches('/');
                         let mut s = vec![&s[..]];
                         s.extend(module_fqp[..].iter().map(String::as_str));
                         s
                     }
-                    (.., ExternalLocation::Local) => href_relative_parts(module_fqp, relative_to),
-                    (.., ExternalLocation::Unknown) => return None,
+                    ExternalLocation::Local => href_relative_parts(module_fqp, relative_to),
+                    ExternalLocation::Unknown => return None,
                 },
             )
         }
@@ -578,12 +578,14 @@ fn primitive_link(
             Some(&def_id) => {
                 let cname_str;
                 let loc = match m.extern_locations[&def_id.krate] {
-                    (ref cname, _, ExternalLocation::Remote(ref s)) => {
-                        cname_str = cname.as_str();
+                    ExternalLocation::Remote(ref s) => {
+                        cname_str =
+                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
                         Some(vec![s.trim_end_matches('/'), &cname_str[..]])
                     }
-                    (ref cname, _, ExternalLocation::Local) => {
-                        cname_str = cname.as_str();
+                    ExternalLocation::Local => {
+                        cname_str =
+                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
                         Some(if cx.current.first().map(|x| &x[..]) == Some(&cname_str[..]) {
                             iter::repeat("..").take(cx.current.len() - 1).collect()
                         } else {
@@ -591,7 +593,7 @@ fn primitive_link(
                             iter::repeat("..").take(cx.current.len()).chain(cname).collect()
                         })
                     }
-                    (.., ExternalLocation::Unknown) => None,
+                    ExternalLocation::Unknown => None,
                 };
                 if let Some(loc) = loc {
                     write!(

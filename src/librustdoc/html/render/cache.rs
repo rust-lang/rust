@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
-use std::path::Path;
 
-use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
 use crate::clean::types::{
-    AttributesExt, FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
+    FnDecl, FnRetTy, GenericBound, Generics, GetDefId, Type, WherePredicate,
 };
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
@@ -24,47 +22,6 @@ crate enum ExternalLocation {
     Local,
     /// The external crate could not be found.
     Unknown,
-}
-
-/// Attempts to find where an external crate is located, given that we're
-/// rendering in to the specified source destination.
-crate fn extern_location(
-    e: &clean::ExternalCrate,
-    extern_url: Option<&str>,
-    ast_attrs: &[ast::Attribute],
-    dst: &Path,
-    tcx: TyCtxt<'_>,
-) -> ExternalLocation {
-    use ExternalLocation::*;
-    // See if there's documentation generated into the local directory
-    let local_location = dst.join(&*e.name(tcx).as_str());
-    if local_location.is_dir() {
-        return Local;
-    }
-
-    if let Some(url) = extern_url {
-        let mut url = url.to_string();
-        if !url.ends_with('/') {
-            url.push('/');
-        }
-        return Remote(url);
-    }
-
-    // Failing that, see if there's an attribute specifying where to find this
-    // external crate
-    ast_attrs
-        .lists(sym::doc)
-        .filter(|a| a.has_name(sym::html_root_url))
-        .filter_map(|a| a.value_str())
-        .map(|url| {
-            let mut url = url.to_string();
-            if !url.ends_with('/') {
-                url.push('/')
-            }
-            Remote(url)
-        })
-        .next()
-        .unwrap_or(Unknown) // Well, at least we tried.
 }
 
 /// Builds the search index from the collected metadata
