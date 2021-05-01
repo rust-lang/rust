@@ -2,14 +2,18 @@
 //! happen in certain places, e.g. weakening `&mut` to `&` or deref coercions
 //! like going from `&Vec<T>` to `&[T]`.
 //!
-//! See: https://doc.rust-lang.org/nomicon/coercions.html
+//! See https://doc.rust-lang.org/nomicon/coercions.html and
+//! librustc_typeck/check/coercion.rs.
 
 use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
 use hir_def::lang_item::LangItemTarget;
 
-use crate::{autoderef, Canonical, DomainGoal, Interner, Solution, Ty, TyBuilder, TyExt, TyKind};
+use crate::{
+    autoderef, static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Interner, Solution,
+    Substitution, Ty, TyBuilder, TyExt, TyKind,
+};
 
-use super::{InEnvironment, InferenceContext};
+use super::{InEnvironment, InferOk, InferResult, InferenceContext, TypeError};
 
 impl<'a> InferenceContext<'a> {
     /// Unify two types, but may coerce the first one to the second one
@@ -17,7 +21,16 @@ impl<'a> InferenceContext<'a> {
     pub(super) fn coerce(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
         let from_ty = self.resolve_ty_shallow(from_ty).into_owned();
         let to_ty = self.resolve_ty_shallow(to_ty);
-        self.coerce_inner(from_ty, &to_ty)
+        match self.coerce_inner(from_ty, &to_ty) {
+            Ok(_result) => {
+                // TODO deal with goals
+                true
+            }
+            Err(_) => {
+                // FIXME deal with error
+                false
+            }
+        }
     }
 
     /// Merge two types from different branches, with possible coercion.
@@ -52,93 +65,308 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> bool {
-        match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
-            // Never type will make type variable to fallback to Never Type instead of Unknown.
-            (TyKind::Never, TyKind::InferenceVar(tv, TyVariableKind::General)) => {
-                self.table.type_variable_table.set_diverging(*tv, true);
-                return true;
-            }
-            (TyKind::Never, _) => return true,
-
-            // Trivial cases, this should go after `never` check to
-            // avoid infer result type to be never
-            _ => {
-                if self.table.unify_inner_trivial(&from_ty, &to_ty, 0) {
-                    return true;
+    fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> InferResult {
+        if from_ty.is_never() {
+            // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
+            // type variable, we want `?T` to fallback to `!` if not
+            // otherwise constrained. An example where this arises:
+            //
+            //     let _: Option<?T> = Some({ return; });
+            //
+            // here, we would coerce from `!` to `?T`.
+            match to_ty.kind(&Interner) {
+                TyKind::InferenceVar(tv, TyVariableKind::General) => {
+                    self.table.type_variable_table.set_diverging(*tv, true);
                 }
+                _ => {}
             }
+            return Ok(InferOk {});
         }
 
-        // Pointer weakening and function to pointer
-        match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
-            // `*mut T` -> `*const T`
-            (TyKind::Raw(_, inner), TyKind::Raw(m2 @ Mutability::Not, ..)) => {
-                from_ty = TyKind::Raw(*m2, inner.clone()).intern(&Interner);
-            }
-            // `&mut T` -> `&T`
-            (TyKind::Ref(_, lt, inner), TyKind::Ref(m2 @ Mutability::Not, ..)) => {
-                from_ty = TyKind::Ref(*m2, lt.clone(), inner.clone()).intern(&Interner);
-            }
-            // `&T` -> `*const T`
-            // `&mut T` -> `*mut T`/`*const T`
-            (TyKind::Ref(.., substs), &TyKind::Raw(m2 @ Mutability::Not, ..))
-            | (TyKind::Ref(Mutability::Mut, _, substs), &TyKind::Raw(m2, ..)) => {
-                from_ty = TyKind::Raw(m2, substs.clone()).intern(&Interner);
-            }
+        // Consider coercing the subtype to a DST
+        if let Ok(ret) = self.try_coerce_unsized(&from_ty, &to_ty) {
+            return Ok(ret);
+        }
 
-            // Illegal mutability conversion
-            (TyKind::Raw(Mutability::Not, ..), TyKind::Raw(Mutability::Mut, ..))
-            | (TyKind::Ref(Mutability::Not, ..), TyKind::Ref(Mutability::Mut, ..)) => return false,
-
-            // `{function_type}` -> `fn()`
-            (TyKind::FnDef(..), TyKind::Function { .. }) => match from_ty.callable_sig(self.db) {
-                None => return false,
-                Some(sig) => {
-                    from_ty = TyBuilder::fn_ptr(sig);
-                }
-            },
-
-            (TyKind::Closure(.., substs), TyKind::Function { .. }) => {
-                from_ty = substs.at(&Interner, 0).assert_ty_ref(&Interner).clone();
+        // Examine the supertype and consider auto-borrowing.
+        match to_ty.kind(&Interner) {
+            TyKind::Raw(mt, _) => {
+                return self.coerce_ptr(from_ty, to_ty, *mt);
             }
-
+            TyKind::Ref(mt, _, _) => {
+                return self.coerce_ref(from_ty, to_ty, *mt);
+            }
             _ => {}
         }
 
-        if let Some(ret) = self.try_coerce_unsized(&from_ty, &to_ty) {
-            return ret;
+        match from_ty.kind(&Interner) {
+            TyKind::FnDef(..) => {
+                // Function items are coercible to any closure
+                // type; function pointers are not (that would
+                // require double indirection).
+                // Additionally, we permit coercion of function
+                // items to drop the unsafe qualifier.
+                self.coerce_from_fn_item(from_ty, to_ty)
+            }
+            TyKind::Function(from_fn_ptr) => {
+                // We permit coercion of fn pointers to drop the
+                // unsafe qualifier.
+                self.coerce_from_fn_pointer(from_ty.clone(), from_fn_ptr, to_ty)
+            }
+            TyKind::Closure(_, from_substs) => {
+                // Non-capturing closures are coercible to
+                // function pointers or unsafe function pointers.
+                // It cannot convert closures that require unsafe.
+                self.coerce_closure_to_fn(from_ty.clone(), from_substs, to_ty)
+            }
+            _ => {
+                // Otherwise, just use unification rules.
+                self.unify_inner(&from_ty, to_ty)
+            }
         }
+    }
 
-        // Auto Deref if cannot coerce
-        match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
-            // FIXME: DerefMut
-            (TyKind::Ref(.., st1), TyKind::Ref(.., st2)) => {
-                self.unify_autoderef_behind_ref(st1, st2)
+    fn coerce_ptr(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> InferResult {
+        let (_is_ref, from_mt, from_inner) = match from_ty.kind(&Interner) {
+            TyKind::Ref(mt, _, ty) => (true, mt, ty),
+            TyKind::Raw(mt, ty) => (false, mt, ty),
+            _ => return self.unify_inner(&from_ty, to_ty),
+        };
+
+        coerce_mutabilities(*from_mt, to_mt)?;
+
+        // Check that the types which they point at are compatible.
+        let from_raw = TyKind::Raw(to_mt, from_inner.clone()).intern(&Interner);
+        // FIXME: behavior differs based on is_ref once we're computing adjustments
+        self.unify_inner(&from_raw, to_ty)
+    }
+
+    /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
+    /// To match `A` with `B`, autoderef will be performed,
+    /// calling `deref`/`deref_mut` where necessary.
+    fn coerce_ref(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> InferResult {
+        let (from_mt, from_inner) = match from_ty.kind(&Interner) {
+            TyKind::Ref(mt, _, ty) => {
+                coerce_mutabilities(*mt, to_mt)?;
+                (*mt, ty.clone())
+            }
+            _ => return self.unify_inner(&from_ty, to_ty),
+        };
+
+        // NOTE: this code is mostly copied and adapted from rustc, and
+        // currently more complicated than necessary, carrying errors around
+        // etc.. This complication will become necessary when we actually track
+        // details of coercion errors though, so I think it's useful to leave
+        // the structure like it is.
+
+        let canonicalized = self.canonicalize(from_ty.clone());
+        let mut autoderef = autoderef::autoderef(
+            self.db,
+            self.resolver.krate(),
+            InEnvironment {
+                goal: canonicalized.value.clone(),
+                environment: self.trait_env.env.clone(),
+            },
+        );
+        let mut first_error = None;
+        let mut found = None;
+
+        for (autoderefs, referent_ty) in autoderef.enumerate() {
+            if autoderefs == 0 {
+                // Don't let this pass, otherwise it would cause
+                // &T to autoref to &&T.
+                continue;
             }
 
-            // Otherwise, normal unify
-            _ => self.unify(&from_ty, to_ty),
+            let referent_ty = canonicalized.decanonicalize_ty(referent_ty.value);
+
+            // At this point, we have deref'd `a` to `referent_ty`.  So
+            // imagine we are coercing from `&'a mut Vec<T>` to `&'b mut [T]`.
+            // In the autoderef loop for `&'a mut Vec<T>`, we would get
+            // three callbacks:
+            //
+            // - `&'a mut Vec<T>` -- 0 derefs, just ignore it
+            // - `Vec<T>` -- 1 deref
+            // - `[T]` -- 2 deref
+            //
+            // At each point after the first callback, we want to
+            // check to see whether this would match out target type
+            // (`&'b mut [T]`) if we autoref'd it. We can't just
+            // compare the referent types, though, because we still
+            // have to consider the mutability. E.g., in the case
+            // we've been considering, we have an `&mut` reference, so
+            // the `T` in `[T]` needs to be unified with equality.
+            //
+            // Therefore, we construct reference types reflecting what
+            // the types will be after we do the final auto-ref and
+            // compare those. Note that this means we use the target
+            // mutability [1], since it may be that we are coercing
+            // from `&mut T` to `&U`.
+            let lt = static_lifetime(); // FIXME: handle lifetimes correctly, see rustc
+            let derefd_from_ty = TyKind::Ref(to_mt, lt, referent_ty).intern(&Interner);
+            match self.unify_inner(&derefd_from_ty, to_ty) {
+                Ok(result) => {
+                    found = Some(result);
+                    break;
+                }
+                Err(err) => {
+                    if first_error.is_none() {
+                        first_error = Some(err);
+                    }
+                }
+            }
+        }
+
+        // Extract type or return an error. We return the first error
+        // we got, which should be from relating the "base" type
+        // (e.g., in example above, the failure from relating `Vec<T>`
+        // to the target type), since that should be the least
+        // confusing.
+        let result = match found {
+            Some(d) => d,
+            None => {
+                let err = first_error.expect("coerce_borrowed_pointer had no error");
+                return Err(err);
+            }
+        };
+
+        Ok(result)
+    }
+
+    /// Attempts to coerce from the type of a Rust function item into a closure
+    /// or a function pointer.
+    fn coerce_from_fn_item(&mut self, from_ty: Ty, to_ty: &Ty) -> InferResult {
+        match to_ty.kind(&Interner) {
+            TyKind::Function(b_sig) => {
+                let from_sig = from_ty.callable_sig(self.db).expect("FnDef had no sig");
+
+                // FIXME check ABI: Intrinsics are not coercible to function pointers
+                // FIXME Safe `#[target_feature]` functions are not assignable to safe fn pointers (RFC 2396)
+
+                // FIXME rustc normalizes assoc types in the sig here, not sure if necessary
+
+                let from_sig = from_sig.to_fn_ptr();
+                let from_fn_pointer = TyKind::Function(from_sig.clone()).intern(&Interner);
+                let ok = self.coerce_from_safe_fn(from_fn_pointer, &from_sig, to_ty)?;
+
+                Ok(ok)
+            }
+            _ => self.unify_inner(&from_ty, to_ty),
+        }
+    }
+
+    fn coerce_from_fn_pointer(
+        &mut self,
+        from_ty: Ty,
+        from_f: &FnPointer,
+        to_ty: &Ty,
+    ) -> InferResult {
+        self.coerce_from_safe_fn(from_ty, from_f, to_ty)
+    }
+
+    fn coerce_from_safe_fn(
+        &mut self,
+        from_ty: Ty,
+        from_fn_ptr: &FnPointer,
+        to_ty: &Ty,
+    ) -> InferResult {
+        if let TyKind::Function(to_fn_ptr) = to_ty.kind(&Interner) {
+            if let (chalk_ir::Safety::Safe, chalk_ir::Safety::Unsafe) =
+                (from_fn_ptr.sig.safety, to_fn_ptr.sig.safety)
+            {
+                let from_unsafe =
+                    TyKind::Function(safe_to_unsafe_fn_ty(from_fn_ptr.clone())).intern(&Interner);
+                return self.unify_inner(&from_unsafe, to_ty);
+            }
+        }
+        self.unify_inner(&from_ty, to_ty)
+    }
+
+    /// Attempts to coerce from the type of a non-capturing closure into a
+    /// function pointer.
+    fn coerce_closure_to_fn(
+        &mut self,
+        from_ty: Ty,
+        from_substs: &Substitution,
+        to_ty: &Ty,
+    ) -> InferResult {
+        match to_ty.kind(&Interner) {
+            TyKind::Function(fn_ty) /* if from_substs is non-capturing (FIXME) */ => {
+                // We coerce the closure, which has fn type
+                //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
+                // to
+                //     `fn(arg0,arg1,...) -> _`
+                // or
+                //     `unsafe fn(arg0,arg1,...) -> _`
+                let safety = fn_ty.sig.safety;
+                let pointer_ty = coerce_closure_fn_ty(from_substs, safety);
+                self.unify_inner(&pointer_ty, to_ty)
+            }
+            _ => self.unify_inner(&from_ty, to_ty),
         }
     }
 
     /// Coerce a type using `from_ty: CoerceUnsized<ty_ty>`
     ///
     /// See: https://doc.rust-lang.org/nightly/std/marker/trait.CoerceUnsized.html
-    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty) -> Option<bool> {
+    fn try_coerce_unsized(&mut self, from_ty: &Ty, to_ty: &Ty) -> InferResult {
+        // These 'if' statements require some explanation.
+        // The `CoerceUnsized` trait is special - it is only
+        // possible to write `impl CoerceUnsized<B> for A` where
+        // A and B have 'matching' fields. This rules out the following
+        // two types of blanket impls:
+        //
+        // `impl<T> CoerceUnsized<T> for SomeType`
+        // `impl<T> CoerceUnsized<SomeType> for T`
+        //
+        // Both of these trigger a special `CoerceUnsized`-related error (E0376)
+        //
+        // We can take advantage of this fact to avoid performing unecessary work.
+        // If either `source` or `target` is a type variable, then any applicable impl
+        // would need to be generic over the self-type (`impl<T> CoerceUnsized<SomeType> for T`)
+        // or generic over the `CoerceUnsized` type parameter (`impl<T> CoerceUnsized<T> for
+        // SomeType`).
+        //
+        // However, these are exactly the kinds of impls which are forbidden by
+        // the compiler! Therefore, we can be sure that coercion will always fail
+        // when either the source or target type is a type variable. This allows us
+        // to skip performing any trait selection, and immediately bail out.
+        if from_ty.is_ty_var() {
+            return Err(TypeError);
+        }
+        if to_ty.is_ty_var() {
+            return Err(TypeError);
+        }
+
+        // Handle reborrows before trying to solve `Source: CoerceUnsized<Target>`.
+        let coerce_from = match (from_ty.kind(&Interner), to_ty.kind(&Interner)) {
+            (TyKind::Ref(from_mt, _, from_inner), TyKind::Ref(to_mt, _, _)) => {
+                coerce_mutabilities(*from_mt, *to_mt)?;
+
+                let lt = static_lifetime();
+                TyKind::Ref(*to_mt, lt, from_inner.clone()).intern(&Interner)
+            }
+            (TyKind::Ref(from_mt, _, from_inner), TyKind::Raw(to_mt, _)) => {
+                coerce_mutabilities(*from_mt, *to_mt)?;
+
+                TyKind::Raw(*to_mt, from_inner.clone()).intern(&Interner)
+            }
+            _ => from_ty.clone(),
+        };
+
         let krate = self.resolver.krate().unwrap();
         let coerce_unsized_trait = match self.db.lang_item(krate, "coerce_unsized".into()) {
             Some(LangItemTarget::TraitId(trait_)) => trait_,
-            _ => return None,
+            _ => return Err(TypeError),
         };
 
         let trait_ref = {
             let b = TyBuilder::trait_ref(self.db, coerce_unsized_trait);
             if b.remaining() != 2 {
                 // The CoerceUnsized trait should have two generic params: Self and T.
-                return None;
+                return Err(TypeError);
             }
-            b.push(from_ty.clone()).push(to_ty.clone()).build()
+            b.push(coerce_from.clone()).push(to_ty.clone()).build()
         };
 
         let goal: InEnvironment<DomainGoal> =
@@ -146,7 +374,11 @@ impl<'a> InferenceContext<'a> {
 
         let canonicalized = self.canonicalize(goal);
 
-        let solution = self.db.trait_solve(krate, canonicalized.value.clone())?;
+        // FIXME: rustc's coerce_unsized is more specialized -- it only tries to
+        // solve `CoerceUnsized` and `Unsize` goals at this point and leaves the
+        // rest for later. Also, there's some logic about sized type variables.
+        // Need to find out in what cases this is necessary
+        let solution = self.db.trait_solve(krate, canonicalized.value.clone()).ok_or(TypeError)?;
 
         match solution {
             Solution::Unique(v) => {
@@ -159,38 +391,39 @@ impl<'a> InferenceContext<'a> {
                     },
                 );
             }
-            _ => return None,
+            _ => return Err(TypeError),
         };
 
-        Some(true)
+        Ok(InferOk {})
     }
+}
 
-    /// Unify `from_ty` to `to_ty` with optional auto Deref
-    ///
-    /// Note that the parameters are already stripped the outer reference.
-    fn unify_autoderef_behind_ref(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
-        let canonicalized = self.canonicalize(from_ty.clone());
-        let to_ty = self.resolve_ty_shallow(&to_ty);
-        // FIXME: Auto DerefMut
-        for derefed_ty in autoderef::autoderef(
-            self.db,
-            self.resolver.krate(),
-            InEnvironment {
-                goal: canonicalized.value.clone(),
-                environment: self.trait_env.env.clone(),
-            },
-        ) {
-            let derefed_ty = canonicalized.decanonicalize_ty(derefed_ty.value);
-            let from_ty = self.resolve_ty_shallow(&derefed_ty);
-            // Stop when constructor matches.
-            if from_ty.equals_ctor(&to_ty) {
-                // It will not recurse to `coerce`.
-                return self.table.unify(&from_ty, &to_ty);
-            } else if self.table.unify_inner_trivial(&derefed_ty, &to_ty, 0) {
-                return true;
-            }
-        }
+fn coerce_closure_fn_ty(closure_substs: &Substitution, safety: chalk_ir::Safety) -> Ty {
+    let closure_sig = closure_substs.at(&Interner, 0).assert_ty_ref(&Interner).clone();
+    match closure_sig.kind(&Interner) {
+        TyKind::Function(fn_ty) => TyKind::Function(FnPointer {
+            num_binders: fn_ty.num_binders,
+            sig: FnSig { safety, ..fn_ty.sig },
+            substitution: fn_ty.substitution.clone(),
+        })
+        .intern(&Interner),
+        _ => TyKind::Error.intern(&Interner),
+    }
+}
 
-        false
+fn safe_to_unsafe_fn_ty(fn_ty: FnPointer) -> FnPointer {
+    FnPointer {
+        num_binders: fn_ty.num_binders,
+        sig: FnSig { safety: chalk_ir::Safety::Unsafe, ..fn_ty.sig },
+        substitution: fn_ty.substitution,
+    }
+}
+
+fn coerce_mutabilities(from: Mutability, to: Mutability) -> InferResult {
+    match (from, to) {
+        (Mutability::Mut, Mutability::Mut)
+        | (Mutability::Mut, Mutability::Not)
+        | (Mutability::Not, Mutability::Not) => Ok(InferOk {}),
+        (Mutability::Not, Mutability::Mut) => Err(TypeError),
     }
 }

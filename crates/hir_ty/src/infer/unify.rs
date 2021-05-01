@@ -9,7 +9,7 @@ use chalk_ir::{
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
 
-use super::InferenceContext;
+use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
     db::HirDatabase, fold_tys, static_lifetime, BoundVar, Canonical, DebruijnIndex, GenericArg,
     InferenceVar, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyKind,
@@ -45,7 +45,7 @@ where
 impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
         crate::fold_free_vars(ty, |bound, _binders| {
-            let var = self.free_vars[bound.index];
+            let var = self.free_vars[bound.index].clone();
             var.assert_ty_ref(&Interner).clone()
         })
     }
@@ -76,7 +76,7 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
         for (i, ty) in solution.value.iter(&Interner).enumerate() {
             // FIXME: deal with non-type vars here -- the only problematic part is the normalization
             // and maybe we don't need that with lazy normalization?
-            let var = self.free_vars[i];
+            let var = self.free_vars[i].clone();
             // eagerly replace projections in the type; we may be getting types
             // e.g. from where clauses where this hasn't happened yet
             let ty = ctx.normalize_associated_types_in(
@@ -218,22 +218,35 @@ impl<'a> InferenceTable<'a> {
         self.resolve_ty_as_possible_inner(&mut Vec::new(), ty)
     }
 
+    /// Unify two types and register new trait goals that arise from that.
+    // TODO give these two functions better names
     pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        let result = self.var_unification_table.relate(
-            &Interner,
-            &self.db,
-            &self.trait_env.env,
-            chalk_ir::Variance::Invariant,
-            ty1,
-            ty2,
-        );
-        let result = if let Ok(r) = result {
+        let result = if let Ok(r) = self.unify_inner(ty1, ty2) {
             r
         } else {
             return false;
         };
         // TODO deal with new goals
         true
+    }
+
+    /// Unify two types and return new trait goals arising from it, so the
+    /// caller needs to deal with them.
+    pub(crate) fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty) -> InferResult {
+        match self.var_unification_table.relate(
+            &Interner,
+            &self.db,
+            &self.trait_env.env,
+            chalk_ir::Variance::Invariant,
+            ty1,
+            ty2,
+        ) {
+            Ok(result) => {
+                // TODO deal with new goals
+                Ok(InferOk {})
+            }
+            Err(NoSolution) => Err(TypeError),
+        }
     }
 
     /// If `ty` is a type variable with known type, returns that type;

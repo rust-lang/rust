@@ -203,6 +203,17 @@ impl CallableSig {
         }
     }
 
+    pub fn to_fn_ptr(&self) -> FnPointer {
+        FnPointer {
+            num_binders: 0,
+            sig: FnSig { abi: (), safety: Safety::Safe, variadic: self.is_varargs },
+            substitution: FnSubst(Substitution::from_iter(
+                &Interner,
+                self.params_and_return.iter().cloned(),
+            )),
+        }
+    }
+
     pub fn params(&self) -> &[Ty] {
         &self.params_and_return[0..self.params_and_return.len() - 1]
     }

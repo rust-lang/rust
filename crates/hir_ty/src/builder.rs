@@ -77,15 +77,7 @@ impl TyBuilder<()> {
     }
 
     pub fn fn_ptr(sig: CallableSig) -> Ty {
-        TyKind::Function(FnPointer {
-            num_binders: 0,
-            sig: FnSig { abi: (), safety: Safety::Safe, variadic: sig.is_varargs },
-            substitution: FnSubst(Substitution::from_iter(
-                &Interner,
-                sig.params_and_return.iter().cloned(),
-            )),
-        })
-        .intern(&Interner)
+        TyKind::Function(sig.to_fn_ptr()).intern(&Interner)
     }
 
     pub fn builtin(builtin: BuiltinType) -> Ty {

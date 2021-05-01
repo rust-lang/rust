@@ -106,6 +106,14 @@ impl Default for BindingMode {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct InferOk {
+    // obligations
+}
+#[derive(Debug)]
+pub(crate) struct TypeError;
+pub(crate) type InferResult = Result<InferOk, TypeError>;
+
 /// A mismatch between an expected and an inferred type.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TypeMismatch {
@@ -388,6 +396,10 @@ impl<'a> InferenceContext<'a> {
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
         self.table.unify(ty1, ty2)
+    }
+
+    fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty) -> InferResult {
+        self.table.unify_inner(ty1, ty2)
     }
 
     // FIXME get rid of this, instead resolve shallowly where necessary
