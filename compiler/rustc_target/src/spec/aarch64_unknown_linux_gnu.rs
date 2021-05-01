@@ -8,6 +8,7 @@ pub fn target() -> Target {
         | SanitizerSet::MEMORY
         | SanitizerSet::THREAD
         | SanitizerSet::HWADDRESS;
+    base.features = "+outline-atomics".to_string();
 
     Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
