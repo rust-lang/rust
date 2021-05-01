@@ -80,3 +80,10 @@ jobs:
       with:
         name: cg_clif-${{ runner.os }}
         path: cg_clif.tar.xz
+
+    - name: Upload prebuilt cg_clif (cross compile)
+      if: matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
+      uses: actions/upload-artifact@v2
+      with:
+        name: cg_clif-${{ runner.os }}-cross-x86_64-mingw
+        path: cg_clif.tar.xz

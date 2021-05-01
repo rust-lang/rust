@@ -1,8 +1,10 @@
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::SymbolName;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
+use crate::constant::ConstantCx;
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
@@ -226,12 +228,16 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
     }
 }
 
-pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
-    pub(crate) cx: &'clif mut crate::CodegenCx<'m, 'tcx>,
+pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
+    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx>,
+    pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
     pub(crate) pointer_type: Type, // Cached from module
+    pub(crate) vtables: FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), DataId>,
+    pub(crate) constants_cx: ConstantCx,
 
     pub(crate) instance: Instance<'tcx>,
+    pub(crate) symbol_name: SymbolName<'tcx>,
     pub(crate) mir: &'tcx Body<'tcx>,
     pub(crate) fn_abi: Option<FnAbi<'tcx, Ty<'tcx>>>,
 
@@ -241,9 +247,6 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx> {
 
     /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
     pub(crate) caller_location: Option<CValue<'tcx>>,
-
-    /// See [`crate::optimize::code_layout`] for more information.
-    pub(crate) cold_blocks: EntitySet<Block>,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
     pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
@@ -339,7 +342,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.cx.module.isa().triple()
+        self.module.isa().triple()
     }
 
     pub(crate) fn anonymous_str(&mut self, prefix: &str, msg: &str) -> Value {
@@ -352,15 +355,14 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
         let msg_id = self
-            .cx
             .module
             .declare_data(&format!("__{}_{:08x}", prefix, msg_hash), Linkage::Local, false, false)
             .unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
-        let _ = self.cx.module.define_data(msg_id, &data_ctx);
+        let _ = self.module.define_data(msg_id, &data_ctx);
 
-        let local_msg_id = self.cx.module.declare_data_in_func(msg_id, self.bcx.func);
+        let local_msg_id = self.module.declare_data_in_func(msg_id, self.bcx.func);
         if self.clif_comments.enabled() {
             self.add_comment(local_msg_id, msg);
         }
