@@ -466,6 +466,8 @@ impl Step for Miri {
             cargo.env("RUST_BACKTRACE", "1");
             // Let cargo-miri know where xargo ended up.
             cargo.env("XARGO_CHECK", builder.out.join("bin").join("xargo-check"));
+            // Allow cargo-miri to load libLLVM.so at runtime.
+            cargo.add_rustc_lib_path(builder, compiler);
 
             let mut cargo = Command::from(cargo);
             if !try_run(builder, &mut cargo) {
