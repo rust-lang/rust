@@ -278,9 +278,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // another. This is an error. However, if we already know that
                                 // the arguments don't match up with the parameters, we won't issue
                                 // an additional error, as the user already knows what's wrong.
-                                if arg_count.correct.is_ok()
-                                    && arg_count.explicit_late_bound == ExplicitLateBound::No
-                                {
+                                if arg_count.correct.is_ok() {
                                     // We're going to iterate over the parameters to sort them out, and
                                     // show that order to the user as a possible order for the parameters
                                     let mut param_types_present = defs
@@ -462,7 +460,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
 
                 if silent {
-                    return false;
+                    return true;
                 }
 
                 if provided > expected_max {
