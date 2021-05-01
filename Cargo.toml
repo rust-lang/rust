@@ -45,3 +45,7 @@ colored = "2"
 # This crate uses #[feature(rustc_private)]. 
 # See https://github.com/rust-analyzer/rust-analyzer/pull/7891
 rustc_private = true
+
+[[test]]
+name = "compiletest"
+harness = false
