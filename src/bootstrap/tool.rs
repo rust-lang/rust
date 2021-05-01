@@ -391,11 +391,16 @@ impl ErrorIndex {
         // use new syntax, but it should work otherwise.)
         let compiler = builder.compiler(builder.top_stage.saturating_sub(1), builder.config.build);
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
+        // because rustdoc depends on rustc_driver, error_index transitively depends on libLLVM.so.
+        // by default libLLVM is only copied in the assemble stage, so copy it explicitly here.
+        // NOTE: this does *not* use `builder.sysroot(compiler)` because that gives `stage0-sysroot/` for the stage0 compiler,
+        // but we want `stage0/` to be consistent with the dynamic load path.
+        let rustc_libdir = builder.rustc_libdir(compiler);
+        let sysroot = rustc_libdir.parent().unwrap();
+        crate::dist::maybe_install_llvm_runtime(builder, compiler.host, &sysroot);
+
         add_dylib_path(
-            vec![
-                PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)),
-                PathBuf::from(builder.rustc_libdir(compiler)),
-            ],
+            vec![builder.sysroot_libdir(compiler, compiler.host).to_path_buf(), rustc_libdir],
             &mut cmd,
         );
         cmd
