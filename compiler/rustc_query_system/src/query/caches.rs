@@ -14,7 +14,7 @@ pub trait CacheSelector<K, V> {
     type Cache;
 }
 
-pub trait QueryStorage: Default {
+pub trait QueryStorage {
     type Value: Debug;
     type Stored: Clone;
 
@@ -23,7 +23,7 @@ pub trait QueryStorage: Default {
     fn store_nocache(&self, value: Self::Value) -> Self::Stored;
 }
 
-pub trait QueryCache: QueryStorage {
+pub trait QueryCache: QueryStorage + Sized {
     type Key: Hash + Eq + Clone + Debug;
     type Sharded: Default;
 
