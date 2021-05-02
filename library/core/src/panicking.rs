@@ -41,13 +41,18 @@ pub fn panic(expr: &'static str) -> ! {
         super::intrinsics::abort()
     }
 
-    // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
+    // Use Arguments::new instead of format_args!("{}", expr) to potentially
     // reduce size overhead. The format_args! macro uses str's Display trait to
     // write expr, which calls Formatter::pad, which must accommodate string
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
+
+    #[cfg(bootstrap)]
     panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
+
+    #[cfg(not(bootstrap))]
+    panic_fmt(fmt::Arguments::new(&[expr.len() as *const u8, expr.as_ptr(), 0 as *const u8], &[]));
 }
 
 #[inline]

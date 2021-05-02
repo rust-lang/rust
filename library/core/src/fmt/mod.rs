@@ -4,17 +4,24 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
-use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::flt2dec;
 use crate::ops::Deref;
 use crate::result;
+#[cfg(not(bootstrap))]
+use crate::slice;
 use crate::str;
 
 mod builders;
 mod float;
 mod num;
+
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+const HIGH_1: usize = usize::reverse_bits(0b1);
+
+#[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+const HIGH_11: usize = usize::reverse_bits(0b11);
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
 /// Possible alignments returned by `Formatter::align`
@@ -36,9 +43,7 @@ pub use self::builders::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple}
 
 #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
 #[doc(hidden)]
-pub mod rt {
-    pub mod v1;
-}
+pub mod rt;
 
 /// The type returned by formatter methods.
 ///
@@ -307,11 +312,36 @@ enum FlagV1 {
 }
 
 impl<'a> Arguments<'a> {
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub fn new(cmds: &'a [*const u8], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+        Arguments {
+            cmds: unsafe { mem::transmute(cmds.as_ptr()) },
+            args: unsafe { mem::transmute(args.as_ptr()) },
+        }
+    }
+
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub fn new_static(cmds: &'static [*const u8], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
+        Arguments {
+            cmds: unsafe { mem::transmute(cmds.as_ptr()) },
+            args: unsafe { mem::transmute(args.as_ptr()) },
+        }
+    }
+
+    /// When using the format_args!() macro, this function is used to generate the
+    /// Arguments structure.
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(bootstrap)]
     pub fn new_v1(pieces: &'a [&'static str], args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments { pieces, fmt: None, args }
     }
@@ -325,6 +355,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(bootstrap)]
     pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [ArgumentV1<'a>],
@@ -333,13 +364,10 @@ impl<'a> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
     }
 
-    /// Estimates the length of the formatted text.
-    ///
-    /// This is intended to be used for setting initial `String` capacity
-    /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[doc(hidden)]
     #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(bootstrap)]
     pub fn estimated_capacity(&self) -> usize {
         let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
 
@@ -355,6 +383,52 @@ impl<'a> Arguments<'a> {
             // will reallocate the string. To avoid that,
             // we're "pre-doubling" the capacity here.
             pieces_length.checked_mul(2).unwrap_or(0)
+        }
+    }
+
+    /// Estimates the length of the formatted text.
+    ///
+    /// This is intended to be used for setting initial `String` capacity
+    /// when using `format!`. Note: this is neither the lower nor upper bound.
+    #[doc(hidden)]
+    #[inline]
+    #[unstable(feature = "fmt_internals", reason = "internal to format_args!", issue = "none")]
+    #[cfg(not(bootstrap))]
+    pub fn estimated_capacity(&self) -> usize {
+        let mut i = 0;
+        let mut starts_with_str = false;
+        let mut str_len = 0;
+        let mut has_args = false;
+        loop {
+            let cmd = unsafe { *self.cmds.get_unchecked(i) } as usize;
+            if cmd == 0 {
+                break;
+            } else if cmd < HIGH_1 {
+                str_len += cmd;
+                if i == 0 {
+                    starts_with_str = true;
+                }
+                i += 2;
+            } else if cmd < HIGH_11 {
+                i += 2;
+            } else {
+                has_args = true;
+                i += 1;
+            }
+        }
+
+        if !has_args {
+            str_len
+        } else if !starts_with_str && str_len < 16 {
+            // If the format string starts with an argument,
+            // don't preallocate anything, unless length
+            // of pieces is significant.
+            0
+        } else {
+            // There are some arguments, so any additional push
+            // will reallocate the string. To avoid that,
+            // we're "pre-doubling" the capacity here.
+            str_len.checked_mul(2).unwrap_or(0)
         }
     }
 }
@@ -385,15 +459,39 @@ impl<'a> Arguments<'a> {
 #[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
+    #[cfg(bootstrap)]
     pieces: &'a [&'static str],
 
     // Placeholder specs, or `None` if all specs are default (as in "{}{}").
+    #[cfg(bootstrap)]
     fmt: Option<&'a [rt::v1::Argument]>,
 
     // Dynamic arguments for interpolation, to be interleaved with string
     // pieces. (Every argument is preceded by a string piece.)
+    #[cfg(bootstrap)]
     args: &'a [ArgumentV1<'a>],
+
+    // Only a pointer to the start of the array, without the length.
+    #[cfg(not(bootstrap))]
+    cmds: &'a [*const u8; 0],
+
+    // Only a pointer to the start of the array, without the length.
+    // The `cmds` array contains only valid indexes into this array.
+    #[cfg(not(bootstrap))]
+    args: &'a [ArgumentV1<'a>; 0],
 }
+
+// cmds:
+// (in binary)
+//  00000000⋯00000000: end of instructions
+//  0nnnnnnn⋯nnnnnnnn: print string literal of length n. pointer to start of str in next usize
+//  10000000⋯00000000: set flags (incl. alignment) from next usize
+//  10000000⋯00000001: set filller from next usize
+//  10000000⋯00000010: set width from next usize
+//  10000000⋯00000011: set width from arg[next usize]
+//  10000000⋯00000100: set precision from next usize
+//  10000000⋯00000101: set precision from arg[next usize]
+//  110nnnnn⋯nnnnnnnn: print args[n] (and reset flags afterwards)
 
 impl<'a> Arguments<'a> {
     /// Get the formatted string, if it has no arguments to be formatted.
@@ -424,10 +522,33 @@ impl<'a> Arguments<'a> {
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
     #[inline]
     pub fn as_str(&self) -> Option<&'static str> {
-        match (self.pieces, self.args) {
-            ([], []) => Some(""),
-            ([s], []) => Some(s),
-            _ => None,
+        #[cfg(bootstrap)]
+        {
+            match (self.pieces, self.args) {
+                ([], []) => Some(""),
+                ([s], []) => Some(s),
+                _ => None,
+            }
+        }
+        #[cfg(not(bootstrap))]
+        {
+            let cmd = unsafe { *self.cmds.get_unchecked(0) } as usize;
+            if cmd == 0 {
+                // 'end' command: no formatting instructions, Arguments empty.
+                return Some("");
+            } else if cmd < usize::MAX / 2 {
+                // 'string literal' command. string pointer in next usize.
+                let len = cmd;
+                let ptr = unsafe { *self.cmds.get_unchecked(1) };
+                let cmd2 = unsafe { *self.cmds.get_unchecked(2) } as usize;
+                if cmd2 == 0 {
+                    // next command is 'end' command. this Arguments is only a string literal.
+                    return Some(unsafe {
+                        str::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+                    });
+                }
+            }
+            None
         }
     }
 }
@@ -1075,6 +1196,89 @@ pub trait UpperExp {
 /// [`write!`]: crate::write!
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
+    write_(output, args)
+}
+
+#[cfg(not(bootstrap))]
+fn write_(output: &mut dyn Write, args: Arguments<'_>) -> Result {
+    let mut formatter = Formatter {
+        flags: 0,
+        width: None,
+        precision: None,
+        buf: output,
+        align: rt::v1::Alignment::Unknown,
+        fill: ' ',
+    };
+
+    let mut i = 0;
+
+    loop {
+        let cmd = unsafe { *args.cmds.get_unchecked(i) } as usize;
+
+        if cmd == 0 {
+            return Ok(());
+        } else if cmd < HIGH_1 {
+            let len = cmd;
+            let ptr = unsafe { *args.cmds.get_unchecked(i + 1) };
+            i += 2;
+            let s = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(ptr, len)) };
+            formatter.buf.write_str(s)?;
+        } else if cmd < HIGH_11 {
+            let value = unsafe { *args.cmds.get_unchecked(i + 1) } as usize;
+            i += 2;
+            match cmd - HIGH_1 {
+                0 => {
+                    // set flags
+                    formatter.flags = (value >> 2) as u32;
+                    formatter.align = match value & 3 {
+                        0 => rt::v1::Alignment::Left,
+                        1 => rt::v1::Alignment::Right,
+                        2 => rt::v1::Alignment::Center,
+                        _ => rt::v1::Alignment::Unknown,
+                    };
+                }
+                1 => {
+                    // set filler
+                    formatter.fill = unsafe { char::from_u32_unchecked(value as u32) };
+                }
+                2 => {
+                    // set width
+                    formatter.width = Some(value);
+                }
+                3 => {
+                    // set width from arg
+                    let value = unsafe { args.args.get_unchecked(value) };
+                    formatter.width = value.as_usize();
+                }
+                4 => {
+                    // set precision
+                    formatter.precision = Some(value);
+                }
+                5 => {
+                    // set precision from arg
+                    let value = unsafe { args.args.get_unchecked(value) };
+                    formatter.precision = value.as_usize();
+                }
+                _ => {}
+            }
+        } else {
+            let n = cmd - HIGH_11;
+            let arg = unsafe { args.args.get_unchecked(n) };
+            i += 1;
+            (arg.formatter)(arg.value, &mut formatter)?;
+            formatter.flags = 0;
+            formatter.width = None;
+            formatter.precision = None;
+            formatter.align = rt::v1::Alignment::Unknown;
+            formatter.fill = ' ';
+        }
+    }
+}
+
+#[cfg(bootstrap)]
+fn write_(output: &mut dyn Write, args: Arguments<'_>) -> Result {
+    use crate::iter;
+
     let mut formatter = Formatter {
         flags: 0,
         width: None,
@@ -1116,6 +1320,7 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     Ok(())
 }
 
+#[cfg(bootstrap)]
 unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV1<'_>]) -> Result {
     fmt.fill = arg.format.fill;
     fmt.align = arg.format.align;
@@ -1137,6 +1342,7 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::v1::Argument, args: &[ArgumentV
     (value.formatter)(value.value, fmt)
 }
 
+#[cfg(bootstrap)]
 unsafe fn getcount(args: &[ArgumentV1<'_>], cnt: &rt::v1::Count) -> Option<usize> {
     match *cnt {
         rt::v1::Count::Is(n) => Some(n),

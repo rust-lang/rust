@@ -3,8 +3,8 @@ use Position::*;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{token, BinOpKind, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
@@ -57,12 +57,10 @@ struct Context<'a, 'b> {
     /// The latest consecutive literal strings, or empty if there weren't any.
     literal: String,
 
-    /// Collection of the compiled `rt::Argument` structures
-    pieces: Vec<P<ast::Expr>>,
+    /// Collection of the `cmds` for in the resulting `Arguments`
+    cmds: Vec<P<ast::Expr>>,
     /// Collection of string literals
-    str_pieces: Vec<P<ast::Expr>>,
-    /// Stays `true` if all formatting parameters are default (as in "{}{}").
-    all_pieces_simple: bool,
+    //str_pieces: Vec<P<ast::Expr>>, XXX
 
     /// Mapping between positional argument references and indices into the
     /// final generated static argument array. We record the starting indices
@@ -95,10 +93,6 @@ struct Context<'a, 'b> {
     /// Number of count slots assigned.
     count_positions_count: usize,
 
-    /// Current position of the implicit positional arg pointer, as if it
-    /// still existed in this phase of processing.
-    /// Used only for `all_pieces_simple` tracking in `build_piece`.
-    curarg: usize,
     /// Current piece being evaluated, used for error reporting.
     curpiece: usize,
     /// Keep track of invalid references to positional arguments.
@@ -368,7 +362,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         let mut zero_based_note = false;
 
-        let count = self.pieces.len()
+        let count = 70 // XXX self.pieces.len()
             + self.arg_with_formatting.iter().filter(|fmt| fmt.precision_span.is_some()).count();
         if self.names.is_empty() && !numbered_position_args && count != self.args.len() {
             e = self.ecx.struct_span_err(
@@ -431,7 +425,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         zero_based_note = true;
                     }
                     parse::CountIsParam(pos) => {
-                        let count = self.pieces.len()
+                        let count = 70 // XXX self.pieces.len()
                             + self
                                 .arg_with_formatting
                                 .iter()
@@ -606,58 +600,42 @@ impl<'a, 'b> Context<'a, 'b> {
         self.count_args_index_offset = sofar;
     }
 
-    fn rtpath(ecx: &ExtCtxt<'_>, s: Symbol) -> Vec<Ident> {
-        ecx.std_path(&[sym::fmt, sym::rt, sym::v1, s])
-    }
-
-    fn build_count(&self, c: parse::Count) -> P<ast::Expr> {
-        let sp = self.macsp;
-        let count = |c, arg| {
-            let mut path = Context::rtpath(self.ecx, sym::Count);
-            path.push(Ident::new(c, sp));
-            match arg {
-                Some(arg) => self.ecx.expr_call_global(sp, path, vec![arg]),
-                None => self.ecx.expr_path(self.ecx.path_global(sp, path)),
-            }
-        };
-        match c {
-            parse::CountIs(i) => count(sym::Is, Some(self.ecx.expr_usize(sp, i))),
-            parse::CountIsParam(i) => {
-                // This needs mapping too, as `i` is referring to a macro
-                // argument. If `i` is not found in `count_positions` then
-                // the error had already been emitted elsewhere.
-                let i = self.count_positions.get(&i).cloned().unwrap_or(0)
-                    + self.count_args_index_offset;
-                count(sym::Param, Some(self.ecx.expr_usize(sp, i)))
-            }
-            parse::CountImplied => count(sym::Implied, None),
-            // should never be the case, names are already resolved
-            parse::CountIsName(_) => panic!("should never happen"),
-        }
+    fn rtpath(ecx: &ExtCtxt<'_>, sp: Span, s: Symbol) -> P<ast::Expr> {
+        ecx.expr_path(ecx.path_global(sp, ecx.std_path(&[sym::fmt, sym::rt, s])))
     }
 
     /// Build a literal expression from the accumulated string literals
-    fn build_literal_string(&mut self) -> P<ast::Expr> {
+    fn build_literal_string(&mut self) {
         let sp = self.fmtsp;
-        let s = Symbol::intern(&self.literal);
+        let string_length = self.ecx.expr_usize(sp, self.literal.len());
+        let string = self.ecx.expr_str(sp, Symbol::intern(&self.literal));
+        let string_as_ptr = self.ecx.expr_cast(
+            sp,
+            string,
+            self.ecx.ty_ptr(
+                sp,
+                self.ecx.ty_path(self.ecx.path_ident(sp, Ident::new(sym::str, sp))),
+                Mutability::Not,
+            ),
+        );
+        self.cmds.push(string_length);
+        self.cmds.push(string_as_ptr);
         self.literal.clear();
-        self.ecx.expr_str(sp, s)
     }
 
     /// Builds a static `rt::Argument` from a `parse::Piece` or append
     /// to the `literal` string.
-    fn build_piece(
-        &mut self,
-        piece: &parse::Piece<'a>,
-        arg_index_consumed: &mut Vec<usize>,
-    ) -> Option<P<ast::Expr>> {
+    fn build_piece(&mut self, piece: &parse::Piece<'a>, arg_index_consumed: &mut Vec<usize>) {
         let sp = self.macsp;
         match *piece {
             parse::String(s) => {
                 self.literal.push_str(s);
-                None
             }
             parse::NextArgument(ref arg) => {
+                if !self.literal.is_empty() {
+                    self.build_literal_string();
+                }
+
                 // Build the position
                 let pos = {
                     match arg.position {
@@ -674,7 +652,12 @@ impl<'a, 'b> Context<'a, 'b> {
                                     arg_idx
                                 }
                             };
-                            self.ecx.expr_usize(sp, arg_idx)
+                            self.ecx.expr_binary(
+                                sp,
+                                BinOpKind::Add,
+                                Context::rtpath(self.ecx, sp, sym::CMD_ARG),
+                                self.ecx.expr_usize(sp, arg_idx),
+                            )
                         }
 
                         // should never be the case, because names are already
@@ -683,181 +666,170 @@ impl<'a, 'b> Context<'a, 'b> {
                     }
                 };
 
-                let simple_arg = parse::Argument {
-                    position: {
-                        // We don't have ArgumentNext any more, so we have to
-                        // track the current argument ourselves.
-                        let i = self.curarg;
-                        self.curarg += 1;
-                        parse::ArgumentIs(i)
-                    },
-                    format: parse::FormatSpec {
-                        fill: arg.format.fill,
-                        align: parse::AlignUnknown,
-                        flags: 0,
-                        precision: parse::CountImplied,
-                        precision_span: None,
-                        width: parse::CountImplied,
-                        width_span: None,
-                        ty: arg.format.ty,
-                        ty_span: arg.format.ty_span,
-                    },
-                };
-
-                let fill = arg.format.fill.unwrap_or(' ');
-
-                let pos_simple = arg.position.index() == simple_arg.position.index();
-
                 if arg.format.precision_span.is_some() || arg.format.width_span.is_some() {
                     self.arg_with_formatting.push(arg.format);
                 }
-                if !pos_simple || arg.format != simple_arg.format || fill != ' ' {
-                    self.all_pieces_simple = false;
+
+                let fill = arg.format.fill.unwrap_or(' ');
+
+                if fill != ' ' {
+                    self.cmds.push(Context::rtpath(self.ecx, sp, sym::CMD_FILL));
+                    self.cmds.push(self.ecx.expr_usize(sp, fill as usize));
                 }
 
-                // Build the format
-                let fill = self.ecx.expr_lit(sp, ast::LitKind::Char(fill));
-                let align = |name| {
-                    let mut p = Context::rtpath(self.ecx, sym::Alignment);
-                    p.push(Ident::new(name, sp));
-                    self.ecx.path_global(sp, p)
-                };
                 let align = match arg.format.align {
-                    parse::AlignLeft => align(sym::Left),
-                    parse::AlignRight => align(sym::Right),
-                    parse::AlignCenter => align(sym::Center),
-                    parse::AlignUnknown => align(sym::Unknown),
+                    parse::AlignLeft => 0,
+                    parse::AlignRight => 1,
+                    parse::AlignCenter => 2,
+                    parse::AlignUnknown => 3,
                 };
-                let align = self.ecx.expr_path(align);
-                let flags = self.ecx.expr_u32(sp, arg.format.flags);
-                let prec = self.build_count(arg.format.precision);
-                let width = self.build_count(arg.format.width);
-                let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, sym::FormatSpec));
-                let fmt = self.ecx.expr_struct(
-                    sp,
-                    path,
-                    vec![
-                        self.ecx.field_imm(sp, Ident::new(sym::fill, sp), fill),
-                        self.ecx.field_imm(sp, Ident::new(sym::align, sp), align),
-                        self.ecx.field_imm(sp, Ident::new(sym::flags, sp), flags),
-                        self.ecx.field_imm(sp, Ident::new(sym::precision, sp), prec),
-                        self.ecx.field_imm(sp, Ident::new(sym::width, sp), width),
-                    ],
-                );
 
-                let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, sym::Argument));
-                Some(self.ecx.expr_struct(
-                    sp,
-                    path,
-                    vec![
-                        self.ecx.field_imm(sp, Ident::new(sym::position, sp), pos),
-                        self.ecx.field_imm(sp, Ident::new(sym::format, sp), fmt),
-                    ],
-                ))
+                if align != 3 || arg.format.flags != 0 {
+                    let flags = align | (arg.format.flags as usize) << 2;
+                    self.cmds.push(Context::rtpath(self.ecx, sp, sym::CMD_FLAGS));
+                    self.cmds.push(self.ecx.expr_usize(sp, flags));
+                }
+
+                match arg.format.width {
+                    parse::CountIs(n) => {
+                        self.cmds.push(Context::rtpath(self.ecx, sp, sym::CMD_WIDTH));
+                        self.cmds.push(self.ecx.expr_usize(sp, n));
+                    }
+                    parse::CountIsParam(i) => {
+                        self.cmds.push(Context::rtpath(self.ecx, sp, sym::CMD_WIDTH_ARG));
+                        let i = self.count_positions.get(&i).cloned().unwrap_or(0)
+                            + self.count_args_index_offset;
+                        self.cmds.push(self.ecx.expr_usize(sp, i));
+                    }
+                    parse::CountImplied => {}
+                    parse::CountIsName(_) => unreachable!(),
+                }
+
+                match arg.format.precision {
+                    parse::CountIs(n) => {
+                        self.cmds.push(Context::rtpath(self.ecx, sp, sym::CMD_PRECISION));
+                        self.cmds.push(self.ecx.expr_usize(sp, n));
+                    }
+                    parse::CountIsParam(i) => {
+                        self.cmds.push(Context::rtpath(self.ecx, sp, sym::CMD_PRECISION_ARG));
+                        let i = self.count_positions.get(&i).cloned().unwrap_or(0)
+                            + self.count_args_index_offset;
+                        self.cmds.push(self.ecx.expr_usize(sp, i));
+                    }
+                    parse::CountImplied => {}
+                    parse::CountIsName(_) => unreachable!(),
+                }
+
+                self.cmds.push(pos);
             }
         }
     }
 
     /// Actually builds the expression which the format_args! block will be
     /// expanded to.
-    fn into_expr(self) -> P<ast::Expr> {
-        let mut locals =
-            Vec::with_capacity((0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum());
-        let mut counts = Vec::with_capacity(self.count_args.len());
-        let mut pats = Vec::with_capacity(self.args.len());
-        let mut heads = Vec::with_capacity(self.args.len());
-
-        let names_pos: Vec<_> = (0..self.args.len())
-            .map(|i| Ident::from_str_and_span(&format!("arg{}", i), self.macsp))
-            .collect();
-
-        // First, build up the static array which will become our precompiled
-        // format "string"
-        let pieces = self.ecx.expr_vec_slice(self.fmtsp, self.str_pieces);
-
-        // Before consuming the expressions, we have to remember spans for
-        // count arguments as they are now generated separate from other
-        // arguments, hence have no access to the `P<ast::Expr>`'s.
-        let spans_pos: Vec<_> = self.args.iter().map(|e| e.span).collect();
-
-        // Right now there is a bug such that for the expression:
-        //      foo(bar(&1))
-        // the lifetime of `1` doesn't outlast the call to `bar`, so it's not
-        // valid for the call to `foo`. To work around this all arguments to the
-        // format! string are shoved into locals. Furthermore, we shove the address
-        // of each variable because we don't want to move out of the arguments
-        // passed to this function.
-        for (i, e) in self.args.into_iter().enumerate() {
-            let name = names_pos[i];
-            let span = self.ecx.with_def_site_ctxt(e.span);
-            pats.push(self.ecx.pat_ident(span, name));
-            for arg_ty in self.arg_unique_types[i].iter() {
-                locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
-            }
-            heads.push(self.ecx.expr_addr_of(e.span, e));
-        }
-        for pos in self.count_args {
-            let index = match pos {
-                Exact(i) => i,
-                _ => panic!("should never happen"),
-            };
-            let name = names_pos[index];
-            let span = spans_pos[index];
-            counts.push(Context::format_arg(self.ecx, self.macsp, span, &Count, name));
-        }
-
-        // Now create a vector containing all the arguments
-        let args = locals.into_iter().chain(counts.into_iter());
-
-        let args_array = self.ecx.expr_vec(self.macsp, args.collect());
-
-        // Constructs an AST equivalent to:
-        //
-        //      match (&arg0, &arg1) {
-        //          (tmp0, tmp1) => args_array
-        //      }
-        //
-        // It was:
-        //
-        //      let tmp0 = &arg0;
-        //      let tmp1 = &arg1;
-        //      args_array
-        //
-        // Because of #11585 the new temporary lifetime rule, the enclosing
-        // statements for these temporaries become the let's themselves.
-        // If one or more of them are RefCell's, RefCell borrow() will also
-        // end there; they don't last long enough for args_array to use them.
-        // The match expression solves the scope problem.
-        //
-        // Note, it may also very well be transformed to:
-        //
-        //      match arg0 {
-        //          ref tmp0 => {
-        //              match arg1 => {
-        //                  ref tmp1 => args_array } } }
-        //
-        // But the nested match expression is proved to perform not as well
-        // as series of let's; the first approach does.
-        let pat = self.ecx.pat_tuple(self.macsp, pats);
-        let arm = self.ecx.arm(self.macsp, pat, args_array);
-        let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
-        let result = self.ecx.expr_match(self.macsp, head, vec![arm]);
-
-        let args_slice = self.ecx.expr_addr_of(self.macsp, result);
-
-        // Now create the fmt::Arguments struct with all our locals we created.
-        let (fn_name, fn_args) = if self.all_pieces_simple {
-            ("new_v1", vec![pieces, args_slice])
-        } else {
-            // Build up the static array which will store our precompiled
-            // nonstandard placeholders, if there are any.
-            let fmt = self.ecx.expr_vec_slice(self.macsp, self.pieces);
-
-            ("new_v1_formatted", vec![pieces, args_slice, fmt])
+    fn into_expr(mut self) -> P<ast::Expr> {
+        let cmds_slice = {
+            let mut cmds = std::mem::take(&mut self.cmds);
+            cmds.push(self.ecx.expr_usize(self.macsp, 0));
+            let cmds = cmds.into_iter().map(|cmd| {
+                self.ecx.expr_cast(
+                    self.macsp,
+                    cmd,
+                    self.ecx.ty_ptr(
+                        self.macsp,
+                        self.ecx.ty_path(self.ecx.path_ident(self.macsp, Ident::new(sym::u8, self.macsp))),
+                        Mutability::Not,
+                    ),
+                )
+            }).collect();
+            self.ecx.expr_vec_slice(self.macsp, cmds)
         };
 
-        let path = self.ecx.std_path(&[sym::fmt, sym::Arguments, Symbol::intern(fn_name)]);
-        self.ecx.expr_call_global(self.macsp, path, fn_args)
+        let args_slice = {
+            let mut locals = Vec::with_capacity(
+                (0..self.args.len()).map(|i| self.arg_unique_types[i].len()).sum(),
+            );
+            let mut counts = Vec::with_capacity(self.count_args.len());
+            let mut pats = Vec::with_capacity(self.args.len());
+            let mut heads = Vec::with_capacity(self.args.len());
+
+            let names_pos: Vec<_> = (0..self.args.len())
+                .map(|i| Ident::from_str_and_span(&format!("arg{}", i), self.macsp))
+                .collect();
+
+            // Before consuming the expressions, we have to remember spans for
+            // count arguments as they are now generated separate from other
+            // arguments, hence have no access to the `P<ast::Expr>`'s.
+            let spans_pos: Vec<_> = self.args.iter().map(|e| e.span).collect();
+
+            // Right now there is a bug such that for the expression:
+            //      foo(bar(&1))
+            // the lifetime of `1` doesn't outlast the call to `bar`, so it's not
+            // valid for the call to `foo`. To work around this all arguments to the
+            // format! string are shoved into locals. Furthermore, we shove the address
+            // of each variable because we don't want to move out of the arguments
+            // passed to this function.
+            for (i, e) in self.args.into_iter().enumerate() {
+                let name = names_pos[i];
+                let span = self.ecx.with_def_site_ctxt(e.span);
+                pats.push(self.ecx.pat_ident(span, name));
+                for arg_ty in self.arg_unique_types[i].iter() {
+                    locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
+                }
+                heads.push(self.ecx.expr_addr_of(e.span, e));
+            }
+            for pos in self.count_args {
+                let index = match pos {
+                    Exact(i) => i,
+                    _ => panic!("should never happen"),
+                };
+                let name = names_pos[index];
+                let span = spans_pos[index];
+                counts.push(Context::format_arg(self.ecx, self.macsp, span, &Count, name));
+            }
+
+            // Now create a vector containing all the arguments
+            let args = locals.into_iter().chain(counts.into_iter());
+
+            let args_array = self.ecx.expr_vec(self.macsp, args.collect());
+
+            // Constructs an AST equivalent to:
+            //
+            //      match (&arg0, &arg1) {
+            //          (tmp0, tmp1) => args_array
+            //      }
+            //
+            // It was:
+            //
+            //      let tmp0 = &arg0;
+            //      let tmp1 = &arg1;
+            //      args_array
+            //
+            // Because of #11585 the new temporary lifetime rule, the enclosing
+            // statements for these temporaries become the let's themselves.
+            // If one or more of them are RefCell's, RefCell borrow() will also
+            // end there; they don't last long enough for args_array to use them.
+            // The match expression solves the scope problem.
+            //
+            // Note, it may also very well be transformed to:
+            //
+            //      match arg0 {
+            //          ref tmp0 => {
+            //              match arg1 => {
+            //                  ref tmp1 => args_array } } }
+            //
+            // But the nested match expression is proved to perform not as well
+            // as series of let's; the first approach does.
+            let pat = self.ecx.pat_tuple(self.macsp, pats);
+            let arm = self.ecx.arm(self.macsp, pat, args_array);
+            let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
+            let result = self.ecx.expr_match(self.macsp, head, vec![arm]);
+
+            self.ecx.expr_addr_of(self.macsp, result)
+        };
+
+        let path = self.ecx.std_path(&[sym::fmt, sym::Arguments, sym::new_static]);
+        self.ecx.expr_call_global(self.macsp, path, vec![cmds_slice, args_slice])
     }
 
     fn format_arg(
@@ -1013,7 +985,7 @@ pub fn expand_preparsed_format_args(
         arg_types,
         arg_unique_types,
         names,
-        curarg: 0,
+        //curarg: 0,
         curpiece: 0,
         arg_index_map: Vec::new(),
         count_args: Vec::new(),
@@ -1021,9 +993,8 @@ pub fn expand_preparsed_format_args(
         count_positions_count: 0,
         count_args_index_offset: 0,
         literal: String::new(),
-        pieces: Vec::with_capacity(unverified_pieces.len()),
-        str_pieces: Vec::with_capacity(unverified_pieces.len()),
-        all_pieces_simple: true,
+        cmds: Vec::new(),
+        //pieces: Vec::with_capacity(unverified_pieces.len()),
         macsp,
         fmtsp: fmt_span,
         invalid_refs: Vec::new(),
@@ -1052,16 +1023,11 @@ pub fn expand_preparsed_format_args(
     let mut arg_index_consumed = vec![0usize; cx.arg_index_map.len()];
 
     for piece in pieces {
-        if let Some(piece) = cx.build_piece(&piece, &mut arg_index_consumed) {
-            let s = cx.build_literal_string();
-            cx.str_pieces.push(s);
-            cx.pieces.push(piece);
-        }
+        cx.build_piece(&piece, &mut arg_index_consumed);
     }
 
     if !cx.literal.is_empty() {
-        let s = cx.build_literal_string();
-        cx.str_pieces.push(s);
+        cx.build_literal_string();
     }
 
     if !cx.invalid_refs.is_empty() {
