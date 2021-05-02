@@ -811,8 +811,13 @@ impl Fields {
         pats: impl IntoIterator<Item = Pat>,
     ) -> Self {
         let pats = {
-            let mut arena = cx.pattern_arena.borrow_mut();
-            pats.into_iter().map(move |pat| /* arena.alloc(pat) */ todo!()).collect()
+            let tys: SmallVec<[Ty; 2]> = match self {
+                Fields::Vec(pats) => pats.iter().copied().map(|pat| cx.type_of(pat)).collect(),
+            };
+            pats.into_iter()
+                .zip(tys.into_iter())
+                .map(move |(pat, ty)| cx.alloc_pat(pat, &ty))
+                .collect()
         };
 
         match self {
