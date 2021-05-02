@@ -388,10 +388,10 @@ fn run_compiler(
                 return early_exit();
             }
 
-            let crate_name = queries.crate_name()?.peek().clone();
             queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                let result = tcx.analysis(LOCAL_CRATE);
+                tcx.analysis(LOCAL_CRATE)?;
                 if sess.opts.debugging_opts.save_analysis {
+                    let crate_name = queries.crate_name()?.peek().clone();
                     sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
@@ -405,7 +405,7 @@ fn run_compiler(
                         )
                     });
                 }
-                result
+                Ok(())
             })?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
