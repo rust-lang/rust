@@ -28,7 +28,7 @@ macro_rules! define_Conf {
     ($(
         #[$doc:meta]
         $(#[conf_deprecated($dep:literal)])?
-        ($name:ident: $ty:ty $(= $default:expr)?),
+        ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
@@ -36,7 +36,7 @@ macro_rules! define_Conf {
         }
 
         mod defaults {
-            $(pub fn $name() -> $ty { define_Conf!(@default $($default)?) })*
+            $(pub fn $name() -> $ty { $default })*
         }
 
         impl Default for Conf {
@@ -90,20 +90,19 @@ macro_rules! define_Conf {
             }
         }
     };
-    (@default) => (Default::default());
-    (@default $default:expr) => ($default);
 }
 
+// N.B., this macro is parsed by util/lintlib.py
 define_Conf! {
     /// Lint: CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR. The minimum rust version that the project supports
-    (msrv: Option<String>),
+    (msrv: Option<String> = None),
     /// Lint: BLACKLISTED_NAME. The list of blacklisted names to lint about. NB: `bar` is not here since it has legitimate uses
     (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead")]
-    (cyclomatic_complexity_threshold: Option<u64>),
+    (cyclomatic_complexity_threshold: Option<u64> = None),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
     (doc_valid_idents: Vec<String> = [
         "KiB", "MiB", "GiB", "TiB", "PiB", "EiB",
@@ -142,7 +141,7 @@ define_Conf! {
     /// Lint: DECIMAL_LITERAL_REPRESENTATION. The lower bound for linting decimal literals
     (literal_representation_threshold: u64 = 16384),
     /// Lint: TRIVIALLY_COPY_PASS_BY_REF. The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by reference.
-    (trivial_copy_size_limit: Option<u64>),
+    (trivial_copy_size_limit: Option<u64> = None),
     /// Lint: LARGE_TYPE_PASS_BY_MOVE. The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     (pass_by_value_size_limit: u64 = 256),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
@@ -158,15 +157,15 @@ define_Conf! {
     /// Lint: FN_PARAMS_EXCESSIVE_BOOLS. The maximum number of bools function parameters can have
     (max_fn_params_bools: u64 = 3),
     /// Lint: WILDCARD_IMPORTS. Whether to allow certain wildcard imports (prelude, super in tests).
-    (warn_on_all_wildcard_imports: bool),
+    (warn_on_all_wildcard_imports: bool = false),
     /// Lint: DISALLOWED_METHOD. The list of disallowed methods, written as fully qualified paths.
-    (disallowed_methods: Vec<String>),
+    (disallowed_methods: Vec<String> = Vec::new()),
     /// Lint: UNREADABLE_LITERAL. Should the fraction of a decimal be linted to include separators.
     (unreadable_literal_lint_fractions: bool = true),
     /// Lint: UPPER_CASE_ACRONYMS. Enables verbose mode. Triggers if there is more than one uppercase char next to each other
-    (upper_case_acronyms_aggressive: bool),
+    (upper_case_acronyms_aggressive: bool = false),
     /// Lint: _CARGO_COMMON_METADATA. For internal testing only, ignores the current `publish` settings in the Cargo manifest.
-    (cargo_ignore_publish: bool),
+    (cargo_ignore_publish: bool = false),
 }
 
 /// Search for the configuration file.
