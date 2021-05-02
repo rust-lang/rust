@@ -102,7 +102,7 @@ define_Conf! {
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
     /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
-    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead.")]
+    #[conf_deprecated("Please use `cognitive-complexity-threshold` instead")]
     (cyclomatic_complexity_threshold: Option<u64>),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
     (doc_valid_idents: Vec<String> = [
