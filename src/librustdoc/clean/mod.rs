@@ -157,7 +157,12 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
 impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Type {
         let (trait_ref, bounds) = *self;
-        inline::record_extern_fqn(cx, trait_ref.def_id, ItemType::Trait);
+        let kind = match cx.tcx.def_kind(trait_ref.def_id) {
+            DefKind::Trait => ItemType::Trait,
+            DefKind::TraitAlias => ItemType::TraitAlias,
+            other => bug!("`TraitRef` had unexpected kind {:?}", other),
+        };
+        inline::record_extern_fqn(cx, trait_ref.def_id, kind);
         let path = external_path(
             cx,
             cx.tcx.item_name(trait_ref.def_id),

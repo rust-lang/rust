@@ -188,7 +188,7 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) 
     if did.is_local() {
         cx.cache.exact_paths.insert(did, fqn);
     } else {
-        cx.cache.external_paths.insert(did, (fqn, ItemType::from(kind)));
+        cx.cache.external_paths.insert(did, (fqn, kind));
     }
 }
 
