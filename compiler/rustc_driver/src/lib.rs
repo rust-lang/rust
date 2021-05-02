@@ -235,21 +235,15 @@ fn run_compiler(
         registry: diagnostics_registry(),
     };
 
-    match make_input(&matches.free) {
-        Some((input, input_file_path, input_err)) => {
-            if let Some(err) = input_err {
-                // Immediately stop compilation if there was an issue reading
-                // the input (for example if the input stream is not UTF-8).
-                early_error_no_abort(config.opts.error_format, &err.to_string());
-                return Err(ErrorReported);
-            }
-
+    match make_input(config.opts.error_format, &matches.free) {
+        Err(ErrorReported) => return Err(ErrorReported),
+        Ok(Some((input, input_file_path))) => {
             config.input = input;
             config.input_path = input_file_path;
 
             callbacks.config(&mut config);
         }
-        None => match matches.free.len() {
+        Ok(None) => match matches.free.len() {
             0 => {
                 callbacks.config(&mut config);
                 interface::run_compiler(config, |compiler| {
@@ -469,19 +463,23 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 }
 
 // Extract input (string or file and optional path) from matches.
-fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option<io::Error>)> {
+fn make_input(
+    error_format: ErrorOutputType,
+    free_matches: &[String],
+) -> Result<Option<(Input, Option<PathBuf>)>, ErrorReported> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0];
         if ifile == "-" {
             let mut src = String::new();
-            let err = if io::stdin().read_to_string(&mut src).is_err() {
-                Some(io::Error::new(
-                    io::ErrorKind::InvalidData,
+            if io::stdin().read_to_string(&mut src).is_err() {
+                // Immediately stop compilation if there was an issue reading
+                // the input (for example if the input stream is not UTF-8).
+                early_error_no_abort(
+                    error_format,
                     "couldn't read from stdin, as it did not contain valid UTF-8",
-                ))
-            } else {
-                None
-            };
+                );
+                return Err(ErrorReported);
+            }
             if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
                 let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
                     "when UNSTABLE_RUSTDOC_TEST_PATH is set \
@@ -490,14 +488,15 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option
                 let line = isize::from_str_radix(&line, 10)
                     .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
                 let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
-                return Some((Input::Str { name: file_name, input: src }, None, err));
+                Ok(Some((Input::Str { name: file_name, input: src }, None)))
+            } else {
+                Ok(Some((Input::Str { name: FileName::anon_source_code(&src), input: src }, None)))
             }
-            Some((Input::Str { name: FileName::anon_source_code(&src), input: src }, None, err))
         } else {
-            Some((Input::File(PathBuf::from(ifile)), Some(PathBuf::from(ifile)), None))
+            Ok(Some((Input::File(PathBuf::from(ifile)), Some(PathBuf::from(ifile)))))
         }
     } else {
-        None
+        Ok(None)
     }
 }
 
