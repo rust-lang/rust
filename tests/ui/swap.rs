@@ -66,6 +66,49 @@ fn vec() {
     foo.swap(0, 1);
 }
 
+fn xor_swap_locals() {
+    // This is an xor-based swap of local variables.
+    let mut a = 0;
+    let mut b = 1;
+    a ^= b;
+    b ^= a;
+    a ^= b;
+}
+
+fn xor_field_swap() {
+    // This is an xor-based swap of fields in a struct.
+    let mut bar = Bar { a: 0, b: 1 };
+    bar.a ^= bar.b;
+    bar.b ^= bar.a;
+    bar.a ^= bar.b;
+}
+
+fn xor_slice_swap() {
+    // This is an xor-based swap of a slice
+    let foo = &mut [1, 2];
+    foo[0] ^= foo[1];
+    foo[1] ^= foo[0];
+    foo[0] ^= foo[1];
+}
+
+fn xor_no_swap() {
+    // This is a sequence of xor-assignment statements that doesn't result in a swap.
+    let mut a = 0;
+    let mut b = 1;
+    let mut c = 2;
+    a ^= b;
+    b ^= c;
+    a ^= c;
+    c ^= a;
+}
+
+fn xor_unswappable_slice() {
+    let foo = &mut [vec![1, 2], vec![3, 4]];
+    foo[0][1] ^= foo[1][0];
+    foo[1][0] ^= foo[0][0];
+    foo[0][1] ^= foo[1][0];
+}
+
 #[rustfmt::skip]
 fn main() {
     field();
@@ -73,6 +116,11 @@ fn main() {
     slice();
     unswappable_slice();
     vec();
+    xor_swap_locals();
+    xor_field_swap();
+    xor_slice_swap();
+    xor_no_swap();
+    xor_unswappable_slice();
 
     let mut a = 42;
     let mut b = 1337;

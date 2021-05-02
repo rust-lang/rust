@@ -1,14 +1,15 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{differing_macro_contexts, eq_expr_value};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, PatKind, QPath, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -64,12 +65,43 @@ declare_clippy_lint! {
     "`foo = bar; bar = foo` sequence"
 }
 
-declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
+declare_clippy_lint! {
+    /// **What it does:** Checks for uses of xor-based swaps.
+    ///
+    /// **Why is this bad?** The `std::mem::swap` function exposes the intent better
+    /// without deinitializing or copying either variable.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let mut a = 1;
+    /// let mut b = 2;
+    ///
+    /// a ^= b;
+    /// b ^= a;
+    /// a ^= b;
+    /// ```
+    ///
+    /// Use std::mem::swap() instead:
+    /// ```rust
+    /// let mut a = 1;
+    /// let mut b = 2;
+    /// std::mem::swap(&mut a, &mut b);
+    /// ```
+    pub XOR_SWAP,
+    complexity,
+    "xor-based swap of two variables"
+}
+
+declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED, XOR_SWAP]);
 
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         check_manual_swap(cx, block);
         check_suspicious_swap(cx, block);
+        check_xor_swap(cx, block);
     }
 }
 
@@ -261,4 +293,83 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             }
         }
     }
+}
+
+/// Implementation of the `XOR_SWAP` lint.
+fn check_xor_swap(cx: &LateContext<'_>, block: &Block<'_>) {
+    for window in block.stmts.windows(3) {
+        if_chain! {
+            if let Some((lhs0, rhs0)) = extract_sides_of_xor_assign(&window[0]);
+            if let Some((lhs1, rhs1)) = extract_sides_of_xor_assign(&window[1]);
+            if let Some((lhs2, rhs2)) = extract_sides_of_xor_assign(&window[2]);
+            if eq_expr_value(cx, lhs0, rhs1)
+               && eq_expr_value(cx, rhs1, lhs2)
+               && eq_expr_value(cx, rhs0, lhs1)
+               && eq_expr_value(cx, lhs1, rhs2);
+            then {
+                let span = window[0].span.to(window[2].span);
+                let mut applicability = Applicability::MachineApplicable;
+                match check_for_slice(cx, lhs0, rhs0) {
+                    Slice::Swappable(slice, idx0, idx1) => {
+                        if let Some(slice) = Sugg::hir_opt(cx, slice) {
+                            span_lint_and_sugg(
+                                cx,
+                                XOR_SWAP,
+                                span,
+                                &format!(
+                                    "this xor-based swap of the elements of `{}` can be \
+                                    more clearly expressed using `.swap`",
+                                    slice
+                                ),
+                                "try",
+                                format!(
+                                    "{}.swap({}, {})",
+                                    slice.maybe_par(),
+                                    snippet_with_applicability(cx, idx0.span, "..", &mut applicability),
+                                    snippet_with_applicability(cx, idx1.span, "..", &mut applicability)
+                                ),
+                                applicability
+                            )
+                        }
+                    }
+                    Slice::None => {
+                        if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs0), Sugg::hir_opt(cx, rhs0)) {
+                            span_lint_and_sugg(
+                                cx,
+                                XOR_SWAP,
+                                span,
+                                &format!(
+                                    "this xor-based swap of `{}` and `{}` can be \
+                                    more clearly expressed using `std::mem::swap`",
+                                    first, second
+                                ),
+                                "try",
+                                format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()),
+                                applicability,
+                            );
+                        }
+                    }
+                    Slice::NotSwappable => {}
+                }
+            }
+        };
+    }
+}
+
+/// Returns the lhs and rhs of an xor assignment statement.  
+fn extract_sides_of_xor_assign<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(&'a Expr<'hir>, &'a Expr<'hir>)> {
+    if let StmtKind::Semi(expr) = stmt.kind {
+        if let ExprKind::AssignOp(
+            Spanned {
+                node: BinOpKind::BitXor,
+                ..
+            },
+            lhs,
+            rhs,
+        ) = expr.kind
+        {
+            return Some((lhs, rhs));
+        }
+    }
+    None
 }

@@ -2900,6 +2900,7 @@ Released 2018-09-13
 [`wrong_pub_self_convention`]: https://rust-lang.github.io/rust-clippy/master/index.html#wrong_pub_self_convention
 [`wrong_self_convention`]: https://rust-lang.github.io/rust-clippy/master/index.html#wrong_self_convention
 [`wrong_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#wrong_transmute
+[`xor_swap`]: https://rust-lang.github.io/rust-clippy/master/index.html#xor_swap
 [`zero_divided_by_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_divided_by_zero
 [`zero_prefixed_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_prefixed_literal
 [`zero_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#zero_ptr
