@@ -249,17 +249,33 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
             }
 
             match pred {
-                clean::WherePredicate::BoundPredicate { ty, bounds } => {
+                clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
                     let bounds = bounds;
+                    let for_prefix = match bound_params.len() {
+                        0 => String::new(),
+                        _ if f.alternate() => {
+                            format!(
+                                "for<{:#}> ",
+                                comma_sep(bound_params.iter().map(|lt| lt.print()))
+                            )
+                        }
+                        _ => format!(
+                            "for&lt;{}&gt; ",
+                            comma_sep(bound_params.iter().map(|lt| lt.print()))
+                        ),
+                    };
+
                     if f.alternate() {
                         clause.push_str(&format!(
-                            "{:#}: {:#}",
+                            "{}{:#}: {:#}",
+                            for_prefix,
                             ty.print(cx),
                             print_generic_bounds(bounds, cx)
                         ));
                     } else {
                         clause.push_str(&format!(
-                            "{}: {}",
+                            "{}{}: {}",
+                            for_prefix,
                             ty.print(cx),
                             print_generic_bounds(bounds, cx)
                         ));

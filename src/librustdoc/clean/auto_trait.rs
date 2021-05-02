@@ -414,7 +414,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 let mut bounds_vec = bounds.into_iter().collect();
                 self.sort_where_bounds(&mut bounds_vec);
 
-                Some(WherePredicate::BoundPredicate { ty, bounds: bounds_vec })
+                Some(WherePredicate::BoundPredicate {
+                    ty,
+                    bounds: bounds_vec,
+                    bound_params: Vec::new(),
+                })
             })
             .chain(
                 lifetime_to_bounds.into_iter().filter(|&(_, ref bounds)| !bounds.is_empty()).map(
@@ -492,7 +496,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             }
             let p = p.unwrap();
             match p {
-                WherePredicate::BoundPredicate { ty, mut bounds } => {
+                WherePredicate::BoundPredicate { ty, mut bounds, .. } => {
                     // Writing a projection trait bound of the form
                     // <T as Trait>::Name : ?Sized
                     // is illegal, because ?Sized bounds can only

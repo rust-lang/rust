@@ -330,6 +330,7 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
             hir::WherePredicate::BoundPredicate(ref wbp) => WherePredicate::BoundPredicate {
                 ty: wbp.bounded_ty.clean(cx),
                 bounds: wbp.bounds.clean(cx),
+                bound_params: wbp.bound_generic_params.into_iter().map(|x| x.clean(cx)).collect(),
             },
 
             hir::WherePredicate::RegionPredicate(ref wrp) => WherePredicate::RegionPredicate {
@@ -370,6 +371,7 @@ impl<'a> Clean<WherePredicate> for ty::PolyTraitPredicate<'a> {
         WherePredicate::BoundPredicate {
             ty: poly_trait_ref.skip_binder().self_ty().clean(cx),
             bounds: vec![poly_trait_ref.clean(cx)],
+            bound_params: Vec::new(),
         }
     }
 }
@@ -402,6 +404,7 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
         Some(WherePredicate::BoundPredicate {
             ty: ty.clean(cx),
             bounds: vec![GenericBound::Outlives(lt.clean(cx).expect("failed to clean lifetimes"))],
+            bound_params: Vec::new(),
         })
     }
 }
@@ -567,7 +570,9 @@ impl Clean<Generics> for hir::Generics<'_> {
         // to where predicates when such cases occur.
         for where_pred in &mut generics.where_predicates {
             match *where_pred {
-                WherePredicate::BoundPredicate { ty: Generic(ref name), ref mut bounds } => {
+                WherePredicate::BoundPredicate {
+                    ty: Generic(ref name), ref mut bounds, ..
+                } => {
                     if bounds.is_empty() {
                         for param in &mut generics.params {
                             match param.kind {
@@ -721,7 +726,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
         // handled in cleaning associated types
         let mut sized_params = FxHashSet::default();
         where_predicates.retain(|pred| match *pred {
-            WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
+            WP::BoundPredicate { ty: Generic(ref g), ref bounds, .. } => {
                 if bounds.iter().any(|b| b.is_sized_bound(cx)) {
                     sized_params.insert(*g);
                     false
@@ -741,6 +746,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 where_predicates.push(WP::BoundPredicate {
                     ty: Type::Generic(tp.name),
                     bounds: vec![GenericBound::maybe_sized(cx)],
+                    bound_params: Vec::new(),
                 })
             }
         }
@@ -1117,6 +1123,7 @@ impl Clean<Item> for ty::AssocItem {
                                 WherePredicate::BoundPredicate {
                                     ty: QPath { ref name, ref self_type, ref trait_, .. },
                                     ref bounds,
+                                    ..
                                 } => (name, self_type, trait_, bounds),
                                 _ => return None,
                             };

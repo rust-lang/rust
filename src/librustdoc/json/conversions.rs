@@ -328,9 +328,10 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
     fn from_tcx(predicate: clean::WherePredicate, tcx: TyCtxt<'_>) -> Self {
         use clean::WherePredicate::*;
         match predicate {
-            BoundPredicate { ty, bounds } => WherePredicate::BoundPredicate {
+            BoundPredicate { ty, bounds, .. } => WherePredicate::BoundPredicate {
                 ty: ty.into_tcx(tcx),
                 bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+                // FIXME: add `bound_params` to rustdoc-json-params?
             },
             RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
                 lifetime: lifetime.0.to_string(),

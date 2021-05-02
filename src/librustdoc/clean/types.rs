@@ -1193,7 +1193,7 @@ impl Lifetime {
 
 #[derive(Clone, Debug)]
 crate enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
+    BoundPredicate { ty: Type, bounds: Vec<GenericBound>, bound_params: Vec<Lifetime> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<GenericBound> },
     EqPredicate { lhs: Type, rhs: Type },
 }

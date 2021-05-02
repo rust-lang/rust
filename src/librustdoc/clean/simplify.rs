@@ -24,16 +24,20 @@ use crate::core::DocContext;
 
 crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
-    let mut params: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    let mut params: BTreeMap<_, (Vec<_>, Vec<_>)> = BTreeMap::new();
     let mut lifetimes = Vec::new();
     let mut equalities = Vec::new();
     let mut tybounds = Vec::new();
 
     for clause in clauses {
         match clause {
-            WP::BoundPredicate { ty, bounds } => match ty {
-                clean::Generic(s) => params.entry(s).or_default().extend(bounds),
-                t => tybounds.push((t, bounds)),
+            WP::BoundPredicate { ty, bounds, bound_params } => match ty {
+                clean::Generic(s) => {
+                    let (b, p) = params.entry(s).or_default();
+                    b.extend(bounds);
+                    p.extend(bound_params);
+                }
+                t => tybounds.push((t, (bounds, bound_params))),
             },
             WP::RegionPredicate { lifetime, bounds } => {
                 lifetimes.push((lifetime, bounds));
@@ -54,7 +58,7 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
             clean::Generic(s) => s,
             _ => return true,
         };
-        let bounds = match params.get_mut(generic) {
+        let (bounds, _) = match params.get_mut(generic) {
             Some(bound) => bound,
             None => return true,
         };
@@ -67,10 +71,16 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     clauses.extend(
         lifetimes.into_iter().map(|(lt, bounds)| WP::RegionPredicate { lifetime: lt, bounds }),
     );
-    clauses.extend(
-        params.into_iter().map(|(k, v)| WP::BoundPredicate { ty: clean::Generic(k), bounds: v }),
-    );
-    clauses.extend(tybounds.into_iter().map(|(ty, bounds)| WP::BoundPredicate { ty, bounds }));
+    clauses.extend(params.into_iter().map(|(k, (bounds, params))| WP::BoundPredicate {
+        ty: clean::Generic(k),
+        bounds,
+        bound_params: params,
+    }));
+    clauses.extend(tybounds.into_iter().map(|(ty, (bounds, bound_params))| WP::BoundPredicate {
+        ty,
+        bounds,
+        bound_params,
+    }));
     clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
     clauses
 }
