@@ -395,6 +395,10 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
+        // TODO handle expectations properly
+        if ty2.is_unknown() {
+            return true;
+        }
         self.table.unify(ty1, ty2)
     }
 
