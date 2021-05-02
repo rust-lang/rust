@@ -86,6 +86,7 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
+            .att_syntax
             .globl __rust_probestack
         __rust_probestack:
             ",
@@ -101,6 +102,7 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
+            .att_syntax
             .globl ___rust_probestack
         ___rust_probestack:
             ",
@@ -115,6 +117,7 @@ macro_rules! define_rust_probestack {
     ($body: expr) => {
         concat!(
             "
+            .att_syntax
             .globl ___rust_probestack
         ___rust_probestack:
             ",
