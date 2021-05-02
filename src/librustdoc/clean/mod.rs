@@ -17,11 +17,11 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::region_constraints::{Constraint, RegionConstraintData};
-use rustc_middle::bug;
 use rustc_middle::middle::resolve_lifetime as rl;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, AdtKind, Lift, Ty, TyCtxt};
+use rustc_middle::{bug, span_bug};
 use rustc_mir::const_eval::{is_const_fn, is_unstable_const_fn};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -158,7 +158,15 @@ impl Clean<GenericBound> for hir::GenericBound<'_> {
 impl Clean<Type> for (ty::TraitRef<'_>, &[TypeBinding]) {
     fn clean(&self, cx: &mut DocContext<'_>) -> Type {
         let (trait_ref, bounds) = *self;
-        inline::record_extern_fqn(cx, trait_ref.def_id, ItemType::Trait);
+        let kind = cx.tcx.def_kind(trait_ref.def_id).into();
+        if !matches!(kind, ItemType::Trait | ItemType::TraitAlias) {
+            span_bug!(
+                cx.tcx.def_span(trait_ref.def_id),
+                "`TraitRef` had unexpected kind {:?}",
+                kind
+            );
+        }
+        inline::record_extern_fqn(cx, trait_ref.def_id, kind);
         let path = external_path(
             cx,
             cx.tcx.item_name(trait_ref.def_id),
