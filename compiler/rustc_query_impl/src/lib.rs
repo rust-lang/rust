@@ -9,6 +9,7 @@
 #![feature(once_cell)]
 #![feature(rustc_attrs)]
 #![feature(never_type)]
+#![feature(maybe_uninit_extra)]
 #![recursion_limit = "256"]
 
 #[macro_use]

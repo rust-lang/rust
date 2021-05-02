@@ -151,25 +151,41 @@ impl QueryContext for QueryCtxt<'tcx> {
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce() -> R,
     ) -> R {
-        // The `TyCtxt` stored in TLS has the same global interner lifetime
-        // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
-        // when accessing the `ImplicitCtxt`.
-        tls::with_related_context(**self, move |current_icx| {
-            // Update the `ImplicitCtxt` to point to our new query job.
-            let new_icx = ImplicitCtxt {
-                tcx: **self,
-                query: Some(token),
-                diagnostics,
-                layout_depth: current_icx.layout_depth,
-                task_deps: current_icx.task_deps,
-            };
-
-            // Use the `ImplicitCtxt` while we execute the query.
-            tls::enter_context(&new_icx, |_| {
-                rustc_data_structures::stack::ensure_sufficient_stack(compute)
-            })
-        })
+        unsafe {
+            let mut slot = std::mem::MaybeUninit::uninit();
+            let func = std::mem::MaybeUninit::new(compute);
+            start_query(**self, token, diagnostics, &mut || {
+                slot.write(func.assume_init_read()());
+            });
+            slot.assume_init()
+        }
     }
+}
+
+fn start_query(
+    tcx: TyCtxt<'tcx>,
+    token: QueryJobId<DepKind>,
+    diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
+    compute: &mut dyn FnMut(),
+) {
+    // The `TyCtxt` stored in TLS has the same global interner lifetime
+    // as `self`, so we use `with_related_context` to relate the 'tcx lifetimes
+    // when accessing the `ImplicitCtxt`.
+    tls::with_related_context(tcx, move |current_icx| {
+        // Update the `ImplicitCtxt` to point to our new query job.
+        let new_icx = ImplicitCtxt {
+            tcx,
+            query: Some(token),
+            diagnostics,
+            layout_depth: current_icx.layout_depth,
+            task_deps: current_icx.task_deps,
+        };
+
+        // Use the `ImplicitCtxt` while we execute the query.
+        tls::enter_context(&new_icx, |_| {
+            rustc_data_structures::stack::ensure_sufficient_stack(compute)
+        })
+    })
 }
 
 impl<'tcx> QueryCtxt<'tcx> {
