@@ -1298,12 +1298,14 @@ fn check_variances_for_type_defn<'tcx>(
 
         match param.name {
             hir::ParamName::Error => {}
-            _ => report_bivariance(tcx, param.span, param.name.ident().name),
+            _ => report_bivariance(tcx, param),
         }
     }
 }
 
-fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) {
+fn report_bivariance(tcx: TyCtxt<'_>, param: &rustc_hir::GenericParam<'_>) {
+    let span = param.span;
+    let param_name = param.name.ident().name;
     let mut err = error_392(tcx, span, param_name);
 
     let suggested_marker_id = tcx.lang_items().phantom_data();
@@ -1318,7 +1320,14 @@ fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) {
         format!("consider removing `{}` or referring to it in a field", param_name)
     };
     err.help(&msg);
-    err.emit();
+
+    if matches!(param.kind, rustc_hir::GenericParamKind::Type { .. }) {
+        err.help(&format!(
+            "if you intended `{0}` to be a const parameter, use `const {0}: usize` instead",
+            param_name
+        ));
+    }
+    err.emit()
 }
 
 /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
