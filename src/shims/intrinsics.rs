@@ -173,6 +173,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
+                let a_valid = match a.layout.ty.kind() {
+                    ty::Float(FloatTy::F32) => a.to_scalar()?.to_f32()?.is_finite(),
+                    ty::Float(FloatTy::F64) => a.to_scalar()?.to_f64()?.is_finite(),
+                    _ => bug!(
+                        "`{}` called with non-float input type {:?}",
+                        intrinsic_name,
+                        a.layout.ty
+                    ),
+                };
+                if !a_valid {
+                    throw_ub_format!(
+                        "`{}` intrinsic called with non-finite value as first parameter",
+                        intrinsic_name,
+                    );
+                }
+                let b_valid = match b.layout.ty.kind() {
+                    ty::Float(FloatTy::F32) => b.to_scalar()?.to_f32()?.is_finite(),
+                    ty::Float(FloatTy::F64) => b.to_scalar()?.to_f64()?.is_finite(),
+                    _ => bug!(
+                        "`{}` called with non-float input type {:?}",
+                        intrinsic_name,
+                        b.layout.ty
+                    ),
+                };
+                if !b_valid {
+                    throw_ub_format!(
+                        "`{}` intrinsic called with non-finite value as second parameter",
+                        intrinsic_name,
+                    );
+                }
                 this.binop_ignore_overflow(op, &a, &b, dest)?;
             }
 
