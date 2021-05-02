@@ -87,6 +87,37 @@ fn inner_resolve_instance<'tcx>(
                     ty::InstanceDef::DropGlue(def_id, None)
                 }
             }
+            ty::FnDef(def_id, substs) if Some(def_id) == tcx.lang_items().array_default_hack() => {
+                debug!(" => array default hack");
+                if let Some(val) = substs.const_at(1).try_eval_usize(tcx, param_env) {
+                    if val == 0 {
+                        // For `N == 0` we return the lang item itself, which should just panic.
+                        debug!(" => zero length array");
+                        ty::InstanceDef::Item(def)
+                    } else {
+                        // For `N != 0` we use `<T as Default>::default` which should be well typed
+                        // according to the safety requirements of `array_default_hack`.
+                        debug!(" => with default");
+                        let def_id = match tcx.lang_items().require(rustc_hir::LangItem::DefaultFn)
+                        {
+                            Ok(id) => id,
+                            Err(s) => {
+                                tcx.sess.fatal(&format!("default for array_default_hack: {}", s));
+                            }
+                        };
+
+                        return Instance::resolve(
+                            tcx,
+                            param_env,
+                            def_id,
+                            tcx.mk_substs(substs.iter().take(1)),
+                        );
+                    }
+                } else {
+                    debug!(" => too generic");
+                    return Ok(None);
+                }
+            }
             _ => {
                 debug!(" => free item");
                 ty::InstanceDef::Item(def)

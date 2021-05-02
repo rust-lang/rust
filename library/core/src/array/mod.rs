@@ -366,29 +366,80 @@ impl<T: Ord, const N: usize> Ord for [T; N] {
     }
 }
 
-// The Default impls cannot be done with const generics because `[T; 0]` doesn't
-// require Default to be implemented, and having different impl blocks for
-// different numbers isn't supported yet.
-
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] where T: Default {
-            fn default() -> [T; $n] {
-                [$t::default(), $($ts::default()),*]
+#[cfg(bootstrap)]
+mod array_defaults {
+    macro_rules! array_impl_default {
+        {$n:expr, $t:ident $($ts:ident)*} => {
+            #[stable(since = "1.4.0", feature = "array_default")]
+            impl<T> Default for [T; $n] where T: Default {
+                fn default() -> [T; $n] {
+                    [$t::default(), $($ts::default()),*]
+                }
             }
-        }
-        array_impl_default!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        impl<T> Default for [T; $n] {
-            fn default() -> [T; $n] { [] }
-        }
-    };
+            array_impl_default!{($n - 1), $($ts)*}
+        };
+        {$n:expr,} => {
+            #[stable(since = "1.4.0", feature = "array_default")]
+            impl<T> Default for [T; $n] {
+                fn default() -> [T; $n] { [] }
+            }
+        };
+    }
+
+    array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 }
 
-array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
+#[cfg(not(bootstrap))]
+mod array_defaults {
+    // We use auto traits to get overlapping impls without relying on nightly features.
+    //
+    // As the auto impl for `SendToDefault` is only considered if the manual impl does not apply,
+    // we have to use the generic impl for `T: Default` as the impl for the `N = 0` case would
+    // influence type inference in undesirable ways.
+    //
+    // While we are now able to implement `Default` exactly for the array types we want,
+    // we're still not able to actually write the body of the `Default` function without
+    // some further hacks.
+    //
+    // The idea here is that `array_default_hack` is resolved to itself only if `N = 0`
+    // and is otherwise replaced with `T::default()`.
+    //
+    // This would cause issues if `T` doesn't actually implement default but as this function
+    // is private and only used in the default impl itself this can not happen.
+
+    struct ZeroToSend<T, const N: usize>(*mut (), T);
+    unsafe impl<T> Send for ZeroToSend<T, 0> {}
+
+    /// This struct implements `Send` either because of the manual impl for `N` is `0` or
+    /// because all its fields implement `Send`, which is the case if `T` implements `Default`.
+    #[unstable(
+        feature = "array_default_impl",
+        issue = "none",
+        reason = "internal implementation detail for `[T; N]: Default`"
+    )]
+    #[allow(missing_debug_implementations)]
+    pub struct SendToDefault<T, const N: usize>(ZeroToSend<T, N>);
+    #[unstable(feature = "array_default_impl", issue = "none")]
+    unsafe impl<T: Default, const N: usize> Send for SendToDefault<T, N> {}
+
+    // This function must not get called for `N != 0` if `T` does not implement `Default`.
+    #[lang = "array_default_hack"]
+    unsafe fn array_default_hack<T, const N: usize>() -> T {
+        unreachable!("array_default_hack used for array with length {}", N);
+    }
+
+    #[stable(since = "1.4.0", feature = "array_default")]
+    impl<T, const N: usize> Default for [T; N]
+    where
+        SendToDefault<T, N>: Send,
+    {
+        fn default() -> [T; N] {
+            // SAFETY: The only case where `T` does not implement `Default` is
+            // when `N` is zero, in which case `array_default_hack` isn't called.
+            [(); N].map(|()| unsafe { array_default_hack::<T, N>() })
+        }
+    }
+}
 
 #[lang = "array"]
 impl<T, const N: usize> [T; N] {

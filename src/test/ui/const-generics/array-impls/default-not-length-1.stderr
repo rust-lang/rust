@@ -1,0 +1,13 @@
+error[E0277]: the trait bound `NotDefault: Default` is not satisfied
+  --> $DIR/default-not-length-1.rs:4:30
+   |
+LL |     let _: [NotDefault; 1] = Default::default();
+   |                              ^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `NotDefault`
+   |
+   = note: required because of the requirements on the impl of `Send` for `array::array_defaults::SendToDefault<NotDefault, 1_usize>`
+   = note: required because of the requirements on the impl of `Default` for `[NotDefault; 1]`
+   = note: required by `std::default::Default::default`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

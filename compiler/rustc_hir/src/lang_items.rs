@@ -248,6 +248,8 @@ language_item_table! {
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct;
     VaList,                  sym::va_list,             va_list,                    Target::Struct;
 
+    DefaultFn,               sym::default_fn,          default_fn,                 Target::Method(MethodKind::Trait { body: false });
+
     Deref,                   sym::deref,               deref_trait,                Target::Trait;
     DerefMut,                sym::deref_mut,           deref_mut_trait,            Target::Trait;
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy;
@@ -332,7 +334,7 @@ language_item_table! {
     ResultErr,               sym::Err,                 result_err_variant,         Target::Variant;
 
     IntoIterIntoIter,        sym::into_iter,           into_iter_fn,               Target::Method(MethodKind::Trait { body: false });
-    IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false});
+    IteratorNext,            sym::next,                next_fn,                    Target::Method(MethodKind::Trait { body: false });
 
     PinNewUnchecked,         sym::new_unchecked,       new_unchecked_fn,           Target::Method(MethodKind::Inherent);
 
@@ -343,4 +345,6 @@ language_item_table! {
     Range,                   sym::Range,               range_struct,               Target::Struct;
     RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct;
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct;
+
+    ArrayDefaultHack,        sym::array_default_hack,  array_default_hack,         Target::Fn;
 }

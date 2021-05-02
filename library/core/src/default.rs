@@ -113,6 +113,7 @@ pub trait Default: Sized {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(bootstrap), lang = "default_fn")]
     fn default() -> Self;
 }
 

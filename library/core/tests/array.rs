@@ -356,3 +356,19 @@ fn cell_allows_array_cycle() {
     b3.a[0].set(Some(&b1));
     b3.a[1].set(Some(&b2));
 }
+
+fn generic_default<T: Default, const N: usize>() -> [T; N] {
+    Default::default()
+}
+
+#[test]
+fn use_generic_default() {
+    assert_eq!(generic_default::<String, 2>(), [String::new(), String::new()]);
+    assert_eq!(generic_default::<u8, 33>(), [0; 33]);
+}
+
+#[test]
+fn use_zero_default() {
+    struct NotDefault;
+    assert!(matches!(<[NotDefault; 0] as Default>::default(), []));
+}
