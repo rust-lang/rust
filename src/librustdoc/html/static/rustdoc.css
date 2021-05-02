@@ -110,7 +110,7 @@ h3 {
 	font-size: 1.3em;
 }
 h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod):not(.notable),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -128,10 +128,10 @@ h1.fqn > .in-band > a:hover {
 	text-decoration: underline;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod),
-h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
+h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant):not(.associatedtype) {
 	border-bottom: 1px solid;
 }
-h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
+h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant, h4.associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
@@ -139,7 +139,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	position: relative;
 }
 h3.impl, h3.method, h4.method.trait-impl, h3.type,
-h4.type.trait-impl, h4.associatedconstant.trait-impl {
+h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-impl {
 	padding-left: 15px;
 }
 
@@ -147,6 +147,9 @@ h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table td:first-child > a,
 .collapse-toggle, div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle,
+details.rustdoc-toggle > summary::before,
+details.undocumented > summary::before,
+.content ul.crate a.crate,
 /* This selector is for the items listed in the "all items" page. */
 #main > ul.docblock > li > a {
 	font-family: "Fira Sans", Arial, sans-serif;
@@ -154,7 +157,6 @@ h1, h2, h3, h4,
 
 .content ul.crate a.crate {
 	font-size: 16px/1.6;
-	font-family: "Fira Sans", Arial, sans-serif;
 }
 
 ol, ul {
@@ -596,7 +598,10 @@ h4 > code, h3 > code, .invisible > code {
 	left: -19px;
 }
 
-.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
+.impl-items > .associatedtype, .content .impl-items details > summary > .type,
+.impl-items details > summary > .associatedconstant,
+.impl-items details > summary > .associatedtype {
 	margin-left: 20px;
 }
 
@@ -656,7 +661,8 @@ a {
 }
 
 .in-band:hover > .anchor, .impl:hover > .anchor, .method.trait-impl:hover > .anchor,
-.type.trait-impl:hover > .anchor, .associatedconstant.trait-impl:hover > .anchor {
+.type.trait-impl:hover > .anchor, .associatedconstant.trait-impl:hover > .anchor,
+.associatedtype.trait-impl:hover > .anchor {
 	display: inline-block;
 	position: absolute;
 }
@@ -1466,7 +1472,8 @@ h4 > .notable-traits {
 		margin-left: 0;
 	}
 
-	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant,
+	.impl-items > .associatedtype {
 		display: flex;
 	}
 
@@ -1764,7 +1771,10 @@ details.rustdoc-toggle > summary.hideme {
 	cursor: pointer;
 }
 
-details.rustdoc-toggle > summary::-webkit-details-marker {
+details.rustdoc-toggle > summary::-webkit-details-marker,
+details.rustdoc-toggle > summary::marker,
+details.undocumented > summary::-webkit-details-marker,
+details.undocumented > summary::marker {
 	display: none;
 }
 
@@ -1787,6 +1797,14 @@ details.rustdoc-toggle > summary.hideme::before {
 details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -23px;
+	top: initial;
+}
+
+.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
+.undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
+	position: absolute;
+	top: 3px;
+	left: -2px;
 }
 
 /* When a "hideme" summary is open and the "Expand description" or "Show
@@ -1798,7 +1816,7 @@ details.rustdoc-toggle[open] > summary.hideme {
 	position: absolute;
 }
 
-details.rustdoc-toggle[open] {
+details.rustdoc-toggle, details.undocumented {
 	position: relative;
 }
 
@@ -1809,4 +1827,15 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 details.rustdoc-toggle[open] > summary::before {
 	content: "[−]";
 	display: inline;
+}
+
+details.undocumented > summary::before {
+	content: "[+] Show hidden undocumented items";
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: 300;
+}
+
+details.undocumented[open] > summary::before {
+	content: "[-] Hide undocumented items";
 }

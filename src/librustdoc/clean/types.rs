@@ -678,10 +678,6 @@ impl ItemKind {
             | KeywordItem(_) => [].iter(),
         }
     }
-
-    crate fn is_type_alias(&self) -> bool {
-        matches!(self, ItemKind::TypedefItem(..) | ItemKind::AssocTypeItem(..))
-    }
 }
 
 #[derive(Clone, Debug)]
