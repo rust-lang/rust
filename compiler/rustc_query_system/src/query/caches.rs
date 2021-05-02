@@ -1,14 +1,22 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::plumbing::{QueryCacheStore, QueryLookup};
+use crate::query::plumbing::QueryCacheStore;
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::WorkerLocal;
+use std::collections::hash_map::RawEntryMut;
 use std::default::Default;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
+
+/// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
+#[derive(Copy, Clone)]
+pub struct QueryLookup {
+    pub(super) key_hash: u64,
+    pub(super) shard: usize,
+}
 
 pub trait CacheSelector<K, V> {
     type Cache;
@@ -44,6 +52,7 @@ pub trait QueryCache: QueryStorage {
     fn complete(
         &self,
         lock_sharded_storage: &mut Self::Sharded,
+        lookup: QueryLookup,
         key: Self::Key,
         value: Self::Value,
         index: DepNodeIndex,
@@ -114,11 +123,16 @@ where
     fn complete(
         &self,
         lock_sharded_storage: &mut Self::Sharded,
+        lookup: QueryLookup,
         key: K,
         value: V,
         index: DepNodeIndex,
     ) -> Self::Stored {
-        lock_sharded_storage.insert(key, (value.clone(), index));
+        if let RawEntryMut::Vacant(entry) =
+            lock_sharded_storage.raw_entry_mut().from_key_hashed_nocheck(lookup.key_hash, &key)
+        {
+            entry.insert(key, (value.clone(), index));
+        }
         value
     }
 
@@ -198,13 +212,18 @@ where
     fn complete(
         &self,
         lock_sharded_storage: &mut Self::Sharded,
+        lookup: QueryLookup,
         key: K,
         value: V,
         index: DepNodeIndex,
     ) -> Self::Stored {
         let value = self.arena.alloc((value, index));
         let value = unsafe { &*(value as *const _) };
-        lock_sharded_storage.insert(key, value);
+        if let RawEntryMut::Vacant(entry) =
+            lock_sharded_storage.raw_entry_mut().from_key_hashed_nocheck(lookup.key_hash, &key)
+        {
+            entry.insert(key, value);
+        }
         &value.0
     }
 

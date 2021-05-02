@@ -4,7 +4,7 @@
 
 use crate::dep_graph::{DepContext, DepKind, DepNode};
 use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use crate::query::caches::QueryCache;
+use crate::query::caches::{QueryCache, QueryLookup};
 use crate::query::config::{QueryDescription, QueryVtable, QueryVtableExt};
 use crate::query::job::{
     report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId,
@@ -20,7 +20,7 @@ use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{Diagnostic, FatalError};
 use rustc_span::Span;
-use std::collections::hash_map::Entry;
+use std::collections::hash_map::RawEntryMut;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::mem;
@@ -45,12 +45,6 @@ impl<C: QueryCache> Default for QueryCacheStore<C> {
             cache_hits: AtomicUsize::new(0),
         }
     }
-}
-
-/// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
-pub struct QueryLookup {
-    pub(super) key_hash: u64,
-    shard: usize,
 }
 
 // We compute the key's hash once and then use it for both the
@@ -158,6 +152,7 @@ where
     state: &'tcx QueryState<D, C::Key>,
     cache: &'tcx QueryCacheStore<C>,
     key: C::Key,
+    lookup: QueryLookup,
     id: QueryJobId<D>,
 }
 
@@ -191,46 +186,48 @@ where
         let mut state_lock = state.shards.get_shard_by_index(shard).lock();
         let lock = &mut *state_lock;
 
-        let (latch, mut _query_blocked_prof_timer) = match lock.active.entry((*key).clone()) {
-            Entry::Occupied(mut entry) => {
-                match entry.get_mut() {
-                    QueryResult::Started(job) => {
-                        // For parallel queries, we'll block and wait until the query running
-                        // in another thread has completed. Record how long we wait in the
-                        // self-profiler.
-                        let _query_blocked_prof_timer = if cfg!(parallel_compiler) {
-                            Some(tcx.dep_context().profiler().query_blocked())
-                        } else {
-                            None
-                        };
+        let (latch, mut _query_blocked_prof_timer) =
+            match lock.active.raw_entry_mut().from_key_hashed_nocheck(lookup.key_hash, &key) {
+                RawEntryMut::Occupied(mut entry) => {
+                    match entry.get_mut() {
+                        QueryResult::Started(job) => {
+                            // For parallel queries, we'll block and wait until the query running
+                            // in another thread has completed. Record how long we wait in the
+                            // self-profiler.
+                            let _query_blocked_prof_timer = if cfg!(parallel_compiler) {
+                                Some(tcx.dep_context().profiler().query_blocked())
+                            } else {
+                                None
+                            };
 
-                        // Create the id of the job we're waiting for
-                        let id = QueryJobId::new(job.id, shard, query.dep_kind);
+                            // Create the id of the job we're waiting for
+                            let id = QueryJobId::new(job.id, shard, query.dep_kind);
 
-                        (job.latch(id), _query_blocked_prof_timer)
+                            (job.latch(id), _query_blocked_prof_timer)
+                        }
+                        QueryResult::Poisoned => FatalError.raise(),
                     }
-                    QueryResult::Poisoned => FatalError.raise(),
                 }
-            }
-            Entry::Vacant(entry) => {
-                // No job entry for this query. Return a new one to be started later.
+                RawEntryMut::Vacant(entry) => {
+                    // No job entry for this query. Return a new one to be started later.
 
-                // Generate an id unique within this shard.
-                let id = lock.jobs.checked_add(1).unwrap();
-                lock.jobs = id;
-                let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
+                    // Generate an id unique within this shard.
+                    let id = lock.jobs.checked_add(1).unwrap();
+                    lock.jobs = id;
+                    let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
 
-                let global_id = QueryJobId::new(id, shard, query.dep_kind);
+                    let global_id = QueryJobId::new(id, shard, query.dep_kind);
 
-                let job = tcx.current_query_job();
-                let job = QueryJob::new(id, span, job);
+                    let job = tcx.current_query_job();
+                    let job = QueryJob::new(id, span, job);
 
-                entry.insert(QueryResult::Started(job));
+                    entry.insert(key.clone(), QueryResult::Started(job));
 
-                let owner = JobOwner { state, cache, id: global_id, key: (*key).clone() };
-                return TryGetJob::NotYetStarted(owner);
-            }
-        };
+                    let owner =
+                        JobOwner { state, cache, lookup, id: global_id, key: (*key).clone() };
+                    return TryGetJob::NotYetStarted(owner);
+                }
+            };
         mem::drop(state_lock);
 
         // If we are single-threaded we know that we have cycle error,
@@ -287,6 +284,7 @@ where
     fn complete(self, result: C::Value, dep_node_index: DepNodeIndex) -> C::Stored {
         // We can move out of `self` here because we `mem::forget` it below
         let key = unsafe { ptr::read(&self.key) };
+        let lookup = self.lookup;
         let state = self.state;
         let cache = self.cache;
 
@@ -294,18 +292,19 @@ where
         mem::forget(self);
 
         let (job, result) = {
-            let key_hash = hash_for_shard(&key);
-            let shard = get_shard_index_by_hash(key_hash);
             let job = {
-                let mut lock = state.shards.get_shard_by_index(shard).lock();
-                match lock.active.remove(&key).unwrap() {
-                    QueryResult::Started(job) => job,
-                    QueryResult::Poisoned => panic!(),
+                let mut lock = state.shards.get_shard_by_index(lookup.shard).lock();
+                match lock.active.raw_entry_mut().from_key_hashed_nocheck(lookup.key_hash, &key) {
+                    RawEntryMut::Occupied(entry) => match entry.remove() {
+                        QueryResult::Started(job) => job,
+                        QueryResult::Poisoned => panic!(),
+                    },
+                    RawEntryMut::Vacant(_) => panic!(),
                 }
             };
             let result = {
-                let mut lock = cache.shards.get_shard_by_index(shard).lock();
-                cache.cache.complete(&mut lock, key, result, dep_node_index)
+                let mut lock = cache.shards.get_shard_by_index(lookup.shard).lock();
+                cache.cache.complete(&mut lock, lookup, key, result, dep_node_index)
             };
             (job, result)
         };
@@ -333,16 +332,19 @@ where
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
-        let state = self.state;
-        let shard = state.shards.get_shard_by_value(&self.key);
         let job = {
-            let mut shard = shard.lock();
-            let job = match shard.active.remove(&self.key).unwrap() {
-                QueryResult::Started(job) => job,
-                QueryResult::Poisoned => panic!(),
-            };
-            shard.active.insert(self.key.clone(), QueryResult::Poisoned);
-            job
+            let mut lock = self.state.shards.get_shard_by_index(self.lookup.shard).lock();
+            match lock
+                .active
+                .raw_entry_mut()
+                .from_key_hashed_nocheck(self.lookup.key_hash, &self.key)
+            {
+                RawEntryMut::Occupied(mut entry) => match entry.insert(QueryResult::Poisoned) {
+                    QueryResult::Started(job) => job,
+                    QueryResult::Poisoned => panic!(),
+                },
+                RawEntryMut::Vacant(_) => panic!(),
+            }
         };
         // Also signal the completion of the job, so waiters
         // will continue execution.
