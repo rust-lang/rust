@@ -50,6 +50,7 @@
 #![feature(control_flow_enum)]
 #![feature(associated_type_defaults)]
 #![feature(iter_zip)]
+#![feature(thread_local_const_init)]
 #![recursion_limit = "512"]
 
 #[macro_use]

@@ -55,10 +55,10 @@ macro_rules! define_scoped_cx {
 }
 
 thread_local! {
-    static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
-    static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = Cell::new(false);
-    static NO_TRIMMED_PATH: Cell<bool> = Cell::new(false);
-    static NO_QUERIES: Cell<bool> = Cell::new(false);
+    static FORCE_IMPL_FILENAME_LINE: Cell<bool> = const { Cell::new(false) };
+    static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
+    static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
+    static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Avoids running any queries during any prints that occur
