@@ -967,7 +967,7 @@ pub struct GlobalCtxt<'tcx> {
     export_map: ExportMap<LocalDefId>,
 
     pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
-    pub(crate) definitions: &'tcx Definitions,
+    pub(crate) definitions: Definitions,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -1163,7 +1163,7 @@ impl<'tcx> TyCtxt<'tcx> {
             glob_map: resolutions.glob_map,
             extern_prelude: resolutions.extern_prelude,
             untracked_crate: krate,
-            definitions: arena.alloc(resolutions.definitions),
+            definitions: resolutions.definitions,
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
@@ -1319,14 +1319,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_stable_hashing_context(self) -> StableHashingContext<'tcx> {
         let krate = self.gcx.untracked_crate;
 
-        StableHashingContext::new(self.sess, krate, self.definitions, &*self.cstore)
+        StableHashingContext::new(self.sess, krate, &self.definitions, &*self.cstore)
     }
 
     #[inline(always)]
     pub fn create_no_span_stable_hashing_context(self) -> StableHashingContext<'tcx> {
         let krate = self.gcx.untracked_crate;
 
-        StableHashingContext::ignore_spans(self.sess, krate, self.definitions, &*self.cstore)
+        StableHashingContext::ignore_spans(self.sess, krate, &self.definitions, &*self.cstore)
     }
 
     pub fn serialize_query_result_cache(self, encoder: &mut FileEncoder) -> FileEncodeResult {
