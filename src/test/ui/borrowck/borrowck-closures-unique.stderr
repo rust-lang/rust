@@ -20,7 +20,7 @@ LL |     let c1 = || get(x);
    |              |
    |              borrow occurs here
 LL |     let c2 = || { get(x); set(x); };
-   |              ^^       - second borrow occurs due to use of `x` in closure
+   |              ^^               - second borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
 LL |     c1;

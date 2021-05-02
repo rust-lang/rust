@@ -21,9 +21,9 @@ error[E0373]: async block may outlive the current function, but it borrows `x`, 
   --> $DIR/async-borrowck-escaping-block-error.rs:11:11
    |
 LL |     async { *x }
-   |           ^^^-^^
-   |           |  |
-   |           |  `x` is borrowed here
+   |           ^^--^^
+   |           | |
+   |           | `x` is borrowed here
    |           may outlive borrowed value `x`
    |
 note: async block is returned here

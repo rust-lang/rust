@@ -13,7 +13,9 @@ error[E0502]: cannot borrow `p` as immutable because it is also borrowed as muta
 LL |     let mut c = || {
    |                 -- mutable borrow occurs here
 LL |         p.x += 10;
-   |         - first borrow occurs due to use of `p` in closure
+   |         --- capture is mutable because of use here
+LL |         println!("{:?}", p);
+   |                          - first borrow occurs due to use of `p` in closure
 ...
 LL |     println!("{:?}", p);
    |                      ^ immutable borrow occurs here
