@@ -21,8 +21,11 @@ LL |         Foo::Baz => {}
 error[E0532]: expected tuple struct or tuple variant, found unit struct `S`
   --> $DIR/issue-32004.rs:16:9
    |
+LL | struct S;
+   | --------- `S` defined here
+...
 LL |         S(()) => {}
-   |         ^ not a tuple struct or tuple variant
+   |         ^^^^^ help: use this syntax instead: `S`
 
 error: aborting due to 2 previous errors
 

@@ -819,6 +819,19 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             _ => false,
         };
 
+        let find_span = |source: &PathSource<'_>, err: &mut DiagnosticBuilder<'_>| {
+            match source {
+                PathSource::Expr(Some(Expr { span, kind: ExprKind::Call(_, _), .. }))
+                | PathSource::TupleStruct(span, _) => {
+                    // We want the main underline to cover the suggested code as well for
+                    // cleaner output.
+                    err.set_span(*span);
+                    *span
+                }
+                _ => span,
+            }
+        };
+
         let mut bad_struct_syntax_suggestion = |def_id: DefId| {
             let (followed_by_brace, closing_brace) = self.followed_by_brace(span);
 
@@ -862,18 +875,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     }
                 }
                 PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
-                    let span = match &source {
-                        PathSource::Expr(Some(Expr {
-                            span, kind: ExprKind::Call(_, _), ..
-                        }))
-                        | PathSource::TupleStruct(span, _) => {
-                            // We want the main underline to cover the suggested code as well for
-                            // cleaner output.
-                            err.set_span(*span);
-                            *span
-                        }
-                        _ => span,
-                    };
+                    let span = find_span(&source, err);
                     if let Some(span) = self.def_span(def_id) {
                         err.span_label(span, &format!("`{}` defined here", path_str));
                     }
@@ -1046,6 +1048,23 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 _,
             ) if ns == ValueNS => {
                 bad_struct_syntax_suggestion(def_id);
+            }
+            (Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id), _) if ns == ValueNS => {
+                match source {
+                    PathSource::Expr(_) | PathSource::TupleStruct(..) | PathSource::Pat => {
+                        let span = find_span(&source, err);
+                        if let Some(span) = self.def_span(def_id) {
+                            err.span_label(span, &format!("`{}` defined here", path_str));
+                        }
+                        err.span_suggestion(
+                            span,
+                            &format!("use this syntax instead"),
+                            format!("{path_str}"),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    _ => return false,
+                }
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Fn), def_id), _) if ns == ValueNS => {
                 if let Some(span) = self.def_span(def_id) {
