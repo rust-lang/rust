@@ -1042,8 +1042,12 @@ pub struct TargetOptions {
     pub staticlib_prefix: String,
     /// String to append to the name of every static library. Defaults to ".a".
     pub staticlib_suffix: String,
-    /// OS family to use for conditional compilation. Valid options: "unix", "windows".
-    pub os_family: Option<String>,
+    /// Values of the `target_family` cfg set for this target.
+    ///
+    /// Common options are: "unix", "windows". Defaults to no families.
+    ///
+    /// See <https://doc.rust-lang.org/reference/conditional-compilation.html#target_family>.
+    pub families: Vec<String>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
@@ -1293,7 +1297,7 @@ impl Default for TargetOptions {
             exe_suffix: String::new(),
             staticlib_prefix: "lib".to_string(),
             staticlib_suffix: ".a".to_string(),
-            os_family: None,
+            families: Vec::new(),
             abi_return_struct_as_int: false,
             is_like_osx: false,
             is_like_solaris: false,
@@ -1605,14 +1609,6 @@ impl Target {
                         .map(|s| s.to_string() );
                 }
             } );
-            ($key_name:ident = $json_name:expr, optional) => ( {
-                let name = $json_name;
-                if let Some(o) = obj.find(name) {
-                    base.$key_name = o
-                        .as_string()
-                        .map(|s| s.to_string() );
-                }
-            } );
             ($key_name:ident, LldFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1759,6 +1755,16 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, TargetFamilies) => ( {
+                let value = obj.find("target-family");
+                if let Some(v) = value.and_then(Json::as_array) {
+                    base.$key_name = v.iter()
+                        .map(|a| a.as_string().unwrap().to_string())
+                        .collect();
+                } else if let Some(v) = value.and_then(Json::as_string) {
+                    base.$key_name = vec![v.to_string()];
+                }
+            } );
         }
 
         if let Some(s) = obj.find("target-endian").and_then(Json::as_string) {
@@ -1802,7 +1808,7 @@ impl Target {
         key!(exe_suffix);
         key!(staticlib_prefix);
         key!(staticlib_suffix);
-        key!(os_family = "target-family", optional);
+        key!(families, TargetFamilies);
         key!(abi_return_struct_as_int, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
@@ -2042,7 +2048,7 @@ impl ToJson for Target {
         target_option_val!(exe_suffix);
         target_option_val!(staticlib_prefix);
         target_option_val!(staticlib_suffix);
-        target_option_val!(os_family, "target-family");
+        target_option_val!(families, "target-family");
         target_option_val!(abi_return_struct_as_int);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);

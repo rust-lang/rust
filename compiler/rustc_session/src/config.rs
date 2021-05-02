@@ -816,7 +816,7 @@ fn default_configuration(sess: &Session) -> CrateConfig {
     ret.reserve(6); // the minimum number of insertions
     // Target bindings.
     ret.insert((sym::target_os, Some(Symbol::intern(os))));
-    if let Some(ref fam) = sess.target.os_family {
+    for fam in &sess.target.families {
         ret.insert((sym::target_family, Some(Symbol::intern(fam))));
         if fam == "windows" {
             ret.insert((sym::windows, None));
