@@ -18,7 +18,6 @@ use rustc_span::{
     Span,
 };
 use rustc_target::abi::VariantIdx;
-use std::iter;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -216,11 +215,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef { local, projection: [proj_base @ .., elem] } => {
                 match elem {
                     ProjectionElem::Deref => {
-                        // FIXME(project-rfc_2229#36): print capture precisely here.
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
-                            let name = self.upvars[var_index].name.to_string();
+                            let name = self.upvars[var_index].place.to_string(self.infcx.tcx);
                             if self.upvars[var_index].by_ref {
                                 buf.push_str(&name);
                             } else {
@@ -265,7 +263,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
-                            let name = self.upvars[var_index].name.to_string();
+                            let name = self.upvars[var_index].place.to_string(self.infcx.tcx);
                             buf.push_str(&name);
                         } else {
                             let field_name = self
@@ -550,8 +548,12 @@ pub(super) enum UseSpans<'tcx> {
         /// The span of the args of the closure, including the `move` keyword if
         /// it's present.
         args_span: Span,
-        /// The span of the first use of the captured variable inside the closure.
-        var_span: Span,
+        /// The span of the use resulting in capture kind
+        /// Check `ty::CaptureInfo` for more details
+        capture_kind_span: Span,
+        /// The span of the use resulting in the captured path
+        /// Check `ty::CaptureInfo` for more details
+        path_span: Span,
     },
     /// The access is caused by using a variable as the receiver of a method
     /// that takes 'self'
@@ -606,9 +608,23 @@ impl UseSpans<'_> {
         }
     }
 
+    /// Returns the span of `self`, in the case of a `ClosureUse` returns the `path_span`
+    pub(super) fn var_or_use_path_span(self) -> Span {
+        match self {
+            UseSpans::ClosureUse { path_span: span, .. }
+            | UseSpans::PatUse(span)
+            | UseSpans::OtherUse(span) => span,
+            UseSpans::FnSelfUse {
+                fn_call_span, kind: FnSelfUseKind::DerefCoercion { .. }, ..
+            } => fn_call_span,
+            UseSpans::FnSelfUse { var_span, .. } => var_span,
+        }
+    }
+
+    /// Returns the span of `self`, in the case of a `ClosureUse` returns the `capture_kind_span`
     pub(super) fn var_or_use(self) -> Span {
         match self {
-            UseSpans::ClosureUse { var_span: span, .. }
+            UseSpans::ClosureUse { capture_kind_span: span, .. }
             | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
             UseSpans::FnSelfUse {
@@ -637,13 +653,34 @@ impl UseSpans<'_> {
     }
 
     // Add a span label to the use of the captured variable, if it exists.
-    pub(super) fn var_span_label(
+    // only adds label to the `path_span`
+    pub(super) fn var_span_label_path_only(
         self,
         err: &mut DiagnosticBuilder<'_>,
         message: impl Into<String>,
     ) {
-        if let UseSpans::ClosureUse { var_span, .. } = self {
-            err.span_label(var_span, message);
+        if let UseSpans::ClosureUse { path_span, .. } = self {
+            err.span_label(path_span, message);
+        }
+    }
+
+    // Add a span label to the use of the captured variable, if it exists.
+    pub(super) fn var_span_label(
+        self,
+        err: &mut DiagnosticBuilder<'_>,
+        message: impl Into<String>,
+        kind_desc: impl Into<String>,
+    ) {
+        if let UseSpans::ClosureUse { capture_kind_span, path_span, .. } = self {
+            if capture_kind_span == path_span {
+                err.span_label(capture_kind_span, message);
+            } else {
+                let capture_kind_label =
+                    format!("capture is {} because of use here", kind_desc.into());
+                let path_label = message;
+                err.span_label(capture_kind_span, capture_kind_label);
+                err.span_label(path_span, path_label);
+            }
         }
     }
 
@@ -791,10 +828,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 box AggregateKind::Closure(def_id, _)
                 | box AggregateKind::Generator(def_id, _, _) => {
                     debug!("move_spans: def_id={:?} places={:?}", def_id, places);
-                    if let Some((args_span, generator_kind, var_span)) =
+                    if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                         self.closure_span(*def_id, moved_place, places)
                     {
-                        return ClosureUse { generator_kind, args_span, var_span };
+                        return ClosureUse {
+                            generator_kind,
+                            args_span,
+                            capture_kind_span,
+                            path_span,
+                        };
                     }
                 }
                 _ => {}
@@ -809,10 +851,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | FakeReadCause::ForLet(Some(closure_def_id)) => {
                     debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
                     let places = &[Operand::Move(*place)];
-                    if let Some((args_span, generator_kind, var_span)) =
+                    if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                         self.closure_span(closure_def_id, moved_place, places)
                     {
-                        return ClosureUse { generator_kind, args_span, var_span };
+                        return ClosureUse {
+                            generator_kind,
+                            args_span,
+                            capture_kind_span,
+                            path_span,
+                        };
                     }
                 }
                 _ => {}
@@ -972,10 +1019,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "borrow_spans: def_id={:?} is_generator={:?} places={:?}",
                     def_id, is_generator, places
                 );
-                if let Some((args_span, generator_kind, var_span)) =
+                if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
                     self.closure_span(*def_id, Place::from(target).as_ref(), places)
                 {
-                    return ClosureUse { generator_kind, args_span, var_span };
+                    return ClosureUse { generator_kind, args_span, capture_kind_span, path_span };
                 } else {
                     return OtherUse(use_span);
                 }
@@ -989,13 +1036,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         OtherUse(use_span)
     }
 
-    /// Finds the span of a captured variable within a closure or generator.
+    /// Finds the spans of a captured place within a closure or generator.
+    /// The first span is the location of the use resulting in the capture kind of the capture
+    /// The second span is the location the use resulting in the captured path of the capture
     fn closure_span(
         &self,
         def_id: DefId,
         target_place: PlaceRef<'tcx>,
         places: &[Operand<'tcx>],
-    ) -> Option<(Span, Option<GeneratorKind>, Span)> {
+    ) -> Option<(Span, Option<GeneratorKind>, Span, Span)> {
         debug!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
@@ -1005,13 +1054,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let hir::ExprKind::Closure(.., body_id, args_span, _) = expr {
-            for (captured_place, place) in iter::zip(
-                self.infcx.tcx.typeck(def_id.expect_local()).closure_min_captures_flattened(def_id),
-                places,
-            ) {
-                let upvar_hir_id = captured_place.get_root_variable();
-                //FIXME(project-rfc-2229#8): Use better span from captured_place
-                let span = self.infcx.tcx.upvars_mentioned(local_did)?[&upvar_hir_id].span;
+            for (captured_place, place) in self
+                .infcx
+                .tcx
+                .typeck(def_id.expect_local())
+                .closure_min_captures_flattened(def_id)
+                .zip(places)
+            {
                 match place {
                     Operand::Copy(place) | Operand::Move(place)
                         if target_place == place.as_ref() =>
@@ -1020,18 +1069,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let body = self.infcx.tcx.hir().body(*body_id);
                         let generator_kind = body.generator_kind();
 
-                        // If we have a more specific span available, point to that.
-                        // We do this even though this span might be part of a borrow error
-                        // message rather than a move error message. Our goal is to point
-                        // to a span that shows why the upvar is used in the closure,
-                        // so a move-related span is as good as any (and potentially better,
-                        // if the overall error is due to a move of the upvar).
-
-                        let usage_span = match captured_place.info.capture_kind {
-                            ty::UpvarCapture::ByValue(Some(span)) => span,
-                            _ => span,
-                        };
-                        return Some((*args_span, generator_kind, usage_span));
+                        return Some((
+                            *args_span,
+                            generator_kind,
+                            captured_place.get_capture_kind_span(self.infcx.tcx),
+                            captured_place.get_path_span(self.infcx.tcx),
+                        ));
                     }
                     _ => {}
                 }

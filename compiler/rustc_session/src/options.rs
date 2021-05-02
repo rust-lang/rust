@@ -286,7 +286,7 @@ macro_rules! options {
 
     pub type $setter_name = fn(&mut $struct_name, v: Option<&str>) -> bool;
     pub const $stat: &[(&str, $setter_name, &str, &str)] =
-        &[ $( (stringify!($opt), crate::options::parse::$opt, $crate::options::desc::$parse, $desc) ),* ];
+        &[ $( (stringify!($opt), $crate::options::parse::$opt, $crate::options::desc::$parse, $desc) ),* ];
 
     // Sometimes different options need to build a common structure.
     // That structure can kept in one of the options' fields, the others become dummy.

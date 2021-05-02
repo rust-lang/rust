@@ -7,7 +7,7 @@ LL | #![feature(capture_disjoint_fields)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #53488 <https://github.com/rust-lang/rust/issues/53488> for more information
 
-error[E0594]: cannot assign to `z`, as it is not declared as mutable
+error[E0594]: cannot assign to `z.0.0.0`, as it is not declared as mutable
   --> $DIR/cant-mutate-imm.rs:13:9
    |
 LL |     let z = (y, 10);
@@ -16,7 +16,7 @@ LL |     let z = (y, 10);
 LL |         z.0.0.0 = 20;
    |         ^^^^^^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to `bx`, as it is not declared as mutable
+error[E0594]: cannot assign to `*bx.0`, as it is not declared as mutable
   --> $DIR/cant-mutate-imm.rs:25:9
    |
 LL |     let bx = Box::new(x);

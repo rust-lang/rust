@@ -74,9 +74,6 @@ crate use region_infer::RegionInferenceContext;
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
 crate struct Upvar<'tcx> {
-    // FIXME(project-rfc_2229#36): print capture precisely here.
-    name: Symbol,
-
     place: CapturedPlace<'tcx>,
 
     /// If true, the capture is behind a reference.
@@ -159,13 +156,12 @@ fn do_mir_borrowck<'a, 'tcx>(
     let upvars: Vec<_> = tables
         .closure_min_captures_flattened(def.did.to_def_id())
         .map(|captured_place| {
-            let var_hir_id = captured_place.get_root_variable();
             let capture = captured_place.info.capture_kind;
             let by_ref = match capture {
                 ty::UpvarCapture::ByValue(_) => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
-            Upvar { name: tcx.hir().name(var_hir_id), place: captured_place.clone(), by_ref }
+            Upvar { place: captured_place.clone(), by_ref }
         })
         .collect();
 

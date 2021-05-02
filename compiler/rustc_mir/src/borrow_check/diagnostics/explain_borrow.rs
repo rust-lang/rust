@@ -24,8 +24,8 @@ use super::{find_use, RegionName, UseSpans};
 
 #[derive(Debug)]
 pub(in crate::borrow_check) enum BorrowExplanation {
-    UsedLater(LaterUseKind, Span),
-    UsedLaterInLoop(LaterUseKind, Span),
+    UsedLater(LaterUseKind, Span, Option<Span>),
+    UsedLaterInLoop(LaterUseKind, Span, Option<Span>),
     UsedLaterWhenDropped {
         drop_loc: Location,
         dropped_local: Local,
@@ -67,7 +67,7 @@ impl BorrowExplanation {
         borrow_span: Option<Span>,
     ) {
         match *self {
-            BorrowExplanation::UsedLater(later_use_kind, var_or_use_span) => {
+            BorrowExplanation::UsedLater(later_use_kind, var_or_use_span, path_span) => {
                 let message = match later_use_kind {
                     LaterUseKind::TraitCapture => "captured here by trait object",
                     LaterUseKind::ClosureCapture => "captured here by closure",
@@ -75,14 +75,31 @@ impl BorrowExplanation {
                     LaterUseKind::FakeLetRead => "stored here",
                     LaterUseKind::Other => "used here",
                 };
-                if !borrow_span.map_or(false, |sp| sp.overlaps(var_or_use_span)) {
-                    err.span_label(
-                        var_or_use_span,
-                        format!("{}borrow later {}", borrow_desc, message),
-                    );
+                // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
+                    if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
+                        err.span_label(
+                            var_or_use_span,
+                            format!("{}borrow later {}", borrow_desc, message),
+                        );
+                    }
+                } else {
+                    // path_span must be `Some` as otherwise the if condition is true
+                    let path_span = path_span.unwrap();
+                    // path_span is only present in the case of closure capture
+                    assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
+                    if !borrow_span.map_or(false, |sp| sp.overlaps(var_or_use_span)) {
+                        let path_label = "used here by closure";
+                        let capture_kind_label = message;
+                        err.span_label(
+                            var_or_use_span,
+                            format!("{}borrow later {}", borrow_desc, capture_kind_label),
+                        );
+                        err.span_label(path_span, path_label);
+                    }
                 }
             }
-            BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span) => {
+            BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span, path_span) => {
                 let message = match later_use_kind {
                     LaterUseKind::TraitCapture => {
                         "borrow captured here by trait object, in later iteration of loop"
@@ -94,7 +111,24 @@ impl BorrowExplanation {
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
-                err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
+                // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
+                    err.span_label(var_or_use_span, format!("{}{}", borrow_desc, message));
+                } else {
+                    // path_span must be `Some` as otherwise the if condition is true
+                    let path_span = path_span.unwrap();
+                    // path_span is only present in the case of closure capture
+                    assert!(matches!(later_use_kind, LaterUseKind::ClosureCapture));
+                    if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
+                        let path_label = "used here by closure";
+                        let capture_kind_label = message;
+                        err.span_label(
+                            var_or_use_span,
+                            format!("{}borrow later {}", borrow_desc, capture_kind_label),
+                        );
+                        err.span_label(path_span, path_label);
+                    }
+                }
             }
             BorrowExplanation::UsedLaterWhenDropped {
                 drop_loc,
@@ -311,13 +345,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let borrow_location = location;
                 if self.is_use_in_later_iteration_of_loop(borrow_location, location) {
                     let later_use = self.later_use_kind(borrow, spans, location);
-                    BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
+                    BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1, later_use.2)
                 } else {
                     // Check if the location represents a `FakeRead`, and adapt the error
                     // message to the `FakeReadCause` it is from: in particular,
                     // the ones inserted in optimized `let var = <expr>` patterns.
                     let later_use = self.later_use_kind(borrow, spans, location);
-                    BorrowExplanation::UsedLater(later_use.0, later_use.1)
+                    BorrowExplanation::UsedLater(later_use.0, later_use.1, later_use.2)
                 }
             }
 
@@ -498,16 +532,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Determine how the borrow was later used.
+    /// First span returned points to the location of the conflicting use
+    /// Second span if `Some` is returned in the case of closures and points
+    /// to the use of the path
     fn later_use_kind(
         &self,
         borrow: &BorrowData<'tcx>,
         use_spans: UseSpans<'tcx>,
         location: Location,
-    ) -> (LaterUseKind, Span) {
+    ) -> (LaterUseKind, Span, Option<Span>) {
         match use_spans {
-            UseSpans::ClosureUse { var_span, .. } => {
+            UseSpans::ClosureUse { capture_kind_span, path_span, .. } => {
                 // Used in a closure.
-                (LaterUseKind::ClosureCapture, var_span)
+                (LaterUseKind::ClosureCapture, capture_kind_span, Some(path_span))
             }
             UseSpans::PatUse(span)
             | UseSpans::OtherUse(span)
@@ -542,7 +579,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 }
                             }
                         };
-                        return (LaterUseKind::Call, function_span);
+                        return (LaterUseKind::Call, function_span, None);
                     } else {
                         LaterUseKind::Other
                     }
@@ -550,7 +587,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     LaterUseKind::Other
                 };
 
-                (kind, span)
+                (kind, span, None)
             }
         }
     }
