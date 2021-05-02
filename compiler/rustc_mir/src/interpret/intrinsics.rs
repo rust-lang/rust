@@ -348,8 +348,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let b = self.read_immediate(&args[1])?.to_scalar()?;
 
                 // Special case: if both scalars are *equal integers*
-                // and not NULL, we pretend there is an allocation of size 0 right there,
-                // and their offset is 0. (There's never a valid object at NULL, making it an
+                // and not null, we pretend there is an allocation of size 0 right there,
+                // and their offset is 0. (There's never a valid object at null, making it an
                 // exception from the exception.)
                 // This is the dual to the special exception for offset-by-0
                 // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
@@ -501,7 +501,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its
     /// allocation. For integer pointers, we consider each of them their own tiny allocation of size
-    /// 0, so offset-by-0 (and only 0) is okay -- except that NULL cannot be offset by _any_ value.
+    /// 0, so offset-by-0 (and only 0) is okay -- except that null cannot be offset by _any_ value.
     pub fn ptr_offset_inbounds(
         &self,
         ptr: Scalar<M::PointerTag>,
@@ -521,7 +521,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // pointers to be properly aligned (unlike a read/write operation).
         let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
         let size = offset_bytes.unsigned_abs();
-        // This call handles checking for integer/NULL pointers.
+        // This call handles checking for integer/null pointers.
         self.memory.check_ptr_access_align(
             min_ptr,
             Size::from_bytes(size),

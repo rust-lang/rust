@@ -519,7 +519,7 @@ impl<T> NonNull<[T]> {
         I: SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferencable and `index` in-bounds.
-        // As a consequence, the resulting pointer cannot be NULL.
+        // As a consequence, the resulting pointer cannot be null.
         unsafe { NonNull::new_unchecked(self.as_ptr().get_unchecked_mut(index)) }
     }
 }

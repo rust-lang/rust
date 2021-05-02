@@ -84,7 +84,7 @@
 //! /* Returns ownership to the caller */
 //! struct Foo* foo_new(void);
 //!
-//! /* Takes ownership from the caller; no-op when invoked with NULL */
+//! /* Takes ownership from the caller; no-op when invoked with null */
 //! void foo_delete(struct Foo*);
 //! ```
 //!

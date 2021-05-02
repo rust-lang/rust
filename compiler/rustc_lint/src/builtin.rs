@@ -2328,7 +2328,7 @@ const HAS_MIN_FEATURES: &[Symbol] = &[sym::specialization];
 
 declare_lint! {
     /// The `invalid_value` lint detects creating a value that is not valid,
-    /// such as a NULL reference.
+    /// such as a null reference.
     ///
     /// ### Example
     ///
@@ -2359,7 +2359,7 @@ declare_lint! {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     pub INVALID_VALUE,
     Warn,
-    "an invalid value is being created (such as a NULL reference)"
+    "an invalid value is being created (such as a null reference)"
 }
 
 declare_lint_pass!(InvalidValue => [INVALID_VALUE]);

@@ -185,7 +185,7 @@ impl fmt::Display for CheckInAllocMsg {
             "{}",
             match *self {
                 CheckInAllocMsg::MemoryAccessTest => "memory access",
-                CheckInAllocMsg::NullPointerTest => "NULL pointer test",
+                CheckInAllocMsg::NullPointerTest => "null pointer test",
                 CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic",
                 CheckInAllocMsg::InboundsTest => "inbounds test",
             }
@@ -309,7 +309,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 allocation_size.bytes()
             ),
             DanglingIntPointer(_, CheckInAllocMsg::NullPointerTest) => {
-                write!(f, "NULL pointer is not allowed for this operation")
+                write!(f, "null pointer is not allowed for this operation")
             }
             DanglingIntPointer(i, msg) => {
                 write!(f, "{} failed: 0x{:x} is not a valid pointer", msg, i)

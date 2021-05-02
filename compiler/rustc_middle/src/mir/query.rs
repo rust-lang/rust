@@ -81,7 +81,7 @@ impl UnsafetyViolationDetails {
             ),
             DerefOfRawPointer => (
                 "dereference of raw pointer",
-                "raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules \
+                "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
             ),
             AssignToDroppingUnionField => (
