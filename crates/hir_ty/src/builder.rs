@@ -6,15 +6,15 @@ use chalk_ir::{
     cast::{Cast, CastTo, Caster},
     fold::Fold,
     interner::HasInterner,
-    AdtId, BoundVar, DebruijnIndex, Safety, Scalar,
+    AdtId, BoundVar, DebruijnIndex, Scalar,
 };
 use hir_def::{builtin_type::BuiltinType, GenericDefId, TraitId, TypeAliasId};
 use smallvec::SmallVec;
 
 use crate::{
     db::HirDatabase, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders,
-    CallableSig, FnPointer, FnSig, FnSubst, GenericArg, Interner, ProjectionTy, Substitution,
-    TraitRef, Ty, TyDefId, TyExt, TyKind, ValueTyDefId,
+    CallableSig, GenericArg, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt,
+    TyKind, ValueTyDefId,
 };
 
 /// This is a builder for `Ty` or anything that needs a `Substitution`.

@@ -65,7 +65,7 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    fn coerce_inner(&mut self, mut from_ty: Ty, to_ty: &Ty) -> InferResult {
+    fn coerce_inner(&mut self, from_ty: Ty, to_ty: &Ty) -> InferResult {
         if from_ty.is_never() {
             // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
             // type variable, we want `?T` to fallback to `!` if not
@@ -145,10 +145,9 @@ impl<'a> InferenceContext<'a> {
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
     fn coerce_ref(&mut self, from_ty: Ty, to_ty: &Ty, to_mt: Mutability) -> InferResult {
-        let (from_mt, from_inner) = match from_ty.kind(&Interner) {
-            TyKind::Ref(mt, _, ty) => {
+        match from_ty.kind(&Interner) {
+            TyKind::Ref(mt, _, _) => {
                 coerce_mutabilities(*mt, to_mt)?;
-                (*mt, ty.clone())
             }
             _ => return self.unify_inner(&from_ty, to_ty),
         };
@@ -160,7 +159,7 @@ impl<'a> InferenceContext<'a> {
         // the structure like it is.
 
         let canonicalized = self.canonicalize(from_ty.clone());
-        let mut autoderef = autoderef::autoderef(
+        let autoderef = autoderef::autoderef(
             self.db,
             self.resolver.krate(),
             InEnvironment {
@@ -237,7 +236,7 @@ impl<'a> InferenceContext<'a> {
     /// or a function pointer.
     fn coerce_from_fn_item(&mut self, from_ty: Ty, to_ty: &Ty) -> InferResult {
         match to_ty.kind(&Interner) {
-            TyKind::Function(b_sig) => {
+            TyKind::Function(_) => {
                 let from_sig = from_ty.callable_sig(self.db).expect("FnDef had no sig");
 
                 // FIXME check ABI: Intrinsics are not coercible to function pointers

@@ -134,16 +134,8 @@ pub(super) struct TypeVariableTable {
 }
 
 impl TypeVariableTable {
-    fn push(&mut self, data: TypeVariableData) {
-        self.inner.push(data);
-    }
-
     pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
         self.inner[iv.index() as usize].diverging = diverging;
-    }
-
-    fn is_diverging(&mut self, iv: InferenceVar) -> bool {
-        self.inner[iv.index() as usize].diverging
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
@@ -221,7 +213,7 @@ impl<'a> InferenceTable<'a> {
     /// Unify two types and register new trait goals that arise from that.
     // TODO give these two functions better names
     pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        let result = if let Ok(r) = self.unify_inner(ty1, ty2) {
+        let _result = if let Ok(r) = self.unify_inner(ty1, ty2) {
             r
         } else {
             return false;
@@ -241,11 +233,11 @@ impl<'a> InferenceTable<'a> {
             ty1,
             ty2,
         ) {
-            Ok(result) => {
+            Ok(_result) => {
                 // TODO deal with new goals
                 Ok(InferOk {})
             }
-            Err(NoSolution) => Err(TypeError),
+            Err(chalk_ir::NoSolution) => Err(TypeError),
         }
     }
 
