@@ -342,10 +342,6 @@ macro_rules! tool_check_step {
                     true,
                 );
 
-                let libdir = builder.sysroot_libdir(compiler, target);
-                let hostdir = builder.sysroot_libdir(compiler, compiler.host);
-                add_to_sysroot(&builder, &libdir, &hostdir, &stamp(builder, compiler, target));
-
                 /// Cargo's output path in a given stage, compiled by a particular
                 /// compiler for the specified target.
                 fn stamp(
