@@ -541,6 +541,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
+        if let Some(id) = self.span.ctxt().outer_expn_data().macro_def_id {
+            if fcx.tcx.is_diagnostic_item(sym::format_args, id) {
+                return;
+            }
+        }
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
         let type_asc_or =

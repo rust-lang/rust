@@ -610,11 +610,11 @@ impl<'a, 'b> Context<'a, 'b> {
         let string_length = self.ecx.expr_usize(sp, self.literal.len());
         let string = self.ecx.expr_str(sp, Symbol::intern(&self.literal));
         let string_as_ptr = self.ecx.expr_cast(
-            sp,
+            self.macsp,
             string,
             self.ecx.ty_ptr(
-                sp,
-                self.ecx.ty_path(self.ecx.path_ident(sp, Ident::new(sym::str, sp))),
+                self.macsp,
+                self.ecx.ty_path(self.ecx.path_ident(self.macsp, Ident::new(sym::str, self.macsp))),
                 Mutability::Not,
             ),
         );
