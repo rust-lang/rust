@@ -1,12 +1,17 @@
+use std::{
+    cmp::{max, min},
+    iter::once,
+    ops::RangeInclusive,
+};
+
 use hir_def::{
-    expr::{Pat, PatId, RecordFieldPat},
+    expr::{Expr, Literal, Pat, PatId, RecordFieldPat},
     find_path::find_path,
     item_scope::ItemInNs,
     path::Path,
     type_ref::Mutability,
     AttrDefId, EnumVariantId, HasModule, VariantId,
 };
-
 use smallvec::{smallvec, SmallVec};
 
 use crate::{AdtId, Interner, Scalar, Ty, TyExt, TyKind};
@@ -20,7 +25,7 @@ pub(super) enum ToDo {}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct IntRange {
-    range: ToDo,
+    range: RangeInclusive<u128>,
 }
 
 impl IntRange {
@@ -36,12 +41,147 @@ impl IntRange {
     }
 
     fn is_singleton(&self) -> bool {
-        todo!()
+        self.range.start() == self.range.end()
+    }
+
+    fn boundaries(&self) -> (u128, u128) {
+        (*self.range.start(), *self.range.end())
+    }
+
+    #[inline]
+    fn from_bool(value: bool) -> IntRange {
+        let val = value as u128;
+        IntRange { range: val..=val }
+    }
+
+    #[inline]
+    fn from_range(cx: &MatchCheckCtx<'_>, lo: u128, hi: u128, scalar_ty: Scalar) -> IntRange {
+        if let Scalar::Bool = scalar_ty {
+            IntRange { range: lo..=hi }
+        } else {
+            todo!()
+        }
+    }
+
+    fn is_subrange(&self, other: &Self) -> bool {
+        other.range.start() <= self.range.start() && self.range.end() <= other.range.end()
+    }
+
+    fn intersection(&self, other: &Self) -> Option<Self> {
+        let (lo, hi) = self.boundaries();
+        let (other_lo, other_hi) = other.boundaries();
+        if lo <= other_hi && other_lo <= hi {
+            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi) })
+        } else {
+            None
+        }
     }
 
     /// See `Constructor::is_covered_by`
     fn is_covered_by(&self, other: &Self) -> bool {
-        todo!()
+        if self.intersection(other).is_some() {
+            // Constructor splitting should ensure that all intersections we encounter are actually
+            // inclusions.
+            assert!(self.is_subrange(other));
+            true
+        } else {
+            false
+        }
+    }
+}
+
+/// Represents a border between 2 integers. Because the intervals spanning borders must be able to
+/// cover every integer, we need to be able to represent 2^128 + 1 such borders.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum IntBorder {
+    JustBefore(u128),
+    AfterMax,
+}
+
+/// A range of integers that is partitioned into disjoint subranges. This does constructor
+/// splitting for integer ranges as explained at the top of the file.
+///
+/// This is fed multiple ranges, and returns an output that covers the input, but is split so that
+/// the only intersections between an output range and a seen range are inclusions. No output range
+/// straddles the boundary of one of the inputs.
+///
+/// The following input:
+/// ```
+///   |-------------------------| // `self`
+/// |------|  |----------|   |----|
+///    |-------| |-------|
+/// ```
+/// would be iterated over as follows:
+/// ```
+///   ||---|--||-|---|---|---|--|
+/// ```
+#[derive(Debug, Clone)]
+struct SplitIntRange {
+    /// The range we are splitting
+    range: IntRange,
+    /// The borders of ranges we have seen. They are all contained within `range`. This is kept
+    /// sorted.
+    borders: Vec<IntBorder>,
+}
+
+impl SplitIntRange {
+    fn new(range: IntRange) -> Self {
+        SplitIntRange { range, borders: Vec::new() }
+    }
+
+    /// Internal use
+    fn to_borders(r: IntRange) -> [IntBorder; 2] {
+        use IntBorder::*;
+        let (lo, hi) = r.boundaries();
+        let lo = JustBefore(lo);
+        let hi = match hi.checked_add(1) {
+            Some(m) => JustBefore(m),
+            None => AfterMax,
+        };
+        [lo, hi]
+    }
+
+    /// Add ranges relative to which we split.
+    fn split(&mut self, ranges: impl Iterator<Item = IntRange>) {
+        let this_range = &self.range;
+        let included_ranges = ranges.filter_map(|r| this_range.intersection(&r));
+        let included_borders = included_ranges.flat_map(|r| {
+            let borders = Self::to_borders(r);
+            once(borders[0]).chain(once(borders[1]))
+        });
+        self.borders.extend(included_borders);
+        self.borders.sort_unstable();
+    }
+
+    /// Iterate over the contained ranges.
+    fn iter(&self) -> impl Iterator<Item = IntRange> + '_ {
+        use IntBorder::*;
+
+        let self_range = Self::to_borders(self.range.clone());
+        // Start with the start of the range.
+        let mut prev_border = self_range[0];
+        self.borders
+            .iter()
+            .copied()
+            // End with the end of the range.
+            .chain(once(self_range[1]))
+            // List pairs of adjacent borders.
+            .map(move |border| {
+                let ret = (prev_border, border);
+                prev_border = border;
+                ret
+            })
+            // Skip duplicates.
+            .filter(|(prev_border, border)| prev_border != border)
+            // Finally, convert to ranges.
+            .map(|(prev_border, border)| {
+                let range = match (prev_border, border) {
+                    (JustBefore(n), JustBefore(m)) if n < m => n..=(m - 1),
+                    (JustBefore(n), AfterMax) => n..=u128::MAX,
+                    _ => unreachable!(), // Ruled out by the sorting and filtering we did
+                };
+                IntRange { range }
+            })
     }
 }
 
@@ -143,13 +283,16 @@ impl Constructor {
                     VariantId::StructId(_) | VariantId::UnionId(_) => Single,
                 }
             }
+            &Pat::Lit(expr_id) => match cx.body[expr_id] {
+                Expr::Literal(Literal::Bool(val)) => IntRange(IntRange::from_bool(val)),
+                _ => todo!(),
+            },
 
             Pat::Or(..) => panic!("bug: Or-pattern should have been expanded earlier on."),
             Pat::Missing => todo!("Fail gracefully when there is an error in a pattern"),
             pat => todo!("Constructor::from_pat {:?}", pat),
             // Pat::Range { start, end } => {}
             // Pat::Slice { prefix, slice, suffix } => {}
-            // Pat::Lit(_) => {}
             // Pat::ConstBlock(_) => {}
         }
     }
@@ -181,7 +324,10 @@ impl Constructor {
             // Fast-track if the range is trivial. In particular, we don't do the overlapping
             // ranges check.
             IntRange(ctor_range) if !ctor_range.is_singleton() => {
-                todo!("Constructor::split IntRange")
+                let mut split_range = SplitIntRange::new(ctor_range.clone());
+                let int_ranges = ctors.filter_map(|ctor| ctor.as_int_range());
+                split_range.split(int_ranges.cloned());
+                split_range.iter().map(IntRange).collect()
             }
             Slice(_) => todo!("Constructor::split Slice"),
             // Any other constructor can be used unchanged.
@@ -282,7 +428,8 @@ pub(super) struct SplitWildcard {
 impl SplitWildcard {
     pub(super) fn new(pcx: PatCtxt<'_>) -> Self {
         let cx = pcx.cx;
-        // let make_range = |start, end| IntRange(todo!());
+        let make_range =
+            |start, end, scalar| IntRange(IntRange::from_range(cx, start, end, scalar));
 
         // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
@@ -293,7 +440,7 @@ impl SplitWildcard {
         // Invariant: this is empty if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind(&Interner) {
-            TyKind::Scalar(Scalar::Bool) => todo!(),
+            TyKind::Scalar(Scalar::Bool) => smallvec![make_range(0, 1, Scalar::Bool)],
             // TyKind::Array(..) if ... => todo!(),
             TyKind::Array(..) | TyKind::Slice(..) => todo!(),
             &TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref _substs) => {

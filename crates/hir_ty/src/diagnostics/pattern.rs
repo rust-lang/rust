@@ -121,4 +121,30 @@ fn main(v: E) {
 "#,
         );
     }
+
+    #[test]
+    fn boolean() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match true {
+        true  => {}
+        false => {}
+    }
+    match true {
+        true | false => {}
+    }
+    match true {
+        true => {}
+        _ => {}
+    }
+    match true {}
+        //^^^^ Missing match arm
+    match true { true => {} }
+        //^^^^ Missing match arm
+
+}
+"#,
+        );
+    }
 }
