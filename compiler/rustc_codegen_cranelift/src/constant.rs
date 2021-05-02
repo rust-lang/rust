@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
+    read_target_ptr, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
 };
 use rustc_middle::ty::ConstKind;
 
@@ -379,11 +379,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
-                let ptr_size = tcx.data_layout.pointer_size;
+                let ptr_size = tcx.data_layout.pointer_size.bytes() as usize;
                 let bytes = &alloc.inspect_with_uninit_and_ptr_outside_interpreter(
-                    offset..offset + ptr_size.bytes() as usize,
+                    offset..offset + ptr_size
                 );
-                read_target_uint(endianness, bytes).unwrap()
+                read_target_ptr(endianness, ptr_size, bytes)
             };
 
             let reloc_target_alloc = tcx.get_global_alloc(reloc).unwrap();

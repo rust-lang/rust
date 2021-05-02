@@ -13,7 +13,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer,
+    read_target_ptr, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
@@ -833,6 +833,7 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
     let mut line_start = Size::ZERO;
 
     let ptr_size = tcx.data_layout.pointer_size;
+    let ptr_bytesize = ptr_size.bytes_usize();
 
     let mut ascii = String::new();
 
@@ -852,9 +853,8 @@ fn write_allocation_bytes<Tag: Copy + Debug, Extra>(
         if let Some(&(tag, target_id)) = alloc.relocations().get(&i) {
             // Memory with a relocation must be defined
             let j = i.bytes_usize();
-            let offset = alloc
-                .inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_size.bytes_usize());
-            let offset = read_target_uint(tcx.data_layout.endian, offset).unwrap();
+            let offset = alloc.inspect_with_uninit_and_ptr_outside_interpreter(j..j + ptr_bytesize);
+            let offset = read_target_ptr(tcx.data_layout.endian, ptr_bytesize, offset);
             let offset = Size::from_bytes(offset);
             let relocation_width = |bytes| bytes * 3;
             let ptr = Pointer::new_with_tag(target_id, offset, tag);

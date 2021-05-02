@@ -11,7 +11,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, Pointer,
+    read_target_ptr, Allocation, ErrorHandled, GlobalAlloc, Pointer,
 };
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
@@ -22,6 +22,7 @@ use tracing::debug;
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
+    let endian = dl.endian;
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
@@ -39,16 +40,15 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
             let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(next_offset..offset);
             llvals.push(cx.const_bytes(bytes));
         }
-        let ptr_offset = read_target_uint(
-            dl.endian,
+
+        let ptr_offset = read_target_ptr(
+            endian,
+            pointer_size,
             // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
             // affect interpreter execution (we inspect the result after interpreter execution),
             // and we properly interpret the relocation as a relocation pointer offset.
             alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
-        )
-        .expect("const_alloc_to_llvm: could not read relocation pointer")
-            as u64;
-
+        );
         let address_space = match cx.tcx.global_alloc(alloc_id) {
             GlobalAlloc::Function(..) => cx.data_layout().instruction_address_space,
             GlobalAlloc::Static(..) | GlobalAlloc::Memory(..) => AddressSpace::DATA,

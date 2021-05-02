@@ -83,6 +83,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
             let indexes = {
                 use rustc_middle::mir::interpret::*;
+                use rustc_target::abi::Endian;
+
                 let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_shuffle* idx not const");
 
                 let idx_bytes = match idx_const {
@@ -96,10 +98,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
                 (0..ret_lane_count).map(|i| {
                     let i = usize::try_from(i).unwrap();
-                    let idx = rustc_middle::mir::interpret::read_target_uint(
-                        fx.tcx.data_layout.endian,
-                        &idx_bytes[4*i.. 4*i + 4],
-                    ).expect("read_target_uint");
+                    let idx = match (fx.tcx.data_layout.endian, &idx_bytes[4*i.. 4*i + 4]) {
+                        (Endian::Little, &[a, b, c, d]) => u32::from_le_bytes([a, b, c, d]),
+                        (Endian::Big, &[a, b, c, d]) => u32::from_be_bytes([a, b, c, d]),
+                        (_, _) => panic!("cg_clif SIMD: can't get idx")
+                    };
                     u16::try_from(idx).expect("try_from u32")
                 }).collect::<Vec<u16>>()
             };

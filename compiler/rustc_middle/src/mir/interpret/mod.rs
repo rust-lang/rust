@@ -571,7 +571,7 @@ fn write_target_uint(
 }
 
 #[inline]
-pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
+fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
     // This u128 holds an "any-size uint" (since smaller uints can fits in it)
     let mut buf = [0u8; std::mem::size_of::<u128>()];
     // So we do not read exactly 16 bytes into the u128, just the "payload".
@@ -587,4 +587,21 @@ pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, i
     };
     debug_assert!(source.len() == 0); // We should have consumed the source buffer.
     uint
+}
+
+/// Read a pointer-sized thing from a target, so it will fit in a u64
+/// as the modules using this don't support wider pointer values
+/// FIXME(jubilee): Move this out of here and closer to the things using it!
+#[inline]
+pub fn read_target_ptr(endian: Endian, ptr_size: usize, bytes: &[u8]) -> u64 {
+    use core::convert::TryInto;
+    match (ptr_size, endian) {
+        (2, Endian::Little) => u16::from_le_bytes(bytes.try_into().unwrap()) as u64,
+        (2, Endian::Big) => u16::from_be_bytes(bytes.try_into().unwrap()) as u64,
+        (4, Endian::Little) => u32::from_le_bytes(bytes.try_into().unwrap()) as u64,
+        (4, Endian::Big) => u32::from_be_bytes(bytes.try_into().unwrap()) as u64,
+        (8, Endian::Little) => u64::from_le_bytes(bytes.try_into().unwrap()),
+        (8, Endian::Big) => u64::from_be_bytes(bytes.try_into().unwrap()),
+        (_, _) => panic!("unknown pointer size and endianness combination"),
+    }
 }
