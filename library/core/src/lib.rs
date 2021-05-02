@@ -133,6 +133,7 @@
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
 #![feature(min_specialization)]
+#![feature(marker_trait_attr)]
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]

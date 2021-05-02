@@ -391,36 +391,25 @@ mod array_defaults {
 
 #[cfg(not(bootstrap))]
 mod array_defaults {
-    // We use auto traits to get overlapping impls without relying on nightly features.
-    //
-    // As the auto impl for `SendToDefault` is only considered if the manual impl does not apply,
-    // we have to use the generic impl for `T: Default` as the impl for the `N = 0` case would
-    // influence type inference in undesirable ways.
-    //
-    // While we are now able to implement `Default` exactly for the array types we want,
-    // we're still not able to actually write the body of the `Default` function without
-    // some further hacks.
-    //
-    // The idea here is that `array_default_hack` is resolved to itself only if `N = 0`
-    // and is otherwise replaced with `T::default()`.
-    //
-    // This would cause issues if `T` doesn't actually implement default but as this function
-    // is private and only used in the default impl itself this can not happen.
-
-    struct ZeroToSend<T, const N: usize>(*mut (), T);
-    unsafe impl<T> Send for ZeroToSend<T, 0> {}
-
-    /// This struct implements `Send` either because of the manual impl for `N` is `0` or
-    /// because all its fields implement `Send`, which is the case if `T` implements `Default`.
+    #[marker]
     #[unstable(
         feature = "array_default_impl",
         issue = "none",
         reason = "internal implementation detail for `[T; N]: Default`"
     )]
-    #[allow(missing_debug_implementations)]
-    pub struct SendToDefault<T, const N: usize>(ZeroToSend<T, N>);
-    #[unstable(feature = "array_default_impl", issue = "none")]
-    unsafe impl<T: Default, const N: usize> Send for SendToDefault<T, N> {}
+    pub trait ArrayDefault {}
+    #[unstable(
+        feature = "array_default_impl",
+        issue = "none",
+        reason = "internal implementation detail for `[T; N]: Default`"
+    )]
+    impl<T: Default, const N: usize> ArrayDefault for [T; N] {}
+    #[unstable(
+        feature = "array_default_impl",
+        issue = "none",
+        reason = "internal implementation detail for `[T; N]: Default`"
+    )]
+    impl<T> ArrayDefault for [T; 0] {}
 
     // This function must not get called for `N != 0` if `T` does not implement `Default`.
     #[lang = "array_default_hack"]
@@ -431,7 +420,7 @@ mod array_defaults {
     #[stable(since = "1.4.0", feature = "array_default")]
     impl<T, const N: usize> Default for [T; N]
     where
-        SendToDefault<T, N>: Send,
+        [T; N]: ArrayDefault,
     {
         fn default() -> [T; N] {
             // SAFETY: The only case where `T` does not implement `Default` is
