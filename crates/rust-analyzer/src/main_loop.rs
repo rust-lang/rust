@@ -278,6 +278,8 @@ impl GlobalState {
                     };
                 }
 
+                let mut finished = false;
+
                 for progress in prime_caches_progress {
                     let (state, message, fraction);
                     match progress {
@@ -295,10 +297,17 @@ impl GlobalState {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
+                            finished = true;
                         }
                     };
 
                     self.report_progress("Indexing", state, message, Some(fraction));
+                }
+
+                // If the task is cancelled we may observe two `PrimeCachesProgress::Finished` so we
+                // have to make sure to only call `op_completed()` once.
+                if finished {
+                    self.prime_caches_queue.op_completed(());
                 }
             }
             Event::Vfs(mut task) => {
@@ -711,6 +720,13 @@ impl GlobalState {
     }
     fn update_file_notifications_on_threadpool(&mut self) {
         self.maybe_update_diagnostics();
+
+        // Ensure that only one cache priming task can run at a time
+        self.prime_caches_queue.request_op(());
+        if self.prime_caches_queue.should_start_op().is_none() {
+            return;
+        }
+
         self.task_pool.handle.spawn_with_sender({
             let snap = self.snapshot();
             move |sender| {

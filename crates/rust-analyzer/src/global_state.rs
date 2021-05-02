@@ -84,6 +84,7 @@ pub(crate) struct GlobalState {
     pub(crate) workspace_build_data: Option<BuildDataResult>,
     pub(crate) fetch_build_data_queue:
         OpQueue<BuildDataCollector, Option<anyhow::Result<BuildDataResult>>>,
+    pub(crate) prime_caches_queue: OpQueue<(), ()>,
 
     latest_requests: Arc<RwLock<LatestRequests>>,
 }
@@ -146,6 +147,7 @@ impl GlobalState {
             workspaces: Arc::new(Vec::new()),
             fetch_workspaces_queue: OpQueue::default(),
             workspace_build_data: None,
+            prime_caches_queue: OpQueue::default(),
 
             fetch_build_data_queue: OpQueue::default(),
             latest_requests: Default::default(),
