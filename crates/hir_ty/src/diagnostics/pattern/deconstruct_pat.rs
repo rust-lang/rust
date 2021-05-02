@@ -857,8 +857,18 @@ impl Fields {
                 self.replace_with_fieldpats(args.iter().copied())
             }
             Pat::Record { args, ellipsis, .. } => {
-                // FIXME(iDawer) handle ellipsis.
-                self.replace_with_fieldpats(args.iter().map(|field_pat| field_pat.pat))
+                let variant_id =
+                    cx.infer.variant_resolution_for_pat(pat).unwrap_or_else(|| todo!());
+                let variant_data = variant_id.variant_data(cx.db.upcast());
+
+                let new_pats = args.iter().map(|field_pat| {
+                    // TODO: field lookup is inefficient
+                    let raw =
+                        variant_data.field(&field_pat.name).unwrap_or_else(|| todo!()).into_raw();
+                    let idx = u32::from(raw) as usize;
+                    (idx, field_pat.pat)
+                });
+                self.replace_fields_indexed(new_pats)
             }
             Pat::Slice { .. } => {
                 todo!()
