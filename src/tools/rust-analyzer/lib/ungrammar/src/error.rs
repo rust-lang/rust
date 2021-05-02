@@ -16,7 +16,8 @@ pub struct Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(loc) = self.location {
-            write!(f, "{}:{}: ", loc.line, loc.column)?
+            // Report 1-based indices, to match text editors
+            write!(f, "{}:{}: ", loc.line + 1, loc.column + 1)?
         }
         write!(f, "{}", self.message)
     }
