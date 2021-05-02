@@ -1,5 +1,5 @@
 // This test ensures that the element corresponding to the hash is displayed.
-goto: file://|DOC_PATH|/struct.Foo.html#method.borrow
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html#method.borrow
 // In the blanket implementations list, "Borrow" is the second one, hence the ":nth(2)".
 assert: ("#blanket-implementations-list > details:nth-child(2)", "open", "")
 // Please note the "\" below is needed because otherwise ".borrow" would be interpreted as
