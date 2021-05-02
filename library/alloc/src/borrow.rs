@@ -376,7 +376,7 @@ where
     /// # Example
     ///
     /// Replace an owned string if it's equal to `"moo"`.
-    /// 
+    ///
     /// ```
     /// # #![feature(cow_to_borrow_if)]
     /// # use std::borrow::Cow;
@@ -386,7 +386,10 @@ where
     /// assert_eq!(cow, Cow::Borrowed("moo"));
     /// ```
     #[unstable(feature = "cow_to_borrow_if", issue = "none")]
-    pub fn to_borrow_if_eq<'b: 'a>(this: &mut Cow<'a, B>, sub: &'b B) -> Option<<B as ToOwned>::Owned> {
+    pub fn to_borrow_if_eq<'b: 'a>(
+        this: &mut Cow<'a, B>,
+        sub: &'b B,
+    ) -> Option<<B as ToOwned>::Owned> {
         Cow::to_borrow_if(this, sub, |o| o == sub)
     }
 }
