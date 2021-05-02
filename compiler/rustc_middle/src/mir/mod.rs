@@ -1349,7 +1349,7 @@ impl<O> AssertKind<O> {
     }
 
     /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
-    fn fmt_assert_args<W: Write>(&self, f: &mut W) -> fmt::Result
+    pub fn fmt_assert_args<W: Write>(&self, f: &mut W) -> fmt::Result
     where
         O: Debug,
     {
