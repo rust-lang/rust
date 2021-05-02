@@ -101,7 +101,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     let idx = match (fx.tcx.data_layout.endian, &idx_bytes[4*i.. 4*i + 4]) {
                         (Endian::Little, &[a, b, c, d]) => u32::from_le_bytes([a, b, c, d]),
                         (Endian::Big, &[a, b, c, d]) => u32::from_be_bytes([a, b, c, d]),
-                        (_, _) => panic!("cg_clif SIMD: can't get idx")
+                        (_, _) => unreachable!(),
                     };
                     u16::try_from(idx).expect("try_from u32")
                 }).collect::<Vec<u16>>()
