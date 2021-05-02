@@ -63,6 +63,13 @@ async function main(argv) {
         // This is more convenient that setting fields one by one.
         options.parseArguments([
             "--no-screenshot",
+            // This option shows what puppeteer "code" is run
+            // "--debug",
+            // This option disable the headless mode, allowing you to see what's going on.
+            // "--no-headless",
+            // The text isn't rendered by default because of a lot of small differences
+            // between hosts.
+            // "--show-text",
             "--variable", "DOC_PATH", opts["doc_folder"],
         ]);
     } catch (error) {
