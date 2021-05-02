@@ -1,9 +1,10 @@
-#![feature(trait_alias)]
-#![feature(ptr_metadata)]
+// aux-build:trait-alias-mention.rs
+// build-aux-docs
 
 #![crate_name = "foo"]
 
-// @has foo/fn.this_never_panics.html '//a[@title="traitalias core::ptr::metadata::Thin"]' 'Thin'
-pub fn this_never_panics<T: std::ptr::Thin>() {
-    assert_eq!(std::mem::size_of::<&T>(), std::mem::size_of::<usize>())
+extern crate trait_alias_mention;
+
+// @has foo/fn.mention_alias_in_bounds.html '//a[@href="../trait_alias_mention/traitalias.SomeAlias.html"]' 'SomeAlias'
+pub fn mention_alias_in_bounds<T: trait_alias_mention::SomeAlias>() {
 }
