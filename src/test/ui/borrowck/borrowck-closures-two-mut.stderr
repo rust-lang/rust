@@ -59,11 +59,11 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-closures-two-mut.rs:49:24
    |
 LL |     let c1 = to_fn_mut(|| set(&mut *x.f));
-   |                        --           - first borrow occurs due to use of `x` in closure
+   |                        --          ---- first borrow occurs due to use of `x` in closure
    |                        |
    |                        first mutable borrow occurs here
 LL |     let c2 = to_fn_mut(|| set(&mut *x.f));
-   |                        ^^           - second borrow occurs due to use of `x` in closure
+   |                        ^^          ---- second borrow occurs due to use of `x` in closure
    |                        |
    |                        second mutable borrow occurs here
 LL |
