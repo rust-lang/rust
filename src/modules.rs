@@ -55,6 +55,7 @@ impl<'a> Module<'a> {
 }
 
 impl<'a> AstLike for Module<'a> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = true;
     fn attrs(&self) -> &[ast::Attribute] {
         &self.inner_attr
     }
