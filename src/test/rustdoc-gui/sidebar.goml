@@ -1,0 +1,47 @@
+goto: file://|DOC_PATH|/test_docs/index.html
+assert: (".sidebar > .location", "Crate test_docs")
+// In modules, we only have one "location" element.
+assert: (".sidebar .location", 1)
+assert: (".sidebar-elems > #all-types", "See all test_docs's items")
+// We check that we have the crates list and that the "current" on is "test_docs".
+assert: (".sidebar-elems > .crate > ul > li > a.current", "test_docs")
+// And we're also supposed to have the list of items in the current module.
+assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
+assert: (".sidebar-elems > .items > ul > li:nth-child(2)", "Structs")
+assert: (".sidebar-elems > .items > ul > li:nth-child(3)", "Enums")
+assert: (".sidebar-elems > .items > ul > li:nth-child(4)", "Traits")
+assert: (".sidebar-elems > .items > ul > li:nth-child(5)", "Functions")
+assert: (".sidebar-elems > .items > ul > li:nth-child(6)", "Keywords")
+assert: ("#structs + table td > a", "Foo")
+click: "#structs + table td > a"
+
+// PAGE: struct.Foo.html
+assert: (".sidebar .location", 2)
+// We check that we have the crates list and that the "current" on is still "test_docs".
+assert: (".sidebar-elems > .crate > ul > li > a.current", "test_docs")
+// We now move to the other crate to check if its submodules have the correct sidebar elements too.
+click: ".sidebar-elems > .crate > ul > li:first-child > a"
+
+// PAGE: lib2/index.html
+assert: (".sidebar > .location", "Crate lib2")
+// We check that we have the crates list and that the "current" on is now "lib2".
+assert: (".sidebar-elems > .crate > ul > li > a.current", "lib2")
+// We now go to the "foobar" function page.
+assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Modules")
+assert: (".sidebar-elems > .items > ul > li:nth-child(2)", "Functions")
+assert:	("#functions + table td > a", "foobar")
+click: "#functions + table td > a"
+
+// PAGE: fn.foobar.html
+// In items containing no items (like functions or constants) and in modules, we have one
+// "location" elements.
+assert: (".sidebar .location", 1)
+// We check that we still have the crates list and that the "current" on is still "lib2".
+assert: (".sidebar-elems > .crate > ul > li > a.current", "lib2")
+goto: ./module/sub_module/sub_sub_module/index.html
+
+assert: (".sidebar > .location", "Module sub_sub_module")
+assert: (".sidebar-elems > .crate > ul > li:nth-child(2) > a", "test_docs")
+assert: (".sidebar-elems > .crate > ul > li:nth-child(2) > a", "href", "../../../../test_docs/index.html")
+assert: (".sidebar-elems > .items > ul > li:nth-child(1)", "Functions")
+assert: ("#functions + table td > a", "foo")
