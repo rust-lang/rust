@@ -27,6 +27,7 @@ pub(crate) fn prime_caches(db: &RootDatabase, cb: &(dyn Fn(PrimeCachesProgress) 
     let topo = &graph.crates_in_topological_order();
 
     cb(PrimeCachesProgress::Started);
+    // Take care to emit the finish signal  even when the computation is canceled.
     let _d = stdx::defer(|| cb(PrimeCachesProgress::Finished));
 
     // FIXME: This would be easy to parallelize, since it's in the ideal ordering for that.

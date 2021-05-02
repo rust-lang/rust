@@ -8,8 +8,7 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
-use ide::PrimeCachesProgress;
-use ide::{Canceled, FileId};
+use ide::{FileId, PrimeCachesProgress};
 use ide_db::base_db::VfsPath;
 use lsp_server::{Connection, Notification, Request, Response};
 use lsp_types::notification::Notification as _;
@@ -278,8 +277,6 @@ impl GlobalState {
                     };
                 }
 
-                let mut finished = false;
-
                 for progress in prime_caches_progress {
                     let (state, message, fraction);
                     match progress {
@@ -297,17 +294,12 @@ impl GlobalState {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
-                            finished = true;
+
+                            self.prime_caches_queue.op_completed(());
                         }
                     };
 
                     self.report_progress("Indexing", state, message, Some(fraction));
-                }
-
-                // If the task is cancelled we may observe two `PrimeCachesProgress::Finished` so we
-                // have to make sure to only call `op_completed()` once.
-                if finished {
-                    self.prime_caches_queue.op_completed(());
                 }
             }
             Event::Vfs(mut task) => {
@@ -730,15 +722,13 @@ impl GlobalState {
         self.task_pool.handle.spawn_with_sender({
             let snap = self.snapshot();
             move |sender| {
-                snap.analysis
-                    .prime_caches(|progress| {
-                        sender.send(Task::PrimeCaches(progress)).unwrap();
-                    })
-                    .unwrap_or_else(|_: Canceled| {
-                        // Pretend that we're done, so that the progress bar is removed. Otherwise
-                        // the editor may complain about it already existing.
-                        sender.send(Task::PrimeCaches(PrimeCachesProgress::Finished)).unwrap()
-                    });
+                let cb = |progress| {
+                    sender.send(Task::PrimeCaches(progress)).unwrap();
+                };
+                match snap.analysis.prime_caches(cb) {
+                    Ok(()) => (),
+                    Err(_canceled) => (),
+                }
             }
         });
     }
