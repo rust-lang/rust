@@ -301,103 +301,108 @@ impl<'a> CompletionContext<'a> {
             .find_map(ast::Impl::cast);
     }
 
+    fn expected_type_and_name(&self) -> (Option<Type>, Option<NameOrNameRef>) {
+        let mut node = match self.token.parent() {
+            Some(it) => it,
+            None => return (None, None),
+        };
+        loop {
+            break match_ast! {
+                match node {
+                    ast::LetStmt(it) => {
+                        cov_mark::hit!(expected_type_let_with_leading_char);
+                        cov_mark::hit!(expected_type_let_without_leading_char);
+                        let ty = it.pat()
+                            .and_then(|pat| self.sema.type_of_pat(&pat));
+                        let name = if let Some(ast::Pat::IdentPat(ident)) = it.pat() {
+                            ident.name().map(NameOrNameRef::Name)
+                        } else {
+                            None
+                        };
+
+                        (ty, name)
+                    },
+                    ast::ArgList(_it) => {
+                        cov_mark::hit!(expected_type_fn_param_with_leading_char);
+                        cov_mark::hit!(expected_type_fn_param_without_leading_char);
+                        ActiveParameter::at_token(
+                            &self.sema,
+                            self.token.clone(),
+                        ).map(|ap| {
+                            let name = ap.ident().map(NameOrNameRef::Name);
+                            (Some(ap.ty), name)
+                        })
+                        .unwrap_or((None, None))
+                    },
+                    ast::RecordExprFieldList(_it) => {
+                        cov_mark::hit!(expected_type_struct_field_without_leading_char);
+                        self.token.prev_sibling_or_token()
+                            .and_then(|se| se.into_node())
+                            .and_then(|node| ast::RecordExprField::cast(node))
+                            .and_then(|rf| self.sema.resolve_record_field(&rf).zip(Some(rf)))
+                            .map(|(f, rf)|(
+                                Some(f.0.ty(self.db)),
+                                rf.field_name().map(NameOrNameRef::NameRef),
+                            ))
+                            .unwrap_or((None, None))
+                    },
+                    ast::RecordExprField(it) => {
+                        cov_mark::hit!(expected_type_struct_field_with_leading_char);
+                        self.sema
+                            .resolve_record_field(&it)
+                            .map(|f|(
+                                Some(f.0.ty(self.db)),
+                                it.field_name().map(NameOrNameRef::NameRef),
+                            ))
+                            .unwrap_or((None, None))
+                    },
+                    ast::MatchExpr(it) => {
+                        cov_mark::hit!(expected_type_match_arm_without_leading_char);
+                        let ty = it.expr()
+                            .and_then(|e| self.sema.type_of_expr(&e));
+                        (ty, None)
+                    },
+                    ast::IfExpr(it) => {
+                        cov_mark::hit!(expected_type_if_let_without_leading_char);
+                        let ty = it.condition()
+                            .and_then(|cond| cond.expr())
+                            .and_then(|e| self.sema.type_of_expr(&e));
+                        (ty, None)
+                    },
+                    ast::IdentPat(it) => {
+                        cov_mark::hit!(expected_type_if_let_with_leading_char);
+                        cov_mark::hit!(expected_type_match_arm_with_leading_char);
+                        let ty = self.sema.type_of_pat(&ast::Pat::from(it));
+                        (ty, None)
+                    },
+                    ast::Fn(it) => {
+                        cov_mark::hit!(expected_type_fn_ret_with_leading_char);
+                        cov_mark::hit!(expected_type_fn_ret_without_leading_char);
+                        let def = self.sema.to_def(&it);
+                        (def.map(|def| def.ret_type(self.db)), None)
+                    },
+                    ast::Stmt(it) => (None, None),
+                    _ => {
+                        match node.parent() {
+                            Some(n) => {
+                                node = n;
+                                continue;
+                            },
+                            None => (None, None),
+                        }
+                    },
+                }
+            };
+        }
+    }
+
     fn fill(
         &mut self,
         original_file: &SyntaxNode,
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
     ) {
-        let (expected_type, expected_name) = {
-            let mut node = match self.token.parent() {
-                Some(it) => it,
-                None => return,
-            };
-            loop {
-                break match_ast! {
-                    match node {
-                        ast::LetStmt(it) => {
-                            cov_mark::hit!(expected_type_let_with_leading_char);
-                            cov_mark::hit!(expected_type_let_without_leading_char);
-                            let ty = it.pat()
-                                .and_then(|pat| self.sema.type_of_pat(&pat));
-                            let name = if let Some(ast::Pat::IdentPat(ident)) = it.pat() {
-                                ident.name().map(NameOrNameRef::Name)
-                            } else {
-                                None
-                            };
-
-                            (ty, name)
-                        },
-                        ast::ArgList(_it) => {
-                            cov_mark::hit!(expected_type_fn_param_with_leading_char);
-                            cov_mark::hit!(expected_type_fn_param_without_leading_char);
-                            ActiveParameter::at_token(
-                                &self.sema,
-                                self.token.clone(),
-                            ).map(|ap| {
-                                let name = ap.ident().map(NameOrNameRef::Name);
-                                (Some(ap.ty), name)
-                            })
-                            .unwrap_or((None, None))
-                        },
-                        ast::RecordExprFieldList(_it) => {
-                            cov_mark::hit!(expected_type_struct_field_without_leading_char);
-                            self.token.prev_sibling_or_token()
-                                .and_then(|se| se.into_node())
-                                .and_then(|node| ast::RecordExprField::cast(node))
-                                .and_then(|rf| self.sema.resolve_record_field(&rf).zip(Some(rf)))
-                                .map(|(f, rf)|(
-                                    Some(f.0.ty(self.db)),
-                                    rf.field_name().map(NameOrNameRef::NameRef),
-                                ))
-                                .unwrap_or((None, None))
-                        },
-                        ast::RecordExprField(it) => {
-                            cov_mark::hit!(expected_type_struct_field_with_leading_char);
-                            self.sema
-                                .resolve_record_field(&it)
-                                .map(|f|(
-                                    Some(f.0.ty(self.db)),
-                                    it.field_name().map(NameOrNameRef::NameRef),
-                                ))
-                                .unwrap_or((None, None))
-                        },
-                        ast::MatchExpr(it) => {
-                            cov_mark::hit!(expected_type_match_arm_without_leading_char);
-                            let ty = it.expr()
-                                .and_then(|e| self.sema.type_of_expr(&e));
-
-                            (ty, None)
-                        },
-                        ast::IdentPat(it) => {
-                            cov_mark::hit!(expected_type_if_let_with_leading_char);
-                            cov_mark::hit!(expected_type_match_arm_with_leading_char);
-                            let ty = self.sema.type_of_pat(&ast::Pat::from(it));
-
-                            (ty, None)
-                        },
-                        ast::Fn(_it) => {
-                            cov_mark::hit!(expected_type_fn_ret_with_leading_char);
-                            cov_mark::hit!(expected_type_fn_ret_without_leading_char);
-                            let ty = self.token.ancestors()
-                                .find_map(|ancestor| ast::Expr::cast(ancestor))
-                                .and_then(|expr| self.sema.type_of_expr(&expr));
-
-                            (ty, None)
-                        },
-                        _ => {
-                            match node.parent() {
-                                Some(n) => {
-                                    node = n;
-                                    continue;
-                                },
-                                None => (None, None),
-                            }
-                        },
-                    }
-                };
-            }
-        };
+        let (expected_type, expected_name) = self.expected_type_and_name();
         self.expected_type = expected_type;
         self.expected_name = expected_name;
         self.attribute_under_caret = find_node_at_offset(&file_with_fake_ident, offset);
@@ -802,6 +807,7 @@ fn foo() {
 
     #[test]
     fn expected_type_if_let_without_leading_char() {
+        cov_mark::check!(expected_type_if_let_without_leading_char);
         check_expected_type_and_name(
             r#"
 enum Foo { Bar, Baz, Quux }
@@ -811,8 +817,8 @@ fn foo() {
     if let $0 = f { }
 }
 "#,
-            expect![[r#"ty: (), name: ?"#]],
-        ) // FIXME should be `ty: u32, name: ?`
+            expect![[r#"ty: Foo, name: ?"#]],
+        )
     }
 
     #[test]
@@ -840,8 +846,8 @@ fn foo() -> u32 {
     $0
 }
 "#,
-            expect![[r#"ty: (), name: ?"#]],
-        ) // FIXME this should be `ty: u32, name: ?`
+            expect![[r#"ty: u32, name: ?"#]],
+        )
     }
 
     #[test]
@@ -851,6 +857,18 @@ fn foo() -> u32 {
             r#"
 fn foo() -> u32 {
     c$0
+}
+"#,
+            expect![[r#"ty: u32, name: ?"#]],
+        )
+    }
+
+    #[test]
+    fn expected_type_fn_ret_fn_ref_fully_typed() {
+        check_expected_type_and_name(
+            r#"
+fn foo() -> u32 {
+    foo$0
 }
 "#,
             expect![[r#"ty: u32, name: ?"#]],

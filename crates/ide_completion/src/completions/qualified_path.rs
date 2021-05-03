@@ -737,28 +737,6 @@ fn f() {}
     }
 
     #[test]
-    fn completes_function() {
-        check(
-            r#"
-fn foo(
-    a: i32,
-    b: i32
-) {
-
-}
-
-fn main() {
-    fo$0
-}
-"#,
-            expect![[r#"
-                fn main() fn()
-                fn foo(…) fn(i32, i32)
-            "#]],
-        );
-    }
-
-    #[test]
     fn completes_self_enum() {
         check(
             r#"
