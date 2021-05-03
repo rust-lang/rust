@@ -2288,7 +2288,7 @@ impl ToString for char {
     }
 }
 
-#[stable(feature = "u8_to_string_specialization", since = "1.999.0")]
+#[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
 impl ToString for u8 {
     #[inline]
     fn to_string(&self) -> String {
@@ -2307,7 +2307,7 @@ impl ToString for u8 {
     }
 }
 
-#[stable(feature = "i8_to_string_specialization", since = "1.999.0")]
+#[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
 impl ToString for i8 {
     #[inline]
     fn to_string(&self) -> String {
