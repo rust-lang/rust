@@ -173,6 +173,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "frem_fast" => mir::BinOp::Rem,
                     _ => bug!(),
                 };
+                let float_finite = |x: ImmTy<'tcx, _>| -> InterpResult<'tcx, bool> {
+                    Ok(match x.layout.ty.kind() {
+                        ty::Float(FloatTy::F32) => x.to_scalar()?.to_f32()?.is_finite(),
+                        ty::Float(FloatTy::F64) => x.to_scalar()?.to_f64()?.is_finite(),
+                        _ => bug!(
+                            "`{}` called with non-float input type {:?}",
+                            intrinsic_name,
+                            x.layout.ty
+                        ),
+                    })
+                };
+                match (float_finite(a)?, float_finite(b)?) {
+                    (false, false) => throw_ub_format!(
+                        "`{}` intrinsic called with non-finite value as both parameters",
+                        intrinsic_name,
+                    ),
+                    (false, _) => throw_ub_format!(
+                        "`{}` intrinsic called with non-finite value as first parameter",
+                        intrinsic_name,
+                    ),
+                    (_, false) => throw_ub_format!(
+                        "`{}` intrinsic called with non-finite value as second parameter",
+                        intrinsic_name,
+                    ),
+                    _ => {}
+                }
                 this.binop_ignore_overflow(op, &a, &b, dest)?;
             }
 
