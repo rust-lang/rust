@@ -269,7 +269,7 @@ impl ModError<'_> {
                     diag,
                     span,
                     E0761,
-                    "file for module `{}` found at both {} and {}",
+                    "file for module `{}` found at both \"{}\" and \"{}\"",
                     ident,
                     default_path_short,
                     secondary_path_short,
