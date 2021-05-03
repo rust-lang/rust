@@ -802,6 +802,7 @@ impl Step for CodegenBackend {
         rustc_cargo_env(builder, &mut cargo, target);
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
+
         builder.info(&format!(
             "Building stage{} codegen backend {} ({} -> {})",
             compiler.stage, backend, &compiler.host, target
