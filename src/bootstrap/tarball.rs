@@ -18,7 +18,6 @@ pub(crate) enum OverlayKind {
     RustDemangler,
     RLS,
     RustAnalyzer,
-    RustcCodegenCranelift,
 }
 
 impl OverlayKind {
@@ -62,11 +61,6 @@ impl OverlayKind {
                 "src/tools/rust-analyzer/LICENSE-APACHE",
                 "src/tools/rust-analyzer/LICENSE-MIT",
             ],
-            OverlayKind::RustcCodegenCranelift => &[
-                "compiler/rustc_codegen_cranelift/Readme.md",
-                "compiler/rustc_codegen_cranelift/LICENSE-APACHE",
-                "compiler/rustc_codegen_cranelift/LICENSE-MIT",
-            ],
         }
     }
 
@@ -89,7 +83,6 @@ impl OverlayKind {
             OverlayKind::RustAnalyzer => builder
                 .rust_analyzer_info
                 .version(builder, &builder.release_num("rust-analyzer/crates/rust-analyzer")),
-            OverlayKind::RustcCodegenCranelift => builder.rust_version(),
         }
     }
 }

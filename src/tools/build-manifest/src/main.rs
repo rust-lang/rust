@@ -178,8 +178,7 @@ static PKG_INSTALLERS: &[&str] = &["x86_64-apple-darwin", "aarch64-apple-darwin"
 
 static MINGW: &[&str] = &["i686-pc-windows-gnu", "x86_64-pc-windows-gnu"];
 
-static NIGHTLY_ONLY_COMPONENTS: &[&str] =
-    &["miri-preview", "rust-analyzer-preview", "rustc-codegen-cranelift-preview"];
+static NIGHTLY_ONLY_COMPONENTS: &[&str] = &["miri-preview", "rust-analyzer-preview"];
 
 macro_rules! t {
     ($e:expr) => {
@@ -315,7 +314,6 @@ impl Builder {
         package("clippy-preview", HOSTS);
         package("miri-preview", HOSTS);
         package("rustfmt-preview", HOSTS);
-        package("rustc-codegen-cranelift-preview", HOSTS);
         package("rust-analysis", TARGETS);
         package("llvm-tools-preview", TARGETS);
     }
@@ -372,7 +370,6 @@ impl Builder {
                 "llvm-tools-preview",
                 "rust-analysis",
                 "miri-preview",
-                "rustc-codegen-cranelift-preview",
             ],
         );
 
@@ -393,7 +390,6 @@ impl Builder {
         rename("rustfmt", "rustfmt-preview");
         rename("clippy", "clippy-preview");
         rename("miri", "miri-preview");
-        rename("rustc-codegen-cranelift", "rustc-codegen-cranelift-preview");
     }
 
     fn rust_package(&mut self, manifest: &Manifest) -> Package {
@@ -449,7 +445,6 @@ impl Builder {
             host_component("rustfmt-preview"),
             host_component("llvm-tools-preview"),
             host_component("rust-analysis"),
-            host_component("rustc-codegen-cranelift-preview"),
         ]);
 
         extensions.extend(
