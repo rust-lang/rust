@@ -8,14 +8,13 @@ where
     }
 }
 
-impl X<'_> for u32
+impl X<'_> for u32 //~ overflow evaluating the requirement `for<'b> u32: X<'b>`
 where
     for<'b> <Self as X<'b>>::U: Clone,
 {
-    type U = str;
+    type U = str; //~ overflow evaluating the requirement `for<'b> u32: X<'b>`
 }
 
 fn main() {
     1u32.f("abc");
-    //~^ ERROR the method
 }

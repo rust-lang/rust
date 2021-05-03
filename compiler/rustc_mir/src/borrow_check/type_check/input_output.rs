@@ -9,7 +9,9 @@
 
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
-use rustc_middle::ty::Ty;
+use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::{self, Ty};
+use rustc_trait_selection::traits::query::normalize::AtExt;
 
 use rustc_index::vec::Idx;
 use rustc_span::Span;
@@ -80,6 +82,33 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let local = Local::new(argument_index + 1);
 
             let mir_input_ty = body.local_decls[local].ty;
+            // FIXME(jackh726): This is a hack. It's somewhat like
+            // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
+            // like to normalize *before* inserting into `local_decls`, but I
+            // couldn't figure out where the heck that was.
+            let mir_input_ty = match self
+                .infcx
+                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                .normalize(mir_input_ty)
+            {
+                Ok(n) => {
+                    debug!("equate_inputs_and_outputs: {:?}", n);
+                    if n.obligations.iter().all(|o| {
+                        matches!(
+                            o.predicate.kind().skip_binder(),
+                            ty::PredicateKind::RegionOutlives(_)
+                        )
+                    }) {
+                        n.value
+                    } else {
+                        mir_input_ty
+                    }
+                }
+                Err(_) => {
+                    debug!("equate_inputs_and_outputs: NoSolution");
+                    mir_input_ty
+                }
+            };
             let mir_input_span = body.local_decls[local].source_info.span;
             self.equate_normalized_input_or_output(
                 normalized_input_ty,

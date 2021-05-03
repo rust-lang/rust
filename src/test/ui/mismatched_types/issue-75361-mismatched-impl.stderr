@@ -2,10 +2,10 @@ error: `impl` item signature doesn't match `trait` item signature
   --> $DIR/issue-75361-mismatched-impl.rs:18:3
    |
 LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType>>;
-   |   --------------------------------------------------------------------- expected `fn(&T) -> Box<(dyn MyTrait<Item = &_> + 'static)>`
+   |   --------------------------------------------------------------------- expected `fn(&T) -> Box<(dyn MyTrait<Item = &T> + 'static)>`
 ...
 LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType> + '_> {
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&T) -> Box<dyn MyTrait<Item = &_>>`
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&T) -> Box<dyn MyTrait<Item = &T>>`
    |
    = note: expected `fn(&T) -> Box<(dyn MyTrait<Item = &T> + 'static)>`
               found `fn(&T) -> Box<dyn MyTrait<Item = &T>>`

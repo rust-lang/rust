@@ -555,14 +555,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         mut fld_r: F,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, BTreeMap<ty::BoundRegionKind, ty::Region<'tcx>>)
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         T: TypeFoldable<'tcx>,
     {
         let mut region_map = BTreeMap::new();
         let mut real_fld_r =
-            |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
+            |br: ty::BoundRegion| *region_map.entry(br.kind).or_insert_with(|| fld_r(br));
         let value = value.skip_binder();
         let value = if !value.has_escaping_bound_vars() {
             value

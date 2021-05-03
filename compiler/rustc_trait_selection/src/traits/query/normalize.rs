@@ -14,7 +14,9 @@ use rustc_infer::traits::Normalized;
 use rustc_middle::mir;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+
+use std::ops::ControlFlow;
 
 use super::NoSolution;
 
@@ -65,6 +67,14 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             universes: vec![],
         };
 
+        if value.has_escaping_bound_vars() {
+            let mut max_visitor =
+                MaxEscapingBoundVarVisitor { outer_index: ty::INNERMOST, escaping: 0 };
+            value.visit_with(&mut max_visitor);
+            if max_visitor.escaping > 0 {
+                normalizer.universes.extend((0..max_visitor.escaping).map(|_| None));
+            }
+        }
         let result = value.fold_with(&mut normalizer);
         info!(
             "normalize::<{}>: result={:?} with {} obligations",
@@ -81,6 +91,58 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             Err(NoSolution)
         } else {
             Ok(Normalized { value: result, obligations: normalizer.obligations })
+        }
+    }
+}
+
+/// Visitor to find the maximum escaping bound var
+struct MaxEscapingBoundVarVisitor {
+    // The index which would count as escaping
+    outer_index: ty::DebruijnIndex,
+    escaping: usize,
+}
+
+impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
+    fn visit_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: &ty::Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
+        self.outer_index.shift_in(1);
+        let result = t.super_visit_with(self);
+        self.outer_index.shift_out(1);
+        result
+    }
+
+    #[inline]
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if t.outer_exclusive_binder() > self.outer_index {
+            self.escaping = self
+                .escaping
+                .max(t.outer_exclusive_binder().as_usize() - self.outer_index.as_usize());
+        }
+        ControlFlow::CONTINUE
+    }
+
+    #[inline]
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match *r {
+            ty::ReLateBound(debruijn, _) if debruijn > self.outer_index => {
+                self.escaping =
+                    self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
+            }
+            _ => {}
+        }
+        ControlFlow::CONTINUE
+    }
+
+    fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match ct.val {
+            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
+                self.escaping =
+                    self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
+                ControlFlow::CONTINUE
+            }
+            _ => ct.super_visit_with(self),
         }
     }
 }
@@ -121,14 +183,25 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             return ty;
         }
 
-        let ty = ty.super_fold_with(self);
+        // N.b. while we want to call `super_fold_with(self)` on `ty` before
+        // normalization, we wait until we know whether we need to normalize the
+        // current type. If we do, then we only fold the ty *after* replacing bound
+        // vars with placeholders. This means that nested types don't need to replace
+        // bound vars at the current binder level or above. A key assumption here is
+        // that folding the type can't introduce new bound vars.
+
+        // Wrap this in a closure so we don't accidentally return from the outer function
         let res = (|| match *ty.kind() {
-            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
+            ty::Opaque(def_id, substs) => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
-                    Reveal::UserFacing => ty,
+                    Reveal::UserFacing => ty.super_fold_with(self),
 
                     Reveal::All => {
+                        // N.b. there is an assumption here all this code can handle
+                        // escaping bound vars.
+
+                        let substs = substs.super_fold_with(self);
                         let recursion_limit = self.tcx().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
                             let obligation = Obligation::with_depth(
@@ -161,19 +234,11 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             }
 
             ty::Projection(data) if !data.has_escaping_bound_vars() => {
-                // This is kind of hacky -- we need to be able to
-                // handle normalization within binders because
-                // otherwise we wind up a need to normalize when doing
-                // trait matching (since you can have a trait
-                // obligation like `for<'a> T::B: Fn(&'a i32)`), but
-                // we can't normalize with bound regions in scope. So
-                // far now we just ignore binders but only normalize
-                // if all bound regions are gone (and then we still
-                // have to renormalize whenever we instantiate a
-                // binder). It would be better to normalize in a
-                // binding-aware fashion.
+                // This branch is just an optimization: when we don't have escaping bound vars,
+                // we don't need to replace them with placeholders (see branch below).
 
                 let tcx = self.infcx.tcx;
+                let data = data.super_fold_with(self);
 
                 let mut orig_values = OriginalQueryValues::default();
                 // HACK(matthewjasper) `'static` is special-cased in selection,
@@ -217,22 +282,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     }
                 }
             }
-            ty::Projection(data) if !data.trait_ref(self.infcx.tcx).has_escaping_bound_vars() => {
+
+            ty::Projection(data) => {
                 // See note in `rustc_trait_selection::traits::project`
-
-                // One other point mentioning: In `traits::project`, if a
-                // projection can't be normalized, we return an inference variable
-                // and register an obligation to later resolve that. Here, the query
-                // will just return ambiguity. In both cases, the effect is the same: we only want
-                // to return `ty` because there are bound vars that we aren't yet handling in a more
-                // complete way.
-
-                // `BoundVarReplacer` can't handle escaping bound vars. Ideally, we want this before even calling
-                // `QueryNormalizer`, but some const-generics tests pass escaping bound vars.
-                // Also, use `ty` so we get that sweet `outer_exclusive_binder` optimization
-                assert!(!ty.has_vars_bound_at_or_above(ty::DebruijnIndex::from_usize(
-                    self.universes.len()
-                )));
 
                 let tcx = self.infcx.tcx;
                 let infcx = self.infcx;
@@ -292,7 +344,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 )
             }
 
-            _ => ty,
+            _ => ty.super_fold_with(self),
         })();
         self.cache.insert(ty, res);
         res
