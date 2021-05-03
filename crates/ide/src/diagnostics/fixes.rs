@@ -39,7 +39,7 @@ pub(crate) trait DiagnosticWithFix: Diagnostic {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist>;
 }
 
@@ -47,7 +47,7 @@ impl DiagnosticWithFix for UnresolvedModule {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let unresolved_module = self.decl.to_node(&root);
@@ -71,7 +71,7 @@ impl DiagnosticWithFix for NoSuchField {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         missing_record_expr_field_fix(
@@ -86,7 +86,7 @@ impl DiagnosticWithFix for MissingFields {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         // Note that although we could add a diagnostics to
         // fill the missing tuple field, e.g :
@@ -126,7 +126,7 @@ impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let tail_expr = self.expr.to_node(&root);
@@ -143,7 +143,7 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
 
@@ -167,7 +167,7 @@ impl DiagnosticWithFix for IncorrectCase {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        resolve: AssistResolveStrategy,
+        resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let name_node = self.ident.to_node(&root);
@@ -191,7 +191,7 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
     fn fix(
         &self,
         sema: &Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         let root = sema.db.parse_or_expand(self.file)?;
         let next_expr = self.next_expr.to_node(&root);

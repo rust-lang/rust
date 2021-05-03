@@ -54,7 +54,7 @@ impl DiagnosticWithFix for UnlinkedFile {
     fn fix(
         &self,
         sema: &hir::Semantics<RootDatabase>,
-        _resolve: AssistResolveStrategy,
+        _resolve: &AssistResolveStrategy,
     ) -> Option<Assist> {
         // If there's an existing module that could add a `mod` item to include the unlinked file,
         // suggest that as a fix.

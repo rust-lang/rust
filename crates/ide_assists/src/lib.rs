@@ -17,6 +17,8 @@ mod tests;
 pub mod utils;
 pub mod ast_transform;
 
+use std::str::FromStr;
+
 use hir::Semantics;
 use ide_db::base_db::FileRange;
 use ide_db::{label::Label, source_change::SourceChange, RootDatabase};
@@ -56,6 +58,35 @@ impl AssistKind {
             _ => return false,
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            AssistKind::None => "None",
+            AssistKind::QuickFix => "QuickFix",
+            AssistKind::Generate => "Generate",
+            AssistKind::Refactor => "Refactor",
+            AssistKind::RefactorExtract => "RefactorExtract",
+            AssistKind::RefactorInline => "RefactorInline",
+            AssistKind::RefactorRewrite => "RefactorRewrite",
+        }
+    }
+}
+
+impl FromStr for AssistKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "None" => Ok(AssistKind::None),
+            "QuickFix" => Ok(AssistKind::QuickFix),
+            "Generate" => Ok(AssistKind::Generate),
+            "Refactor" => Ok(AssistKind::Refactor),
+            "RefactorExtract" => Ok(AssistKind::RefactorExtract),
+            "RefactorInline" => Ok(AssistKind::RefactorInline),
+            "RefactorRewrite" => Ok(AssistKind::RefactorRewrite),
+            unknown => Err(format!("Unknown AssistKind: '{}'", unknown)),
+        }
+    }
 }
 
 /// Unique identifier of the assist, should not be shown to the user
@@ -64,11 +95,11 @@ impl AssistKind {
 pub struct AssistId(pub &'static str, pub AssistKind);
 
 // TODO kb docs
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum AssistResolveStrategy {
     None,
     All,
-    Single(AssistId),
+    Single(String, AssistKind),
 }
 
 impl AssistResolveStrategy {
@@ -76,7 +107,9 @@ impl AssistResolveStrategy {
         match self {
             AssistResolveStrategy::None => false,
             AssistResolveStrategy::All => true,
-            AssistResolveStrategy::Single(id_to_resolve) => id_to_resolve == id,
+            AssistResolveStrategy::Single(id_to_resolve, kind) => {
+                id_to_resolve == id.0 && kind == &id.1
+            }
         }
     }
 }

@@ -522,7 +522,7 @@ impl Analysis {
         frange: FileRange,
     ) -> Cancelable<Vec<Assist>> {
         self.with_db(|db| {
-            let ssr_assists = ssr::ssr_assists(db, resolve, frange);
+            let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
             let mut acc = Assist::get(db, config, resolve, frange);
             acc.extend(ssr_assists.into_iter());
             acc
@@ -536,7 +536,7 @@ impl Analysis {
         resolve: AssistResolveStrategy,
         file_id: FileId,
     ) -> Cancelable<Vec<Diagnostic>> {
-        self.with_db(|db| diagnostics::diagnostics(db, config, resolve, file_id))
+        self.with_db(|db| diagnostics::diagnostics(db, config, &resolve, file_id))
     }
 
     /// Convenience function to return assists + quick fixes for diagnostics
@@ -553,9 +553,9 @@ impl Analysis {
         };
 
         self.with_db(|db| {
-            let ssr_assists = ssr::ssr_assists(db, resolve, frange);
+            let ssr_assists = ssr::ssr_assists(db, &resolve, frange);
             let diagnostic_assists = if include_fixes {
-                diagnostics::diagnostics(db, diagnostics_config, resolve, frange.file_id)
+                diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
                     .into_iter()
                     .filter_map(|it| it.fix)
                     .filter(|it| it.target.intersect(frange.range).is_some())

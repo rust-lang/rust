@@ -85,7 +85,7 @@ pub struct DiagnosticsConfig {
 pub(crate) fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
-    resolve: AssistResolveStrategy,
+    resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
     let _p = profile::span("diagnostics");
@@ -213,7 +213,7 @@ pub(crate) fn diagnostics(
 fn diagnostic_with_fix<D: DiagnosticWithFix>(
     d: &D,
     sema: &Semantics<RootDatabase>,
-    resolve: AssistResolveStrategy,
+    resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::error(sema.diagnostics_display_range(d.display_source()).range, d.message())
         .with_fix(d.fix(&sema, resolve))
@@ -223,7 +223,7 @@ fn diagnostic_with_fix<D: DiagnosticWithFix>(
 fn warning_with_fix<D: DiagnosticWithFix>(
     d: &D,
     sema: &Semantics<RootDatabase>,
-    resolve: AssistResolveStrategy,
+    resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::hint(sema.diagnostics_display_range(d.display_source()).range, d.message())
         .with_fix(d.fix(&sema, resolve))

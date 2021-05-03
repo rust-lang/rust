@@ -7,7 +7,7 @@ use ide_db::{base_db::FileRange, label::Label, source_change::SourceChange, Root
 
 pub(crate) fn ssr_assists(
     db: &RootDatabase,
-    resolve: AssistResolveStrategy,
+    resolve: &AssistResolveStrategy,
     frange: FileRange,
 ) -> Vec<Assist> {
     let mut ssr_assists = Vec::with_capacity(2);
@@ -73,7 +73,7 @@ mod tests {
         let mut local_roots = FxHashSet::default();
         local_roots.insert(ide_db::base_db::fixture::WORKSPACE);
         db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
-        ssr_assists(&db, resolve, FileRange { file_id, range: range_or_offset.into() })
+        ssr_assists(&db, &resolve, FileRange { file_id, range: range_or_offset.into() })
     }
 
     #[test]

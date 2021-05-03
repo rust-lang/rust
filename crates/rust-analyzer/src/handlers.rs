@@ -8,9 +8,9 @@ use std::{
 };
 
 use ide::{
-    AnnotationConfig, AssistResolveStrategy, FileId, FilePosition, FileRange, HoverAction,
-    HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange,
-    TextEdit,
+    AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
+    HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -28,7 +28,7 @@ use lsp_types::{
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
-use stdx::{format_to, split_once};
+use stdx::format_to;
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
 use crate::{
@@ -1058,18 +1058,27 @@ pub(crate) fn handle_code_action_resolve(
         .only
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
+    let assist_kind: AssistKind = match params.kind.parse() {
+        Ok(kind) => kind,
+        Err(e) => {
+            return Err(LspError::new(
+                ErrorCode::InvalidParams as i32,
+                format!("For the assist to resolve, failed to parse the kind: {}", e),
+            )
+            .into())
+        }
+    };
+
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
         &snap.config.diagnostics(),
-        // TODO kb pass a certain id
-        AssistResolveStrategy::All,
+        AssistResolveStrategy::Single(params.id.clone(), assist_kind),
         frange,
     )?;
 
-    let (id, index) = split_once(&params.id, ':').unwrap();
-    let index = index.parse::<usize>().unwrap();
-    let assist = &assists[index];
-    assert!(assist.id.0 == id);
+    let assist = &assists[params.index];
+    assert!(assist.id.0 == params.id);
+    assert!(assist.id.1 == assist_kind);
     let edit = to_proto::code_action(&snap, assist.clone(), None)?.edit;
     code_action.edit = edit;
     Ok(code_action)

@@ -897,8 +897,10 @@ pub(crate) fn code_action(
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
         (None, Some((index, code_action_params))) => {
             res.data = Some(lsp_ext::CodeActionData {
-                id: format!("{}:{}", assist.id.0, index.to_string()),
+                id: assist.id.0.to_string(),
                 code_action_params,
+                kind: assist.id.1.name().to_string(),
+                index,
             });
         }
         (None, None) => {
