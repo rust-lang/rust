@@ -177,7 +177,7 @@ fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
     }
     buf.write_str("<pre class=\"line-numbers\">");
     for i in 1..=lines {
-        write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
+        writeln!(buf, "<span id=\"{0}\">{0:1$}</span>", i, cols);
     }
     buf.write_str("</pre>");
     highlight::render_with_highlighting(s, buf, None, None, None, edition);

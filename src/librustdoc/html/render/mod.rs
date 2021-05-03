@@ -964,7 +964,7 @@ fn attributes(it: &clean::Item) -> Vec<String> {
 // a whitespace prefix and newline.
 fn render_attributes_in_pre(w: &mut Buffer, it: &clean::Item, prefix: &str) {
     for a in attributes(it) {
-        write!(w, "{}{}\n", prefix, a);
+        writeln!(w, "{}{}", prefix, a);
     }
 }
 
