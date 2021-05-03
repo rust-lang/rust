@@ -79,9 +79,12 @@ pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         "Sort methods",
         target,
         |builder| {
-            methods.into_iter().zip(sorted).for_each(|(old, new)| {
-                ted::replace(builder.make_ast_mut(old).syntax(), new.clone_for_update().syntax())
-            });
+            let methods =
+                methods.into_iter().map(|fn_| builder.make_ast_mut(fn_)).collect::<Vec<_>>();
+            methods
+                .into_iter()
+                .zip(sorted)
+                .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
         },
     )
 }
@@ -160,7 +163,7 @@ $0impl Bar for Foo {}
     }
 
     #[test]
-    fn reorder_impl_trait_methods() {
+    fn reorder_impl_trait_functions() {
         check_assist(
             reorder_impl,
             r#"
@@ -195,6 +198,35 @@ impl Bar for Foo {
     fn d() {}
 }
         "#,
+        )
+    }
+
+    #[test]
+    fn reorder_impl_trait_methods_uneven_ident_lengths() {
+        check_assist(
+            reorder_impl,
+            r#"
+trait Bar {
+    fn foo(&mut self) {}
+    fn fooo(&mut self) {}
+}
+
+struct Foo;
+impl Bar for Foo {
+    fn fooo(&mut self) {}
+    fn foo(&mut self) {$0}
+}"#,
+            r#"
+trait Bar {
+    fn foo(&mut self) {}
+    fn fooo(&mut self) {}
+}
+
+struct Foo;
+impl Bar for Foo {
+    fn foo(&mut self) {}
+    fn fooo(&mut self) {}
+}"#,
         )
     }
 }
