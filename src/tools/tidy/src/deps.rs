@@ -460,16 +460,7 @@ fn normal_deps_of_r<'a>(
         .iter()
         .find(|n| &n.id == pkg_id)
         .unwrap_or_else(|| panic!("could not find `{}` in resolve", pkg_id));
-    // Don't care about dev-dependencies.
-    // Build dependencies *shouldn't* matter unless they do some kind of
-    // codegen. For now we'll assume they don't.
-    let deps = node.deps.iter().filter(|node_dep| {
-        node_dep
-            .dep_kinds
-            .iter()
-            .any(|kind_info| kind_info.kind == cargo_metadata::DependencyKind::Normal)
-    });
-    for dep in deps {
+    for dep in &node.deps {
         normal_deps_of_r(resolve, &dep.pkg, result);
     }
 }
