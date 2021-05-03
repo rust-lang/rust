@@ -443,7 +443,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let target = &this.tcx.sess.target;
         let target_os = &target.os;
-        let last_error = if target.os_family == Some("unix".to_owned()) {
+        let last_error = if target.families.contains(&"unix".to_owned()) {
             this.eval_libc(match e.kind() {
                 ConnectionRefused => "ECONNREFUSED",
                 ConnectionReset => "ECONNRESET",
@@ -463,7 +463,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
                 }
             })?
-        } else if target_os == "windows" {
+        } else if target.families.contains(&"windows".to_owned()) {
             // FIXME: we have to finish implementing the Windows equivalent of this.
             this.eval_windows("c", match e.kind() {
                 NotFound => "ERROR_FILE_NOT_FOUND",
