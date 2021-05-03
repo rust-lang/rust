@@ -37,7 +37,7 @@ pub enum ModError<'a> {
     CircularInclusion(Vec<PathBuf>),
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf),
-    MultipleCandidates(Ident, String, String),
+    MultipleCandidates(Ident, PathBuf, PathBuf),
     ParserError(DiagnosticBuilder<'a>),
 }
 
@@ -220,9 +220,7 @@ pub fn default_submod_path<'a>(
             dir_ownership: DirOwnership::Owned { relative: None },
         }),
         (false, false) => Err(ModError::FileNotFound(ident, default_path)),
-        (true, true) => {
-            Err(ModError::MultipleCandidates(ident, default_path_str, secondary_path_str))
-        }
+        (true, true) => Err(ModError::MultipleCandidates(ident, default_path, secondary_path)),
     }
 }
 
@@ -264,15 +262,15 @@ impl ModError<'_> {
                 ));
                 err
             }
-            ModError::MultipleCandidates(ident, default_path_short, secondary_path_short) => {
+            ModError::MultipleCandidates(ident, default_path, secondary_path) => {
                 let mut err = struct_span_err!(
                     diag,
                     span,
                     E0761,
-                    "file for module `{}` found at both {} and {}",
+                    "file for module `{}` found at both \"{}\" and \"{}\"",
                     ident,
-                    default_path_short,
-                    secondary_path_short,
+                    default_path.display(),
+                    secondary_path.display(),
                 );
                 err.help("delete or rename one of them to remove the ambiguity");
                 err
