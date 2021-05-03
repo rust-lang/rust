@@ -406,7 +406,7 @@ impl SourceMap {
         }
     }
 
-    pub fn span_to_string(&self, sp: Span) -> String {
+    fn span_to_string(&self, sp: Span, prefer_local: bool) -> String {
         if self.files.borrow().source_files.is_empty() && sp.is_dummy() {
             return "no-location".to_string();
         }
@@ -415,12 +415,24 @@ impl SourceMap {
         let hi = self.lookup_char_pos(sp.hi());
         format!(
             "{}:{}:{}: {}:{}",
-            lo.file.name.prefer_remapped(),
+            if prefer_local { lo.file.name.prefer_local() } else { lo.file.name.prefer_remapped() },
             lo.line,
             lo.col.to_usize() + 1,
             hi.line,
             hi.col.to_usize() + 1,
         )
+    }
+
+    /// Format the span location suitable for embedding in build artifacts
+    pub fn span_to_embeddable_string(&self, sp: Span) -> String {
+        self.span_to_string(sp, false)
+    }
+
+    /// Format the span location to be printed in diagnostics. Must not be emitted
+    /// to build artifacts as this may leak local file paths. Use span_to_embeddable_string
+    /// for string suitable for embedding.
+    pub fn span_to_diagnostic_string(&self, sp: Span) -> String {
+        self.span_to_string(sp, true)
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {

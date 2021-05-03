@@ -872,7 +872,7 @@ pub fn debug_with_source_map(
     f: &mut fmt::Formatter<'_>,
     source_map: &SourceMap,
 ) -> fmt::Result {
-    write!(f, "{} ({:?})", source_map.span_to_string(span), span.ctxt())
+    write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(span), span.ctxt())
 }
 
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {

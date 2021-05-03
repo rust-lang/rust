@@ -148,8 +148,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug!(
             "instrumenting {:?}, fn sig span: {}, body span: {}",
             def_id,
-            source_map.span_to_string(fn_sig_span),
-            source_map.span_to_string(body_span)
+            source_map.span_to_diagnostic_string(fn_sig_span),
+            source_map.span_to_diagnostic_string(body_span)
         );
 
         let mut graphviz_data = debug::GraphvizData::new();
@@ -311,8 +311,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
                 file_name,
                 self.source_file,
-                source_map.span_to_string(span),
-                source_map.span_to_string(body_span)
+                source_map.span_to_diagnostic_string(span),
+                source_map.span_to_diagnostic_string(body_span)
             );
 
             inject_statement(

@@ -445,7 +445,10 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
             ty::Tuple(tys) if tys.is_empty() => {}
             _ => {
                 self.push("mir::Constant");
-                self.push(&format!("+ span: {}", self.tcx.sess.source_map().span_to_string(*span)));
+                self.push(&format!(
+                    "+ span: {}",
+                    self.tcx.sess.source_map().span_to_embeddable_string(*span)
+                ));
                 if let Some(user_ty) = user_ty {
                     self.push(&format!("+ user_ty: {:?}", user_ty));
                 }
@@ -516,7 +519,7 @@ impl Visitor<'tcx> for ExtraComments<'tcx> {
 }
 
 fn comment(tcx: TyCtxt<'_>, SourceInfo { span, scope }: SourceInfo) -> String {
-    format!("scope {} at {}", scope.index(), tcx.sess.source_map().span_to_string(span))
+    format!("scope {} at {}", scope.index(), tcx.sess.source_map().span_to_embeddable_string(span))
 }
 
 /// Prints local variables in a scope tree.
@@ -617,7 +620,7 @@ fn write_scope_tree(
                 "{0:1$} // at {2}",
                 indented_header,
                 ALIGN,
-                tcx.sess.source_map().span_to_string(span),
+                tcx.sess.source_map().span_to_embeddable_string(span),
             )?;
         } else {
             writeln!(w, "{}", indented_header)?;
@@ -1004,7 +1007,7 @@ fn write_user_type_annotations(
             "| {:?}: {:?} at {}",
             index.index(),
             annotation.user_ty,
-            tcx.sess.source_map().span_to_string(annotation.span)
+            tcx.sess.source_map().span_to_embeddable_string(annotation.span)
         )?;
     }
     if !body.user_type_annotations.is_empty() {

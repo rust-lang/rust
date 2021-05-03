@@ -193,7 +193,7 @@ fn t8() {
 fn t9() {
     let sm = init_source_map();
     let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
-    let sstr = sm.span_to_string(span);
+    let sstr = sm.span_to_diagnostic_string(span);
 
     assert_eq!(sstr, "blork.rs:2:1: 2:12");
 }

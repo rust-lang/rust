@@ -628,7 +628,7 @@ fn tooltip<'tcx>(
 ) -> String {
     let source_map = tcx.sess.source_map();
     let mut text = Vec::new();
-    text.push(format!("{}: {}:", spanview_id, &source_map.span_to_string(span)));
+    text.push(format!("{}: {}:", spanview_id, &source_map.span_to_embeddable_string(span)));
     for statement in statements {
         let source_range = source_range_no_file(tcx, &statement.source_info.span);
         text.push(format!(
