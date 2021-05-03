@@ -98,11 +98,11 @@ mod merging;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def_id::{CrateNum, DefIdSet, LOCAL_CRATE};
-use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::{mir::mono::MonoItem, ty::SymbolName};
 use rustc_span::symbol::Symbol;
 
 use crate::monomorphize::collector::InliningMap;
@@ -280,15 +280,12 @@ where
 {
     let _prof_timer = tcx.prof.generic_activity("assert_symbols_are_distinct");
 
-    let mut symbols: Vec<_> =
-        mono_items.map(|mono_item| (mono_item, mono_item.symbol_name(tcx))).collect();
+    let mut symbols: FxHashMap<SymbolName<'_>, &MonoItem<'tcx>> = FxHashMap::default();
 
-    symbols.sort_by_key(|sym| sym.1);
-
-    for &[(mono_item1, ref sym1), (mono_item2, ref sym2)] in symbols.array_windows() {
-        if sym1 == sym2 {
-            let span1 = mono_item1.local_span(tcx);
-            let span2 = mono_item2.local_span(tcx);
+    for mono_item in mono_items {
+        if let Some(other_mono_item) = symbols.insert(mono_item.symbol_name(tcx), mono_item) {
+            let span1 = mono_item.local_span(tcx);
+            let span2 = other_mono_item.local_span(tcx);
 
             // Deterministically select one of the spans for error reporting
             let span = match (span1, span2) {
@@ -298,7 +295,8 @@ where
                 (span1, span2) => span1.or(span2),
             };
 
-            let error_message = format!("symbol `{}` is already defined", sym1);
+            let error_message =
+                format!("symbol `{}` is already defined", mono_item.symbol_name(tcx));
 
             if let Some(span) = span {
                 tcx.sess.span_fatal(span, &error_message)
