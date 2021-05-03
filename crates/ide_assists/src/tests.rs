@@ -14,7 +14,7 @@ use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{
     handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind, AssistResolveStrategy,
-    Assists,
+    Assists, SingleResolve,
 };
 
 pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
@@ -275,5 +275,246 @@ pub fn test_some_range(a: int) -> bool {
         let expected = labels(&assists);
 
         expect![[r#""#]].assert_eq(&expected);
+    }
+}
+
+#[test]
+fn various_resolve_strategies() {
+    let (db, frange) = RootDatabase::with_range(
+        r#"
+pub fn test_some_range(a: int) -> bool {
+    if let 2..6 = $05$0 {
+        true
+    } else {
+        false
+    }
+}
+"#,
+    );
+
+    let mut cfg = TEST_CONFIG;
+    cfg.allowed = Some(vec![AssistKind::RefactorExtract]);
+
+    {
+        let assists = Assist::get(&db, &cfg, AssistResolveStrategy::None, frange);
+        assert_eq!(2, assists.len());
+        let mut assists = assists.into_iter();
+
+        let extract_into_variable_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_variable",
+                    RefactorExtract,
+                ),
+                label: "Extract into variable",
+                group: None,
+                target: 59..60,
+                source_change: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_variable_assist);
+
+        let extract_into_function_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_function",
+                    RefactorExtract,
+                ),
+                label: "Extract into function",
+                group: None,
+                target: 59..60,
+                source_change: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_function_assist);
+    }
+
+    {
+        let assists = Assist::get(
+            &db,
+            &cfg,
+            AssistResolveStrategy::Single(SingleResolve {
+                assist_id: "SOMETHING_MISMATCHING".to_string(),
+                assist_kind: AssistKind::RefactorExtract,
+            }),
+            frange,
+        );
+        assert_eq!(2, assists.len());
+        let mut assists = assists.into_iter();
+
+        let extract_into_variable_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_variable",
+                    RefactorExtract,
+                ),
+                label: "Extract into variable",
+                group: None,
+                target: 59..60,
+                source_change: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_variable_assist);
+
+        let extract_into_function_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_function",
+                    RefactorExtract,
+                ),
+                label: "Extract into function",
+                group: None,
+                target: 59..60,
+                source_change: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_function_assist);
+    }
+
+    {
+        let assists = Assist::get(
+            &db,
+            &cfg,
+            AssistResolveStrategy::Single(SingleResolve {
+                assist_id: "extract_variable".to_string(),
+                assist_kind: AssistKind::RefactorExtract,
+            }),
+            frange,
+        );
+        assert_eq!(2, assists.len());
+        let mut assists = assists.into_iter();
+
+        let extract_into_variable_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_variable",
+                    RefactorExtract,
+                ),
+                label: "Extract into variable",
+                group: None,
+                target: 59..60,
+                source_change: Some(
+                    SourceChange {
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "let $0var_name = 5;\n    ",
+                                        delete: 45..45,
+                                    },
+                                    Indel {
+                                        insert: "var_name",
+                                        delete: 59..60,
+                                    },
+                                ],
+                            },
+                        },
+                        file_system_edits: [],
+                        is_snippet: true,
+                    },
+                ),
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_variable_assist);
+
+        let extract_into_function_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_function",
+                    RefactorExtract,
+                ),
+                label: "Extract into function",
+                group: None,
+                target: 59..60,
+                source_change: None,
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_function_assist);
+    }
+
+    {
+        let assists = Assist::get(&db, &cfg, AssistResolveStrategy::All, frange);
+        assert_eq!(2, assists.len());
+        let mut assists = assists.into_iter();
+
+        let extract_into_variable_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_variable",
+                    RefactorExtract,
+                ),
+                label: "Extract into variable",
+                group: None,
+                target: 59..60,
+                source_change: Some(
+                    SourceChange {
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "let $0var_name = 5;\n    ",
+                                        delete: 45..45,
+                                    },
+                                    Indel {
+                                        insert: "var_name",
+                                        delete: 59..60,
+                                    },
+                                ],
+                            },
+                        },
+                        file_system_edits: [],
+                        is_snippet: true,
+                    },
+                ),
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_variable_assist);
+
+        let extract_into_function_assist = assists.next().unwrap();
+        expect![[r#"
+            Assist {
+                id: AssistId(
+                    "extract_function",
+                    RefactorExtract,
+                ),
+                label: "Extract into function",
+                group: None,
+                target: 59..60,
+                source_change: Some(
+                    SourceChange {
+                        source_file_edits: {
+                            FileId(
+                                0,
+                            ): TextEdit {
+                                indels: [
+                                    Indel {
+                                        insert: "fun_name()",
+                                        delete: 59..60,
+                                    },
+                                    Indel {
+                                        insert: "\n\nfn $0fun_name() -> i32 {\n    5\n}",
+                                        delete: 110..110,
+                                    },
+                                ],
+                            },
+                        },
+                        file_system_edits: [],
+                        is_snippet: true,
+                    },
+                ),
+            }
+        "#]]
+        .assert_debug_eq(&extract_into_function_assist);
     }
 }

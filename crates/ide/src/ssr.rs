@@ -89,7 +89,6 @@ mod tests {
         assert_eq!(0, assists.len());
     }
 
-    // TODO kb add partial resolve test
     #[test]
     fn resolve_edits_true() {
         let assists = get_assists(
