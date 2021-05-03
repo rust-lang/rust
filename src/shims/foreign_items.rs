@@ -512,16 +512,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[] = check_arg_count(args)?;
                 this.yield_active_thread();
             }
-            "llvm.aarch64.hint" if this.tcx.sess.target.arch == "aarch64" => {
+            "llvm.aarch64.isb" if this.tcx.sess.target.arch == "aarch64" => {
                 check_abi(abi, Abi::C { unwind: false })?;
-                let &[ref hint] = check_arg_count(args)?;
-                let hint = this.read_scalar(hint)?.to_i32()?;
-                match hint {
-                    1 => { // HINT_YIELD
+                let &[ref arg] = check_arg_count(args)?;
+                let arg = this.read_scalar(arg)?.to_i32()?;
+                match arg {
+                    15 => { // SY ("full system scope")
                         this.yield_active_thread();
                     }
                     _ => {
-                        throw_unsup_format!("unsupported llvm.aarch64.hint argument {}", hint);
+                        throw_unsup_format!("unsupported llvm.aarch64.isb argument {}", arg);
                     }
                 }
             }
