@@ -20,7 +20,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         panic_strategy: PanicStrategy::Abort,
         linker: Some("ld".to_string()),
-        os_family: Some("unix".to_string()),
+        families: vec!["unix".to_string()],
         ..Default::default()
     }
 }

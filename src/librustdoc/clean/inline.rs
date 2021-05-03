@@ -19,7 +19,7 @@ use crate::clean::{self, Attributes, AttributesExt, GetDefId, ToSource};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
-use super::Clean;
+use super::{Clean, Visibility};
 
 type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 
@@ -188,13 +188,23 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) 
     if did.is_local() {
         cx.cache.exact_paths.insert(did, fqn);
     } else {
-        cx.cache.external_paths.insert(did, (fqn, ItemType::from(kind)));
+        cx.cache.external_paths.insert(did, (fqn, kind));
     }
 }
 
 crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
-    let trait_items =
-        cx.tcx.associated_items(did).in_definition_order().map(|item| item.clean(cx)).collect();
+    let trait_items = cx
+        .tcx
+        .associated_items(did)
+        .in_definition_order()
+        .map(|item| {
+            // When building an external trait, the cleaned trait will have all items public,
+            // which causes methods to have a `pub` prefix, which is invalid since items in traits
+            // can not have a visibility prefix. Thus we override the visibility here manually.
+            // See https://github.com/rust-lang/rust/issues/81274
+            clean::Item { visibility: Visibility::Inherited, ..item.clean(cx) }
+        })
+        .collect();
 
     let predicates = cx.tcx.predicates_of(did);
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);

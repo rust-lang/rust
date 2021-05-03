@@ -5,6 +5,7 @@ LL | struct NoData<T>;
    |               ^ unused parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
 
 error[E0275]: overflow evaluating the requirement `NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<NoData<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: Foo`
   --> $DIR/issue-20413.rs:8:36

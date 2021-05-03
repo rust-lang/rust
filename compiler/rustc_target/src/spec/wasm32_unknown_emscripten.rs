@@ -38,7 +38,7 @@ pub fn target() -> Target {
         is_like_emscripten: true,
         panic_strategy: PanicStrategy::Unwind,
         post_link_args,
-        os_family: Some("unix".to_string()),
+        families: vec!["unix".to_string()],
         ..options
     };
     Target {

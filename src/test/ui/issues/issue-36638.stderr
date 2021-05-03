@@ -17,6 +17,7 @@ LL | struct Foo<Self>(Self);
    |            ^^^^ unused parameter
    |
    = help: consider removing `Self`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `Self` to be a const parameter, use `const Self: usize` instead
 
 error: aborting due to 3 previous errors
 

@@ -77,6 +77,7 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
         wasi::ERRNO_EXIST => AlreadyExists,
         wasi::ERRNO_AGAIN => WouldBlock,
         wasi::ERRNO_NOSYS => Unsupported,
+        wasi::ERRNO_NOMEM => OutOfMemory,
         _ => Other,
     }
 }

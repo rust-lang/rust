@@ -71,6 +71,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_NO_DATA => return ErrorKind::BrokenPipe,
         c::ERROR_INVALID_PARAMETER => return ErrorKind::InvalidInput,
+        c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return ErrorKind::OutOfMemory,
         c::ERROR_SEM_TIMEOUT
         | c::WAIT_TIMEOUT
         | c::ERROR_DRIVER_CANCEL_TIMEOUT

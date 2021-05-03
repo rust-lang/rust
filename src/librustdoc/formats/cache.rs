@@ -327,6 +327,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::EnumItem(..)
             | clean::TypedefItem(..)
             | clean::TraitItem(..)
+            | clean::TraitAliasItem(..)
             | clean::FunctionItem(..)
             | clean::ModuleItem(..)
             | clean::ForeignFunctionItem(..)
@@ -337,26 +338,43 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::ForeignTypeItem
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
-            | clean::VariantItem(..)
-                if !self.cache.stripped_mod =>
-            {
-                // Re-exported items mean that the same id can show up twice
-                // in the rustdoc ast that we're looking at. We know,
-                // however, that a re-exported item doesn't show up in the
-                // `public_items` map, so we can skip inserting into the
-                // paths map if there was already an entry present and we're
-                // not a public item.
-                if !self.cache.paths.contains_key(&item.def_id)
-                    || self.cache.access_levels.is_public(item.def_id)
-                {
-                    self.cache.paths.insert(item.def_id, (self.cache.stack.clone(), item.type_()));
+            | clean::VariantItem(..) => {
+                if !self.cache.stripped_mod {
+                    // Re-exported items mean that the same id can show up twice
+                    // in the rustdoc ast that we're looking at. We know,
+                    // however, that a re-exported item doesn't show up in the
+                    // `public_items` map, so we can skip inserting into the
+                    // paths map if there was already an entry present and we're
+                    // not a public item.
+                    if !self.cache.paths.contains_key(&item.def_id)
+                        || self.cache.access_levels.is_public(item.def_id)
+                    {
+                        self.cache
+                            .paths
+                            .insert(item.def_id, (self.cache.stack.clone(), item.type_()));
+                    }
                 }
             }
             clean::PrimitiveItem(..) => {
                 self.cache.paths.insert(item.def_id, (self.cache.stack.clone(), item.type_()));
             }
 
-            _ => {}
+            clean::ExternCrateItem { .. }
+            | clean::ImportItem(..)
+            | clean::OpaqueTyItem(..)
+            | clean::ImplItem(..)
+            | clean::TyMethodItem(..)
+            | clean::MethodItem(..)
+            | clean::StructFieldItem(..)
+            | clean::AssocConstItem(..)
+            | clean::AssocTypeItem(..)
+            | clean::StrippedItem(..)
+            | clean::KeywordItem(..) => {
+                // FIXME: Do these need handling?
+                // The person writing this comment doesn't know.
+                // So would rather leave them to an expert,
+                // as at least the list is better than `_ => {}`.
+            }
         }
 
         // Maintain the parent stack
