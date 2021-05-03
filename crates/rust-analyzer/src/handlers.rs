@@ -1077,8 +1077,16 @@ pub(crate) fn handle_code_action_resolve(
     )?;
 
     let assist = &assists[params.index];
-    assert!(assist.id.0 == params.id);
-    assert!(assist.id.1 == assist_kind);
+    if assist.id.0 != params.id || assist.id.1 != assist_kind {
+        return Err(LspError::new(
+            ErrorCode::InvalidParams as i32,
+            format!(
+                "Failed to find exactly the same assist at index {} for the resolve parameters given. Expected id and kind: {}, {:?}, actual id: {:?}.",
+                params.index, params.id, assist_kind, assist.id
+            ),
+        )
+        .into());
+    }
     let edit = to_proto::code_action(&snap, assist.clone(), None)?.edit;
     code_action.edit = edit;
     Ok(code_action)
