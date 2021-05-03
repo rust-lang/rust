@@ -189,7 +189,7 @@ pub enum ErrorKind {
 
     /// An operation could not be completed, because it failed
     /// to allocate enough memory.
-    #[stable(feature = "out_of_memory_error", since = "1.53.0")]
+    #[stable(feature = "out_of_memory_error", since = "1.54.0")]
     OutOfMemory,
 }
 
