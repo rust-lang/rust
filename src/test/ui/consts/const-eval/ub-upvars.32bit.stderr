@@ -6,7 +6,7 @@ LL | |     let bad_ref: &'static u16 = unsafe { mem::transmute(0usize) };
 LL | |     let another_var = 13;
 LL | |     move || { let _ = bad_ref; let _ = another_var; }
 LL | | };
-   | |__^ type validation failed: encountered a NULL reference at .<deref>.<dyn-downcast>.<captured-var(bad_ref)>
+   | |__^ type validation failed: encountered a null reference at .<deref>.<dyn-downcast>.<captured-var(bad_ref)>
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {

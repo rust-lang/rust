@@ -149,7 +149,7 @@ mod mut_ptr;
 /// again. [`write()`] can be used to overwrite data without causing it to be
 /// dropped.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -315,7 +315,7 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// * Both `x` and `y` must be properly aligned.
 ///
-/// Note that even if `T` has size `0`, the pointers must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointers must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -394,7 +394,7 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 ///   beginning at `y` with the same size.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is `0`,
-/// the pointers must be non-NULL and properly aligned.
+/// the pointers must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -540,7 +540,7 @@ const unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// * `dst` must point to a properly initialized value of type `T`.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -588,7 +588,7 @@ pub const unsafe fn replace<T>(dst: *mut T, mut src: T) -> T {
 ///
 /// * `src` must point to a properly initialized value of type `T`.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// # Examples
 ///
@@ -713,7 +713,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL.
+/// Note that even if `T` has size `0`, the pointer must be non-null.
 ///
 /// [read-ownership]: read#ownership-of-the-returned-value
 /// [valid]: self#safety
@@ -818,7 +818,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
 ///   case.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -910,7 +910,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// * `dst` must be [valid] for writes.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL.
+/// Note that even if `T` has size `0`, the pointer must be non-null.
 ///
 /// [valid]: self#safety
 ///
@@ -1024,7 +1024,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// However, storing non-[`Copy`] types in volatile memory is almost certainly
 /// incorrect.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 /// [read-ownership]: read#ownership-of-the-returned-value
@@ -1094,7 +1094,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// * `dst` must be properly aligned.
 ///
-/// Note that even if `T` has size `0`, the pointer must be non-NULL and properly aligned.
+/// Note that even if `T` has size `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: self#safety
 ///
@@ -1496,7 +1496,7 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 ///
 /// Note, however, that the `expr` in `addr_of!(expr)` is still subject to all
 /// the usual rules. In particular, `addr_of!(*ptr::null())` is Undefined
-/// Behavior because it dereferences a NULL pointer.
+/// Behavior because it dereferences a null pointer.
 ///
 /// # Example
 ///
@@ -1536,7 +1536,7 @@ pub macro addr_of($place:expr) {
 ///
 /// Note, however, that the `expr` in `addr_of_mut!(expr)` is still subject to all
 /// the usual rules. In particular, `addr_of_mut!(*ptr::null_mut())` is Undefined
-/// Behavior because it dereferences a NULL pointer.
+/// Behavior because it dereferences a null pointer.
 ///
 /// # Examples
 ///

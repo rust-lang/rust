@@ -722,7 +722,7 @@ pub mod os {
     unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
         // SAFETY:
         //
-        // The OS TLS ensures that this key contains a NULL value when this
+        // The OS TLS ensures that this key contains a null value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
         // ensure that any future calls to `get` for this thread will return
         // `None`.

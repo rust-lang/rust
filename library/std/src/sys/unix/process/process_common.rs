@@ -153,7 +153,7 @@ impl Command {
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        // Overwrite the trailing NULL pointer in `argv` and then add a new null
+        // Overwrite the trailing null pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
         self.argv.0[self.args.len()] = arg.as_ptr();

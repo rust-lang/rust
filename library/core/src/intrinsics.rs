@@ -1773,7 +1773,7 @@ extern "rust-intrinsic" {
     /// [violate memory safety][read-ownership].
     ///
     /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-    /// `0`, the pointers must be non-NULL and properly aligned.
+    /// `0`, the pointers must be non-null and properly aligned.
     ///
     /// [`read`]: crate::ptr::read
     /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
@@ -1857,7 +1857,7 @@ extern "rust-intrinsic" {
     /// [violate memory safety][read-ownership].
     ///
     /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-    /// `0`, the pointers must be non-NULL and properly aligned.
+    /// `0`, the pointers must be non-null and properly aligned.
     ///
     /// [`read`]: crate::ptr::read
     /// [read-ownership]: crate::ptr::read#ownership-of-the-returned-value
@@ -1928,7 +1928,7 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
 /// invalid value of `T` is undefined behavior.
 ///
 /// Note that even if the effectively copied size (`count * size_of::<T>()`) is
-/// `0`, the pointer must be non-NULL and properly aligned.
+/// `0`, the pointer must be non-null and properly aligned.
 ///
 /// [valid]: crate::ptr#safety
 ///

@@ -49,7 +49,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
                 msg.msg_controllen = ancillary.buffer.len() as libc::socklen_t;
             }
         }
-        // macos requires that the control pointer is NULL when the len is 0.
+        // macos requires that the control pointer is null when the len is 0.
         if msg.msg_controllen > 0 {
             msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         }
@@ -97,7 +97,7 @@ pub(super) fn send_vectored_with_ancillary_to(
                 msg.msg_controllen = ancillary.length as libc::socklen_t;
             }
         }
-        // macos requires that the control pointer is NULL when the len is 0.
+        // macos requires that the control pointer is null when the len is 0.
         if msg.msg_controllen > 0 {
             msg.msg_control = ancillary.buffer.as_mut_ptr().cast();
         }

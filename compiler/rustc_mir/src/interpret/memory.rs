@@ -2,7 +2,7 @@
 //!
 //! Generally, we use `Pointer` to denote memory addresses. However, some operations
 //! have a "size"-like parameter, and they take `Scalar` for the address because
-//! if the size is 0, then the pointer can also be a (properly aligned, non-NULL)
+//! if the size is 0, then the pointer can also be a (properly aligned, non-null)
 //! integer. It is crucial that these operations call `check_align` *before*
 //! short-circuiting the empty case!
 
@@ -105,7 +105,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Map for "extra" function pointers.
     extra_fn_ptr_map: FxHashMap<AllocId, M::ExtraFnVal>,
 
-    /// To be able to compare pointers with NULL, and to check alignment for accesses
+    /// To be able to compare pointers with null, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
     // FIXME: this should not be public, but interning currently needs access to it
@@ -391,7 +391,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Ok(bits) => {
                 let bits = u64::try_from(bits).unwrap(); // it's ptr-sized
                 assert!(size.bytes() == 0);
-                // Must be non-NULL.
+                // Must be non-null.
                 if bits == 0 {
                     throw_ub!(DanglingIntPointer(0, msg))
                 }
@@ -404,7 +404,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Err(ptr) => {
                 let (allocation_size, alloc_align) =
                     self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferenceable)?;
-                // Test bounds. This also ensures non-NULL.
+                // Test bounds. This also ensures non-null.
                 // It is sufficient to check this for the end pointer. The addition
                 // checks for overflow.
                 let end_ptr = ptr.offset(size, self)?;
@@ -436,7 +436,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         })
     }
 
-    /// Test if the pointer might be NULL.
+    /// Test if the pointer might be null.
     pub fn ptr_may_be_null(&self, ptr: Pointer<M::PointerTag>) -> bool {
         let (size, _align) = self
             .get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
