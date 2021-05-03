@@ -42,23 +42,14 @@ elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
     # clang has an output mode compatible with MinGW that we need. If it does we
     # should switch to clang for MinGW as well!
     #
-    # Note that the LLVM installer is an NSIS installer
-    #
-    # Original downloaded here came from:
-    #
-    #   https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/LLVM-10.0.0-win64.exe
-    #
-    # That installer was run through `wine ./installer.exe /S /NCRC` on Linux
-    # and then the resulting installation directory (found in
-    # `$HOME/.wine/drive_c/Program Files/LLVM`) was packaged up into a tarball.
-    # We've had issues otherwise that the installer will randomly hang, provide
-    # not a lot of useful information, pollute global state, etc. In general the
-    # tarball is just more confined and easier to deal with when working with
-    # various CI environments.
+    # The LLVM installer is an NSIS installer, which we can extract with 7z. We
+    # don't want to run the installer directly; extracting it is more reliable
+    # in CI environments.
 
-    mkdir -p citools
+    mkdir -p citools/clang-rust
     cd citools
-    curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.tar.gz" | tar xzf -
+    curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.exe" -o "LLVM-${LLVM_VERSION}-win64.exe"
+    7z x -oclang-rust/ "LLVM-${LLVM_VERSION}-win64.exe"
     ciCommandSetEnv RUST_CONFIGURE_ARGS \
         "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
 fi
