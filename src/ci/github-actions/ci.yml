@@ -593,7 +593,8 @@ jobs:
               CUSTOM_MINGW: 1
             <<: *job-windows-xl
 
-          - name: dist-x86_64-msvc
+          - &dist-x86_64-msvc
+            name: dist-x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: >-
                 --build=x86_64-pc-windows-msvc
@@ -660,7 +661,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - *dist-x86_64-linux
+          - *dist-x86_64-msvc
 
   master:
     name: master
