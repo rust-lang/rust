@@ -7,9 +7,10 @@ use clippy_utils::{is_trait_method, path_to_local_id, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, GenericArg, HirId, Local, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, GenericArg, GenericArgs, HirId, Local, Pat, PatKind, QPath, StmtKind, Ty};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{MultiSpan, Span};
 
@@ -58,18 +59,30 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
 }
 
 fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
+    fn get_hir_id<'tcx>(ty: Option<&Ty<'tcx>>, method_args: Option<&GenericArgs<'tcx>>) -> Option<HirId> {
+        if let Some(ty) = ty {
+            return Some(ty.hir_id);
+        }
+
+        if let Some(generic_args) = method_args {
+            if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0) {
+                return Some(ty.hir_id);
+            }
+        }
+
+        None
+    }
     if let ExprKind::Block(block, _) = expr.kind {
         for stmt in block.stmts {
             if_chain! {
                 if let StmtKind::Local(
                     Local { pat: Pat { hir_id: pat_id, kind: PatKind::Binding(_, _, ident, .. ), .. },
-                    init: Some(init_expr), .. }
+                    init: Some(init_expr), ty, .. }
                 ) = stmt.kind;
                 if let ExprKind::MethodCall(method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
                 if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
-                if let Some(generic_args) = method_name.args;
-                if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
-                if let ty = cx.typeck_results().node_type(ty.hir_id);
+                if let Some(hir_id) = get_hir_id(*ty, method_name.args);
+                if let ty = cx.typeck_results().node_type(hir_id);
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                     match_type(cx, ty, &paths::LINKED_LIST);
