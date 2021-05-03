@@ -1,5 +1,5 @@
 //! hi
-#![unstable(feature = "backtrace", issue = "74465")]
+#![unstable(feature = "backtrace", issue = "53487")]
 use crate::{fmt, ptr};
 
 /// The current status of a backtrace, indicating whether it was captured or
@@ -19,7 +19,7 @@ pub enum BacktraceStatus {
 }
 
 // perma(?)-unstable
-#[unstable(feature = "backtrace", issue = "74465")]
+#[unstable(feature = "backtrace", issue = "53487")]
 ///
 pub trait RawBacktrace: fmt::Debug + fmt::Display + 'static {
     ///
@@ -28,15 +28,13 @@ pub trait RawBacktrace: fmt::Debug + fmt::Display + 'static {
 
 struct UnsupportedBacktrace;
 
-impl UnsupportedBacktrace  {
+impl UnsupportedBacktrace {
     #[allow(dead_code)]
     const fn create() -> Backtrace {
         // don't add members to Self
         let _ = Self {};
 
-        Backtrace {
-            inner: ptr::NonNull::<Self>::dangling().as_ptr(),
-        }
+        Backtrace { inner: ptr::NonNull::<Self>::dangling().as_ptr() }
     }
 }
 
@@ -62,9 +60,7 @@ impl DisabledBacktrace {
         // don't add members to Self
         let _ = Self {};
 
-        Backtrace {
-            inner: ptr::NonNull::<Self>::dangling().as_ptr(),
-        }
+        Backtrace { inner: ptr::NonNull::<Self>::dangling().as_ptr() }
     }
 }
 
@@ -84,7 +80,7 @@ impl fmt::Debug for DisabledBacktrace {
     }
 }
 
-#[unstable(feature = "backtrace", issue = "74465")]
+#[unstable(feature = "backtrace", issue = "53487")]
 ///
 pub struct Backtrace {
     ///
@@ -122,6 +118,7 @@ unsafe fn backtrace_status(_raw: *mut dyn RawBacktrace) -> BacktraceStatus {
 
 impl Backtrace {
     fn create(ip: usize) -> Backtrace {
+        // SAFETY: trust me
         let inner = unsafe { backtrace_create(ip) };
         Backtrace { inner }
     }
@@ -129,6 +126,7 @@ impl Backtrace {
     /// Returns whether backtrace captures are enabled through environment
     /// variables.
     fn enabled() -> bool {
+        // SAFETY: trust me
         unsafe { backtrace_enabled() }
     }
 
@@ -182,34 +180,38 @@ impl Backtrace {
     /// request was unsupported, disabled, or a stack trace was actually
     /// captured.
     pub fn status(&self) -> BacktraceStatus {
+        // SAFETY: trust me
         unsafe { backtrace_status(self.inner) }
     }
 }
 
-#[unstable(feature = "backtrace", issue = "74465")]
+#[unstable(feature = "backtrace", issue = "53487")]
 unsafe impl Send for Backtrace {}
 
-#[unstable(feature = "backtrace", issue = "74465")]
+#[unstable(feature = "backtrace", issue = "53487")]
 unsafe impl Sync for Backtrace {}
 
-#[unstable(feature = "backtrace", issue = "74465")]
+#[unstable(feature = "backtrace", issue = "53487")]
 impl Drop for Backtrace {
     fn drop(&mut self) {
+        // SAFETY: trust me
         unsafe { RawBacktrace::drop_and_free(self.inner) }
     }
 }
 
-#[unstable(feature = "backtrace", issue = "74465")]
+#[unstable(feature = "backtrace", issue = "53487")]
 impl fmt::Debug for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // SAFETY: trust me
         let imp: &dyn RawBacktrace = unsafe { &*self.inner };
         fmt::Debug::fmt(imp, fmt)
     }
 }
 
-#[unstable(feature = "backtrace", issue = "74465")]
+#[unstable(feature = "backtrace", issue = "53487")]
 impl fmt::Display for Backtrace {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // SAFETY: trust me
         let imp: &dyn RawBacktrace = unsafe { &*self.inner };
         fmt::Display::fmt(imp, fmt)
     }

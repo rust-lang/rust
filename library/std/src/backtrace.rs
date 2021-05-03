@@ -110,7 +110,7 @@ use core::backtrace::RawBacktrace;
 
 /// Returns whether backtrace captures are enabled through environment
 /// variables.
-#[export_name = "__rust_backtrace_enabled"]
+#[cfg_attr(not(bootstrap), lang = "backtrace_enabled")]
 pub fn enabled() -> bool {
     // Cache the result of reading the environment variables to make
     // backtrace captures speedy, because otherwise reading environment
@@ -134,7 +134,7 @@ pub fn enabled() -> bool {
 
 // Capture a backtrace which start just before the function addressed by
 // `ip`
-#[export_name = "__rust_backtrace_create"]
+#[cfg_attr(not(bootstrap), lang = "backtrace_create")]
 ///
 pub fn create(ip: usize) -> *mut dyn RawBacktrace {
     // SAFETY: We don't attempt to lock this reentrantly.
@@ -174,7 +174,7 @@ pub fn create(ip: usize) -> *mut dyn RawBacktrace {
 /// Returns the status of this backtrace, indicating whether this backtrace
 /// request was unsupported, disabled, or a stack trace was actually
 /// captured.
-#[export_name = "__rust_backtrace_status"]
+#[cfg_attr(not(bootstrap), lang = "backtrace_status")]
 pub fn status(_backtrace: *mut dyn RawBacktrace) -> BacktraceStatus {
     todo!()
     // match backtrace.inner {
