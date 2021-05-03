@@ -463,8 +463,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
 }
 
 #[inline]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
+pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
     // For types smaller than the block optimization below,
     // just swap directly to avoid pessimizing codegen.
     if mem::size_of::<T>() < 32 {
