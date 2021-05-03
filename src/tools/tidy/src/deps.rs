@@ -44,6 +44,23 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
 ];
 
+const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
+    ("cranelift-bforest", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-jit", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-module", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-native", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-object", "Apache-2.0 WITH LLVM-exception"),
+    ("libloading", "ISC"),
+    ("mach", "BSD-2-Clause"),
+    ("regalloc", "Apache-2.0 WITH LLVM-exception"),
+    ("target-lexicon", "Apache-2.0 WITH LLVM-exception"),
+];
+
 /// These are the root crates that are part of the runtime. The licenses for
 /// these and all their dependencies *must not* be in the exception list.
 const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
@@ -212,6 +229,59 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "winapi-x86_64-pc-windows-gnu",
 ];
 
+const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
+    "anyhow",
+    "ar",
+    "autocfg",
+    "bitflags",
+    "byteorder",
+    "cfg-if",
+    "cranelift-bforest",
+    "cranelift-codegen",
+    "cranelift-codegen-meta",
+    "cranelift-codegen-shared",
+    "cranelift-entity",
+    "cranelift-frontend",
+    "cranelift-jit",
+    "cranelift-module",
+    "cranelift-native",
+    "cranelift-object",
+    "crc32fast",
+    "errno",
+    "errno-dragonfly",
+    "gcc",
+    "gimli",
+    "hashbrown",
+    "indexmap",
+    "libc",
+    "libloading",
+    "log",
+    "mach",
+    "object",
+    "proc-macro2",
+    "quote",
+    "regalloc",
+    "region",
+    "rustc-hash",
+    "smallvec",
+    "syn",
+    "target-lexicon",
+    "thiserror",
+    "thiserror-impl",
+    "unicode-xid",
+    "winapi",
+    "winapi-i686-pc-windows-gnu",
+    "winapi-x86_64-pc-windows-gnu",
+];
+
+const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
+    // These two crates take quite a long time to build, so don't allow two versions of them
+    // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
+    // under control.
+    "cargo",
+    "rustc-ap-rustc_ast",
+];
+
 /// Dependency checks.
 ///
 /// `root` is path to the directory with the root `Cargo.toml` (for the workspace). `cargo` is path
@@ -222,17 +292,39 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
         .manifest_path(root.join("Cargo.toml"))
         .features(cargo_metadata::CargoOpt::AllFeatures);
     let metadata = t!(cmd.exec());
-    check_exceptions(&metadata, bad);
-    check_dependencies(&metadata, bad);
-    check_crate_duplicate(&metadata, bad);
+    let runtime_ids = compute_runtime_crates(&metadata);
+    check_exceptions(&metadata, EXCEPTIONS, runtime_ids, bad);
+    check_dependencies(&metadata, PERMITTED_DEPENDENCIES, RESTRICTED_DEPENDENCY_CRATES, bad);
+    check_crate_duplicate(&metadata, FORBIDDEN_TO_HAVE_DUPLICATES, bad);
+
+    // Check rustc_codegen_cranelift independently as it has it's own workspace.
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.cargo_path(cargo)
+        .manifest_path(root.join("compiler/rustc_codegen_cranelift/Cargo.toml"))
+        .features(cargo_metadata::CargoOpt::AllFeatures);
+    let metadata = t!(cmd.exec());
+    let runtime_ids = HashSet::new();
+    check_exceptions(&metadata, EXCEPTIONS_CRANELIFT, runtime_ids, bad);
+    check_dependencies(
+        &metadata,
+        PERMITTED_CRANELIFT_DEPENDENCIES,
+        &["rustc_codegen_cranelift"],
+        bad,
+    );
+    check_crate_duplicate(&metadata, &[], bad);
 }
 
 /// Check that all licenses are in the valid list in `LICENSES`.
 ///
 /// Packages listed in `EXCEPTIONS` are allowed for tools.
-fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
+fn check_exceptions(
+    metadata: &Metadata,
+    exceptions: &[(&str, &str)],
+    runtime_ids: HashSet<&PackageId>,
+    bad: &mut bool,
+) {
     // Validate the EXCEPTIONS list hasn't changed.
-    for (name, license) in EXCEPTIONS {
+    for (name, license) in exceptions {
         // Check that the package actually exists.
         if !metadata.packages.iter().any(|p| p.name == *name) {
             tidy_error!(
@@ -264,8 +356,7 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
         }
     }
 
-    let exception_names: Vec<_> = EXCEPTIONS.iter().map(|(name, _license)| *name).collect();
-    let runtime_ids = compute_runtime_crates(metadata);
+    let exception_names: Vec<_> = exceptions.iter().map(|(name, _license)| *name).collect();
 
     // Check if any package does not have a valid license.
     for pkg in &metadata.packages {
@@ -300,9 +391,14 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
 /// `true` if a check failed.
 ///
 /// Specifically, this checks that the dependencies are on the `PERMITTED_DEPENDENCIES`.
-fn check_dependencies(metadata: &Metadata, bad: &mut bool) {
+fn check_dependencies(
+    metadata: &Metadata,
+    permitted_dependencies: &[&'static str],
+    restricted_dependency_crates: &[&'static str],
+    bad: &mut bool,
+) {
     // Check that the PERMITTED_DEPENDENCIES does not have unused entries.
-    for name in PERMITTED_DEPENDENCIES {
+    for name in permitted_dependencies {
         if !metadata.packages.iter().any(|p| p.name == *name) {
             tidy_error!(
                 bad,
@@ -313,12 +409,12 @@ fn check_dependencies(metadata: &Metadata, bad: &mut bool) {
         }
     }
     // Get the list in a convenient form.
-    let permitted_dependencies: HashSet<_> = PERMITTED_DEPENDENCIES.iter().cloned().collect();
+    let permitted_dependencies: HashSet<_> = permitted_dependencies.iter().cloned().collect();
 
     // Check dependencies.
     let mut visited = BTreeSet::new();
     let mut unapproved = BTreeSet::new();
-    for &krate in RESTRICTED_DEPENDENCY_CRATES.iter() {
+    for &krate in restricted_dependency_crates.iter() {
         let pkg = pkg_from_name(metadata, krate);
         let mut bad =
             check_crate_dependencies(&permitted_dependencies, metadata, &mut visited, pkg);
@@ -371,16 +467,12 @@ fn check_crate_dependencies<'a>(
 }
 
 /// Prevents multiple versions of some expensive crates.
-fn check_crate_duplicate(metadata: &Metadata, bad: &mut bool) {
-    const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
-        // These two crates take quite a long time to build, so don't allow two versions of them
-        // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
-        // under control.
-        "cargo",
-        "rustc-ap-rustc_ast",
-    ];
-
-    for &name in FORBIDDEN_TO_HAVE_DUPLICATES {
+fn check_crate_duplicate(
+    metadata: &Metadata,
+    forbidden_to_have_duplicates: &[&str],
+    bad: &mut bool,
+) {
+    for &name in forbidden_to_have_duplicates {
         let matches: Vec<_> = metadata.packages.iter().filter(|pkg| pkg.name == name).collect();
         match matches.len() {
             0 => {
