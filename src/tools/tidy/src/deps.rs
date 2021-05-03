@@ -244,13 +244,6 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
         }
         // Check that the license hasn't changed.
         for pkg in metadata.packages.iter().filter(|p| p.name == *name) {
-            if pkg.name == "fuchsia-cprng" {
-                // This package doesn't declare a license expression. Manual
-                // inspection of the license file is necessary, which appears
-                // to be BSD-3-Clause.
-                assert!(pkg.license.is_none());
-                continue;
-            }
             match &pkg.license {
                 None => {
                     tidy_error!(
@@ -261,14 +254,6 @@ fn check_exceptions(metadata: &Metadata, bad: &mut bool) {
                 }
                 Some(pkg_license) => {
                     if pkg_license.as_str() != *license {
-                        if *name == "crossbeam-queue"
-                            && *license == "MIT/Apache-2.0 AND BSD-2-Clause"
-                        {
-                            // We have two versions of crossbeam-queue and both
-                            // are fine.
-                            continue;
-                        }
-
                         println!("dependency exception `{}` license has changed", name);
                         println!("    previously `{}` now `{}`", license, pkg_license);
                         println!("    update EXCEPTIONS for the new license");
