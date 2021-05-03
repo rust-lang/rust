@@ -119,7 +119,7 @@ macro_rules! define_bignum {
             pub fn from_small(v: $ty) -> $name {
                 let mut base = [0; $n];
                 base[0] = v;
-                $name { size: 1, base: base }
+                $name { size: 1, base }
             }
 
             /// Makes a bignum from `u64` value.
@@ -131,7 +131,7 @@ macro_rules! define_bignum {
                     v >>= <$ty>::BITS;
                     sz += 1;
                 }
-                $name { size: sz, base: base }
+                $name { size: sz, base }
             }
 
             /// Returns the internal digits as a slice `[a, b, c, ...]` such that the numeric
