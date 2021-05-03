@@ -1411,8 +1411,10 @@ impl Step for Extended {
         let miri_installer = builder.ensure(Miri { compiler, target });
         let mingw_installer = builder.ensure(Mingw { host: target });
         let analysis_installer = builder.ensure(Analysis { compiler, target });
-        let rustc_codegen_cranelift_installer =
-            builder.ensure(CodegenBackend { compiler, backend: INTERNER.intern_str("cranelift") });
+        let rustc_codegen_cranelift_installer = builder.ensure(CodegenBackend {
+            compiler: builder.compiler(stage, target),
+            backend: INTERNER.intern_str("cranelift"),
+        });
 
         let docs_installer = builder.ensure(Docs { host: target });
         let std_installer = builder.ensure(Std { compiler, target });

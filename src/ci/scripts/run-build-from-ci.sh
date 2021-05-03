@@ -19,3 +19,5 @@ if [ -z "${IMAGE+x}" ]; then
 else
     src/ci/docker/run.sh "${IMAGE}"
 fi
+
+ls -R obj # list all compilation artifacts
