@@ -13,7 +13,7 @@ pub(crate) fn ssr_assists(
     let mut ssr_assists = Vec::with_capacity(2);
 
     let (match_finder, comment_range) = match ide_ssr::ssr_from_comment(db, frange) {
-        Some((match_finder, comment_range)) => (match_finder, comment_range),
+        Some(ssr_data) => ssr_data,
         None => return ssr_assists,
     };
     let id = AssistId("ssr", AssistKind::RefactorRewrite);

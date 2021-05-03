@@ -28,7 +28,7 @@ pub(crate) use crate::assist_context::{AssistContext, Assists};
 
 pub use assist_config::AssistConfig;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AssistKind {
     // FIXME: does the None variant make sense? Probably not.
     None,
@@ -91,7 +91,7 @@ impl FromStr for AssistKind {
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AssistId(pub &'static str, pub AssistKind);
 
 /// A way to control how many asssist to resolve during the assist resolution.
