@@ -351,6 +351,8 @@ impl Step for Rustc {
             let host = compiler.host;
             let src = builder.sysroot(compiler);
 
+            println!("{:?}", src);
+
             // Copy rustc/rustdoc binaries
             t!(fs::create_dir_all(image.join("bin")));
             builder.cp_r(&src.join("bin"), &image.join("bin"));
@@ -1257,6 +1259,8 @@ impl Step for CodegenBackend {
             .unwrap();
         // Don't use custom libdir here because ^lib/ will be resolved again with installer
         let backends_dst = PathBuf::from("lib").join(&backends_rel);
+
+        println!("{:?}", backends_src);
 
         let backend_name = format!("rustc_codegen_{}", backend);
         for backend in fs::read_dir(&backends_src).unwrap() {
