@@ -1058,41 +1058,44 @@ pub(crate) fn handle_code_action_resolve(
         .only
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
-    let assist_kind: AssistKind = match params.kind.parse() {
-        Ok(kind) => kind,
+    let (assist_index, assist_resolve) = match parse_action_id(&params.id) {
+        Ok(parsed_data) => parsed_data,
         Err(e) => {
             return Err(LspError::new(
                 ErrorCode::InvalidParams as i32,
-                format!("For the assist to resolve, failed to parse the kind: {}", e),
+                format!("Failed to parse action id string '{}': {}", params.id, e),
             )
             .into())
         }
     };
 
+    let expected_assist_id = assist_resolve.assist_id.clone();
+    let expected_kind = assist_resolve.assist_kind;
+
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
         &snap.config.diagnostics(),
-        AssistResolveStrategy::Single(SingleResolve { assist_id: params.id.clone(), assist_kind }),
+        AssistResolveStrategy::Single(assist_resolve),
         frange,
     )?;
 
-    let assist = match assists.get(params.index) {
+    let assist = match assists.get(assist_index) {
         Some(assist) => assist,
         None => return Err(LspError::new(
             ErrorCode::InvalidParams as i32,
             format!(
-                "Failed to find the assist for index {} provided by the resolve request. Expected assist id: {:?}",
-                params.index, params.id,
+                "Failed to find the assist for index {} provided by the resolve request. Resolve request assist id: {}",
+                assist_index, params.id,
             ),
         )
         .into())
     };
-    if assist.id.0 != params.id || assist.id.1 != assist_kind {
+    if assist.id.0 != expected_assist_id || assist.id.1 != expected_kind {
         return Err(LspError::new(
             ErrorCode::InvalidParams as i32,
             format!(
-                "Failed to find exactly the same assist at index {} for the resolve parameters given. Expected id and kind: {}, {:?}, actual id: {:?}.",
-                params.index, params.id, assist_kind, assist.id
+                "Mismatching assist at index {} for the resolve parameters given. Resolve request assist id: {}, actual id: {:?}.",
+                assist_index, params.id, assist.id
             ),
         )
         .into());
@@ -1100,6 +1103,21 @@ pub(crate) fn handle_code_action_resolve(
     let edit = to_proto::code_action(&snap, assist.clone(), None)?.edit;
     code_action.edit = edit;
     Ok(code_action)
+}
+
+fn parse_action_id(action_id: &str) -> Result<(usize, SingleResolve), String> {
+    let id_parts = action_id.split(':').collect_vec();
+    match id_parts.as_slice() {
+        &[assist_id_string, assist_kind_string, index_string] => {
+            let assist_kind: AssistKind = assist_kind_string.parse()?;
+            let index: usize = match index_string.parse() {
+                Ok(index) => index,
+                Err(e) => return Err(format!("Incorrect index string: {}", e)),
+            };
+            Ok((index, SingleResolve { assist_id: assist_id_string.to_string(), assist_kind }))
+        }
+        _ => Err("Action id contains incorrect number of segments".to_string()),
+    }
 }
 
 pub(crate) fn handle_code_lens(

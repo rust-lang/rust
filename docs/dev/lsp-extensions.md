@@ -81,7 +81,6 @@ If this capability is set, `CodeAction` returned from the server contain an addi
 interface CodeAction {
     title: string;
     group?: string;
-    data?: string;
     ...
 }
 ```
@@ -101,8 +100,6 @@ The set of actions `[ { title: "foo" }, { group: "frobnicate", title: "bar" }, {
 ```
 
 Alternatively, selecting `frobnicate` could present a user with an additional menu to choose between `bar` and `baz`.
-
-`data` field contains optional json data for deferred resolve of the action data that's slow to compute in the original request.
 
 ### Example
 

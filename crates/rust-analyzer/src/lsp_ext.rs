@@ -303,8 +303,6 @@ pub struct CodeAction {
 pub struct CodeActionData {
     pub code_action_params: lsp_types::CodeActionParams,
     pub id: String,
-    pub kind: String,
-    pub index: usize,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]
