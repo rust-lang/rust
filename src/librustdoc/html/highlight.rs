@@ -46,7 +46,7 @@ crate fn render_with_highlighting(
 }
 
 fn write_header(out: &mut Buffer, class: Option<&str>) {
-    write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or_default());
+    writeln!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">", class.unwrap_or_default());
 }
 
 fn write_code(out: &mut Buffer, src: &str, edition: Edition) {
@@ -62,7 +62,7 @@ fn write_code(out: &mut Buffer, src: &str, edition: Edition) {
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
-    write!(out, "</pre>{}</div>\n", playground_button.unwrap_or_default());
+    writeln!(out, "</pre>{}</div>", playground_button.unwrap_or_default());
 }
 
 /// How a span of text is classified. Mostly corresponds to token kinds.
