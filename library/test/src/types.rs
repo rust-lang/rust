@@ -143,26 +143,26 @@ impl TestDesc {
         }
     }
 
-    pub fn test_mode_string(&self) -> String {
+    pub fn test_mode_string(&self) -> &'static str {
         if self.ignore {
-            return "ignore".to_string();
+            return &"ignore";
         }
         match self.should_panic {
             options::ShouldPanic::Yes | options::ShouldPanic::YesWithMessage(_) => {
-                return "should panic".to_string();
+                return &"should panic";
             }
-            _ => {}
+            options::ShouldPanic::No => {}
         }
         if self.allow_fail {
-            return "allow fail".to_string();
+            return &"allow fail";
         }
         if self.compile_fail {
-            return "compile fail".to_string();
+            return &"compile fail";
         }
         if self.no_run {
-            return "compile".to_string();
+            return &"compile";
         }
-        "run".to_string()
+        &"run"
     }
 }
 

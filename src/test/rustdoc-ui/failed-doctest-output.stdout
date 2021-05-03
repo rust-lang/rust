@@ -1,7 +1,7 @@
 
 running 2 tests
-test $DIR/failed-doctest-output.rs - OtherStruct (line 22) run ... FAILED
-test $DIR/failed-doctest-output.rs - SomeStruct (line 12) run ... FAILED
+test $DIR/failed-doctest-output.rs - OtherStruct (line 22) - run ... FAILED
+test $DIR/failed-doctest-output.rs - SomeStruct (line 12) - run ... FAILED
 
 failures:
 
