@@ -2190,7 +2190,7 @@ const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
 ];
 
 #[rustfmt::skip]
-const PATTERN_METHODS: [(&str, usize); 17] = [
+const PATTERN_METHODS: [(&str, usize); 19] = [
     ("contains", 1),
     ("starts_with", 1),
     ("ends_with", 1),
@@ -2206,6 +2206,8 @@ const PATTERN_METHODS: [(&str, usize); 17] = [
     ("rmatches", 1),
     ("match_indices", 1),
     ("rmatch_indices", 1),
+    ("strip_prefix", 1),
+    ("strip_suffix", 1),
     ("trim_start_matches", 1),
     ("trim_end_matches", 1),
 ];
