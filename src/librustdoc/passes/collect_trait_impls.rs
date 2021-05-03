@@ -3,8 +3,7 @@ use crate::clean::*;
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
@@ -53,6 +52,39 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         }
     }
 
+    let mut cleaner = BadImplStripper { prims, items: crate_items };
+
+    // scan through included items ahead of time to splice in Deref targets to the "valid" sets
+    for it in &new_items {
+        if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
+            if cleaner.keep_impl(for_) && trait_.def_id() == cx.tcx.lang_items().deref_trait() {
+                let target = items
+                    .iter()
+                    .find_map(|item| match *item.kind {
+                        TypedefItem(ref t, true) => Some(&t.type_),
+                        _ => None,
+                    })
+                    .expect("Deref impl without Target type");
+
+                if let Some(prim) = target.primitive_type() {
+                    cleaner.prims.insert(prim);
+                } else if let Some(did) = target.def_id() {
+                    cleaner.items.insert(did.into());
+                }
+            }
+        }
+    }
+
+    new_items.retain(|it| {
+        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
+            cleaner.keep_impl(for_)
+                || trait_.as_ref().map_or(false, |t| cleaner.keep_impl(t))
+                || blanket_impl.is_some()
+        } else {
+            true
+        }
+    });
+
     // `tcx.crates()` doesn't include the local crate, and `tcx.all_trait_implementations`
     // doesn't work with it anyway, so pull them from the HIR map instead
     let mut extra_attrs = Vec::new();
@@ -84,53 +116,6 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         }
     }
 
-    let mut cleaner = BadImplStripper { prims, items: crate_items };
-
-    let mut type_did_to_deref_target: FxHashMap<DefId, &Type> = FxHashMap::default();
-    // Gather all type to `Deref` target edges.
-    for it in &new_items {
-        if let ImplItem(Impl { ref for_, ref trait_, ref items, .. }) = *it.kind {
-            if trait_.def_id() == cx.tcx.lang_items().deref_trait() {
-                let target = items.iter().find_map(|item| match *item.kind {
-                    TypedefItem(ref t, true) => Some(&t.type_),
-                    _ => None,
-                });
-                if let (Some(for_did), Some(target)) = (for_.def_id(), target) {
-                    type_did_to_deref_target.insert(for_did, target);
-                }
-            }
-        }
-    }
-    // Follow all `Deref` targets of included items and recursively add them as valid
-    fn add_deref_target(
-        map: &FxHashMap<DefId, &Type>,
-        cleaner: &mut BadImplStripper,
-        type_did: &DefId,
-    ) {
-        if let Some(target) = map.get(type_did) {
-            debug!("add_deref_target: type {:?}, target {:?}", type_did, target);
-            if let Some(target_prim) = target.primitive_type() {
-                cleaner.prims.insert(target_prim);
-            } else if let Some(target_did) = target.def_id() {
-                // `impl Deref<Target = S> for S`
-                if target_did == *type_did {
-                    // Avoid infinite cycles
-                    return;
-                }
-                cleaner.items.insert(target_did.into());
-                add_deref_target(map, cleaner, &target_did.into());
-            }
-        }
-    }
-    for type_did in type_did_to_deref_target.keys() {
-        // Since only the `DefId` portion of the `Type` instances is known to be same for both the
-        // `Deref` target type and the impl for type positions, this map of types is keyed by
-        // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
-        if cleaner.keep_impl_with_def_id(FakeDefId::Real(*type_did)) {
-            add_deref_target(&type_did_to_deref_target, &mut cleaner, type_did);
-        }
-    }
-
     let items = if let ModuleItem(Module { ref mut items, .. }) = *krate.module.kind {
         items
     } else {
@@ -138,19 +123,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     };
 
     items.extend(synth_impls);
-    for it in new_items.drain(..) {
-        if let ImplItem(Impl { ref for_, ref trait_, ref blanket_impl, .. }) = *it.kind {
-            if !(cleaner.keep_impl(for_)
-                || trait_.as_ref().map_or(false, |t| cleaner.keep_impl(t))
-                || blanket_impl.is_some())
-            {
-                continue;
-            }
-        }
-
-        items.push(it);
-    }
-
+    items.extend(new_items);
     krate
 }
 

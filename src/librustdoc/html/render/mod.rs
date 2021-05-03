@@ -1045,17 +1045,12 @@ fn render_assoc_items(
                 RenderMode::Normal
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
-                let id =
-                    cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
-                debug!("Adding {} to deref id map", type_.print(cx));
-                cx.deref_id_map.borrow_mut().insert(type_.def_id_full(cache).unwrap(), id.clone());
                 write!(
                     w,
-                    "<h2 id=\"{id}\" class=\"small-section-header\">\
+                    "<h2 id=\"deref-methods\" class=\"small-section-header\">\
                          Methods from {trait_}&lt;Target = {type_}&gt;\
-                         <a href=\"#{id}\" class=\"anchor\"></a>\
+                         <a href=\"#deref-methods\" class=\"anchor\"></a>\
                      </h2>",
-                    id = id,
                     trait_ = trait_.print(cx),
                     type_ = type_.print(cx),
                 );
@@ -1080,6 +1075,9 @@ fn render_assoc_items(
             );
         }
     }
+    if let AssocItemRender::DerefFor { .. } = what {
+        return;
+    }
     if !traits.is_empty() {
         let deref_impl = traits
             .iter()
@@ -1090,13 +1088,6 @@ fn render_assoc_items(
                 .any(|t| t.inner_impl().trait_.def_id_full(cache) == cx.cache.deref_mut_trait_did);
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut);
         }
-
-        // If we were already one level into rendering deref methods, we don't want to render
-        // anything after recursing into any further deref methods above.
-        if let AssocItemRender::DerefFor { .. } = what {
-            return;
-        }
-
         let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
             traits.iter().partition(|t| t.inner_impl().synthetic);
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
@@ -2017,14 +2008,9 @@ fn sidebar_deref_methods(cx: &Context<'_>, out: &mut Buffer, impl_: &Impl, v: &V
                 .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, deref_mut, c))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
-                let deref_id_map = cx.deref_id_map.borrow();
-                let id = deref_id_map
-                    .get(&real_target.def_id_full(c).unwrap())
-                    .expect("Deref section without derived id");
                 write!(
                     out,
-                    "<a class=\"sidebar-title\" href=\"#{}\">Methods from {}&lt;Target={}&gt;</a>",
-                    id,
+                    "<a class=\"sidebar-title\" href=\"#deref-methods\">Methods from {}&lt;Target={}&gt;</a>",
                     Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print(cx))),
                     Escape(&format!("{:#}", real_target.print(cx))),
                 );
