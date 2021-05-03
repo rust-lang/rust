@@ -1,0 +1,15 @@
+error[E0277]: expected a `Fn<(<_ as ATC<'a>>::Type,)>` closure, found `F`
+  --> $DIR/issue-62529-3.rs:25:9
+   |
+LL |         call(f, ());
+   |         ^^^^ expected an `Fn<(<_ as ATC<'a>>::Type,)>` closure, found `F`
+   |
+note: required by a bound in `call`
+  --> $DIR/issue-62529-3.rs:9:36
+   |
+LL | fn call<'b, T: for<'a> ATC<'a>, F: for<'a> Fn(<T as ATC<'a>>::Type)>(
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `call`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

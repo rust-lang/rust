@@ -1,0 +1,67 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/issue-62529-1.rs:80:10
+   |
+LL |     task(annotate(
+   |          ^^^^^^^^ expected signature of `for<'r> fn(<RefMutFamily<usize> as FamilyLt<'r>>::Out) -> _`
+...
+LL |         |value: &mut usize| {
+   |         ------------------- found signature of `for<'r> fn(&'r mut usize) -> _`
+   |
+note: required by a bound in `annotate`
+  --> $DIR/issue-62529-1.rs:44:8
+   |
+LL | fn annotate<F, Q>(_q: Annotate<Q>, func: F) -> impl Execute + 'static
+   |    -------- required by a bound in this
+LL | where
+LL |     F: for<'r> FnOnce(<<Q as Inject>::I as FamilyLt<'r>>::Out) + 'static,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `annotate`
+
+error[E0277]: the size for values of type `impl Execute` cannot be known at compilation time
+  --> $DIR/issue-62529-1.rs:80:10
+   |
+LL |       task(annotate(
+   |  __________^
+LL | |
+LL | |
+LL | |         Annotate::<RefMutFamily<usize>>::new(),
+...  |
+LL | |         }
+LL | |     ));
+   | |_____^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `impl Execute`
+note: required by a bound in `task`
+  --> $DIR/issue-62529-1.rs:69:9
+   |
+LL | fn task<P>(processor: P) -> Task
+   |         ^ required by this bound in `task`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | fn task<P: ?Sized>(processor: P) -> Task
+   |          ++++++++
+
+error[E0277]: the trait bound `impl Execute: Execute` is not satisfied
+  --> $DIR/issue-62529-1.rs:80:10
+   |
+LL |       task(annotate(
+   |  __________^
+LL | |
+LL | |
+LL | |         Annotate::<RefMutFamily<usize>>::new(),
+...  |
+LL | |         }
+LL | |     ));
+   | |_____^ the trait `Execute` is not implemented for `impl Execute`
+   |
+note: required by a bound in `task`
+  --> $DIR/issue-62529-1.rs:70:10
+   |
+LL | fn task<P>(processor: P) -> Task
+   |    ---- required by a bound in this
+LL | where P: Execute + 'static {
+   |          ^^^^^^^ required by this bound in `task`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0631.
+For more information about an error, try `rustc --explain E0277`.
