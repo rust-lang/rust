@@ -389,7 +389,7 @@ fn run_compiler(
             }
 
             queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE)?;
+                let result = tcx.analysis(LOCAL_CRATE);
                 if sess.opts.debugging_opts.save_analysis {
                     let crate_name = queries.crate_name()?.peek().clone();
                     sess.time("save_analysis", || {
@@ -405,7 +405,7 @@ fn run_compiler(
                         )
                     });
                 }
-                Ok(())
+                result
             })?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
