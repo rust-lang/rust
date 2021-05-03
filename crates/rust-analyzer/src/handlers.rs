@@ -1076,7 +1076,17 @@ pub(crate) fn handle_code_action_resolve(
         frange,
     )?;
 
-    let assist = &assists[params.index];
+    let assist = match assists.get(params.index) {
+        Some(assist) => assist,
+        None => return Err(LspError::new(
+            ErrorCode::InvalidParams as i32,
+            format!(
+                "Failed to find the assist for index {} provided by the resolve request. Expected assist id: {:?}",
+                params.index, params.id,
+            ),
+        )
+        .into())
+    };
     if assist.id.0 != params.id || assist.id.1 != assist_kind {
         return Err(LspError::new(
             ErrorCode::InvalidParams as i32,

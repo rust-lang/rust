@@ -102,7 +102,7 @@ pub enum AssistResolveStrategy {
     None,
     /// All assists should be resolved.
     All,
-    /// Only a certain assists should be resolved.
+    /// Only a certain assist should be resolved.
     Single(SingleResolve),
 }
 
