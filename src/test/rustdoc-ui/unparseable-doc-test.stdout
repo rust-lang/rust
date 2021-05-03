@@ -1,6 +1,6 @@
 
 running 1 test
-test $DIR/unparseable-doc-test.rs - foo (line 7) ... FAILED
+test $DIR/unparseable-doc-test.rs - foo (line 7) run ... FAILED
 
 failures:
 

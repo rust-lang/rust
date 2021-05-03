@@ -649,6 +649,8 @@ fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test
                     ignore,
                     should_panic,
                     allow_fail: false,
+                    compile_fail: false,
+                    no_run: false,
                     test_type: test::TestType::Unknown,
                 },
                 testfn: make_test_closure(config, testpaths, revision),

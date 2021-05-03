@@ -124,6 +124,8 @@ pub struct TestDesc {
     pub ignore: bool,
     pub should_panic: options::ShouldPanic,
     pub allow_fail: bool,
+    pub compile_fail: bool,
+    pub no_run: bool,
     pub test_type: TestType,
 }
 
@@ -139,6 +141,28 @@ impl TestDesc {
                 name
             }
         }
+    }
+
+    pub fn test_mode_string(&self) -> String {
+        if self.ignore {
+            return "ignore".to_string();
+        }
+        match self.should_panic {
+            options::ShouldPanic::Yes | options::ShouldPanic::YesWithMessage(_) => {
+                return "should panic".to_string();
+            }
+            _ => {}
+        }
+        if self.allow_fail {
+            return "allow fail".to_string();
+        }
+        if self.compile_fail {
+            return "compile fail".to_string();
+        }
+        if self.no_run {
+            return "compile".to_string();
+        }
+        "run".to_string()
     }
 }
 

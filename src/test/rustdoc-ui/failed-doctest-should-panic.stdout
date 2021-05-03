@@ -1,6 +1,6 @@
 
 running 1 test
-test $DIR/failed-doctest-should-panic.rs - Foo (line 9) ... FAILED
+test $DIR/failed-doctest-should-panic.rs - Foo (line 9) run ... FAILED
 
 failures:
 

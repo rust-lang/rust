@@ -1,11 +1,11 @@
 
 running 2 tests
-test thready_fail ... fee
+test thready_fail run ... fee
 fie
 foe
 fum
 FAILED
-test thready_pass ... fee
+test thready_pass run ... fee
 fie
 foe
 fum
