@@ -2293,7 +2293,7 @@ impl<'test> TestCx<'test> {
         // For now, though…
         if let Some(rev) = self.revision {
             let prefixes = format!("CHECK,{}", rev);
-            filecheck.args(&["--check-prefixes", &prefixes]);
+            filecheck.args(&["--allow-unused-prefixes", "--check-prefixes", &prefixes]);
         }
         self.compose_and_run(filecheck, "", None, None)
     }
