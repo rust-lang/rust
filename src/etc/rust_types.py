@@ -80,7 +80,7 @@ def is_tuple_fields(fields):
 
 
 def classify_struct(name, fields):
-    if len(fields) == 0:
+    if not fields:
         return RustType.EMPTY
 
     for ty, regex in STD_TYPE_TO_REGEX.items():
@@ -97,7 +97,7 @@ def classify_struct(name, fields):
 
 
 def classify_union(fields):
-    if len(fields) == 0:
+    if not fields:
         return RustType.EMPTY
 
     first_variant_name = fields[0].name
