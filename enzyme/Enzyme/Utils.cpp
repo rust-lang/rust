@@ -119,7 +119,7 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, PointerType *T,
     PHINode *idx = B.CreatePHI(num->getType(), 2, "idx");
     idx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
-    Value *dsti = B.CreateGEP(dst, {idx}, "dst.i");
+    Value *dsti = B.CreateGEP(dst, idx, "dst.i");
     LoadInst *dstl = B.CreateLoad(dsti, "dst.i.l");
     StoreInst *dsts = B.CreateStore(Constant::getNullValue(elementType), dsti);
     if (dstalign) {
@@ -132,7 +132,7 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, PointerType *T,
 #endif
     }
 
-    Value *srci = B.CreateGEP(src, {idx}, "src.i");
+    Value *srci = B.CreateGEP(src, idx, "src.i");
     LoadInst *srcl = B.CreateLoad(srci, "src.i.l");
     StoreInst *srcs = B.CreateStore(B.CreateFAdd(srcl, dstl), srci);
     if (srcalign) {

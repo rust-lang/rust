@@ -1549,7 +1549,7 @@ public:
     assert(ptr);
     if (OrigOffset) {
       ptr = BuilderM.CreateGEP(
-          ptr, {lookupM(getNewFromOriginal(OrigOffset), BuilderM)});
+          ptr, lookupM(getNewFromOriginal(OrigOffset), BuilderM));
     }
 
     auto TmpOrig =

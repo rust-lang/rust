@@ -1345,7 +1345,7 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
         assert(es);
         idx = BuilderM.CreateMul(idx, es, "", /*NUW*/ true, /*NSW*/ true);
       }
-      next = BuilderM.CreateGEP(next, {idx});
+      next = BuilderM.CreateGEP(next, idx);
       cast<GetElementPtrInst>(next)->setIsInBounds(true);
       if (storeInInstructionsMap && isa<AllocaInst>(cache))
         scopeInstructions[cast<AllocaInst>(cache)].push_back(
@@ -1402,7 +1402,7 @@ Value *CacheUtility::lookupValueFromCache(bool inForwardPass,
 
   // Optionally apply the additional offset
   if (extraOffset) {
-    cptr = BuilderM.CreateGEP(cptr, {extraOffset});
+    cptr = BuilderM.CreateGEP(cptr, extraOffset);
     cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
   }
 

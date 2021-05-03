@@ -2976,6 +2976,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
             gutils->newFunc->getParent(), Intrinsic::amdgcn_workitem_id_y));
         tz = ebuilder.CreateCall(Intrinsic::getDeclaration(
             gutils->newFunc->getParent(), Intrinsic::amdgcn_workitem_id_z));
+      } else {
+        llvm_unreachable("unknown gpu architecture");
       }
       Value *AndVal = ebuilder.CreateAnd(ebuilder.CreateAnd(tx, ty), tz);
 
