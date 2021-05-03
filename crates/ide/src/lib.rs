@@ -87,7 +87,9 @@ pub use crate::{
     },
 };
 pub use hir::{Documentation, Semantics};
-pub use ide_assists::{Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy};
+pub use ide_assists::{
+    Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
+};
 pub use ide_completion::{
     CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit,
     InsertTextFormat,

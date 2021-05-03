@@ -10,7 +10,7 @@ use std::{
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
     HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
-    SourceChange, TextEdit,
+    SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -1072,7 +1072,7 @@ pub(crate) fn handle_code_action_resolve(
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
         &snap.config.diagnostics(),
-        AssistResolveStrategy::Single(params.id.clone(), assist_kind),
+        AssistResolveStrategy::Single(SingleResolve { assist_id: params.id.clone(), assist_kind }),
         frange,
     )?;
 

@@ -94,12 +94,27 @@ impl FromStr for AssistKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AssistId(pub &'static str, pub AssistKind);
 
-// TODO kb docs
-#[derive(Debug, Clone)]
+/// A way to control how many asssist to resolve during the assist resolution.
+/// When an assist is resolved, its edits are calculated that might be costly to always do by default.
+#[derive(Debug)]
 pub enum AssistResolveStrategy {
+    /// No assists should be resolved.
     None,
+    /// All assists should be resolved.
     All,
-    Single(String, AssistKind),
+    /// Only a certain assists should be resolved.
+    Single(SingleResolve),
+}
+
+/// Hold the [`AssistId`] data of a certain assist to resolve.
+/// The original id object cannot be used due to a `'static` lifetime
+/// and the requirement to construct this struct dynamically during the resolve handling.
+#[derive(Debug)]
+pub struct SingleResolve {
+    /// The id of the assist.
+    pub assist_id: String,
+    // The kind of the assist.
+    pub assist_kind: AssistKind,
 }
 
 impl AssistResolveStrategy {
@@ -107,8 +122,8 @@ impl AssistResolveStrategy {
         match self {
             AssistResolveStrategy::None => false,
             AssistResolveStrategy::All => true,
-            AssistResolveStrategy::Single(id_to_resolve, kind) => {
-                id_to_resolve == id.0 && kind == &id.1
+            AssistResolveStrategy::Single(single_resolve) => {
+                single_resolve.assist_id == id.0 && single_resolve.assist_kind == id.1
             }
         }
     }
