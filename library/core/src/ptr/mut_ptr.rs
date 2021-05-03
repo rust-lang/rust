@@ -1013,9 +1013,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
     #[inline]
-    pub const unsafe fn write(self, val: T)
+    pub unsafe fn write(self, val: T)
     where
         T: Sized,
     {

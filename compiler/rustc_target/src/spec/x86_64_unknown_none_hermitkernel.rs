@@ -7,7 +7,8 @@ pub fn target() -> Target {
     base.features =
         "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
             .to_string();
-    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
+    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
+    base.stack_probes = StackProbeType::Call;
 
     Target {
         llvm_target: "x86_64-unknown-none-elf".to_string(),

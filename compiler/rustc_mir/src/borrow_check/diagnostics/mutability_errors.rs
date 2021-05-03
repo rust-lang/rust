@@ -642,15 +642,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                         .starts_with(&original_method_ident.name.to_string())
                             })
                             .map(|ident| format!("{}()", ident))
+                            .peekable()
                     });
 
-                if let Some(suggestions) = opt_suggestions {
-                    err.span_suggestions(
-                        path_segment.ident.span,
-                        &format!("use mutable method"),
-                        suggestions,
-                        Applicability::MaybeIncorrect,
-                    );
+                if let Some(mut suggestions) = opt_suggestions {
+                    if suggestions.peek().is_some() {
+                        err.span_suggestions(
+                            path_segment.ident.span,
+                            &format!("use mutable method"),
+                            suggestions,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
         };

@@ -133,22 +133,6 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
-    fn handle_assign(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if self
-            .typeck_results()
-            .expr_adjustments(expr)
-            .iter()
-            .any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(_)))
-        {
-            self.visit_expr(expr);
-        } else if let hir::ExprKind::Field(base, ..) = expr.kind {
-            // Ignore write to field
-            self.handle_assign(base);
-        } else {
-            self.visit_expr(expr);
-        }
-    }
-
     fn handle_field_pattern_match(
         &mut self,
         lhs: &hir::Pat<'_>,
@@ -276,11 +260,6 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             }
             hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
-            }
-            hir::ExprKind::Assign(ref left, ref right, ..) => {
-                self.handle_assign(left);
-                self.visit_expr(right);
-                return;
             }
             hir::ExprKind::Field(ref lhs, ..) => {
                 self.handle_field_access(&lhs, expr.hir_id);

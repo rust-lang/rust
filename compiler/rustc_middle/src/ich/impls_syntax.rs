@@ -45,11 +45,7 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
             item.hash_stable(self, hasher);
             style.hash_stable(self, hasher);
             span.hash_stable(self, hasher);
-            assert_matches!(
-                tokens.as_ref(),
-                None,
-                "Tokens should have been removed during lowering!"
-            );
+            assert!(tokens.as_ref().is_none(), "Tokens should have been removed during lowering!");
         } else {
             unreachable!();
         }
