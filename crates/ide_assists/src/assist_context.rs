@@ -19,7 +19,9 @@ use syntax::{
 };
 use text_edit::{TextEdit, TextEditBuilder};
 
-use crate::{assist_config::AssistConfig, Assist, AssistId, AssistKind, GroupLabel};
+use crate::{
+    assist_config::AssistConfig, Assist, AssistId, AssistKind, AssistResolveStrategy, GroupLabel,
+};
 
 /// `AssistContext` allows to apply an assist or check if it could be applied.
 ///
@@ -105,14 +107,14 @@ impl<'a> AssistContext<'a> {
 }
 
 pub(crate) struct Assists {
-    resolve: bool,
     file: FileId,
+    resolve: AssistResolveStrategy,
     buf: Vec<Assist>,
     allowed: Option<Vec<AssistKind>>,
 }
 
 impl Assists {
-    pub(crate) fn new(ctx: &AssistContext, resolve: bool) -> Assists {
+    pub(crate) fn new(ctx: &AssistContext, resolve: AssistResolveStrategy) -> Assists {
         Assists {
             resolve,
             file: ctx.frange.file_id,
@@ -158,7 +160,7 @@ impl Assists {
     }
 
     fn add_impl(&mut self, mut assist: Assist, f: impl FnOnce(&mut AssistBuilder)) -> Option<()> {
-        let source_change = if self.resolve {
+        let source_change = if self.resolve.should_resolve(&assist.id) {
             let mut builder = AssistBuilder::new(self.file);
             f(&mut builder);
             Some(builder.finish())

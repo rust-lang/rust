@@ -5,6 +5,7 @@ use hir::{
     diagnostics::{Diagnostic, DiagnosticCode},
     InFile,
 };
+use ide_assists::AssistResolveStrategy;
 use ide_db::{
     base_db::{FileId, FileLoader, SourceDatabase, SourceDatabaseExt},
     source_change::SourceChange,
@@ -50,7 +51,11 @@ impl Diagnostic for UnlinkedFile {
 }
 
 impl DiagnosticWithFix for UnlinkedFile {
-    fn fix(&self, sema: &hir::Semantics<RootDatabase>, _resolve: bool) -> Option<Assist> {
+    fn fix(
+        &self,
+        sema: &hir::Semantics<RootDatabase>,
+        _resolve: AssistResolveStrategy,
+    ) -> Option<Assist> {
         // If there's an existing module that could add a `mod` item to include the unlinked file,
         // suggest that as a fix.
 

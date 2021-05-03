@@ -8,8 +8,9 @@ use std::{
 };
 
 use ide::{
-    AnnotationConfig, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, Query,
-    RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
+    AnnotationConfig, AssistResolveStrategy, FileId, FilePosition, FileRange, HoverAction,
+    HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange,
+    TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -1004,10 +1005,15 @@ pub(crate) fn handle_code_action(
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
     let code_action_resolve_cap = snap.config.code_action_resolve();
+    let resolve = if code_action_resolve_cap {
+        AssistResolveStrategy::None
+    } else {
+        AssistResolveStrategy::All
+    };
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
         &snap.config.diagnostics(),
-        !code_action_resolve_cap,
+        resolve,
         frange,
     )?;
     for (index, assist) in assists.into_iter().enumerate() {
@@ -1055,7 +1061,8 @@ pub(crate) fn handle_code_action_resolve(
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
         &snap.config.diagnostics(),
-        true,
+        // TODO kb pass a certain id
+        AssistResolveStrategy::All,
         frange,
     )?;
 
@@ -1182,7 +1189,7 @@ pub(crate) fn publish_diagnostics(
 
     let diagnostics: Vec<Diagnostic> = snap
         .analysis
-        .diagnostics(&snap.config.diagnostics(), false, file_id)?
+        .diagnostics(&snap.config.diagnostics(), AssistResolveStrategy::None, file_id)?
         .into_iter()
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),

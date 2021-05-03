@@ -26,7 +26,7 @@ pub(crate) use crate::assist_context::{AssistContext, Assists};
 
 pub use assist_config::AssistConfig;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AssistKind {
     // FIXME: does the None variant make sense? Probably not.
     None,
@@ -60,8 +60,26 @@ impl AssistKind {
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AssistId(pub &'static str, pub AssistKind);
+
+// TODO kb docs
+#[derive(Debug, Clone, Copy)]
+pub enum AssistResolveStrategy {
+    None,
+    All,
+    Single(AssistId),
+}
+
+impl AssistResolveStrategy {
+    pub fn should_resolve(&self, id: &AssistId) -> bool {
+        match self {
+            AssistResolveStrategy::None => false,
+            AssistResolveStrategy::All => true,
+            AssistResolveStrategy::Single(id_to_resolve) => id_to_resolve == id,
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
@@ -91,7 +109,7 @@ impl Assist {
     pub fn get(
         db: &RootDatabase,
         config: &AssistConfig,
-        resolve: bool,
+        resolve: AssistResolveStrategy,
         range: FileRange,
     ) -> Vec<Assist> {
         let sema = Semantics::new(db);
