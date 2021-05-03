@@ -2170,7 +2170,7 @@ impl<'tcx> TyS<'tcx> {
 
             ty::Tuple(tys) => tys.iter().all(|ty| ty.expect_ty().is_trivially_sized(tcx)),
 
-            ty::Adt(def, _substs) => def.sized_constraint(tcx).is_empty(),
+            ty::Adt(def, _substs) => def.is_enum() || def.sized_constraint(tcx).is_empty(),
 
             ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => false,
 
