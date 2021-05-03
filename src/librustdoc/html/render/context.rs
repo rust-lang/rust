@@ -5,8 +5,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
@@ -53,9 +52,6 @@ crate struct Context<'tcx> {
     pub(super) render_redirect_pages: bool,
     /// The map used to ensure all generated 'id=' attributes are unique.
     pub(super) id_map: RefCell<IdMap>,
-    /// Tracks section IDs for `Deref` targets so they match in both the main
-    /// body and the sidebar.
-    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
     /// Shared mutable state.
     ///
     /// Issue for improving the situation: [#82381][]
@@ -76,7 +72,7 @@ crate struct Context<'tcx> {
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(Context<'_>, 152);
+rustc_data_structures::static_assert_size!(Context<'_>, 112);
 
 impl<'tcx> Context<'tcx> {
     pub(super) fn path(&self, filename: &str) -> PathBuf {
@@ -416,7 +412,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst,
             render_redirect_pages: false,
             id_map: RefCell::new(id_map),
-            deref_id_map: RefCell::new(FxHashMap::default()),
             shared: Rc::new(scx),
             cache: Rc::new(cache),
         };
@@ -439,7 +434,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
             id_map: RefCell::new(id_map),
-            deref_id_map: RefCell::new(FxHashMap::default()),
             shared: Rc::clone(&self.shared),
             cache: Rc::clone(&self.cache),
         }
