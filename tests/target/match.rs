@@ -441,7 +441,6 @@ fn match_with_near_max_width() {
 
 fn match_with_trailing_spaces() {
     match x {
-        #![allow(simple_match)]
         Some(..) => 0,
         None => 1,
     }
