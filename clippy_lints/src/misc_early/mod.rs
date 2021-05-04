@@ -1,11 +1,10 @@
 mod builtin_type_shadow;
 mod double_neg;
+mod redundant_pattern;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{
-    BindingMode, Expr, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability, NodeId, Pat, PatKind,
-};
+use rustc_ast::ast::{Expr, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -336,29 +335,7 @@ impl EarlyLintPass for MiscEarlyLints {
             }
         }
 
-        if let PatKind::Ident(left, ident, Some(ref right)) = pat.kind {
-            let left_binding = match left {
-                BindingMode::ByRef(Mutability::Mut) => "ref mut ",
-                BindingMode::ByRef(Mutability::Not) => "ref ",
-                BindingMode::ByValue(..) => "",
-            };
-
-            if let PatKind::Wild = right.kind {
-                span_lint_and_sugg(
-                    cx,
-                    REDUNDANT_PATTERN,
-                    pat.span,
-                    &format!(
-                        "the `{} @ _` pattern can be written as just `{}`",
-                        ident.name, ident.name,
-                    ),
-                    "try",
-                    format!("{}{}", left_binding, ident.name),
-                    Applicability::MachineApplicable,
-                );
-            }
-        }
-
+        redundant_pattern::check(cx, pat);
         check_unneeded_wildcard_pattern(cx, pat);
     }
 
