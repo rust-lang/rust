@@ -18,7 +18,8 @@ if isMacOS; then
         bindir="$(xcode-select --print-path)/Toolchains/XcodeDefault.xctoolchain/usr/bin"
     else
         file="${MIRRORS_BASE}/clang%2Bllvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
-        curl -f "${file}" | tar xJf -
+        retry curl -f "${file}" -o "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
+        tar xJf "clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin.tar.xz"
         bindir="$(pwd)/clang+llvm-${LLVM_VERSION}-x86_64-apple-darwin/bin"
     fi
 
@@ -48,7 +49,8 @@ elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
 
     mkdir -p citools/clang-rust
     cd citools
-    curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.exe" -o "LLVM-${LLVM_VERSION}-win64.exe"
+    retry curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.exe" \
+        -o "LLVM-${LLVM_VERSION}-win64.exe"
     7z x -oclang-rust/ "LLVM-${LLVM_VERSION}-win64.exe"
     ciCommandSetEnv RUST_CONFIGURE_ARGS \
         "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
