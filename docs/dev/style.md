@@ -449,6 +449,39 @@ fn query_all(name: String, case_sensitive: bool) -> Vec<Item> { ... }
 fn query_first(name: String, case_sensitive: bool) -> Option<Item> { ... }
 ```
 
+## Prefer Separate Functions Over Parameters
+
+If a function has a `bool` or an `Option` parameter, and it is always called with `true`, `false`, `Some` and `None` literals, split the function in two.
+
+```rust
+// GOOD
+fn caller_a() {
+    foo()
+}
+
+fn caller_b() {
+    foo_with_bar(Bar::new())
+}
+
+fn foo() { ... }
+fn foo_with_bar(bar: Bar) { ... }
+
+// BAD
+fn caller_a() {
+    foo(None)
+}
+
+fn caller_b() {
+    foo(Some(Bar::new()))
+}
+
+fn foo(bar: Option<Bar>) { ... }
+```
+
+**Rationale:** more often than not, such functions display "`false sharing`" -- they have additional `if` branching inside for two different cases.
+Splitting the two different control flows into two functions simplifies each path, and remove cross-dependencies between the two paths.
+If there's common code between `foo` and `foo_with_bar`, extract *that* into a common helper.
+
 ## Avoid Monomorphization
 
 Avoid making a lot of code type parametric, *especially* on the boundaries between crates.

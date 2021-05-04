@@ -351,7 +351,7 @@ pub struct ExpansionInfo {
     /// The `macro_rules!` arguments.
     def: Option<InFile<ast::TokenTree>>,
 
-    macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
+    macro_def: Arc<db::TokenExpander>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
     exp_map: Arc<mbe::TokenMap>,
 }
@@ -368,7 +368,7 @@ impl ExpansionInfo {
         assert_eq!(token.file_id, self.arg.file_id);
         let range = token.value.text_range().checked_sub(self.arg.value.text_range().start())?;
         let token_id = self.macro_arg.1.token_by_range(range)?;
-        let token_id = self.macro_def.0.map_id_down(token_id);
+        let token_id = self.macro_def.map_id_down(token_id);
 
         let range = self.exp_map.range_by_token(token_id)?.by_kind(token.value.kind())?;
 
@@ -383,17 +383,16 @@ impl ExpansionInfo {
     ) -> Option<(InFile<SyntaxToken>, Origin)> {
         let token_id = self.exp_map.token_by_range(token.value.text_range())?;
 
-        let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
+        let (token_id, origin) = self.macro_def.map_id_up(token_id);
         let (token_map, tt) = match origin {
             mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
-            mbe::Origin::Def => (
-                &self.macro_def.1,
-                self.def
-                    .as_ref()
-                    .expect("`Origin::Def` used with non-`macro_rules!` macro")
-                    .as_ref()
-                    .map(|tt| tt.syntax().clone()),
-            ),
+            mbe::Origin::Def => match (&*self.macro_def, self.def.as_ref()) {
+                (db::TokenExpander::MacroRules { def_site_token_map, .. }, Some(tt))
+                | (db::TokenExpander::MacroDef { def_site_token_map, .. }, Some(tt)) => {
+                    (def_site_token_map, tt.as_ref().map(|tt| tt.syntax().clone()))
+                }
+                _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
+            },
         };
 
         let range = token_map.range_by_token(token_id)?.by_kind(token.value.kind())?;

@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use base_db::CrateId;
+use db::TokenExpander;
 use either::Either;
 use mbe::Origin;
 use parser::SyntaxKind;
@@ -115,7 +116,7 @@ struct HygieneInfo {
     /// The `macro_rules!` arguments.
     def_start: Option<InFile<TextSize>>,
 
-    macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
+    macro_def: Arc<TokenExpander>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
     exp_map: Arc<mbe::TokenMap>,
 }
@@ -124,13 +125,16 @@ impl HygieneInfo {
     fn map_ident_up(&self, token: TextRange) -> Option<(InFile<TextRange>, Origin)> {
         let token_id = self.exp_map.token_by_range(token)?;
 
-        let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
+        let (token_id, origin) = self.macro_def.map_id_up(token_id);
         let (token_map, tt) = match origin {
             mbe::Origin::Call => (&self.macro_arg.1, self.arg_start),
-            mbe::Origin::Def => (
-                &self.macro_def.1,
-                *self.def_start.as_ref().expect("`Origin::Def` used with non-`macro_rules!` macro"),
-            ),
+            mbe::Origin::Def => match (&*self.macro_def, self.def_start) {
+                (TokenExpander::MacroDef { def_site_token_map, .. }, Some(tt))
+                | (TokenExpander::MacroRules { def_site_token_map, .. }, Some(tt)) => {
+                    (def_site_token_map, tt)
+                }
+                _ => panic!("`Origin::Def` used with non-`macro_rules!` macro"),
+            },
         };
 
         let range = token_map.range_by_token(token_id)?.by_kind(SyntaxKind::IDENT)?;
