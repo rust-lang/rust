@@ -19,7 +19,7 @@ use vfs::{AbsPathBuf, VfsPath};
 use crate::cli::load_cargo::{load_workspace_at, LoadCargoConfig};
 
 #[test]
-fn benchmark_integrated_highlighting() {
+fn integrated_highlighting_benchmark() {
     // Don't run slow benchmark by default
     if true {
         return;
