@@ -795,6 +795,11 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.rustfmt.enableRangeFormatting": {
+                    "markdownDescription": "Enables the use of rustfmt's unstable range formatting command for the\n`textDocument/rangeFormatting` request. The rustfmt option is unstable and only\navailable on a nightly build.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.workspace.symbol.search.scope": {
                     "markdownDescription": "Workspace symbol search scope.",
                     "default": "workspace",
