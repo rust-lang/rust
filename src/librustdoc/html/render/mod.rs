@@ -34,7 +34,7 @@ mod span_map;
 mod write_shared;
 
 crate use context::*;
-crate use span_map::{collect_spans_and_sources, LinkFromSrc};
+crate use span_map::{collect_spans_and_sources, LightSpan, LinkFromSrc};
 
 use std::collections::VecDeque;
 use std::default::Default;
