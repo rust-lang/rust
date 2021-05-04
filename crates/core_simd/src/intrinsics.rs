@@ -81,6 +81,7 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
 
     // select
+    pub(crate) fn simd_select<T, U>(m: T, a: U, b: U) -> U;
     pub(crate) fn simd_select_bitmask<T, U>(m: T, a: U, b: U) -> U;
 }
 

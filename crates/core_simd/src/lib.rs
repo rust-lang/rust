@@ -14,6 +14,9 @@ mod transmute;
 #[macro_use]
 mod reduction;
 
+mod select;
+pub use select::Select;
+
 mod comparisons;
 mod fmt;
 mod intrinsics;
