@@ -3,6 +3,7 @@ mod double_neg;
 mod redundant_pattern;
 mod unneeded_field_pattern;
 mod unneeded_wildcard_pattern;
+mod unseparated_literal_suffix;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
@@ -396,23 +397,7 @@ impl MiscEarlyLints {
                 );
             }
         } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
-            let suffix = float_ty.name_str();
-            let maybe_last_sep_idx = if let Some(val) = lit_snip.len().checked_sub(suffix.len() + 1) {
-                val
-            } else {
-                return; // It's useless so shouldn't lint.
-            };
-            if lit_snip.as_bytes()[maybe_last_sep_idx] != b'_' {
-                span_lint_and_sugg(
-                    cx,
-                    UNSEPARATED_LITERAL_SUFFIX,
-                    lit.span,
-                    "float type suffix should be separated by an underscore",
-                    "add an underscore",
-                    format!("{}_{}", &lit_snip[..=maybe_last_sep_idx], suffix),
-                    Applicability::MachineApplicable,
-                );
-            }
+            unseparated_literal_suffix::check(cx, lit, float_ty, lit_snip)
         }
     }
 }
