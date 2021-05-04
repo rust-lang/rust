@@ -87,24 +87,45 @@ impl TokenExpander {
 pub trait AstDatabase: SourceDatabase {
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
+    /// Main public API -- parsis a hir file, not caring whether it's a real
+    /// file or a macro expansion.
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
+    /// Implementation for the macro case.
     fn parse_macro_expansion(
         &self,
         macro_file: MacroFile,
     ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>>;
 
+    /// Macro ids. That's probably the tricksiest bit in rust-analyzer, and the
+    /// reason why we use salsa at all.
+    ///
+    /// We encode macro definitions into ids of macro calls, this what allows us
+    /// to be incremental.
     #[salsa::interned]
     fn intern_macro(&self, macro_call: MacroCallLoc) -> LazyMacroId;
+    /// Certain built-in macros are eager (`format!(concat!("file: ", file!(), "{}"")), 92`).
+    /// For them, we actually want to encode the whole token tree as an argument.
     #[salsa::interned]
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
 
+    /// Lowers syntactic macro call to a token tree representation.
     #[salsa::transparent]
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
+    /// Extracts syntax node, corresponding to a macro call. That's a firewall
+    /// query, only typing in the macro call itself changes the returned
+    /// subtree.
     fn macro_arg_text(&self, id: MacroCallId) -> Option<GreenNode>;
+    /// Gets the expander for this macro. This compiles declarative macros, and
+    /// just fetches procedural ones.
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<TokenExpander>>;
 
+    /// Expand macro call to a token tree. This query is LRUed (we keep 128 or so results in memory)
     fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>>;
+    /// Special case of the previous query for procedural macros. We can't LRU
+    /// proc macros, since they are not deterministic in general, and
+    /// non-determinism breaks salsa in a very, very, very bad way. @edwin0cheng
+    /// heroically debugged this once!
     fn expand_proc_macro(&self, call: MacroCallId) -> Result<tt::Subtree, mbe::ExpandError>;
     /// Firewall query that returns the error from the `macro_expand` query.
     fn macro_expand_error(&self, macro_call: MacroCallId) -> Option<ExpandError>;
