@@ -191,7 +191,7 @@ impl ParseSess {
     }
 
     pub(crate) fn span_to_debug_info(&self, span: Span) -> String {
-        self.parse_sess.source_map().span_to_string(span)
+        self.parse_sess.source_map().span_to_diagnostic_string(span)
     }
 
     pub(crate) fn inner(&self) -> &RawParseSess {
