@@ -59,6 +59,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 hir::ModuleDef::TypeAlias(a) => {
                     let ty = a.ty(ctx.db);
                     if let Some(Adt::Enum(e)) = ty.as_adt() {
+                        cov_mark::hit!(completes_variant_through_alias);
                         add_enum_variants(ctx, acc, e);
                     }
                     ty
@@ -68,6 +69,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                         Some(it) => it,
                         None => return,
                     };
+                    cov_mark::hit!(completes_primitive_assoc_const);
                     builtin.ty(ctx.db, module)
                 }
                 _ => unreachable!(),
@@ -96,9 +98,8 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     if context_module.map_or(false, |m| !item.is_visible_from(ctx.db, m)) {
                         return None;
                     }
-                    match item {
-                        hir::AssocItem::Function(_) | hir::AssocItem::Const(_) => {}
-                        hir::AssocItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
+                    if let hir::AssocItem::TypeAlias(ty) = item {
+                        acc.add_type_alias(ctx, ty)
                     }
                     None::<()>
                 });
@@ -745,7 +746,7 @@ fn f() {}
     }
 
     #[test]
-    fn completes_self_enum() {
+    fn completes_variant_through_self() {
         check(
             r#"
 enum Foo {
@@ -769,6 +770,7 @@ impl Foo {
 
     #[test]
     fn completes_primitive_assoc_const() {
+        cov_mark::check!(completes_primitive_assoc_const);
         check(
             r#"
 //- /lib.rs crate:lib deps:core
@@ -792,7 +794,8 @@ impl u8 {
     }
 
     #[test]
-    fn completes_through_alias() {
+    fn completes_variant_through_alias() {
+        cov_mark::check!(completes_variant_through_alias);
         check(
             r#"
 enum Foo {
