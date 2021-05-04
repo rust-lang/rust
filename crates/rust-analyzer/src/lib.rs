@@ -40,7 +40,7 @@ pub mod lsp_ext;
 pub mod config;
 
 #[cfg(test)]
-mod benchmarks;
+mod integrated_benchmarks;
 
 use serde::de::DeserializeOwned;
 use std::fmt;
