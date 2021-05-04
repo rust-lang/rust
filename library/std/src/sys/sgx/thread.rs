@@ -9,26 +9,37 @@ pub struct Thread(task_queue::JoinHandle);
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
+pub use self::task_queue::JoinNotifier;
+
 mod task_queue {
-    use crate::sync::mpsc;
+    use super::wait_notify;
     use crate::sync::{Mutex, MutexGuard, Once};
 
-    pub type JoinHandle = mpsc::Receiver<()>;
+    pub type JoinHandle = wait_notify::Waiter;
+
+    pub struct JoinNotifier(Option<wait_notify::Notifier>);
+
+    impl Drop for JoinNotifier {
+        fn drop(&mut self) {
+            self.0.take().unwrap().notify();
+        }
+    }
 
     pub(super) struct Task {
         p: Box<dyn FnOnce()>,
-        done: mpsc::Sender<()>,
+        done: JoinNotifier,
     }
 
     impl Task {
         pub(super) fn new(p: Box<dyn FnOnce()>) -> (Task, JoinHandle) {
-            let (done, recv) = mpsc::channel();
+            let (done, recv) = wait_notify::new();
+            let done = JoinNotifier(Some(done));
             (Task { p, done }, recv)
         }
 
-        pub(super) fn run(self) {
+        pub(super) fn run(self) -> JoinNotifier {
             (self.p)();
-            let _ = self.done.send(());
+            self.done
         }
     }
 
@@ -47,6 +58,48 @@ mod task_queue {
     }
 }
 
+/// This module provides a synchronization primitive that does not use thread
+/// local variables. This is needed for signaling that a thread has finished
+/// execution. The signal is sent once all TLS destructors have finished at
+/// which point no new thread locals should be created.
+pub mod wait_notify {
+    use super::super::waitqueue::{SpinMutex, WaitQueue, WaitVariable};
+    use crate::sync::Arc;
+
+    pub struct Notifier(Arc<SpinMutex<WaitVariable<bool>>>);
+
+    impl Notifier {
+        /// Notify the waiter. The waiter is either notified right away (if
+        /// currently blocked in `Waiter::wait()`) or later when it calls the
+        /// `Waiter::wait()` method.
+        pub fn notify(self) {
+            let mut guard = self.0.lock();
+            *guard.lock_var_mut() = true;
+            let _ = WaitQueue::notify_one(guard);
+        }
+    }
+
+    pub struct Waiter(Arc<SpinMutex<WaitVariable<bool>>>);
+
+    impl Waiter {
+        /// Wait for a notification. If `Notifier::notify()` has already been
+        /// called, this will return immediately, otherwise the current thread
+        /// is blocked until notified.
+        pub fn wait(self) {
+            let guard = self.0.lock();
+            if *guard.lock_var() {
+                return;
+            }
+            WaitQueue::wait(guard, || {});
+        }
+    }
+
+    pub fn new() -> (Notifier, Waiter) {
+        let inner = Arc::new(SpinMutex::new(WaitVariable::new(false)));
+        (Notifier(inner.clone()), Waiter(inner))
+    }
+}
+
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
     pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
@@ -57,7 +110,7 @@ impl Thread {
         Ok(Thread(handle))
     }
 
-    pub(super) fn entry() {
+    pub(super) fn entry() -> JoinNotifier {
         let mut pending_tasks = task_queue::lock();
         let task = rtunwrap!(Some, pending_tasks.pop());
         drop(pending_tasks); // make sure to not hold the task queue lock longer than necessary
@@ -78,7 +131,7 @@ impl Thread {
     }
 
     pub fn join(self) {
-        let _ = self.0.recv();
+        self.0.wait();
     }
 }
 
