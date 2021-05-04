@@ -185,7 +185,29 @@ pub(crate) struct AssistBuilder {
     source_change: SourceChange,
 
     /// Maps the original, immutable `SyntaxNode` to a `clone_for_update` twin.
-    mutated_tree: Option<(SyntaxNode, SyntaxNode)>,
+    mutated_tree: Option<TreeMutator>,
+}
+
+pub(crate) struct TreeMutator {
+    immutable: SyntaxNode,
+    mutable_clone: SyntaxNode,
+}
+
+impl TreeMutator {
+    pub(crate) fn new(immutable: &SyntaxNode) -> TreeMutator {
+        let immutable = immutable.ancestors().last().unwrap();
+        let mutable_clone = immutable.clone_for_update();
+        TreeMutator { immutable, mutable_clone }
+    }
+
+    pub(crate) fn make_mut<N: AstNode>(&self, node: &N) -> N {
+        N::cast(self.make_syntax_mut(node.syntax())).unwrap()
+    }
+
+    pub(crate) fn make_syntax_mut(&self, node: &SyntaxNode) -> SyntaxNode {
+        let ptr = SyntaxNodePtr::new(node);
+        ptr.to_node(&self.mutable_clone)
+    }
 }
 
 impl AssistBuilder {
@@ -204,8 +226,8 @@ impl AssistBuilder {
     }
 
     fn commit(&mut self) {
-        if let Some((old, new)) = self.mutated_tree.take() {
-            algo::diff(&old, &new).into_text_edit(&mut self.edit)
+        if let Some(tm) = self.mutated_tree.take() {
+            algo::diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit)
         }
 
         let edit = mem::take(&mut self.edit).finish();
@@ -228,16 +250,7 @@ impl AssistBuilder {
     /// phase, and then get their mutable couterparts using `make_mut` in the
     /// mutable state.
     pub(crate) fn make_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
-        let root = &self
-            .mutated_tree
-            .get_or_insert_with(|| {
-                let immutable = node.ancestors().last().unwrap();
-                let mutable = immutable.clone_for_update();
-                (immutable, mutable)
-            })
-            .1;
-        let ptr = SyntaxNodePtr::new(&&node);
-        ptr.to_node(root)
+        self.mutated_tree.get_or_insert_with(|| TreeMutator::new(&node)).make_syntax_mut(&node)
     }
 
     /// Remove specified `range` of text.

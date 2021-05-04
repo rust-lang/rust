@@ -16,12 +16,13 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         AstNode,
     },
+    ted,
     SyntaxKind::{self, BLOCK_EXPR, BREAK_EXPR, COMMENT, PATH_EXPR, RETURN_EXPR},
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
+    assist_context::{AssistContext, Assists, TreeMutator},
     AssistId,
 };
 
@@ -1366,7 +1367,10 @@ fn rewrite_body_segment(
 
 /// change all usages to account for added `&`/`&mut` for some params
 fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) -> SyntaxNode {
-    let mut rewriter = SyntaxRewriter::default();
+    let mut usages_for_param: Vec<(&Param, Vec<ast::Expr>)> = Vec::new();
+
+    let tm = TreeMutator::new(syntax);
+
     for param in params {
         if !param.kind().is_ref() {
             continue;
@@ -1376,30 +1380,39 @@ fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) 
         let usages = usages
             .iter()
             .filter(|reference| syntax.text_range().contains_range(reference.range))
-            .filter_map(|reference| path_element_of_reference(syntax, reference));
-        for path in usages {
-            match path.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
+            .filter_map(|reference| path_element_of_reference(syntax, reference))
+            .map(|expr| tm.make_mut(&expr));
+
+        usages_for_param.push((param, usages.collect()));
+    }
+
+    let res = tm.make_syntax_mut(syntax);
+
+    for (param, usages) in usages_for_param {
+        for usage in usages {
+            match usage.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
                 Some(ast::Expr::MethodCallExpr(_)) | Some(ast::Expr::FieldExpr(_)) => {
                     // do nothing
                 }
                 Some(ast::Expr::RefExpr(node))
                     if param.kind() == ParamKind::MutRef && node.mut_token().is_some() =>
                 {
-                    rewriter.replace_ast(&node.clone().into(), &node.expr().unwrap());
+                    ted::replace(node.syntax(), node.expr().unwrap().syntax());
                 }
                 Some(ast::Expr::RefExpr(node))
                     if param.kind() == ParamKind::SharedRef && node.mut_token().is_none() =>
                 {
-                    rewriter.replace_ast(&node.clone().into(), &node.expr().unwrap());
+                    ted::replace(node.syntax(), node.expr().unwrap().syntax());
                 }
                 Some(_) | None => {
-                    rewriter.replace_ast(&path, &make::expr_prefix(T![*], path.clone()));
+                    let p = &make::expr_prefix(T![*], usage.clone()).clone_for_update();
+                    ted::replace(usage.syntax(), p.syntax())
                 }
-            };
+            }
         }
     }
 
-    rewriter.rewrite(syntax)
+    res
 }
 
 fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) -> SyntaxNode {
