@@ -334,7 +334,7 @@ fn mir_for_ctfe<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
     }
 }
 
-/// Same as `mir_for_ctfe`, but used to get the MIR of a const generic parameter.
+/// Same as `mir_for_ctfe`, but used to get the MIR of a const parameter.
 /// The docs on `WithOptConstParam` explain this a bit more, but the TLDR is that
 /// we'd get cycle errors with `mir_for_ctfe`, because typeck would need to typeck
 /// the const parameter while type checking the main body, which in turn would try

@@ -29,7 +29,7 @@ pub struct Const<'tcx> {
 static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
-    /// Literals and const generic parameters are eagerly converted to a constant, everything else
+    /// Literals and const parameters are eagerly converted to a constant, everything else
     /// becomes `Unevaluated`.
     pub fn from_anon_const(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Self {
         Self::from_opt_const_arg_anon_const(tcx, ty::WithOptConstParam::unknown(def_id))
@@ -151,7 +151,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Attempts to evaluate the given constant to bits. Can fail to evaluate in the presence of
     /// generics (or erroneous code) or if the value can't be represented as bits (e.g. because it
-    /// contains const generic parameters or pointers).
+    /// contains const parameters or pointers).
     pub fn try_eval_bits(
         &self,
         tcx: TyCtxt<'tcx>,

@@ -1,4 +1,4 @@
-error: `()` is forbidden as the type of a const generic parameter
+error: `()` is forbidden as the type of a const parameter
   --> $DIR/feature-gate-const_generics.rs:1:17
    |
 LL | fn foo<const X: ()>() {}

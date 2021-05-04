@@ -4,7 +4,7 @@
 #![cfg_attr(full, allow(incomplete_features))]
 
 struct Checked<const F: fn(usize) -> bool>;
-//~^ ERROR: using function pointers as const generic parameters
+//~^ ERROR: using function pointers as const parameters
 
 fn not_one(val: usize) -> bool { val != 1 }
 fn not_two(val: usize) -> bool { val != 2 }

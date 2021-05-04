@@ -4,11 +4,11 @@
 
 fn bar<const X: (), 'a>(_: &'a ()) {
     //~^ ERROR lifetime parameters must be declared prior to const parameters
-    //[min]~^^ ERROR `()` is forbidden as the type of a const generic parameter
+    //[min]~^^ ERROR `()` is forbidden as the type of a const parameter
 }
 
 fn foo<const X: (), T>(_: &T) {}
 //[min]~^ ERROR type parameters must be declared prior to const parameters
-//[min]~^^ ERROR `()` is forbidden as the type of a const generic parameter
+//[min]~^^ ERROR `()` is forbidden as the type of a const parameter
 
 fn main() {}

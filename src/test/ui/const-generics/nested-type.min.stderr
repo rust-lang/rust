@@ -1,4 +1,4 @@
-error: `[u8; _]` is forbidden as the type of a const generic parameter
+error: `[u8; _]` is forbidden as the type of a const parameter
   --> $DIR/nested-type.rs:6:21
    |
 LL |   struct Foo<const N: [u8; {

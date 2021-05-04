@@ -967,7 +967,7 @@ impl CheckAttrVisitor<'tcx> {
                             "#[rustc_legacy_const_generics] functions must \
                              only have const generics",
                         )
-                        .span_label(param.span, "non-const generic parameter")
+                        .span_label(param.span, "not a const parameter")
                         .emit();
                     return false;
                 }

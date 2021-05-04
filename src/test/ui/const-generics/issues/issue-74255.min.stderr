@@ -1,4 +1,4 @@
-error: `IceEnum` is forbidden as the type of a const generic parameter
+error: `IceEnum` is forbidden as the type of a const parameter
   --> $DIR/issue-74255.rs:14:31
    |
 LL |     fn ice_struct_fn<const I: IceEnum>() {}

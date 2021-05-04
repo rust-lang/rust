@@ -1,4 +1,4 @@
-error: `&'static (dyn A + 'static)` is forbidden as the type of a const generic parameter
+error: `&'static (dyn A + 'static)` is forbidden as the type of a const parameter
   --> $DIR/issue-63322-forbid-dyn.rs:9:18
    |
 LL | fn test<const T: &'static dyn A>() {

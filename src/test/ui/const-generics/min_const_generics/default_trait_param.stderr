@@ -1,4 +1,4 @@
-error[E0658]: default values for const generic parameters are experimental
+error[E0658]: default values for const parameters are experimental
   --> $DIR/default_trait_param.rs:1:28
    |
 LL | trait Foo<const KIND: bool = true> {}

@@ -25,7 +25,7 @@ pub struct Unevaluated<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable)]
 pub enum ConstKind<'tcx> {
-    /// A const generic parameter.
+    /// A const parameter.
     Param(ty::ParamConst),
 
     /// Infer the value of the const.

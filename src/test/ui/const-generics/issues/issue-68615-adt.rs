@@ -4,7 +4,7 @@
 #![cfg_attr(full, allow(incomplete_features))]
 
 struct Const<const V: [usize; 0]> {}
-//[min]~^ ERROR `[usize; 0]` is forbidden as the type of a const generic parameter
+//[min]~^ ERROR `[usize; 0]` is forbidden as the type of a const parameter
 type MyConst = Const<{ [] }>;
 
 fn main() {

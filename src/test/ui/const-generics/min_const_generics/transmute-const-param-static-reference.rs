@@ -1,5 +1,5 @@
 struct Const<const P: &'static ()>;
-//~^ ERROR `&'static ()` is forbidden as the type of a const generic parameter
+//~^ ERROR `&'static ()` is forbidden as the type of a const parameter
 
 fn main() {
     const A: &'static () = unsafe {

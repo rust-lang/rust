@@ -64,7 +64,7 @@ error: #[rustc_legacy_const_generics] functions must only have const generics
 LL | #[rustc_legacy_const_generics(0)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | fn foo8<X>() {}
-   |         - non-const generic parameter
+   |         - not a const parameter
 
 error: attribute should be applied to a function
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:25:5

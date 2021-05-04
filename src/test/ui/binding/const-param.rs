@@ -1,4 +1,4 @@
-// Identifier pattern referring to a const generic parameter is an error (issue #68853).
+// Identifier pattern referring to a const parameter is an error (issue #68853).
 // revisions: full min
 #![cfg_attr(full, feature(const_generics))]
 #![cfg_attr(full, allow(incomplete_features))]

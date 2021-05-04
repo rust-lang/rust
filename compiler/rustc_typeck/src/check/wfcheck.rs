@@ -309,16 +309,13 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                 if is_ptr {
                     tcx.sess.span_err(
                         hir_ty.span,
-                        &format!(
-                            "using {} as const generic parameters is forbidden",
-                            unsupported_type
-                        ),
+                        &format!("using {} as const parameters is forbidden", unsupported_type),
                     )
                 } else {
                     let mut err = tcx.sess.struct_span_err(
                         hir_ty.span,
                         &format!(
-                            "{} is forbidden as the type of a const generic parameter",
+                            "{} is forbidden as the type of a const parameter",
                             unsupported_type
                         ),
                     );

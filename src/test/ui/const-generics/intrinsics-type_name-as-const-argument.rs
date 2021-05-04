@@ -7,7 +7,7 @@
 #![feature(const_type_name)]
 
 trait Trait<const S: &'static str> {}
-//[min]~^ ERROR `&'static str` is forbidden as the type of a const generic parameter
+//[min]~^ ERROR `&'static str` is forbidden as the type of a const parameter
 
 struct Bug<T>
 where

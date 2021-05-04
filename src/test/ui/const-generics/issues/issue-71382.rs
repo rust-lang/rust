@@ -14,7 +14,7 @@ impl Test {
     }
 
     fn test<const FN: fn()>(&self) {
-        //~^ ERROR: using function pointers as const generic parameters is forbidden
+        //~^ ERROR: using function pointers as const parameters is forbidden
         FN();
     }
 }

@@ -1,4 +1,4 @@
-error: `&'static [u32]` is forbidden as the type of a const generic parameter
+error: `&'static [u32]` is forbidden as the type of a const parameter
   --> $DIR/static-reference-array-const-param.rs:1:15
    |
 LL | fn a<const X: &'static [u32]>() {}

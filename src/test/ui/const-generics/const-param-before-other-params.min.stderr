@@ -10,7 +10,7 @@ error: type parameters must be declared prior to const parameters
 LL | fn foo<const X: (), T>(_: &T) {}
    |       --------------^- help: reorder the parameters: lifetimes, then types, then consts: `<T, const X: ()>`
 
-error: `()` is forbidden as the type of a const generic parameter
+error: `()` is forbidden as the type of a const parameter
   --> $DIR/const-param-before-other-params.rs:5:17
    |
 LL | fn bar<const X: (), 'a>(_: &'a ()) {
@@ -19,7 +19,7 @@ LL | fn bar<const X: (), 'a>(_: &'a ()) {
    = note: the only supported types are integers, `bool` and `char`
    = help: more complex types are supported with `#![feature(const_generics)]`
 
-error: `()` is forbidden as the type of a const generic parameter
+error: `()` is forbidden as the type of a const parameter
   --> $DIR/const-param-before-other-params.rs:10:17
    |
 LL | fn foo<const X: (), T>(_: &T) {}

@@ -7,7 +7,7 @@
 struct NoMatch;
 
 fn foo<const T: NoMatch>() -> bool {
-    //[min]~^ ERROR `NoMatch` is forbidden as the type of a const generic parameter
+    //[min]~^ ERROR `NoMatch` is forbidden as the type of a const parameter
     true
 }
 
