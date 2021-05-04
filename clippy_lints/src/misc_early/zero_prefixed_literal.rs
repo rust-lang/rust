@@ -5,7 +5,7 @@ use rustc_lint::EarlyContext;
 
 use super::ZERO_PREFIXED_LITERAL;
 
-pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, lit_snip: String) {
+pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, lit_snip: &str) {
     span_lint_and_then(
         cx,
         ZERO_PREFIXED_LITERAL,

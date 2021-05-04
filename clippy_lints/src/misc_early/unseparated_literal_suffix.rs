@@ -5,7 +5,7 @@ use rustc_lint::EarlyContext;
 
 use super::UNSEPARATED_LITERAL_SUFFIX;
 
-pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, lit_snip: &String, suffix: &str, sugg_type: &str) {
+pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, lit_snip: &str, suffix: &str, sugg_type: &str) {
     let maybe_last_sep_idx = if let Some(val) = lit_snip.len().checked_sub(suffix.len() + 1) {
         val
     } else {
