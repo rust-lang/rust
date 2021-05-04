@@ -52,13 +52,17 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         | PathResolution::Def(def @ hir::ModuleDef::TypeAlias(_))
         | PathResolution::Def(def @ hir::ModuleDef::BuiltinType(_)) => {
             if let hir::ModuleDef::Adt(Adt::Enum(e)) = def {
-                for variant in e.variants(ctx.db) {
-                    acc.add_enum_variant(ctx, variant, None);
-                }
+                add_enum_variants(ctx, acc, e);
             }
             let ty = match def {
                 hir::ModuleDef::Adt(adt) => adt.ty(ctx.db),
-                hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
+                hir::ModuleDef::TypeAlias(a) => {
+                    let ty = a.ty(ctx.db);
+                    if let Some(Adt::Enum(e)) = ty.as_adt() {
+                        add_enum_variants(ctx, acc, e);
+                    }
+                    ty
+                }
                 hir::ModuleDef::BuiltinType(builtin) => {
                     let module = match ctx.scope.module() {
                         Some(it) => it,
@@ -122,9 +126,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 };
 
                 if let Some(Adt::Enum(e)) = ty.as_adt() {
-                    for variant in e.variants(ctx.db) {
-                        acc.add_enum_variant(ctx, variant, None);
-                    }
+                    add_enum_variants(ctx, acc, e);
                 }
 
                 let traits_in_scope = ctx.scope.traits_in_scope();
@@ -148,6 +150,12 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
         }
         _ => {}
+    }
+}
+
+fn add_enum_variants(ctx: &CompletionContext, acc: &mut Completions, e: hir::Enum) {
+    for variant in e.variants(ctx.db) {
+        acc.add_enum_variant(ctx, variant, None);
     }
 }
 
@@ -779,6 +787,24 @@ impl u8 {
             expect![[r#"
                 ct MAX     pub const MAX: Self = 255;
                 me func(…) fn(self)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn completes_through_alias() {
+        check(
+            r#"
+enum Foo {
+    Bar
+}
+type Foo2 = Foo;
+fn main() {
+    Foo2::$0
+}
+"#,
+            expect![[r#"
+                ev Bar ()
             "#]],
         );
     }
