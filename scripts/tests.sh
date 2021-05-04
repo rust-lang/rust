@@ -116,6 +116,7 @@ function extended_sysroot_tests() {
     pushd regex
     echo "[TEST] rust-lang/regex example shootout-regex-dna"
     cargo clean
+    export RUSTFLAGS="$RUSTFLAGS --cap-lints warn" # newer aho_corasick versions throw a deprecation warning
     # Make sure `[codegen mono items] start` doesn't poison the diff
     ../build/cargo.sh build --example shootout-regex-dna --target $TARGET_TRIPLE
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
