@@ -56,7 +56,7 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.40"
+version = "0.1.42"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -195,9 +195,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e3bad0ee36814ca07d7968269dd4b7ec89ec2da10c4bb613928d3077083c232"
+checksum = "410f7acf3cb3a44527c5d9546bad4bf4e6c460915d5f9f2fc524498bfe8f70ce"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
