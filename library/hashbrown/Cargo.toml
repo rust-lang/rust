@@ -29,7 +29,7 @@ bumpalo = { version = "3.5.0", optional = true }
 
 [dev-dependencies]
 lazy_static = "1.4"
-rand = { version = "0.7.3", features = ["small_rng"] }
+rand = { version = "0.8.3", features = ["small_rng"] }
 rayon = "1.0"
 fnv = "1.0.7"
 serde_test = "1.0"
