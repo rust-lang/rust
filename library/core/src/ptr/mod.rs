@@ -720,9 +720,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// ## On `packed` structs
 ///
-/// It is currently impossible to create raw pointers to unaligned fields
-/// of a packed struct.
-///
 /// Attempting to create a raw pointer to an `unaligned` struct field with
 /// an expression such as `&packed.unaligned as *const FieldType` creates an
 /// intermediate unaligned reference before converting that to a raw pointer.
@@ -731,9 +728,13 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
+/// Instead you must use the [`ptr::addr_of!`](addr_of) macro to
+/// create the pointer. You may use that returned pointer together with this
+/// function.
+///
 /// An example of what not to do and how this relates to `read_unaligned` is:
 ///
-/// ```no_run
+/// ```
 /// #[repr(packed, C)]
 /// struct Packed {
 ///     _padding: u8,
@@ -745,24 +746,15 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///     unaligned: 0x01020304,
 /// };
 ///
-/// #[allow(unaligned_references)]
-/// let v = unsafe {
-///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
-///     let unaligned =
-///         // A temporary unaligned reference is created here which results in
-///         // undefined behavior regardless of whether the reference is used or not.
-///         &packed.unaligned
-///         // Casting to a raw pointer doesn't help; the mistake already happened.
-///         as *const u32;
+/// // Take the address of a 32-bit integer which is not aligned.
+/// // In contrast to `&packed.unaligned as *const _`, this has no undefined behavior.
+/// let unaligned = std::ptr::addr_of!(packed.unaligned);
 ///
-///     let v = std::ptr::read_unaligned(unaligned);
-///
-///     v
-/// };
+/// let v = unsafe { std::ptr::read_unaligned(unaligned) };
+/// assert_eq!(v, 0x01020304);
 /// ```
 ///
 /// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
-// FIXME: Update docs based on outcome of RFC #2582 and friends.
 ///
 /// # Examples
 ///
@@ -916,9 +908,6 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// ## On `packed` structs
 ///
-/// It is currently impossible to create raw pointers to unaligned fields
-/// of a packed struct.
-///
 /// Attempting to create a raw pointer to an `unaligned` struct field with
 /// an expression such as `&packed.unaligned as *const FieldType` creates an
 /// intermediate unaligned reference before converting that to a raw pointer.
@@ -927,36 +916,32 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
-/// An example of what not to do and how this relates to `write_unaligned` is:
+/// Instead you must use the [`ptr::addr_of_mut!`](addr_of_mut)
+/// macro to create the pointer. You may use that returned pointer together with
+/// this function.
 ///
-/// ```no_run
+/// An example of how to do it and how this relates to `write_unaligned` is:
+///
+/// ```
 /// #[repr(packed, C)]
 /// struct Packed {
 ///     _padding: u8,
 ///     unaligned: u32,
 /// }
 ///
-/// let v = 0x01020304;
 /// let mut packed: Packed = unsafe { std::mem::zeroed() };
 ///
-/// #[allow(unaligned_references)]
-/// let v = unsafe {
-///     // Here we attempt to take the address of a 32-bit integer which is not aligned.
-///     let unaligned =
-///         // A temporary unaligned reference is created here which results in
-///         // undefined behavior regardless of whether the reference is used or not.
-///         &mut packed.unaligned
-///         // Casting to a raw pointer doesn't help; the mistake already happened.
-///         as *mut u32;
+/// // Take the address of a 32-bit integer which is not aligned.
+/// // In contrast to `&packed.unaligned as *mut _`, this has no undefined behavior.
+/// let unaligned = std::ptr::addr_of_mut!(packed.unaligned);
 ///
-///     std::ptr::write_unaligned(unaligned, v);
+/// unsafe { std::ptr::write_unaligned(unaligned, 42) };
 ///
-///     v
-/// };
+/// assert_eq!({packed.unaligned}, 42); // `{...}` forces copying the field instead of creating a reference.
 /// ```
 ///
-/// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however.
-// FIXME: Update docs based on outcome of RFC #2582 and friends.
+/// Accessing unaligned fields directly with e.g. `packed.unaligned` is safe however
+/// (as can be seen in the `assert_eq!` above).
 ///
 /// # Examples
 ///
