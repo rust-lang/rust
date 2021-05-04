@@ -9,6 +9,8 @@ use rustc_hir::{ExprKind, GenericParam, GenericParamKind, HirId, Mod, Node};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
+use std::path::{Path, PathBuf};
+
 /// This enum allows us to store two different kinds of information:
 ///
 /// In case the `span` definition comes from the same crate, we can simply get the `span` and use
@@ -35,10 +37,10 @@ crate enum LinkFromSrc {
 crate fn collect_spans_and_sources(
     tcx: TyCtxt<'_>,
     krate: clean::Crate,
-    src_root: &std::path::Path,
+    src_root: &Path,
     include_sources: bool,
     generate_link_to_definition: bool,
-) -> (clean::Crate, FxHashMap<std::path::PathBuf, String>, FxHashMap<(u32, u32), LinkFromSrc>) {
+) -> (clean::Crate, FxHashMap<PathBuf, String>, FxHashMap<(u32, u32), LinkFromSrc>) {
     let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
     if include_sources {
