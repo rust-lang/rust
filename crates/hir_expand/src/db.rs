@@ -28,9 +28,9 @@ const TOKEN_LIMIT: usize = 524288;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
     /// Old-style `macro_rules`.
-    MacroRules(mbe::MacroRules),
+    MacroRules { mac: mbe::MacroRules, def_site_token_map: mbe::TokenMap },
     /// AKA macros 2.0.
-    MacroDef(mbe::MacroDef),
+    MacroDef { mac: mbe::MacroDef, def_site_token_map: mbe::TokenMap },
     /// Stuff like `line!` and `file!`.
     Builtin(BuiltinFnLikeExpander),
     /// `derive(Copy)` and such.
@@ -47,8 +47,8 @@ impl TokenExpander {
         tt: &tt::Subtree,
     ) -> mbe::ExpandResult<tt::Subtree> {
         match self {
-            TokenExpander::MacroRules(it) => it.expand(tt),
-            TokenExpander::MacroDef(it) => it.expand(tt),
+            TokenExpander::MacroRules { mac, .. } => mac.expand(tt),
+            TokenExpander::MacroDef { mac, .. } => mac.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
             // FIXME switch these to ExpandResult as well
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt).into(),
@@ -63,21 +63,21 @@ impl TokenExpander {
 
     pub(crate) fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
         match self {
-            TokenExpander::MacroRules(it) => it.map_id_down(id),
-            TokenExpander::MacroDef(it) => it.map_id_down(id),
-            TokenExpander::Builtin(..) => id,
-            TokenExpander::BuiltinDerive(..) => id,
-            TokenExpander::ProcMacro(..) => id,
+            TokenExpander::MacroRules { mac, .. } => mac.map_id_down(id),
+            TokenExpander::MacroDef { mac, .. } => mac.map_id_down(id),
+            TokenExpander::Builtin(..)
+            | TokenExpander::BuiltinDerive(..)
+            | TokenExpander::ProcMacro(..) => id,
         }
     }
 
     pub(crate) fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
         match self {
-            TokenExpander::MacroRules(it) => it.map_id_up(id),
-            TokenExpander::MacroDef(it) => it.map_id_up(id),
-            TokenExpander::Builtin(..) => (id, mbe::Origin::Call),
-            TokenExpander::BuiltinDerive(..) => (id, mbe::Origin::Call),
-            TokenExpander::ProcMacro(..) => (id, mbe::Origin::Call),
+            TokenExpander::MacroRules { mac, .. } => mac.map_id_up(id),
+            TokenExpander::MacroDef { mac, .. } => mac.map_id_up(id),
+            TokenExpander::Builtin(..)
+            | TokenExpander::BuiltinDerive(..)
+            | TokenExpander::ProcMacro(..) => (id, mbe::Origin::Call),
         }
     }
 }
@@ -102,7 +102,7 @@ pub trait AstDatabase: SourceDatabase {
     #[salsa::transparent]
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
     fn macro_arg_text(&self, id: MacroCallId) -> Option<GreenNode>;
-    fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
+    fn macro_def(&self, id: MacroDefId) -> Option<Arc<TokenExpander>>;
 
     fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>>;
     fn expand_proc_macro(&self, call: MacroCallId) -> Result<tt::Subtree, mbe::ExpandError>;
@@ -133,7 +133,7 @@ pub fn expand_hypothetical(
         macro_expand_with_arg(db, macro_file.macro_call_id, Some(Arc::new((tt, tmap_1))));
     let (node, tmap_2) = expansion_to_syntax(db, macro_file, hypothetical_expansion).value?;
 
-    let token_id = macro_def.0.map_id_down(token_id);
+    let token_id = macro_def.map_id_down(token_id);
     let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
     let token = node.syntax_node().covering_element(range).into_token()?;
     Some((node.syntax_node(), token))
@@ -262,13 +262,13 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     Some(arg.green())
 }
 
-fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
+fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>> {
     match id.kind {
         MacroDefKind::Declarative(ast_id) => match ast_id.to_node(db) {
             ast::Macro::MacroRules(macro_rules) => {
                 let arg = macro_rules.token_tree()?;
-                let (tt, tmap) = mbe::ast_to_token_tree(&arg);
-                let rules = match mbe::MacroRules::parse(&tt) {
+                let (tt, def_site_token_map) = mbe::ast_to_token_tree(&arg);
+                let mac = match mbe::MacroRules::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
                         let name = macro_rules.name().map(|n| n.to_string()).unwrap_or_default();
@@ -276,12 +276,12 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
                         return None;
                     }
                 };
-                Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
+                Some(Arc::new(TokenExpander::MacroRules { mac, def_site_token_map }))
             }
             ast::Macro::MacroDef(macro_def) => {
                 let arg = macro_def.body()?;
-                let (tt, tmap) = mbe::ast_to_token_tree(&arg);
-                let rules = match mbe::MacroDef::parse(&tt) {
+                let (tt, def_site_token_map) = mbe::ast_to_token_tree(&arg);
+                let mac = match mbe::MacroDef::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
                         let name = macro_def.name().map(|n| n.to_string()).unwrap_or_default();
@@ -289,19 +289,15 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
                         return None;
                     }
                 };
-                Some(Arc::new((TokenExpander::MacroDef(rules), tmap)))
+                Some(Arc::new(TokenExpander::MacroDef { mac, def_site_token_map }))
             }
         },
-        MacroDefKind::BuiltIn(expander, _) => {
-            Some(Arc::new((TokenExpander::Builtin(expander), mbe::TokenMap::default())))
-        }
+        MacroDefKind::BuiltIn(expander, _) => Some(Arc::new(TokenExpander::Builtin(expander))),
         MacroDefKind::BuiltInDerive(expander, _) => {
-            Some(Arc::new((TokenExpander::BuiltinDerive(expander), mbe::TokenMap::default())))
+            Some(Arc::new(TokenExpander::BuiltinDerive(expander)))
         }
         MacroDefKind::BuiltInEager(..) => None,
-        MacroDefKind::ProcMacro(expander, ..) => {
-            Some(Arc::new((TokenExpander::ProcMacro(expander), mbe::TokenMap::default())))
-        }
+        MacroDefKind::ProcMacro(expander, ..) => Some(Arc::new(TokenExpander::ProcMacro(expander))),
     }
 }
 
@@ -313,7 +309,7 @@ fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<E
     db.macro_expand(macro_call).err
 }
 
-fn expander(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
+fn expander(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<TokenExpander>> {
     let lazy_id = match id {
         MacroCallId::LazyMacro(id) => id,
         MacroCallId::EagerMacro(_id) => {
@@ -359,7 +355,7 @@ fn macro_expand_with_arg(
         Some(it) => it,
         None => return ExpandResult::str_err("Fail to find macro definition".into()),
     };
-    let ExpandResult { value: tt, err } = macro_rules.0.expand(db, lazy_id, &macro_arg.0);
+    let ExpandResult { value: tt, err } = macro_rules.expand(db, lazy_id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > TOKEN_LIMIT {
