@@ -17,6 +17,8 @@ mod tests;
 pub mod utils;
 pub mod ast_transform;
 
+use std::str::FromStr;
+
 use hir::Semantics;
 use ide_db::base_db::FileRange;
 use ide_db::{label::Label, source_change::SourceChange, RootDatabase};
@@ -56,12 +58,76 @@ impl AssistKind {
             _ => return false,
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            AssistKind::None => "None",
+            AssistKind::QuickFix => "QuickFix",
+            AssistKind::Generate => "Generate",
+            AssistKind::Refactor => "Refactor",
+            AssistKind::RefactorExtract => "RefactorExtract",
+            AssistKind::RefactorInline => "RefactorInline",
+            AssistKind::RefactorRewrite => "RefactorRewrite",
+        }
+    }
+}
+
+impl FromStr for AssistKind {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "None" => Ok(AssistKind::None),
+            "QuickFix" => Ok(AssistKind::QuickFix),
+            "Generate" => Ok(AssistKind::Generate),
+            "Refactor" => Ok(AssistKind::Refactor),
+            "RefactorExtract" => Ok(AssistKind::RefactorExtract),
+            "RefactorInline" => Ok(AssistKind::RefactorInline),
+            "RefactorRewrite" => Ok(AssistKind::RefactorRewrite),
+            unknown => Err(format!("Unknown AssistKind: '{}'", unknown)),
+        }
+    }
 }
 
 /// Unique identifier of the assist, should not be shown to the user
 /// directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AssistId(pub &'static str, pub AssistKind);
+
+/// A way to control how many asssist to resolve during the assist resolution.
+/// When an assist is resolved, its edits are calculated that might be costly to always do by default.
+#[derive(Debug)]
+pub enum AssistResolveStrategy {
+    /// No assists should be resolved.
+    None,
+    /// All assists should be resolved.
+    All,
+    /// Only a certain assist should be resolved.
+    Single(SingleResolve),
+}
+
+/// Hold the [`AssistId`] data of a certain assist to resolve.
+/// The original id object cannot be used due to a `'static` lifetime
+/// and the requirement to construct this struct dynamically during the resolve handling.
+#[derive(Debug)]
+pub struct SingleResolve {
+    /// The id of the assist.
+    pub assist_id: String,
+    // The kind of the assist.
+    pub assist_kind: AssistKind,
+}
+
+impl AssistResolveStrategy {
+    pub fn should_resolve(&self, id: &AssistId) -> bool {
+        match self {
+            AssistResolveStrategy::None => false,
+            AssistResolveStrategy::All => true,
+            AssistResolveStrategy::Single(single_resolve) => {
+                single_resolve.assist_id == id.0 && single_resolve.assist_kind == id.1
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
@@ -91,7 +157,7 @@ impl Assist {
     pub fn get(
         db: &RootDatabase,
         config: &AssistConfig,
-        resolve: bool,
+        resolve: AssistResolveStrategy,
         range: FileRange,
     ) -> Vec<Assist> {
         let sema = Semantics::new(db);

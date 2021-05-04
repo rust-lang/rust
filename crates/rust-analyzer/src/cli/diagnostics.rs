@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use rustc_hash::FxHashSet;
 
 use hir::{db::HirDatabase, Crate, Module};
-use ide::{DiagnosticsConfig, Severity};
+use ide::{AssistResolveStrategy, DiagnosticsConfig, Severity};
 use ide_db::base_db::SourceDatabaseExt;
 
 use crate::cli::{
@@ -57,8 +57,9 @@ pub fn diagnostics(
             let crate_name =
                 module.krate().display_name(db).as_deref().unwrap_or("unknown").to_string();
             println!("processing crate: {}, module: {}", crate_name, _vfs.file_path(file_id));
-            for diagnostic in
-                analysis.diagnostics(&DiagnosticsConfig::default(), false, file_id).unwrap()
+            for diagnostic in analysis
+                .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::None, file_id)
+                .unwrap()
             {
                 if matches!(diagnostic.severity, Severity::Error) {
                     found_error = true;

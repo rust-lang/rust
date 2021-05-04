@@ -2,18 +2,23 @@
 //! assist in ide_assists because that would require the ide_assists crate
 //! depend on the ide_ssr crate.
 
-use ide_assists::{Assist, AssistId, AssistKind, GroupLabel};
+use ide_assists::{Assist, AssistId, AssistKind, AssistResolveStrategy, GroupLabel};
 use ide_db::{base_db::FileRange, label::Label, source_change::SourceChange, RootDatabase};
 
-pub(crate) fn add_ssr_assist(
+pub(crate) fn ssr_assists(
     db: &RootDatabase,
-    base: &mut Vec<Assist>,
-    resolve: bool,
+    resolve: &AssistResolveStrategy,
     frange: FileRange,
-) -> Option<()> {
-    let (match_finder, comment_range) = ide_ssr::ssr_from_comment(db, frange)?;
+) -> Vec<Assist> {
+    let mut ssr_assists = Vec::with_capacity(2);
 
-    let (source_change_for_file, source_change_for_workspace) = if resolve {
+    let (match_finder, comment_range) = match ide_ssr::ssr_from_comment(db, frange) {
+        Some(ssr_data) => ssr_data,
+        None => return ssr_assists,
+    };
+    let id = AssistId("ssr", AssistKind::RefactorRewrite);
+
+    let (source_change_for_file, source_change_for_workspace) = if resolve.should_resolve(&id) {
         let edits = match_finder.edits();
 
         let source_change_for_file = {
@@ -35,16 +40,17 @@ pub(crate) fn add_ssr_assist(
 
     for (label, source_change) in assists.into_iter() {
         let assist = Assist {
-            id: AssistId("ssr", AssistKind::RefactorRewrite),
+            id,
             label: Label::new(label),
             group: Some(GroupLabel("Apply SSR".into())),
             target: comment_range,
             source_change,
         };
 
-        base.push(assist);
+        ssr_assists.push(assist);
     }
-    Some(())
+
+    ssr_assists
 }
 
 #[cfg(test)]
@@ -52,7 +58,7 @@ mod tests {
     use std::sync::Arc;
 
     use expect_test::expect;
-    use ide_assists::Assist;
+    use ide_assists::{Assist, AssistResolveStrategy};
     use ide_db::{
         base_db::{fixture::WithFixture, salsa::Durability, FileRange},
         symbol_index::SymbolsDatabase,
@@ -60,24 +66,14 @@ mod tests {
     };
     use rustc_hash::FxHashSet;
 
-    use super::add_ssr_assist;
+    use super::ssr_assists;
 
-    fn get_assists(ra_fixture: &str, resolve: bool) -> Vec<Assist> {
+    fn get_assists(ra_fixture: &str, resolve: AssistResolveStrategy) -> Vec<Assist> {
         let (mut db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture);
         let mut local_roots = FxHashSet::default();
         local_roots.insert(ide_db::base_db::fixture::WORKSPACE);
         db.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
-
-        let mut assists = vec![];
-
-        add_ssr_assist(
-            &db,
-            &mut assists,
-            resolve,
-            FileRange { file_id, range: range_or_offset.into() },
-        );
-
-        assists
+        ssr_assists(&db, &resolve, FileRange { file_id, range: range_or_offset.into() })
     }
 
     #[test]
@@ -88,16 +84,13 @@ mod tests {
             // This is foo $0
             fn foo() {}
             "#;
-        let resolve = true;
-
-        let assists = get_assists(ra_fixture, resolve);
+        let assists = get_assists(ra_fixture, AssistResolveStrategy::All);
 
         assert_eq!(0, assists.len());
     }
 
     #[test]
     fn resolve_edits_true() {
-        let resolve = true;
         let assists = get_assists(
             r#"
             //- /lib.rs
@@ -109,7 +102,7 @@ mod tests {
             //- /bar.rs
             fn bar() { 2 }
             "#,
-            resolve,
+            AssistResolveStrategy::All,
         );
 
         assert_eq!(2, assists.len());
@@ -200,7 +193,6 @@ mod tests {
 
     #[test]
     fn resolve_edits_false() {
-        let resolve = false;
         let assists = get_assists(
             r#"
             //- /lib.rs
@@ -212,7 +204,7 @@ mod tests {
             //- /bar.rs
             fn bar() { 2 }
             "#,
-            resolve,
+            AssistResolveStrategy::None,
         );
 
         assert_eq!(2, assists.len());

@@ -8,8 +8,9 @@ use std::{
 };
 
 use ide::{
-    AnnotationConfig, FileId, FilePosition, FileRange, HoverAction, HoverGotoTypeData, Query,
-    RangeInfo, Runnable, RunnableKind, SearchScope, SourceChange, TextEdit,
+    AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
+    HoverAction, HoverGotoTypeData, Query, RangeInfo, Runnable, RunnableKind, SearchScope,
+    SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use itertools::Itertools;
@@ -27,7 +28,7 @@ use lsp_types::{
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
-use stdx::{format_to, split_once};
+use stdx::format_to;
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
 use crate::{
@@ -1004,10 +1005,15 @@ pub(crate) fn handle_code_action(
     let mut res: Vec<lsp_ext::CodeAction> = Vec::new();
 
     let code_action_resolve_cap = snap.config.code_action_resolve();
+    let resolve = if code_action_resolve_cap {
+        AssistResolveStrategy::None
+    } else {
+        AssistResolveStrategy::All
+    };
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
         &snap.config.diagnostics(),
-        !code_action_resolve_cap,
+        resolve,
         frange,
     )?;
     for (index, assist) in assists.into_iter().enumerate() {
@@ -1052,20 +1058,66 @@ pub(crate) fn handle_code_action_resolve(
         .only
         .map(|it| it.into_iter().filter_map(from_proto::assist_kind).collect());
 
+    let (assist_index, assist_resolve) = match parse_action_id(&params.id) {
+        Ok(parsed_data) => parsed_data,
+        Err(e) => {
+            return Err(LspError::new(
+                ErrorCode::InvalidParams as i32,
+                format!("Failed to parse action id string '{}': {}", params.id, e),
+            )
+            .into())
+        }
+    };
+
+    let expected_assist_id = assist_resolve.assist_id.clone();
+    let expected_kind = assist_resolve.assist_kind;
+
     let assists = snap.analysis.assists_with_fixes(
         &assists_config,
         &snap.config.diagnostics(),
-        true,
+        AssistResolveStrategy::Single(assist_resolve),
         frange,
     )?;
 
-    let (id, index) = split_once(&params.id, ':').unwrap();
-    let index = index.parse::<usize>().unwrap();
-    let assist = &assists[index];
-    assert!(assist.id.0 == id);
+    let assist = match assists.get(assist_index) {
+        Some(assist) => assist,
+        None => return Err(LspError::new(
+            ErrorCode::InvalidParams as i32,
+            format!(
+                "Failed to find the assist for index {} provided by the resolve request. Resolve request assist id: {}",
+                assist_index, params.id,
+            ),
+        )
+        .into())
+    };
+    if assist.id.0 != expected_assist_id || assist.id.1 != expected_kind {
+        return Err(LspError::new(
+            ErrorCode::InvalidParams as i32,
+            format!(
+                "Mismatching assist at index {} for the resolve parameters given. Resolve request assist id: {}, actual id: {:?}.",
+                assist_index, params.id, assist.id
+            ),
+        )
+        .into());
+    }
     let edit = to_proto::code_action(&snap, assist.clone(), None)?.edit;
     code_action.edit = edit;
     Ok(code_action)
+}
+
+fn parse_action_id(action_id: &str) -> Result<(usize, SingleResolve), String> {
+    let id_parts = action_id.split(':').collect_vec();
+    match id_parts.as_slice() {
+        &[assist_id_string, assist_kind_string, index_string] => {
+            let assist_kind: AssistKind = assist_kind_string.parse()?;
+            let index: usize = match index_string.parse() {
+                Ok(index) => index,
+                Err(e) => return Err(format!("Incorrect index string: {}", e)),
+            };
+            Ok((index, SingleResolve { assist_id: assist_id_string.to_string(), assist_kind }))
+        }
+        _ => Err("Action id contains incorrect number of segments".to_string()),
+    }
 }
 
 pub(crate) fn handle_code_lens(
@@ -1182,7 +1234,7 @@ pub(crate) fn publish_diagnostics(
 
     let diagnostics: Vec<Diagnostic> = snap
         .analysis
-        .diagnostics(&snap.config.diagnostics(), false, file_id)?
+        .diagnostics(&snap.config.diagnostics(), AssistResolveStrategy::None, file_id)?
         .into_iter()
         .map(|d| Diagnostic {
             range: to_proto::range(&line_index, d.range),

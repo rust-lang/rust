@@ -15,6 +15,7 @@ use hir::{
     diagnostics::{Diagnostic as _, DiagnosticCode, DiagnosticSinkBuilder},
     InFile, Semantics,
 };
+use ide_assists::AssistResolveStrategy;
 use ide_db::{base_db::SourceDatabase, RootDatabase};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -84,7 +85,7 @@ pub struct DiagnosticsConfig {
 pub(crate) fn diagnostics(
     db: &RootDatabase,
     config: &DiagnosticsConfig,
-    resolve: bool,
+    resolve: &AssistResolveStrategy,
     file_id: FileId,
 ) -> Vec<Diagnostic> {
     let _p = profile::span("diagnostics");
@@ -212,7 +213,7 @@ pub(crate) fn diagnostics(
 fn diagnostic_with_fix<D: DiagnosticWithFix>(
     d: &D,
     sema: &Semantics<RootDatabase>,
-    resolve: bool,
+    resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::error(sema.diagnostics_display_range(d.display_source()).range, d.message())
         .with_fix(d.fix(&sema, resolve))
@@ -222,7 +223,7 @@ fn diagnostic_with_fix<D: DiagnosticWithFix>(
 fn warning_with_fix<D: DiagnosticWithFix>(
     d: &D,
     sema: &Semantics<RootDatabase>,
-    resolve: bool,
+    resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::hint(sema.diagnostics_display_range(d.display_source()).range, d.message())
         .with_fix(d.fix(&sema, resolve))
@@ -299,6 +300,7 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
+    use ide_assists::AssistResolveStrategy;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
@@ -314,7 +316,11 @@ mod tests {
 
         let (analysis, file_position) = fixture::position(ra_fixture_before);
         let diagnostic = analysis
-            .diagnostics(&DiagnosticsConfig::default(), true, file_position.file_id)
+            .diagnostics(
+                &DiagnosticsConfig::default(),
+                AssistResolveStrategy::All,
+                file_position.file_id,
+            )
             .unwrap()
             .pop()
             .unwrap();
@@ -343,7 +349,11 @@ mod tests {
     fn check_no_fix(ra_fixture: &str) {
         let (analysis, file_position) = fixture::position(ra_fixture);
         let diagnostic = analysis
-            .diagnostics(&DiagnosticsConfig::default(), true, file_position.file_id)
+            .diagnostics(
+                &DiagnosticsConfig::default(),
+                AssistResolveStrategy::All,
+                file_position.file_id,
+            )
             .unwrap()
             .pop()
             .unwrap();
@@ -357,7 +367,9 @@ mod tests {
         let diagnostics = files
             .into_iter()
             .flat_map(|file_id| {
-                analysis.diagnostics(&DiagnosticsConfig::default(), true, file_id).unwrap()
+                analysis
+                    .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
+                    .unwrap()
             })
             .collect::<Vec<_>>();
         assert_eq!(diagnostics.len(), 0, "unexpected diagnostics:\n{:#?}", diagnostics);
@@ -365,8 +377,9 @@ mod tests {
 
     fn check_expect(ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(ra_fixture);
-        let diagnostics =
-            analysis.diagnostics(&DiagnosticsConfig::default(), true, file_id).unwrap();
+        let diagnostics = analysis
+            .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
+            .unwrap();
         expect.assert_debug_eq(&diagnostics)
     }
 
@@ -911,11 +924,13 @@ struct Foo {
 
         let (analysis, file_id) = fixture::file(r#"mod foo;"#);
 
-        let diagnostics = analysis.diagnostics(&config, true, file_id).unwrap();
+        let diagnostics =
+            analysis.diagnostics(&config, AssistResolveStrategy::All, file_id).unwrap();
         assert!(diagnostics.is_empty());
 
-        let diagnostics =
-            analysis.diagnostics(&DiagnosticsConfig::default(), true, file_id).unwrap();
+        let diagnostics = analysis
+            .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
+            .unwrap();
         assert!(!diagnostics.is_empty());
     }
 
@@ -1022,7 +1037,11 @@ impl TestStruct {
 
         let (analysis, file_position) = fixture::position(input);
         let diagnostics = analysis
-            .diagnostics(&DiagnosticsConfig::default(), true, file_position.file_id)
+            .diagnostics(
+                &DiagnosticsConfig::default(),
+                AssistResolveStrategy::All,
+                file_position.file_id,
+            )
             .unwrap();
         assert_eq!(diagnostics.len(), 1);
 
