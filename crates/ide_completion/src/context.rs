@@ -381,7 +381,7 @@ impl<'a> CompletionContext<'a> {
                         let def = self.sema.to_def(&it);
                         (def.map(|def| def.ret_type(self.db)), None)
                     },
-                    ast::Stmt(it) => (None, None),
+                    ast::Stmt(_) => (None, None),
                     _ => {
                         match node.parent() {
                             Some(n) => {

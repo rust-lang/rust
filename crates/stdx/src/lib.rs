@@ -65,20 +65,6 @@ pub fn replace(buf: &mut String, from: char, to: &str) {
     *buf = buf.replace(from, to)
 }
 
-// https://github.com/rust-lang/rust/issues/74773
-pub fn split_once(haystack: &str, delim: char) -> Option<(&str, &str)> {
-    let mut split = haystack.splitn(2, delim);
-    let prefix = split.next()?;
-    let suffix = split.next()?;
-    Some((prefix, suffix))
-}
-pub fn rsplit_once(haystack: &str, delim: char) -> Option<(&str, &str)> {
-    let mut split = haystack.rsplitn(2, delim);
-    let suffix = split.next()?;
-    let prefix = split.next()?;
-    Some((prefix, suffix))
-}
-
 pub fn trim_indent(mut text: &str) -> String {
     if text.starts_with('\n') {
         text = &text[1..];
@@ -89,7 +75,7 @@ pub fn trim_indent(mut text: &str) -> String {
         .map(|it| it.len() - it.trim_start().len())
         .min()
         .unwrap_or(0);
-    lines_with_ends(text)
+    text.split_inclusive('\n')
         .map(
             |line| {
                 if line.len() <= indent {
@@ -102,70 +88,12 @@ pub fn trim_indent(mut text: &str) -> String {
         .collect()
 }
 
-pub fn lines_with_ends(text: &str) -> LinesWithEnds {
-    LinesWithEnds { text }
-}
-
-pub struct LinesWithEnds<'a> {
-    text: &'a str,
-}
-
-impl<'a> Iterator for LinesWithEnds<'a> {
-    type Item = &'a str;
-    fn next(&mut self) -> Option<&'a str> {
-        if self.text.is_empty() {
-            return None;
-        }
-        let idx = self.text.find('\n').map_or(self.text.len(), |it| it + 1);
-        let (res, next) = self.text.split_at(idx);
-        self.text = next;
-        Some(res)
-    }
-}
-
-/// Returns `idx` such that:
-///
-/// ```text
-///     ∀ x in slice[..idx]:  pred(x)
-///  && ∀ x in slice[idx..]: !pred(x)
-/// ```
-///
-/// https://github.com/rust-lang/rust/issues/73831
-pub fn partition_point<T, P>(slice: &[T], mut pred: P) -> usize
-where
-    P: FnMut(&T) -> bool,
-{
-    let mut left = 0;
-    let mut right = slice.len();
-
-    while left != right {
-        let mid = left + (right - left) / 2;
-        // SAFETY:
-        // When left < right, left <= mid < right.
-        // Therefore left always increases and right always decreases,
-        // and either of them is selected.
-        // In both cases left <= right is satisfied.
-        // Therefore if left < right in a step,
-        // left <= right is satisfied in the next step.
-        // Therefore as long as left != right, 0 <= left < right <= len is satisfied
-        // and if this case 0 <= mid < len is satisfied too.
-        let value = unsafe { slice.get_unchecked(mid) };
-        if pred(value) {
-            left = mid + 1;
-        } else {
-            right = mid;
-        }
-    }
-
-    left
-}
-
 pub fn equal_range_by<T, F>(slice: &[T], mut key: F) -> ops::Range<usize>
 where
     F: FnMut(&T) -> Ordering,
 {
-    let start = partition_point(slice, |it| key(it) == Ordering::Less);
-    let len = partition_point(&slice[start..], |it| key(it) == Ordering::Equal);
+    let start = slice.partition_point(|it| key(it) == Ordering::Less);
+    let len = slice[start..].partition_point(|it| key(it) == Ordering::Equal);
     start..start + len
 }
 

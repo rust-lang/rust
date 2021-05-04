@@ -17,7 +17,7 @@ use std::{
 };
 
 use profile::StopWatch;
-use stdx::{is_ci, lines_with_ends};
+use stdx::is_ci;
 use text_size::{TextRange, TextSize};
 
 pub use dissimilar::diff as __diff;
@@ -181,7 +181,7 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     let mut prev_line_start: Option<TextSize> = None;
     let mut line_start: TextSize = 0.into();
     let mut prev_line_annotations: Vec<(TextSize, usize)> = Vec::new();
-    for line in lines_with_ends(text) {
+    for line in text.split_inclusive('\n') {
         let mut this_line_annotations = Vec::new();
         if let Some(idx) = line.find("//") {
             let annotation_offset = TextSize::of(&line[..idx + "//".len()]);
