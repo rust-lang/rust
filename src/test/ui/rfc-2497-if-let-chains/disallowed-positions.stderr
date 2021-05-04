@@ -1,4 +1,4 @@
-error: expressions must be enclosed in braces to be used as const generic arguments
+error: expressions must be enclosed in braces to be used as const arguments
   --> $DIR/disallowed-positions.rs:236:9
    |
 LL |         true && let 1 = 1

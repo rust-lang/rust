@@ -4,7 +4,7 @@ error: expected one of `>`, a const expression, lifetime, or type, found `:`
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                              ^ expected one of `>`, a const expression, lifetime, or type
    |
-help: expressions must be enclosed in braces to be used as const generic arguments
+help: expressions must be enclosed in braces to be used as const arguments
    |
 LL |   fn f1<'a>(arg : Box<{ dyn X< : 32 } >>) {}
    |                       ^             ^

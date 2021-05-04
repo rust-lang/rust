@@ -4,7 +4,7 @@ error: expected expression, found `)`
 LL |   fn f1<'a>(arg : Box<dyn X< 1 = 32 >>) {}
    |                              -        ^ expected expression
    |                              |
-   |                              while parsing a const generic argument starting here
+   |                              while parsing a const argument starting here
 
 error: expected one of `,`, `:`, or `>`, found `=`
   --> $DIR/trait-path-expressions.rs:19:36

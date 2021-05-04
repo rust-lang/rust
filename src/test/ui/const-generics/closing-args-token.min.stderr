@@ -1,4 +1,4 @@
-error: expressions must be enclosed in braces to be used as const generic arguments
+error: expressions must be enclosed in braces to be used as const arguments
   --> $DIR/closing-args-token.rs:10:9
    |
 LL |     S::<5 + 2 >> 7>;

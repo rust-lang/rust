@@ -1,4 +1,4 @@
-error: expressions must be enclosed in braces to be used as const generic arguments
+error: expressions must be enclosed in braces to be used as const arguments
   --> $DIR/macro_rules-braces.rs:48:17
    |
 LL |     let _: baz!(m::P);
@@ -9,7 +9,7 @@ help: enclose the `const` expression in braces
 LL |     let _: baz!({ m::P });
    |                 ^      ^
 
-error: expressions must be enclosed in braces to be used as const generic arguments
+error: expressions must be enclosed in braces to be used as const arguments
   --> $DIR/macro_rules-braces.rs:68:17
    |
 LL |     let _: baz!(10 + 7);

@@ -209,7 +209,7 @@ fn outside_if_and_while_expr() {
     //~| ERROR mismatched types
 }
 
-// Let's make sure that `let` inside const generic arguments are considered.
+// Let's make sure that `let` inside const arguments are considered.
 fn inside_const_generic_arguments() {
     struct A<const B: bool>;
     impl<const B: bool> A<{B}> { const O: u32 = 5; }
@@ -230,7 +230,7 @@ fn inside_const_generic_arguments() {
     // Below however, we would not have a block and so an implementation might go
     // from visiting expressions to types without banning `let` expressions down the tree.
     // This tests ensures that we are not caught by surprise should the parser
-    // admit non-IDENT expressions in const generic arguments.
+    // admit non-IDENT expressions in const arguments.
 
     if A::<
         true && let 1 = 1

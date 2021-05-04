@@ -1871,17 +1871,13 @@ impl<'a> Parser<'a> {
     pub fn handle_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, P<Expr>> {
         let start = self.token.span;
         let expr = self.parse_expr_res(Restrictions::CONST_EXPR, None).map_err(|mut err| {
-            err.span_label(
-                start.shrink_to_lo(),
-                "while parsing a const generic argument starting here",
-            );
+            err.span_label(start.shrink_to_lo(), "while parsing a const argument starting here");
             err
         })?;
         if !self.expr_is_valid_const_arg(&expr) {
             self.struct_span_err(
                 expr.span,
-                "expressions must be enclosed in braces to be used as const generic \
-                    arguments",
+                "expressions must be enclosed in braces to be used as const arguments",
             )
             .multipart_suggestion(
                 "enclose the `const` expression in braces",
@@ -1939,14 +1935,12 @@ impl<'a> Parser<'a> {
             Ok(expr) => {
                 if token::Comma == self.token.kind || self.token.kind.should_end_const_arg() {
                     // Avoid the following output by checking that we consumed a full const arg:
-                    // help: expressions must be enclosed in braces to be used as const generic
-                    //       arguments
+                    // help: expressions must be enclosed in braces to be used as const arguments
                     //    |
                     // LL |     let sr: Vec<{ (u32, _, _) = vec![] };
                     //    |                 ^                      ^
                     err.multipart_suggestion(
-                        "expressions must be enclosed in braces to be used as const generic \
-                         arguments",
+                        "expressions must be enclosed in braces to be used as const arguments",
                         vec![
                             (start.shrink_to_lo(), "{ ".to_string()),
                             (expr.span.shrink_to_hi(), " }".to_string()),

@@ -1,4 +1,4 @@
-error: expressions must be enclosed in braces to be used as const generic arguments
+error: expressions must be enclosed in braces to be used as const arguments
   --> $DIR/const-expression-parameter.rs:15:20
    |
 LL |     i32_identity::<1 + 2>();
