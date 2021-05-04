@@ -195,7 +195,7 @@ struct StdBacktrace {
 
 impl RawBacktrace for StdBacktrace {
     unsafe fn drop_and_free(self: *mut Self) {
-        todo!()
+        let _ = Box::from_raw(self);
     }
 }
 
