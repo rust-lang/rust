@@ -186,8 +186,8 @@ public:
       bool dretUsed, bool topLevel, llvm::Type *additionalArg,
       const FnTypeInfo &typeInfo,
       const std::map<llvm::Argument *, bool> _uncacheable_args,
-      const AugmentedReturn *augmented, bool AtomicAdd, bool PostOpt = false,
-      bool omp = false);
+      const AugmentedReturn *augmented, bool AtomicAdd, bool fwdMode,
+      bool PostOpt = false, bool omp = false);
 
   void clear();
 };

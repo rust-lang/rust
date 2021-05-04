@@ -594,7 +594,8 @@ void calculateUnusedValuesInFunction(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
         return is_value_needed_in_reverse<ValueType::Primal>(
-            TR, gutils, val, /*topLevel*/ mode == DerivativeMode::Both,
+            TR, gutils, val,
+            /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
             PrimalSeen, oldUnreachable);
       },
       [&](const Instruction *inst) {
@@ -618,7 +619,7 @@ void calculateUnusedValuesInFunction(
               num++;
             }
           }
-          if (num > 1 || mode != DerivativeMode::Reverse)
+          if (num > 1 || mode != DerivativeMode::ReverseModeGradient)
             return true;
         }
 
@@ -746,17 +747,19 @@ void calculateUnusedValuesInFunction(
             }
           }
         }
-        if ((mode == DerivativeMode::Forward || mode == DerivativeMode::Both) &&
+        if ((mode == DerivativeMode::ReverseModePrimal ||
+             mode == DerivativeMode::ReverseModeCombined) &&
             inst->mayWriteToMemory())
           return true;
-        if (isa<MemTransferInst>(inst) && mode == DerivativeMode::Reverse)
+        if (isa<MemTransferInst>(inst) &&
+            mode == DerivativeMode::ReverseModeGradient)
           return false;
         if (isa<CallInst>(inst) && !gutils->isConstantInstruction(inst))
           return true;
         return is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, inst,
-            /*topLevel*/ mode == DerivativeMode::Both, PrimalSeen,
-            oldUnreachable);
+            /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
+            PrimalSeen, oldUnreachable);
       });
 #if 0
   llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
@@ -1474,8 +1477,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
   calculateUnusedValuesInFunction(*gutils->oldFunc, unnecessaryValues,
                                   unnecessaryInstructions, returnUsed,
-                                  DerivativeMode::Forward, TR, gutils, TLI,
-                                  constant_args, guaranteedUnreachable);
+                                  DerivativeMode::ReverseModePrimal, TR, gutils,
+                                  TLI, constant_args, guaranteedUnreachable);
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -1526,8 +1529,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   gutils->computeMinCache(TR, guaranteedUnreachable);
 
   AdjointGenerator<AugmentedReturn *> maker(
-      DerivativeMode::Forward, gutils, constant_args, retType, TR, getIndex,
-      uncacheable_args_map, &returnuses,
+      DerivativeMode::ReverseModePrimal, gutils, constant_args, retType, TR,
+      getIndex, uncacheable_args_map, &returnuses,
       &AugmentedCachedFunctions.find(tup)->second, nullptr, unnecessaryValues,
       unnecessaryInstructions, unnecessaryStores, guaranteedUnreachable,
       nullptr);
@@ -1996,6 +1999,62 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   return AugmentedCachedFunctions.find(tup)->second;
 }
 
+void createTerminator(DiffeGradientUtils *gutils,
+                      const std::vector<DIFFE_TYPE> &argTypes, BasicBlock *oBB,
+                      AllocaInst *retAlloca, AllocaInst *dretAlloca,
+                      DIFFE_TYPE retType) {
+
+  BasicBlock *nBB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
+  BasicBlock *rBB = gutils->reverseBlocks[nBB].back();
+  assert(rBB);
+  IRBuilder<> nBuilder(nBB);
+  IRBuilder<> rBuilder(rBB);
+  rBuilder.setFastMathFlags(getFast());
+
+  if (ReturnInst *inst = dyn_cast_or_null<ReturnInst>(oBB->getTerminator())) {
+    SmallVector<Value *, 4> retargs;
+
+    if (retAlloca) {
+      auto result = rBuilder.CreateLoad(retAlloca, "retreload");
+      // TODO reintroduce invariant load/group
+      // result->setMetadata(LLVMContext::MD_invariant_load,
+      // MDNode::get(retAlloca->getContext(), {}));
+      retargs.push_back(result);
+    }
+
+    if (dretAlloca) {
+      auto result = rBuilder.CreateLoad(dretAlloca, "dretreload");
+      // TODO reintroduce invariant load/group
+      // result->setMetadata(LLVMContext::MD_invariant_load,
+      // MDNode::get(dretAlloca->getContext(), {}));
+      retargs.push_back(result);
+    }
+
+    if (gutils->newFunc->getReturnType()->isVoidTy()) {
+      assert(retargs.size() == 0);
+      rBuilder.CreateRetVoid();
+      return;
+    }
+
+    auto retVal = inst->getOperand(0);
+
+    if (gutils->isConstantValue(retVal)) {
+      retargs.push_back(ConstantFP::get(retVal->getType(), 0.0));
+    } else {
+      retargs.push_back(gutils->diffe(retVal, rBuilder));
+    }
+
+    Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
+    for (unsigned i = 0; i < retargs.size(); ++i) {
+      unsigned idx[] = {i};
+      toret = rBuilder.CreateInsertValue(toret, retargs[i], idx);
+    }
+    rBuilder.CreateRet(toret);
+
+    return;
+  }
+}
+
 void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                               const std::vector<DIFFE_TYPE> &argTypes,
                               BasicBlock *oBB, AllocaInst *retAlloca,
@@ -2370,8 +2429,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     TypeAnalysis &TA, bool returnUsed, bool dretPtr, bool topLevel,
     llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args,
-    const AugmentedReturn *augmenteddata, bool AtomicAdd, bool PostOpt,
-    bool omp) {
+    const AugmentedReturn *augmenteddata, bool AtomicAdd, bool fwdMode,
+    bool PostOpt, bool omp) {
 
   FnTypeInfo oldTypeInfo = oldTypeInfo_;
   for (auto &pair : oldTypeInfo.KnownValues) {
@@ -2520,12 +2579,17 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   assert(!todiff->empty());
 
-  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
-      *this, topLevel, todiff, TLI, TA, retType, constant_args,
+  ReturnType retVal =
       returnValue ? (dretPtr ? ReturnType::ArgsWithTwoReturns
                              : ReturnType::ArgsWithReturn)
-                  : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args),
-      additionalArg);
+                  : (dretPtr ? ReturnType::ArgsWithReturn : ReturnType::Args);
+
+  bool diffeReturnArg = fwdMode ? false : retType == DIFFE_TYPE::OUT_DIFF;
+
+  DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(
+      *this, topLevel, todiff, TLI, TA, retType, diffeReturnArg, constant_args,
+      fwdMode ? ReturnType::Return : retVal, additionalArg);
+
   if (omp)
     gutils->setupOMPFor();
   gutils->AtomicAdd = AtomicAdd;
@@ -2611,8 +2675,9 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
   calculateUnusedValuesInFunction(
       *gutils->oldFunc, unnecessaryValues, unnecessaryInstructions, returnValue,
-      topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, TR, gutils,
-      TLI, constant_args, guaranteedUnreachable);
+      topLevel ? DerivativeMode::ReverseModeCombined
+               : DerivativeMode::ReverseModeGradient,
+      TR, gutils, TLI, constant_args, guaranteedUnreachable);
 
   SmallPtrSet<const Instruction *, 4> unnecessaryStores;
   calculateUnusedStoresInFunction(*gutils->oldFunc, unnecessaryStores,
@@ -2652,7 +2717,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   Argument *differetval = nullptr;
-  if (retType == DIFFE_TYPE::OUT_DIFF) {
+  if (retType == DIFFE_TYPE::OUT_DIFF && !fwdMode) {
     auto endarg = gutils->newFunc->arg_end();
     endarg--;
     if (additionalArg)
@@ -2700,14 +2765,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                        dretAlloca);
       }
 
-      if (retType == DIFFE_TYPE::OUT_DIFF) {
+      if (retType == DIFFE_TYPE::OUT_DIFF && !fwdMode) {
         assert(orig->getReturnValue());
         assert(differetval);
         if (!gutils->isConstantValue(orig->getReturnValue())) {
           IRBuilder<> reverseB(gutils->reverseBlocks[BB].back());
           gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
         }
-      } else {
+      } else if (!fwdMode) {
         assert(retAlloca == nullptr);
       }
 
@@ -2718,9 +2783,33 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
   gutils->computeMinCache(TR, guaranteedUnreachable);
 
+  if (fwdMode) {
+    // set derivative of function arguments
+    auto newArgs = gutils->newFunc->arg_begin();
+
+    for (int i = 0; i < constant_args.size(); ++i) {
+      auto arg = constant_args[i];
+      if (arg == DIFFE_TYPE::DUP_ARG) {
+        newArgs += 1;
+        auto pri = gutils->oldFunc->arg_begin() + i;
+        auto dif = newArgs;
+
+        BasicBlock &BB = gutils->newFunc->getEntryBlock();
+        IRBuilder<> Builder(&BB.front());
+
+        gutils->setDiffe(pri, dif, Builder);
+      }
+      newArgs += 1;
+    }
+  }
+
+  DerivativeMode mode = fwdMode
+                            ? DerivativeMode::ForwardMode
+                            : (topLevel ? DerivativeMode::ReverseModeCombined
+                                        : DerivativeMode::ReverseModeGradient);
+
   AdjointGenerator<const AugmentedReturn *> maker(
-      topLevel ? DerivativeMode::Both : DerivativeMode::Reverse, gutils,
-      constant_args, retType, TR, getIndex, uncacheable_args_map,
+      mode, gutils, constant_args, retType, TR, getIndex, uncacheable_args_map,
       /*returnuses*/ nullptr, augmenteddata, &replacedReturns,
       unnecessaryValues, unnecessaryInstructions, unnecessaryStores,
       guaranteedUnreachable, dretAlloca);
@@ -2767,21 +2856,32 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       assert(0 && "unknown terminator inst");
     }
 
-    BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
-    ++I;
-    for (; I != E; ++I) {
-      maker.visit(&*I);
-      assert(oBB.rend() == E);
-    }
+    if (!fwdMode) {
+      BasicBlock::reverse_iterator I = oBB.rbegin(), E = oBB.rend();
+      ++I;
+      for (; I != E; ++I) {
+        maker.visit(&*I);
+        assert(oBB.rend() == E);
+      }
 
-    createInvertedTerminator(TR, gutils, constant_args, &oBB, retAlloca,
-                             dretAlloca,
-                             0 + (additionalArg ? 1 : 0) +
-                                 ((retType == DIFFE_TYPE::DUP_ARG ||
-                                   retType == DIFFE_TYPE::DUP_NONEED)
-                                      ? 1
-                                      : 0),
-                             retType);
+      createInvertedTerminator(TR, gutils, constant_args, &oBB, retAlloca,
+                               dretAlloca,
+                               0 + (additionalArg ? 1 : 0) +
+                                   ((retType == DIFFE_TYPE::DUP_ARG ||
+                                     retType == DIFFE_TYPE::DUP_NONEED)
+                                        ? 1
+                                        : 0),
+                               retType);
+    } else {
+      auto first = oBB.begin();
+      auto last = oBB.empty() ? oBB.end() : std::prev(oBB.end());
+      for (auto it = first; it != last; ++it) {
+        maker.visit(&*it);
+      }
+
+      createTerminator(gutils, constant_args, &oBB, retAlloca, dretAlloca,
+                       retType);
+    }
   }
 
   if (!topLevel) {

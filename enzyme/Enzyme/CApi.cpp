@@ -253,7 +253,8 @@ LLVMValueRef EnzymeCreatePrimalAndGradient(
       cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
       eunwrap(TA).TLI, eunwrap(TA), returnValue, dretUsed, topLevel,
       unwrap(additionalArg), eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
-      uncacheable_args, eunwrap(augmented), AtomicAdd, PostOpt));
+      uncacheable_args, eunwrap(augmented), AtomicAdd, /*fwdMode*/ false,
+      PostOpt));
 }
 EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,

@@ -1360,9 +1360,12 @@ Function *PreProcessCache::CloneFunctionWithReturns(
   F = preprocessForClone(F, topLevel);
   std::vector<Type *> RetTypes;
   if (returnValue == ReturnType::ArgsWithReturn ||
-      returnValue == ReturnType::ArgsWithTwoReturns)
+      returnValue == ReturnType::ArgsWithTwoReturns ||
+      returnValue == ReturnType::Return ||
+      returnValue == ReturnType::TwoReturns)
     RetTypes.push_back(F->getReturnType());
-  if (returnValue == ReturnType::ArgsWithTwoReturns)
+  if (returnValue == ReturnType::ArgsWithTwoReturns ||
+      returnValue == ReturnType::TwoReturns)
     RetTypes.push_back(F->getReturnType());
   std::vector<Type *> ArgTypes;
 

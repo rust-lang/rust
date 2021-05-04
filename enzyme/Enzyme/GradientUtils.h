@@ -71,7 +71,12 @@
 
 using namespace llvm;
 
-enum class DerivativeMode { Forward, Reverse, Both };
+enum class DerivativeMode {
+  ForwardMode,
+  ReverseModePrimal,
+  ReverseModeGradient,
+  ReverseModeCombined
+};
 
 #include "llvm-c/Core.h"
 
@@ -85,12 +90,14 @@ extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 
 static inline std::string to_string(DerivativeMode mode) {
   switch (mode) {
-  case DerivativeMode::Forward:
-    return "Forward";
-  case DerivativeMode::Reverse:
-    return "Reverse";
-  case DerivativeMode::Both:
-    return "Both";
+  case DerivativeMode::ForwardMode:
+    return "ForwardMode";
+  case DerivativeMode::ReverseModePrimal:
+    return "ReverseModePrimal";
+  case DerivativeMode::ReverseModeGradient:
+    return "ReverseModeGradient";
+  case DerivativeMode::ReverseModeCombined:
+    return "ReverseModeCombined";
   }
   llvm_unreachable("illegal derivative mode");
 }
@@ -630,7 +637,7 @@ public:
       if (orig->getCalledFunction()->getName() == "julia.gc_alloc_obj") {
         bb.CreateCall(oldFunc->getParent()->getFunction("julia.write_barrier"),
                       anti);
-        if (mode != DerivativeMode::Both) {
+        if (mode != DerivativeMode::ReverseModeCombined) {
           EmitFailure("SplitGCAllocation", orig->getDebugLoc(), orig,
                       "Not handling Julia shadow GC allocation in split mode ",
                       *orig);
@@ -1159,6 +1166,7 @@ public:
   static DiffeGradientUtils *
   CreateFromClone(EnzymeLogic &Logic, bool topLevel, Function *todiff,
                   TargetLibraryInfo &TLI, TypeAnalysis &TA, DIFFE_TYPE retType,
+                  bool diffeReturnArg,
                   const std::vector<DIFFE_TYPE> &constant_args,
                   ReturnType returnValue, Type *additionalArg);
 
