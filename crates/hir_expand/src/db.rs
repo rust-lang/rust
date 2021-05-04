@@ -40,7 +40,7 @@ pub enum TokenExpander {
 }
 
 impl TokenExpander {
-    pub fn expand(
+    fn expand(
         &self,
         db: &dyn AstDatabase,
         id: LazyMacroId,
@@ -61,7 +61,7 @@ impl TokenExpander {
         }
     }
 
-    pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
+    pub(crate) fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_down(id),
             TokenExpander::MacroDef(it) => it.map_id_down(id),
@@ -71,7 +71,7 @@ impl TokenExpander {
         }
     }
 
-    pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
+    pub(crate) fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_up(id),
             TokenExpander::MacroDef(it) => it.map_id_up(id),
