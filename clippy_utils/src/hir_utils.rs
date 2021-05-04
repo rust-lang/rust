@@ -6,9 +6,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
-    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
-    GenericArgs, Guard, HirId, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path,
-    PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
+    BinOpKind, Block, BodyId, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard, HirId,
+    InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath, Stmt,
+    StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
@@ -537,13 +537,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             self.hash_expr(e);
         }
 
-        match b.rules {
-            BlockCheckMode::DefaultBlock => 0,
-            BlockCheckMode::UnsafeBlock(_) => 1,
-            BlockCheckMode::PushUnsafeBlock(_) => 2,
-            BlockCheckMode::PopUnsafeBlock(_) => 3,
-        }
-        .hash(&mut self.s);
+        std::mem::discriminant(&b.rules).hash(&mut self.s);
     }
 
     #[allow(clippy::many_single_char_names, clippy::too_many_lines)]
@@ -554,21 +548,16 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
         // discriminant depending on which path we're choosing next
-        simple_const.is_some().hash(&mut self.s);
-
-        if let Some(e) = simple_const {
-            return e.hash(&mut self.s);
+        simple_const.hash(&mut self.s);
+        if simple_const.is_some() {
+            return;
         }
 
         std::mem::discriminant(&e.kind).hash(&mut self.s);
 
         match e.kind {
             ExprKind::AddrOf(kind, m, e) => {
-                match kind {
-                    BorrowKind::Ref => 0,
-                    BorrowKind::Raw => 1,
-                }
-                .hash(&mut self.s);
+                std::mem::discriminant(&kind).hash(&mut self.s);
                 m.hash(&mut self.s);
                 self.hash_expr(e);
             },
@@ -616,11 +605,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(ty);
             },
             ExprKind::Closure(cap, _, eid, _, _) => {
-                match cap {
-                    CaptureBy::Value => 0,
-                    CaptureBy::Ref => 1,
-                }
-                .hash(&mut self.s);
+                std::mem::discriminant(&cap).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(&self.cx.tcx.hir().body(eid).value);
             },
@@ -694,8 +679,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             ExprKind::If(cond, then, ref else_opt) => {
-                let c: fn(_, _, _) -> _ = ExprKind::If;
-                c.hash(&mut self.s);
                 self.hash_expr(cond);
                 self.hash_expr(then);
                 if let Some(e) = *else_opt {
@@ -928,10 +911,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 for arg in bfn.decl.inputs {
                     self.hash_ty(arg);
                 }
+                std::mem::discriminant(&bfn.decl.output).hash(&mut self.s);
                 match bfn.decl.output {
-                    FnRetTy::DefaultReturn(_) => {
-                        ().hash(&mut self.s);
-                    },
+                    FnRetTy::DefaultReturn(_) => {},
                     FnRetTy::Return(ty) => {
                         self.hash_ty(ty);
                     },
@@ -943,24 +925,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
-            TyKind::Path(ref qpath) => match qpath {
-                QPath::Resolved(ref maybe_ty, path) => {
-                    if let Some(ty) = maybe_ty {
-                        self.hash_ty(ty);
-                    }
-                    for segment in path.segments {
-                        segment.ident.name.hash(&mut self.s);
-                        self.hash_generic_args(segment.args().args);
-                    }
-                },
-                QPath::TypeRelative(ty, segment) => {
-                    self.hash_ty(ty);
-                    segment.ident.name.hash(&mut self.s);
-                },
-                QPath::LangItem(lang_item, ..) => {
-                    lang_item.hash(&mut self.s);
-                },
-            },
+            TyKind::Path(ref qpath) => self.hash_qpath(qpath),
             TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);
             },
