@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        // Parse optional const generics default value, taking care of feature gating the spans
+        // Parse optional const parameter default value, taking care of feature gating the spans
         // with the unstable syntax mechanism.
         let default = if self.eat(&token::Eq) {
             // The gated span goes from the `=` to the end of the const argument that follows (and

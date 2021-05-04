@@ -1389,7 +1389,7 @@ pub enum ConstContext {
     /// Other contexts include:
     /// - Array length expressions
     /// - Enum discriminants
-    /// - Const generics
+    /// - Const generic arguments
     ///
     /// For the most part, other contexts are treated just like a regular `const`, so they are
     /// lumped into the same category.

@@ -7,7 +7,7 @@ LL | #![feature(const_generics)]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-error[E0771]: use of non-static lifetime `'a` in const generic
+error[E0771]: use of non-static lifetime `'a` in a const parameter type
   --> $DIR/E0771.rs:4:41
    |
 LL | fn function_with_str<'a, const STRING: &'a str>() {}

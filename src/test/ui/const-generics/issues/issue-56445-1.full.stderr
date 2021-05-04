@@ -7,7 +7,7 @@ LL | #![cfg_attr(full, feature(const_generics))]
    = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #44580 <https://github.com/rust-lang/rust/issues/44580> for more information
 
-error[E0771]: use of non-static lifetime `'a` in const generic
+error[E0771]: use of non-static lifetime `'a` in a const parameter type
   --> $DIR/issue-56445-1.rs:8:26
    |
 LL | struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);

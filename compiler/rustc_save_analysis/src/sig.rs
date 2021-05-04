@@ -643,7 +643,7 @@ impl<'hir> Sig for hir::Generics<'hir> {
                         // FIXME descend properly into bounds.
                     }
                     hir::GenericParamKind::Const { .. } => {
-                        // Const generics cannot contain bounds.
+                        // Const parameters cannot contain bounds.
                     }
                 }
             }

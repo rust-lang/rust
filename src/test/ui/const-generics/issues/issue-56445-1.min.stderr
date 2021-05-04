@@ -1,4 +1,4 @@
-error[E0771]: use of non-static lifetime `'a` in const generic
+error[E0771]: use of non-static lifetime `'a` in a const parameter type
   --> $DIR/issue-56445-1.rs:8:26
    |
 LL | struct Bug<'a, const S: &'a str>(PhantomData<&'a ()>);
