@@ -432,8 +432,6 @@ impl<'a> Linker for GccLinker<'a> {
         // insert it here.
         if self.sess.target.is_like_osx {
             self.linker_arg("-dead_strip");
-        } else if self.sess.target.is_like_solaris {
-            self.linker_arg("-zignore");
 
         // If we're building a dylib, we don't use --gc-sections because LLVM
         // has already done the best it can do, and we also don't want to
@@ -655,6 +653,10 @@ impl<'a> Linker for GccLinker<'a> {
     fn add_as_needed(&mut self) {
         if self.sess.target.linker_is_gnu {
             self.linker_arg("--as-needed");
+        } else if self.sess.target.is_like_solaris {
+            // -z ignore is the Solaris equivalent to the GNU ld --as-needed option
+            self.linker_arg("-z");
+            self.linker_arg("ignore");
         }
     }
 }
