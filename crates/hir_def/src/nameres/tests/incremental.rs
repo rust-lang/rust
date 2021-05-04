@@ -107,7 +107,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
 }
 
 #[test]
-fn typing_inside_a_function_doe_should_not_invalidate_expansions() {
+fn typing_inside_a_function_should_not_invalidate_expansions() {
     let (mut db, pos) = TestDB::with_position(
         r#"
 //- /lib.rs
