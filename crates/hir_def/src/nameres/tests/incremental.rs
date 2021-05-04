@@ -105,3 +105,55 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         assert!(!format!("{:?}", events).contains("crate_def_map"), "{:#?}", events)
     }
 }
+
+#[test]
+fn typing_inside_a_function_doe_should_not_invalidate_expansions() {
+    let (mut db, pos) = TestDB::with_position(
+        r#"
+//- /lib.rs
+macro_rules! m {
+    ($ident:ident) => {
+        fn $ident() { };
+    }
+}
+mod foo;
+
+//- /foo/mod.rs
+pub mod bar;
+
+//- /foo/bar.rs
+m!(X);
+fn quux() { 1$0 }
+m!(Y);
+m!(Z);
+"#,
+    );
+    let krate = db.test_crate();
+    {
+        let events = db.log_executed(|| {
+            let crate_def_map = db.crate_def_map(krate);
+            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
+            assert_eq!(module_data.scope.resolutions().count(), 4);
+        });
+        let n_recalculated_item_trees = events.iter().filter(|it| it.contains("item_tree")).count();
+        assert_eq!(n_recalculated_item_trees, 6);
+    }
+
+    let new_text = r#"
+m!(X);
+fn quux() { 92 }
+m!(Y);
+m!(Z);
+"#;
+    db.set_file_text(pos.file_id, Arc::new(new_text.to_string()));
+
+    {
+        let events = db.log_executed(|| {
+            let crate_def_map = db.crate_def_map(krate);
+            let (_, module_data) = crate_def_map.modules.iter().last().unwrap();
+            assert_eq!(module_data.scope.resolutions().count(), 4);
+        });
+        let n_recalculated_item_trees = events.iter().filter(|it| it.contains("item_tree")).count();
+        assert_eq!(n_recalculated_item_trees, 1);
+    }
+}
