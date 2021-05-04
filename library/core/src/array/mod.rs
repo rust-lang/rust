@@ -411,7 +411,7 @@ mod array_defaults {
     )]
     impl<T> ArrayDefault for [T; 0] {}
 
-    // This function must not get called for `N != 0` if `T` does not implement `Default`.
+    // This function must not get monomorphized for `N != 0` if `T` does not implement `Default`.
     #[lang = "array_default_hack"]
     unsafe fn array_default_hack<T, const N: usize>() -> T {
         unreachable!("array_default_hack used for array with length {}", N);
