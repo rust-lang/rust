@@ -659,6 +659,14 @@ impl Options {
         let nocapture = matches.opt_present("nocapture");
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
 
+        if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
+            diag.struct_err(
+                "--generate-link-to-definition option can only be used with HTML output format",
+            )
+            .emit();
+            return Err(1);
+        }
+
         let (lint_opts, describe_lints, lint_cap) =
             get_cmd_lint_options(matches, error_format, &debugging_opts);
 
