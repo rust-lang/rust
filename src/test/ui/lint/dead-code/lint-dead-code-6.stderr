@@ -2,8 +2,9 @@ error: struct is never constructed: `UnusedStruct`
   --> $DIR/lint-dead-code-6.rs:3:8
    |
 LL | struct UnusedStruct;
-   |        ^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_UnusedStruct`
    |
+   = note: the leading underscore signals that this struct serves some other purpose even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/lint-dead-code-6.rs:1:9
    |
@@ -14,19 +15,25 @@ error: associated function is never used: `unused_impl_fn_1`
   --> $DIR/lint-dead-code-6.rs:5:8
    |
 LL |     fn unused_impl_fn_1() {
-   |        ^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_impl_fn_1`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 error: associated function is never used: `unused_impl_fn_2`
   --> $DIR/lint-dead-code-6.rs:9:8
    |
 LL |     fn unused_impl_fn_2(var: i32) {
-   |        ^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_impl_fn_2`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 error: associated function is never used: `unused_impl_fn_3`
   --> $DIR/lint-dead-code-6.rs:13:8
    |
 LL |     fn unused_impl_fn_3(
-   |        ^^^^^^^^^^^^^^^^
+   |        ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_unused_impl_fn_3`
+   |
+   = note: the leading underscore signals that this associated function serves some other purpose even if it isn't used in a way that we can detect.
 
 error: aborting due to 4 previous errors
 
