@@ -1,0 +1,186 @@
+//! Fully integrated benchmarks for rust-analyzer, which load real cargo
+//! projects.
+//!
+//! The benchmark here is used to debug specific performance regressions. If you
+//! notice that, eg, completion is slow in some specific case, you can  modify
+//! code here exercise this specific completion, and thus have a fast
+//! edit/compile/test cycle.
+//!
+//! Note that "Rust Analyzer: Run" action does not allow running a single test
+//! in release mode in VS Code. There's however "Rust Analyzer: Copy Run Command Line"
+//! which you can use to paste the command in terminal and add `--release` manually.
+
+use std::{convert::TryFrom, sync::Arc};
+
+use ide::{Change, CompletionConfig, FilePosition, TextSize};
+use ide_db::helpers::{insert_use::InsertUseConfig, merge_imports::MergeBehavior, SnippetCap};
+use test_utils::project_root;
+use vfs::{AbsPathBuf, VfsPath};
+
+use crate::cli::load_cargo::{load_workspace_at, LoadCargoConfig};
+
+#[test]
+fn integrated_highlighting_benchmark() {
+    // Don't run slow benchmark by default
+    if true {
+        return;
+    }
+
+    // Load rust-analyzer itself.
+    let workspace_to_load = project_root();
+    let file = "./crates/ide_db/src/apply_change.rs";
+
+    let cargo_config = Default::default();
+    let load_cargo_config = LoadCargoConfig {
+        load_out_dirs_from_check: true,
+        wrap_rustc: false,
+        with_proc_macro: false,
+    };
+
+    let (mut host, vfs, _proc_macro) = {
+        let _it = stdx::timeit("workspace loading");
+        load_workspace_at(&workspace_to_load, &cargo_config, &load_cargo_config, &|_| {}).unwrap()
+    };
+
+    let file_id = {
+        let file = workspace_to_load.join(file);
+        let path = VfsPath::from(AbsPathBuf::assert(file));
+        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {}", path))
+    };
+
+    {
+        let _it = stdx::timeit("initial");
+        let analysis = host.analysis();
+        analysis.highlight_as_html(file_id, false).unwrap();
+    }
+
+    profile::init_from("*>100");
+    // let _s = profile::heartbeat_span();
+
+    {
+        let _it = stdx::timeit("change");
+        let mut text = host.analysis().file_text(file_id).unwrap().to_string();
+        text.push_str("\npub fn _dummy() {}\n");
+        let mut change = Change::new();
+        change.change_file(file_id, Some(Arc::new(text)));
+        host.apply_change(change);
+    }
+
+    {
+        let _it = stdx::timeit("after change");
+        let _span = profile::cpu_span();
+        let analysis = host.analysis();
+        analysis.highlight_as_html(file_id, false).unwrap();
+    }
+}
+
+#[test]
+fn integrated_completion_benchmark() {
+    // Don't run slow benchmark by default
+    if true {
+        return;
+    }
+
+    // Load rust-analyzer itself.
+    let workspace_to_load = project_root();
+    let file = "./crates/hir/src/lib.rs";
+
+    let cargo_config = Default::default();
+    let load_cargo_config = LoadCargoConfig {
+        load_out_dirs_from_check: true,
+        wrap_rustc: false,
+        with_proc_macro: false,
+    };
+
+    let (mut host, vfs, _proc_macro) = {
+        let _it = stdx::timeit("workspace loading");
+        load_workspace_at(&workspace_to_load, &cargo_config, &load_cargo_config, &|_| {}).unwrap()
+    };
+
+    let file_id = {
+        let file = workspace_to_load.join(file);
+        let path = VfsPath::from(AbsPathBuf::assert(file));
+        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {}", path))
+    };
+
+    {
+        let _it = stdx::timeit("initial");
+        let analysis = host.analysis();
+        analysis.highlight_as_html(file_id, false).unwrap();
+    }
+
+    profile::init_from("*>5");
+    // let _s = profile::heartbeat_span();
+
+    let completion_offset = {
+        let _it = stdx::timeit("change");
+        let mut text = host.analysis().file_text(file_id).unwrap().to_string();
+        let completion_offset =
+            patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
+                + "sel".len();
+        let mut change = Change::new();
+        change.change_file(file_id, Some(Arc::new(text)));
+        host.apply_change(change);
+        completion_offset
+    };
+
+    {
+        let _it = stdx::timeit("unqualified path completion");
+        let _span = profile::cpu_span();
+        let analysis = host.analysis();
+        let config = CompletionConfig {
+            enable_postfix_completions: true,
+            enable_imports_on_the_fly: true,
+            add_call_parenthesis: true,
+            add_call_argument_snippets: true,
+            snippet_cap: SnippetCap::new(true),
+            insert_use: InsertUseConfig {
+                merge: Some(MergeBehavior::Full),
+                prefix_kind: hir::PrefixKind::ByCrate,
+                group: true,
+            },
+        };
+        let position =
+            FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
+        analysis.completions(&config, position).unwrap();
+    }
+
+    let completion_offset = {
+        let _it = stdx::timeit("change");
+        let mut text = host.analysis().file_text(file_id).unwrap().to_string();
+        let completion_offset =
+            patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
+                + "self.".len();
+        let mut change = Change::new();
+        change.change_file(file_id, Some(Arc::new(text)));
+        host.apply_change(change);
+        completion_offset
+    };
+
+    {
+        let _it = stdx::timeit("dot completion");
+        let _span = profile::cpu_span();
+        let analysis = host.analysis();
+        let config = CompletionConfig {
+            enable_postfix_completions: true,
+            enable_imports_on_the_fly: true,
+            add_call_parenthesis: true,
+            add_call_argument_snippets: true,
+            snippet_cap: SnippetCap::new(true),
+            insert_use: InsertUseConfig {
+                merge: Some(MergeBehavior::Full),
+                prefix_kind: hir::PrefixKind::ByCrate,
+                group: true,
+            },
+        };
+        let position =
+            FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
+        analysis.completions(&config, position).unwrap();
+    }
+}
+
+fn patch(what: &mut String, from: &str, to: &str) -> usize {
+    let idx = what.find(from).unwrap();
+    *what = what.replacen(from, to, 1);
+    idx
+}
