@@ -1,6 +1,7 @@
 mod builtin_type_shadow;
 mod double_neg;
 mod redundant_pattern;
+mod unneeded_wildcard_pattern;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
@@ -336,7 +337,7 @@ impl EarlyLintPass for MiscEarlyLints {
         }
 
         redundant_pattern::check(cx, pat);
-        check_unneeded_wildcard_pattern(cx, pat);
+        unneeded_wildcard_pattern::check(cx, pat);
     }
 
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: Span, _: NodeId) {
@@ -473,51 +474,6 @@ impl MiscEarlyLints {
                     "add an underscore",
                     format!("{}_{}", &lit_snip[..=maybe_last_sep_idx], suffix),
                     Applicability::MachineApplicable,
-                );
-            }
-        }
-    }
-}
-
-fn check_unneeded_wildcard_pattern(cx: &EarlyContext<'_>, pat: &Pat) {
-    if let PatKind::TupleStruct(_, ref patterns) | PatKind::Tuple(ref patterns) = pat.kind {
-        fn span_lint(cx: &EarlyContext<'_>, span: Span, only_one: bool) {
-            span_lint_and_sugg(
-                cx,
-                UNNEEDED_WILDCARD_PATTERN,
-                span,
-                if only_one {
-                    "this pattern is unneeded as the `..` pattern can match that element"
-                } else {
-                    "these patterns are unneeded as the `..` pattern can match those elements"
-                },
-                if only_one { "remove it" } else { "remove them" },
-                "".to_string(),
-                Applicability::MachineApplicable,
-            );
-        }
-
-        if let Some(rest_index) = patterns.iter().position(|pat| pat.is_rest()) {
-            if let Some((left_index, left_pat)) = patterns[..rest_index]
-                .iter()
-                .rev()
-                .take_while(|pat| matches!(pat.kind, PatKind::Wild))
-                .enumerate()
-                .last()
-            {
-                span_lint(cx, left_pat.span.until(patterns[rest_index].span), left_index == 0);
-            }
-
-            if let Some((right_index, right_pat)) = patterns[rest_index + 1..]
-                .iter()
-                .take_while(|pat| matches!(pat.kind, PatKind::Wild))
-                .enumerate()
-                .last()
-            {
-                span_lint(
-                    cx,
-                    patterns[rest_index].span.shrink_to_hi().to(right_pat.span),
-                    right_index == 0,
                 );
             }
         }
