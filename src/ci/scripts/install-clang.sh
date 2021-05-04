@@ -9,7 +9,7 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Update both macOS's and Windows's tarballs when bumping the version here.
-LLVM_VERSION="10.0.0"
+LLVM_VERSION="12.0.0"
 
 if isMacOS; then
     # If the job selects a specific Xcode version, use that instead of
