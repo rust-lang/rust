@@ -48,7 +48,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
         .unwrap_or(false);
         let buffer = buffer.borrow();
 
-        if !(buffer.has_errors || is_empty) {
+        if !buffer.has_errors && !is_empty {
             // No errors in a non-empty program.
             return;
         }

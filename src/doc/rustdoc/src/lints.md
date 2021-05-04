@@ -305,30 +305,37 @@ examples that are invalid (e.g. empty, not parsable as Rust). For example:
 /// ```rust
 /// ```
 ///
-/// Unclosed code blocks (with and without the `rust` marker):
+/// Invalid syntax in code blocks:
 ///
 /// ```rust
-fn main() {}
+/// '<
+/// ```
+pub fn foo() {}
 ```
 
 Which will give:
 
 ```text
 warning: Rust code block is empty
---> src/lib.rs:3:5
-|
+ --> lint.rs:3:5
+  |
 3 |   /// ```rust
-|  _____^
+  |  _____^
 4 | | /// ```
-| |_______^
-|
-= note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
+  | |_______^
+  |
+  = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
 
-warning: Rust code block is empty
---> src/lib.rs:8:5
-|
-8 | /// ```rust
-|       ^^^^^^^
+warning: could not parse code block as Rust code
+  --> lint.rs:8:5
+   |
+8  |   /// ```rust
+   |  _____^
+9  | | /// '<
+10 | | /// ```
+   | |_______^
+   |
+   = note: error from rustc: unterminated character literal
 ```
 
 ## bare_urls
