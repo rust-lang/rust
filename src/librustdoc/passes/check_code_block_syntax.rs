@@ -111,7 +111,11 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if let Some(dox) = &item.attrs.collapsed_doc_value() {
             let sp = item.attr_span(self.cx.tcx);
-            let extra = crate::html::markdown::ExtraInfo::new_did(self.cx.tcx, item.def_id, sp);
+            let extra = crate::html::markdown::ExtraInfo::new_did(
+                self.cx.tcx,
+                item.def_id.expect_real(),
+                sp,
+            );
             for code_block in markdown::rust_code_blocks(&dox, &extra) {
                 self.check_rust_syntax(&item, &dox, code_block);
             }

@@ -48,9 +48,9 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
                 if it.is_extern_crate()
                     && (it.attrs.has_doc_flag(sym::masked)
-                        || cx.tcx.is_compiler_builtins(it.def_id.krate))
+                        || cx.tcx.is_compiler_builtins(it.def_id.krate()))
                 {
-                    cx.cache.masked_crates.insert(it.def_id.krate);
+                    cx.cache.masked_crates.insert(it.def_id.krate());
                 }
             }
         }
@@ -509,8 +509,6 @@ where
 }
 
 /// Find the nearest parent module of a [`DefId`].
-///
-/// **Panics if the item it belongs to [is fake][Item::is_fake].**
 crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if def_id.is_top_level_module() {
         // The crate root has no parent. Use it as the root instead.

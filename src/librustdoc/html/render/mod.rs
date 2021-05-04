@@ -54,7 +54,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::{self, GetDefId, RenderedLink, SelfTy};
+use crate::clean::{self, FakeDefId, GetDefId, RenderedLink, SelfTy};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -87,7 +87,7 @@ crate struct IndexItem {
     crate name: String,
     crate path: String,
     crate desc: String,
-    crate parent: Option<DefId>,
+    crate parent: Option<FakeDefId>,
     crate parent_idx: Option<usize>,
     crate search_type: Option<IndexItemFunctionType>,
     crate aliases: Box<[String]>,
@@ -96,7 +96,7 @@ crate struct IndexItem {
 /// A type used for the search index.
 #[derive(Debug)]
 crate struct RenderType {
-    ty: Option<DefId>,
+    ty: Option<FakeDefId>,
     idx: Option<usize>,
     name: Option<String>,
     generics: Option<Vec<Generic>>,
@@ -128,7 +128,7 @@ impl Serialize for RenderType {
 #[derive(Debug)]
 crate struct Generic {
     name: String,
-    defid: Option<DefId>,
+    defid: Option<FakeDefId>,
     idx: Option<usize>,
 }
 
@@ -709,7 +709,7 @@ fn render_impls(
         .map(|i| {
             let did = i.trait_did_full(cache).unwrap();
             let provided_trait_methods = i.inner_impl().provided_trait_methods(tcx);
-            let assoc_link = AssocItemLink::GotoSource(did, &provided_trait_methods);
+            let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
             let mut buffer = if w.is_for_html() { Buffer::html() } else { Buffer::new() };
             render_impl(
                 &mut buffer,
@@ -747,7 +747,7 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>)
         AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
         AssocItemLink::Anchor(None) => anchor,
         AssocItemLink::GotoSource(did, _) => {
-            href(did, cx).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
+            href(did.expect_real(), cx).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
         }
     }
 }
@@ -855,7 +855,7 @@ fn render_assoc_item(
                     ItemType::TyMethod
                 };
 
-                href(did, cx)
+                href(did.expect_real(), cx)
                     .map(|p| format!("{}#{}.{}", p.0, ty, name))
                     .unwrap_or_else(|| format!("#{}.{}", ty, name))
             }
@@ -979,7 +979,7 @@ fn render_attributes_in_code(w: &mut Buffer, it: &clean::Item) {
 #[derive(Copy, Clone)]
 enum AssocItemLink<'a> {
     Anchor(Option<&'a str>),
-    GotoSource(DefId, &'a FxHashSet<Symbol>),
+    GotoSource(FakeDefId, &'a FxHashSet<Symbol>),
 }
 
 impl<'a> AssocItemLink<'a> {
@@ -1217,7 +1217,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                                 it,
                                 &[],
                                 Some(&tydef.type_),
-                                AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
+                                AssocItemLink::GotoSource(t_did.into(), &FxHashSet::default()),
                                 "",
                                 cx,
                             );
@@ -1476,7 +1476,7 @@ fn render_impl(
             }
             let did = i.trait_.as_ref().unwrap().def_id_full(cx.cache()).unwrap();
             let provided_methods = i.provided_trait_methods(cx.tcx());
-            let assoc_link = AssocItemLink::GotoSource(did, &provided_methods);
+            let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_methods);
 
             doc_impl_item(
                 boring,
@@ -1810,7 +1810,8 @@ fn small_url_encode(s: String) -> String {
 }
 
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
-    if let Some(v) = cx.cache.impls.get(&it.def_id) {
+    let did = it.def_id.expect_real();
+    if let Some(v) = cx.cache.impls.get(&did) {
         let mut used_links = FxHashSet::default();
         let cache = cx.cache();
 

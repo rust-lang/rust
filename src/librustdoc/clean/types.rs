@@ -1,6 +1,5 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::default::Default;
-use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::iter::FromIterator;
 use std::lazy::SyncOnceCell as OnceCell;
@@ -19,7 +18,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
@@ -49,7 +48,94 @@ use self::ItemKind::*;
 use self::SelfTy::*;
 use self::Type::*;
 
-thread_local!(crate static MAX_DEF_IDX: RefCell<FxHashMap<CrateNum, DefIndex>> = Default::default());
+crate type FakeDefIdSet = FxHashSet<FakeDefId>;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
+crate enum FakeDefId {
+    Real(DefId),
+    Fake(DefIndex, CrateNum),
+}
+
+impl FakeDefId {
+    #[cfg(parallel_compiler)]
+    crate fn new_fake(crate: CrateNum) -> Self {
+        unimplemented!("")
+    }
+
+    #[cfg(not(parallel_compiler))]
+    crate fn new_fake(krate: CrateNum) -> Self {
+        thread_local!(static FAKE_DEF_ID_COUNTER: Cell<usize> = Cell::new(0));
+        let id = FAKE_DEF_ID_COUNTER.with(|id| {
+            let tmp = id.get();
+            id.set(tmp + 1);
+            tmp
+        });
+        Self::Fake(DefIndex::from(id), krate)
+    }
+
+    crate fn new_real(id: DefId) -> Self {
+        Self::Real(id)
+    }
+
+    #[inline]
+    crate fn is_local(self) -> bool {
+        match self {
+            FakeDefId::Real(id) => id.is_local(),
+            FakeDefId::Fake(_, krate) => krate == LOCAL_CRATE,
+        }
+    }
+
+    #[inline]
+    crate fn as_local(self) -> Option<LocalDefId> {
+        match self {
+            FakeDefId::Real(id) => id.as_local(),
+            FakeDefId::Fake(idx, krate) => {
+                (krate == LOCAL_CRATE).then(|| LocalDefId { local_def_index: idx })
+            }
+        }
+    }
+
+    #[inline]
+    crate fn expect_local(self) -> LocalDefId {
+        self.as_local()
+            .unwrap_or_else(|| panic!("FakeDefId::expect_local: `{:?}` isn't local", self))
+    }
+
+    #[inline]
+    crate fn expect_real(self) -> rustc_hir::def_id::DefId {
+        self.as_real().unwrap_or_else(|| panic!("FakeDefId::expect_real: `{:?}` isn't real", self))
+    }
+
+    #[inline]
+    crate fn as_real(self) -> Option<DefId> {
+        match self {
+            FakeDefId::Real(id) => Some(id),
+            FakeDefId::Fake(_, _) => None,
+        }
+    }
+
+    #[inline]
+    crate fn krate(self) -> CrateNum {
+        match self {
+            FakeDefId::Real(id) => id.krate,
+            FakeDefId::Fake(_, krate) => krate,
+        }
+    }
+
+    #[inline]
+    crate fn index(self) -> Option<DefIndex> {
+        match self {
+            FakeDefId::Real(id) => Some(id.index),
+            FakeDefId::Fake(_, _) => None,
+        }
+    }
+}
+
+impl From<DefId> for FakeDefId {
+    fn from(id: DefId) -> Self {
+        Self::Real(id)
+    }
+}
 
 #[derive(Clone, Debug)]
 crate struct Crate {
@@ -261,7 +347,7 @@ impl ExternalCrate {
 /// Anything with a source location and set of attributes and, optionally, a
 /// name. That is, anything that can be documented. This doesn't correspond
 /// directly to the AST's concept of an item; it's a strict superset.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 crate struct Item {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
@@ -271,7 +357,7 @@ crate struct Item {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     crate kind: Box<ItemKind>,
-    crate def_id: DefId,
+    crate def_id: FakeDefId,
 
     crate cfg: Option<Arc<Cfg>>,
 }
@@ -279,21 +365,6 @@ crate struct Item {
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(Item, 48);
-
-impl fmt::Debug for Item {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let def_id: &dyn fmt::Debug = if self.is_fake() { &"**FAKE**" } else { &self.def_id };
-
-        fmt.debug_struct("Item")
-            .field("name", &self.name)
-            .field("attrs", &self.attrs)
-            .field("kind", &self.kind)
-            .field("visibility", &self.visibility)
-            .field("def_id", def_id)
-            .field("cfg", &self.cfg)
-            .finish()
-    }
-}
 
 crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
     Span::from_rustc_span(def_id.as_local().map_or_else(
@@ -307,19 +378,19 @@ crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
 
 impl Item {
     crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx Stability> {
-        if self.is_fake() { None } else { tcx.lookup_stability(self.def_id) }
+        if self.is_fake() { None } else { tcx.lookup_stability(self.def_id.expect_real()) }
     }
 
     crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ConstStability> {
-        if self.is_fake() { None } else { tcx.lookup_const_stability(self.def_id) }
+        if self.is_fake() { None } else { tcx.lookup_const_stability(self.def_id.expect_real()) }
     }
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
-        if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id) }
+        if self.is_fake() { None } else { tcx.lookup_deprecation(self.def_id.expect_real()) }
     }
 
     crate fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
-        if self.is_fake() { false } else { tcx.get_attrs(self.def_id).inner_docs() }
+        if self.is_fake() { false } else { tcx.get_attrs(self.def_id.expect_real()).inner_docs() }
     }
 
     crate fn span(&self, tcx: TyCtxt<'_>) -> Span {
@@ -334,7 +405,7 @@ impl Item {
         } else if self.is_fake() {
             Span::dummy()
         } else {
-            rustc_span(self.def_id, tcx)
+            rustc_span(self.def_id.expect_real(), tcx)
         }
     }
 
@@ -388,7 +459,7 @@ impl Item {
         debug!("name={:?}, def_id={:?}", name, def_id);
 
         Item {
-            def_id,
+            def_id: def_id.into(),
             kind: box kind,
             name,
             attrs,
@@ -412,9 +483,9 @@ impl Item {
             .map_or(&[][..], |v| v.as_slice())
             .iter()
             .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
-                match *did {
+                match did {
                     Some(did) => {
-                        if let Some((mut href, ..)) = href(did, cx) {
+                        if let Some((mut href, ..)) = href(did.expect_real(), cx) {
                             if let Some(ref fragment) = *fragment {
                                 href.push('#');
                                 href.push_str(fragment);
@@ -433,8 +504,8 @@ impl Item {
                     None => {
                         let relative_to = &cx.current;
                         if let Some(ref fragment) = *fragment {
-                            let url = match cx.cache().extern_locations.get(&self.def_id.krate) {
-                                Some(ExternalLocation::Local) => {
+                            let url = match cx.cache().extern_locations.get(&self.def_id.krate()) {
+                                Some(&ExternalLocation::Local) => {
                                     if relative_to[0] == "std" {
                                         let depth = relative_to.len() - 1;
                                         "../".repeat(depth)
@@ -473,7 +544,7 @@ impl Item {
     }
 
     crate fn is_crate(&self) -> bool {
-        self.is_mod() && self.def_id.index == CRATE_DEF_INDEX
+        self.is_mod() && self.def_id.as_real().map_or(false, |did| did.index == CRATE_DEF_INDEX)
     }
 
     crate fn is_mod(&self) -> bool {
@@ -586,13 +657,8 @@ impl Item {
         }
     }
 
-    /// See the documentation for [`next_def_id()`].
-    ///
-    /// [`next_def_id()`]: DocContext::next_def_id()
     crate fn is_fake(&self) -> bool {
-        MAX_DEF_IDX.with(|m| {
-            m.borrow().get(&self.def_id.krate).map(|&idx| idx <= self.def_id.index).unwrap_or(false)
-        })
+        matches!(self.def_id, FakeDefId::Fake(_, _))
     }
 }
 
@@ -911,7 +977,7 @@ crate struct ItemLink {
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
     pub(crate) link_text: String,
-    pub(crate) did: Option<DefId>,
+    pub(crate) did: Option<FakeDefId>,
     /// The url fragment to append to the link
     pub(crate) fragment: Option<String>,
 }
@@ -1032,7 +1098,7 @@ impl Attributes {
             }
         }
 
-        let clean_attr = |(attr, parent_module): (&ast::Attribute, _)| {
+        let clean_attr = |(attr, parent_module): (&ast::Attribute, Option<DefId>)| {
             if let Some(value) = attr.doc_str() {
                 trace!("got doc_str={:?}", value);
                 let value = beautify_doc_string(value);
@@ -1652,7 +1718,7 @@ impl Type {
 impl Type {
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
         let t: PrimitiveType = match *self {
-            ResolvedPath { did, .. } => return Some(did),
+            ResolvedPath { did, .. } => return Some(did.into()),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),

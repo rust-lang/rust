@@ -97,7 +97,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     name: None,
                     attrs: Default::default(),
                     visibility: Inherited,
-                    def_id: self.cx.next_def_id(impl_def_id.krate),
+                    def_id: FakeDefId::new_fake(item_def_id.krate),
                     kind: box ImplItem(Impl {
                         span: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                         unsafety: hir::Unsafety::Normal,

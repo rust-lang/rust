@@ -30,7 +30,9 @@ use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::ops::Range;
 
-use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
+use crate::clean::{
+    self, utils::find_nearest_parent_module, Crate, FakeDefId, Item, ItemLink, PrimitiveType,
+};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{markdown_links, MarkdownLink};
@@ -246,7 +248,7 @@ enum AnchorFailure {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 struct ResolutionInfo {
-    module_id: DefId,
+    module_id: FakeDefId,
     dis: Option<Disambiguator>,
     path_str: String,
     extra_fragment: Option<String>,
@@ -272,7 +274,7 @@ struct LinkCollector<'a, 'tcx> {
     ///
     /// The last module will be used if the parent scope of the current item is
     /// unknown.
-    mod_ids: Vec<DefId>,
+    mod_ids: Vec<FakeDefId>,
     /// This is used to store the kind of associated items,
     /// because `clean` and the disambiguator code expect them to be different.
     /// See the code for associated items on inherent impls for details.
@@ -296,7 +298,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         let tcx = self.cx.tcx;
         let no_res = || ResolutionFailure::NotResolved {
-            module_id,
+            module_id: module_id.into(),
             partial_res: None,
             unresolved: path_str.into(),
         };
@@ -524,7 +526,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // but the disambiguator logic expects the associated item.
                     // Store the kind in a side channel so that only the disambiguator logic looks at it.
                     if let Some((kind, id)) = side_channel {
-                        self.kind_side_channel.set(Some((kind, id)));
+                        self.kind_side_channel.set(Some((kind, id.into())));
                     }
                     Ok((res, Some(fragment)))
                 };
@@ -795,7 +797,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let parent_node = if item.is_fake() {
             None
         } else {
-            find_nearest_parent_module(self.cx.tcx, item.def_id)
+            find_nearest_parent_module(self.cx.tcx, item.def_id.expect_real())
         };
 
         if parent_node.is_some() {
@@ -807,31 +809,34 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let self_id = if item.is_fake() {
             None
         // Checking if the item is a field in an enum variant
-        } else if (matches!(self.cx.tcx.def_kind(item.def_id), DefKind::Field)
+        } else if (matches!(self.cx.tcx.def_kind(item.def_id.expect_real()), DefKind::Field)
             && matches!(
-                self.cx.tcx.def_kind(self.cx.tcx.parent(item.def_id).unwrap()),
+                self.cx.tcx.def_kind(self.cx.tcx.parent(item.def_id.expect_real()).unwrap()),
                 DefKind::Variant
             ))
         {
-            self.cx.tcx.parent(item.def_id).and_then(|item_id| self.cx.tcx.parent(item_id))
+            self.cx
+                .tcx
+                .parent(item.def_id.expect_real())
+                .and_then(|item_id| self.cx.tcx.parent(item_id))
         } else if matches!(
-            self.cx.tcx.def_kind(item.def_id),
+            self.cx.tcx.def_kind(item.def_id.expect_real()),
             DefKind::AssocConst
                 | DefKind::AssocFn
                 | DefKind::AssocTy
                 | DefKind::Variant
                 | DefKind::Field
         ) {
-            self.cx.tcx.parent(item.def_id)
+            self.cx.tcx.parent(item.def_id.expect_real())
         // HACK(jynelson): `clean` marks associated types as `TypedefItem`, not as `AssocTypeItem`.
         // Fixing this breaks `fn render_deref_methods`.
         // As a workaround, see if the parent of the item is an `impl`; if so this must be an associated item,
         // regardless of what rustdoc wants to call it.
-        } else if let Some(parent) = self.cx.tcx.parent(item.def_id) {
+        } else if let Some(parent) = self.cx.tcx.parent(item.def_id.expect_real()) {
             let parent_kind = self.cx.tcx.def_kind(parent);
-            Some(if parent_kind == DefKind::Impl { parent } else { item.def_id })
+            Some(if parent_kind == DefKind::Impl { parent } else { item.def_id.expect_real() })
         } else {
-            Some(item.def_id)
+            Some(item.def_id.expect_real())
         };
 
         // FIXME(jynelson): this shouldn't go through stringification, rustdoc should just use the DefId directly
@@ -869,7 +874,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             let (krate, parent_node) = if let Some(id) = parent_module {
                 (id.krate, Some(id))
             } else {
-                (item.def_id.krate, parent_node)
+                (item.def_id.krate(), parent_node)
             };
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
@@ -1065,8 +1070,11 @@ impl LinkCollector<'_, '_> {
         // we've already pushed this node onto the resolution stack but
         // for outer comments we explicitly try and resolve against the
         // parent_node first.
-        let base_node =
-            if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
+        let base_node = if item.is_mod() && inner_docs {
+            self.mod_ids.last().copied()
+        } else {
+            parent_node.map(|id| FakeDefId::new_real(id))
+        };
 
         let mut module_id = if let Some(id) = base_node {
             id
@@ -1111,7 +1119,7 @@ impl LinkCollector<'_, '_> {
                 resolved_self = format!("self::{}", &path_str["crate::".len()..]);
                 path_str = &resolved_self;
             }
-            module_id = DefId { krate, index: CRATE_DEF_INDEX };
+            module_id = FakeDefId::new_real(DefId { krate, index: CRATE_DEF_INDEX });
         }
 
         let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(
@@ -1172,8 +1180,8 @@ impl LinkCollector<'_, '_> {
             report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
         };
 
-        let verify = |kind: DefKind, id: DefId| {
-            let (kind, id) = self.kind_side_channel.take().unwrap_or((kind, id));
+        let verify = |kind: DefKind, id: FakeDefId| {
+            let (kind, id) = self.kind_side_channel.take().unwrap_or((kind, id.expect_real()));
             debug!("intra-doc link to {} resolved to {:?} (id: {:?})", path_str, res, id);
 
             // Disallow e.g. linking to enums with `struct@`
@@ -1227,7 +1235,7 @@ impl LinkCollector<'_, '_> {
                     // doesn't allow statements like `use str::trim;`, making this a (hopefully)
                     // valid omission. See https://github.com/rust-lang/rust/pull/80660#discussion_r551585677
                     // for discussion on the matter.
-                    verify(kind, id)?;
+                    verify(kind, id.into())?;
 
                     // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
                     // However I'm not sure how to check that across crates.
@@ -1265,9 +1273,9 @@ impl LinkCollector<'_, '_> {
                 Some(ItemLink { link: ori_link.link, link_text, did: None, fragment })
             }
             Res::Def(kind, id) => {
-                verify(kind, id)?;
+                verify(kind, id.into())?;
                 let id = clean::register_res(self.cx, rustc_hir::def::Res::Def(kind, id));
-                Some(ItemLink { link: ori_link.link, link_text, did: Some(id), fragment })
+                Some(ItemLink { link: ori_link.link, link_text, did: Some(id.into()), fragment })
             }
         }
     }
@@ -1333,7 +1341,7 @@ impl LinkCollector<'_, '_> {
 
         match disambiguator.map(Disambiguator::ns) {
             Some(expected_ns @ (ValueNS | TypeNS)) => {
-                match self.resolve(path_str, expected_ns, base_node, extra_fragment) {
+                match self.resolve(path_str, expected_ns, base_node.expect_real(), extra_fragment) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1342,9 +1350,12 @@ impl LinkCollector<'_, '_> {
                             // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
                             for &new_ns in &[other_ns, MacroNS] {
-                                if let Some(res) =
-                                    self.check_full_res(new_ns, path_str, base_node, extra_fragment)
-                                {
+                                if let Some(res) = self.check_full_res(
+                                    new_ns,
+                                    path_str,
+                                    base_node.expect_real(),
+                                    extra_fragment,
+                                ) {
                                     kind = ResolutionFailure::WrongNamespace { res, expected_ns };
                                     break;
                                 }
@@ -1366,9 +1377,14 @@ impl LinkCollector<'_, '_> {
                 // Try everything!
                 let mut candidates = PerNS {
                     macro_ns: self
-                        .resolve_macro(path_str, base_node)
+                        .resolve_macro(path_str, base_node.expect_real())
                         .map(|res| (res, extra_fragment.clone())),
-                    type_ns: match self.resolve(path_str, TypeNS, base_node, extra_fragment) {
+                    type_ns: match self.resolve(
+                        path_str,
+                        TypeNS,
+                        base_node.expect_real(),
+                        extra_fragment,
+                    ) {
                         Ok(res) => {
                             debug!("got res in TypeNS: {:?}", res);
                             Ok(res)
@@ -1379,7 +1395,12 @@ impl LinkCollector<'_, '_> {
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
                     },
-                    value_ns: match self.resolve(path_str, ValueNS, base_node, extra_fragment) {
+                    value_ns: match self.resolve(
+                        path_str,
+                        ValueNS,
+                        base_node.expect_real(),
+                        extra_fragment,
+                    ) {
                         Ok(res) => Ok(res),
                         Err(ErrorKind::AnchorFailure(msg)) => {
                             anchor_failure(self.cx, diag, msg);
@@ -1421,7 +1442,7 @@ impl LinkCollector<'_, '_> {
                 }
 
                 if len == 1 {
-                    Some(candidates.into_iter().filter_map(|res| res.ok()).next().unwrap())
+                    Some(candidates.into_iter().find_map(|res| res.ok()).unwrap())
                 } else if len == 2 && is_derive_trait_collision(&candidates) {
                     Some(candidates.type_ns.unwrap())
                 } else {
@@ -1435,14 +1456,17 @@ impl LinkCollector<'_, '_> {
                 }
             }
             Some(MacroNS) => {
-                match self.resolve_macro(path_str, base_node) {
+                match self.resolve_macro(path_str, base_node.expect_real()) {
                     Ok(res) => Some((res, extra_fragment.clone())),
                     Err(mut kind) => {
                         // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
                         for &ns in &[TypeNS, ValueNS] {
-                            if let Some(res) =
-                                self.check_full_res(ns, path_str, base_node, extra_fragment)
-                            {
+                            if let Some(res) = self.check_full_res(
+                                ns,
+                                path_str,
+                                base_node.expect_real(),
+                                extra_fragment,
+                            ) {
                                 kind =
                                     ResolutionFailure::WrongNamespace { res, expected_ns: MacroNS };
                                 break;
@@ -1795,7 +1819,7 @@ fn resolution_failure(
                         name = start;
                         for &ns in &[TypeNS, ValueNS, MacroNS] {
                             if let Some(res) =
-                                collector.check_full_res(ns, &start, module_id, &None)
+                                collector.check_full_res(ns, &start, module_id.into(), &None)
                             {
                                 debug!("found partial_res={:?}", res);
                                 *partial_res = Some(res);

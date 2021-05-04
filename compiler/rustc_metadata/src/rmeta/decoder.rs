@@ -1885,10 +1885,6 @@ impl CrateMetadata {
         self.root.hash
     }
 
-    fn num_def_ids(&self) -> usize {
-        self.root.tables.def_keys.size()
-    }
-
     fn local_def_id(&self, index: DefIndex) -> DefId {
         DefId { krate: self.cnum, index }
     }

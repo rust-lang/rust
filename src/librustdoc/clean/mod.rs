@@ -533,7 +533,8 @@ impl Clean<Generics> for hir::Generics<'_> {
                 match param.kind {
                     GenericParamDefKind::Lifetime => unreachable!(),
                     GenericParamDefKind::Type { did, ref bounds, .. } => {
-                        cx.impl_trait_bounds.insert(did.into(), bounds.clone());
+                        cx.impl_trait_bounds
+                            .insert(FakeDefId::new_real(did).into(), bounds.clone());
                     }
                     GenericParamDefKind::Const { .. } => unreachable!(),
                 }
@@ -614,7 +615,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
             .collect::<Vec<GenericParamDef>>();
 
         // param index -> [(DefId of trait, associated type name, type)]
-        let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'tcx>)>>::default();
+        let mut impl_trait_proj = FxHashMap::<u32, Vec<(FakeDefId, Symbol, Ty<'tcx>)>>::default();
 
         let where_predicates = preds
             .predicates
@@ -663,10 +664,11 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                         if let Some(((_, trait_did, name), rhs)) =
                             proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
                         {
-                            impl_trait_proj
-                                .entry(param_idx)
-                                .or_default()
-                                .push((trait_did, name, rhs));
+                            impl_trait_proj.entry(param_idx).or_default().push((
+                                trait_did.into(),
+                                name,
+                                rhs,
+                            ));
                         }
 
                         return None;
@@ -685,7 +687,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
                 if let Some(proj) = impl_trait_proj.remove(&idx) {
                     for (trait_did, name, rhs) in proj {
                         let rhs = rhs.clean(cx);
-                        simplify::merge_bounds(cx, &mut bounds, trait_did, name, &rhs);
+                        simplify::merge_bounds(
+                            cx,
+                            &mut bounds,
+                            trait_did.expect_real(),
+                            name,
+                            &rhs,
+                        );
                     }
                 }
             } else {
@@ -1175,7 +1183,8 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 if let Some(new_ty) = cx.ty_substs.get(&did).cloned() {
                     return new_ty;
                 }
-                if let Some(bounds) = cx.impl_trait_bounds.remove(&did.into()) {
+                if let Some(bounds) = cx.impl_trait_bounds.remove(&FakeDefId::new_real(did).into())
+                {
                     return ImplTrait(bounds);
                 }
             }
@@ -2006,7 +2015,7 @@ fn clean_extern_crate(
     vec![Item {
         name: Some(name),
         attrs: box attrs.clean(cx),
-        def_id: crate_def_id,
+        def_id: crate_def_id.into(),
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
         cfg: attrs.cfg(cx.sess().diagnostic()),

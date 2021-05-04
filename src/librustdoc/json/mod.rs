@@ -17,7 +17,8 @@ use rustc_session::Session;
 
 use rustdoc_json_types as types;
 
-use crate::clean::{self, ExternalCrate};
+use crate::clean;
+use crate::clean::{ExternalCrate, FakeDefId};
 use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -41,7 +42,7 @@ impl JsonRenderer<'tcx> {
         self.tcx.sess
     }
 
-    fn get_trait_implementors(&mut self, id: rustc_span::def_id::DefId) -> Vec<types::Id> {
+    fn get_trait_implementors(&mut self, id: FakeDefId) -> Vec<types::Id> {
         Rc::clone(&self.cache)
             .implementors
             .get(&id)
@@ -58,10 +59,10 @@ impl JsonRenderer<'tcx> {
             .unwrap_or_default()
     }
 
-    fn get_impls(&mut self, id: rustc_span::def_id::DefId) -> Vec<types::Id> {
+    fn get_impls(&mut self, id: FakeDefId) -> Vec<types::Id> {
         Rc::clone(&self.cache)
             .impls
-            .get(&id)
+            .get(&id.expect_real())
             .map(|impls| {
                 impls
                     .iter()
@@ -89,9 +90,9 @@ impl JsonRenderer<'tcx> {
                     let trait_item = &trait_item.trait_;
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
                     Some((
-                        from_def_id(id),
+                        from_def_id(id.into()),
                         types::Item {
-                            id: from_def_id(id),
+                            id: from_def_id(id.into()),
                             crate_id: id.krate.as_u32(),
                             name: self
                                 .cache
@@ -205,7 +206,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(self.cache.external_paths.clone().into_iter())
                 .map(|(k, (path, kind))| {
                     (
-                        from_def_id(k),
+                        from_def_id(k.into()),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path,

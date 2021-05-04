@@ -15,7 +15,7 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use crate::clean::{self, Attributes, AttributesExt, GetDefId, ToSource};
+use crate::clean::{self, Attributes, AttributesExt, FakeDefId, GetDefId, ToSource};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
@@ -121,7 +121,7 @@ crate fn try_inline(
     };
 
     let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs_clone);
-    cx.inlined.insert(did);
+    cx.inlined.insert(did.into());
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         Some(name),
@@ -332,7 +332,7 @@ crate fn build_impl(
     attrs: Option<Attrs<'_>>,
     ret: &mut Vec<clean::Item>,
 ) {
-    if !cx.inlined.insert(did) {
+    if !cx.inlined.insert(did.into()) {
         return;
     }
 
@@ -470,7 +470,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    def_id: cx.next_def_id(did.krate),
+                    def_id: FakeDefId::new_fake(did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,
