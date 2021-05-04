@@ -21,8 +21,7 @@ use crate::cli::load_cargo::{load_workspace_at, LoadCargoConfig};
 
 #[test]
 fn integrated_highlighting_benchmark() {
-    // Don't run slow benchmark by default
-    if true {
+    if std::env::var("RUN_SLOW_BENCHES").is_err() {
         return;
     }
 
@@ -76,8 +75,7 @@ fn integrated_highlighting_benchmark() {
 
 #[test]
 fn integrated_completion_benchmark() {
-    // Don't run slow benchmark by default
-    if true {
+    if std::env::var("RUN_SLOW_BENCHES").is_err() {
         return;
     }
 
