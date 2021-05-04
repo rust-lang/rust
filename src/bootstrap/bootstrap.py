@@ -664,7 +664,7 @@ class RustBuild(object):
         if self.verbose:
             print("using downloaded stage1 artifacts from CI (commit {})".format(commit))
         self.rustc_commit = commit
-        # FIXME: support downloading artifacts from the beta channel
+        # NOTE: CI artifacts are stored under nightly even when this is run from the beta branch
         self.download_toolchain(False, "nightly")
 
     def rustc_stamp(self, stage0):
