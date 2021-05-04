@@ -65,7 +65,8 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         }
         if let Some(primary_span) = &db.span.primary_span() {
             let file_name = self.source_map.span_to_filename(*primary_span);
-            if let rustc_span::FileName::Real(rustc_span::RealFileName::Named(ref path)) = file_name
+            if let rustc_span::FileName::Real(rustc_span::RealFileName::LocalPath(ref path)) =
+                file_name
             {
                 if self
                     .ignore_path_set
@@ -157,7 +158,7 @@ impl ParseSess {
         self.parse_sess
             .source_map()
             .get_source_file(&rustc_span::FileName::Real(
-                rustc_span::RealFileName::Named(path.to_path_buf()),
+                rustc_span::RealFileName::LocalPath(path.to_path_buf()),
             ))
             .is_some()
     }
@@ -347,7 +348,7 @@ mod tests {
             let source =
                 String::from(r#"extern "system" fn jni_symbol!( funcName ) ( ... ) -> {} "#);
             source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::Named(PathBuf::from("foo.rs"))),
+                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
                 source,
             );
             let mut emitter = build_emitter(
@@ -374,7 +375,7 @@ mod tests {
             let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
             source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::Named(PathBuf::from("foo.rs"))),
+                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
                 source,
             );
             let mut emitter = build_emitter(
@@ -400,7 +401,7 @@ mod tests {
             let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
             source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::Named(PathBuf::from("foo.rs"))),
+                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
                 source,
             );
             let mut emitter = build_emitter(
@@ -430,15 +431,15 @@ mod tests {
             let fatal_source =
                 String::from(r#"extern "system" fn jni_symbol!( funcName ) ( ... ) -> {} "#);
             source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::Named(PathBuf::from("bar.rs"))),
+                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("bar.rs"))),
                 bar_source,
             );
             source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::Named(PathBuf::from("foo.rs"))),
+                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
                 foo_source,
             );
             source_map.new_source_file(
-                SourceMapFileName::Real(RealFileName::Named(PathBuf::from("fatal.rs"))),
+                SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("fatal.rs"))),
                 fatal_source,
             );
             let mut emitter = build_emitter(
