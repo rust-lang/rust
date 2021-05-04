@@ -28,7 +28,7 @@ pub enum FileName {
 impl From<rustc_span::FileName> for FileName {
     fn from(name: rustc_span::FileName) -> FileName {
         match name {
-            rustc_span::FileName::Real(p) => FileName::Real(p.into_local_path()),
+            rustc_span::FileName::Real(rustc_span::RealFileName::LocalPath(p)) => FileName::Real(p),
             rustc_span::FileName::Custom(ref f) if f == "stdin" => FileName::Stdin,
             _ => unreachable!(),
         }
