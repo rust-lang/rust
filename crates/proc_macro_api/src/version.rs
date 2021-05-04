@@ -6,7 +6,7 @@ use std::{
     path::Path,
 };
 
-use memmap::Mmap;
+use memmap2::Mmap;
 use object::read::{File as BinaryFile, Object, ObjectSection};
 use snap::read::FrameDecoder as SnapDecoder;
 
