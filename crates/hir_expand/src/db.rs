@@ -89,26 +89,25 @@ pub trait AstDatabase: SourceDatabase {
 
     #[salsa::transparent]
     fn parse_or_expand(&self, file_id: HirFileId) -> Option<SyntaxNode>;
-
-    #[salsa::interned]
-    fn intern_macro(&self, macro_call: MacroCallLoc) -> LazyMacroId;
-    fn macro_arg_text(&self, id: MacroCallId) -> Option<GreenNode>;
-    #[salsa::transparent]
-    fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
-    fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
     fn parse_macro_expansion(
         &self,
         macro_file: MacroFile,
     ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>>;
-    fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>>;
 
-    /// Firewall query that returns the error from the `macro_expand` query.
-    fn macro_expand_error(&self, macro_call: MacroCallId) -> Option<ExpandError>;
-
+    #[salsa::interned]
+    fn intern_macro(&self, macro_call: MacroCallLoc) -> LazyMacroId;
     #[salsa::interned]
     fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
 
+    #[salsa::transparent]
+    fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
+    fn macro_arg_text(&self, id: MacroCallId) -> Option<GreenNode>;
+    fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
+
+    fn macro_expand(&self, macro_call: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>>;
     fn expand_proc_macro(&self, call: MacroCallId) -> Result<tt::Subtree, mbe::ExpandError>;
+    /// Firewall query that returns the error from the `macro_expand` query.
+    fn macro_expand_error(&self, macro_call: MacroCallId) -> Option<ExpandError>;
 
     fn hygiene_frame(&self, file_id: HirFileId) -> Arc<HygieneFrame>;
 }
@@ -129,8 +128,11 @@ pub fn expand_hypothetical(
         token_to_map.text_range().checked_sub(hypothetical_args.syntax().text_range().start())?;
     let token_id = tmap_1.token_by_range(range)?;
     let macro_def = expander(db, actual_macro_call)?;
-    let (node, tmap_2) =
-        parse_macro_with_arg(db, macro_file, Some(std::sync::Arc::new((tt, tmap_1)))).value?;
+
+    let hypothetical_expansion =
+        macro_expand_with_arg(db, macro_file.macro_call_id, Some(Arc::new((tt, tmap_1))));
+    let (node, tmap_2) = expansion_to_syntax(db, macro_file, hypothetical_expansion).value?;
+
     let token_id = macro_def.0.map_id_down(token_id);
     let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
     let token = node.syntax_node().covering_element(range).into_token()?;
@@ -138,9 +140,126 @@ pub fn expand_hypothetical(
 }
 
 fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
-    let map =
-        db.parse_or_expand(file_id).map_or_else(AstIdMap::default, |it| AstIdMap::from_source(&it));
+    let map = db.parse_or_expand(file_id).map(|it| AstIdMap::from_source(&it)).unwrap_or_default();
     Arc::new(map)
+}
+
+fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
+    match file_id.0 {
+        HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
+        HirFileIdRepr::MacroFile(macro_file) => {
+            db.parse_macro_expansion(macro_file).value.map(|(it, _)| it.syntax_node())
+        }
+    }
+}
+
+fn parse_macro_expansion(
+    db: &dyn AstDatabase,
+    macro_file: MacroFile,
+) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
+    let result = db.macro_expand(macro_file.macro_call_id);
+    expansion_to_syntax(db, macro_file, result)
+}
+
+fn expansion_to_syntax(
+    db: &dyn AstDatabase,
+    macro_file: MacroFile,
+    result: ExpandResult<Option<Arc<tt::Subtree>>>,
+) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
+    let _p = profile::span("parse_macro_expansion");
+
+    if let Some(err) = &result.err {
+        // Note:
+        // The final goal we would like to make all parse_macro success,
+        // such that the following log will not call anyway.
+        match macro_file.macro_call_id {
+            MacroCallId::LazyMacro(id) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro(id);
+                let node = loc.kind.node(db);
+
+                // collect parent information for warning log
+                let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
+                    it.file_id.call_node(db)
+                })
+                .map(|n| format!("{:#}", n.value))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+                log::warn!(
+                    "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
+                    err,
+                    node.value,
+                    parents
+                );
+            }
+            _ => {
+                log::warn!("fail on macro_parse: (reason: {:?})", err);
+            }
+        }
+    }
+    let tt = match result.value {
+        Some(tt) => tt,
+        None => return ExpandResult { value: None, err: result.err },
+    };
+
+    let fragment_kind = to_fragment_kind(db, macro_file.macro_call_id);
+
+    log::debug!("expanded = {}", tt.as_debug_string());
+    log::debug!("kind = {:?}", fragment_kind);
+
+    let (parse, rev_token_map) = match mbe::token_tree_to_syntax_node(&tt, fragment_kind) {
+        Ok(it) => it,
+        Err(err) => {
+            log::debug!(
+                "failed to parse expanstion to {:?} = {}",
+                fragment_kind,
+                tt.as_debug_string()
+            );
+            return ExpandResult::only_err(err);
+        }
+    };
+
+    match result.err {
+        Some(err) => {
+            // Safety check for recursive identity macro.
+            let node = parse.syntax_node();
+            let file: HirFileId = macro_file.into();
+            let call_node = match file.call_node(db) {
+                Some(it) => it,
+                None => {
+                    return ExpandResult::only_err(err);
+                }
+            };
+            if is_self_replicating(&node, &call_node.value) {
+                return ExpandResult::only_err(err);
+            } else {
+                ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
+            }
+        }
+        None => {
+            log::debug!("parse = {:?}", parse.syntax_node().kind());
+            ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None }
+        }
+    }
+}
+
+fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
+    let arg = db.macro_arg_text(id)?;
+    let (tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg));
+    Some(Arc::new((tt, tmap)))
+}
+
+fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
+    let id = match id {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(_id) => {
+            // FIXME: support macro_arg for eager macro
+            return None;
+        }
+    };
+    let loc = db.lookup_intern_macro(id);
+    let arg = loc.kind.arg(db)?;
+    Some(arg.green())
 }
 
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
@@ -184,25 +303,6 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
             Some(Arc::new((TokenExpander::ProcMacro(expander), mbe::TokenMap::default())))
         }
     }
-}
-
-fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
-    let id = match id {
-        MacroCallId::LazyMacro(id) => id,
-        MacroCallId::EagerMacro(_id) => {
-            // FIXME: support macro_arg for eager macro
-            return None;
-        }
-    };
-    let loc = db.lookup_intern_macro(id);
-    let arg = loc.kind.arg(db)?;
-    Some(arg.green())
-}
-
-fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
-    let arg = db.macro_arg_text(id)?;
-    let (tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg));
-    Some(Arc::new((tt, tmap)))
 }
 
 fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Arc<tt::Subtree>>> {
@@ -297,111 +397,6 @@ fn expand_proc_macro(
     };
 
     expander.expand(db, loc.krate, &macro_arg.0)
-}
-
-fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Option<SyntaxNode> {
-    match file_id.0 {
-        HirFileIdRepr::FileId(file_id) => Some(db.parse(file_id).tree().syntax().clone()),
-        HirFileIdRepr::MacroFile(macro_file) => {
-            db.parse_macro_expansion(macro_file).value.map(|(it, _)| it.syntax_node())
-        }
-    }
-}
-
-fn parse_macro_expansion(
-    db: &dyn AstDatabase,
-    macro_file: MacroFile,
-) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
-    parse_macro_with_arg(db, macro_file, None)
-}
-
-fn parse_macro_with_arg(
-    db: &dyn AstDatabase,
-    macro_file: MacroFile,
-    arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
-) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
-    let macro_call_id = macro_file.macro_call_id;
-    let result = if let Some(arg) = arg {
-        macro_expand_with_arg(db, macro_call_id, Some(arg))
-    } else {
-        db.macro_expand(macro_call_id)
-    };
-
-    let _p = profile::span("parse_macro_expansion");
-
-    if let Some(err) = &result.err {
-        // Note:
-        // The final goal we would like to make all parse_macro success,
-        // such that the following log will not call anyway.
-        match macro_call_id {
-            MacroCallId::LazyMacro(id) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(id);
-                let node = loc.kind.node(db);
-
-                // collect parent information for warning log
-                let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
-                    it.file_id.call_node(db)
-                })
-                .map(|n| format!("{:#}", n.value))
-                .collect::<Vec<_>>()
-                .join("\n");
-
-                log::warn!(
-                    "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
-                    err,
-                    node.value,
-                    parents
-                );
-            }
-            _ => {
-                log::warn!("fail on macro_parse: (reason: {:?})", err);
-            }
-        }
-    }
-    let tt = match result.value {
-        Some(tt) => tt,
-        None => return ExpandResult { value: None, err: result.err },
-    };
-
-    let fragment_kind = to_fragment_kind(db, macro_call_id);
-
-    log::debug!("expanded = {}", tt.as_debug_string());
-    log::debug!("kind = {:?}", fragment_kind);
-
-    let (parse, rev_token_map) = match mbe::token_tree_to_syntax_node(&tt, fragment_kind) {
-        Ok(it) => it,
-        Err(err) => {
-            log::debug!(
-                "failed to parse expanstion to {:?} = {}",
-                fragment_kind,
-                tt.as_debug_string()
-            );
-            return ExpandResult::only_err(err);
-        }
-    };
-
-    match result.err {
-        Some(err) => {
-            // Safety check for recursive identity macro.
-            let node = parse.syntax_node();
-            let file: HirFileId = macro_file.into();
-            let call_node = match file.call_node(db) {
-                Some(it) => it,
-                None => {
-                    return ExpandResult::only_err(err);
-                }
-            };
-            if is_self_replicating(&node, &call_node.value) {
-                return ExpandResult::only_err(err);
-            } else {
-                ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
-            }
-        }
-        None => {
-            log::debug!("parse = {:?}", parse.syntax_node().kind());
-            ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None }
-        }
-    }
 }
 
 fn is_self_replicating(from: &SyntaxNode, to: &SyntaxNode) -> bool {
