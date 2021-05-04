@@ -97,6 +97,9 @@ Compatibility Notes
 - [Rustc now catches more cases of `pub_use_of_private_extern_crate`][80763]
 - [Changes in how proc macros handle whitespace may lead to panics when used
   with older `proc-macro-hack` versions. A `cargo update` should be sufficient to fix this in all cases.][84136]
+- [Deprecated internal compiler derive macros `RustcEncodable` and `RustcDecodable`.][83160]
+- [Deprecated `alloc::LayoutErr` in favor of `alloc::LayoutError`.][81767]
+- [Deprecated `intrinsics::drop_in_place` and `collections::Bound` again; these items were deprecated earlier, but due to a bug no deprecation messages were emitted.][82122]
 
 [84136]: https://github.com/rust-lang/rust/issues/84136
 [80763]: https://github.com/rust-lang/rust/pull/80763
@@ -123,6 +126,9 @@ Compatibility Notes
 [78429]: https://github.com/rust-lang/rust/pull/78429
 [82733]: https://github.com/rust-lang/rust/pull/82733
 [82594]: https://github.com/rust-lang/rust/pull/82594
+[83160]: https://github.com/rust-lang/rust/pull/83160
+[81767]: https://github.com/rust-lang/rust/pull/81767
+[82122]: https://github.com/rust-lang/rust/pull/82122
 [cargo/9181]: https://github.com/rust-lang/cargo/pull/9181
 [`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
 [`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
