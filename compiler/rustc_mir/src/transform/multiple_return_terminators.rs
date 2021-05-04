@@ -38,6 +38,6 @@ impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
             }
         }
 
-        simplify::remove_dead_blocks(body)
+        simplify::remove_dead_blocks(tcx, body)
     }
 }
