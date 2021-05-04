@@ -1,10 +1,10 @@
 mod builtin_type_shadow;
+mod double_neg;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{
-    BindingMode, Expr, ExprKind, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability, NodeId, Pat, PatKind,
-    UnOp,
+    BindingMode, Expr, Generics, Lit, LitFloatType, LitIntType, LitKind, Mutability, NodeId, Pat, PatKind,
 };
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
@@ -393,20 +393,7 @@ impl EarlyLintPass for MiscEarlyLints {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        match expr.kind {
-            ExprKind::Unary(UnOp::Neg, ref inner) => {
-                if let ExprKind::Unary(UnOp::Neg, _) = inner.kind {
-                    span_lint(
-                        cx,
-                        DOUBLE_NEG,
-                        expr.span,
-                        "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op",
-                    );
-                }
-            },
-            ExprKind::Lit(ref lit) => Self::check_lit(cx, lit),
-            _ => (),
-        }
+        double_neg::check(cx, expr)
     }
 }
 
