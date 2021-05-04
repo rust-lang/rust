@@ -6,4 +6,11 @@ fn next_u64() -> u64 {
     h.finish() //~ ERROR no method named `finish` found for struct `DefaultHasher`
 }
 
-fn main() {}
+trait Bar {}
+impl Bar for String {}
+
+fn main() {
+    let s = String::from("hey");
+    let x: &dyn Bar = &s;
+    x.as_ref(); //~ ERROR the method `as_ref` exists for reference `&dyn Bar`, but its trait bounds
+}
