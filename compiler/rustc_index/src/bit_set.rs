@@ -355,14 +355,18 @@ where
     Op: Fn(Word, Word) -> Word,
 {
     assert_eq!(out_vec.len(), in_vec.len());
-    let mut changed = false;
+    let mut changed = 0;
     for (out_elem, in_elem) in iter::zip(out_vec, in_vec) {
         let old_val = *out_elem;
         let new_val = op(old_val, *in_elem);
         *out_elem = new_val;
-        changed |= old_val != new_val;
+        // This is essentially equivalent to a != with changed being a bool, but
+        // in practice this code gets auto-vectorized by the compiler for most
+        // operators. Using != here causes us to generate quite poor code as the
+        // compiler tries to go back to a boolean on each loop iteration.
+        changed |= old_val ^ new_val;
     }
-    changed
+    changed != 0
 }
 
 const SPARSE_MAX: usize = 8;
