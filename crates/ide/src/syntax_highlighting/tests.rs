@@ -618,6 +618,7 @@ It is beyond me why you'd use these when you got ///
 ```rust
 let _ = example(&[1, 2, 3]);
 ```
+[`block_comments2`] tests these with indentation
  */
 pub fn block_comments() {}
 
@@ -626,6 +627,7 @@ pub fn block_comments() {}
     ```rust
     let _ = example(&[1, 2, 3]);
     ```
+    [`block_comments`] tests these without indentation
 */
 pub fn block_comments2() {}
 "#

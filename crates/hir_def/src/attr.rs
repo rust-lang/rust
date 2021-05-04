@@ -484,10 +484,10 @@ impl AttrsWithOwner {
         let mut buf = String::new();
         let mut mapping = Vec::new();
         for (doc, idx) in docs {
-            // str::lines doesn't yield anything for the empty string
             if !doc.is_empty() {
-                for line in doc.split('\n') {
-                    let line = line.trim_end();
+                let mut base_offset = 0;
+                for raw_line in doc.split('\n') {
+                    let line = raw_line.trim_end();
                     let line_len = line.len();
                     let (offset, line) = match line.char_indices().nth(indent) {
                         Some((offset, _)) => (offset, &line[offset..]),
@@ -498,9 +498,13 @@ impl AttrsWithOwner {
                     mapping.push((
                         TextRange::new(buf_offset.try_into().ok()?, buf.len().try_into().ok()?),
                         idx,
-                        TextRange::new(offset.try_into().ok()?, line_len.try_into().ok()?),
+                        TextRange::at(
+                            (base_offset + offset).try_into().ok()?,
+                            line_len.try_into().ok()?,
+                        ),
                     ));
                     buf.push('\n');
+                    base_offset += raw_line.len() + 1;
                 }
             } else {
                 buf.push('\n');
