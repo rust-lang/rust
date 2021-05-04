@@ -1607,7 +1607,7 @@ impl Into<ExitStatus> for ExitStatusError {
 #[unstable(feature = "exit_status_error", issue = "84908")]
 impl fmt::Display for ExitStatusError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.into_status().fmt(f)
+        write!(f, "process exited unsuccessfully: {}", self.into_status())
     }
 }
 
