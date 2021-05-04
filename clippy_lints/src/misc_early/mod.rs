@@ -5,8 +5,9 @@ mod redundant_pattern;
 mod unneeded_field_pattern;
 mod unneeded_wildcard_pattern;
 mod unseparated_literal_suffix;
+mod zero_prefixed_literal;
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
 use rustc_ast::visit::FnKind;
@@ -356,26 +357,7 @@ impl MiscEarlyLints {
             } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
                 /* nothing to do */
             } else if value != 0 && lit_snip.starts_with('0') {
-                span_lint_and_then(
-                    cx,
-                    ZERO_PREFIXED_LITERAL,
-                    lit.span,
-                    "this is a decimal constant",
-                    |diag| {
-                        diag.span_suggestion(
-                            lit.span,
-                            "if you mean to use a decimal constant, remove the `0` to avoid confusion",
-                            lit_snip.trim_start_matches(|c| c == '_' || c == '0').to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
-                        diag.span_suggestion(
-                            lit.span,
-                            "if you mean to use an octal constant, use `0o`",
-                            format!("0o{}", lit_snip.trim_start_matches(|c| c == '_' || c == '0')),
-                            Applicability::MaybeIncorrect,
-                        );
-                    },
-                );
+                zero_prefixed_literal::check(cx, lit, lit_snip)
             }
         } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
             unseparated_literal_suffix::check(cx, lit, float_ty, lit_snip)
