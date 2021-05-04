@@ -14,15 +14,15 @@
    14|       |
    15|       |macro_rules! on_error {
    16|       |    ($value:expr, $error_message:expr) => {
-   17|      0|        $value.or_else(|e| {
-   18|      0|            let message = format!($error_message, e);
-   19|      0|            if message.len() > 0 {
-   20|      0|                println!("{}", message);
-   21|      0|                Ok(String::from("ok"))
+   17|       |        $value.or_else(|e| { // FIXME(85000): no coverage in closure macros
+   18|       |            let message = format!($error_message, e);
+   19|       |            if message.len() > 0 {
+   20|       |                println!("{}", message);
+   21|       |                Ok(String::from("ok"))
    22|       |            } else {
-   23|      0|                bail!("error");
+   23|       |                bail!("error");
    24|       |            }
-   25|      0|        })
+   25|       |        })
    26|       |    };
    27|       |}
    28|       |
