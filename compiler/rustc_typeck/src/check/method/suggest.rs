@@ -579,6 +579,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let mut restrict_type_params = false;
+                let mut unsatisfied_bounds = false;
                 if !unsatisfied_predicates.is_empty() {
                     let def_span = |def_id| {
                         self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id))
@@ -739,6 +740,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(&format!(
                             "the following trait bounds were not satisfied:\n{bound_list}"
                         ));
+                        unsatisfied_bounds = true;
                     }
                 }
 
@@ -752,6 +754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         source,
                         out_of_scope_traits,
                         &unsatisfied_predicates,
+                        unsatisfied_bounds,
                     );
                 }
 
@@ -984,9 +987,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'tcx>,
         valid_out_of_scope_traits: Vec<DefId>,
         unsatisfied_predicates: &[(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>)],
+        unsatisfied_bounds: bool,
     ) {
         let mut alt_rcvr_sugg = false;
-        if let SelfSource::MethodCall(rcvr) = source {
+        if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
             debug!(?span, ?item_name, ?rcvr_ty, ?rcvr);
             let skippable = [
                 self.tcx.lang_items().clone_trait(),
