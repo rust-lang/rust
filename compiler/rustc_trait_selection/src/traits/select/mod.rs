@@ -1494,7 +1494,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // will then correctly report an inference error, since the
                             // existence of multiple marker trait impls tells us nothing
                             // about which one should actually apply.
-                            !needs_infer
+                            //
+                            // If we have two marker trait impls which apply, but one of them
+                            // has nested region obligations, we prefer the one without any.
+                            //
+                            // FIXME(lcnr): If we have 2 impls which only apply modulo regions
+                            // this may still cause incorrect errors. That's not really something
+                            // we can easily fix without some more complex refactoring
+                            // and seems unlikely enough in practice, so lets just ignore that
+                            // situation for now.
+                            !(needs_infer
+                                || (victim.evaluation.must_apply_considering_regions()
+                                    && !other.evaluation.must_apply_considering_regions()))
                         }
                         Some(_) => true,
                         None => false,
