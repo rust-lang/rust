@@ -17,7 +17,7 @@ use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 
 use super::format::{self, Buffer};
-use super::render::LinkFromSrc;
+use super::render::{LightSpan, LinkFromSrc};
 
 /// Highlights `src`, returning the HTML output.
 crate fn render_with_highlighting(
@@ -74,7 +74,7 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
 /// won't try to generate links to an ident definition.
 ///
 /// More explanations about spans and how we use them here are provided in the
-/// [`local_span_to_global_span`] function documentation about how it works.
+/// [`LightSpan::new_in_file`] function documentation about how it works.
 ///
 /// As for `root_path`, it's used to know "how far" from the top of the directory we are to link
 /// to either documentation pages or other source pages.
@@ -115,14 +115,14 @@ enum Class {
     KeyWord,
     // Keywords that do pointer/reference stuff.
     RefKeyWord,
-    Self_((u32, u32)),
+    Self_(LightSpan),
     Op,
     Macro,
     MacroNonTerminal,
     String,
     Number,
     Bool,
-    Ident((u32, u32)),
+    Ident(LightSpan),
     Lifetime,
     PreludeTy,
     PreludeVal,
@@ -155,7 +155,7 @@ impl Class {
 
     /// In case this is an item which can be converted into a link to a definition, it'll contain
     /// a "span" (a tuple representing `(lo, hi)` equivalent of `Span`).
-    fn get_span(self) -> Option<(u32, u32)> {
+    fn get_span(self) -> Option<LightSpan> {
         match self {
             Self::Ident(sp) | Self::Self_(sp) => Some(sp),
             _ => None,
@@ -201,23 +201,6 @@ fn get_real_ident_class(text: &str, edition: Edition, allow_path_keywords: bool)
     })
 }
 
-/// Before explaining what this function does, some global explanations on rust's `Span`:
-///
-/// Each source code file is stored in the source map in the compiler and has a
-/// `lo` and a `hi` (lowest and highest bytes in this source map which can be seen as one huge
-/// string to simplify things). So in this case, this represents the starting byte of the current
-/// file. It'll be used later on to retrieve the "definition span" from the
-/// `span_correspondance_map` (which is inside `context`).
-///
-/// This when we transform the "span" we have from reading the input into a "span" which can be
-/// used as index to the `span_correspondance_map` to get the definition of this item.
-///
-/// So in here, `file_span_lo` is representing the "lo" byte in the global source map, and to make
-/// our "span" works in there, we simply add `file_span_lo` to our values.
-fn local_span_to_global_span(file_span_lo: u32, start: u32, end: u32) -> (u32, u32) {
-    (start + file_span_lo, end + file_span_lo)
-}
-
 /// Processes program tokens, classifying strings of text by highlighting
 /// category (`Class`).
 struct Classifier<'a> {
@@ -234,7 +217,7 @@ struct Classifier<'a> {
 impl<'a> Classifier<'a> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file "lo" byte which we be used later on by the `span_correspondance_map`. More explanations
-    /// are provided in the [`local_span_to_global_span`] function documentation about how it works.
+    /// are provided in the [`LightSpan::new_in_file`] function documentation about how it works.
     fn new(src: &str, edition: Edition, file_span_lo: u32) -> Classifier<'_> {
         let tokens = TokenIter { src }.peekable();
         Classifier {
@@ -496,12 +479,12 @@ impl<'a> Classifier<'a> {
                         self.in_macro_nonterminal = false;
                         Class::MacroNonTerminal
                     }
-                    "self" | "Self" => Class::Self_(local_span_to_global_span(
+                    "self" | "Self" => Class::Self_(LightSpan::new_in_file(
                         self.file_span_lo,
                         before,
                         before + text.len() as u32,
                     )),
-                    _ => Class::Ident(local_span_to_global_span(
+                    _ => Class::Ident(LightSpan::new_in_file(
                         self.file_span_lo,
                         before,
                         before + text.len() as u32,
@@ -509,7 +492,7 @@ impl<'a> Classifier<'a> {
                 },
                 Some(c) => c,
             },
-            TokenKind::RawIdent | TokenKind::UnknownPrefix => Class::Ident(local_span_to_global_span(
+            TokenKind::RawIdent | TokenKind::UnknownPrefix => Class::Ident(LightSpan::new_in_file(
                 self.file_span_lo,
                 before,
                 before + text.len() as u32,
@@ -572,7 +555,7 @@ fn string<T: Display>(
                     "self" | "Self" => write!(
                         &mut path,
                         "<span class=\"{}\">{}</span>",
-                        Class::Self_((0, 0)).as_html(),
+                        Class::Self_(LightSpan::empty()).as_html(),
                         t
                     ),
                     "crate" | "super" => write!(

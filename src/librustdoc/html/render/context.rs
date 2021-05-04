@@ -18,8 +18,8 @@ use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, settings, AllTypes, LinkFromSrc, NameDoc, StylePath,
-    BASIC_KEYWORDS,
+    collect_spans_and_sources, print_sidebar, settings, AllTypes, LightSpan, LinkFromSrc, NameDoc,
+    StylePath, BASIC_KEYWORDS,
 };
 
 use crate::clean;
@@ -131,7 +131,7 @@ crate struct SharedContext<'tcx> {
 
     /// Correspondance map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    crate span_correspondance_map: FxHashMap<(u32, u32), LinkFromSrc>,
+    crate span_correspondance_map: FxHashMap<LightSpan, LinkFromSrc>,
 }
 
 impl SharedContext<'_> {
