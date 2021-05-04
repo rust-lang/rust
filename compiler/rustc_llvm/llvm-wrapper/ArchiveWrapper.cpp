@@ -13,10 +13,7 @@ struct RustArchiveMember {
   Archive::Child Child;
 
   RustArchiveMember()
-      : Filename(nullptr), Name(nullptr),
-        Child(nullptr, nullptr, nullptr)
-  {
-  }
+      : Filename(nullptr), Name(nullptr), Child(nullptr, nullptr, nullptr) {}
   ~RustArchiveMember() {}
 };
 
@@ -27,11 +24,8 @@ struct RustArchiveIterator {
   std::unique_ptr<Error> Err;
 
   RustArchiveIterator(Archive::child_iterator Cur, Archive::child_iterator End,
-      std::unique_ptr<Error> Err)
-    : First(true),
-      Cur(Cur),
-      End(End),
-      Err(std::move(Err)) {}
+                      std::unique_ptr<Error> Err)
+      : First(true), Cur(Cur), End(End), Err(std::move(Err)) {}
 };
 
 enum class LLVMRustArchiveKind {
@@ -143,8 +137,8 @@ extern "C" const char *
 LLVMRustArchiveChildName(LLVMRustArchiveChildConstRef Child, size_t *Size) {
   Expected<StringRef> NameOrErr = Child->getName();
   if (!NameOrErr) {
-    // rustc_codegen_llvm currently doesn't use this error string, but it might be
-    // useful in the future, and in the mean time this tells LLVM that the
+    // rustc_codegen_llvm currently doesn't use this error string, but it might
+    // be useful in the future, and in the mean time this tells LLVM that the
     // error was not ignored and that it shouldn't abort the process.
     LLVMRustSetLastError(toString(NameOrErr.takeError()).c_str());
     return nullptr;

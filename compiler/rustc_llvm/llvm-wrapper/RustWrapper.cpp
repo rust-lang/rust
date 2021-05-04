@@ -1,4 +1,6 @@
 #include "LLVMWrapper.h"
+#include "llvm/ADT/Optional.h"
+#include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
@@ -7,9 +9,7 @@
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
-#include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/Signals.h"
-#include "llvm/ADT/Optional.h"
 
 #include <iostream>
 
@@ -52,8 +52,7 @@ static LLVM_THREAD_LOCAL char *LastError;
 // Custom error handler for fatal LLVM errors.
 //
 // Notably it exits the process with code 101, unlike LLVM's default of 1.
-static void FatalErrorHandler(void *UserData,
-                              const std::string& Reason,
+static void FatalErrorHandler(void *UserData, const std::string &Reason,
                               bool GenCrashDiag) {
   // Do the same thing that the default error handler does.
   std::cerr << "LLVM ERROR: " << Reason << std::endl;
@@ -124,23 +123,21 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
   return wrap(unwrap(M)
                   ->getOrInsertFunction(StringRef(Name, NameLen),
                                         unwrap<FunctionType>(FunctionTy))
-                  .getCallee()
-  );
+                  .getCallee());
 }
 
-extern "C" LLVMValueRef
-LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, size_t NameLen, LLVMTypeRef Ty) {
+extern "C" LLVMValueRef LLVMRustGetOrInsertGlobal(LLVMModuleRef M,
+                                                  const char *Name,
+                                                  size_t NameLen,
+                                                  LLVMTypeRef Ty) {
   StringRef NameRef(Name, NameLen);
   return wrap(unwrap(M)->getOrInsertGlobal(NameRef, unwrap(Ty)));
 }
 
-extern "C" LLVMValueRef
-LLVMRustInsertPrivateGlobal(LLVMModuleRef M, LLVMTypeRef Ty) {
-  return wrap(new GlobalVariable(*unwrap(M),
-                                 unwrap(Ty),
-                                 false,
-                                 GlobalValue::PrivateLinkage,
-                                 nullptr));
+extern "C" LLVMValueRef LLVMRustInsertPrivateGlobal(LLVMModuleRef M,
+                                                    LLVMTypeRef Ty) {
+  return wrap(new GlobalVariable(*unwrap(M), unwrap(Ty), false,
+                                 GlobalValue::PrivateLinkage, nullptr));
 }
 
 extern "C" LLVMTypeRef LLVMRustMetadataTypeInContext(LLVMContextRef C) {
@@ -220,13 +217,13 @@ extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
   Call->addAttribute(Index, Attr);
 }
 
-extern "C" void LLVMRustAddCallSiteAttrString(LLVMValueRef Instr, unsigned Index,
+extern "C" void LLVMRustAddCallSiteAttrString(LLVMValueRef Instr,
+                                              unsigned Index,
                                               const char *Name) {
   CallBase *Call = unwrap<CallBase>(Instr);
   Attribute Attr = Attribute::get(Call->getContext(), Name);
   Call->addAttribute(Index, Attr);
 }
-
 
 extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
                                                  unsigned Index,
@@ -234,8 +231,8 @@ extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
   CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addAlignmentAttr(Bytes);
-  Call->setAttributes(Call->getAttributes().addAttributes(
-      Call->getContext(), Index, B));
+  Call->setAttributes(
+      Call->getAttributes().addAttributes(Call->getContext(), Index, B));
 }
 
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
@@ -244,8 +241,8 @@ extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
   CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
-  Call->setAttributes(Call->getAttributes().addAttributes(
-      Call->getContext(), Index, B));
+  Call->setAttributes(
+      Call->getAttributes().addAttributes(Call->getContext(), Index, B));
 }
 
 extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
@@ -254,8 +251,8 @@ extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
   CallBase *Call = unwrap<CallBase>(Instr);
   AttrBuilder B;
   B.addDereferenceableOrNullAttr(Bytes);
-  Call->setAttributes(Call->getAttributes().addAttributes(
-      Call->getContext(), Index, B));
+  Call->setAttributes(
+      Call->getAttributes().addAttributes(Call->getContext(), Index, B));
 }
 
 extern "C" void LLVMRustAddByValCallSiteAttr(LLVMValueRef Instr, unsigned Index,
@@ -265,11 +262,13 @@ extern "C" void LLVMRustAddByValCallSiteAttr(LLVMValueRef Instr, unsigned Index,
   Call->addAttribute(Index, Attr);
 }
 
-extern "C" void LLVMRustAddStructRetCallSiteAttr(LLVMValueRef Instr, unsigned Index,
+extern "C" void LLVMRustAddStructRetCallSiteAttr(LLVMValueRef Instr,
+                                                 unsigned Index,
                                                  LLVMTypeRef Ty) {
   CallBase *Call = unwrap<CallBase>(Instr);
 #if LLVM_VERSION_GE(12, 0)
-  Attribute Attr = Attribute::getWithStructRetType(Call->getContext(), unwrap(Ty));
+  Attribute Attr =
+      Attribute::getWithStructRetType(Call->getContext(), unwrap(Ty));
 #else
   Attribute Attr = Attribute::get(Call->getContext(), Attribute::StructRet);
 #endif
@@ -284,8 +283,7 @@ extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
   A->addAttributes(Index, B);
 }
 
-extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn,
-                                         unsigned Index,
+extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn, unsigned Index,
                                          uint32_t Bytes) {
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
@@ -358,9 +356,10 @@ extern "C" void LLVMRustSetFastMath(LLVMValueRef V) {
   }
 }
 
-extern "C" LLVMValueRef
-LLVMRustBuildAtomicLoad(LLVMBuilderRef B, LLVMValueRef Source, const char *Name,
-                        LLVMAtomicOrdering Order) {
+extern "C" LLVMValueRef LLVMRustBuildAtomicLoad(LLVMBuilderRef B,
+                                                LLVMValueRef Source,
+                                                const char *Name,
+                                                LLVMAtomicOrdering Order) {
   Value *Ptr = unwrap(Source);
   Type *Ty = Ptr->getType()->getPointerElementType();
   LoadInst *LI = unwrap(B)->CreateLoad(Ty, Ptr, Name);
@@ -384,13 +383,13 @@ LLVMRustBuildAtomicCmpXchg(LLVMBuilderRef B, LLVMValueRef Target,
                            LLVMValueRef Old, LLVMValueRef Source,
                            LLVMAtomicOrdering Order,
                            LLVMAtomicOrdering FailureOrder, LLVMBool Weak) {
-#if LLVM_VERSION_GE(13,0)
+#if LLVM_VERSION_GE(13, 0)
   // Rust probably knows the alignment of the target value and should be able to
   // specify something more precise than MaybeAlign here. See also
   // https://reviews.llvm.org/D97224 which may be a useful reference.
   AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
-      unwrap(Target), unwrap(Old), unwrap(Source), llvm::MaybeAlign(), fromRust(Order),
-      fromRust(FailureOrder));
+      unwrap(Target), unwrap(Old), unwrap(Source), llvm::MaybeAlign(),
+      fromRust(Order), fromRust(FailureOrder));
 #else
   AtomicCmpXchgInst *ACXI = unwrap(B)->CreateAtomicCmpXchg(
       unwrap(Target), unwrap(Old), unwrap(Source), fromRust(Order),
@@ -604,19 +603,22 @@ enum class LLVMRustDISPFlags : uint32_t {
 
 inline LLVMRustDISPFlags operator&(LLVMRustDISPFlags A, LLVMRustDISPFlags B) {
   return static_cast<LLVMRustDISPFlags>(static_cast<uint32_t>(A) &
-                                      static_cast<uint32_t>(B));
+                                        static_cast<uint32_t>(B));
 }
 
 inline LLVMRustDISPFlags operator|(LLVMRustDISPFlags A, LLVMRustDISPFlags B) {
   return static_cast<LLVMRustDISPFlags>(static_cast<uint32_t>(A) |
-                                      static_cast<uint32_t>(B));
+                                        static_cast<uint32_t>(B));
 }
 
-inline LLVMRustDISPFlags &operator|=(LLVMRustDISPFlags &A, LLVMRustDISPFlags B) {
+inline LLVMRustDISPFlags &operator|=(LLVMRustDISPFlags &A,
+                                     LLVMRustDISPFlags B) {
   return A = A | B;
 }
 
-inline bool isSet(LLVMRustDISPFlags F) { return F != LLVMRustDISPFlags::SPFlagZero; }
+inline bool isSet(LLVMRustDISPFlags F) {
+  return F != LLVMRustDISPFlags::SPFlagZero;
+}
 
 inline LLVMRustDISPFlags virtuality(LLVMRustDISPFlags F) {
   return static_cast<LLVMRustDISPFlags>(static_cast<uint32_t>(F) & 0x3);
@@ -659,7 +661,8 @@ enum class LLVMRustDebugEmissionKind {
   LineTablesOnly,
 };
 
-static DICompileUnit::DebugEmissionKind fromRust(LLVMRustDebugEmissionKind Kind) {
+static DICompileUnit::DebugEmissionKind
+fromRust(LLVMRustDebugEmissionKind Kind) {
   switch (Kind) {
   case LLVMRustDebugEmissionKind::NoDebug:
     return DICompileUnit::DebugEmissionKind::NoDebug;
@@ -711,7 +714,8 @@ extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M, const char *Name,
   unwrap(M)->addModuleFlag(Module::Warning, Name, Value);
 }
 
-extern "C" LLVMValueRef LLVMRustMetadataAsValue(LLVMContextRef C, LLVMMetadataRef MD) {
+extern "C" LLVMValueRef LLVMRustMetadataAsValue(LLVMContextRef C,
+                                                LLVMMetadataRef MD) {
   return wrap(MetadataAsValue::get(*unwrap(C), unwrap(MD)));
 }
 
@@ -730,30 +734,28 @@ extern "C" void LLVMRustDIBuilderFinalize(LLVMRustDIBuilderRef Builder) {
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMRustDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, size_t ProducerLen, bool isOptimized,
-    const char *Flags, unsigned RuntimeVer,
-    const char *SplitName, size_t SplitNameLen,
-    LLVMRustDebugEmissionKind Kind,
-    uint64_t DWOId, bool SplitDebugInlining) {
+    const char *Flags, unsigned RuntimeVer, const char *SplitName,
+    size_t SplitNameLen, LLVMRustDebugEmissionKind Kind, uint64_t DWOId,
+    bool SplitDebugInlining) {
   auto *File = unwrapDI<DIFile>(FileRef);
 
-  return wrap(Builder->createCompileUnit(Lang, File, StringRef(Producer, ProducerLen),
-                                         isOptimized, Flags, RuntimeVer,
-                                         StringRef(SplitName, SplitNameLen),
-                                         fromRust(Kind), DWOId, SplitDebugInlining));
+  return wrap(Builder->createCompileUnit(
+      Lang, File, StringRef(Producer, ProducerLen), isOptimized, Flags,
+      RuntimeVer, StringRef(SplitName, SplitNameLen), fromRust(Kind), DWOId,
+      SplitDebugInlining));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(
-    LLVMRustDIBuilderRef Builder,
-    const char *Filename, size_t FilenameLen,
-    const char *Directory, size_t DirectoryLen, LLVMRustChecksumKind CSKind,
-    const char *Checksum, size_t ChecksumLen) {
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateFile(LLVMRustDIBuilderRef Builder, const char *Filename,
+                            size_t FilenameLen, const char *Directory,
+                            size_t DirectoryLen, LLVMRustChecksumKind CSKind,
+                            const char *Checksum, size_t ChecksumLen) {
   Optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
   Optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
   if (llvmCSKind)
     CSInfo.emplace(*llvmCSKind, StringRef{Checksum, ChecksumLen});
   return wrap(Builder->createFile(StringRef(Filename, FilenameLen),
-                                  StringRef(Directory, DirectoryLen),
-                                  CSInfo));
+                                  StringRef(Directory, DirectoryLen), CSInfo));
 }
 
 extern "C" LLVMMetadataRef
@@ -764,41 +766,41 @@ LLVMRustDIBuilderCreateSubroutineType(LLVMRustDIBuilderRef Builder,
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    const char *LinkageName, size_t LinkageNameLen,
-    LLVMMetadataRef File, unsigned LineNo,
-    LLVMMetadataRef Ty, unsigned ScopeLine, LLVMRustDIFlags Flags,
-    LLVMRustDISPFlags SPFlags, LLVMValueRef MaybeFn, LLVMMetadataRef TParam,
-    LLVMMetadataRef Decl) {
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
+    LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
+    unsigned ScopeLine, LLVMRustDIFlags Flags, LLVMRustDISPFlags SPFlags,
+    LLVMValueRef MaybeFn, LLVMMetadataRef TParam, LLVMMetadataRef Decl) {
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
   DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
   DINode::DIFlags llvmFlags = fromRust(Flags);
   DISubprogram *Sub = Builder->createFunction(
-      unwrapDI<DIScope>(Scope),
-      StringRef(Name, NameLen),
-      StringRef(LinkageName, LinkageNameLen),
-      unwrapDI<DIFile>(File), LineNo,
-      unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags,
-      llvmSPFlags, TParams, unwrapDIPtr<DISubprogram>(Decl));
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen),
+      StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File), LineNo,
+      unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags, llvmSPFlags,
+      TParams, unwrapDIPtr<DISubprogram>(Decl));
   if (MaybeFn)
     unwrap<Function>(MaybeFn)->setSubprogram(Sub);
   return wrap(Sub);
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateBasicType(
-    LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
-    uint64_t SizeInBits, unsigned Encoding) {
-  return wrap(Builder->createBasicType(StringRef(Name, NameLen), SizeInBits, Encoding));
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateBasicType(LLVMRustDIBuilderRef Builder, const char *Name,
+                                 size_t NameLen, uint64_t SizeInBits,
+                                 unsigned Encoding) {
+  return wrap(
+      Builder->createBasicType(StringRef(Name, NameLen), SizeInBits, Encoding));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTypedef(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Type, const char *Name, size_t NameLen,
-    LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Scope) {
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateTypedef(LLVMRustDIBuilderRef Builder,
+                               LLVMMetadataRef Type, const char *Name,
+                               size_t NameLen, LLVMMetadataRef File,
+                               unsigned LineNo, LLVMMetadataRef Scope) {
   return wrap(Builder->createTypedef(
-    unwrap<DIType>(Type), StringRef(Name, NameLen), unwrap<DIFile>(File),
-    LineNo, unwrapDIPtr<DIScope>(Scope)));
+      unwrap<DIType>(Type), StringRef(Name, NameLen), unwrap<DIFile>(File),
+      LineNo, unwrapDIPtr<DIScope>(Scope)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
@@ -806,91 +808,84 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
     uint64_t SizeInBits, uint32_t AlignInBits, unsigned AddressSpace,
     const char *Name, size_t NameLen) {
   return wrap(Builder->createPointerType(unwrapDI<DIType>(PointeeTy),
-                                         SizeInBits, AlignInBits,
-                                         AddressSpace,
+                                         SizeInBits, AlignInBits, AddressSpace,
                                          StringRef(Name, NameLen)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStructType(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint32_t AlignInBits, LLVMRustDIFlags Flags,
-    LLVMMetadataRef DerivedFrom, LLVMMetadataRef Elements,
-    unsigned RunTimeLang, LLVMMetadataRef VTableHolder,
-    const char *UniqueId, size_t UniqueIdLen) {
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMRustDIFlags Flags,
+    LLVMMetadataRef DerivedFrom, LLVMMetadataRef Elements, unsigned RunTimeLang,
+    LLVMMetadataRef VTableHolder, const char *UniqueId, size_t UniqueIdLen) {
   return wrap(Builder->createStructType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNumber,
-      SizeInBits, AlignInBits, fromRust(Flags), unwrapDI<DIType>(DerivedFrom),
+      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
+      fromRust(Flags), unwrapDI<DIType>(DerivedFrom),
       DINodeArray(unwrapDI<MDTuple>(Elements)), RunTimeLang,
       unwrapDI<DIType>(VTableHolder), StringRef(UniqueId, UniqueIdLen)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint32_t AlignInBits, LLVMRustDIFlags Flags, LLVMMetadataRef Discriminator,
-    LLVMMetadataRef Elements, const char *UniqueId, size_t UniqueIdLen) {
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMRustDIFlags Flags,
+    LLVMMetadataRef Discriminator, LLVMMetadataRef Elements,
+    const char *UniqueId, size_t UniqueIdLen) {
   return wrap(Builder->createVariantPart(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNumber,
-      SizeInBits, AlignInBits, fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
-      DINodeArray(unwrapDI<MDTuple>(Elements)), StringRef(UniqueId, UniqueIdLen)));
+      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
+      fromRust(Flags), unwrapDI<DIDerivedType>(Discriminator),
+      DINodeArray(unwrapDI<MDTuple>(Elements)),
+      StringRef(UniqueId, UniqueIdLen)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMemberType(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
     uint32_t AlignInBits, uint64_t OffsetInBits, LLVMRustDIFlags Flags,
     LLVMMetadataRef Ty) {
-  return wrap(Builder->createMemberType(unwrapDI<DIDescriptor>(Scope),
-                                        StringRef(Name, NameLen),
-                                        unwrapDI<DIFile>(File), LineNo,
-                                        SizeInBits, AlignInBits, OffsetInBits,
-                                        fromRust(Flags), unwrapDI<DIType>(Ty)));
+  return wrap(Builder->createMemberType(
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits,
+      fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantMemberType(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen, LLVMMetadataRef File, unsigned LineNo,
-    uint64_t SizeInBits, uint32_t AlignInBits, uint64_t OffsetInBits, LLVMValueRef Discriminant,
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
+    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMValueRef Discriminant,
     LLVMRustDIFlags Flags, LLVMMetadataRef Ty) {
-  llvm::ConstantInt* D = nullptr;
+  llvm::ConstantInt *D = nullptr;
   if (Discriminant) {
     D = unwrap<llvm::ConstantInt>(Discriminant);
   }
-  return wrap(Builder->createVariantMemberType(unwrapDI<DIDescriptor>(Scope),
-                                               StringRef(Name, NameLen),
-                                               unwrapDI<DIFile>(File), LineNo,
-                                               SizeInBits, AlignInBits, OffsetInBits, D,
-                                               fromRust(Flags), unwrapDI<DIType>(Ty)));
+  return wrap(Builder->createVariantMemberType(
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIFile>(File), LineNo, SizeInBits, AlignInBits, OffsetInBits, D,
+      fromRust(Flags), unwrapDI<DIType>(Ty)));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlock(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    LLVMMetadataRef File, unsigned Line, unsigned Col) {
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateLexicalBlock(LLVMRustDIBuilderRef Builder,
+                                    LLVMMetadataRef Scope, LLVMMetadataRef File,
+                                    unsigned Line, unsigned Col) {
   return wrap(Builder->createLexicalBlock(unwrapDI<DIDescriptor>(Scope),
                                           unwrapDI<DIFile>(File), Line, Col));
 }
 
-extern "C" LLVMMetadataRef
-LLVMRustDIBuilderCreateLexicalBlockFile(LLVMRustDIBuilderRef Builder,
-                                        LLVMMetadataRef Scope,
-                                        LLVMMetadataRef File) {
+extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateLexicalBlockFile(
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, LLVMMetadataRef File) {
   return wrap(Builder->createLexicalBlockFile(unwrapDI<DIDescriptor>(Scope),
                                               unwrapDI<DIFile>(File)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Context,
-    const char *Name, size_t NameLen,
-    const char *LinkageName, size_t LinkageNameLen,
-    LLVMMetadataRef File, unsigned LineNo,
-    LLVMMetadataRef Ty, bool IsLocalToUnit, LLVMValueRef V,
-    LLVMMetadataRef Decl = nullptr, uint32_t AlignInBits = 0) {
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Context, const char *Name,
+    size_t NameLen, const char *LinkageName, size_t LinkageNameLen,
+    LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
+    bool IsLocalToUnit, LLVMValueRef V, LLVMMetadataRef Decl = nullptr,
+    uint32_t AlignInBits = 0) {
   llvm::GlobalVariable *InitVal = cast<llvm::GlobalVariable>(unwrap(V));
 
   llvm::DIExpression *InitExpr = nullptr;
@@ -903,14 +898,13 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
         FPVal->getValueAPF().bitcastToAPInt().getZExtValue());
   }
 
-  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
-      unwrapDI<DIDescriptor>(Context), StringRef(Name, NameLen),
-      StringRef(LinkageName, LinkageNameLen),
-      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      /* isDefined */ true,
-      InitExpr, unwrapDIPtr<MDNode>(Decl),
-      /* templateParams */ nullptr,
-      AlignInBits);
+  llvm::DIGlobalVariableExpression *VarExpr =
+      Builder->createGlobalVariableExpression(
+          unwrapDI<DIDescriptor>(Context), StringRef(Name, NameLen),
+          StringRef(LinkageName, LinkageNameLen), unwrapDI<DIFile>(File),
+          LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
+          /* isDefined */ true, InitExpr, unwrapDIPtr<MDNode>(Decl),
+          /* templateParams */ nullptr, AlignInBits);
 
   InitVal->setMetadata("dbg", VarExpr);
 
@@ -919,20 +913,19 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariable(
     LLVMRustDIBuilderRef Builder, unsigned Tag, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    LLVMMetadataRef File, unsigned LineNo,
+    const char *Name, size_t NameLen, LLVMMetadataRef File, unsigned LineNo,
     LLVMMetadataRef Ty, bool AlwaysPreserve, LLVMRustDIFlags Flags,
     unsigned ArgNo, uint32_t AlignInBits) {
   if (Tag == 0x100) { // DW_TAG_auto_variable
     return wrap(Builder->createAutoVariable(
         unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-        unwrapDI<DIFile>(File), LineNo,
-        unwrapDI<DIType>(Ty), AlwaysPreserve, fromRust(Flags), AlignInBits));
+        unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), AlwaysPreserve,
+        fromRust(Flags), AlignInBits));
   } else {
     return wrap(Builder->createParameterVariable(
         unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), ArgNo,
-        unwrapDI<DIFile>(File), LineNo,
-        unwrapDI<DIType>(Ty), AlwaysPreserve, fromRust(Flags)));
+        unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), AlwaysPreserve,
+        fromRust(Flags)));
   }
 }
 
@@ -966,68 +959,68 @@ extern "C" LLVMValueRef LLVMRustDIBuilderInsertDeclareAtEnd(
   return wrap(Builder->insertDeclare(
       unwrap(V), unwrap<DILocalVariable>(VarInfo),
       Builder->createExpression(llvm::ArrayRef<int64_t>(AddrOps, AddrOpsCount)),
-      DebugLoc(cast<MDNode>(unwrap(DL))),
-      unwrap(InsertAtEnd)));
+      DebugLoc(cast<MDNode>(unwrap(DL))), unwrap(InsertAtEnd)));
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerator(
-    LLVMRustDIBuilderRef Builder, const char *Name, size_t NameLen,
-    int64_t Value, bool IsUnsigned) {
-  return wrap(Builder->createEnumerator(StringRef(Name, NameLen), Value, IsUnsigned));
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateEnumerator(LLVMRustDIBuilderRef Builder,
+                                  const char *Name, size_t NameLen,
+                                  int64_t Value, bool IsUnsigned) {
+  return wrap(
+      Builder->createEnumerator(StringRef(Name, NameLen), Value, IsUnsigned));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint32_t AlignInBits, LLVMMetadataRef Elements,
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMMetadataRef Elements,
     LLVMMetadataRef ClassTy, bool IsScoped) {
   return wrap(Builder->createEnumerationType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
-      unwrapDI<DIFile>(File), LineNumber,
-      SizeInBits, AlignInBits, DINodeArray(unwrapDI<MDTuple>(Elements)),
-      unwrapDI<DIType>(ClassTy), "", IsScoped));
+      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
+      DINodeArray(unwrapDI<MDTuple>(Elements)), unwrapDI<DIType>(ClassTy), "",
+      IsScoped));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen,
-    LLVMMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint32_t AlignInBits, LLVMRustDIFlags Flags, LLVMMetadataRef Elements,
-    unsigned RunTimeLang, const char *UniqueId, size_t UniqueIdLen) {
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,
+    uint64_t SizeInBits, uint32_t AlignInBits, LLVMRustDIFlags Flags,
+    LLVMMetadataRef Elements, unsigned RunTimeLang, const char *UniqueId,
+    size_t UniqueIdLen) {
   return wrap(Builder->createUnionType(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIFile>(File),
-      LineNumber, SizeInBits, AlignInBits, fromRust(Flags),
-      DINodeArray(unwrapDI<MDTuple>(Elements)), RunTimeLang,
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIFile>(File), LineNumber, SizeInBits, AlignInBits,
+      fromRust(Flags), DINodeArray(unwrapDI<MDTuple>(Elements)), RunTimeLang,
       StringRef(UniqueId, UniqueIdLen)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTemplateTypeParameter(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen, LLVMMetadataRef Ty) {
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef Ty) {
 #if LLVM_VERSION_GE(11, 0)
   bool IsDefault = false; // FIXME: should we ever set this true?
   return wrap(Builder->createTemplateTypeParameter(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty), IsDefault));
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIType>(Ty), IsDefault));
 #else
   return wrap(Builder->createTemplateTypeParameter(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), unwrapDI<DIType>(Ty)));
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
+      unwrapDI<DIType>(Ty)));
 #endif
 }
 
-extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateNameSpace(
-    LLVMRustDIBuilderRef Builder, LLVMMetadataRef Scope,
-    const char *Name, size_t NameLen, bool ExportSymbols) {
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateNameSpace(LLVMRustDIBuilderRef Builder,
+                                 LLVMMetadataRef Scope, const char *Name,
+                                 size_t NameLen, bool ExportSymbols) {
   return wrap(Builder->createNameSpace(
-      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), ExportSymbols
-  ));
+      unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen), ExportSymbols));
 }
 
-extern "C" void
-LLVMRustDICompositeTypeReplaceArrays(LLVMRustDIBuilderRef Builder,
-                                     LLVMMetadataRef CompositeTy,
-                                     LLVMMetadataRef Elements,
-                                     LLVMMetadataRef Params) {
+extern "C" void LLVMRustDICompositeTypeReplaceArrays(
+    LLVMRustDIBuilderRef Builder, LLVMMetadataRef CompositeTy,
+    LLVMMetadataRef Elements, LLVMMetadataRef Params) {
   DICompositeType *Tmp = unwrapDI<DICompositeType>(CompositeTy);
   Builder->replaceArrays(Tmp, DINodeArray(unwrap<MDTuple>(Elements)),
                          DINodeArray(unwrap<MDTuple>(Params)));
@@ -1039,13 +1032,13 @@ LLVMRustDIBuilderCreateDebugLocation(unsigned Line, unsigned Column,
                                      LLVMMetadataRef InlinedAt) {
 #if LLVM_VERSION_GE(12, 0)
   MDNode *Scope = unwrapDIPtr<MDNode>(ScopeRef);
-  DILocation *Loc = DILocation::get(
-      Scope->getContext(), Line, Column, Scope,
-      unwrapDIPtr<MDNode>(InlinedAt));
+  DILocation *Loc = DILocation::get(Scope->getContext(), Line, Column, Scope,
+                                    unwrapDIPtr<MDNode>(InlinedAt));
   return wrap(Loc);
 #else
-  DebugLoc debug_loc = DebugLoc::get(Line, Column, unwrapDIPtr<MDNode>(ScopeRef),
-                                     unwrapDIPtr<MDNode>(InlinedAt));
+  DebugLoc debug_loc =
+      DebugLoc::get(Line, Column, unwrapDIPtr<MDNode>(ScopeRef),
+                    unwrapDIPtr<MDNode>(InlinedAt));
   return wrap(debug_loc.getAsMDNode());
 #endif
 }
@@ -1063,8 +1056,7 @@ extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
   unwrap<llvm::Type>(Ty)->print(OS);
 }
 
-extern "C" void LLVMRustWriteValueToString(LLVMValueRef V,
-                                           RustStringRef Str) {
+extern "C" void LLVMRustWriteValueToString(LLVMValueRef V, RustStringRef Str) {
   RawRustStringOstream OS(Str);
   if (!V) {
     OS << "(null)";
@@ -1116,7 +1108,7 @@ extern "C" void LLVMRustWriteTwineToString(LLVMTwineRef T, RustStringRef Str) {
 
 extern "C" void LLVMRustUnpackOptimizationDiagnostic(
     LLVMDiagnosticInfoRef DI, RustStringRef PassNameOut,
-    LLVMValueRef *FunctionOut, unsigned* Line, unsigned* Column,
+    LLVMValueRef *FunctionOut, unsigned *Line, unsigned *Column,
     RustStringRef FilenameOut, RustStringRef MessageOut) {
   // Undefined to call this not on an optimization diagnostic!
   llvm::DiagnosticInfoOptimizationBase *Opt =
@@ -1139,17 +1131,16 @@ extern "C" void LLVMRustUnpackOptimizationDiagnostic(
 }
 
 enum class LLVMRustDiagnosticLevel {
-    Error,
-    Warning,
-    Note,
-    Remark,
+  Error,
+  Warning,
+  Note,
+  Remark,
 };
 
 extern "C" void
 LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI,
                                   LLVMRustDiagnosticLevel *LevelOut,
-                                  unsigned *CookieOut,
-                                  LLVMTwineRef *MessageOut,
+                                  unsigned *CookieOut, LLVMTwineRef *MessageOut,
                                   LLVMValueRef *InstructionOut) {
   // Undefined to call this not on an inline assembly diagnostic!
   llvm::DiagnosticInfoInlineAsm *IA =
@@ -1160,20 +1151,20 @@ LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI,
   *InstructionOut = wrap(IA->getInstruction());
 
   switch (IA->getSeverity()) {
-    case DS_Error:
-      *LevelOut = LLVMRustDiagnosticLevel::Error;
-      break;
-    case DS_Warning:
-      *LevelOut = LLVMRustDiagnosticLevel::Warning;
-      break;
-    case DS_Note:
-      *LevelOut = LLVMRustDiagnosticLevel::Note;
-      break;
-    case DS_Remark:
-      *LevelOut = LLVMRustDiagnosticLevel::Remark;
-      break;
-    default:
-      report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
+  case DS_Error:
+    *LevelOut = LLVMRustDiagnosticLevel::Error;
+    break;
+  case DS_Warning:
+    *LevelOut = LLVMRustDiagnosticLevel::Warning;
+    break;
+  case DS_Note:
+    *LevelOut = LLVMRustDiagnosticLevel::Note;
+    break;
+  case DS_Remark:
+    *LevelOut = LLVMRustDiagnosticLevel::Remark;
+    break;
+  default:
+    report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
   }
 }
 
@@ -1303,11 +1294,12 @@ DEFINE_SIMPLE_CONVERSION_FUNCTIONS(SMDiagnostic, LLVMSMDiagnosticRef)
 #if LLVM_VERSION_LT(13, 0)
 using LLVMInlineAsmDiagHandlerTy = LLVMContext::InlineAsmDiagHandlerTy;
 #else
-using LLVMInlineAsmDiagHandlerTy = void*;
+using LLVMInlineAsmDiagHandlerTy = void *;
 #endif
 
-extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
-    LLVMContextRef C, LLVMInlineAsmDiagHandlerTy H, void *CX) {
+extern "C" void
+LLVMRustSetInlineAsmDiagnosticHandler(LLVMContextRef C,
+                                      LLVMInlineAsmDiagHandlerTy H, void *CX) {
   // Diagnostic handlers were unified in LLVM change 5de2d189e6ad, so starting
   // with LLVM 13 this function is gone.
 #if LLVM_VERSION_LT(13, 0)
@@ -1315,40 +1307,40 @@ extern "C" void LLVMRustSetInlineAsmDiagnosticHandler(
 #endif
 }
 
-extern "C" bool LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef,
-                                           RustStringRef MessageOut,
-                                           RustStringRef BufferOut,
-                                           LLVMRustDiagnosticLevel* LevelOut,
-                                           unsigned* LocOut,
-                                           unsigned* RangesOut,
-                                           size_t* NumRanges) {
-  SMDiagnostic& D = *unwrap(DRef);
+extern "C" bool
+LLVMRustUnpackSMDiagnostic(LLVMSMDiagnosticRef DRef, RustStringRef MessageOut,
+                           RustStringRef BufferOut,
+                           LLVMRustDiagnosticLevel *LevelOut, unsigned *LocOut,
+                           unsigned *RangesOut, size_t *NumRanges) {
+  SMDiagnostic &D = *unwrap(DRef);
   RawRustStringOstream MessageOS(MessageOut);
   MessageOS << D.getMessage();
 
   switch (D.getKind()) {
-    case SourceMgr::DK_Error:
-      *LevelOut = LLVMRustDiagnosticLevel::Error;
-      break;
-    case SourceMgr::DK_Warning:
-      *LevelOut = LLVMRustDiagnosticLevel::Warning;
-      break;
-    case SourceMgr::DK_Note:
-      *LevelOut = LLVMRustDiagnosticLevel::Note;
-      break;
-    case SourceMgr::DK_Remark:
-      *LevelOut = LLVMRustDiagnosticLevel::Remark;
-      break;
-    default:
-      report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
+  case SourceMgr::DK_Error:
+    *LevelOut = LLVMRustDiagnosticLevel::Error;
+    break;
+  case SourceMgr::DK_Warning:
+    *LevelOut = LLVMRustDiagnosticLevel::Warning;
+    break;
+  case SourceMgr::DK_Note:
+    *LevelOut = LLVMRustDiagnosticLevel::Note;
+    break;
+  case SourceMgr::DK_Remark:
+    *LevelOut = LLVMRustDiagnosticLevel::Remark;
+    break;
+  default:
+    report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
   }
 
   if (D.getLoc() == SMLoc())
     return false;
 
   const SourceMgr &LSM = *D.getSourceMgr();
-  const MemoryBuffer *LBuf = LSM.getMemoryBuffer(LSM.FindBufferContainingLoc(D.getLoc()));
-  LLVMRustStringWriteImpl(BufferOut, LBuf->getBufferStart(), LBuf->getBufferSize());
+  const MemoryBuffer *LBuf =
+      LSM.getMemoryBuffer(LSM.FindBufferContainingLoc(D.getLoc()));
+  LLVMRustStringWriteImpl(BufferOut, LBuf->getBufferStart(),
+                          LBuf->getBufferSize());
 
   *LocOut = D.getLoc().getPointer() - LBuf->getBufferStart();
 
@@ -1383,9 +1375,11 @@ extern "C" LLVMValueRef LLVMRustBuildCleanupRet(LLVMBuilderRef B,
   return wrap(unwrap(B)->CreateCleanupRet(Inst, unwrap(UnwindBB)));
 }
 
-extern "C" LLVMValueRef
-LLVMRustBuildCatchPad(LLVMBuilderRef B, LLVMValueRef ParentPad,
-                      unsigned ArgCount, LLVMValueRef *LLArgs, const char *Name) {
+extern "C" LLVMValueRef LLVMRustBuildCatchPad(LLVMBuilderRef B,
+                                              LLVMValueRef ParentPad,
+                                              unsigned ArgCount,
+                                              LLVMValueRef *LLArgs,
+                                              const char *Name) {
   Value **Args = unwrap(LLArgs);
   return wrap(unwrap(B)->CreateCatchPad(
       unwrap(ParentPad), ArrayRef<Value *>(Args, ArgCount), Name));
@@ -1394,8 +1388,8 @@ LLVMRustBuildCatchPad(LLVMBuilderRef B, LLVMValueRef ParentPad,
 extern "C" LLVMValueRef LLVMRustBuildCatchRet(LLVMBuilderRef B,
                                               LLVMValueRef Pad,
                                               LLVMBasicBlockRef BB) {
-  return wrap(unwrap(B)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)),
-                                              unwrap(BB)));
+  return wrap(
+      unwrap(B)->CreateCatchRet(cast<CatchPadInst>(unwrap(Pad)), unwrap(BB)));
 }
 
 extern "C" LLVMValueRef LLVMRustBuildCatchSwitch(LLVMBuilderRef B,
@@ -1408,7 +1402,7 @@ extern "C" LLVMValueRef LLVMRustBuildCatchSwitch(LLVMBuilderRef B,
     ParentPad = wrap(Constant::getNullValue(Ty));
   }
   return wrap(unwrap(B)->CreateCatchSwitch(unwrap(ParentPad), unwrap(BB),
-                                                 NumHandlers, Name));
+                                           NumHandlers, Name));
 }
 
 extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
@@ -1431,44 +1425,45 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMValueRef Fn,
                                           LLVMValueRef *Args, unsigned NumArgs,
                                           OperandBundleDef *Bundle) {
   Value *Callee = unwrap(Fn);
-  FunctionType *FTy = cast<FunctionType>(Callee->getType()->getPointerElementType());
+  FunctionType *FTy =
+      cast<FunctionType>(Callee->getType()->getPointerElementType());
   unsigned Len = Bundle ? 1 : 0;
   ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, Len);
   return wrap(unwrap(B)->CreateCall(
       FTy, Callee, makeArrayRef(unwrap(Args), NumArgs), Bundles));
 }
 
-extern "C" LLVMValueRef LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
-  return wrap(llvm::Intrinsic::getDeclaration(unwrap(M),
-              (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_increment));
+extern "C" LLVMValueRef
+LLVMRustGetInstrProfIncrementIntrinsic(LLVMModuleRef M) {
+  return wrap(llvm::Intrinsic::getDeclaration(
+      unwrap(M), (llvm::Intrinsic::ID)llvm::Intrinsic::instrprof_increment));
 }
 
-extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
-                                            LLVMValueRef Dst, unsigned DstAlign,
-                                            LLVMValueRef Src, unsigned SrcAlign,
-                                            LLVMValueRef Size, bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemCpy(
-      unwrap(Dst), MaybeAlign(DstAlign),
-      unwrap(Src), MaybeAlign(SrcAlign),
-      unwrap(Size), IsVolatile));
+extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B, LLVMValueRef Dst,
+                                            unsigned DstAlign, LLVMValueRef Src,
+                                            unsigned SrcAlign,
+                                            LLVMValueRef Size,
+                                            bool IsVolatile) {
+  return wrap(unwrap(B)->CreateMemCpy(unwrap(Dst), MaybeAlign(DstAlign),
+                                      unwrap(Src), MaybeAlign(SrcAlign),
+                                      unwrap(Size), IsVolatile));
 }
 
-extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
-                                             LLVMValueRef Dst, unsigned DstAlign,
-                                             LLVMValueRef Src, unsigned SrcAlign,
-                                             LLVMValueRef Size, bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemMove(
-      unwrap(Dst), MaybeAlign(DstAlign),
-      unwrap(Src), MaybeAlign(SrcAlign),
-      unwrap(Size), IsVolatile));
+extern "C" LLVMValueRef
+LLVMRustBuildMemMove(LLVMBuilderRef B, LLVMValueRef Dst, unsigned DstAlign,
+                     LLVMValueRef Src, unsigned SrcAlign, LLVMValueRef Size,
+                     bool IsVolatile) {
+  return wrap(unwrap(B)->CreateMemMove(unwrap(Dst), MaybeAlign(DstAlign),
+                                       unwrap(Src), MaybeAlign(SrcAlign),
+                                       unwrap(Size), IsVolatile));
 }
 
-extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B,
-                                            LLVMValueRef Dst, unsigned DstAlign,
-                                            LLVMValueRef Val,
-                                            LLVMValueRef Size, bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemSet(
-      unwrap(Dst), unwrap(Val), unwrap(Size), MaybeAlign(DstAlign), IsVolatile));
+extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
+                                            unsigned DstAlign, LLVMValueRef Val,
+                                            LLVMValueRef Size,
+                                            bool IsVolatile) {
+  return wrap(unwrap(B)->CreateMemSet(unwrap(Dst), unwrap(Val), unwrap(Size),
+                                      MaybeAlign(DstAlign), IsVolatile));
 }
 
 extern "C" LLVMValueRef
@@ -1477,7 +1472,8 @@ LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
                     LLVMBasicBlockRef Catch, OperandBundleDef *Bundle,
                     const char *Name) {
   Value *Callee = unwrap(Fn);
-  FunctionType *FTy = cast<FunctionType>(Callee->getType()->getPointerElementType());
+  FunctionType *FTy =
+      cast<FunctionType>(Callee->getType()->getPointerElementType());
   unsigned Len = Bundle ? 1 : 0;
   ArrayRef<OperandBundleDef> Bundles = makeArrayRef(Bundle, Len);
   return wrap(unwrap(B)->CreateInvoke(FTy, Callee, unwrap(Then), unwrap(Catch),
@@ -1586,21 +1582,23 @@ extern "C" void LLVMRustSetLinkage(LLVMValueRef V,
   LLVMSetLinkage(V, fromRust(RustLinkage));
 }
 
-// Returns true if both high and low were successfully set. Fails in case constant wasn’t any of
-// the common sizes (1, 8, 16, 32, 64, 128 bits)
-extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext, uint64_t *high, uint64_t *low)
-{
-    auto C = unwrap<llvm::ConstantInt>(CV);
-    if (C->getBitWidth() > 128) { return false; }
-    APInt AP;
-    if (sext) {
-        AP = C->getValue().sextOrSelf(128);
-    } else {
-        AP = C->getValue().zextOrSelf(128);
-    }
-    *low = AP.getLoBits(64).getZExtValue();
-    *high = AP.getHiBits(64).getZExtValue();
-    return true;
+// Returns true if both high and low were successfully set. Fails in case
+// constant wasn’t any of the common sizes (1, 8, 16, 32, 64, 128 bits)
+extern "C" bool LLVMRustConstInt128Get(LLVMValueRef CV, bool sext,
+                                       uint64_t *high, uint64_t *low) {
+  auto C = unwrap<llvm::ConstantInt>(CV);
+  if (C->getBitWidth() > 128) {
+    return false;
+  }
+  APInt AP;
+  if (sext) {
+    AP = C->getValue().sextOrSelf(128);
+  } else {
+    AP = C->getValue().zextOrSelf(128);
+  }
+  *low = AP.getLoBits(64).getZExtValue();
+  *high = AP.getHiBits(64).getZExtValue();
+  return true;
 }
 
 enum class LLVMRustVisibility {
@@ -1639,8 +1637,10 @@ extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
 
 // Oh hey, a binding that makes sense for once? (because LLVM’s own do not)
 extern "C" LLVMValueRef LLVMRustBuildIntCast(LLVMBuilderRef B, LLVMValueRef Val,
-                                             LLVMTypeRef DestTy, bool isSigned) {
-  return wrap(unwrap(B)->CreateIntCast(unwrap(Val), unwrap(DestTy), isSigned, ""));
+                                             LLVMTypeRef DestTy,
+                                             bool isSigned) {
+  return wrap(
+      unwrap(B)->CreateIntCast(unwrap(Val), unwrap(DestTy), isSigned, ""));
 }
 
 extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
@@ -1656,8 +1656,7 @@ struct LLVMRustModuleBuffer {
   std::string data;
 };
 
-extern "C" LLVMRustModuleBuffer*
-LLVMRustModuleBufferCreate(LLVMModuleRef M) {
+extern "C" LLVMRustModuleBuffer *LLVMRustModuleBufferCreate(LLVMModuleRef M) {
   auto Ret = std::make_unique<LLVMRustModuleBuffer>();
   {
     raw_string_ostream OS(Ret->data);
@@ -1670,63 +1669,64 @@ LLVMRustModuleBufferCreate(LLVMModuleRef M) {
   return Ret.release();
 }
 
-extern "C" void
-LLVMRustModuleBufferFree(LLVMRustModuleBuffer *Buffer) {
+extern "C" void LLVMRustModuleBufferFree(LLVMRustModuleBuffer *Buffer) {
   delete Buffer;
 }
 
-extern "C" const void*
+extern "C" const void *
 LLVMRustModuleBufferPtr(const LLVMRustModuleBuffer *Buffer) {
   return Buffer->data.data();
 }
 
-extern "C" size_t
-LLVMRustModuleBufferLen(const LLVMRustModuleBuffer *Buffer) {
+extern "C" size_t LLVMRustModuleBufferLen(const LLVMRustModuleBuffer *Buffer) {
   return Buffer->data.length();
 }
 
-extern "C" uint64_t
-LLVMRustModuleCost(LLVMModuleRef M) {
+extern "C" uint64_t LLVMRustModuleCost(LLVMModuleRef M) {
   auto f = unwrap(M)->functions();
   return std::distance(std::begin(f), std::end(f));
 }
 
 // Vector reductions:
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
-    return wrap(unwrap(B)->CreateFAddReduce(unwrap(Acc),unwrap(Src)));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B,
+                                                      LLVMValueRef Acc,
+                                                      LLVMValueRef Src) {
+  return wrap(unwrap(B)->CreateFAddReduce(unwrap(Acc), unwrap(Src)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFMul(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
-    return wrap(unwrap(B)->CreateFMulReduce(unwrap(Acc),unwrap(Src)));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceFMul(LLVMBuilderRef B,
+                                                      LLVMValueRef Acc,
+                                                      LLVMValueRef Src) {
+  return wrap(unwrap(B)->CreateFMulReduce(unwrap(Acc), unwrap(Src)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceAdd(LLVMBuilderRef B, LLVMValueRef Src) {
-    return wrap(unwrap(B)->CreateAddReduce(unwrap(Src)));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceAdd(LLVMBuilderRef B,
+                                                     LLVMValueRef Src) {
+  return wrap(unwrap(B)->CreateAddReduce(unwrap(Src)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceMul(LLVMBuilderRef B, LLVMValueRef Src) {
-    return wrap(unwrap(B)->CreateMulReduce(unwrap(Src)));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceMul(LLVMBuilderRef B,
+                                                     LLVMValueRef Src) {
+  return wrap(unwrap(B)->CreateMulReduce(unwrap(Src)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceAnd(LLVMBuilderRef B, LLVMValueRef Src) {
-    return wrap(unwrap(B)->CreateAndReduce(unwrap(Src)));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceAnd(LLVMBuilderRef B,
+                                                     LLVMValueRef Src) {
+  return wrap(unwrap(B)->CreateAndReduce(unwrap(Src)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceOr(LLVMBuilderRef B, LLVMValueRef Src) {
-    return wrap(unwrap(B)->CreateOrReduce(unwrap(Src)));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceOr(LLVMBuilderRef B,
+                                                    LLVMValueRef Src) {
+  return wrap(unwrap(B)->CreateOrReduce(unwrap(Src)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceXor(LLVMBuilderRef B, LLVMValueRef Src) {
-    return wrap(unwrap(B)->CreateXorReduce(unwrap(Src)));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceXor(LLVMBuilderRef B,
+                                                     LLVMValueRef Src) {
+  return wrap(unwrap(B)->CreateXorReduce(unwrap(Src)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceMin(LLVMBuilderRef B, LLVMValueRef Src, bool IsSigned) {
-    return wrap(unwrap(B)->CreateIntMinReduce(unwrap(Src), IsSigned));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceMin(LLVMBuilderRef B,
+                                                     LLVMValueRef Src,
+                                                     bool IsSigned) {
+  return wrap(unwrap(B)->CreateIntMinReduce(unwrap(Src), IsSigned));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceMax(LLVMBuilderRef B, LLVMValueRef Src, bool IsSigned) {
-    return wrap(unwrap(B)->CreateIntMaxReduce(unwrap(Src), IsSigned));
+extern "C" LLVMValueRef LLVMRustBuildVectorReduceMax(LLVMBuilderRef B,
+                                                     LLVMValueRef Src,
+                                                     bool IsSigned) {
+  return wrap(unwrap(B)->CreateIntMaxReduce(unwrap(Src), IsSigned));
 }
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMin(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
@@ -1749,11 +1749,11 @@ LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
 #endif
 }
 
-extern "C" LLVMValueRef
-LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
-    return wrap(unwrap(B)->CreateMinNum(unwrap(LHS),unwrap(RHS)));
+extern "C" LLVMValueRef LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS,
+                                            LLVMValueRef RHS) {
+  return wrap(unwrap(B)->CreateMinNum(unwrap(LHS), unwrap(RHS)));
 }
-extern "C" LLVMValueRef
-LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
-    return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS),unwrap(RHS)));
+extern "C" LLVMValueRef LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS,
+                                            LLVMValueRef RHS) {
+  return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS), unwrap(RHS)));
 }
