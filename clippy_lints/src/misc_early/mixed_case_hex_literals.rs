@@ -4,7 +4,12 @@ use rustc_lint::EarlyContext;
 
 use super::MIXED_CASE_HEX_LITERALS;
 
-pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, maybe_last_sep_idx: usize, lit_snip: String) {
+pub(super) fn check(cx: &EarlyContext<'_>, lit: &Lit, suffix: &str, lit_snip: String) {
+    let maybe_last_sep_idx = if let Some(val) = lit_snip.len().checked_sub(suffix.len() + 1) {
+        val
+    } else {
+        return; // It's useless so shouldn't lint.
+    };
     if maybe_last_sep_idx <= 2 {
         // It's meaningless or causes range error.
         return;

@@ -7,12 +7,11 @@ mod unneeded_wildcard_pattern;
 mod unseparated_literal_suffix;
 mod zero_prefixed_literal;
 
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::diagnostics::span_lint;
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Expr, Generics, Lit, LitFloatType, LitIntType, LitKind, NodeId, Pat, PatKind};
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -333,34 +332,17 @@ impl MiscEarlyLints {
                 LitIntType::Unsigned(ty) => ty.name_str(),
                 LitIntType::Unsuffixed => "",
             };
-
-            let maybe_last_sep_idx = if let Some(val) = lit_snip.len().checked_sub(suffix.len() + 1) {
-                val
-            } else {
-                return; // It's useless so shouldn't lint.
-            };
-            // Do not lint when literal is unsuffixed.
-            if !suffix.is_empty() && lit_snip.as_bytes()[maybe_last_sep_idx] != b'_' {
-                span_lint_and_sugg(
-                    cx,
-                    UNSEPARATED_LITERAL_SUFFIX,
-                    lit.span,
-                    "integer type suffix should be separated by an underscore",
-                    "add an underscore",
-                    format!("{}_{}", &lit_snip[..=maybe_last_sep_idx], suffix),
-                    Applicability::MachineApplicable,
-                );
-            }
-
+            unseparated_literal_suffix::check(cx, lit, &lit_snip, suffix, "integer");
             if lit_snip.starts_with("0x") {
-                mixed_case_hex_literals::check(cx, lit, maybe_last_sep_idx, lit_snip)
+                mixed_case_hex_literals::check(cx, lit, suffix, lit_snip)
             } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
                 /* nothing to do */
             } else if value != 0 && lit_snip.starts_with('0') {
                 zero_prefixed_literal::check(cx, lit, lit_snip)
             }
         } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
-            unseparated_literal_suffix::check(cx, lit, float_ty, lit_snip)
+            let suffix = float_ty.name_str();
+            unseparated_literal_suffix::check(cx, lit, &lit_snip, suffix, "float")
         }
     }
 }
