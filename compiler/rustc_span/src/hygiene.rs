@@ -1330,7 +1330,7 @@ fn update_disambiguator(expn_id: ExpnId) {
             // This cache is only used by `DummyHashStableContext`,
             // so we won't pollute the cache values of the normal `StableHashingContext`
             thread_local! {
-                static CACHE: ExpnIdCache = Default::default();
+                static CACHE: ExpnIdCache = const { ExpnIdCache::new(Vec::new()) };
             }
 
             &CACHE

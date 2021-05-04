@@ -1705,7 +1705,7 @@ pub mod tls {
     #[cfg(not(parallel_compiler))]
     thread_local! {
         /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
-        static TLV: Cell<usize> = Cell::new(0);
+        static TLV: Cell<usize> = const { Cell::new(0) };
     }
 
     /// Sets TLV to `value` during the call to `f`.
