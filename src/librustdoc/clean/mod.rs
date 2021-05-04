@@ -2009,7 +2009,7 @@ fn clean_extern_crate(
         def_id: crate_def_id,
         visibility: krate.vis.clean(cx),
         kind: box ExternCrateItem { src: orig_name },
-        cfg: attrs.cfg(cx.sess().diagnostic()),
+        cfg: attrs.cfg(cx.sess()),
     }]
 }
 
