@@ -122,16 +122,27 @@ pub fn expand_hypothetical(
     hypothetical_args: &ast::TokenTree,
     token_to_map: SyntaxToken,
 ) -> Option<(SyntaxNode, SyntaxToken)> {
-    let macro_file = MacroFile { macro_call_id: actual_macro_call };
     let (tt, tmap_1) = mbe::syntax_node_to_token_tree(hypothetical_args.syntax());
     let range =
         token_to_map.text_range().checked_sub(hypothetical_args.syntax().text_range().start())?;
     let token_id = tmap_1.token_by_range(range)?;
-    let macro_def = expander(db, actual_macro_call)?;
 
-    let hypothetical_expansion =
-        macro_expand_with_arg(db, macro_file.macro_call_id, Some(Arc::new((tt, tmap_1))));
-    let (node, tmap_2) = expansion_to_syntax(db, macro_file, hypothetical_expansion).value?;
+    let lazy_id = match actual_macro_call {
+        MacroCallId::LazyMacro(id) => id,
+        MacroCallId::EagerMacro(_) => return None,
+    };
+
+    let macro_def = {
+        let loc = db.lookup_intern_macro(lazy_id);
+        db.macro_def(loc.def)?
+    };
+
+    let hypothetical_expansion = macro_def.expand(db, lazy_id, &tt);
+
+    let fragment_kind = to_fragment_kind(db, actual_macro_call);
+
+    let (node, tmap_2) =
+        mbe::token_tree_to_syntax_node(&hypothetical_expansion.value, fragment_kind).ok()?;
 
     let token_id = macro_def.map_id_down(token_id);
     let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
@@ -157,16 +168,8 @@ fn parse_macro_expansion(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
 ) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
-    let result = db.macro_expand(macro_file.macro_call_id);
-    expansion_to_syntax(db, macro_file, result)
-}
-
-fn expansion_to_syntax(
-    db: &dyn AstDatabase,
-    macro_file: MacroFile,
-    result: ExpandResult<Option<Arc<tt::Subtree>>>,
-) -> ExpandResult<Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>> {
     let _p = profile::span("parse_macro_expansion");
+    let result = db.macro_expand(macro_file.macro_call_id);
 
     if let Some(err) = &result.err {
         // Note:
@@ -307,19 +310,6 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
 
 fn macro_expand_error(db: &dyn AstDatabase, macro_call: MacroCallId) -> Option<ExpandError> {
     db.macro_expand(macro_call).err
-}
-
-fn expander(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<TokenExpander>> {
-    let lazy_id = match id {
-        MacroCallId::LazyMacro(id) => id,
-        MacroCallId::EagerMacro(_id) => {
-            return None;
-        }
-    };
-
-    let loc = db.lookup_intern_macro(lazy_id);
-    let macro_rules = db.macro_def(loc.def)?;
-    Some(macro_rules)
 }
 
 fn macro_expand_with_arg(
