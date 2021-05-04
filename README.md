@@ -164,7 +164,7 @@ doesn't expose any environment to the program, so running
 `RUST_BACKTRACE=1 cargo miri test` will not do what you expect.
 
 To get a backtrace, you need to disable isolation
-[using `-Zmiri-disable-isolation`](#miri-flags):
+[using `-Zmiri-disable-isolation`][miri-flags]:
 
 ```sh
 RUST_BACKTRACE=1 MIRIFLAGS="-Zmiri-disable-isolation" cargo miri test
