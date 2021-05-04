@@ -8,12 +8,14 @@ fn main() {
     match despondency {
         1...2 => {}
         //~^ WARN `...` range patterns are deprecated
+        //~| WARN this was previously accepted by the compiler
         _ => {}
     }
 
     match &despondency {
         &1...2 => {}
         //~^ WARN `...` range patterns are deprecated
+        //~| WARN this was previously accepted by the compiler
         _ => {}
     }
 }

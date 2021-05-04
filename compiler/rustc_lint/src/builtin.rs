@@ -1660,7 +1660,11 @@ declare_lint! {
     /// [`..` range expression]: https://doc.rust-lang.org/reference/expressions/range-expr.html
     pub ELLIPSIS_INCLUSIVE_RANGE_PATTERNS,
     Warn,
-    "`...` range patterns are deprecated"
+    "`...` range patterns are deprecated",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #80165 <https://github.com/rust-lang/rust/issues/80165>",
+        edition: Some(Edition::Edition2021),
+    };
 }
 
 #[derive(Default)]
@@ -1704,32 +1708,57 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             let suggestion = "use `..=` for an inclusive range";
             if parenthesise {
                 self.node_id = Some(pat.id);
-                cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, |lint| {
-                    let end = expr_to_string(&end);
-                    let replace = match start {
-                        Some(start) => format!("&({}..={})", expr_to_string(&start), end),
-                        None => format!("&(..={})", end),
-                    };
-                    lint.build(msg)
-                        .span_suggestion(
-                            pat.span,
-                            suggestion,
-                            replace,
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
+                let end = expr_to_string(&end);
+                let replace = match start {
+                    Some(start) => format!("&({}..={})", expr_to_string(&start), end),
+                    None => format!("&(..={})", end),
+                };
+                if join.edition() >= Edition::Edition2021 {
+                    let mut err =
+                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                    err.span_suggestion(
+                        pat.span,
+                        suggestion,
+                        replace,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                } else {
+                    cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, |lint| {
+                        lint.build(msg)
+                            .span_suggestion(
+                                pat.span,
+                                suggestion,
+                                replace,
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                    });
+                }
             } else {
-                cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, |lint| {
-                    lint.build(msg)
-                        .span_suggestion_short(
-                            join,
-                            suggestion,
-                            "..=".to_owned(),
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                });
+                let replace = "..=".to_owned();
+                if join.edition() >= Edition::Edition2021 {
+                    let mut err =
+                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                    err.span_suggestion_short(
+                        join,
+                        suggestion,
+                        replace,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                } else {
+                    cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, |lint| {
+                        lint.build(msg)
+                            .span_suggestion_short(
+                                join,
+                                suggestion,
+                                replace,
+                                Applicability::MachineApplicable,
+                            )
+                            .emit();
+                    });
+                }
             };
         }
     }

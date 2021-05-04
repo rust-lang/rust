@@ -30,6 +30,7 @@ use rustc_middle::ty::{
 use rustc_session::lint;
 use rustc_session::lint::builtin::BARE_TRAIT_OBJECTS;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition;
 use rustc_span::source_map::{original_sp, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{self, BytePos, MultiSpan, Span};
@@ -969,20 +970,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
                 self_ty.kind
             {
-                self.tcx.struct_span_lint_hir(BARE_TRAIT_OBJECTS, hir_id, self_ty.span, |lint| {
-                    let mut db = lint
-                        .build(&format!("trait objects without an explicit `dyn` are deprecated"));
-                    let (sugg, app) = match self.tcx.sess.source_map().span_to_snippet(self_ty.span)
-                    {
-                        Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
-                            (format!("<dyn ({})>", s), Applicability::MachineApplicable)
-                        }
-                        Ok(s) => (format!("<dyn {}>", s), Applicability::MachineApplicable),
-                        Err(_) => ("<dyn <type>>".to_string(), Applicability::HasPlaceholders),
-                    };
-                    db.span_suggestion(self_ty.span, "use `dyn`", sugg, app);
-                    db.emit()
-                });
+                let msg = "trait objects without an explicit `dyn` are deprecated";
+                let (sugg, app) = match self.tcx.sess.source_map().span_to_snippet(self_ty.span) {
+                    Ok(s) if poly_trait_ref.trait_ref.path.is_global() => {
+                        (format!("<dyn ({})>", s), Applicability::MachineApplicable)
+                    }
+                    Ok(s) => (format!("<dyn {}>", s), Applicability::MachineApplicable),
+                    Err(_) => ("<dyn <type>>".to_string(), Applicability::HasPlaceholders),
+                };
+                let replace = String::from("use `dyn`");
+                if self.sess().edition() >= Edition::Edition2021 {
+                    let mut err = rustc_errors::struct_span_err!(
+                        self.sess(),
+                        self_ty.span,
+                        E0783,
+                        "{}",
+                        msg,
+                    );
+                    err.span_suggestion(
+                        self_ty.span,
+                        &sugg,
+                        replace,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                } else {
+                    self.tcx.struct_span_lint_hir(
+                        BARE_TRAIT_OBJECTS,
+                        hir_id,
+                        self_ty.span,
+                        |lint| {
+                            let mut db = lint.build(msg);
+                            db.span_suggestion(self_ty.span, &replace, sugg, app);
+                            db.emit()
+                        },
+                    );
+                }
             }
         }
     }
