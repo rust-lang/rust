@@ -27,10 +27,15 @@ const TOKEN_LIMIT: usize = 524288;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
+    /// Old-style `macro_rules`.
     MacroRules(mbe::MacroRules),
+    /// AKA macros 2.0.
     MacroDef(mbe::MacroDef),
+    /// Stuff like `line!` and `file!`.
     Builtin(BuiltinFnLikeExpander),
+    /// `derive(Copy)` and such.
     BuiltinDerive(BuiltinDeriveExpander),
+    /// The thing we love the most here in rust-analyzer -- procedural macros.
     ProcMacro(ProcMacroExpander),
 }
 
