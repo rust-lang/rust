@@ -3,14 +3,14 @@
 use std::sync::Arc;
 
 use base_db::{salsa, SourceDatabase};
-use mbe::{ExpandError, ExpandResult, MacroDef, MacroRules};
+use mbe::{ExpandError, ExpandResult};
 use parser::FragmentKind;
 use syntax::{
     algo::diff,
-    ast::{MacroStmts, NameOwner},
+    ast::{self, NameOwner},
     AstNode, GreenNode, Parse,
     SyntaxKind::*,
-    SyntaxNode,
+    SyntaxNode, SyntaxToken,
 };
 
 use crate::{
@@ -120,9 +120,9 @@ pub trait AstDatabase: SourceDatabase {
 pub fn expand_hypothetical(
     db: &dyn AstDatabase,
     actual_macro_call: MacroCallId,
-    hypothetical_args: &syntax::ast::TokenTree,
-    token_to_map: syntax::SyntaxToken,
-) -> Option<(SyntaxNode, syntax::SyntaxToken)> {
+    hypothetical_args: &ast::TokenTree,
+    token_to_map: SyntaxToken,
+) -> Option<(SyntaxNode, SyntaxToken)> {
     let macro_file = MacroFile { macro_call_id: actual_macro_call };
     let (tt, tmap_1) = mbe::syntax_node_to_token_tree(hypothetical_args.syntax());
     let range =
@@ -146,10 +146,10 @@ fn ast_id_map(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
         MacroDefKind::Declarative(ast_id) => match ast_id.to_node(db) {
-            syntax::ast::Macro::MacroRules(macro_rules) => {
+            ast::Macro::MacroRules(macro_rules) => {
                 let arg = macro_rules.token_tree()?;
                 let (tt, tmap) = mbe::ast_to_token_tree(&arg);
-                let rules = match MacroRules::parse(&tt) {
+                let rules = match mbe::MacroRules::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
                         let name = macro_rules.name().map(|n| n.to_string()).unwrap_or_default();
@@ -159,10 +159,10 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<(TokenExpander,
                 };
                 Some(Arc::new((TokenExpander::MacroRules(rules), tmap)))
             }
-            syntax::ast::Macro::MacroDef(macro_def) => {
+            ast::Macro::MacroDef(macro_def) => {
                 let arg = macro_def.body()?;
                 let (tt, tmap) = mbe::ast_to_token_tree(&arg);
-                let rules = match MacroDef::parse(&tt) {
+                let rules = match mbe::MacroDef::parse(&tt) {
                     Ok(it) => it,
                     Err(err) => {
                         let name = macro_def.name().map(|n| n.to_string()).unwrap_or_default();
@@ -408,7 +408,7 @@ fn is_self_replicating(from: &SyntaxNode, to: &SyntaxNode) -> bool {
     if diff(from, to).is_empty() {
         return true;
     }
-    if let Some(stmts) = MacroStmts::cast(from.clone()) {
+    if let Some(stmts) = ast::MacroStmts::cast(from.clone()) {
         if stmts.statements().any(|stmt| diff(stmt.syntax(), to).is_empty()) {
             return true;
         }
