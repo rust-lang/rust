@@ -1,4 +1,4 @@
-use std::collections::{HashMap, LinkedList, VecDeque};
+use std::collections::{BinaryHeap, HashMap, LinkedList, VecDeque};
 
 fn main() {
     let sample = [1; 5];
@@ -60,6 +60,11 @@ mod issue7110 {
     fn lint_linked_list() -> usize {
         let sample = [1; 5];
         let indirect_len: LinkedList<_> = sample.iter().collect();
+        indirect_len.len()
+    }
+    fn lint_binary_heap() -> usize {
+        let sample = [1; 5];
+        let indirect_len: BinaryHeap<_> = sample.iter().collect();
         indirect_len.len()
     }
     fn dont_lint(string: &str) -> usize {

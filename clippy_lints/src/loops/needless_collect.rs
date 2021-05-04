@@ -85,6 +85,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if let ty = cx.typeck_results().node_type(hir_id);
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
+                    is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
                     match_type(cx, ty, &paths::LINKED_LIST);
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
                 if let [iter_call] = &*iter_calls;

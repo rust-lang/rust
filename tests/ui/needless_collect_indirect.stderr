@@ -111,5 +111,19 @@ LL |
 LL |         sample.iter().count()
    |
 
-error: aborting due to 8 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:67:57
+   |
+LL |         let indirect_len: BinaryHeap<_> = sample.iter().collect();
+   |                                                         ^^^^^^^
+LL |         indirect_len.len()
+   |         ------------------ the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL |         
+LL |         sample.iter().count()
+   |
+
+error: aborting due to 9 previous errors
 
