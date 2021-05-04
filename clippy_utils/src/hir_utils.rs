@@ -713,7 +713,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(e);
 
                 for arm in arms {
-                    // TODO: arm.pat?
+                    self.hash_pat(arm.pat);
                     if let Some(ref e) = arm.guard {
                         self.hash_guard(e);
                     }
@@ -791,6 +791,72 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
     }
 
+    pub fn hash_pat(&mut self, pat: &Pat<'_>) {
+        std::mem::discriminant(&pat.kind).hash(&mut self.s);
+        match pat.kind {
+            PatKind::Binding(ann, _, _, pat) => {
+                ann.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                if let Some(pat) = pat {
+                    self.hash_pat(pat);
+                }
+            },
+            PatKind::Box(pat) => self.hash_pat(pat),
+            PatKind::Lit(expr) => self.hash_expr(expr),
+            PatKind::Or(pats) => {
+                for pat in pats {
+                    self.hash_pat(pat);
+                }
+            },
+            PatKind::Path(ref qpath) => self.hash_qpath(qpath),
+            PatKind::Range(s, e, i) => {
+                if let Some(s) = s {
+                    self.hash_expr(s);
+                }
+                if let Some(e) = e {
+                    self.hash_expr(e);
+                }
+                i.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+            },
+            PatKind::Ref(pat, m) => {
+                self.hash_pat(pat);
+                m.hash(&mut self.s);
+            },
+            PatKind::Slice(l, m, r) => {
+                for pat in l {
+                    self.hash_pat(pat);
+                }
+                if let Some(pat) = m {
+                    self.hash_pat(pat);
+                }
+                for pat in r {
+                    self.hash_pat(pat);
+                }
+            },
+            PatKind::Struct(ref qpath, fields, e) => {
+                self.hash_qpath(qpath);
+                for f in fields {
+                    self.hash_name(f.ident.name);
+                    self.hash_pat(f.pat);
+                }
+                e.hash(&mut self.s)
+            },
+            PatKind::Tuple(pats, e) => {
+                for pat in pats {
+                    self.hash_pat(pat);
+                }
+                e.hash(&mut self.s);
+            },
+            PatKind::TupleStruct(ref qpath, pats, e) => {
+                self.hash_qpath(qpath);
+                for pat in pats {
+                    self.hash_pat(pat);
+                }
+                e.hash(&mut self.s);
+            },
+            PatKind::Wild => {},
+        }
+    }
+
     pub fn hash_path(&mut self, path: &Path<'_>) {
         match path.res {
             // constant hash since equality is dependant on inter-expression context
@@ -808,6 +874,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
         match &b.kind {
             StmtKind::Local(local) => {
+                self.hash_pat(local.pat);
                 if let Some(ref init) = local.init {
                     self.hash_expr(init);
                 }
@@ -827,7 +894,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
-    pub fn hash_lifetime(&mut self, lifetime: &Lifetime) {
+    pub fn hash_lifetime(&mut self, lifetime: Lifetime) {
         std::mem::discriminant(&lifetime.name).hash(&mut self.s);
         if let LifetimeName::Param(ref name) = lifetime.name {
             std::mem::discriminant(name).hash(&mut self.s);
@@ -844,12 +911,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_ty(&mut self, ty: &Ty<'_>) {
-        self.hash_tykind(&ty.kind);
-    }
-
-    pub fn hash_tykind(&mut self, ty: &TyKind<'_>) {
-        std::mem::discriminant(ty).hash(&mut self.s);
-        match ty {
+        std::mem::discriminant(&ty.kind).hash(&mut self.s);
+        match ty.kind {
             TyKind::Slice(ty) => {
                 self.hash_ty(ty);
             },
@@ -857,11 +920,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(ty);
                 self.hash_body(anon_const.body);
             },
-            TyKind::Ptr(mut_ty) => {
+            TyKind::Ptr(ref mut_ty) => {
                 self.hash_ty(&mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            TyKind::Rptr(lifetime, mut_ty) => {
+            TyKind::Rptr(lifetime, ref mut_ty) => {
                 self.hash_lifetime(lifetime);
                 self.hash_ty(&mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
@@ -883,11 +946,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 bfn.decl.c_variadic.hash(&mut self.s);
             },
             TyKind::Tup(ty_list) => {
-                for ty in *ty_list {
+                for ty in ty_list {
                     self.hash_ty(ty);
                 }
             },
-            TyKind::Path(qpath) => match qpath {
+            TyKind::Path(ref qpath) => match qpath {
                 QPath::Resolved(ref maybe_ty, ref path) => {
                     if let Some(ref ty) = maybe_ty {
                         self.hash_ty(ty);
@@ -927,9 +990,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
     fn hash_generic_args(&mut self, arg_list: &[GenericArg<'_>]) {
         for arg in arg_list {
-            match arg {
-                GenericArg::Lifetime(ref l) => self.hash_lifetime(l),
-                GenericArg::Type(ref ty) => self.hash_ty(&ty),
+            match *arg {
+                GenericArg::Lifetime(l) => self.hash_lifetime(l),
+                GenericArg::Type(ref ty) => self.hash_ty(ty),
                 GenericArg::Const(ref ca) => self.hash_body(ca.value.body),
             }
         }
