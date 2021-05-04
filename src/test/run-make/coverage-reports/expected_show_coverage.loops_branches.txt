@@ -9,23 +9,23 @@
     9|      1|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
    10|      1|        if true {
    11|      1|            if false {
-   12|       |                while true {
-   13|       |                }
+   12|      0|                while true {
+   13|      0|                }
    14|      1|            }
-   15|      1|            write!(f, "error")?;
-                                            ^0
-   16|       |        } else {
-   17|       |        }
+   15|      1|            write!(f, "cool")?;
+                                           ^0
+   16|      0|        } else {
+   17|      0|        }
    18|       |
    19|     10|        for i in 0..10 {
    20|     10|            if true {
    21|     10|                if false {
-   22|       |                    while true {}
+   22|      0|                    while true {}
    23|     10|                }
-   24|     10|                write!(f, "error")?;
-                                                ^0
-   25|       |            } else {
-   26|       |            }
+   24|     10|                write!(f, "cool")?;
+                                               ^0
+   25|      0|            } else {
+   26|      0|            }
    27|       |        }
    28|      1|        Ok(())
    29|      1|    }
@@ -36,21 +36,21 @@
    34|       |impl std::fmt::Display for DisplayTest {
    35|      1|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
    36|      1|        if false {
-   37|       |        } else {
+   37|      0|        } else {
    38|      1|            if false {
-   39|       |                while true {}
+   39|      0|                while true {}
    40|      1|            }
-   41|      1|            write!(f, "error")?;
-                                            ^0
+   41|      1|            write!(f, "cool")?;
+                                           ^0
    42|       |        }
    43|     10|        for i in 0..10 {
    44|     10|            if false {
-   45|       |            } else {
+   45|      0|            } else {
    46|     10|                if false {
-   47|       |                    while true {}
+   47|      0|                    while true {}
    48|     10|                }
-   49|     10|                write!(f, "error")?;
-                                                ^0
+   49|     10|                write!(f, "cool")?;
+                                               ^0
    50|       |            }
    51|       |        }
    52|      1|        Ok(())
