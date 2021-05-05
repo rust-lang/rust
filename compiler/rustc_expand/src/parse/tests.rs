@@ -10,9 +10,9 @@ use rustc_errors::PResult;
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
+use rustc_span::create_default_session_globals_then;
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::with_default_session_globals;
 use rustc_span::{BytePos, FileName, Pos, Span};
 
 use std::path::PathBuf;
@@ -51,7 +51,7 @@ fn string_to_item(source_str: String) -> Option<P<ast::Item>> {
 #[should_panic]
 #[test]
 fn bad_path_expr_1() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         string_to_expr("::abc::def::return".to_string());
     })
 }
@@ -59,7 +59,7 @@ fn bad_path_expr_1() {
 // Checks the token-tree-ization of macros.
 #[test]
 fn string_to_tts_macro() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let tts: Vec<_> =
             string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).trees().collect();
         let tts: &[TokenTree] = &tts[..];
@@ -96,7 +96,7 @@ fn string_to_tts_macro() {
 
 #[test]
 fn string_to_tts_1() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
         let expected = TokenStream::new(vec![
@@ -131,7 +131,7 @@ fn string_to_tts_1() {
 
 #[test]
 fn parse_use() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let use_s = "use foo::bar::baz;";
         let vitem = string_to_item(use_s.to_string()).unwrap();
         let vitem_s = item_to_string(&vitem);
@@ -146,7 +146,7 @@ fn parse_use() {
 
 #[test]
 fn parse_extern_crate() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let ex_s = "extern crate foo;";
         let vitem = string_to_item(ex_s.to_string()).unwrap();
         let vitem_s = item_to_string(&vitem);
@@ -184,7 +184,7 @@ fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
 
 #[test]
 fn span_of_self_arg_pat_idents_are_correct() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let srcs = [
             "impl z { fn a (&self, &myarg: i32) {} }",
             "impl z { fn a (&mut self, &myarg: i32) {} }",
@@ -208,7 +208,7 @@ fn span_of_self_arg_pat_idents_are_correct() {
 
 #[test]
 fn parse_exprs() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         // just make sure that they parse....
         string_to_expr("3 + 4".to_string());
         string_to_expr("a::z.froob(b,&(987+3))".to_string());
@@ -217,7 +217,7 @@ fn parse_exprs() {
 
 #[test]
 fn attrs_fix_bug() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         string_to_item(
             "pub fn mk_file_writer(path: &Path, flags: &[FileFlag])
                 -> Result<Box<Writer>, String> {
@@ -238,7 +238,7 @@ let mut fflags: c_int = wb();
 
 #[test]
 fn crlf_doc_comments() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let sess = sess();
 
         let name_1 = FileName::Custom("crlf_source_1".to_string());
@@ -272,7 +272,7 @@ fn ttdelim_span() {
         new_parser_from_source_str(sess, name, source).parse_expr()
     }
 
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let sess = sess();
         let expr = parse_expr_from_source_str(
             PathBuf::from("foo").into(),
@@ -300,7 +300,7 @@ fn ttdelim_span() {
 // See `recurse_into_file_modules` in the parser.
 #[test]
 fn out_of_line_mod() {
-    with_default_session_globals(|| {
+    create_default_session_globals_then(|| {
         let item = parse_item_from_source_str(
             PathBuf::from("foo").into(),
             "mod foo { struct S; mod this_does_not_exist; }".to_owned(),
