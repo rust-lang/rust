@@ -1289,14 +1289,36 @@ struct TupleMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
+        // For closures and generators, name the captured upvars
+        // with the help of `CapturedPlace::to_mangled_name`.
+        let closure_def_id = match *self.ty.kind() {
+            ty::Generator(def_id, ..) => def_id.as_local(),
+            ty::Closure(def_id, ..) => def_id.as_local(),
+            _ => None,
+        };
+        let captures = match closure_def_id {
+            Some(local_def_id) => {
+                let typeck_results = cx.tcx.typeck(local_def_id);
+                let captures = typeck_results
+                    .closure_min_captures_flattened(local_def_id.to_def_id())
+                    .collect::<Vec<_>>();
+                Some(captures)
+            }
+            _ => None,
+        };
+
         let layout = cx.layout_of(self.ty);
         self.component_types
             .iter()
             .enumerate()
             .map(|(i, &component_type)| {
                 let (size, align) = cx.size_and_align_of(component_type);
+                let name = captures
+                    .as_ref()
+                    .map(|c| c[i].to_mangled_name(cx.tcx))
+                    .unwrap_or_else(|| format!("__{}", i));
                 MemberDescription {
-                    name: format!("__{}", i),
+                    name,
                     type_metadata: type_metadata(cx, component_type, self.span),
                     offset: layout.fields.offset(i),
                     size,

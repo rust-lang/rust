@@ -159,6 +159,54 @@ impl CapturedPlace<'tcx> {
         place_to_string_for_capture(tcx, &self.place)
     }
 
+    /// Returns mangled names of captured upvars. Here are some examples:
+    ///  - `_captured_val__name__field`
+    ///  - `_captured_ref__name__field`
+    ///
+    /// The purpose is to use those names in debuginfo. They should be human-understandable.
+    /// Without the names, the end users may get confused when the debuggers just print some
+    /// pointers in closures or generators.
+    pub fn to_mangled_name(&self, tcx: TyCtxt<'tcx>) -> String {
+        let prefix = match self.info.capture_kind {
+            ty::UpvarCapture::ByValue(_) => "_captured_val__",
+            ty::UpvarCapture::ByRef(_) => "_captured_ref__",
+        };
+
+        let hir_id = match self.place.base {
+            HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+            base => bug!("Expected an upvar, found {:?}", base),
+        };
+        let name = tcx.hir().name(hir_id);
+
+        let mut ty = self.place.base_ty;
+        let mut fields = String::new();
+        for proj in self.place.projections.iter() {
+            match proj.kind {
+                HirProjectionKind::Field(idx, variant) => match ty.kind() {
+                    ty::Tuple(_) => fields = format!("{}__{}", fields, idx),
+                    ty::Adt(def, ..) => {
+                        fields = format!(
+                            "{}__{}",
+                            fields,
+                            def.variants[variant].fields[idx as usize].ident.name.as_str(),
+                        );
+                    }
+                    ty => {
+                        bug!("Unexpected type {:?} for `Field` projection", ty)
+                    }
+                },
+
+                // Ignore derefs for now, as they are likely caused by
+                // autoderefs that don't appear in the original code.
+                HirProjectionKind::Deref => {}
+                proj => bug!("Unexpected projection {:?} in captured place", proj),
+            }
+            ty = proj.ty;
+        }
+
+        prefix.to_owned() + &name.to_string() + &fields
+    }
+
     /// Returns the hir-id of the root variable for the captured place.
     /// e.g., if `a.b.c` was captured, would return the hir-id for `a`.
     pub fn get_root_variable(&self) -> hir::HirId {
