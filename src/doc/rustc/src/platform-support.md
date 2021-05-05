@@ -113,7 +113,7 @@ The `std` column in the table below has the following meanings:
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
 
 target | std | notes
--------|-----|-------
+-------|:---:|-------
 `aarch64-apple-ios` | ✓ | ARM64 iOS
 `aarch64-fuchsia` | ✓ | ARM64 Fuchsia
 `aarch64-linux-android` | ✓ | ARM64 Android
@@ -194,7 +194,7 @@ The `host` column indicates whether the codebase includes support for building
 host tools.
 
 target | std | host | notes
--------|-----|------|-------
+-------|:---:|:----:|-------
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 `aarch64-apple-ios-sim` | ? |  | Apple iOS Simulator on ARM64
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
