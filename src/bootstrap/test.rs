@@ -1486,6 +1486,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
         cmd.env("RUSTC_BOOTSTRAP", "1");
+        cmd.env("DOC_RUST_LANG_ORG_CHANNEL", builder.doc_rust_lang_org_channel());
         builder.add_rust_test_threads(&mut cmd);
 
         if builder.config.sanitizers_enabled(target) {

@@ -12,7 +12,6 @@
 #![stable(feature = "proc_macro_lib", since = "1.15.0")]
 #![deny(missing_docs)]
 #![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/",
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(deny(warnings))),

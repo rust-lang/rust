@@ -1,16 +1,16 @@
 error: unknown disambiguator `hello`
-  --> $DIR/email-address-localhost.rs:3:18
+  --> $DIR/email-address-localhost.rs:4:18
    |
 LL | //! Email me at <hello@localhost>.
    |                  ^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/email-address-localhost.rs:1:9
+  --> $DIR/email-address-localhost.rs:2:9
    |
 LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(warnings)]`
-   = note: see https://doc.rust-lang.org/nightly/rustdoc/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
 
 error: aborting due to previous error
 

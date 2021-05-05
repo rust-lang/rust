@@ -81,6 +81,8 @@ use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGro
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
 
+use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
+
 /// A macro to create a FxHashMap.
 ///
 /// Example:

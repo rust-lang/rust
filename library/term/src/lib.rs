@@ -30,11 +30,7 @@
 //! [win]: https://docs.microsoft.com/en-us/windows/console/character-mode-applications
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
-#![doc(
-    html_root_url = "https://doc.rust-lang.org/nightly/",
-    html_playground_url = "https://play.rust-lang.org/",
-    test(attr(deny(warnings)))
-)]
+#![doc(html_playground_url = "https://play.rust-lang.org/", test(attr(deny(warnings))))]
 #![deny(missing_docs)]
 #![cfg_attr(windows, feature(libc))]
 
