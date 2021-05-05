@@ -12,7 +12,7 @@ use rustc_session::config::{
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::utils::{CanonicalizedPath, NativeLibKind};
+use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use rustc_session::{build_session, getopts, DiagnosticOutput, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
@@ -303,38 +303,122 @@ fn test_native_libs_tracking_hash_different_values() {
     let mut v2 = Options::default();
     let mut v3 = Options::default();
     let mut v4 = Options::default();
+    let mut v5 = Options::default();
 
     // Reference
     v1.libs = vec![
-        (String::from("a"), None, NativeLibKind::StaticBundle),
-        (String::from("b"), None, NativeLibKind::Framework),
-        (String::from("c"), None, NativeLibKind::Unspecified),
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("b"),
+            new_name: None,
+            kind: NativeLibKind::Framework { as_needed: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
     ];
 
     // Change label
     v2.libs = vec![
-        (String::from("a"), None, NativeLibKind::StaticBundle),
-        (String::from("X"), None, NativeLibKind::Framework),
-        (String::from("c"), None, NativeLibKind::Unspecified),
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("X"),
+            new_name: None,
+            kind: NativeLibKind::Framework { as_needed: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
     ];
 
     // Change kind
     v3.libs = vec![
-        (String::from("a"), None, NativeLibKind::StaticBundle),
-        (String::from("b"), None, NativeLibKind::StaticBundle),
-        (String::from("c"), None, NativeLibKind::Unspecified),
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("b"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
     ];
 
     // Change new-name
     v4.libs = vec![
-        (String::from("a"), None, NativeLibKind::StaticBundle),
-        (String::from("b"), Some(String::from("X")), NativeLibKind::Framework),
-        (String::from("c"), None, NativeLibKind::Unspecified),
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("b"),
+            new_name: Some(String::from("X")),
+            kind: NativeLibKind::Framework { as_needed: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
+    ];
+
+    // Change verbatim
+    v5.libs = vec![
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("b"),
+            new_name: None,
+            kind: NativeLibKind::Framework { as_needed: None },
+            verbatim: Some(true),
+        },
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
     ];
 
     assert_different_hash(&v1, &v2);
     assert_different_hash(&v1, &v3);
     assert_different_hash(&v1, &v4);
+    assert_different_hash(&v1, &v5);
 }
 
 #[test]
@@ -345,21 +429,66 @@ fn test_native_libs_tracking_hash_different_order() {
 
     // Reference
     v1.libs = vec![
-        (String::from("a"), None, NativeLibKind::StaticBundle),
-        (String::from("b"), None, NativeLibKind::Framework),
-        (String::from("c"), None, NativeLibKind::Unspecified),
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("b"),
+            new_name: None,
+            kind: NativeLibKind::Framework { as_needed: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
     ];
 
     v2.libs = vec![
-        (String::from("b"), None, NativeLibKind::Framework),
-        (String::from("a"), None, NativeLibKind::StaticBundle),
-        (String::from("c"), None, NativeLibKind::Unspecified),
+        NativeLib {
+            name: String::from("b"),
+            new_name: None,
+            kind: NativeLibKind::Framework { as_needed: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
     ];
 
     v3.libs = vec![
-        (String::from("c"), None, NativeLibKind::Unspecified),
-        (String::from("a"), None, NativeLibKind::StaticBundle),
-        (String::from("b"), None, NativeLibKind::Framework),
+        NativeLib {
+            name: String::from("c"),
+            new_name: None,
+            kind: NativeLibKind::Unspecified,
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("a"),
+            new_name: None,
+            kind: NativeLibKind::Static { bundle: None, whole_archive: None },
+            verbatim: None,
+        },
+        NativeLib {
+            name: String::from("b"),
+            new_name: None,
+            kind: NativeLibKind::Framework { as_needed: None },
+            verbatim: None,
+        },
     ];
 
     assert_same_hash(&v1, &v2);

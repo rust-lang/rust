@@ -94,6 +94,7 @@ pub struct NativeLib {
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,
     pub wasm_import_module: Option<Symbol>,
+    pub verbatim: Option<bool>,
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]

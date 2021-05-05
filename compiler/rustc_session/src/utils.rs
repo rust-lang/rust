@@ -19,24 +19,41 @@ impl Session {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub enum NativeLibKind {
-    /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC) included
-    /// when linking a final binary, but not when archiving an rlib.
-    StaticNoBundle,
-    /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC) included
-    /// when linking a final binary, but also included when archiving an rlib.
-    StaticBundle,
+    /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC)
+    Static {
+        /// Whether to bundle objects from static library into produced rlib
+        bundle: Option<bool>,
+        /// Whether to link static library without throwing any object files away
+        whole_archive: Option<bool>,
+    },
     /// Dynamic library (e.g. `libfoo.so` on Linux)
     /// or an import library corresponding to a dynamic library (e.g. `foo.lib` on Windows/MSVC).
-    Dylib,
+    Dylib {
+        /// Whether the dynamic library will be linked only if it satifies some undefined symbols
+        as_needed: Option<bool>,
+    },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
     RawDylib,
     /// A macOS-specific kind of dynamic libraries.
-    Framework,
+    Framework {
+        /// Whether the framework will be linked only if it satifies some undefined symbols
+        as_needed: Option<bool>,
+    },
     /// The library kind wasn't specified, `Dylib` is currently used as a default.
     Unspecified,
 }
 
 rustc_data_structures::impl_stable_hash_via_hash!(NativeLibKind);
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+pub struct NativeLib {
+    pub name: String,
+    pub new_name: Option<String>,
+    pub kind: NativeLibKind,
+    pub verbatim: Option<bool>,
+}
+
+rustc_data_structures::impl_stable_hash_via_hash!(NativeLib);
 
 /// A path that has been canonicalized along with its original, non-canonicalized form
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
