@@ -1,9 +1,11 @@
-error[E0614]: type `!` cannot be dereferenced
+error[E0282]: type annotations needed
   --> $DIR/issue-17373.rs:2:5
    |
 LL |     *return
-   |     ^^^^^^^
+   |     ^^^^^^^ cannot infer type
+   |
+   = note: type must be known at this point
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0614`.
+For more information about this error, try `rustc --explain E0282`.

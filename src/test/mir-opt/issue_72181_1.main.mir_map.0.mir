@@ -9,8 +9,9 @@ fn main() -> () {
     let mut _1: !;                       // in scope 0 at $DIR/issue-72181-1.rs:15:11: 21:2
     let _2: Void as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
     let mut _3: ();                      // in scope 0 at $DIR/issue-72181-1.rs:17:41: 17:43
-    let _4: !;                           // in scope 0 at $DIR/issue-72181-1.rs:20:5: 20:9
-    let mut _5: Void;                    // in scope 0 at $DIR/issue-72181-1.rs:20:7: 20:8
+    let _4: ();                          // in scope 0 at $DIR/issue-72181-1.rs:20:5: 20:9
+    let mut _5: !;                       // in scope 0 at $DIR/issue-72181-1.rs:20:5: 20:9
+    let mut _6: Void;                    // in scope 0 at $DIR/issue-72181-1.rs:20:7: 20:8
     scope 1 {
         debug v => _2;                   // in scope 1 at $DIR/issue-72181-1.rs:16:9: 16:10
     }
@@ -32,15 +33,17 @@ fn main() -> () {
         FakeRead(ForLet(None), _2);      // scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
         AscribeUserType(_2, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/issue-72181-1.rs:16:12: 16:16
         StorageLive(_4);                 // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
-        StorageLive(_5);                 // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
-        _5 = move _2;                    // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
-        f(move _5) -> bb4;               // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
+        StorageLive(_5);                 // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
+        StorageLive(_6);                 // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
+        _6 = move _2;                    // scope 1 at $DIR/issue-72181-1.rs:20:7: 20:8
+        f(move _6) -> bb4;               // scope 1 at $DIR/issue-72181-1.rs:20:5: 20:9
                                          // mir::Constant
                                          // + span: $DIR/issue-72181-1.rs:20:5: 20:6
                                          // + literal: Const { ty: fn(Void) -> ! {f}, val: Value(Scalar(<ZST>)) }
     }
 
     bb2: {
+        StorageDead(_6);                 // scope 1 at $DIR/issue-72181-1.rs:20:8: 20:9
         StorageDead(_5);                 // scope 1 at $DIR/issue-72181-1.rs:20:8: 20:9
         StorageDead(_4);                 // scope 1 at $DIR/issue-72181-1.rs:20:9: 20:10
         StorageDead(_2);                 // scope 0 at $DIR/issue-72181-1.rs:21:1: 21:2

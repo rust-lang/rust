@@ -1,9 +1,11 @@
-error[E0599]: no method named `push` found for type `!` in the current scope
-  --> $DIR/issue-15207.rs:3:15
+error[E0282]: type annotations needed
+  --> $DIR/issue-15207.rs:3:9
    |
 LL |         break.push(1)
-   |               ^^^^ method not found in `!`
+   |         ^^^^^ cannot infer type
+   |
+   = note: type must be known at this point
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0599`.
+For more information about this error, try `rustc --explain E0282`.

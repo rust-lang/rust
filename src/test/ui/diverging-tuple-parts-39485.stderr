@@ -24,7 +24,7 @@ LL |     (return 1, return 2)
    |     ^^^^^^^^^^^^^^^^^^^^ expected `isize`, found tuple
    |
    = note: expected type `isize`
-             found tuple `(!, !)`
+             found tuple `(_, _)`
 
 error: aborting due to 2 previous errors
 

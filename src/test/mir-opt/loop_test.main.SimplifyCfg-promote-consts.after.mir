@@ -5,11 +5,15 @@ fn main() -> () {
     let _1: ();                          // in scope 0 at $DIR/loop_test.rs:10:5: 12:6
     let mut _2: bool;                    // in scope 0 at $DIR/loop_test.rs:10:8: 10:12
     let mut _3: !;                       // in scope 0 at $DIR/loop_test.rs:10:13: 12:6
-    let mut _4: !;                       // in scope 0 at $DIR/loop_test.rs:13:5: 16:6
-    let mut _5: ();                      // in scope 0 at $DIR/loop_test.rs:6:1: 17:2
-    let _6: i32;                         // in scope 0 at $DIR/loop_test.rs:14:13: 14:14
+    let _4: ();                          // in scope 0 at $DIR/loop_test.rs:11:9: 11:15
+    let mut _5: !;                       // in scope 0 at $DIR/loop_test.rs:11:9: 11:15
+    let mut _6: !;                       // in scope 0 at $DIR/loop_test.rs:13:5: 16:6
+    let mut _7: ();                      // in scope 0 at $DIR/loop_test.rs:6:1: 17:2
+    let _8: i32;                         // in scope 0 at $DIR/loop_test.rs:14:13: 14:14
+    let _9: ();                          // in scope 0 at $DIR/loop_test.rs:15:9: 15:17
+    let mut _10: !;                      // in scope 0 at $DIR/loop_test.rs:15:9: 15:17
     scope 1 {
-        debug x => _6;                   // in scope 1 at $DIR/loop_test.rs:14:13: 14:14
+        debug x => _8;                   // in scope 1 at $DIR/loop_test.rs:14:13: 14:14
     }
 
     bb0: {
@@ -20,7 +24,9 @@ fn main() -> () {
     }
 
     bb1: {
+        StorageLive(_4);                 // scope 0 at $DIR/loop_test.rs:11:9: 11:15
         _0 = const ();                   // scope 0 at $DIR/loop_test.rs:11:9: 11:15
+        StorageDead(_4);                 // scope 0 at $DIR/loop_test.rs:11:15: 11:16
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         return;                          // scope 0 at $DIR/loop_test.rs:17:2: 17:2
@@ -30,7 +36,7 @@ fn main() -> () {
         _1 = const ();                   // scope 0 at $DIR/loop_test.rs:12:6: 12:6
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
-        StorageLive(_4);                 // scope 0 at $DIR/loop_test.rs:13:5: 16:6
+        StorageLive(_6);                 // scope 0 at $DIR/loop_test.rs:13:5: 16:6
         goto -> bb3;                     // scope 0 at $DIR/loop_test.rs:13:5: 16:6
     }
 
@@ -39,10 +45,12 @@ fn main() -> () {
     }
 
     bb4: {
-        StorageLive(_6);                 // scope 0 at $DIR/loop_test.rs:14:13: 14:14
-        _6 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:14:17: 14:18
-        FakeRead(ForLet(None), _6);      // scope 0 at $DIR/loop_test.rs:14:13: 14:14
-        StorageDead(_6);                 // scope 0 at $DIR/loop_test.rs:16:5: 16:6
+        StorageLive(_8);                 // scope 0 at $DIR/loop_test.rs:14:13: 14:14
+        _8 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:14:17: 14:18
+        FakeRead(ForLet(None), _8);      // scope 0 at $DIR/loop_test.rs:14:13: 14:14
+        StorageLive(_9);                 // scope 1 at $DIR/loop_test.rs:15:9: 15:17
+        StorageDead(_9);                 // scope 1 at $DIR/loop_test.rs:15:17: 15:18
+        StorageDead(_8);                 // scope 0 at $DIR/loop_test.rs:16:5: 16:6
         goto -> bb3;                     // scope 0 at $DIR/loop_test.rs:1:1: 1:1
     }
 

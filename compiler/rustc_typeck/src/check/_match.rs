@@ -555,7 +555,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(m) = contains_ref_bindings {
             self.check_expr_with_needs(scrut, Needs::maybe_mut_place(m))
         } else if no_arms {
-            self.check_expr(scrut)
+            // The hint for never type is a little hacky, but it will make
+            // `match never {}` work even without `never_type_fallback`.
+            // We can remove it once the feature `never_type_fallback` gets
+            // stabilized.
+            self.check_expr_with_hint(scrut, self.tcx.types.never)
         } else {
             // ...but otherwise we want to use any supertype of the
             // scrutinee. This is sort of a workaround, see note (*) in

@@ -6,6 +6,8 @@
       let mut _1: ();                      // in scope 0 at $DIR/simplify_cfg.rs:5:1: 11:2
       let mut _2: bool;                    // in scope 0 at $DIR/simplify_cfg.rs:7:12: 7:17
       let mut _3: !;                       // in scope 0 at $DIR/simplify_cfg.rs:7:18: 9:10
+      let _4: ();                          // in scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+      let mut _5: !;                       // in scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
   
       bb0: {
 -         goto -> bb1;                     // scope 0 at $DIR/simplify_cfg.rs:6:5: 10:6
@@ -28,7 +30,9 @@
   
 -     bb3: {
 +     bb2: {
+          StorageLive(_4);                 // scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
           _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:8:13: 8:18
+          StorageDead(_4);                 // scope 0 at $DIR/simplify_cfg.rs:8:18: 8:19
           StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:9:9: 9:10
           return;                          // scope 0 at $DIR/simplify_cfg.rs:11:2: 11:2
       }
