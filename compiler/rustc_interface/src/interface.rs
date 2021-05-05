@@ -76,7 +76,7 @@ impl Compiler {
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
-    rustc_span::with_default_session_globals(move || {
+    rustc_span::create_default_session_if_not_set_then(move |_| {
         let cfg = cfgspecs
             .into_iter()
             .map(|s| {

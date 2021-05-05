@@ -26,7 +26,7 @@
 
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
-use crate::SESSION_GLOBALS;
+use crate::with_session_globals;
 use crate::{BytePos, CachingSourceMapView, ExpnIdCache, SourceFile, Span, DUMMY_SP};
 
 use crate::def_id::{CrateNum, DefId, DefPathHash, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -201,7 +201,7 @@ impl HygieneData {
     }
 
     pub fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        SESSION_GLOBALS.with(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
+        with_session_globals(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
     }
 
     fn fresh_expn(&mut self, mut expn_data: Option<ExpnData>) -> ExpnId {
@@ -1367,8 +1367,9 @@ fn update_disambiguator(expn_id: ExpnId) {
         }
     }
 
-    let source_map = SESSION_GLOBALS
-        .with(|session_globals| session_globals.source_map.borrow().as_ref().unwrap().clone());
+    let source_map = with_session_globals(|session_globals| {
+        session_globals.source_map.borrow().as_ref().unwrap().clone()
+    });
 
     let mut ctx =
         DummyHashStableContext { caching_source_map: CachingSourceMapView::new(&source_map) };
