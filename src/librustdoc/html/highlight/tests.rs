@@ -22,7 +22,7 @@ fn test_html_highlighting() {
         let src = include_str!("fixtures/sample.rs");
         let html = {
             let mut out = Buffer::new();
-            write_code(&mut out, src, Edition::Edition2018, 0, None, "");
+            write_code(&mut out, src, Edition::Edition2018, None);
             format!("{}<pre><code>{}</code></pre>\n", STYLE, out.into_inner())
         };
         expect_file!["fixtures/sample.html"].assert_eq(&html);
@@ -36,7 +36,7 @@ fn test_dos_backline() {
     println!(\"foo\");\r\n\
 }\r\n";
         let mut html = Buffer::new();
-        write_code(&mut html, src, Edition::Edition2018, 0, None, "");
+        write_code(&mut html, src, Edition::Edition2018, None);
         expect_file!["fixtures/dos_line.html"].assert_eq(&html.into_inner());
     });
 }

@@ -19,6 +19,21 @@ use rustc_span::symbol::Symbol;
 use super::format::{self, Buffer};
 use super::render::{LightSpan, LinkFromSrc};
 
+/// This type is needed in case we want to render links on items to allow to go to their definition.
+crate struct ContextInfo<'a, 'b, 'c> {
+    crate context: &'a Context<'b>,
+    /// This represents the "lo" bytes of the current file we're rendering. To get a [`Span`] from
+    /// it, you just need to add add your current byte position in the string and its length (to get
+    /// the "hi" part).
+    ///
+    /// This is used to create a [`LightSpan`] which is then used as an index in the `span_map` in
+    /// order to retrieve the definition's [`Span`] (which is used to generate the URL).
+    crate file_span_lo: u32,
+    /// This field is used to know "how far" from the top of the directory we are to link to either
+    /// documentation pages or other source pages.
+    crate root_path: &'c str,
+}
+
 /// Highlights `src`, returning the HTML output.
 crate fn render_with_highlighting(
     src: &str,
@@ -28,9 +43,7 @@ crate fn render_with_highlighting(
     tooltip: Option<(Option<Edition>, &str)>,
     edition: Edition,
     extra_content: Option<Buffer>,
-    file_span_lo: u32,
-    context: Option<&Context<'_>>,
-    root_path: &str,
+    context_info: Option<ContextInfo<'_, '_, '_>>,
 ) {
     debug!("highlighting: ================\n{}\n==============", src);
     if let Some((edition_info, class)) = tooltip {
@@ -47,7 +60,7 @@ crate fn render_with_highlighting(
     }
 
     write_header(out, class, extra_content);
-    write_code(out, &src, edition, file_span_lo, context, root_path);
+    write_code(out, &src, edition, context_info);
     write_footer(out, playground_button);
 }
 
@@ -69,37 +82,28 @@ fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buf
 ///
 /// Some explanations on the last arguments:
 ///
-/// In case we are rendering a code block and not a source code file, `file_span_lo` value doesn't
-/// matter and `context` will be `None`. To put it more simply: if `context` is `None`, the code
-/// won't try to generate links to an ident definition.
+/// In case we are rendering a code block and not a source code file, `context_info` will be `None`.
+/// To put it more simply: if `context_info` is `None`, the code won't try to generate links to an
+/// item definition.
 ///
 /// More explanations about spans and how we use them here are provided in the
 /// [`LightSpan::new_in_file`] function documentation about how it works.
-///
-/// As for `root_path`, it's used to know "how far" from the top of the directory we are to link
-/// to either documentation pages or other source pages.
-///
-/// Same as `file_span_lo`: its value doesn't matter in case you are not rendering a source code
-/// file.
 fn write_code(
     out: &mut Buffer,
     src: &str,
     edition: Edition,
-    file_span_lo: u32,
-    context: Option<&Context<'_>>,
-    root_path: &str,
+    context_info: Option<ContextInfo<'_, '_, '_>>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
     let src = src.replace("\r\n", "\n");
-    Classifier::new(&src, edition, file_span_lo).highlight(&mut |highlight| {
-        match highlight {
-            Highlight::Token { text, class } => {
-                string(out, Escape(text), class, context, root_path)
-            }
-            Highlight::EnterSpan { class } => enter_span(out, class),
-            Highlight::ExitSpan => exit_span(out),
-        };
-    });
+    Classifier::new(&src, edition, context_info.as_ref().map(|c| c.file_span_lo).unwrap_or(0))
+        .highlight(&mut |highlight| {
+            match highlight {
+                Highlight::Token { text, class } => string(out, Escape(text), class, &context_info),
+                Highlight::EnterSpan { class } => enter_span(out, class),
+                Highlight::ExitSpan => exit_span(out),
+            };
+        });
 }
 
 fn write_footer(out: &mut Buffer, playground_button: Option<&str>) {
@@ -540,8 +544,7 @@ fn string<T: Display>(
     out: &mut Buffer,
     text: T,
     klass: Option<Class>,
-    context: Option<&Context<'_>>,
-    root_path: &str,
+    context_info: &Option<ContextInfo<'_, '_, '_>>,
 ) {
     let klass = match klass {
         None => return write!(out, "{}", text),
@@ -570,14 +573,19 @@ fn string<T: Display>(
                 path
             });
         }
-        if let Some(context) = context {
-            if let Some(href) =
-                context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
+        if let Some(context_info) = context_info {
+            if let Some(href) = context_info
+                .context
+                .shared
+                .span_correspondance_map
+                .get(&def_span)
+                .and_then(|href| {
+                    let context = context_info.context;
                     match href {
                         LinkFromSrc::Local(span) => {
                             context
                                 .href_from_span(clean::Span::wrap_raw(*span))
-                                .map(|s| format!("{}{}", root_path, s))
+                                .map(|s| format!("{}{}", context_info.root_path, s))
                         }
                         LinkFromSrc::External(def_id) => {
                             format::href(*def_id, context).map(|(url, _, _)| url)
