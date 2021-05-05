@@ -2332,17 +2332,17 @@ crate mod dep_tracking {
     }
 
     macro_rules! impl_dep_tracking_hash_via_hash {
-        ($t:ty) => {
+        ($($t:ty),+ $(,)?) => {$(
             impl DepTrackingHash for $t {
                 fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
                     Hash::hash(self, hasher);
                 }
             }
-        };
+        )+};
     }
 
     macro_rules! impl_dep_tracking_hash_for_sortable_vec_of {
-        ($t:ty) => {
+        ($($t:ty),+ $(,)?) => {$(
             impl DepTrackingHash for Vec<$t> {
                 fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
                     let mut elems: Vec<&$t> = self.iter().collect();
@@ -2354,61 +2354,65 @@ crate mod dep_tracking {
                     }
                 }
             }
-        };
+        )+};
     }
 
-    impl_dep_tracking_hash_via_hash!(bool);
-    impl_dep_tracking_hash_via_hash!(usize);
-    impl_dep_tracking_hash_via_hash!(u64);
-    impl_dep_tracking_hash_via_hash!(String);
-    impl_dep_tracking_hash_via_hash!(PathBuf);
-    impl_dep_tracking_hash_via_hash!(lint::Level);
-    impl_dep_tracking_hash_via_hash!(Option<bool>);
-    impl_dep_tracking_hash_via_hash!(Option<u32>);
-    impl_dep_tracking_hash_via_hash!(Option<usize>);
-    impl_dep_tracking_hash_via_hash!(Option<NonZeroUsize>);
-    impl_dep_tracking_hash_via_hash!(Option<String>);
-    impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
-    impl_dep_tracking_hash_via_hash!(Option<Vec<String>>);
-    impl_dep_tracking_hash_via_hash!(Option<MergeFunctions>);
-    impl_dep_tracking_hash_via_hash!(Option<RelocModel>);
-    impl_dep_tracking_hash_via_hash!(Option<CodeModel>);
-    impl_dep_tracking_hash_via_hash!(Option<TlsModel>);
-    impl_dep_tracking_hash_via_hash!(Option<WasiExecModel>);
-    impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
-    impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
-    impl_dep_tracking_hash_via_hash!(Option<InstrumentCoverage>);
-    impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
-    impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
-    impl_dep_tracking_hash_via_hash!(CrateType);
-    impl_dep_tracking_hash_via_hash!(MergeFunctions);
-    impl_dep_tracking_hash_via_hash!(PanicStrategy);
-    impl_dep_tracking_hash_via_hash!(RelroLevel);
-    impl_dep_tracking_hash_via_hash!(Passes);
-    impl_dep_tracking_hash_via_hash!(OptLevel);
-    impl_dep_tracking_hash_via_hash!(LtoCli);
-    impl_dep_tracking_hash_via_hash!(DebugInfo);
-    impl_dep_tracking_hash_via_hash!(UnstableFeatures);
-    impl_dep_tracking_hash_via_hash!(OutputTypes);
-    impl_dep_tracking_hash_via_hash!(NativeLibKind);
-    impl_dep_tracking_hash_via_hash!(SanitizerSet);
-    impl_dep_tracking_hash_via_hash!(CFGuard);
-    impl_dep_tracking_hash_via_hash!(TargetTriple);
-    impl_dep_tracking_hash_via_hash!(Edition);
-    impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
-    impl_dep_tracking_hash_via_hash!(Option<SplitDebuginfo>);
-    impl_dep_tracking_hash_via_hash!(SwitchWithOptPath);
-    impl_dep_tracking_hash_via_hash!(Option<SymbolManglingVersion>);
-    impl_dep_tracking_hash_via_hash!(Option<SourceFileHashAlgorithm>);
-    impl_dep_tracking_hash_via_hash!(TrimmedDefPaths);
+    impl_dep_tracking_hash_via_hash!(
+        bool,
+        usize,
+        u64,
+        String,
+        PathBuf,
+        lint::Level,
+        Option<bool>,
+        Option<u32>,
+        Option<usize>,
+        Option<NonZeroUsize>,
+        Option<String>,
+        Option<(String, u64)>,
+        Option<Vec<String>>,
+        Option<MergeFunctions>,
+        Option<RelocModel>,
+        Option<CodeModel>,
+        Option<TlsModel>,
+        Option<WasiExecModel>,
+        Option<PanicStrategy>,
+        Option<RelroLevel>,
+        Option<InstrumentCoverage>,
+        Option<lint::Level>,
+        Option<PathBuf>,
+        CrateType,
+        MergeFunctions,
+        PanicStrategy,
+        RelroLevel,
+        Passes,
+        OptLevel,
+        LtoCli,
+        DebugInfo,
+        UnstableFeatures,
+        OutputTypes,
+        NativeLibKind,
+        SanitizerSet,
+        CFGuard,
+        TargetTriple,
+        Edition,
+        LinkerPluginLto,
+        Option<SplitDebuginfo>,
+        SwitchWithOptPath,
+        Option<SymbolManglingVersion>,
+        Option<SourceFileHashAlgorithm>,
+        TrimmedDefPaths,
+    );
 
-    impl_dep_tracking_hash_for_sortable_vec_of!(String);
-    impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
-    impl_dep_tracking_hash_for_sortable_vec_of!((PathBuf, PathBuf));
-    impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
-    impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
-    impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>, NativeLibKind));
-    impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
+    impl_dep_tracking_hash_for_sortable_vec_of!(
+        String,
+        PathBuf,
+        (PathBuf, PathBuf),
+        CrateType,
+        (String, lint::Level),
+        (String, Option<String>, NativeLibKind),
+        (String, u64)
+    );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
     where
