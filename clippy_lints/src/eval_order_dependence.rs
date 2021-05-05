@@ -305,7 +305,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                     self.cx,
                     EVAL_ORDER_DEPENDENCE,
                     expr.span,
-                    "unsequenced read of a variable",
+                    &format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
                     Some(self.write_expr.span),
                     "whether read occurs before this write depends on evaluation order",
                 );

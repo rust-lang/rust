@@ -1,4 +1,4 @@
-error: unsequenced read of a variable
+error: unsequenced read of `x`
   --> $DIR/eval_order_dependence.rs:15:9
    |
 LL |     } + x;
@@ -11,7 +11,7 @@ note: whether read occurs before this write depends on evaluation order
 LL |         x = 1;
    |         ^^^^^
 
-error: unsequenced read of a variable
+error: unsequenced read of `x`
   --> $DIR/eval_order_dependence.rs:18:5
    |
 LL |     x += {
@@ -23,7 +23,7 @@ note: whether read occurs before this write depends on evaluation order
 LL |         x = 20;
    |         ^^^^^^
 
-error: unsequenced read of a variable
+error: unsequenced read of `x`
   --> $DIR/eval_order_dependence.rs:31:12
    |
 LL |         a: x,
@@ -35,7 +35,7 @@ note: whether read occurs before this write depends on evaluation order
 LL |             x = 6;
    |             ^^^^^
 
-error: unsequenced read of a variable
+error: unsequenced read of `x`
   --> $DIR/eval_order_dependence.rs:40:9
    |
 LL |         x += {
