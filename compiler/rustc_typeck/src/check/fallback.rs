@@ -6,15 +6,89 @@ use rustc_data_structures::{
     stable_set::FxHashSet,
 };
 use rustc_middle::traits;
-use rustc_middle::ty::{self, ToPredicate, Ty, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
+#[derive(Default, Copy, Clone)]
+struct FoundRelationships {
+    /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
+    /// obligation, where:
+    ///
+    ///  * `Foo` is not `Sized`
+    ///  * `(): Foo` may be satisfied
+    self_in_trait: bool,
+    /// This is true if we identified that this Ty (`?T`) is found in a `<_ as
+    /// _>::AssocType = ?T`
+    output: bool,
+}
 impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, returning true if any fallback
     /// occurs.
     pub(super) fn type_inference_fallback(&self) -> bool {
+        debug!(
+            "type-inference-fallback start obligations: {:#?}",
+            self.fulfillment_cx.borrow_mut().pending_obligations()
+        );
+
+        let mut relationships: FxHashMap<ty::TyVid, FoundRelationships> = FxHashMap::default();
+        for obligation in self.fulfillment_cx.borrow_mut().pending_obligations() {
+            if let ty::PredicateKind::Trait(predicate, constness) =
+                obligation.predicate.kind().skip_binder()
+            {
+                if predicate.trait_ref.def_id
+                    != self.infcx.tcx.require_lang_item(rustc_hir::LangItem::Sized, None)
+                {
+                    // fixme: copy of mk_trait_obligation_with_new_self_ty
+                    let new_self_ty = self.infcx.tcx.types.unit;
+
+                    let trait_ref = ty::TraitRef {
+                        substs: self
+                            .infcx
+                            .tcx
+                            .mk_substs_trait(new_self_ty, &predicate.trait_ref.substs[1..]),
+                        ..predicate.trait_ref
+                    };
+
+                    // Then contstruct a new obligation with Self = () added
+                    // to the ParamEnv, and see if it holds.
+                    let o = rustc_infer::traits::Obligation::new(
+                        traits::ObligationCause::dummy(),
+                        obligation.param_env,
+                        obligation
+                            .predicate
+                            .kind()
+                            .map_bound(|_| {
+                                ty::PredicateKind::Trait(
+                                    ty::TraitPredicate { trait_ref },
+                                    constness,
+                                )
+                            })
+                            .to_predicate(self.infcx.tcx),
+                    );
+                    if self.infcx.predicate_may_hold(&o) {
+                        if let Some(ty) = self.root_vid(predicate.self_ty()) {
+                            relationships.entry(ty).or_default().self_in_trait = true;
+                        }
+                    }
+                }
+            }
+            if let ty::PredicateKind::Projection(predicate) =
+                obligation.predicate.kind().skip_binder()
+            {
+                if let Some(ty) = self.root_vid(predicate.ty) {
+                    relationships.entry(ty).or_default().output = true;
+                }
+            }
+        }
+
         // All type checking constraints were added, try to fallback unsolved variables.
         self.select_obligations_where_possible(false, |_| {});
+
+        debug!(
+            "type-inference-fallback post selection obligations: {:#?}",
+            self.fulfillment_cx.borrow_mut().pending_obligations()
+        );
+
         let mut fallback_has_occurred = false;
 
         // Check if we have any unsolved varibales. If not, no need for fallback.
@@ -23,7 +97,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return;
         }
 
-        let diverging_fallback = self.calculate_diverging_fallback(&unsolved_variables);
+        let diverging_fallback =
+            self.calculate_diverging_fallback(&unsolved_variables, &relationships);
 
         // We do fallback in two passes, to try to generate
         // better error messages.
@@ -249,6 +324,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     fn calculate_diverging_fallback(
         &self,
         unsolved_variables: &[Ty<'tcx>],
+        relationships: &FxHashMap<ty::TyVid, FoundRelationships>,
     ) -> FxHashMap<Ty<'tcx>, Ty<'tcx>> {
         debug!("calculate_diverging_fallback({:?})", unsolved_variables);
 
@@ -335,68 +411,27 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             roots_reachable_from_non_diverging,
         );
 
+        debug!("inherited: {:#?}", self.inh.fulfillment_cx.borrow_mut().pending_obligations());
+        debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
+
         // For each diverging variable, figure out whether it can
         // reach a member of N. If so, it falls back to `()`. Else
         // `!`.
         let mut diverging_fallback = FxHashMap::default();
         diverging_fallback.reserve(diverging_vids.len());
-        'outer: for &diverging_vid in &diverging_vids {
+        for &diverging_vid in &diverging_vids {
             let diverging_ty = self.tcx.mk_ty_var(diverging_vid);
             let root_vid = self.infcx.root_var(diverging_vid);
             let can_reach_non_diverging = coercion_graph
                 .depth_first_search(root_vid)
                 .any(|n| roots_reachable_from_non_diverging.visited(n));
 
-            for obligation in self.fulfillment_cx.borrow_mut().pending_obligations() {
-                // We need to check if this obligation is a trait bound like
-                // `root_vid: Foo`, and then we check:
-                //
-                // If `(): Foo` may hold, then fallback to (),
-                // otherwise continue on.
-                if let ty::PredicateKind::Trait(predicate, constness) =
-                    obligation.predicate.kind().skip_binder()
-                {
-                    if predicate.trait_ref.def_id
-                        == self.infcx.tcx.require_lang_item(rustc_hir::LangItem::Sized, None)
-                    {
-                        // Skip sized obligations, those are not usually
-                        // 'intentional', satisfied by both ! and () though.
-                        continue;
-                    }
+            let relationship = relationships.get(&root_vid).copied().unwrap_or_default();
 
-                    // If this trait bound is on the current root_vid...
-                    if self.root_vid(predicate.self_ty()) == Some(root_vid) {
-                        // fixme: copy of mk_trait_obligation_with_new_self_ty
-                        let new_self_ty = self.infcx.tcx.types.unit;
-
-                        let trait_ref = ty::TraitRef {
-                            substs: self
-                                .infcx
-                                .tcx
-                                .mk_substs_trait(new_self_ty, &predicate.trait_ref.substs[1..]),
-                            ..predicate.trait_ref
-                        };
-
-                        // Then contstruct a new obligation with Self = () added
-                        // to the ParamEnv, and see if it holds.
-                        let o = rustc_infer::traits::Obligation::new(
-                            traits::ObligationCause::dummy(),
-                            obligation.param_env,
-                            // FIXME: this drops the binder on the floor that
-                            // previously existed?
-                            trait_ref.with_constness(constness).to_predicate(self.infcx.tcx),
-                        );
-                        if self.infcx.predicate_may_hold(&o) {
-                            // If we might hold for (), then fallback to ().
-                            debug!("fallback to () as {:?} may hold: {:?}", o, diverging_vid);
-                            diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
-                            continue 'outer;
-                        }
-                    }
-                }
-            }
-
-            if can_reach_non_diverging {
+            if relationship.self_in_trait && relationship.output {
+                debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
+                diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
+            } else if can_reach_non_diverging {
                 debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
                 diverging_fallback.insert(diverging_ty, self.tcx.types.unit);
             } else {
@@ -425,6 +460,15 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                     let a_vid = self.root_vid(a)?;
                     let b_vid = self.root_vid(b)?;
                     Some((a_vid, b_vid))
+                } else if let ty::PredicateKind::Subtype(ty::SubtypePredicate {
+                    a_is_expected: _,
+                    a,
+                    b,
+                }) = atom
+                {
+                    let a_vid = self.root_vid(a)?;
+                    let b_vid = self.root_vid(b)?;
+                    Some((a_vid, b_vid))
                 } else {
                     None
                 }
@@ -436,7 +480,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     }
 
     /// If `ty` is an unresolved type variable, returns its root vid.
-    fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
+    pub fn root_vid(&self, ty: Ty<'tcx>) -> Option<ty::TyVid> {
         Some(self.infcx.root_var(self.infcx.shallow_resolve(ty).ty_vid()?))
     }
 }
