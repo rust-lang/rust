@@ -323,7 +323,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(result, dest)?;
             }
             sym::copy => {
-                self.copy(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
+                self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
             sym::offset => {
                 let ptr = self.read_scalar(&args[0])?.check_init()?;
@@ -529,5 +529,37 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             CheckInAllocMsg::InboundsTest,
         )?;
         Ok(offset_ptr)
+    }
+
+    /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
+    pub(crate) fn copy_intrinsic(
+        &mut self,
+        src: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        nonoverlapping: bool,
+    ) -> InterpResult<'tcx> {
+        let count = self.read_scalar(&count)?.to_machine_usize(self)?;
+        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let (size, align) = (layout.size, layout.align.abi);
+        let size = size.checked_mul(count, self).ok_or_else(|| {
+            err_ub_format!(
+                "overflow computing total size of `{}`",
+                if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
+            )
+        })?;
+
+        // Make sure we check both pointers for an access of the total size and aligment,
+        // *even if* the total size is 0.
+        let src =
+            self.memory.check_ptr_access(self.read_scalar(&src)?.check_init()?, size, align)?;
+
+        let dst =
+            self.memory.check_ptr_access(self.read_scalar(&dst)?.check_init()?, size, align)?;
+
+        if let (Some(src), Some(dst)) = (src, dst) {
+            self.memory.copy(src, dst, size, nonoverlapping)?;
+        }
+        Ok(())
     }
 }
