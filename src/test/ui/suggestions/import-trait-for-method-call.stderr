@@ -15,6 +15,22 @@ help: the following trait is implemented but not in scope; perhaps add a `use` f
 LL | use std::hash::Hasher;
    |
 
-error: aborting due to previous error
+error[E0599]: the method `as_ref` exists for reference `&dyn Bar`, but its trait bounds were not satisfied
+  --> $DIR/import-trait-for-method-call.rs:15:7
+   |
+LL | trait Bar {}
+   | --------- doesn't satisfy `dyn Bar: AsRef<_>`
+...
+LL |     x.as_ref();
+   |       ^^^^^^ method cannot be called on `&dyn Bar` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `dyn Bar: AsRef<_>`
+           which is required by `&dyn Bar: AsRef<_>`
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `as_ref`, perhaps you need to implement it:
+           candidate #1: `AsRef`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0599`.
