@@ -147,8 +147,12 @@ rebase when bringing the latest changes from the master branch to your feature
 branch.  Also, please make sure that fixup commits are squashed into other
 related commits with meaningful commit messages.
 
-If you encounter merge conflicts, your PR will get marked as `S-waiting-on-author`.
-When you resolve them, you should use `@rustbot` to mark it as `S-waiting-on-review`.
+If you encounter merge conflicts or when a reviewer asks you to perform some
+changes, your PR will get marked as `S-waiting-on-author`. When you resolve
+them, you should use `@rustbot` to mark it as `S-waiting-on-review`:
+
+    @rustbot label -S-waiting-on-author +S-waiting-on-review
+
 See [this chapter][labeling] for more details.
 
 GitHub allows [closing issues using keywords][closing-keywords]. This feature
