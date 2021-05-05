@@ -36,7 +36,6 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut visited_mods = FxHashSet::default();
     let mut visited_consts = FxHashSet::default();
     let mut visited_statics = FxHashSet::default();
-    let mut visited_where_clauses = FxHashSet::default();
     // regions can be nested, here is a LIFO buffer
     let mut regions_starts: Vec<TextSize> = vec![];
 
@@ -113,10 +112,8 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                 }
 
                 // Fold where clause
-                if node.kind() == WHERE_CLAUSE && !visited_where_clauses.contains(&node) {
-                    if let Some(range) =
-                        contiguous_range_for_where(&node, &mut visited_where_clauses)
-                    {
+                if node.kind() == WHERE_CLAUSE {
+                    if let Some(range) = fold_range_for_where_clause(&node) {
                         res.push(Fold { range, kind: FoldKind::WhereClause })
                     }
                 }
@@ -252,10 +249,7 @@ fn contiguous_range_for_comment(
     }
 }
 
-fn contiguous_range_for_where(
-    node: &SyntaxNode,
-    visited: &mut FxHashSet<SyntaxNode>,
-) -> Option<TextRange> {
+fn fold_range_for_where_clause(node: &SyntaxNode) -> Option<TextRange> {
     let first_where_pred = node.first_child();
     let last_where_pred = node.last_child();
 
@@ -266,8 +260,6 @@ fn contiguous_range_for_where(
         {
             let start = where_kw.text_range().end();
             let end = last_comma.text_range().end();
-
-            visited.insert(node.clone());
             return Some(TextRange::new(start, end));
         }
     }
