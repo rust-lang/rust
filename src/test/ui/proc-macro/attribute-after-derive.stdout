@@ -1,4 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): #[derive(Print)] struct AttributeDerive { #[cfg(FALSE)] field : u8, }
+PRINT-ATTR INPUT (DISPLAY): #[derive(Print)] struct AttributeDerive { }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -35,51 +35,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
     Group {
         delimiter: Brace,
-        stream: TokenStream [
-            Punct {
-                ch: '#',
-                spacing: Alone,
-                span: $DIR/attribute-after-derive.rs:19:5: 19:6 (#0),
-            },
-            Group {
-                delimiter: Bracket,
-                stream: TokenStream [
-                    Ident {
-                        ident: "cfg",
-                        span: $DIR/attribute-after-derive.rs:19:7: 19:10 (#0),
-                    },
-                    Group {
-                        delimiter: Parenthesis,
-                        stream: TokenStream [
-                            Ident {
-                                ident: "FALSE",
-                                span: $DIR/attribute-after-derive.rs:19:11: 19:16 (#0),
-                            },
-                        ],
-                        span: $DIR/attribute-after-derive.rs:19:10: 19:17 (#0),
-                    },
-                ],
-                span: $DIR/attribute-after-derive.rs:19:6: 19:18 (#0),
-            },
-            Ident {
-                ident: "field",
-                span: $DIR/attribute-after-derive.rs:20:5: 20:10 (#0),
-            },
-            Punct {
-                ch: ':',
-                spacing: Alone,
-                span: $DIR/attribute-after-derive.rs:20:10: 20:11 (#0),
-            },
-            Ident {
-                ident: "u8",
-                span: $DIR/attribute-after-derive.rs:20:12: 20:14 (#0),
-            },
-            Punct {
-                ch: ',',
-                spacing: Alone,
-                span: $DIR/attribute-after-derive.rs:20:14: 20:15 (#0),
-            },
-        ],
+        stream: TokenStream [],
         span: $DIR/attribute-after-derive.rs:18:24: 21:2 (#0),
     },
 ]

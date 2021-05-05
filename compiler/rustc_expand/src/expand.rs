@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::config::StripUnconfigured;
+use crate::config::{cfg_eval, StripUnconfigured};
 use crate::configure;
 use crate::hygiene::SyntaxContext;
 use crate::mbe::macro_rules::annotate_err_with_kind;
@@ -731,6 +731,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 (item_inner.ident.name.is_empty() || !matches!(mod_kind, ast::ModKind::Loaded(_, Inline::Yes, _)));
                         }
                     }
+                    let item = cfg_eval(self.cx, item);
                     let tokens = if fake_tokens {
                         rustc_parse::fake_token_stream(
                             &self.cx.sess.parse_sess,
@@ -753,6 +754,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(&self.cx.sess.parse_sess, &attr) {
                         Ok(meta) => {
+                            let item = cfg_eval(self.cx, item);
                             let items = match expander.expand(self.cx, span, &meta, item) {
                                 ExpandResult::Ready(items) => items,
                                 ExpandResult::Retry(item) => {

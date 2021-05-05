@@ -1,7 +1,6 @@
 use rustc_ast::{self as ast, attr, token, ItemKind, MetaItemKind, NestedMetaItem, StmtKind};
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
-use rustc_expand::config::cfg_eval;
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
 use rustc_session::Session;
@@ -58,7 +57,7 @@ impl MultiItemModifier for Expander {
             });
 
         match result {
-            Ok(()) => ExpandResult::Ready(cfg_eval(ecx, item)),
+            Ok(()) => ExpandResult::Ready(vec![item]),
             Err(Indeterminate) => ExpandResult::Retry(item),
         }
     }

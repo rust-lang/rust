@@ -547,7 +547,7 @@ fn is_cfg(sess: &Session, attr: &Attribute) -> bool {
     sess.check_name(attr, sym::cfg)
 }
 
-pub fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Vec<Annotatable> {
+pub(crate) fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Annotatable {
     let mut visitor = CfgEval {
         cfg: &mut StripUnconfigured {
             sess: ecx.sess,
@@ -555,8 +555,7 @@ pub fn cfg_eval(ecx: &ExtCtxt<'_>, annotatable: Annotatable) -> Vec<Annotatable>
             config_tokens: true,
         },
     };
-    let annotatable = visitor.configure_annotatable(annotatable);
-    vec![annotatable]
+    visitor.configure_annotatable(annotatable)
 }
 
 struct CfgEval<'a, 'b> {
