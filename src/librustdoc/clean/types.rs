@@ -1951,14 +1951,6 @@ impl Span {
         Self(sp.source_callsite())
     }
 
-    /// Unless you know what you're doing, use [`Self::new`] instead!
-    ///
-    /// This function doesn't clean the span at all. Compare with [`Self::new`]'s body to see the
-    /// difference.
-    crate fn wrap_raw(sp: rustc_span::Span) -> Span {
-        Self(sp)
-    }
-
     crate fn inner(&self) -> rustc_span::Span {
         self.0
     }
