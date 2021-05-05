@@ -275,8 +275,6 @@ fn print_src(
         None,
         edition,
         Some(line_numbers),
-        file_span_lo,
-        Some(context),
-        root_path,
+        Some(highlight::ContextInfo { context, file_span_lo, root_path }),
     );
 }
