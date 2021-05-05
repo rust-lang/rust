@@ -23,7 +23,7 @@ error: any use of this value will cause an error
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  inbounds test failed: pointer must be in-bounds at offset 2, but is outside bounds of allocN which has size 1
+   |                  pointer arithmetic failed: pointer must be in-bounds at offset 2, but is outside bounds of allocN which has size 1
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `AFTER_END` at $DIR/offset_ub.rs:7:43
    | 
@@ -41,7 +41,7 @@ error: any use of this value will cause an error
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  inbounds test failed: pointer must be in-bounds at offset 101, but is outside bounds of allocN which has size 100
+   |                  pointer arithmetic failed: pointer must be in-bounds at offset 101, but is outside bounds of allocN which has size 100
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `AFTER_ARRAY` at $DIR/offset_ub.rs:8:45
    | 
@@ -131,7 +131,7 @@ error: any use of this value will cause an error
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  inbounds test failed: pointer must be in-bounds at offset 1, but is outside bounds of allocN which has size 0
+   |                  pointer arithmetic failed: pointer must be in-bounds at offset 1, but is outside bounds of allocN which has size 0
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `ZERO_SIZED_ALLOC` at $DIR/offset_ub.rs:15:50
    | 
@@ -167,7 +167,7 @@ error: any use of this value will cause an error
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  inbounds test failed: 0x0 is not a valid pointer
+   |                  pointer arithmetic failed: 0x0 is not a valid pointer
    |                  inside `ptr::const_ptr::<impl *const u8>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `NULL_OFFSET_ZERO` at $DIR/offset_ub.rs:19:50
    | 

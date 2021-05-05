@@ -526,7 +526,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             min_ptr,
             Size::from_bytes(size),
             None,
-            CheckInAllocMsg::InboundsTest,
+            CheckInAllocMsg::PointerArithmeticTest,
         )?;
         Ok(offset_ptr)
     }

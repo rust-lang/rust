@@ -369,6 +369,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
             // This is UB, seriously.
+            // (`DanglingIntPointer` with these exact arguments has special printing code.)
             err_ub!(DanglingIntPointer(0, CheckInAllocMsg::InboundsTest))
         } else {
             // This is just something we cannot support during const-eval.
