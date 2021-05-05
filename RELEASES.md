@@ -1,3 +1,151 @@
+Version 1.52.0 (2021-05-06)
+============================
+
+Language
+--------
+- [Added the `unsafe_op_in_unsafe_fn` lint, which checks whether the unsafe code
+  in an `unsafe fn` is wrapped in a `unsafe` block.][79208] This lint
+  is allowed by default, and may become a warning or hard error in a
+  future edition.
+- [You can now cast mutable references to arrays to a pointer of the same type as
+  the element.][81479]
+
+Compiler
+--------
+- [Upgraded the default LLVM to LLVM 12.][81451]
+
+Added tier 3\* support for the following targets.
+
+- [`s390x-unknown-linux-musl`][82166]
+- [`riscv32gc-unknown-linux-musl` & `riscv64gc-unknown-linux-musl`][82202]
+- [`powerpc-unknown-openbsd`][82733]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+information on Rust's tiered platform support.
+
+Libraries
+---------
+- [`OsString` now implements `Extend` and `FromIterator`.][82121]
+- [`cmp::Reverse` now has `#[repr(transparent)]` representation.][81879]
+- [`Arc<impl Error>` now implements `error::Error`.][80553]
+- [All integer division and remainder operations are now `const`.][80962]
+
+Stabilised APIs
+-------------
+- [`Arguments::as_str`]
+- [`char::MAX`]
+- [`char::REPLACEMENT_CHARACTER`]
+- [`char::UNICODE_VERSION`]
+- [`char::decode_utf16`]
+- [`char::from_digit`]
+- [`char::from_u32_unchecked`]
+- [`char::from_u32`]
+- [`slice::partition_point`]
+- [`str::rsplit_once`]
+- [`str::split_once`]
+
+The following previously stable APIs are now `const`.
+
+- [`char::len_utf8`]
+- [`char::len_utf16`]
+- [`char::to_ascii_uppercase`]
+- [`char::to_ascii_lowercase`]
+- [`char::eq_ignore_ascii_case`]
+- [`u8::to_ascii_uppercase`]
+- [`u8::to_ascii_lowercase`]
+- [`u8::eq_ignore_ascii_case`]
+
+Rustdoc
+-------
+- [Rustdoc lints are now treated as a tool lint, meaning that
+  lints are now prefixed with `rustdoc::` (e.g. `#[warn(rustdoc::non_autolinks)]`).][80527]
+  Using the old style is still allowed, and will become a warning in
+  a future release.
+- [Rustdoc now supports argument files.][82261]
+- [Rustdoc now generates smart punctuation for documentation.][79423]
+- [You can now use "task lists" in Rustdoc Markdown.][81766] E.g.
+  ```markdown
+  - [x] Complete
+  - [ ] Todo
+  ```
+
+Misc
+----
+- [You can now pass multiple filters to tests.][81356] E.g.
+  `cargo test -- foo bar` will run all tests that match `foo` and `bar`.
+- [Rustup now distributes PDB symbols for the `std` library on Windows,
+  allowing you to see `std` symbols when debugging.][82218]
+
+Internal Only
+-------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
+- [Check the result cache before the DepGraph when ensuring queries][81855]
+- [Try fast_reject::simplify_type in coherence before doing full check][81744]
+- [Only store a LocalDefId in some HIR nodes][81611]
+- [Store HIR attributes in a side table][79519]
+
+Compatibility Notes
+-------------------
+- [Cargo build scripts are now forbidden from setting `RUSTC_BOOTSTRAP`.][cargo/9181]
+- [Removed support for the `x86_64-rumprun-netbsd` target.][82594]
+- [Deprecated the `x86_64-sun-solaris` target in favor of `x86_64-pc-solaris`.][82216]
+- [Rustdoc now only accepts `,`, ` `, and `\t` as delimiters for specifying
+  languages in code blocks.][78429]
+- [Rustc now catches more cases of `pub_use_of_private_extern_crate`][80763]
+- [Changes in how proc macros handle whitespace may lead to panics when used
+  with older `proc-macro-hack` versions. A `cargo update` should be sufficient to fix this in all cases.][84136]
+
+[84136]: https://github.com/rust-lang/rust/issues/84136
+[80763]: https://github.com/rust-lang/rust/pull/80763
+[82166]: https://github.com/rust-lang/rust/pull/82166
+[82121]: https://github.com/rust-lang/rust/pull/82121
+[81879]: https://github.com/rust-lang/rust/pull/81879
+[82261]: https://github.com/rust-lang/rust/pull/82261
+[82218]: https://github.com/rust-lang/rust/pull/82218
+[82216]: https://github.com/rust-lang/rust/pull/82216
+[82202]: https://github.com/rust-lang/rust/pull/82202
+[81855]: https://github.com/rust-lang/rust/pull/81855
+[81766]: https://github.com/rust-lang/rust/pull/81766
+[81744]: https://github.com/rust-lang/rust/pull/81744
+[81611]: https://github.com/rust-lang/rust/pull/81611
+[81479]: https://github.com/rust-lang/rust/pull/81479
+[81451]: https://github.com/rust-lang/rust/pull/81451
+[81356]: https://github.com/rust-lang/rust/pull/81356
+[80962]: https://github.com/rust-lang/rust/pull/80962
+[80553]: https://github.com/rust-lang/rust/pull/80553
+[80527]: https://github.com/rust-lang/rust/pull/80527
+[79519]: https://github.com/rust-lang/rust/pull/79519
+[79423]: https://github.com/rust-lang/rust/pull/79423
+[79208]: https://github.com/rust-lang/rust/pull/79208
+[78429]: https://github.com/rust-lang/rust/pull/78429
+[82733]: https://github.com/rust-lang/rust/pull/82733
+[82594]: https://github.com/rust-lang/rust/pull/82594
+[cargo/9181]: https://github.com/rust-lang/cargo/pull/9181
+[`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
+[`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
+[`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.UNICODE_VERSION
+[`char::decode_utf16`]: https://doc.rust-lang.org/std/primitive.char.html#method.decode_utf16
+[`char::from_u32`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32
+[`char::from_u32_unchecked`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_u32_unchecked
+[`char::from_digit`]: https://doc.rust-lang.org/std/primitive.char.html#method.from_digit
+[`Peekable::next_if`]: https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html#method.next_if
+[`Peekable::next_if_eq`]: https://doc.rust-lang.org/stable/std/iter/struct.Peekable.html#method.next_if_eq
+[`Arguments::as_str`]: https://doc.rust-lang.org/stable/std/fmt/struct.Arguments.html#method.as_str
+[`str::split_once`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.split_once
+[`str::rsplit_once`]: https://doc.rust-lang.org/stable/std/primitive.str.html#method.rsplit_once
+[`slice::partition_point`]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.partition_point
+[`char::len_utf8`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.len_utf8
+[`char::len_utf16`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.len_utf16
+[`char::to_ascii_uppercase`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.to_ascii_uppercase
+[`char::to_ascii_lowercase`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.to_ascii_lowercase
+[`char::eq_ignore_ascii_case`]: https://doc.rust-lang.org/stable/std/primitive.char.html#method.eq_ignore_ascii_case
+[`u8::to_ascii_uppercase`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_ascii_uppercase
+[`u8::to_ascii_lowercase`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.to_ascii_lowercase
+[`u8::eq_ignore_ascii_case`]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.eq_ignore_ascii_case
+
 Version 1.51.0 (2021-03-25)
 ============================
 
