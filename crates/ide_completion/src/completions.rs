@@ -203,41 +203,37 @@ impl Completions {
 fn complete_enum_variants(
     acc: &mut Completions,
     ctx: &CompletionContext,
-    ty: &hir::Type,
+    enum_data: hir::Enum,
     cb: impl Fn(&mut Completions, &CompletionContext, hir::Variant, hir::ModPath),
 ) {
-    if let Some(hir::Adt::Enum(enum_data)) =
-        iter::successors(Some(ty.clone()), |ty| ty.remove_ref()).last().and_then(|ty| ty.as_adt())
-    {
-        let variants = enum_data.variants(ctx.db);
+    let variants = enum_data.variants(ctx.db);
 
-        let module = if let Some(module) = ctx.scope.module() {
-            // Compute path from the completion site if available.
-            module
-        } else {
-            // Otherwise fall back to the enum's definition site.
-            enum_data.module(ctx.db)
-        };
+    let module = if let Some(module) = ctx.scope.module() {
+        // Compute path from the completion site if available.
+        module
+    } else {
+        // Otherwise fall back to the enum's definition site.
+        enum_data.module(ctx.db)
+    };
 
-        if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
-            if impl_.self_ty(ctx.db) == *ty {
-                for &variant in &variants {
-                    let self_path = hir::ModPath::from_segments(
-                        hir::PathKind::Plain,
-                        iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
-                    );
-                    cb(acc, ctx, variant, self_path);
-                }
+    if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
+        if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_data)) {
+            for &variant in &variants {
+                let self_path = hir::ModPath::from_segments(
+                    hir::PathKind::Plain,
+                    iter::once(known::SELF_TYPE).chain(iter::once(variant.name(ctx.db))),
+                );
+                cb(acc, ctx, variant, self_path);
             }
         }
+    }
 
-        for variant in variants {
-            if let Some(path) = module.find_use_path(ctx.db, hir::ModuleDef::from(variant)) {
-                // Variants with trivial paths are already added by the existing completion logic,
-                // so we should avoid adding these twice
-                if path.segments().len() > 1 {
-                    cb(acc, ctx, variant, path);
-                }
+    for variant in variants {
+        if let Some(path) = module.find_use_path(ctx.db, hir::ModuleDef::from(variant)) {
+            // Variants with trivial paths are already added by the existing completion logic,
+            // so we should avoid adding these twice
+            if path.segments().len() > 1 {
+                cb(acc, ctx, variant, path);
             }
         }
     }

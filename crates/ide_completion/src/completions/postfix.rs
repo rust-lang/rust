@@ -35,14 +35,11 @@ pub(crate) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         None => return,
     };
 
-    let ref_removed_ty =
-        std::iter::successors(Some(receiver_ty.clone()), |ty| ty.remove_ref()).last().unwrap();
-
     let cap = match ctx.config.snippet_cap {
         Some(it) => it,
         None => return,
     };
-    let try_enum = TryEnum::from_ty(&ctx.sema, &ref_removed_ty);
+    let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
     if let Some(try_enum) = &try_enum {
         match try_enum {
             TryEnum::Result => {
