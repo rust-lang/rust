@@ -15,7 +15,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
@@ -60,6 +60,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         wbcx.visit_body(body);
         wbcx.visit_min_capture_map();
+        wbcx.eval_closure_size();
         wbcx.visit_fake_reads_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
@@ -333,6 +334,19 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
+    fn eval_closure_size(&mut self) {
+        let mut res: FxHashMap<DefId, ClosureSizeProfileData<'tcx>> = Default::default();
+        for (closure_def_id, data) in self.fcx.typeck_results.borrow().closure_size_eval.iter() {
+            let closure_hir_id =
+                self.tcx().hir().local_def_id_to_hir_id(closure_def_id.expect_local());
+
+            let data = self.resolve(*data, &closure_hir_id);
+
+            res.insert(*closure_def_id, data);
+        }
+
+        self.typeck_results.closure_size_eval = res;
+    }
     fn visit_min_capture_map(&mut self) {
         let mut min_captures_wb = ty::MinCaptureInformationMap::with_capacity_and_hasher(
             self.fcx.typeck_results.borrow().closure_min_captures.len(),
