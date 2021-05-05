@@ -2,8 +2,8 @@ use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
-use clippy_utils::{is_trait_method, path_to_local_id, paths};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_trait_method, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
@@ -30,7 +30,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         then {
             let is_empty_sugg = Some("next().is_none()".to_string());
             let method_name = &*method.ident.name.as_str();
-            let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) || 
+            let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                         is_type_diagnostic_item(cx, ty, sym::vecdeque_type) {
                 match method_name {
                     "len" => Some("count()".to_string()),
@@ -45,7 +45,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                     _ => None,
                 }
             }
-            else if match_type(cx, ty, &paths::BTREEMAP) ||
+            else if is_type_diagnostic_item(cx, ty, sym::BTreeMap) ||
                 is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
                 match method_name {
                     "is_empty" => is_empty_sugg,
@@ -98,7 +98,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                     is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
-                    match_type(cx, ty, &paths::LINKED_LIST);
+                    is_type_diagnostic_item(cx, ty, sym::LinkedList);
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
                 if let [iter_call] = &*iter_calls;
                 then {
