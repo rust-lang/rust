@@ -1803,7 +1803,11 @@ fn add_local_native_libraries(
         codegen_results.crate_info.used_libraries.iter().filter(|l| relevant_lib(sess, l));
 
     let search_path = archive_search_paths(sess);
+    let mut last = (NativeLibKind::Unspecified, None);
     for lib in relevant_libs {
+        // Skip if this library is the same as the last.
+        last = if (lib.kind, lib.name) == last { continue } else { (lib.kind, lib.name) };
+
         let name = match lib.name {
             Some(l) => l,
             None => continue,
@@ -2127,8 +2131,12 @@ fn add_upstream_native_libraries(
         .expect("failed to find crate type in dependency format list");
 
     let crates = &codegen_results.crate_info.used_crates_static;
+    let mut last = (NativeLibKind::Unspecified, None);
     for &(cnum, _) in crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
+            // Skip if this library is the same as the last.
+            last = if (lib.kind, lib.name) == last { continue } else { (lib.kind, lib.name) };
+
             let name = match lib.name {
                 Some(l) => l,
                 None => continue,
