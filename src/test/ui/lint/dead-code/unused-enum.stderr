@@ -2,8 +2,9 @@ error: struct is never constructed: `F`
   --> $DIR/unused-enum.rs:3:8
    |
 LL | struct F;
-   |        ^
+   |        ^ help: if this is intentional, prefix it with an underscore: `_F`
    |
+   = note: the leading underscore signals that this struct serves some other purpose even if it isn't used in a way that we can detect.
 note: the lint level is defined here
   --> $DIR/unused-enum.rs:1:9
    |
@@ -15,13 +16,17 @@ error: struct is never constructed: `B`
   --> $DIR/unused-enum.rs:4:8
    |
 LL | struct B;
-   |        ^
+   |        ^ help: if this is intentional, prefix it with an underscore: `_B`
+   |
+   = note: the leading underscore signals that this struct serves some other purpose even if it isn't used in a way that we can detect.
 
 error: enum is never used: `E`
   --> $DIR/unused-enum.rs:6:6
    |
 LL | enum E {
-   |      ^
+   |      ^ help: if this is intentional, prefix it with an underscore: `_E`
+   |
+   = note: the leading underscore signals that this enum serves some other purpose even if it isn't used in a way that we can detect.
 
 error: aborting due to 3 previous errors
 
