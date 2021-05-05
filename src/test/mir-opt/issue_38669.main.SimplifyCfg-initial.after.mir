@@ -7,6 +7,8 @@ fn main() -> () {
     let _3: ();                          // in scope 0 at $DIR/issue-38669.rs:7:9: 9:10
     let mut _4: bool;                    // in scope 0 at $DIR/issue-38669.rs:7:12: 7:24
     let mut _5: !;                       // in scope 0 at $DIR/issue-38669.rs:7:25: 9:10
+    let _6: ();                          // in scope 0 at $DIR/issue-38669.rs:8:13: 8:18
+    let mut _7: !;                       // in scope 0 at $DIR/issue-38669.rs:8:13: 8:18
     scope 1 {
         debug should_break => _1;        // in scope 1 at $DIR/issue-38669.rs:5:9: 5:25
     }
@@ -30,7 +32,9 @@ fn main() -> () {
     }
 
     bb3: {
+        StorageLive(_6);                 // scope 1 at $DIR/issue-38669.rs:8:13: 8:18
         _0 = const ();                   // scope 1 at $DIR/issue-38669.rs:8:13: 8:18
+        StorageDead(_6);                 // scope 1 at $DIR/issue-38669.rs:8:18: 8:19
         StorageDead(_4);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_3);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_1);                 // scope 0 at $DIR/issue-38669.rs:12:1: 12:2

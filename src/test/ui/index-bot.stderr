@@ -1,9 +1,11 @@
-error[E0608]: cannot index into a value of type `!`
+error[E0282]: type annotations needed
   --> $DIR/index-bot.rs:2:5
    |
 LL |     (return)[0];
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^ cannot infer type
+   |
+   = note: type must be known at this point
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0608`.
+For more information about this error, try `rustc --explain E0282`.

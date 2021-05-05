@@ -8,7 +8,9 @@
       let mut _3: std::option::Option<u32>; // in scope 0 at $DIR/while_let_loops.rs:7:28: 7:32
       let mut _4: isize;                   // in scope 0 at $DIR/while_let_loops.rs:7:15: 7:25
       let mut _5: !;                       // in scope 0 at $DIR/while_let_loops.rs:7:33: 10:6
-      let mut _6: !;                       // in scope 0 at $DIR/while_let_loops.rs:7:5: 10:6
+      let _6: ();                          // in scope 0 at $DIR/while_let_loops.rs:9:9: 9:14
+      let mut _7: !;                       // in scope 0 at $DIR/while_let_loops.rs:9:9: 9:14
+      let mut _8: !;                       // in scope 0 at $DIR/while_let_loops.rs:7:5: 10:6
       scope 1 {
           debug _x => _1;                  // in scope 1 at $DIR/while_let_loops.rs:6:9: 6:15
       }
@@ -35,8 +37,10 @@
   
       bb3: {
           _1 = const 1_i32;                // scope 1 at $DIR/while_let_loops.rs:8:9: 8:15
+          StorageLive(_6);                 // scope 1 at $DIR/while_let_loops.rs:9:9: 9:14
           nop;                             // scope 1 at $DIR/while_let_loops.rs:9:9: 9:14
-          goto -> bb4;                     // scope 1 at $DIR/while_let_loops.rs:9:9: 9:14
+          StorageDead(_6);                 // scope 1 at $DIR/while_let_loops.rs:9:14: 9:15
+          goto -> bb4;                     // scope 1 at $DIR/while_let_loops.rs:1:1: 1:1
       }
   
       bb4: {

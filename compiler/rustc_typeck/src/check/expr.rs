@@ -68,25 +68,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
     ) -> Ty<'tcx> {
         let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
-        let mut ty = self.check_expr_with_expectation(expr, expected);
-
-        // While we don't allow *arbitrary* coercions here, we *do* allow
-        // coercions from ! to `expected`.
-        if ty.is_never() {
-            assert!(
-                !self.typeck_results.borrow().adjustments().contains_key(expr.hir_id),
-                "expression with never type wound up being adjusted"
-            );
-            let adj_ty = self.next_diverging_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::AdjustmentType,
-                span: expr.span,
-            });
-            self.apply_adjustments(
-                expr,
-                vec![Adjustment { kind: Adjust::NeverToAny, target: adj_ty }],
-            );
-            ty = adj_ty;
-        }
+        let ty = self.check_expr_with_expectation(expr, expected);
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
             let expr = expr.peel_drop_temps();
@@ -216,7 +198,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("type of {} is...", self.tcx.hir().node_to_string(expr.hir_id));
         debug!("... {:?}, expected is {:?}", ty, expected);
 
-        ty
+        // Convert the never type to a diverging type variable.
+        // Overall it helps to improve the consistency. We expect that we can
+        // have the same behaviour for `return.foo()` and `{ return }.foo()`.
+        if ty.is_never() {
+            assert!(
+                !self.typeck_results.borrow().adjustments().contains_key(expr.hir_id),
+                "expression with never type wound up being adjusted"
+            );
+
+            let expected_ty = match expected {
+                ExpectHasType(target_ty) => Some(target_ty),
+                ExpectCastableToType(target_ty) => Some(target_ty),
+                _ => None,
+            };
+
+            // Mirco-optimization: No need to create a diverging type variable
+            // if the target type is known.
+            let target_ty = expected_ty
+                .map(|target_ty| self.infcx.shallow_resolve(target_ty))
+                .filter(|target_ty| !target_ty.is_ty_var())
+                .unwrap_or_else(|| {
+                    self.next_diverging_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::AdjustmentType,
+                        span: expr.span,
+                    })
+                });
+            if !target_ty.is_never() {
+                self.apply_adjustments(
+                    expr,
+                    vec![Adjustment { kind: Adjust::NeverToAny, target: target_ty }],
+                );
+            }
+
+            target_ty
+        } else {
+            ty
+        }
     }
 
     fn check_expr_kind(

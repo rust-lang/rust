@@ -8,8 +8,9 @@
       let mut _3: i32;                     // in scope 0 at $DIR/inline-diverging.rs:13:8: 13:9
       let mut _4: i32;                     // in scope 0 at $DIR/inline-diverging.rs:14:9: 14:10
       let mut _5: !;                       // in scope 0 at $DIR/inline-diverging.rs:15:12: 17:6
-      let _6: !;                           // in scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
-+     let mut _7: !;                       // in scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
+      let _6: ();                          // in scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
+      let mut _7: !;                       // in scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
++     let mut _8: !;                       // in scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
 +     scope 1 (inlined panic) {            // at $DIR/inline-diverging.rs:16:9: 16:16
 +     }
   
@@ -33,8 +34,9 @@
   
       bb2: {
           StorageLive(_6);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
+          StorageLive(_7);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
 -         panic();                         // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
-+         StorageLive(_7);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
++         StorageLive(_8);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
 +         begin_panic::<&str>(const "explicit panic"); // scope 1 at $DIR/inline-diverging.rs:16:9: 16:16
                                            // mir::Constant
 -                                          // + span: $DIR/inline-diverging.rs:16:9: 16:14

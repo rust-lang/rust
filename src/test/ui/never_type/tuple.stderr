@@ -1,0 +1,28 @@
+error[E0308]: mismatched types
+  --> $DIR/tuple.rs:6:11
+   |
+LL |     a.0 = 1.1;
+   |           ^^^ expected integer, found floating-point number
+
+error[E0282]: type annotations needed for `(_,)`
+  --> $DIR/tuple.rs:11:5
+   |
+LL |     let mut a = (return, );
+   |         ----- consider giving `a` the explicit type `(_,)`, with the type parameters specified
+LL |     a.0.test();
+   |     ^^^ cannot infer type
+   |
+   = note: type must be known at this point
+
+error[E0369]: cannot add `{integer}` to `(_,)`
+  --> $DIR/tuple.rs:16:7
+   |
+LL |     a + 1;
+   |     - ^ - {integer}
+   |     |
+   |     (_,)
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0282, E0308, E0369.
+For more information about an error, try `rustc --explain E0282`.
