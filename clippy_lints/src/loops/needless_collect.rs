@@ -10,7 +10,6 @@ use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, GenericArg, GenericArgs, HirId, Local, Pat, PatKind, QPath, StmtKind, Ty};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
-
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{MultiSpan, Span};
 
@@ -28,32 +27,45 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if let Some(generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         if let Some(ty) = cx.typeck_results().node_type_opt(ty.hir_id);
-        if is_type_diagnostic_item(cx, ty, sym::vec_type)
-            || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
-            || match_type(cx, ty, &paths::BTREEMAP)
-            || is_type_diagnostic_item(cx, ty, sym::hashmap_type);
-        if let Some(sugg) = match &*method.ident.name.as_str() {
-            "len" => Some("count()".to_string()),
-            "is_empty" => Some("next().is_none()".to_string()),
-            "contains" => {
-                let contains_arg = snippet(cx, args[1].span, "??");
-                let (arg, pred) = contains_arg
-                    .strip_prefix('&')
-                    .map_or(("&x", &*contains_arg), |s| ("x", s));
-                Some(format!("any(|{}| x == {})", arg, pred))
-            }
-            _ => None,
-        };
         then {
-            span_lint_and_sugg(
-                cx,
-                NEEDLESS_COLLECT,
-                method0_span.with_hi(expr.span.hi()),
-                NEEDLESS_COLLECT_MSG,
-                "replace with",
-                sugg,
-                Applicability::MachineApplicable,
-            );
+            let is_empty_sugg = Some("next().is_none()".to_string());
+            let method_name = &*method.ident.name.as_str();
+            let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) || 
+                        is_type_diagnostic_item(cx, ty, sym::vecdeque_type) {
+                match method_name {
+                    "len" => Some("count()".to_string()),
+                    "is_empty" => is_empty_sugg,
+                    "contains" => {
+                        let contains_arg = snippet(cx, args[1].span, "??");
+                        let (arg, pred) = contains_arg
+                            .strip_prefix('&')
+                            .map_or(("&x", &*contains_arg), |s| ("x", s));
+                        Some(format!("any(|{}| x == {})", arg, pred))
+                    }
+                    _ => None,
+                }
+            }
+            else if match_type(cx, ty, &paths::BTREEMAP) ||
+                is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
+                match method_name {
+                    "is_empty" => is_empty_sugg,
+                    _ => None,
+                }
+            }
+            else {
+                None
+            };
+            if let Some(sugg) = sugg {
+                span_lint_and_sugg(
+                    cx,
+                    NEEDLESS_COLLECT,
+                    method0_span.with_hi(expr.span.hi()),
+                    NEEDLESS_COLLECT_MSG,
+                    "replace with",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
 }

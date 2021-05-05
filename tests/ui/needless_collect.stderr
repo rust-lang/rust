@@ -19,10 +19,16 @@ LL |     sample.iter().cloned().collect::<Vec<_>>().contains(&1);
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `any(|x| x == 1)`
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect.rs:16:35
+  --> $DIR/needless_collect.rs:20:35
    |
-LL |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `count()`
+LL |     sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().is_empty();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
 
-error: aborting due to 4 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect.rs:21:35
+   |
+LL |     sample.iter().map(|x| (x, x)).collect::<BTreeMap<_, _>>().is_empty();
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
+
+error: aborting due to 5 previous errors
 
