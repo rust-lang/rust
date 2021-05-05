@@ -31,7 +31,9 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
             let is_empty_sugg = Some("next().is_none()".to_string());
             let method_name = &*method.ident.name.as_str();
             let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
-                        is_type_diagnostic_item(cx, ty, sym::vecdeque_type) {
+                        is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
+                        is_type_diagnostic_item(cx, ty, sym::LinkedList) ||
+                        is_type_diagnostic_item(cx, ty, sym::BinaryHeap) {
                 match method_name {
                     "len" => Some("count()".to_string()),
                     "is_empty" => is_empty_sugg,
