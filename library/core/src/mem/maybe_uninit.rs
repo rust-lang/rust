@@ -870,7 +870,7 @@ impl<T> MaybeUninit<T> {
         // SAFETY:
         // * The caller guarantees that all elements of the array are initialized
         // * `MaybeUninit<T>` and T are guaranteed to have the same layout
-        // * MaybeUnint does not drop, so there are no double-frees
+        // * `MaybeUninit` does not drop, so there are no double-frees
         // And thus the conversion is safe
         unsafe {
             intrinsics::assert_inhabited::<[T; N]>();
