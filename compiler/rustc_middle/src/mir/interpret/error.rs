@@ -171,7 +171,6 @@ impl fmt::Display for InvalidProgramInfo<'_> {
 #[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum CheckInAllocMsg {
     MemoryAccessTest,
-    NullPointerTest,
     PointerArithmeticTest,
     InboundsTest,
 }
@@ -185,7 +184,6 @@ impl fmt::Display for CheckInAllocMsg {
             "{}",
             match *self {
                 CheckInAllocMsg::MemoryAccessTest => "memory access",
-                CheckInAllocMsg::NullPointerTest => "null pointer test",
                 CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic",
                 CheckInAllocMsg::InboundsTest => "inbounds test",
             }
@@ -308,9 +306,6 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 ptr.alloc_id,
                 allocation_size.bytes()
             ),
-            DanglingIntPointer(_, CheckInAllocMsg::NullPointerTest) => {
-                write!(f, "null pointer is not allowed for this operation")
-            }
             DanglingIntPointer(i, msg) => {
                 write!(f, "{} failed: 0x{:x} is not a valid pointer", msg, i)
             }
