@@ -15,6 +15,7 @@ rustc-semver="1.1.0"
 
 [features]
 internal-lints = []
+metadata-collector-lint = []
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

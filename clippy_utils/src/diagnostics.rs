@@ -1,4 +1,12 @@
 //! Clippy wrappers around rustc's diagnostic functions.
+//!
+//! These functions are used by the `INTERNAL_METADATA_COLLECTOR` lint to collect the corresponding
+//! lint applicability. Please make sure that you update the `LINT_EMISSION_FUNCTIONS` variable in
+//! `clippy_lints::utils::internal_lints::metadata_collector` when a new function is added
+//! or renamed.
+//!
+//! Thank you!
+//! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::HirId;
