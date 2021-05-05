@@ -1611,6 +1611,9 @@ impl fmt::Display for ExitStatusError {
     }
 }
 
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl crate::error::Error for ExitStatusError {}
+
 /// This type represents the status code a process can return to its
 /// parent under normal termination.
 ///
