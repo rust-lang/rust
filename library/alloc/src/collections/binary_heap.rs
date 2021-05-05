@@ -405,6 +405,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// If the item is modified then the worst case time complexity is *O*(log(*n*)),
     /// otherwise it's *O*(1).
     #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
+    #[doc(alias = "pushpop")]
+    #[doc(alias = "push_pop")]
     pub fn peek_mut(&mut self) -> Option<PeekMut<'_, T>> {
         if self.is_empty() { None } else { Some(PeekMut { heap: self, sift: false }) }
     }
@@ -1457,6 +1459,7 @@ impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
     /// Converts a `Vec<T>` into a `BinaryHeap<T>`.
     ///
     /// This conversion happens in-place, and has *O*(*n*) time complexity.
+    #[doc(alias = "heapify")]
     fn from(vec: Vec<T>) -> BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
         heap.rebuild();
