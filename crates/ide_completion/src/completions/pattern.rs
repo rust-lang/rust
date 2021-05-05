@@ -12,8 +12,10 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     }
 
     if !ctx.is_irrefutable_pat_binding {
-        if let Some(ty) = ctx.expected_type.as_ref() {
-            super::complete_enum_variants(acc, ctx, ty, |acc, ctx, variant, path| {
+        if let Some(hir::Adt::Enum(e)) =
+            ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
+        {
+            super::complete_enum_variants(acc, ctx, e, |acc, ctx, variant, path| {
                 acc.add_qualified_variant_pat(ctx, variant, path.clone());
                 acc.add_qualified_enum_variant(ctx, variant, path);
             });

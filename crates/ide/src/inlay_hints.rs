@@ -218,9 +218,7 @@ fn hint_iterator(
     ty: &hir::Type,
 ) -> Option<SmolStr> {
     let db = sema.db;
-    let strukt = std::iter::successors(Some(ty.clone()), |ty| ty.remove_ref())
-        .last()
-        .and_then(|strukt| strukt.as_adt())?;
+    let strukt = ty.strip_references().as_adt()?;
     let krate = strukt.krate(db);
     if krate != famous_defs.core()? {
         return None;
