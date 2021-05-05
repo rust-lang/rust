@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 /// instead of the source code directly.
 #[derive(Debug)]
 crate enum LinkFromSrc {
-    Local(Span),
+    Local(clean::Span),
     External(DefId),
 }
 
@@ -113,7 +113,7 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 path_span
                     .map(LightSpan::new_from_span)
                     .unwrap_or_else(|| LightSpan::new_from_span(path.span)),
-                LinkFromSrc::Local(span),
+                LinkFromSrc::Local(clean::Span::new(span)),
             );
         } else if let Some(def_id) = info {
             self.matches.insert(
@@ -161,7 +161,7 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
                     Node::Item(item) => {
                         self.matches.insert(
                             LightSpan::new_from_span(item.ident.span),
-                            LinkFromSrc::Local(m.inner),
+                            LinkFromSrc::Local(clean::Span::new(m.inner)),
                         );
                     }
                     _ => {}
@@ -187,7 +187,7 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
                             Some(span) => {
                                 self.matches.insert(
                                     LightSpan::new_from_span(method_span),
-                                    LinkFromSrc::Local(span),
+                                    LinkFromSrc::Local(clean::Span::new(span)),
                                 );
                             }
                             None => {

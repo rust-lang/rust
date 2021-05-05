@@ -5,7 +5,6 @@
 //!
 //! Use the `render_with_highlighting` to highlight some rust code.
 
-use crate::clean;
 use crate::html::escape::Escape;
 use crate::html::render::Context;
 
@@ -584,7 +583,7 @@ fn string<T: Display>(
                     match href {
                         LinkFromSrc::Local(span) => {
                             context
-                                .href_from_span(clean::Span::wrap_raw(*span))
+                                .href_from_span(*span)
                                 .map(|s| format!("{}{}", context_info.root_path, s))
                         }
                         LinkFromSrc::External(def_id) => {
