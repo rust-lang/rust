@@ -24,7 +24,7 @@ extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -
         let code = rec.ExceptionCode;
 
         if code == c::EXCEPTION_STACK_OVERFLOW {
-            rterr!(
+            rtprintpanic!(
                 "\nthread '{}' has overflowed its stack\n",
                 thread::current().name().unwrap_or("<unknown>")
             );

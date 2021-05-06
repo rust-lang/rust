@@ -39,7 +39,11 @@ pub fn cleanup() {
     });
 }
 
-macro_rules! rterr {
+// Prints to the "panic output", depending on the platform this may be:
+// - the standard error output
+// - some dedicated platform specific output
+// - nothing (so this macro is a no-op)
+macro_rules! rtprintpanic {
     ($($t:tt)*) => {
         if let Some(mut out) = crate::sys::stdio::panic_output() {
             let _ = crate::io::Write::write_fmt(&mut out, format_args!($($t)*));
@@ -50,7 +54,7 @@ macro_rules! rterr {
 macro_rules! rtabort {
     ($($t:tt)*) => {
         {
-            rterr!("fatal runtime error: {}\n", format_args!($($t)*));
+            rtprintpanic!("fatal runtime error: {}\n", format_args!($($t)*));
             crate::sys::abort_internal();
         }
     }
