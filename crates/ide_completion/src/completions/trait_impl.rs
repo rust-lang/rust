@@ -36,7 +36,7 @@ use ide_db::{traits::get_missing_assoc_items, SymbolKind};
 use syntax::{
     ast::{self, edit, Impl},
     display::function_declaration,
-    AstNode, SyntaxKind, SyntaxNode, TextRange, T,
+    AstNode, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, T,
 };
 use text_edit::TextEdit;
 
@@ -154,8 +154,7 @@ fn add_function_impl(
     } else {
         CompletionItemKind::SymbolKind(SymbolKind::Function)
     };
-    let range = TextRange::new(fn_def_node.text_range().start(), ctx.source_range().end());
-
+    let range = replacement_range(ctx, fn_def_node);
     if let Some(src) = func.source(ctx.db) {
         let function_decl = function_declaration(&src.value);
         match ctx.config.snippet_cap {
@@ -183,8 +182,7 @@ fn add_type_alias_impl(
 
     let snippet = format!("type {} = ", alias_name);
 
-    let range = TextRange::new(type_def_node.text_range().start(), ctx.source_range().end());
-
+    let range = replacement_range(ctx, type_def_node);
     let mut item = CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
     item.text_edit(TextEdit::replace(range, snippet))
         .lookup_by(alias_name)
@@ -205,9 +203,7 @@ fn add_const_impl(
         if let Some(source) = const_.source(ctx.db) {
             let snippet = make_const_compl_syntax(&source.value);
 
-            let range =
-                TextRange::new(const_def_node.text_range().start(), ctx.source_range().end());
-
+            let range = replacement_range(ctx, const_def_node);
             let mut item =
                 CompletionItem::new(CompletionKind::Magic, ctx.source_range(), snippet.clone());
             item.text_edit(TextEdit::replace(range, snippet))
@@ -240,6 +236,21 @@ fn make_const_compl_syntax(const_: &ast::Const) -> String {
     let syntax = const_.syntax().text().slice(range).to_string();
 
     format!("{} = ", syntax.trim_end())
+}
+
+fn replacement_range(ctx: &CompletionContext, item: &SyntaxNode) -> TextRange {
+    let first_child = item
+        .children_with_tokens()
+        .find(|child| {
+            let kind = child.kind();
+            match kind {
+                SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR => false,
+                _ => true,
+            }
+        })
+        .unwrap_or(SyntaxElement::Node(item.clone()));
+
+    TextRange::new(first_child.text_range().start(), ctx.source_range().end())
 }
 
 #[cfg(test)]
@@ -733,5 +744,51 @@ impl Test for T {{
             test("Foo", "type $0", "type Foo = ", next_sibling);
             test("CONST", "const $0", "const CONST: u16 = ", next_sibling);
         }
+    }
+
+    #[test]
+    fn snippet_does_not_overwrite_comment_or_attr() {
+        let test = |completion: &str, hint: &str, completed: &str| {
+            check_edit(
+                completion,
+                &format!(
+                    r#"
+trait Foo {{
+    type Type;
+    fn function();
+    const CONST: i32 = 0;
+}}
+struct T;
+
+impl Foo for T {{
+    // Comment
+    #[bar]
+    {}
+}}
+"#,
+                    hint
+                ),
+                &format!(
+                    r#"
+trait Foo {{
+    type Type;
+    fn function();
+    const CONST: i32 = 0;
+}}
+struct T;
+
+impl Foo for T {{
+    // Comment
+    #[bar]
+    {}
+}}
+"#,
+                    completed
+                ),
+            )
+        };
+        test("function", "fn f$0", "fn function() {\n    $0\n}");
+        test("Type", "type T$0", "type Type = ");
+        test("CONST", "const C$0", "const CONST: i32 = ");
     }
 }
