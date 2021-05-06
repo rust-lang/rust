@@ -16,7 +16,6 @@
 #![feature(format_args_capture)]
 #![feature(iter_zip)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 #![allow(rustdoc::private_intra_doc_links)]
 

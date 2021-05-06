@@ -36,7 +36,6 @@
 #![feature(iter_zip)]
 #![feature(never_type)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(half_open_range_patterns)]
 #![feature(exclusive_range_pattern)]
 #![feature(control_flow_enum)]

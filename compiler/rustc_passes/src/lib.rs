@@ -10,7 +10,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 #[macro_use]

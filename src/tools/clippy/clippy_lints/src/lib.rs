@@ -6,7 +6,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]
 #![feature(control_flow_enum)]

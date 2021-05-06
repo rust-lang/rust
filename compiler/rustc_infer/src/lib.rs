@@ -20,7 +20,6 @@
 #![feature(extend_one)]
 #![feature(iter_zip)]
 #![feature(never_type)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
 #![recursion_limit = "512"] // For rustdoc
