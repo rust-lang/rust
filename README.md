@@ -147,6 +147,7 @@ Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml
 value` mapping eg.
 
 ```toml
+avoid-breaking-exported-api = false
 blacklisted-names = ["toto", "tata", "titi"]
 cognitive-complexity-threshold = 30
 ```
