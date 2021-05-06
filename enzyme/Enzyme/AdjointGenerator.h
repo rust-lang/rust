@@ -1156,13 +1156,40 @@ public:
       }
       goto def;
     }
+    case Instruction::And: {
+      // If & against 0b10000000000 and a float the result is 0
+      auto &dl = gutils->oldFunc->getParent()->getDataLayout();
+      auto size = dl.getTypeSizeInBits(BO.getType()) / 8;
+
+      auto FT = TR.query(&BO).IsAllFloat(size);
+      auto eFT = FT;
+      if (FT)
+        for (int i = 0; i < 2; ++i) {
+          auto CI = dyn_cast<ConstantInt>(BO.getOperand(i));
+          if (CI && dl.getTypeSizeInBits(eFT) ==
+                        dl.getTypeSizeInBits(CI->getType())) {
+            if (CI->isNegative() && CI->isMinValue(/*signed*/ true)) {
+              setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
+              // Derivative is zero, no update
+              return;
+            }
+            if (eFT->isDoubleTy() && CI->getValue() == -134217728) {
+              setDiffe(&BO, Constant::getNullValue(BO.getType()), Builder2);
+              // Derivative is zero (equivalent to rounding as just chopping off
+              // bits of mantissa), no update
+              return;
+            }
+          }
+        }
+      goto def;
+    }
     case Instruction::Xor: {
       auto &dl = gutils->oldFunc->getParent()->getDataLayout();
       auto size = dl.getTypeSizeInBits(BO.getType()) / 8;
 
       auto FT = TR.query(&BO).IsAllFloat(size);
       auto eFT = FT;
-      // If & against 0b10000000000 and a float the result is a float
+      // If ^ against 0b10000000000 and a float the result is a float
       if (FT)
         for (int i = 0; i < 2; ++i) {
           auto CI = dyn_cast<ConstantInt>(BO.getOperand(i));

@@ -30,6 +30,11 @@
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 
+#if LLVM_VERSION_MAJOR >= 9
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Transforms/IPO/Attributor.h"
+#endif
+
 using namespace llvm;
 
 TargetLibraryInfo eunwrap(LLVMTargetLibraryInfoRef P) {
@@ -353,4 +358,10 @@ const char *EnzymeTypeTreeToString(CTypeTreeRef src) {
   return cstr;
 }
 void EnzymeTypeTreeToStringFree(const char *cstr) { delete[] cstr; }
+
+#if LLVM_VERSION_MAJOR >= 9
+void EnzymeAddAttributorLegacyPass(LLVMPassManagerRef PM) {
+  unwrap(PM)->add(createAttributorLegacyPass());
+}
+#endif
 }

@@ -525,6 +525,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     return true;
   }
   if (isa<InlineAsm>(Val)) {
+    return false;
     llvm::errs() << *TR.info.Function << "\n";
     llvm::errs() << *Val << "\n";
   }

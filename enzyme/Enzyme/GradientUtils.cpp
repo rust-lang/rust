@@ -1527,8 +1527,9 @@ bool GradientUtils::legalRecompute(const Value *val,
             reverse); // TODO ADD && !TR.intType(getOriginal(dli),
                       // /*mustfind*/false).isPossibleFloat();
       }
-      if (phi->getNumIncomingValues() == 0)
+      if (phi->getNumIncomingValues() == 0) {
         return false;
+      }
     }
 
     if (phi->getNumIncomingValues() == 0) {
@@ -1565,7 +1566,6 @@ bool GradientUtils::legalRecompute(const Value *val,
     // const_cast<GradientUtils*>(this)->SE.getSCEV(const_cast<Value*>(val));
     // llvm::errs() << "phi: " << *val << " scev: " << *scev << "\n";
     //}
-    // llvm::errs() << "illegal recompute: " << *val << "\n";
     return false;
   }
 
@@ -3565,7 +3565,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
             if (scopeMap.find(inst) == scopeMap.end())
               EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc,
                           inst->getParent(), "Caching instruction ", *inst,
-                          " legalRecompute: ", lrc, " shouldRecompute: ", src);
+                          " legalRecompute: ", lrc, " shouldRecompute: ", src,
+                          " tryLegalRecomputeCheck: ", tryLegalRecomputeCheck);
             return result;
           }
         }
@@ -3575,7 +3576,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   if (scopeMap.find(inst) == scopeMap.end())
     EmitWarning("Uncacheable", inst->getDebugLoc(), newFunc, inst->getParent(),
                 "Caching instruction ", *inst, " legalRecompute: ", lrc,
-                " shouldRecompute: ", src);
+                " shouldRecompute: ", src,
+                " tryLegalRecomputeCheck: ", tryLegalRecomputeCheck);
   ensureLookupCached(inst);
   bool isi1 = inst->getType()->isIntegerTy() &&
               cast<IntegerType>(inst->getType())->getBitWidth() == 1;
