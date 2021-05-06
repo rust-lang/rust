@@ -1,30 +1,31 @@
 //! Various extension methods to ast Nodes, which are hard to code-generate.
 //! Extensions for various expressions live in a sibling `expr_extensions` module.
 
-use std::{fmt, iter::successors};
+use std::{borrow::Cow, fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
+use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{self, support, AstNode, AstToken, AttrsOwner, NameOwner, SyntaxNode},
-    SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
+    NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
 impl ast::Lifetime {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::Name {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_first_token(self.syntax())
     }
 }
 
 impl ast::NameRef {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         text_of_first_token(self.syntax())
     }
 
@@ -33,11 +34,15 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> TokenText {
-    let first_token =
-        node.green().children().next().and_then(|it| it.into_token()).unwrap().to_owned();
+fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
+    fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
+        green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
+    }
 
-    TokenText(first_token)
+    match node.green() {
+        Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
+        Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -412,7 +417,7 @@ impl fmt::Display for NameOrNameRef {
 }
 
 impl NameOrNameRef {
-    pub fn text(&self) -> TokenText {
+    pub fn text(&self) -> TokenText<'_> {
         match self {
             NameOrNameRef::Name(name) => name.text(),
             NameOrNameRef::NameRef(name_ref) => name_ref.text(),

@@ -572,7 +572,7 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
 }
 
 fn unroot(n: SyntaxNode) -> SyntaxNode {
-    SyntaxNode::new_root(n.green())
+    SyntaxNode::new_root(n.green().into())
 }
 
 pub mod tokens {

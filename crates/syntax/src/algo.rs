@@ -555,7 +555,7 @@ impl SyntaxRewriter<'_> {
 
 fn element_to_green(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
     match element {
-        NodeOrToken::Node(it) => NodeOrToken::Node(it.green()),
+        NodeOrToken::Node(it) => NodeOrToken::Node(it.green().into_owned()),
         NodeOrToken::Token(it) => NodeOrToken::Token(it.green().to_owned()),
     }
 }
