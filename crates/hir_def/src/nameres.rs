@@ -599,6 +599,7 @@ mod diagnostics {
                     let mut cur = 0;
                     let mut tree = None;
                     ModPath::expand_use_item(
+                        db,
                         InFile::new(ast.file_id, use_item),
                         &hygiene,
                         |_mod_path, use_tree, _is_glob, _alias| {

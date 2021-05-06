@@ -31,18 +31,20 @@ where
     }
 }
 
-pub(super) struct Ctx {
+pub(super) struct Ctx<'a> {
+    db: &'a dyn DefDatabase,
     tree: ItemTree,
     hygiene: Hygiene,
     file: HirFileId,
     source_ast_id_map: Arc<AstIdMap>,
-    body_ctx: crate::body::LowerCtx,
+    body_ctx: crate::body::LowerCtx<'a>,
     forced_visibility: Option<RawVisibilityId>,
 }
 
-impl Ctx {
-    pub(super) fn new(db: &dyn DefDatabase, hygiene: Hygiene, file: HirFileId) -> Self {
+impl<'a> Ctx<'a> {
+    pub(super) fn new(db: &'a dyn DefDatabase, hygiene: Hygiene, file: HirFileId) -> Self {
         Self {
+            db,
             tree: ItemTree::default(),
             hygiene,
             file,
@@ -126,7 +128,7 @@ impl Ctx {
             | ast::Item::MacroDef(_) => {}
         };
 
-        let attrs = RawAttrs::new(item, &self.hygiene);
+        let attrs = RawAttrs::new(self.db, item, &self.hygiene);
         let items = match item {
             ast::Item::Struct(ast) => self.lower_struct(ast).map(Into::into),
             ast::Item::Union(ast) => self.lower_union(ast).map(Into::into),
@@ -256,7 +258,7 @@ impl Ctx {
         for field in fields.fields() {
             if let Some(data) = self.lower_record_field(&field) {
                 let idx = self.data().fields.alloc(data);
-                self.add_attrs(idx.into(), RawAttrs::new(&field, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, &self.hygiene));
             }
         }
         let end = self.next_field_idx();
@@ -276,7 +278,7 @@ impl Ctx {
         for (i, field) in fields.fields().enumerate() {
             let data = self.lower_tuple_field(i, &field);
             let idx = self.data().fields.alloc(data);
-            self.add_attrs(idx.into(), RawAttrs::new(&field, &self.hygiene));
+            self.add_attrs(idx.into(), RawAttrs::new(self.db, &field, &self.hygiene));
         }
         let end = self.next_field_idx();
         IdRange::new(start..end)
@@ -321,7 +323,7 @@ impl Ctx {
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
                 let idx = self.data().variants.alloc(data);
-                self.add_attrs(idx.into(), RawAttrs::new(&variant, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &variant, &self.hygiene));
             }
         }
         let end = self.next_variant_idx();
@@ -364,7 +366,7 @@ impl Ctx {
                 };
                 let ty = Interned::new(self_type);
                 let idx = self.data().params.alloc(Param::Normal(ty));
-                self.add_attrs(idx.into(), RawAttrs::new(&self_param, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &self_param, &self.hygiene));
                 has_self_param = true;
             }
             for param in param_list.params() {
@@ -376,7 +378,7 @@ impl Ctx {
                         self.data().params.alloc(Param::Normal(ty))
                     }
                 };
-                self.add_attrs(idx.into(), RawAttrs::new(&param, &self.hygiene));
+                self.add_attrs(idx.into(), RawAttrs::new(self.db, &param, &self.hygiene));
             }
         }
         let end_param = self.next_param_idx();
@@ -522,10 +524,11 @@ impl Ctx {
         let is_unsafe = trait_def.unsafe_token().is_some();
         let bounds = self.lower_type_bounds(trait_def);
         let items = trait_def.assoc_item_list().map(|list| {
+            let db = self.db;
             self.with_inherited_visibility(visibility, |this| {
                 list.assoc_items()
                     .filter_map(|item| {
-                        let attrs = RawAttrs::new(&item, &this.hygiene);
+                        let attrs = RawAttrs::new(db, &item, &this.hygiene);
                         this.collect_inner_items(item.syntax());
                         this.lower_assoc_item(&item).map(|item| {
                             this.add_attrs(ModItem::from(item).into(), attrs);
@@ -567,7 +570,7 @@ impl Ctx {
             .filter_map(|item| {
                 self.collect_inner_items(item.syntax());
                 let assoc = self.lower_assoc_item(&item)?;
-                let attrs = RawAttrs::new(&item, &self.hygiene);
+                let attrs = RawAttrs::new(self.db, &item, &self.hygiene);
                 self.add_attrs(ModItem::from(assoc).into(), attrs);
                 Some(assoc)
             })
@@ -585,6 +588,7 @@ impl Ctx {
         let mut imports = Vec::new();
         let tree = self.tree.data_mut();
         ModPath::expand_use_item(
+            self.db,
             InFile::new(self.file, use_item.clone()),
             &self.hygiene,
             |path, _use_tree, is_glob, alias| {
@@ -618,7 +622,7 @@ impl Ctx {
     }
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
-        let path = Interned::new(ModPath::from_src(m.path()?, &self.hygiene)?);
+        let path = Interned::new(ModPath::from_src(self.db, m.path()?, &self.hygiene)?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let res = MacroCall { path, ast_id };
         Some(id(self.data().macro_calls.alloc(res)))
@@ -647,7 +651,7 @@ impl Ctx {
             list.extern_items()
                 .filter_map(|item| {
                     self.collect_inner_items(item.syntax());
-                    let attrs = RawAttrs::new(&item, &self.hygiene);
+                    let attrs = RawAttrs::new(self.db, &item, &self.hygiene);
                     let id: ModItem = match item {
                         ast::ExternItem::Fn(ast) => {
                             let func_id = self.lower_function(&ast)?;
@@ -755,7 +759,7 @@ impl Ctx {
     fn lower_visibility(&mut self, item: &impl ast::VisibilityOwner) -> RawVisibilityId {
         let vis = match self.forced_visibility {
             Some(vis) => return vis,
-            None => RawVisibility::from_ast_with_hygiene(item.visibility(), &self.hygiene),
+            None => RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), &self.hygiene),
         };
 
         self.data().vis.alloc(vis)

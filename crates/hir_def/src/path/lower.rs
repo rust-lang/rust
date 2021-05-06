@@ -2,7 +2,7 @@
 
 mod lower_use;
 
-use crate::intern::Interned;
+use crate::{db::DefDatabase, intern::Interned};
 use std::sync::Arc;
 
 use either::Either;
@@ -20,7 +20,11 @@ pub(super) use lower_use::lower_use_tree;
 
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.
-pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
+pub(super) fn lower_path(
+    db: &dyn DefDatabase,
+    mut path: ast::Path,
+    ctx: &LowerCtx,
+) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
     let mut segments = Vec::new();
@@ -36,7 +40,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
         match segment.kind()? {
             ast::PathSegmentKind::Name(name_ref) => {
                 // FIXME: this should just return name
-                match hygiene.name_ref_to_name(name_ref) {
+                match hygiene.name_ref_to_name(db.upcast(), name_ref) {
                     Either::Left(name) => {
                         let args = segment
                             .generic_arg_list()
@@ -71,7 +75,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let path = Path::from_src(trait_ref.path()?, ctx)?;
+                        let path = Path::from_src(db, trait_ref.path()?, ctx)?;
                         let mod_path = (*path.mod_path).clone();
                         let num_segments = path.mod_path.segments.len();
                         kind = mod_path.kind;
@@ -133,7 +137,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            if let Some(crate_id) = hygiene.local_inner_macros(path) {
+            if let Some(crate_id) = hygiene.local_inner_macros(db.upcast(), path) {
                 kind = PathKind::DollarCrate(crate_id);
             }
         }

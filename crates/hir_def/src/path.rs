@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{body::LowerCtx, intern::Interned, type_ref::LifetimeRef};
+use crate::{body::LowerCtx, db::DefDatabase, intern::Interned, type_ref::LifetimeRef};
 use base_db::CrateId;
 use hir_expand::{
     hygiene::Hygiene,
@@ -47,9 +47,9 @@ pub enum ImportAlias {
 }
 
 impl ModPath {
-    pub fn from_src(path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
-        let ctx = LowerCtx::with_hygiene(hygiene);
-        lower::lower_path(path, &ctx).map(|it| (*it.mod_path).clone())
+    pub fn from_src(db: &dyn DefDatabase, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
+        let ctx = LowerCtx::with_hygiene(db, hygiene);
+        lower::lower_path(db, path, &ctx).map(|it| (*it.mod_path).clone())
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
@@ -64,12 +64,13 @@ impl ModPath {
 
     /// Calls `cb` with all paths, represented by this use item.
     pub(crate) fn expand_use_item(
+        db: &dyn DefDatabase,
         item_src: InFile<ast::Use>,
         hygiene: &Hygiene,
         mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<ImportAlias>),
     ) {
         if let Some(tree) = item_src.value.use_tree() {
-            lower::lower_use_tree(None, tree, hygiene, &mut cb);
+            lower::lower_use_tree(db, None, tree, hygiene, &mut cb);
         }
     }
 
@@ -168,8 +169,8 @@ pub enum GenericArg {
 impl Path {
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
-    pub fn from_src(path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
-        lower::lower_path(path, ctx)
+    pub fn from_src(db: &dyn DefDatabase, path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
+        lower::lower_path(db, path, ctx)
     }
 
     /// Converts a known mod path to `Path`.

@@ -654,7 +654,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
     ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let h = Hygiene::new(db.upcast(), self.file_id);
-        let path = self.value.path().and_then(|path| path::ModPath::from_src(path, &h));
+        let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &h));
 
         let path = match error_sink
             .option(path, || mbe::ExpandError::Other("malformed macro invocation".into()))
@@ -712,7 +712,7 @@ fn macro_call_as_call_id(
             krate,
             macro_call,
             def,
-            &|path: ast::Path| resolver(path::ModPath::from_src(path, &hygiene)?),
+            &|path: ast::Path| resolver(path::ModPath::from_src(db, path, &hygiene)?),
             error_sink,
         )
         .map(MacroCallId::from)

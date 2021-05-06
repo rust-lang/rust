@@ -7,9 +7,13 @@ use either::Either;
 use hir_expand::{hygiene::Hygiene, name::AsName};
 use syntax::ast::{self, NameOwner};
 
-use crate::path::{ImportAlias, ModPath, PathKind};
+use crate::{
+    db::DefDatabase,
+    path::{ImportAlias, ModPath, PathKind},
+};
 
 pub(crate) fn lower_use_tree(
+    db: &dyn DefDatabase,
     prefix: Option<ModPath>,
     tree: ast::UseTree,
     hygiene: &Hygiene,
@@ -21,13 +25,13 @@ pub(crate) fn lower_use_tree(
             None => prefix,
             // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
             // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
-            Some(path) => match convert_path(prefix, path, hygiene) {
+            Some(path) => match convert_path(db, prefix, path, hygiene) {
                 Some(it) => Some(it),
                 None => return, // FIXME: report errors somewhere
             },
         };
         for child_tree in use_tree_list.use_trees() {
-            lower_use_tree(prefix.clone(), child_tree, hygiene, cb);
+            lower_use_tree(db, prefix.clone(), child_tree, hygiene, cb);
         }
     } else {
         let alias = tree.rename().map(|a| {
@@ -47,7 +51,7 @@ pub(crate) fn lower_use_tree(
                     }
                 }
             }
-            if let Some(path) = convert_path(prefix, ast_path, hygiene) {
+            if let Some(path) = convert_path(db, prefix, ast_path, hygiene) {
                 cb(path, &tree, is_glob, alias)
             }
         // FIXME: report errors somewhere
@@ -61,9 +65,14 @@ pub(crate) fn lower_use_tree(
     }
 }
 
-fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
+fn convert_path(
+    db: &dyn DefDatabase,
+    prefix: Option<ModPath>,
+    path: ast::Path,
+    hygiene: &Hygiene,
+) -> Option<ModPath> {
     let prefix = if let Some(qual) = path.qualifier() {
-        Some(convert_path(prefix, qual, hygiene)?)
+        Some(convert_path(db, prefix, qual, hygiene)?)
     } else {
         prefix
     };
@@ -71,7 +80,7 @@ fn convert_path(prefix: Option<ModPath>, path: ast::Path, hygiene: &Hygiene) -> 
     let segment = path.segment()?;
     let res = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
-            match hygiene.name_ref_to_name(name_ref) {
+            match hygiene.name_ref_to_name(db.upcast(), name_ref) {
                 Either::Left(name) => {
                     // no type args in use
                     let mut res = prefix.unwrap_or_else(|| {

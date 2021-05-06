@@ -88,7 +88,7 @@ impl ItemTree {
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(&file, &hygiene));
+                    top_attrs = Some(RawAttrs::new(db, &file, &hygiene));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {

@@ -40,23 +40,25 @@ use crate::{
 
 use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
 
-pub struct LowerCtx {
+pub struct LowerCtx<'a> {
+    db: &'a dyn DefDatabase,
     hygiene: Hygiene,
     file_id: Option<HirFileId>,
     source_ast_id_map: Option<Arc<AstIdMap>>,
 }
 
-impl LowerCtx {
-    pub fn new(db: &dyn DefDatabase, file_id: HirFileId) -> Self {
+impl<'a> LowerCtx<'a> {
+    pub fn new(db: &'a dyn DefDatabase, file_id: HirFileId) -> Self {
         LowerCtx {
+            db,
             hygiene: Hygiene::new(db.upcast(), file_id),
             file_id: Some(file_id),
             source_ast_id_map: Some(db.ast_id_map(file_id)),
         }
     }
 
-    pub fn with_hygiene(hygiene: &Hygiene) -> Self {
-        LowerCtx { hygiene: hygiene.clone(), file_id: None, source_ast_id_map: None }
+    pub fn with_hygiene(db: &'a dyn DefDatabase, hygiene: &Hygiene) -> Self {
+        LowerCtx { db, hygiene: hygiene.clone(), file_id: None, source_ast_id_map: None }
     }
 
     pub(crate) fn hygiene(&self) -> &Hygiene {
@@ -68,7 +70,7 @@ impl LowerCtx {
     }
 
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
-        Path::from_src(ast, self)
+        Path::from_src(self.db, ast, self)
     }
 
     pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> Option<FileAstId<N>> {
@@ -145,7 +147,7 @@ impl ExprCollector<'_> {
         (self.body, self.source_map)
     }
 
-    fn ctx(&self) -> LowerCtx {
+    fn ctx(&self) -> LowerCtx<'_> {
         LowerCtx::new(self.db, self.expander.current_file_id)
     }
 
@@ -376,7 +378,7 @@ impl ExprCollector<'_> {
             ast::Expr::PathExpr(e) => {
                 let path = e
                     .path()
-                    .and_then(|path| self.expander.parse_path(path))
+                    .and_then(|path| self.expander.parse_path(self.db, path))
                     .map(Expr::Path)
                     .unwrap_or(Expr::Missing);
                 self.alloc_expr(path, syntax_ptr)
@@ -408,7 +410,8 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
             ast::Expr::RecordExpr(e) => {
-                let path = e.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
+                let path =
+                    e.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
                 let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
                         .fields()
@@ -791,7 +794,8 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Pat::TupleStructPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
+                let path =
+                    p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
                 let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::TupleStruct { path, args, ellipsis }
             }
@@ -801,7 +805,8 @@ impl ExprCollector<'_> {
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
+                let path =
+                    p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::OrPat(p) => {
@@ -815,7 +820,8 @@ impl ExprCollector<'_> {
             }
             ast::Pat::WildcardPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
-                let path = p.path().and_then(|path| self.expander.parse_path(path)).map(Box::new);
+                let path =
+                    p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
                 let args: Vec<_> = p
                     .record_pat_field_list()
                     .expect("every struct should have a field list")
