@@ -35,6 +35,7 @@ use crate::type_error_struct;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
@@ -347,15 +348,52 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx.ty_to_string(self.cast_ty)
                 );
                 let mut sugg = None;
+                let mut sugg_mutref = false;
                 if let ty::Ref(reg, _, mutbl) = *self.cast_ty.kind() {
-                    if fcx
-                        .try_coerce(
-                            self.expr,
-                            fcx.tcx.mk_ref(reg, TypeAndMut { ty: self.expr_ty, mutbl }),
-                            self.cast_ty,
-                            AllowTwoPhase::No,
-                        )
-                        .is_ok()
+                    if let ty::RawPtr(TypeAndMut { ty: expr_ty, .. }) = *self.expr_ty.kind() {
+                        if fcx
+                            .try_coerce(
+                                self.expr,
+                                fcx.tcx.mk_ref(
+                                    &ty::RegionKind::ReErased,
+                                    TypeAndMut { ty: expr_ty, mutbl },
+                                ),
+                                self.cast_ty,
+                                AllowTwoPhase::No,
+                            )
+                            .is_ok()
+                        {
+                            sugg = Some(format!("&{}*", mutbl.prefix_str()));
+                        }
+                    } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind() {
+                        if expr_mutbl == Mutability::Not
+                            && mutbl == Mutability::Mut
+                            && fcx
+                                .try_coerce(
+                                    self.expr,
+                                    fcx.tcx.mk_ref(
+                                        expr_reg,
+                                        TypeAndMut { ty: expr_ty, mutbl: Mutability::Mut },
+                                    ),
+                                    self.cast_ty,
+                                    AllowTwoPhase::No,
+                                )
+                                .is_ok()
+                        {
+                            sugg_mutref = true;
+                        }
+                    }
+
+                    if !sugg_mutref
+                        && sugg == None
+                        && fcx
+                            .try_coerce(
+                                self.expr,
+                                fcx.tcx.mk_ref(reg, TypeAndMut { ty: self.expr_ty, mutbl }),
+                                self.cast_ty,
+                                AllowTwoPhase::No,
+                            )
+                            .is_ok()
                     {
                         sugg = Some(format!("&{}", mutbl.prefix_str()));
                     }
@@ -375,11 +413,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         sugg = Some(format!("&{}", mutbl.prefix_str()));
                     }
                 }
-                if let Some(sugg) = sugg {
+                if sugg_mutref {
+                    err.span_label(self.span, "invalid cast");
+                    err.span_note(self.expr.span, "this reference is immutable");
+                    err.span_note(self.cast_span, "trying to cast to a mutable reference type");
+                } else if let Some(sugg) = sugg {
                     err.span_label(self.span, "invalid cast");
                     err.span_suggestion_verbose(
                         self.expr.span.shrink_to_lo(),
-                        "borrow the value for the cast to be valid",
+                        "consider borrowing the value",
                         sugg,
                         Applicability::MachineApplicable,
                     );
