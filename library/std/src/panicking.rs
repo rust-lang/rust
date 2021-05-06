@@ -259,7 +259,7 @@ pub mod panic_count {
 
     pub fn increase() -> (bool, usize) {
         (
-            GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Acquire) & ALWAYS_ABORT_FLAG != 0,
+            GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed) & ALWAYS_ABORT_FLAG != 0,
             LOCAL_PANIC_COUNT.with(|c| {
                 let next = c.get() + 1;
                 c.set(next);
@@ -278,7 +278,7 @@ pub mod panic_count {
     }
 
     pub fn set_always_abort() {
-        GLOBAL_PANIC_COUNT.fetch_or(ALWAYS_ABORT_FLAG, Ordering::Release);
+        GLOBAL_PANIC_COUNT.fetch_or(ALWAYS_ABORT_FLAG, Ordering::Relaxed);
     }
 
     // Disregards ALWAYS_ABORT_FLAG
