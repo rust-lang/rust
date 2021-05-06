@@ -1628,7 +1628,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 
 #[unstable(feature = "try_trait", issue = "42327")]
 impl<T, E> ops::TryV1 for Result<T, E> {
-    type Ok = T;
+    type Output = T;
     type Error = E;
 
     #[inline]

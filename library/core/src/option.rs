@@ -1645,7 +1645,7 @@ pub struct NoneError;
 
 #[unstable(feature = "try_trait", issue = "42327")]
 impl<T> ops::TryV1 for Option<T> {
-    type Ok = T;
+    type Output = T;
     type Error = NoneError;
 
     #[inline]

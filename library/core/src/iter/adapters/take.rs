@@ -3,7 +3,7 @@ use crate::iter::{
     adapters::zip::try_get_unchecked, adapters::SourceIter, FusedIterator, InPlaceIterable,
     TrustedLen, TrustedRandomAccess,
 };
-use crate::ops::{ControlFlow, TryWhereOutputEquals};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 ///
@@ -80,9 +80,9 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
-        fn check<'a, T, Acc, R: TryWhereOutputEquals<Acc>>(
+        fn check<'a, T, Acc, R: Try<Output = Acc>>(
             n: &'a mut usize,
             mut fold: impl FnMut(Acc, T) -> R + 'a,
         ) -> impl FnMut(Acc, T) -> ControlFlow<R, Acc> + 'a {
@@ -178,7 +178,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         if self.n == 0 {
             try { init }

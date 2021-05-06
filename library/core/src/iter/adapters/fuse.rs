@@ -3,7 +3,7 @@ use crate::iter::adapters::{zip::try_get_unchecked, InPlaceIterable, SourceIter}
 use crate::iter::{
     DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
 };
-use crate::ops::TryWhereOutputEquals;
+use crate::ops::Try;
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
@@ -92,7 +92,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         FuseImpl::try_fold(self, acc, fold)
     }
@@ -148,7 +148,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         FuseImpl::try_rfold(self, acc, fold)
     }
@@ -219,7 +219,7 @@ trait FuseImpl<I> {
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>;
+        R: Try<Output = Acc>;
     fn fold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
     where
         Fold: FnMut(Acc, Self::Item) -> Acc;
@@ -238,7 +238,7 @@ trait FuseImpl<I> {
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
         I: DoubleEndedIterator;
     fn rfold<Acc, Fold>(self, acc: Acc, fold: Fold) -> Acc
     where
@@ -305,7 +305,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         if let Some(ref mut iter) = self.iter {
             acc = iter.try_fold(acc, fold)?;
@@ -354,7 +354,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
         I: DoubleEndedIterator,
     {
         if let Some(ref mut iter) = self.iter {
@@ -443,7 +443,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         unchecked!(self).try_fold(init, fold)
     }
@@ -485,7 +485,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
         I: DoubleEndedIterator,
     {
         unchecked!(self).try_rfold(init, fold)

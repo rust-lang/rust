@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
-use crate::ops::TryWhereOutputEquals;
+use crate::ops::Try;
 
 /// An iterator that calls a function with a reference to each element before
 /// yielding it.
@@ -87,7 +87,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         self.iter.try_fold(init, inspect_try_fold(&mut self.f, fold))
     }
@@ -117,7 +117,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         self.iter.try_rfold(init, inspect_try_fold(&mut self.f, fold))
     }

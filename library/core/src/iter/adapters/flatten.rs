@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{DoubleEndedIterator, Fuse, FusedIterator, Iterator, Map};
-use crate::ops::TryWhereOutputEquals;
+use crate::ops::Try;
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
@@ -61,7 +61,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         self.inner.try_fold(init, fold)
     }
@@ -91,7 +91,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         self.inner.try_rfold(init, fold)
     }
@@ -178,7 +178,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         self.inner.try_fold(init, fold)
     }
@@ -208,7 +208,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         self.inner.try_rfold(init, fold)
     }
@@ -293,10 +293,10 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         #[inline]
-        fn flatten<'a, T: IntoIterator, Acc, R: TryWhereOutputEquals<Acc>>(
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc>>(
             frontiter: &'a mut Option<T::IntoIter>,
             fold: &'a mut impl FnMut(Acc, T::Item) -> R,
         ) -> impl FnMut(Acc, T) -> R + 'a {
@@ -382,10 +382,10 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         #[inline]
-        fn flatten<'a, T: IntoIterator, Acc, R: TryWhereOutputEquals<Acc>>(
+        fn flatten<'a, T: IntoIterator, Acc, R: Try<Output = Acc>>(
             backiter: &'a mut Option<T::IntoIter>,
             fold: &'a mut impl FnMut(Acc, T::Item) -> R,
         ) -> impl FnMut(Acc, T) -> R + 'a

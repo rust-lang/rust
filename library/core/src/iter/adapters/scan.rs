@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, InPlaceIterable};
-use crate::ops::{ControlFlow, TryWhereOutputEquals};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator to maintain state while iterating another iterator.
 ///
@@ -56,9 +56,9 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
-        fn scan<'a, T, St, B, Acc, R: TryWhereOutputEquals<Acc>>(
+        fn scan<'a, T, St, B, Acc, R: Try<Output = Acc>>(
             state: &'a mut St,
             f: &'a mut impl FnMut(&mut St, T) -> Option<B>,
             mut fold: impl FnMut(Acc, B) -> R + 'a,

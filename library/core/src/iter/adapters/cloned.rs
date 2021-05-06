@@ -1,6 +1,6 @@
 use crate::iter::adapters::{zip::try_get_unchecked, TrustedRandomAccess};
 use crate::iter::{FusedIterator, TrustedLen};
-use crate::ops::TryWhereOutputEquals;
+use crate::ops::Try;
 
 /// An iterator that clones the elements of an underlying iterator.
 ///
@@ -46,7 +46,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: TryWhereOutputEquals<B>,
+        R: Try<Output = B>,
     {
         self.it.try_fold(init, clone_try_fold(f))
     }
@@ -82,7 +82,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: TryWhereOutputEquals<B>,
+        R: Try<Output = B>,
     {
         self.it.try_rfold(init, clone_try_fold(f))
     }

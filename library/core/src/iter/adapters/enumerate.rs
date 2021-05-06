@@ -1,6 +1,6 @@
 use crate::iter::adapters::{zip::try_get_unchecked, SourceIter, TrustedRandomAccess};
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::TryWhereOutputEquals;
+use crate::ops::Try;
 
 /// An iterator that yields the current count and the element during iteration.
 ///
@@ -71,7 +71,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         #[inline]
         fn enumerate<'a, T, Acc, R>(
@@ -150,7 +150,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         // Can safely add and subtract the count, as `ExactSizeIterator` promises
         // that the number of elements fits into a `usize`.

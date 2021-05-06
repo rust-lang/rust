@@ -1,5 +1,5 @@
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
-use crate::ops::{ControlFlow, TryWhereOutputEquals};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
@@ -91,7 +91,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: TryWhereOutputEquals<B>,
+        R: Try<Output = B>,
     {
         let acc = match self.peeked.take() {
             Some(None) => return try { init },
@@ -135,7 +135,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: TryWhereOutputEquals<B>,
+        R: Try<Output = B>,
     {
         match self.peeked.take() {
             Some(None) => try { init },
@@ -156,7 +156,7 @@ where
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: TryWhereOutputEquals<B>,
+        R: Try<Output = B>,
     {
         let _use_the_import: ControlFlow<()>;
         match self.peeked.take() {

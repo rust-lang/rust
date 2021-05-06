@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
-use crate::ops::{ControlFlow, TryWhereOutputEquals};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only accepts elements while `predicate` returns `true`.
 ///
@@ -68,9 +68,9 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
-        fn check<'a, T, Acc, R: TryWhereOutputEquals<Acc>>(
+        fn check<'a, T, Acc, R: Try<Output = Acc>>(
             flag: &'a mut bool,
             p: &'a mut impl FnMut(&T) -> bool,
             mut fold: impl FnMut(Acc, T) -> R + 'a,

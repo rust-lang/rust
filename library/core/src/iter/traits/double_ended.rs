@@ -1,4 +1,4 @@
-use crate::ops::{ControlFlow, TryWhereOutputEquals};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator able to yield elements from both ends.
 ///
@@ -218,7 +218,7 @@ pub trait DoubleEndedIterator: Iterator {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: TryWhereOutputEquals<B>,
+        R: Try<Output = B>,
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {

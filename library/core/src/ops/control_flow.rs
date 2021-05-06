@@ -64,10 +64,10 @@ pub enum ControlFlow<B, C = ()> {
 
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
 impl<B, C> ops::TryV1 for ControlFlow<B, C> {
-    type Ok = C;
+    type Output = C;
     type Error = B;
     #[inline]
-    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+    fn into_result(self) -> Result<Self::Output, Self::Error> {
         match self {
             ControlFlow::Continue(y) => Ok(y),
             ControlFlow::Break(x) => Err(x),
@@ -78,7 +78,7 @@ impl<B, C> ops::TryV1 for ControlFlow<B, C> {
         ControlFlow::Break(v)
     }
     #[inline]
-    fn from_ok(v: Self::Ok) -> Self {
+    fn from_ok(v: Self::Output) -> Self {
         ControlFlow::Continue(v)
     }
 }
@@ -184,7 +184,7 @@ impl<B, C> ControlFlow<B, C> {
 }
 
 #[cfg(bootstrap)]
-impl<R: ops::TryV1> ControlFlow<R, R::Ok> {
+impl<R: ops::TryV1> ControlFlow<R, R::Output> {
     /// Create a `ControlFlow` from any type implementing `Try`.
     #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]

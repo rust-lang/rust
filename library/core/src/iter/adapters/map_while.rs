@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::iter::{adapters::SourceIter, InPlaceIterable};
-use crate::ops::{ControlFlow, TryWhereOutputEquals};
+use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only accepts elements while `predicate` returns `Some(_)`.
 ///
@@ -54,7 +54,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: TryWhereOutputEquals<Acc>,
+        R: Try<Output = Acc>,
     {
         let Self { iter, predicate } = self;
         iter.try_fold(init, |acc, x| match predicate(x) {
