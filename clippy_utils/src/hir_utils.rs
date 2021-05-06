@@ -904,7 +904,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 mut_ty.mutbl.hash(&mut self.s);
             },
             TyKind::Rptr(lifetime, ref mut_ty) => {
-                self.hash_lifetime(lifetime);
+                self.hash_lifetime(*lifetime);
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
@@ -924,7 +924,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 bfn.decl.c_variadic.hash(&mut self.s);
             },
             TyKind::Tup(ty_list) => {
-                for ty in ty_list {
+                for ty in *ty_list {
                     self.hash_ty(ty);
                 }
             },
@@ -933,7 +933,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_generic_args(arg_list);
             },
             TyKind::TraitObject(_, lifetime, _) => {
-                self.hash_lifetime(lifetime);
+                self.hash_lifetime(*lifetime);
             },
             TyKind::Typeof(anon_const) => {
                 self.hash_body(anon_const.body);
