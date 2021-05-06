@@ -250,13 +250,6 @@ fn join_orders_after_tls_destructors() {
 
                 impl Drop for TlDrop {
                     fn drop(&mut self) {
-                        loop {
-                            match SYNC_STATE.load(Ordering::SeqCst) {
-                                FRESH => thread::yield_now(),
-                                THREAD2_LAUNCHED => break,
-                                v => unreachable!("sync state: {}", v),
-                            }
-                        }
                         let mut sync_state = SYNC_STATE.swap(THREAD1_WAITING, Ordering::SeqCst);
                         loop {
                             match sync_state {
@@ -276,7 +269,15 @@ fn join_orders_after_tls_destructors() {
                     static TL_DROP: TlDrop = TlDrop;
                 }
 
-                TL_DROP.with(|_| {})
+                TL_DROP.with(|_| {});
+
+                loop {
+                    match SYNC_STATE.load(Ordering::SeqCst) {
+                        FRESH => thread::yield_now(),
+                        THREAD2_LAUNCHED => break,
+                        v => unreachable!("sync state: {}", v),
+                    }
+                }
             })
             .unwrap();
 
