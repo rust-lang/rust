@@ -409,7 +409,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx.set_frame_pointer_elimination(llfn);
         cx.apply_target_cpu_attr(llfn);
 
-        let mut bx = Bx::new_block(&cx, llfn, "top");
+        let llbb = Bx::append_block(&cx, llfn, "top");
+        let mut bx = Bx::build(&cx, llbb);
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 

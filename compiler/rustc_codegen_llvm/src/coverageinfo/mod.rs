@@ -223,7 +223,8 @@ fn declare_unused_fn(cx: &CodegenCx<'ll, 'tcx>, def_id: &DefId) -> Instance<'tcx
 
 fn codegen_unused_fn_and_counter(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'tcx>) {
     let llfn = cx.get_fn(instance);
-    let mut bx = Builder::new_block(cx, llfn, "unused_function");
+    let llbb = Builder::append_block(cx, llfn, "unused_function");
+    let mut bx = Builder::build(cx, llbb);
     let fn_name = bx.get_pgo_func_name_var(instance);
     let hash = bx.const_u64(0);
     let num_counters = bx.const_u32(1);

@@ -144,7 +144,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let debug_context = cx.create_function_debug_context(instance, &fn_abi, llfn, &mir);
 
-    let mut bx = Bx::new_block(cx, llfn, "start");
+    let start_llbb = Bx::append_block(cx, llfn, "start");
+    let mut bx = Bx::build(cx, start_llbb);
 
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
@@ -159,7 +160,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             .indices()
             .map(|bb| {
                 if bb == mir::START_BLOCK && !reentrant_start_block {
-                    Some(bx.llbb())
+                    Some(start_llbb)
                 } else {
                     None
                 }

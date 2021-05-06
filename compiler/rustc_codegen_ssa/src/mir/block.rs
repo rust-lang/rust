@@ -386,7 +386,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llblock(self, target);
-        let panic_block = self.new_block("panic");
+        let panic_block = bx.build_sibling_block("panic");
         if expected {
             bx.cond_br(cond, lltarget, panic_block.llbb());
         } else {
@@ -1289,8 +1289,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         })
     }
 
-    pub fn new_block(&self, name: &str) -> Bx {
-        Bx::new_block(self.cx, self.llfn, name)
+    // FIXME(eddyb) replace with `build_sibling_block`/`append_sibling_block`
+    // (which requires having a `Bx` already, and not all callers do).
+    fn new_block(&self, name: &str) -> Bx {
+        let llbb = Bx::append_block(self.cx, self.llfn, name);
+        Bx::build(self.cx, llbb)
     }
 
     /// Get the backend `BasicBlock` for a MIR `BasicBlock`, either already
@@ -1300,17 +1303,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn llbb(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
         self.cached_llbbs[bb].unwrap_or_else(|| {
             // FIXME(eddyb) only name the block if `fewer_names` is `false`.
-            // FIXME(eddyb) create the block directly, without a builder.
-            let llbb = self.new_block(&format!("{:?}", bb)).llbb();
+            let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
             self.cached_llbbs[bb] = Some(llbb);
             llbb
         })
     }
 
     pub fn build_block(&mut self, bb: mir::BasicBlock) -> Bx {
-        let mut bx = Bx::with_cx(self.cx);
-        bx.position_at_end(self.llbb(bb));
-        bx
+        let llbb = self.llbb(bb);
+        Bx::build(self.cx, llbb)
     }
 
     fn make_return_dest(
