@@ -52,10 +52,6 @@ impl<CTX: QueryContext, K, V> QueryVtable<CTX, K, V> {
         (self.hash_result)(hcx, value)
     }
 
-    pub(crate) fn handle_cycle_error(&self, tcx: CTX, diag: DiagnosticBuilder<'_>) -> V {
-        (self.handle_cycle_error)(tcx, diag)
-    }
-
     pub(crate) fn cache_on_disk(&self, tcx: CTX, key: &K, value: Option<&V>) -> bool {
         (self.cache_on_disk)(tcx, key, value)
     }
