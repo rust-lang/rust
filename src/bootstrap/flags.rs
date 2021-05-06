@@ -222,8 +222,13 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
              VALUE overrides the skip-rebuild option in config.toml.",
             "VALUE",
         );
-        opts.optopt("", "rust-profile-generate", "rustc error format", "FORMAT");
-        opts.optopt("", "rust-profile-use", "rustc error format", "FORMAT");
+        opts.optopt("", "rust-profile-generate", "generate a profile for use with PGO", "PATH");
+        opts.optopt(
+            "",
+            "rust-profile-use",
+            "use a PGO profile recorded with --rust-profile-generate",
+            "PATH",
+        );
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
