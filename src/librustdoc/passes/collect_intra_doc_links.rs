@@ -2017,14 +2017,7 @@ fn disambiguator_error(
     msg: &str,
 ) {
     diag_info.link_range = disambiguator_range;
-    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |diag, _sp| {
-        let msg = format!(
-            "see https://doc.rust-lang.org/{}/rustdoc/linking-to-items-by-name.html#namespaces-and-disambiguators \
-             for more info about disambiguators",
-            crate::doc_rust_lang_org_channel(),
-        );
-        diag.note(&msg);
-    });
+    report_diagnostic(cx.tcx, BROKEN_INTRA_DOC_LINKS, msg, &diag_info, |_diag, _sp| {});
 }
 
 /// Report an ambiguity error, where there were multiple possible resolutions.
