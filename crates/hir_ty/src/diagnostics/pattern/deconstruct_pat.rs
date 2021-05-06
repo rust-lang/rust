@@ -837,20 +837,19 @@ impl Fields {
         pat: PatId,
         cx: &MatchCheckCtx<'_>,
     ) -> Self {
-        // TODO: these alocations are so unfortunate (+1 for switching to references)
-        match cx.pattern_arena.borrow()[pat].kind.as_ref() {
+        // TODO: these alocations and clones are so unfortunate (+1 for switching to references)
+        let mut arena = cx.pattern_arena.borrow_mut();
+        match arena[pat].kind.as_ref() {
             PatKind::Deref { subpattern } => {
                 assert_eq!(self.len(), 1);
-                let subpattern = cx.pattern_arena.borrow_mut().alloc(subpattern.clone());
-                Fields::from_single_pattern(subpattern)
+                let subpattern = subpattern.clone();
+                Fields::from_single_pattern(arena.alloc(subpattern))
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
-                let subpatterns = subpatterns.iter().map(|field_pat| {
-                    (
-                        field_pat.field,
-                        cx.pattern_arena.borrow_mut().alloc(field_pat.pattern.clone()),
-                    )
-                });
+                let subpatterns = subpatterns.clone();
+                let subpatterns = subpatterns
+                    .iter()
+                    .map(|field_pat| (field_pat.field, arena.alloc(field_pat.pattern.clone())));
                 self.replace_with_fieldpats(subpatterns)
             }
 
