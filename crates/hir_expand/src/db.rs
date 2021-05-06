@@ -283,7 +283,7 @@ fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
     };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
-    Some(arg.green())
+    Some(arg.green().into())
 }
 
 fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Option<Arc<TokenExpander>> {
