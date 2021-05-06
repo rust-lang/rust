@@ -548,7 +548,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.53"
+version = "0.1.54"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy-mini-macro-test",
@@ -585,7 +585,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.53"
+version = "0.1.54"
 dependencies = [
  "cargo_metadata 0.12.0",
  "clippy_utils",
@@ -597,6 +597,7 @@ dependencies = [
  "rustc-semver",
  "semver 0.11.0",
  "serde",
+ "serde_json",
  "toml",
  "unicode-normalization",
  "url 2.1.1",
@@ -604,7 +605,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.53"
+version = "0.1.54"
 dependencies = [
  "if_chain",
  "itertools 0.9.0",
