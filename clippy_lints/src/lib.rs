@@ -1947,6 +1947,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let pass_by_ref_or_value = pass_by_ref_or_value::PassByRefOrValue::new(
         conf.trivial_copy_size_limit,
         conf.pass_by_value_size_limit,
+        conf.avoid_breaking_exported_api,
         &sess.target,
     );
     store.register_late_pass(move || box pass_by_ref_or_value);
