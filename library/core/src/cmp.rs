@@ -274,8 +274,7 @@ pub trait Eq: PartialEq<Self> {
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
-    #[cfg_attr(not(bootstrap), feature(no_coverage))]
-    #[cfg_attr(not(bootstrap), no_coverage)]
+    #[cfg_attr(not(bootstrap), no_coverage)] // rust-lang/rust#84605
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
@@ -284,7 +283,7 @@ pub trait Eq: PartialEq<Self> {
 /// Derive macro generating an impl of the trait `Eq`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
+#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match, no_coverage)]
 pub macro Eq($item:item) {
     /* compiler built-in */
 }
