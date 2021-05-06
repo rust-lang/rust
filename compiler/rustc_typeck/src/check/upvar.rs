@@ -796,6 +796,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - One of the paths starting at this root variable, that is not captured needs Drop **or**
     /// - One of the paths captured does not implement all the auto-traits its root variable
     ///   implements.
+    /// 
+    /// Returns a tuple containing a vector of HirIds as well as a String containing the reason
+    /// why root variables whose HirId is contained in the vector should be fully captured.
     fn compute_2229_migrations(
         &self,
         closure_def_id: DefId,
