@@ -466,6 +466,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         ns: Namespace,
         module_id: DefId,
         extra_fragment: &Option<String>,
+        self_id: Option<DefId>,
     ) -> Result<(Res, Option<String>), ErrorKind<'path>> {
         if let Some(res) = self.resolve_path(path_str, ns, module_id) {
             match res {
@@ -515,6 +516,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // primitives.
         resolve_primitive(&path_root, TypeNS)
             .or_else(|| self.resolve_path(&path_root, TypeNS, module_id))
+            .or_else(|| self_id.map(|id| Res::Def(self.cx.tcx.def_kind(id), id)))
             .and_then(|ty_res| {
                 let (res, fragment, side_channel) =
                     self.resolve_associated_item(ty_res, item_name, ns, module_id)?;
@@ -680,7 +682,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let result = match ns {
             Namespace::MacroNS => self.resolve_macro(path_str, module_id).map_err(ErrorKind::from),
             Namespace::TypeNS | Namespace::ValueNS => {
-                self.resolve(path_str, ns, module_id, extra_fragment).map(|(res, _)| res)
+                self.resolve(path_str, ns, module_id, extra_fragment, None).map(|(res, _)| res)
             }
         };
 
@@ -837,7 +839,37 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             Some(if parent_kind == DefKind::Impl { parent } else { item.def_id.expect_real() })
         } else {
             Some(item.def_id.expect_real())
-        };
+        }
+        .map(|curr_id| match self.cx.tcx.def_kind(curr_id) {
+            DefKind::Impl => {
+                match curr_id
+                    .as_local()
+                    .map(|local_id| self.cx.tcx.hir().item(rustc_hir::ItemId { def_id: local_id }))
+                {
+                    Some(rustc_hir::Item {
+                        kind:
+                            rustc_hir::ItemKind::Impl(rustc_hir::Impl {
+                                self_ty:
+                                    rustc_hir::Ty {
+                                        kind:
+                                            rustc_hir::TyKind::Path(rustc_hir::QPath::Resolved(
+                                                _,
+                                                rustc_hir::Path {
+                                                    res: rustc_hir::def::Res::Def(_, def_id),
+                                                    ..
+                                                },
+                                            )),
+                                        ..
+                                    },
+                                ..
+                            }),
+                        ..
+                    }) => *def_id,
+                    _ => curr_id,
+                }
+            }
+            _ => curr_id,
+        });
 
         // FIXME(jynelson): this shouldn't go through stringification, rustdoc should just use the DefId directly
         let self_name = self_id.and_then(|self_id| {
@@ -879,7 +911,15 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             for md_link in markdown_links(&doc) {
-                let link = self.resolve_link(&item, &doc, &self_name, parent_node, krate, md_link);
+                let link = self.resolve_link(
+                    &item,
+                    &doc,
+                    &self_name,
+                    parent_node,
+                    krate,
+                    md_link,
+                    self_id,
+                );
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.def_id).or_default().push(link);
                 }
@@ -1023,6 +1063,7 @@ impl LinkCollector<'_, '_> {
         parent_node: Option<DefId>,
         krate: CrateNum,
         ori_link: MarkdownLink,
+        self_id: Option<DefId>,
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
 
@@ -1131,6 +1172,7 @@ impl LinkCollector<'_, '_> {
             },
             diag_info.clone(), // this struct should really be Copy, but Range is not :(
             matches!(ori_link.kind, LinkType::Reference | LinkType::Shortcut),
+            self_id,
         )?;
 
         // Check for a primitive which might conflict with a module
@@ -1285,6 +1327,7 @@ impl LinkCollector<'_, '_> {
         key: ResolutionInfo,
         diag: DiagnosticInfo<'_>,
         cache_resolution_failure: bool,
+        self_id: Option<DefId>,
     ) -> Option<(Res, Option<String>)> {
         // Try to look up both the result and the corresponding side channel value
         if let Some(ref cached) = self.visited_links.get(&key) {
@@ -1302,7 +1345,7 @@ impl LinkCollector<'_, '_> {
             }
         }
 
-        let res = self.resolve_with_disambiguator(&key, diag);
+        let res = self.resolve_with_disambiguator(&key, diag, self_id);
 
         // Cache only if resolved successfully - don't silence duplicate errors
         if let Some(res) = res {
@@ -1333,6 +1376,7 @@ impl LinkCollector<'_, '_> {
         &mut self,
         key: &ResolutionInfo,
         diag: DiagnosticInfo<'_>,
+        self_id: Option<DefId>,
     ) -> Option<(Res, Option<String>)> {
         let disambiguator = key.dis;
         let path_str = &key.path_str;
@@ -1341,7 +1385,13 @@ impl LinkCollector<'_, '_> {
 
         match disambiguator.map(Disambiguator::ns) {
             Some(expected_ns @ (ValueNS | TypeNS)) => {
-                match self.resolve(path_str, expected_ns, base_node.expect_real(), extra_fragment) {
+                match self.resolve(
+                    path_str,
+                    expected_ns,
+                    base_node.expect_real(),
+                    extra_fragment,
+                    self_id,
+                ) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1384,6 +1434,7 @@ impl LinkCollector<'_, '_> {
                         TypeNS,
                         base_node.expect_real(),
                         extra_fragment,
+                        self_id,
                     ) {
                         Ok(res) => {
                             debug!("got res in TypeNS: {:?}", res);
@@ -1400,6 +1451,7 @@ impl LinkCollector<'_, '_> {
                         ValueNS,
                         base_node.expect_real(),
                         extra_fragment,
+                        self_id,
                     ) {
                         Ok(res) => Ok(res),
                         Err(ErrorKind::AnchorFailure(msg)) => {
