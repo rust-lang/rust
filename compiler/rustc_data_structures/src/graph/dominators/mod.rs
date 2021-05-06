@@ -1,9 +1,8 @@
 //! Finding the dominators in a control-flow graph.
 //!
-//! Algorithm based on Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy,
-//! "A Simple, Fast Dominance Algorithm",
-//! Rice Computer Science TS-06-33870,
-//! <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>.
+//! Algorithm based on Loukas Georgiadis,
+//! "Linear-Time Algorithms for Dominators and Related Problems",
+//! ftp://ftp.cs.princeton.edu/techreports/2005/737.pdf
 
 use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
@@ -19,6 +18,11 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     dominators_given_rpo(graph, &rpo)
 }
 
+struct PreOrderFrame<Node, Iter> {
+    node: Node,
+    iter: Iter,
+}
+
 fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Dominators<G::Node> {
     let start_node = graph.start_node();
     assert_eq!(rpo[0], start_node);
@@ -29,53 +33,115 @@ fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Domin
         post_order_rank[node] = index;
     }
 
+    let mut visited = BitSet::new_empty(graph.num_nodes());
+    let mut parent: IndexVec<G::Node, Option<G::Node>> =
+        IndexVec::from_elem_n(None, graph.num_nodes());
+    let mut pre_order_index: IndexVec<G::Node, Option<usize>> =
+        IndexVec::from_elem_n(None, graph.num_nodes());
+    let mut pre_order_nodes = Vec::with_capacity(rpo.len());
+
+    let mut stack = vec![PreOrderFrame {
+        node: graph.start_node(),
+        iter: graph.successors(graph.start_node()),
+    }];
+    visited.insert(graph.start_node());
+    let mut idx = 0;
+    pre_order_index[graph.start_node()] = Some(0);
+    idx += 1;
+    pre_order_nodes.push(graph.start_node());
+
+    'recurse: while let Some(frame) = stack.last_mut() {
+        while let Some(successor) = frame.iter.next() {
+            if visited.insert(successor) {
+                parent[successor] = Some(frame.node);
+                pre_order_index[successor] = Some(idx);
+                pre_order_nodes.push(successor);
+                idx += 1;
+
+                stack.push(PreOrderFrame { node: successor, iter: graph.successors(successor) });
+                continue 'recurse;
+            }
+        }
+        stack.pop();
+    }
+
+    let mut ancestor = IndexVec::from_elem_n(None, graph.num_nodes());
+    let mut idom = IndexVec::from_elem_n(graph.start_node(), graph.num_nodes());
+    let mut semi = IndexVec::from_fn_n(std::convert::identity, graph.num_nodes());
+    let mut label = semi.clone();
+    let mut bucket = IndexVec::from_elem_n(vec![], graph.num_nodes());
+
+    for &w in pre_order_nodes[1..].iter().rev() {
+        semi[w] = w;
+        for v in graph.predecessors(w) {
+            let x = eval(&pre_order_index, &mut ancestor, &semi, &mut label, v);
+            semi[w] = if pre_order_index[semi[w]].unwrap() < pre_order_index[semi[x]].unwrap() {
+                semi[w]
+            } else {
+                semi[x]
+            };
+        }
+        // semi[w] is now semidominator(w).
+
+        bucket[semi[w]].push(w);
+
+        link(&mut ancestor, &parent, w);
+        let z = parent[w].unwrap();
+        for v in std::mem::take(&mut bucket[z]) {
+            let y = eval(&pre_order_index, &mut ancestor, &semi, &mut label, v);
+            idom[v] = if pre_order_index[semi[y]] < pre_order_index[z] { y } else { z };
+        }
+    }
+    for &w in pre_order_nodes.iter().skip(1) {
+        if idom[w] != semi[w] {
+            idom[w] = idom[idom[w]];
+        }
+    }
+
     let mut immediate_dominators = IndexVec::from_elem_n(None, graph.num_nodes());
-    immediate_dominators[start_node] = Some(start_node);
-
-    let mut changed = true;
-    while changed {
-        changed = false;
-
-        for &node in &rpo[1..] {
-            let mut new_idom = None;
-            for pred in graph.predecessors(node) {
-                if immediate_dominators[pred].is_some() {
-                    // (*) dominators for `pred` have been calculated
-                    new_idom = Some(if let Some(new_idom) = new_idom {
-                        intersect(&post_order_rank, &immediate_dominators, new_idom, pred)
-                    } else {
-                        pred
-                    });
-                }
-            }
-
-            if new_idom != immediate_dominators[node] {
-                immediate_dominators[node] = new_idom;
-                changed = true;
-            }
+    for (node, idom_slot) in immediate_dominators.iter_enumerated_mut() {
+        if pre_order_index[node].is_some() {
+            *idom_slot = Some(idom[node]);
         }
     }
 
     Dominators { post_order_rank, immediate_dominators }
 }
 
-fn intersect<Node: Idx>(
-    post_order_rank: &IndexVec<Node, usize>,
-    immediate_dominators: &IndexVec<Node, Option<Node>>,
-    mut node1: Node,
-    mut node2: Node,
-) -> Node {
-    while node1 != node2 {
-        while post_order_rank[node1] < post_order_rank[node2] {
-            node1 = immediate_dominators[node1].unwrap();
-        }
-
-        while post_order_rank[node2] < post_order_rank[node1] {
-            node2 = immediate_dominators[node2].unwrap();
-        }
+fn eval<N: Idx>(
+    pre_order_index: &IndexVec<N, Option<usize>>,
+    ancestor: &mut IndexVec<N, Option<N>>,
+    semi: &IndexVec<N, N>,
+    label: &mut IndexVec<N, N>,
+    node: N,
+) -> N {
+    if ancestor[node].is_some() {
+        compress(pre_order_index, ancestor, semi, label, node);
+        label[node]
+    } else {
+        node
     }
+}
 
-    node1
+fn compress<N: Idx>(
+    pre_order_index: &IndexVec<N, Option<usize>>,
+    ancestor: &mut IndexVec<N, Option<N>>,
+    semi: &IndexVec<N, N>,
+    label: &mut IndexVec<N, N>,
+    v: N,
+) {
+    let u = ancestor[v].unwrap();
+    if ancestor[u].is_some() {
+        compress(pre_order_index, ancestor, semi, label, u);
+        if pre_order_index[semi[label[u]]] < pre_order_index[semi[label[v]]] {
+            label[v] = label[u];
+        }
+        ancestor[v] = ancestor[u];
+    }
+}
+
+fn link<N: Idx>(ancestor: &mut IndexVec<N, Option<N>>, parent: &IndexVec<N, Option<N>>, w: N) {
+    ancestor[w] = Some(parent[w].unwrap());
 }
 
 #[derive(Clone, Debug)]
