@@ -1002,7 +1002,7 @@ impl HirDisplay for TypeRef {
                 let macro_call = macro_call.to_node(f.db.upcast());
                 let ctx = body::LowerCtx::with_hygiene(f.db.upcast(), &Hygiene::new_unhygienic());
                 match macro_call.path() {
-                    Some(path) => match Path::from_src(f.db.upcast(), path, &ctx) {
+                    Some(path) => match Path::from_src(path, &ctx) {
                         Some(path) => path.hir_fmt(f)?,
                         None => write!(f, "{{macro}}")?,
                     },

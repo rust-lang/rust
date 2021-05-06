@@ -194,7 +194,7 @@ impl Expander {
 
     fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
         let ctx = LowerCtx::with_hygiene(db, &self.cfg_expander.hygiene);
-        Path::from_src(db, path, &ctx)
+        Path::from_src(path, &ctx)
     }
 
     fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroDefId> {

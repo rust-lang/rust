@@ -41,7 +41,7 @@ use crate::{
 use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
 
 pub struct LowerCtx<'a> {
-    db: &'a dyn DefDatabase,
+    pub db: &'a dyn DefDatabase,
     hygiene: Hygiene,
     file_id: Option<HirFileId>,
     source_ast_id_map: Option<Arc<AstIdMap>>,
@@ -70,7 +70,7 @@ impl<'a> LowerCtx<'a> {
     }
 
     pub(crate) fn lower_path(&self, ast: ast::Path) -> Option<Path> {
-        Path::from_src(self.db, ast, self)
+        Path::from_src(ast, self)
     }
 
     pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> Option<FileAstId<N>> {

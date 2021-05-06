@@ -855,7 +855,7 @@ impl<'a> SemanticsScope<'a> {
     /// necessary a heuristic, as it doesn't take hygiene into account.
     pub fn speculative_resolve(&self, path: &ast::Path) -> Option<PathResolution> {
         let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
-        let path = Path::from_src(self.db.upcast(), path.clone(), &ctx)?;
+        let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
     }
 }

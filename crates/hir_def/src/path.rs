@@ -49,7 +49,7 @@ pub enum ImportAlias {
 impl ModPath {
     pub fn from_src(db: &dyn DefDatabase, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
         let ctx = LowerCtx::with_hygiene(db, hygiene);
-        lower::lower_path(db, path, &ctx).map(|it| (*it.mod_path).clone())
+        lower::lower_path(path, &ctx).map(|it| (*it.mod_path).clone())
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
@@ -169,8 +169,8 @@ pub enum GenericArg {
 impl Path {
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
-    pub fn from_src(db: &dyn DefDatabase, path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
-        lower::lower_path(db, path, ctx)
+    pub fn from_src(path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
+        lower::lower_path(path, ctx)
     }
 
     /// Converts a known mod path to `Path`.
