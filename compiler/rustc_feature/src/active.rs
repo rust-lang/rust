@@ -656,6 +656,21 @@ declare_features! (
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
 
+    /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
+    (active, native_link_modifiers, "1.53.0", Some(81490), None),
+
+    /// Allows specifying the bundle link modifier
+    (active, native_link_modifiers_bundle, "1.53.0", Some(81490), None),
+
+    /// Allows specifying the verbatim link modifier
+    (active, native_link_modifiers_verbatim, "1.53.0", Some(81490), None),
+
+    /// Allows specifying the whole-archive link modifier
+    (active, native_link_modifiers_whole_archive, "1.53.0", Some(81490), None),
+
+    /// Allows specifying the as-needed link modifier
+    (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -683,6 +698,11 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::const_generics_defaults,
     sym::inherent_associated_types,
     sym::type_alias_impl_trait,
+    sym::native_link_modifiers,
+    sym::native_link_modifiers_bundle,
+    sym::native_link_modifiers_verbatim,
+    sym::native_link_modifiers_whole_archive,
+    sym::native_link_modifiers_as_needed,
 ];
 
 /// Some features are not allowed to be used together at the same time, if

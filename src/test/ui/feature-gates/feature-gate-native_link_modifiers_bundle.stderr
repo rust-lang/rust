@@ -1,0 +1,12 @@
+error[E0658]: `#[link(modifiers="bundle")]` is unstable
+  --> $DIR/feature-gate-native_link_modifiers_bundle.rs:4:34
+   |
+LL | #[link(name = "foo", modifiers = "+bundle")]
+   |                                  ^^^^^^^^^
+   |
+   = note: see issue #81490 <https://github.com/rust-lang/rust/issues/81490> for more information
+   = help: add `#![feature(native_link_modifiers_bundle)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

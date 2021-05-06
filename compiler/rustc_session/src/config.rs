@@ -5,7 +5,7 @@ pub use crate::options::*;
 
 use crate::lint;
 use crate::search_paths::SearchPath;
-use crate::utils::{CanonicalizedPath, NativeLibKind};
+use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{early_error, early_warn, Session};
 
 use rustc_data_structures::fx::FxHashSet;
@@ -1027,8 +1027,11 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "",
             "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of
-                             static, framework, or dylib (the default).",
-            "[KIND=]NAME",
+                             static, framework, or dylib (the default).
+                             Optional comma separated MODIFIERS (bundle|verbatim|whole-archive|as-needed)
+                             may be specified each with a prefix of either '+' to
+                             enable or '-' to disable.",
+            "[KIND[:MODIFIERS]=]NAME[:RENAME]",
         ),
         make_crate_type_option(),
         opt::opt_s("", "crate-name", "Specify the name of the crate being built", "NAME"),
@@ -1591,52 +1594,127 @@ fn select_debuginfo(
     }
 }
 
-fn parse_libs(
-    matches: &getopts::Matches,
+fn parse_native_lib_kind(kind: &str, error_format: ErrorOutputType) -> NativeLibKind {
+    match kind {
+        "dylib" => NativeLibKind::Dylib { as_needed: None },
+        "framework" => NativeLibKind::Framework { as_needed: None },
+        "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
+        "static-nobundle" => {
+            early_warn(
+                error_format,
+                "library kind `static-nobundle` has been superseded by specifying \
+                `-bundle` on library kind `static`. Try `static:-bundle`",
+            );
+            NativeLibKind::Static { bundle: Some(false), whole_archive: None }
+        }
+        s => early_error(
+            error_format,
+            &format!("unknown library kind `{}`, expected one of dylib, framework, or static", s),
+        ),
+    }
+}
+
+fn parse_native_lib_modifiers(
+    is_nightly: bool,
+    mut kind: NativeLibKind,
+    modifiers: &str,
     error_format: ErrorOutputType,
-) -> Vec<(String, Option<String>, NativeLibKind)> {
+) -> (NativeLibKind, Option<bool>) {
+    let mut verbatim = None;
+    for modifier in modifiers.split(',') {
+        let (modifier, value) = match modifier.strip_prefix(&['+', '-'][..]) {
+            Some(m) => (m, modifier.starts_with('+')),
+            None => early_error(
+                error_format,
+                "invalid linking modifier syntax, expected '+' or '-' prefix \
+                    before one of: bundle, verbatim, whole-archive, as-needed",
+            ),
+        };
+
+        if !is_nightly {
+            early_error(
+                error_format,
+                "linking modifiers are currently unstable and only accepted on \
+                the nightly compiler",
+            );
+        }
+
+        match (modifier, &mut kind) {
+            ("bundle", NativeLibKind::Static { bundle, .. }) => {
+                *bundle = Some(value);
+            }
+            ("bundle", _) => early_error(
+                error_format,
+                "bundle linking modifier is only compatible with \
+                    `static` linking kind",
+            ),
+
+            ("verbatim", _) => verbatim = Some(value),
+
+            ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
+                *whole_archive = Some(value);
+            }
+            ("whole-archive", _) => early_error(
+                error_format,
+                "whole-archive linking modifier is only compatible with \
+                    `static` linking kind",
+            ),
+
+            ("as-needed", NativeLibKind::Dylib { as_needed })
+            | ("as-needed", NativeLibKind::Framework { as_needed }) => {
+                *as_needed = Some(value);
+            }
+            ("as-needed", _) => early_error(
+                error_format,
+                "as-needed linking modifier is only compatible with \
+                    `dylib` and `framework` linking kinds",
+            ),
+
+            _ => early_error(
+                error_format,
+                &format!(
+                    "unrecognized linking modifier `{}`, expected one \
+                    of: bundle, verbatim, whole-archive, as-needed",
+                    modifier
+                ),
+            ),
+        }
+    }
+
+    (kind, verbatim)
+}
+
+fn parse_libs(matches: &getopts::Matches, error_format: ErrorOutputType) -> Vec<NativeLib> {
+    let is_nightly = nightly_options::match_is_nightly_build(matches);
     matches
         .opt_strs("l")
         .into_iter()
         .map(|s| {
-            // Parse string of the form "[KIND=]lib[:new_name]",
-            // where KIND is one of "dylib", "framework", "static".
-            let (name, kind) = match s.split_once('=') {
-                None => (s, NativeLibKind::Unspecified),
+            // Parse string of the form "[KIND[:MODIFIERS]=]lib[:new_name]",
+            // where KIND is one of "dylib", "framework", "static" and
+            // where MODIFIERS are  a comma separated list of supported modifiers
+            // (bundle, verbatim, whole-archive, as-needed). Each modifier is prefixed
+            // with either + or - to indicate whether it is enabled or disabled.
+            // The last value specified for a given modifier wins.
+            let (name, kind, verbatim) = match s.split_once('=') {
+                None => (s, NativeLibKind::Unspecified, None),
                 Some((kind, name)) => {
-                    let kind = match kind {
-                        "dylib" => NativeLibKind::Dylib,
-                        "framework" => NativeLibKind::Framework,
-                        "static" => NativeLibKind::StaticBundle,
-                        "static-nobundle" => NativeLibKind::StaticNoBundle,
-                        s => {
-                            early_error(
-                                error_format,
-                                &format!(
-                                    "unknown library kind `{}`, expected \
-                                     one of dylib, framework, or static",
-                                    s
-                                ),
-                            );
+                    let (kind, verbatim) = match kind.split_once(':') {
+                        None => (parse_native_lib_kind(kind, error_format), None),
+                        Some((kind, modifiers)) => {
+                            let kind = parse_native_lib_kind(kind, error_format);
+                            parse_native_lib_modifiers(is_nightly, kind, modifiers, error_format)
                         }
                     };
-                    (name.to_string(), kind)
+                    (name.to_string(), kind, verbatim)
                 }
             };
-            if kind == NativeLibKind::StaticNoBundle
-                && !nightly_options::match_is_nightly_build(matches)
-            {
-                early_error(
-                    error_format,
-                    "the library kind 'static-nobundle' is only \
-                     accepted on the nightly compiler",
-                );
-            }
+
             let (name, new_name) = match name.split_once(':') {
                 None => (name, None),
                 Some((name, new_name)) => (name.to_string(), Some(new_name.to_owned())),
             };
-            (name, new_name, kind)
+            NativeLib { name, new_name, kind, verbatim }
         })
         .collect()
 }
@@ -2316,7 +2394,7 @@ crate mod dep_tracking {
     };
     use crate::lint;
     use crate::options::WasiExecModel;
-    use crate::utils::NativeLibKind;
+    use crate::utils::{NativeLib, NativeLibKind};
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
     use rustc_target::spec::{CodeModel, MergeFunctions, PanicStrategy, RelocModel};
@@ -2391,6 +2469,7 @@ crate mod dep_tracking {
         DebugInfo,
         UnstableFeatures,
         OutputTypes,
+        NativeLib,
         NativeLibKind,
         SanitizerSet,
         CFGuard,
@@ -2409,8 +2488,8 @@ crate mod dep_tracking {
         PathBuf,
         (PathBuf, PathBuf),
         CrateType,
+        NativeLib,
         (String, lint::Level),
-        (String, Option<String>, NativeLibKind),
         (String, u64)
     );
 
