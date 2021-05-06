@@ -31,8 +31,8 @@ LL | impl<const N: u8> Foo for C<N, A> {}
    |                                ^
 help: you might be missing a type parameter
    |
-LL | impl<const N, T: u8> Foo for C<N, T> {}
-   |             ^^^
+LL | impl<const N: u8, T> Foo for C<N, T> {}
+   |                 ^^^
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/diagnostics.rs:7:16
