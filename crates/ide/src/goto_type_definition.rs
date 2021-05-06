@@ -30,6 +30,7 @@ pub(crate) fn goto_type_definition(
                 ast::Expr(it) => sema.type_of_expr(&it)?,
                 ast::Pat(it) => sema.type_of_pat(&it)?,
                 ast::SelfParam(it) => sema.type_of_self(&it)?,
+                ast::Type(it) => sema.resolve_type(&it)?,
                 _ => return None,
             }
         };
@@ -146,6 +147,17 @@ struct Foo;
 impl Foo {
     fn f(&self$0) {}
 }
+"#,
+        )
+    }
+
+    #[test]
+    fn goto_def_for_type_fallback() {
+        check(
+            r#"
+struct Foo;
+     //^^^
+impl Foo$0 {}
 "#,
         )
     }
