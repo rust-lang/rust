@@ -1567,17 +1567,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Numeric inference variables may be left unresolved.
     pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = self.resolve_vars_with_obligations(ty);
-        if !ty.is_ty_var() {
-            ty
+        if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
+            // If we get a type variable here, we may not want to issue "type
+            // annotations needed". For example, the code can be something like
+            // `panic!().foo()` or `{ return }.foo()`.
+            //
+            // However, we must issue the error message if we found the type
+            // variable is related to some non-auxiliary non-diverging ones.
+            //
+            // We'll issue the error message for this
+            // ```
+            // let a = return;
+            // { if true { a } else { return } }.foo();
+            // ```
+            // but we won't for this
+            // ```
+            // let a: ! = return;
+            // { if true { a } else { return } }.foo();
+            // ```
+
+            let new_ty = if self.infcx.probe_ty_diverging(*vid) {
+                if self.tcx.features().never_type_fallback {
+                    self.tcx.types.never
+                } else {
+                    self.tcx.types.unit
+                }
+            } else {
+                if !self.is_tainted_by_errors() {
+                    self.emit_inference_failure_err((**self).body_id, sp, ty.into(), vec![], E0282)
+                        .note("type must be known at this point")
+                        .emit();
+                }
+                self.tcx.ty_error()
+            };
+
+            self.demand_suptype(sp, new_ty, ty);
+            new_ty
         } else {
-            if !self.is_tainted_by_errors() {
-                self.emit_inference_failure_err((**self).body_id, sp, ty.into(), vec![], E0282)
-                    .note("type must be known at this point")
-                    .emit();
-            }
-            let err = self.tcx.ty_error();
-            self.demand_suptype(sp, err, ty);
-            err
+            ty
         }
     }
 

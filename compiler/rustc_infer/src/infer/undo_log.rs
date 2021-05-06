@@ -46,7 +46,7 @@ impl_from! {
     TypeVariables(type_variable::UndoLog<'tcx>),
 
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
-    TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
+    TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidSubKey>>),
     TypeVariables(sv::UndoLog<type_variable::Delegate>),
     TypeVariables(type_variable::Instantiate),
 

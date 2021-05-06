@@ -3,5 +3,5 @@
 // into it.
 
 fn main() {
-    (return)((),()); //~ ERROR type annotations needed
+    (return)((),()); //~ ERROR expected function, found `_`
 }

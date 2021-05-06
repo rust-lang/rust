@@ -1,11 +1,11 @@
-error[E0282]: type annotations needed
+error[E0618]: expected function, found `_`
   --> $DIR/issue-18532.rs:6:5
    |
 LL |     (return)((),());
-   |     ^^^^^^^^^^^^^^^ cannot infer type
-   |
-   = note: type must be known at this point
+   |     ^^^^^^^^-------
+   |     |
+   |     call expression requires function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0618`.

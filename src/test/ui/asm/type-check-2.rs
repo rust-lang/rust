@@ -1,6 +1,6 @@
-// only-x86_64
+// only-x86_6
 
-#![feature(asm, repr_simd, never_type)]
+#![feature(asm, repr_simd, never_type, never_type_fallback)]
 
 #[repr(simd)]
 struct SimdNonCopy(f32, f32, f32, f32);
@@ -78,8 +78,7 @@ fn main() {
 
         // Type checks ignore never type
 
-        // FIXME: ERROR type annotations needed
-        // let u: ! = unreachable!();
-        // asm!("{}", in(reg) u);
+        let u: ! = unreachable!();
+        asm!("{}", in(reg) u);
     }
 }
