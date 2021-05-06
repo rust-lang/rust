@@ -671,7 +671,6 @@ void calculateUnusedValuesInFunction(
           }
         }
 
-
         bool isLibMFn = false;
         if (auto obj_op = dyn_cast<CallInst>(inst)) {
           Function *called = obj_op->getCalledFunction();

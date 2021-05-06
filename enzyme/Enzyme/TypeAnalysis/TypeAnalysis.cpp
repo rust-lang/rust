@@ -94,6 +94,21 @@ const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"erf", Intrinsic::not_intrinsic},
     {"erfi", Intrinsic::not_intrinsic},
     {"erfc", Intrinsic::not_intrinsic},
+
+    // bessel functions
+    {"j0", Intrinsic::not_intrinsic},
+    {"j1", Intrinsic::not_intrinsic},
+    {"jn", Intrinsic::not_intrinsic},
+    {"y0", Intrinsic::not_intrinsic},
+    {"y1", Intrinsic::not_intrinsic},
+    {"yn", Intrinsic::not_intrinsic},
+    {"j0f", Intrinsic::not_intrinsic},
+    {"j1f", Intrinsic::not_intrinsic},
+    {"jnf", Intrinsic::not_intrinsic},
+    {"y0f", Intrinsic::not_intrinsic},
+    {"y1f", Intrinsic::not_intrinsic},
+    {"ynf", Intrinsic::not_intrinsic},
+
     {"tgamma", Intrinsic::not_intrinsic},
     {"lgamma", Intrinsic::not_intrinsic},
     {"ceil", Intrinsic::ceil},

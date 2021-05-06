@@ -3428,86 +3428,185 @@ public:
         return;
       }
 
-      if (called && (called->getName() == "erf")) {
-        eraseIfUnused(*orig);
-        if (Mode == DerivativeMode::ReverseModePrimal ||
-            gutils->isConstantInstruction(orig))
-          return;
-
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
-        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
-                          Builder2);
-
-        Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
-        Type *tys[] = {sq->getType()};
-        Function *ExpF = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
-                                                   Intrinsic::exp, tys);
-        Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-        cal = Builder2.CreateFMul(
-            cal, ConstantFP::get(
-                     sq->getType(),
-                     1.1283791670955125738961589031215451716881012586580));
-        cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
-        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
-        addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
-        return;
-      }
-      if (called && (called->getName() == "erfi")) {
-        eraseIfUnused(*orig);
-        if (Mode == DerivativeMode::ReverseModePrimal ||
-            gutils->isConstantInstruction(orig))
-          return;
-
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
-        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
-                          Builder2);
-
-        Value *sq = Builder2.CreateFMul(x, x);
-        Type *tys[] = {sq->getType()};
-        Function *ExpF = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
-                                                   Intrinsic::exp, tys);
-        Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-        cal = Builder2.CreateFMul(
-            cal, ConstantFP::get(
-                     sq->getType(),
-                     1.1283791670955125738961589031215451716881012586580));
-        cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
-        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
-        addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
-        return;
-      }
-      if (called && (called->getName() == "erfc")) {
-        eraseIfUnused(*orig);
-        if (Mode == DerivativeMode::ReverseModePrimal ||
-            gutils->isConstantInstruction(orig))
-          return;
-
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
-        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
-                          Builder2);
-
-        Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
-        Type *tys[] = {sq->getType()};
-        Function *ExpF = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
-                                                   Intrinsic::exp, tys);
-        Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
-
-        cal = Builder2.CreateFMul(
-            cal, ConstantFP::get(
-                     sq->getType(),
-                     -1.1283791670955125738961589031215451716881012586580));
-        cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
-        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
-        addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
-        return;
-      }
-
       if (called) {
+        if (called->getName() == "erf") {
+          eraseIfUnused(*orig);
+          if (Mode == DerivativeMode::ReverseModePrimal ||
+              gutils->isConstantInstruction(orig))
+            return;
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+
+          Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
+          Type *tys[] = {sq->getType()};
+          Function *ExpF = Intrinsic::getDeclaration(
+              gutils->oldFunc->getParent(), Intrinsic::exp, tys);
+          Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+
+          cal = Builder2.CreateFMul(
+              cal, ConstantFP::get(
+                       sq->getType(),
+                       1.1283791670955125738961589031215451716881012586580));
+          cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
+          return;
+        }
+        if (called->getName() == "erfi") {
+          eraseIfUnused(*orig);
+          if (Mode == DerivativeMode::ReverseModePrimal ||
+              gutils->isConstantInstruction(orig))
+            return;
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+
+          Value *sq = Builder2.CreateFMul(x, x);
+          Type *tys[] = {sq->getType()};
+          Function *ExpF = Intrinsic::getDeclaration(
+              gutils->oldFunc->getParent(), Intrinsic::exp, tys);
+          Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+
+          cal = Builder2.CreateFMul(
+              cal, ConstantFP::get(
+                       sq->getType(),
+                       1.1283791670955125738961589031215451716881012586580));
+          cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
+          return;
+        }
+        if (called->getName() == "erfc") {
+          eraseIfUnused(*orig);
+          if (Mode == DerivativeMode::ReverseModePrimal ||
+              gutils->isConstantInstruction(orig))
+            return;
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+
+          Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
+          Type *tys[] = {sq->getType()};
+          Function *ExpF = Intrinsic::getDeclaration(
+              gutils->oldFunc->getParent(), Intrinsic::exp, tys);
+          Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+
+          cal = Builder2.CreateFMul(
+              cal, ConstantFP::get(
+                       sq->getType(),
+                       -1.1283791670955125738961589031215451716881012586580));
+          cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
+          return;
+        }
+
+        if (called->getName() == "j0" || called->getName() == "y0" ||
+            called->getName() == "j0f" || called->getName() == "y0f") {
+          eraseIfUnused(*orig);
+          if (Mode == DerivativeMode::ReverseModePrimal ||
+              gutils->isConstantInstruction(orig))
+            return;
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+
+          Value *dx = Builder2.CreateCall(
+              gutils->oldFunc->getParent()->getOrInsertFunction(
+                  (called->getName()[0] == 'j')
+                      ? ((called->getName() == "j0") ? "j1" : "j1f")
+                      : ((called->getName() == "y0") ? "y1" : "y1f"),
+                  called->getFunctionType()),
+              std::vector<Value *>({x}));
+          dx = Builder2.CreateFNeg(dx);
+          dx = Builder2.CreateFMul(dx, diffe(orig, Builder2));
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(0), dx, Builder2, x->getType());
+          return;
+        }
+
+        if (called->getName() == "j1" || called->getName() == "y1" ||
+            called->getName() == "j1f" || called->getName() == "y1f") {
+          eraseIfUnused(*orig);
+          if (Mode == DerivativeMode::ReverseModePrimal ||
+              gutils->isConstantInstruction(orig))
+            return;
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+
+          Value *d0 = Builder2.CreateCall(
+              gutils->oldFunc->getParent()->getOrInsertFunction(
+                  (called->getName()[0] == 'j')
+                      ? ((called->getName() == "j1") ? "j0" : "j0f")
+                      : ((called->getName() == "y1") ? "y0" : "y0f"),
+                  called->getFunctionType()),
+              std::vector<Value *>({x}));
+
+          Type *intType =
+              Type::getIntNTy(called->getContext(), sizeof(int) * 8);
+          Type *pargs[] = {intType, x->getType()};
+          auto FT2 = FunctionType::get(x->getType(), pargs, false);
+          Value *d2 = Builder2.CreateCall(
+              gutils->oldFunc->getParent()->getOrInsertFunction(
+                  (called->getName()[0] == 'j')
+                      ? ((called->getName() == "j1") ? "jn" : "jnf")
+                      : ((called->getName() == "y1") ? "yn" : "ynf"),
+                  FT2),
+              std::vector<Value *>({ConstantInt::get(intType, 2), x}));
+          Value *dx = Builder2.CreateFSub(d0, d2);
+          dx = Builder2.CreateFMul(dx, ConstantFP::get(x->getType(), 0.5));
+          dx = Builder2.CreateFMul(dx, diffe(orig, Builder2));
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(0), dx, Builder2, x->getType());
+          return;
+        }
+
+        if (called->getName() == "jn" || called->getName() == "yn" ||
+            called->getName() == "jnf" || called->getName() == "ynf") {
+          eraseIfUnused(*orig);
+          if (Mode == DerivativeMode::ReverseModePrimal ||
+              gutils->isConstantInstruction(orig))
+            return;
+
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(1)),
+                            Builder2);
+          Value *n = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+
+          Value *d0 = Builder2.CreateCall(
+              called,
+              std::vector<Value *>(
+                  {Builder2.CreateSub(n, ConstantInt::get(n->getType(), 1)),
+                   x}));
+
+          Value *d2 = Builder2.CreateCall(
+              called,
+              std::vector<Value *>(
+                  {Builder2.CreateAdd(n, ConstantInt::get(n->getType(), 1)),
+                   x}));
+
+          Value *dx = Builder2.CreateFSub(d0, d2);
+          dx = Builder2.CreateFMul(dx, ConstantFP::get(x->getType(), 0.5));
+          dx = Builder2.CreateFMul(dx, diffe(orig, Builder2));
+          setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+          addToDiffe(orig->getArgOperand(1), dx, Builder2, x->getType());
+          return;
+        }
+
         if (called->getName() == "julia.write_barrier") {
           if (Mode == DerivativeMode::ReverseModeGradient) {
             eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
