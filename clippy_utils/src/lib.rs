@@ -1,7 +1,6 @@
 #![feature(box_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(iter_zip)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
