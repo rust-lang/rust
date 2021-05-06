@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, if_sequence, is_else_clause, paths, SpanlessEq};
+use clippy_utils::{get_trait_def_id, if_sequence, in_constant, is_else_clause, paths, SpanlessEq};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -61,6 +61,10 @@ impl<'tcx> LateLintPass<'tcx> for ComparisonChain {
 
         // We only care about the top-most `if` in the chain
         if is_else_clause(cx.tcx, expr) {
+            return;
+        }
+
+        if in_constant(cx, expr.hir_id) {
             return;
         }
 
