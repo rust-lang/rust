@@ -282,7 +282,7 @@ LL |         let _: <Pub as PubTr<_>>::AssocTy;
 LL |     priv_parent_substs::mac!();
    |     --------------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `priv_parent_substs::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: type `priv_parent_substs::Priv` is private
   --> $DIR/associated-item-privacy-trait.rs:119:17

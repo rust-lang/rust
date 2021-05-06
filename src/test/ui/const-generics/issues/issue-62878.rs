@@ -1,5 +1,5 @@
 // revisions: full min
-#![cfg_attr(full, feature(const_generics))]
+#![cfg_attr(full, feature(const_generics, generic_arg_infer))]
 #![cfg_attr(full, allow(incomplete_features))]
 
 fn foo<const N: usize, const A: [u8; N]>() {}

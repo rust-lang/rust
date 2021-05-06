@@ -336,6 +336,8 @@ pub enum ParamKindOrd {
     // is active. Specifically, if it's only `min_const_generics`, it will still require
     // ordering consts after types.
     Const { unordered: bool },
+    // `Infer` is not actually constructed directly from the AST, but is implicitly constructed
+    // during HIR lowering, and `ParamKindOrd` will implicitly order inferred variables last.
     Infer,
 }
 

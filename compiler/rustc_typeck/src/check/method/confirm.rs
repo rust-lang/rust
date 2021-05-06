@@ -367,10 +367,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                         self.cfcx.const_arg_to_const(&ct.value, param.def_id).into()
                     }
                     (GenericParamDefKind::Type { .. }, GenericArg::Infer(inf)) => {
-                        self.cfcx.to_ty(&inf.to_ty()).into()
+                        self.cfcx.ty_infer(Some(param), inf.span).into()
                     }
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
-                        self.cfcx.var_for_def(inf.span, param)
+                        let tcx = self.cfcx.tcx();
+                        self.cfcx.ct_infer(tcx.type_of(param.def_id), Some(param), inf.span).into()
                     }
                     _ => unreachable!(),
                 }

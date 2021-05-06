@@ -51,7 +51,7 @@ use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, DefPathHash, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
-use rustc_hir::{ConstArg, GenericArg, ParamName};
+use rustc_hir::{ConstArg, GenericArg, InferKind, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
@@ -1219,9 +1219,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(&lt)),
             ast::GenericArg::Type(ty) => {
                 match ty.kind {
-                    TyKind::Infer => {
+                    TyKind::Infer if self.sess.features_untracked().generic_arg_infer => {
                         let hir_id = self.lower_node_id(ty.id);
-                        return GenericArg::Infer(hir::InferArg { hir_id, span: ty.span });
+                        return GenericArg::Infer(hir::InferArg {
+                            hir_id,
+                            span: ty.span,
+                            kind: InferKind::Type,
+                        });
                     }
                     // We parse const arguments as path types as we cannot distinguish them during
                     // parsing. We try to resolve that ambiguity by attempting resolution in both the

@@ -253,9 +253,23 @@ pub struct ConstArg {
     pub span: Span,
 }
 
+#[derive(Copy, Clone, Encodable, Debug, HashStable_Generic)]
+pub enum InferKind {
+    Const,
+    Type,
+}
+
+impl InferKind {
+    #[inline]
+    pub fn is_type(self) -> bool {
+        matches!(self, InferKind::Type)
+    }
+}
+
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct InferArg {
     pub hir_id: HirId,
+    pub kind: InferKind,
     pub span: Span,
 }
 
@@ -365,22 +379,29 @@ impl GenericArgs<'_> {
         panic!("GenericArgs::inputs: not a `Fn(T) -> U`");
     }
 
-    pub fn own_counts(&self) -> GenericParamCount {
-        // We could cache this as a property of `GenericParamCount`, but
-        // the aim is to refactor this away entirely eventually and the
-        // presence of this method will be a constant reminder.
-        let mut own_counts: GenericParamCount = Default::default();
+    #[inline]
+    pub fn has_type_params(&self) -> bool {
+        self.args.iter().any(|arg| matches!(arg, GenericArg::Type(_)))
+    }
 
-        for arg in self.args {
-            match arg {
-                GenericArg::Lifetime(_) => own_counts.lifetimes += 1,
-                GenericArg::Type(_) => own_counts.types += 1,
-                GenericArg::Const(_) => own_counts.consts += 1,
-                GenericArg::Infer(_) => own_counts.infer += 1,
-            };
-        }
+    #[inline]
+    pub fn num_type_params(&self) -> usize {
+        self.args.iter().filter(|arg| matches!(arg, GenericArg::Type(_))).count()
+    }
 
-        own_counts
+    #[inline]
+    pub fn num_lifetime_params(&self) -> usize {
+        self.args.iter().filter(|arg| matches!(arg, GenericArg::Lifetime(_))).count()
+    }
+
+    #[inline]
+    pub fn has_lifetime_params(&self) -> bool {
+        self.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
+    }
+
+    #[inline]
+    pub fn num_generic_params(&self) -> usize {
+        self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
     }
 
     /// The span encompassing the text inside the surrounding brackets.

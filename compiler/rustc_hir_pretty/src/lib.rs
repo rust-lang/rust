@@ -103,7 +103,7 @@ impl<'a> State<'a> {
             Node::TraitRef(a) => self.print_trait_ref(&a),
             Node::Binding(a) | Node::Pat(a) => self.print_pat(&a),
             Node::Arm(a) => self.print_arm(&a),
-            Node::Infer(_) => self.print_string("_", ast::StrStyle::Cooked),
+            Node::Infer(_) => self.s.word("_"),
             Node::Block(a) => {
                 // Containing cbox, will be closed by print-block at `}`.
                 self.cbox(INDENT_UNIT);

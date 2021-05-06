@@ -1,0 +1,12 @@
+error[E0747]: type provided when a constant was expected
+  --> $DIR/feature-gate-generic_arg_infer.rs:11:20
+   |
+LL |     let _x = foo::<_>([1,2]);
+   |                    ^
+   |
+   = help: const arguments cannot yet be inferred with `_`
+   = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0747`.
