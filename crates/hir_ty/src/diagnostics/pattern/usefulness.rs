@@ -3,11 +3,7 @@
 
 use std::{cell::RefCell, iter::FromIterator, ops::Index, sync::Arc};
 
-use hir_def::{
-    body::Body,
-    expr::{ExprId, Pat, PatId},
-    HasModule, ModuleId,
-};
+use hir_def::{body::Body, expr::ExprId, HasModule, ModuleId};
 use la_arena::Arena;
 use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashMap;
@@ -15,7 +11,10 @@ use smallvec::{smallvec, SmallVec};
 
 use crate::{db::HirDatabase, InferenceResult, Ty};
 
-use super::deconstruct_pat::{Constructor, Fields, SplitWildcard};
+use super::{
+    deconstruct_pat::{Constructor, Fields, SplitWildcard},
+    Pat, PatId, PatKind,
+};
 
 use self::{
     helper::{Captures, PatIdExt},
@@ -55,14 +54,13 @@ impl<'a> MatchCheckCtx<'a> {
         false
     }
 
-    pub(super) fn alloc_pat(&self, pat: Pat, ty: &Ty) -> PatId {
-        self.pattern_arena.borrow_mut().alloc(pat, ty)
+    pub(super) fn alloc_pat(&self, pat: Pat) -> PatId {
+        self.pattern_arena.borrow_mut().alloc(pat)
     }
 
     /// Get type of a pattern. Handles expanded patterns.
     pub(super) fn type_of(&self, pat: PatId) -> Ty {
-        let type_of_expanded_pat = self.pattern_arena.borrow().type_of_epat.get(&pat).cloned();
-        type_of_expanded_pat.unwrap_or_else(|| self.infer[pat].clone())
+        self.pattern_arena.borrow()[pat].ty.clone()
     }
 }
 
@@ -76,30 +74,40 @@ pub(super) struct PatCtxt<'a> {
     pub(super) is_top_level: bool,
 }
 
-impl PatIdExt for PatId {
-    fn is_wildcard(self, cx: &MatchCheckCtx<'_>) -> bool {
-        matches!(cx.pattern_arena.borrow()[self], Pat::Bind { subpat: None, .. } | Pat::Wild)
-    }
+pub(crate) fn expand_pattern(pat: Pat) -> Pat {
+    // TODO: LiteralExpander, it is about string literal patterns
+    pat
+}
 
+impl Pat {
+    fn is_wildcard(&self) -> bool {
+        matches!(*self.kind, PatKind::Binding { subpattern: None, .. } | PatKind::Wild)
+    }
+}
+
+impl PatIdExt for PatId {
     fn is_or_pat(self, cx: &MatchCheckCtx<'_>) -> bool {
-        matches!(cx.pattern_arena.borrow()[self], Pat::Or(..))
+        matches!(*cx.pattern_arena.borrow()[self].kind, PatKind::Or { .. })
     }
 
     /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
     fn expand_or_pat(self, cx: &MatchCheckCtx<'_>) -> Vec<Self> {
-        fn expand(pat: PatId, vec: &mut Vec<PatId>, pat_arena: &PatternArena) {
-            if let Pat::Or(pats) = &pat_arena[pat] {
-                for &pat in pats {
-                    expand(pat, vec, pat_arena);
-                }
+        fn expand(pat: PatId, vec: &mut Vec<PatId>, mut pat_arena: &mut PatternArena) {
+            if let PatKind::Or { pats } = pat_arena[pat].kind.as_ref() {
+                // for pat in pats {
+                //     // TODO(iDawer): Ugh, I want to go back to references (PatId -> &Pat)
+                //     let pat = pat_arena.alloc(pat.clone());
+                //     expand(pat, vec, pat_arena);
+                // }
+                todo!()
             } else {
                 vec.push(pat)
             }
         }
 
-        let pat_arena = cx.pattern_arena.borrow();
+        let mut pat_arena = cx.pattern_arena.borrow_mut();
         let mut pats = Vec::new();
-        expand(self, &mut pats, &pat_arena);
+        expand(self, &mut pats, &mut pat_arena);
         pats
     }
 }
@@ -866,7 +874,8 @@ pub(crate) fn compute_match_usefulness(
         })
         .collect();
 
-    let wild_pattern = cx.pattern_arena.borrow_mut().alloc(Pat::Wild, &cx.infer[cx.match_expr]);
+    let wild_pattern =
+        cx.pattern_arena.borrow_mut().alloc(Pat::wildcard_from_ty(&cx.infer[cx.match_expr]));
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, false, true);
     let non_exhaustiveness_witnesses = match usefulness {
@@ -876,31 +885,7 @@ pub(crate) fn compute_match_usefulness(
     UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
 }
 
-pub(crate) struct PatternArena {
-    arena: Arena<Pat>,
-    /// Types of expanded patterns.
-    type_of_epat: FxHashMap<PatId, Ty>,
-}
-
-impl PatternArena {
-    pub(crate) fn clone_from(pats: &Arena<Pat>) -> RefCell<Self> {
-        PatternArena { arena: pats.clone(), type_of_epat: Default::default() }.into()
-    }
-
-    fn alloc(&mut self, pat: Pat, ty: &Ty) -> PatId {
-        let id = self.arena.alloc(pat);
-        self.type_of_epat.insert(id, ty.clone());
-        id
-    }
-}
-
-impl Index<PatId> for PatternArena {
-    type Output = Pat;
-
-    fn index(&self, pat: PatId) -> &Pat {
-        &self.arena[pat]
-    }
-}
+pub(crate) type PatternArena = Arena<Pat>;
 
 mod helper {
     use hir_def::expr::{Pat, PatId};
@@ -908,7 +893,7 @@ mod helper {
     use super::MatchCheckCtx;
 
     pub(super) trait PatIdExt: Sized {
-        fn is_wildcard(self, cx: &MatchCheckCtx<'_>) -> bool;
+        // fn is_wildcard(self, cx: &MatchCheckCtx<'_>) -> bool;
         fn is_or_pat(self, cx: &MatchCheckCtx<'_>) -> bool;
         fn expand_or_pat(self, cx: &MatchCheckCtx<'_>) -> Vec<Self>;
     }

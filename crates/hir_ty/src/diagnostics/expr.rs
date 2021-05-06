@@ -2,7 +2,7 @@
 //! through the body using inference results: mismatched arg counts, missing
 //! fields, etc.
 
-use std::sync::Arc;
+use std::{cell::RefCell, sync::Arc};
 
 use hir_def::{expr::Statement, path::path, resolver::HasResolver, AssocItemId, DefWithBodyId};
 use hir_expand::name;
@@ -26,7 +26,13 @@ pub(crate) use hir_def::{
     LocalFieldId, VariantId,
 };
 
-use super::ReplaceFilterMapNextWithFindMap;
+use super::{
+    pattern::{
+        self,
+        usefulness::{expand_pattern, PatternArena},
+    },
+    ReplaceFilterMapNextWithFindMap,
+};
 
 pub(super) struct ExprValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,
@@ -380,7 +386,16 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
         // eprintln!("ExprValidator::validate_match2({:?})", _match_expr_ty.kind(&Interner));
 
-        let pattern_arena = usefulness::PatternArena::clone_from(&body.pats);
+        let pattern_arena = RefCell::new(PatternArena::new());
+
+        let m_arms: Vec<_> = arms
+            .iter()
+            .map(|arm| usefulness::MatchArm {
+                pat: self.lower_pattern(arm.pat, &mut pattern_arena.borrow_mut(), db, &body),
+                has_guard: arm.guard.is_some(),
+            })
+            .collect();
+
         let cx = usefulness::MatchCheckCtx {
             module: self.owner.module(db.upcast()),
             match_expr,
@@ -389,12 +404,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             db,
             pattern_arena: &pattern_arena,
         };
-
-        let m_arms: Vec<_> = arms
-            .iter()
-            .map(|arm| usefulness::MatchArm { pat: arm.pat, has_guard: arm.guard.is_some() })
-            .collect();
-
         let report = usefulness::compute_match_usefulness(&cx, &m_arms);
 
         // TODO Report unreacheble arms
@@ -425,6 +434,18 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 }
             }
         }
+    }
+
+    fn lower_pattern(
+        &self,
+        pat: PatId,
+        pattern_arena: &mut PatternArena,
+        db: &dyn HirDatabase,
+        body: &Body,
+    ) -> pattern::PatId {
+        let mut patcx = pattern::PatCtxt::new(db, &self.infer, body);
+        let pattern = patcx.lower_pattern(pat);
+        pattern_arena.alloc(expand_pattern(pattern))
     }
 
     fn validate_results_in_tail_expr(&mut self, body_id: ExprId, id: ExprId, db: &dyn HirDatabase) {

@@ -5,18 +5,18 @@ use std::{
 };
 
 use hir_def::{
-    expr::{Expr, Literal, Pat, PatId, RecordFieldPat},
-    find_path::find_path,
-    item_scope::ItemInNs,
-    path::Path,
+    expr::{Expr, Literal, RecordFieldPat},
     type_ref::Mutability,
-    AttrDefId, EnumVariantId, HasModule, VariantId,
+    AttrDefId, EnumVariantId, HasModule, LocalFieldId, VariantId,
 };
 use smallvec::{smallvec, SmallVec};
 
 use crate::{AdtId, Interner, Scalar, Ty, TyExt, TyKind};
 
-use super::usefulness::{MatchCheckCtx, PatCtxt};
+use super::{
+    usefulness::{MatchCheckCtx, PatCtxt},
+    FieldPat, Pat, PatId, PatKind,
+};
 
 use self::Constructor::*;
 
@@ -271,29 +271,18 @@ impl Constructor {
     /// Determines the constructor that the given pattern can be specialized to.
     pub(super) fn from_pat(cx: &MatchCheckCtx<'_>, pat: PatId) -> Self {
         let ty = cx.type_of(pat);
-        match &cx.pattern_arena.borrow()[pat] {
-            Pat::Bind { .. } | Pat::Wild => Wildcard,
-            Pat::Tuple { .. } | Pat::Ref { .. } | Pat::Box { .. } => Single,
-            Pat::Record { .. } | Pat::Path(_) | Pat::TupleStruct { .. } => {
-                // TODO: path to const
-                let variant_id =
-                    cx.infer.variant_resolution_for_pat(pat).unwrap_or_else(|| todo!());
-                match variant_id {
-                    VariantId::EnumVariantId(id) => Variant(id),
-                    VariantId::StructId(_) | VariantId::UnionId(_) => Single,
-                }
-            }
-            &Pat::Lit(expr_id) => match cx.body[expr_id] {
-                Expr::Literal(Literal::Bool(val)) => IntRange(IntRange::from_bool(val)),
-                _ => todo!(),
-            },
+        match cx.pattern_arena.borrow()[pat].kind.as_ref() {
+            PatKind::Binding { .. } | PatKind::Wild => Wildcard,
+            PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
+            &PatKind::Variant { enum_variant, .. } => Variant(enum_variant),
 
-            Pat::Or(..) => panic!("bug: Or-pattern should have been expanded earlier on."),
-            Pat::Missing => todo!("Fail gracefully when there is an error in a pattern"),
+            //Todo
+            // &Pat::Lit(expr_id) => match cx.body[expr_id] {
+            //     Expr::Literal(Literal::Bool(val)) => IntRange(IntRange::from_bool(val)),
+            //     _ => todo!(),
+            // },
+            PatKind::Or { .. } => panic!("bug: Or-pattern should have been expanded earlier on."),
             pat => todo!("Constructor::from_pat {:?}", pat),
-            // Pat::Range { start, end } => {}
-            // Pat::Slice { prefix, slice, suffix } => {}
-            // Pat::ConstBlock(_) => {}
         }
     }
 
@@ -620,15 +609,15 @@ impl Fields {
         cx: &MatchCheckCtx<'_>,
         tys: impl IntoIterator<Item = &'a Ty>,
     ) -> Self {
-        let wilds = tys.into_iter().map(|ty| (Pat::Wild, ty));
-        let pats = wilds.map(|(pat, ty)| cx.alloc_pat(pat, ty)).collect();
+        let wilds = tys.into_iter().map(Pat::wildcard_from_ty);
+        let pats = wilds.map(|pat| cx.alloc_pat(pat)).collect();
         Fields::Vec(pats)
     }
 
     pub(crate) fn wildcards(pcx: PatCtxt<'_>, constructor: &Constructor) -> Self {
         let ty = pcx.ty;
         let cx = pcx.cx;
-        let wildcard_from_ty = |ty| cx.alloc_pat(Pat::Wild, ty);
+        let wildcard_from_ty = |ty| cx.alloc_pat(Pat::wildcard_from_ty(ty));
 
         let ret = match constructor {
             Single | Variant(_) => match ty.kind(&Interner) {
@@ -696,64 +685,60 @@ impl Fields {
     /// returns `Some(false)`
     pub(super) fn apply(self, pcx: PatCtxt<'_>, ctor: &Constructor) -> Pat {
         let subpatterns_and_indices = self.patterns_and_indices();
-        let mut subpatterns = subpatterns_and_indices.iter().map(|&(_, p)| p);
-        // TODO witnesses are not yet used
-        const TODO: Pat = Pat::Wild;
+        let mut subpatterns =
+            subpatterns_and_indices.iter().map(|&(_, p)| pcx.cx.pattern_arena.borrow()[p].clone());
+        // FIXME(iDawer) witnesses are not yet used
+        const UNIMPLEMENTED: PatKind = PatKind::Wild;
 
-        match ctor {
+        let pat = match ctor {
             Single | Variant(_) => match pcx.ty.kind(&Interner) {
                 TyKind::Adt(..) | TyKind::Tuple(..) => {
                     // We want the real indices here.
-                    // TODO indices and ellipsis interaction, tests
-                    let subpatterns = subpatterns_and_indices.iter().map(|&(_, pat)| pat).collect();
+                    let subpatterns = subpatterns_and_indices
+                        .iter()
+                        .map(|&(field, pat)| FieldPat {
+                            field,
+                            pattern: pcx.cx.pattern_arena.borrow()[pat].clone(),
+                        })
+                        .collect();
 
                     if let Some((adt, substs)) = pcx.ty.as_adt() {
-                        let item = ItemInNs::Types(adt.into());
-                        let path = find_path(pcx.cx.db.upcast(), item, pcx.cx.module)
-                            .map(|mpath| Path::from_known_path(mpath, Vec::new()).into());
-                        match adt {
-                            hir_def::AdtId::EnumId(id) => TODO,
-                            hir_def::AdtId::StructId(id) => {
-                                let variant_data = &pcx.cx.db.struct_data(id).variant_data;
-                                let args = subpatterns_and_indices
-                                    .iter()
-                                    .zip(variant_data.fields().iter())
-                                    .map(|(&(_, pat), (_, field_data))| RecordFieldPat {
-                                        name: field_data.name.clone(),
-                                        pat,
-                                    })
-                                    .collect();
-                                Pat::Record { path, args, ellipsis: false }
-                            }
-                            hir_def::AdtId::UnionId(_) => Pat::Wild,
+                        if let hir_def::AdtId::EnumId(_) = adt {
+                            let enum_variant = match ctor {
+                                &Variant(id) => id,
+                                _ => unreachable!(),
+                            };
+                            PatKind::Variant { substs: substs.clone(), enum_variant, subpatterns }
+                        } else {
+                            PatKind::Leaf { subpatterns }
                         }
                     } else {
-                        Pat::Tuple { args: subpatterns, ellipsis: None }
+                        PatKind::Leaf { subpatterns }
                     }
                 }
                 // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
                 // be careful to reconstruct the correct constant pattern here. However a string
                 // literal pattern will never be reported as a non-exhaustiveness witness, so we
                 // can ignore this issue.
-                TyKind::Ref(..) => {
-                    Pat::Ref { pat: subpatterns.next().unwrap(), mutability: Mutability::Shared }
-                }
+                TyKind::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 TyKind::Slice(..) | TyKind::Array(..) => {
                     panic!("bug: bad slice pattern {:?} {:?}", ctor, pcx.ty)
                 }
-                _ => Pat::Wild,
+                _ => PatKind::Wild,
             },
-            Constructor::Slice(slice) => TODO,
-            Str(_) => TODO,
-            FloatRange(..) => TODO,
-            Constructor::IntRange(_) => TODO,
-            NonExhaustive => Pat::Wild,
-            Wildcard => Pat::Wild,
+            Constructor::Slice(slice) => UNIMPLEMENTED,
+            Str(_) => UNIMPLEMENTED,
+            FloatRange(..) => UNIMPLEMENTED,
+            Constructor::IntRange(_) => UNIMPLEMENTED,
+            NonExhaustive => PatKind::Wild,
+            Wildcard => return Pat::wildcard_from_ty(pcx.ty),
             Opaque => panic!("bug: we should not try to apply an opaque constructor"),
             Missing => {
                 panic!("bug: trying to apply the `Missing` constructor; this should have been done in `apply_constructors`")
             }
-        }
+        };
+
+        Pat { ty: pcx.ty.clone(), kind: Box::new(pat) }
     }
 
     /// Returns the number of patterns. This is the same as the arity of the constructor used to
@@ -765,9 +750,14 @@ impl Fields {
     }
 
     /// Returns the list of patterns along with the corresponding field indices.
-    fn patterns_and_indices(&self) -> SmallVec<[(usize, PatId); 2]> {
+    fn patterns_and_indices(&self) -> SmallVec<[(LocalFieldId, PatId); 2]> {
         match self {
-            Fields::Vec(pats) => pats.iter().copied().enumerate().collect(),
+            Fields::Vec(pats) => pats
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(i, p)| (LocalFieldId::from_raw((i as u32).into()), p))
+                .collect(),
         }
     }
 
@@ -779,8 +769,13 @@ impl Fields {
 
     /// Overrides some of the fields with the provided patterns. Exactly like
     /// `replace_fields_indexed`, except that it takes `FieldPat`s as input.
-    fn replace_with_fieldpats(&self, new_pats: impl IntoIterator<Item = PatId>) -> Self {
-        self.replace_fields_indexed(new_pats.into_iter().enumerate())
+    fn replace_with_fieldpats(
+        &self,
+        new_pats: impl IntoIterator<Item = (LocalFieldId, PatId)>,
+    ) -> Self {
+        self.replace_fields_indexed(
+            new_pats.into_iter().map(|(field, pat)| (u32::from(field.into_raw()) as usize, pat)),
+        )
     }
 
     /// Overrides some of the fields with the provided patterns. This is used when a pattern
@@ -814,10 +809,7 @@ impl Fields {
             let tys: SmallVec<[Ty; 2]> = match self {
                 Fields::Vec(pats) => pats.iter().copied().map(|pat| cx.type_of(pat)).collect(),
             };
-            pats.into_iter()
-                .zip(tys.into_iter())
-                .map(move |(pat, ty)| cx.alloc_pat(pat, &ty))
-                .collect()
+            pats.into_iter().zip(tys.into_iter()).map(move |(pat, ty)| cx.alloc_pat(pat)).collect()
         };
 
         match self {
@@ -845,42 +837,24 @@ impl Fields {
         pat: PatId,
         cx: &MatchCheckCtx<'_>,
     ) -> Self {
-        match &cx.pattern_arena.borrow()[pat] {
-            Pat::Ref { pat: subpattern, .. } | Pat::Box { inner: subpattern } => {
+        // TODO: these alocations are so unfortunate (+1 for switching to references)
+        match cx.pattern_arena.borrow()[pat].kind.as_ref() {
+            PatKind::Deref { subpattern } => {
                 assert_eq!(self.len(), 1);
-                Fields::from_single_pattern(*subpattern)
+                let subpattern = cx.pattern_arena.borrow_mut().alloc(subpattern.clone());
+                Fields::from_single_pattern(subpattern)
             }
-            Pat::Tuple { args, ellipsis } | Pat::TupleStruct { args, ellipsis, .. } => {
-                // FIXME(iDawer) handle ellipsis.
-                // XXX(iDawer): in rustc, this is handled by HIR->TypedHIR lowering
-                // rustc_mir_build::thir::pattern::PatCtxt::lower_tuple_subpats(..)
-                self.replace_with_fieldpats(args.iter().copied())
-            }
-            Pat::Record { args, ellipsis, .. } => {
-                let variant_id =
-                    cx.infer.variant_resolution_for_pat(pat).unwrap_or_else(|| todo!());
-                let variant_data = variant_id.variant_data(cx.db.upcast());
-
-                let new_pats = args.iter().map(|field_pat| {
-                    // TODO: field lookup is inefficient
-                    let raw =
-                        variant_data.field(&field_pat.name).unwrap_or_else(|| todo!()).into_raw();
-                    let idx = u32::from(raw) as usize;
-                    (idx, field_pat.pat)
+            PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
+                let subpatterns = subpatterns.iter().map(|field_pat| {
+                    (
+                        field_pat.field,
+                        cx.pattern_arena.borrow_mut().alloc(field_pat.pattern.clone()),
+                    )
                 });
-                self.replace_fields_indexed(new_pats)
+                self.replace_with_fieldpats(subpatterns)
             }
-            Pat::Slice { .. } => {
-                todo!()
-            }
-            Pat::Missing
-            | Pat::Wild
-            | Pat::Or(_)
-            | Pat::Range { .. }
-            | Pat::Path(_)
-            | Pat::Lit(_)
-            | Pat::Bind { .. }
-            | Pat::ConstBlock(_) => self.clone(),
+
+            PatKind::Wild | PatKind::Binding { .. } | PatKind::Or { .. } => self.clone(),
         }
     }
 }
