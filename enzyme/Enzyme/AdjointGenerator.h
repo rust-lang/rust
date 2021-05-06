@@ -109,7 +109,6 @@ public:
         unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
 
     auto iload = gutils->getNewFromOriginal((Value *)&I);
-
     if (used && check)
       return;
 
@@ -3426,6 +3425,85 @@ public:
                                           Builder2.CreateFMul(cal, cal));
         setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
         addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+        return;
+      }
+
+      if (called && (called->getName() == "erf")) {
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            gutils->isConstantInstruction(orig))
+          return;
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                          Builder2);
+
+        Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
+        Type *tys[] = {sq->getType()};
+        Function *ExpF = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
+                                                   Intrinsic::exp, tys);
+        Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+
+        cal = Builder2.CreateFMul(
+            cal, ConstantFP::get(
+                     sq->getType(),
+                     1.1283791670955125738961589031215451716881012586580));
+        cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
+        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+        addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
+        return;
+      }
+      if (called && (called->getName() == "erfi")) {
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            gutils->isConstantInstruction(orig))
+          return;
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                          Builder2);
+
+        Value *sq = Builder2.CreateFMul(x, x);
+        Type *tys[] = {sq->getType()};
+        Function *ExpF = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
+                                                   Intrinsic::exp, tys);
+        Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+
+        cal = Builder2.CreateFMul(
+            cal, ConstantFP::get(
+                     sq->getType(),
+                     1.1283791670955125738961589031215451716881012586580));
+        cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
+        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+        addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
+        return;
+      }
+      if (called && (called->getName() == "erfc")) {
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            gutils->isConstantInstruction(orig))
+          return;
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                          Builder2);
+
+        Value *sq = Builder2.CreateFNeg(Builder2.CreateFMul(x, x));
+        Type *tys[] = {sq->getType()};
+        Function *ExpF = Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
+                                                   Intrinsic::exp, tys);
+        Value *cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+
+        cal = Builder2.CreateFMul(
+            cal, ConstantFP::get(
+                     sq->getType(),
+                     -1.1283791670955125738961589031215451716881012586580));
+        cal = Builder2.CreateFMul(cal, diffe(orig, Builder2));
+        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+        addToDiffe(orig->getArgOperand(0), cal, Builder2, x->getType());
         return;
       }
 

@@ -92,6 +92,7 @@ const std::map<std::string, llvm::Intrinsic::ID> LIBM_FUNCTIONS = {
     {"cbrt", Intrinsic::not_intrinsic},
     {"hypot", Intrinsic::not_intrinsic},
     {"erf", Intrinsic::not_intrinsic},
+    {"erfi", Intrinsic::not_intrinsic},
     {"erfc", Intrinsic::not_intrinsic},
     {"tgamma", Intrinsic::not_intrinsic},
     {"lgamma", Intrinsic::not_intrinsic},

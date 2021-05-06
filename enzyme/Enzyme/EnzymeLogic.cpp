@@ -671,6 +671,8 @@ void calculateUnusedValuesInFunction(
           }
         }
 
+
+        bool isLibMFn = false;
         if (auto obj_op = dyn_cast<CallInst>(inst)) {
           Function *called = obj_op->getCalledFunction();
 #if LLVM_VERSION_MAJOR >= 11
@@ -682,14 +684,16 @@ void calculateUnusedValuesInFunction(
 #endif
             if (castinst->isCast()) {
               if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
-                if (isDeallocationFunction(*fn, TLI)) {
-                  return false;
-                }
+                called = fn;
               }
             }
           }
           if (called && isDeallocationFunction(*called, TLI)) {
             return false;
+          }
+          Intrinsic::ID ID = Intrinsic::not_intrinsic;
+          if (called && isMemFreeLibMFunction(called->getName(), &ID)) {
+            isLibMFn = true;
           }
         }
 
@@ -749,17 +753,17 @@ void calculateUnusedValuesInFunction(
         }
         if ((mode == DerivativeMode::ReverseModePrimal ||
              mode == DerivativeMode::ReverseModeCombined) &&
-            inst->mayWriteToMemory())
+            inst->mayWriteToMemory() && !isLibMFn) {
           return true;
+        }
         if (isa<MemTransferInst>(inst) &&
             mode == DerivativeMode::ReverseModeGradient)
           return false;
-        if (isa<CallInst>(inst) && !gutils->isConstantInstruction(inst))
-          return true;
-        return is_value_needed_in_reverse<ValueType::Primal>(
+        bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, inst,
             /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
             PrimalSeen, oldUnreachable);
+        return ivn;
       });
 #if 0
   llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
