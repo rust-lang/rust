@@ -242,13 +242,9 @@ fn replacement_range(ctx: &CompletionContext, item: &SyntaxNode) -> TextRange {
     let first_child = item
         .children_with_tokens()
         .find(|child| {
-            let kind = child.kind();
-            match kind {
-                SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR => false,
-                _ => true,
-            }
+            !matches!(child.kind(), SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR)
         })
-        .unwrap_or(SyntaxElement::Node(item.clone()));
+        .unwrap_or_else(|| SyntaxElement::Node(item.clone()));
 
     TextRange::new(first_child.text_range().start(), ctx.source_range().end())
 }
