@@ -388,13 +388,25 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let pattern_arena = RefCell::new(PatternArena::new());
 
+        let mut have_errors = false;
         let m_arms: Vec<_> = arms
             .iter()
             .map(|arm| usefulness::MatchArm {
-                pat: self.lower_pattern(arm.pat, &mut pattern_arena.borrow_mut(), db, &body),
+                pat: self.lower_pattern(
+                    arm.pat,
+                    &mut pattern_arena.borrow_mut(),
+                    db,
+                    &body,
+                    &mut have_errors,
+                ),
                 has_guard: arm.guard.is_some(),
             })
             .collect();
+
+        // Bail out early if lowering failed.
+        if have_errors {
+            return;
+        }
 
         let cx = usefulness::MatchCheckCtx {
             module: self.owner.module(db.upcast()),
@@ -442,10 +454,15 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         pattern_arena: &mut PatternArena,
         db: &dyn HirDatabase,
         body: &Body,
+        have_errors: &mut bool,
     ) -> pattern::PatId {
         let mut patcx = pattern::PatCtxt::new(db, &self.infer, body);
         let pattern = patcx.lower_pattern(pat);
-        pattern_arena.alloc(expand_pattern(pattern))
+        let pattern = pattern_arena.alloc(expand_pattern(pattern));
+        if !patcx.errors.is_empty() {
+            *have_errors = true;
+        }
+        pattern
     }
 
     fn validate_results_in_tail_expr(&mut self, body_id: ExprId, id: ExprId, db: &dyn HirDatabase) {
