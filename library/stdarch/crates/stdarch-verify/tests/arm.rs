@@ -487,6 +487,18 @@ fn verify_all_signatures() {
             "vreinterpret_p64_s64",
             "vreinterpret_f32_p64",
             "vreinterpretq_f32_p64",
+            "vqrdmlahh_s16",
+            "vqrdmlahs_s32",
+            "vqrdmlahh_lane_s16",
+            "vqrdmlahh_laneq_s16",
+            "vqrdmlahs_lane_s32",
+            "vqrdmlahs_laneq_s32",
+            "vqrdmlshh_s16",
+            "vqrdmlshs_s32",
+            "vqrdmlshh_lane_s16",
+            "vqrdmlshh_laneq_s16",
+            "vqrdmlshs_lane_s32",
+            "vqrdmlshs_laneq_s32",
             "__dbg",
         ];
         let arm = match map.get(rust.name) {

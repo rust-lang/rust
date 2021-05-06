@@ -3202,6 +3202,181 @@ validate 1
 aarch64 = sqdmulh
 generate i32:int32x2_t:i32, i32:int32x4_t:i32
 
+/// Signed saturating rounding doubling multiply returning high half
+name = vqrdmulh
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+b = 2, 2, 2, 2, 2, 2, 2, 2
+validate 2, 2, 2, 2, 2, 2, 2, 2
+
+aarch64 = sqrdmulh
+link-aarch64 = sqrdmulh._EXT_
+arm = vqrdmulh
+link-arm = vqrdmulh._EXT_
+generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
+
+/// Signed saturating rounding doubling multiply returning high half
+name = vqrdmulh
+multi_fn = simd_extract, {vqrdmulh-in_ntt-noext, {vdup_n-in_ntt-noext, a}, {vdup_n-in_ntt-noext, b}}, 0
+a = 1
+b = 2
+validate 0
+
+aarch64 = sqrdmulh
+generate i16, i32
+
+/// Vector saturating rounding doubling multiply high with scalar
+name = vqrdmulh
+out-n-suffix
+multi_fn = vqrdmulh-out-noext, a, {vdup-nout-noext, b}
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+b = 2
+validate 2, 2, 2, 2, 2, 2, 2, 2
+
+aarch64 = sqrdmulh
+arm = vqrdmulh
+generate int16x4_t:i16:int16x4_t, int16x8_t:i16:int16x8_t, int32x2_t:i32:int32x2_t, int32x4_t:i32:int32x4_t
+
+/// Vector rounding saturating doubling multiply high by scalar
+name = vqrdmulh
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_shuffle-out_len-noext, b:out_t, b, b, {dup-out_len-LANE as u32}
+multi_fn = vqrdmulh-out-noext, a, b
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+b = 0, 2, 0, 0, 0, 0, 0, 0,
+n = 1
+validate 2, 2, 2, 2, 2, 2, 2, 2
+
+aarch64 = sqrdmulh
+arm = vqrdmulh
+generate int16x4_t, int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x4_t:int16x8_t, int16x8_t
+generate int32x2_t, int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x2_t:int32x4_t, int32x4_t
+
+/// Signed saturating rounding doubling multiply returning high half
+name = vqrdmulh
+lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = vqrdmulh-out-noext, a, {simd_extract, b, LANE as u32}
+a = 1
+b = 0, 2, 0, 0, 0, 0, 0, 0,
+n = 1
+validate 0
+
+aarch64 = sqrdmulh
+generate i16:int16x4_t:i16, i16:int16x8_t:i16, i32:int32x2_t:i32, i32:int32x4_t:i32
+
+/// Signed saturating rounding doubling multiply accumulate returning high half
+name = vqrdmlah
+multi_fn = vqadd-out-noext, a, {vqrdmulh-out-noext, b, c}
+a = 1, 1, 1, 1, 1, 1, 1, 1
+b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+c = 2, 2, 2, 2, 2, 2, 2, 2
+validate 3, 3, 3, 3, 3, 3, 3, 3
+
+aarch64 = sqrdmulh
+arm = vqrdmulh
+generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
+
+/// Signed saturating rounding doubling multiply accumulate returning high half
+name = vqrdmlah
+multi_fn = vqadd-self-noext, a, {vqrdmulh-self-noext, b, c}
+a = 1
+b = 1
+c = 2
+validate 1
+
+aarch64 = sqrdmulh
+generate i16, i32
+
+/// Signed saturating rounding doubling multiply accumulate returning high half
+name = vqrdmlah
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vqadd-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+a = 1, 1, 1, 1, 1, 1, 1, 1
+b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+c = 0, 2, 0, 0, 0, 0, 0, 0
+n = 1
+validate 3, 3, 3, 3, 3, 3, 3, 3
+
+aarch64 = sqrdmulh
+arm = vqrdmulh
+generate int16x4_t, int16x4_t:int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x8_t:int16x4_t:int16x8_t, int16x8_t
+generate int32x2_t, int32x2_t:int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x4_t:int32x2_t:int32x4_t, int32x4_t
+
+/// Signed saturating rounding doubling multiply accumulate returning high half
+name = vqrdmlah
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vqadd-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+a = 1
+b = 1
+c = 0, 2, 0, 0, 0, 0, 0, 0
+n = 1
+validate 1
+
+aarch64 = sqrdmulh
+generate i16:i16:int16x4_t:i16, i16:i16:int16x8_t:i16, i32:i32:int32x2_t:i32, i32:i32:int32x4_t:i32
+
+/// Signed saturating rounding doubling multiply subtract returning high half
+name = vqrdmlsh
+multi_fn = vqsub-out-noext, a, {vqrdmulh-out-noext, b, c}
+a = 1, 1, 1, 1, 1, 1, 1, 1
+b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+c = 2, 2, 2, 2, 2, 2, 2, 2
+validate -1, -1, -1, -1, -1, -1, -1, -1
+
+aarch64 = sqrdmulh
+arm = vqrdmulh
+generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
+
+/// Signed saturating rounding doubling multiply subtract returning high half
+name = vqrdmlsh
+multi_fn = vqsub-self-noext, a, {vqrdmulh-self-noext, b, c}
+a = 1
+b = 1
+c = 2
+validate 1
+
+aarch64 = sqrdmulh
+generate i16, i32
+
+/// Signed saturating rounding doubling multiply subtract returning high half
+name = vqrdmlsh
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vqsub-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+a = 1, 1, 1, 1, 1, 1, 1, 1
+b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+c = 0, 2, 0, 0, 0, 0, 0, 0
+n = 1
+validate -1, -1, -1, -1, -1, -1, -1, -1
+
+aarch64 = sqrdmulh
+arm = vqrdmulh
+generate int16x4_t, int16x4_t:int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x8_t:int16x4_t:int16x8_t, int16x8_t
+generate int32x2_t, int32x2_t:int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x4_t:int32x2_t:int32x4_t, int32x4_t
+
+/// Signed saturating rounding doubling multiply subtract returning high half
+name = vqrdmlsh
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vqsub-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+a = 1
+b = 1
+c = 0, 2, 0, 0, 0, 0, 0, 0
+n = 1
+validate 1
+
+aarch64 = sqrdmulh
+generate i16:i16:int16x4_t:i16, i16:i16:int16x8_t:i16, i32:i32:int32x2_t:i32, i32:i32:int32x4_t:i32
+
 /// Signed saturating rounding shift left
 name = vqrshl
 a = MIN, MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15

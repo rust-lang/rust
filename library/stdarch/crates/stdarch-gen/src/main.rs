@@ -2243,6 +2243,8 @@ fn get_call(
             fn_name.push_str(type_to_suffix(in_t[0]));
         } else if fn_format[1] == "in2" {
             fn_name.push_str(type_to_suffix(in_t[2]));
+        } else if fn_format[1] == "in2lane" {
+            fn_name.push_str(&type_to_lane_suffixes(out_t, in_t[2]));
         } else if fn_format[1] == "signed" {
             fn_name.push_str(type_to_suffix(type_to_signed(in_t[1])));
         } else if fn_format[1] == "unsigned" {
