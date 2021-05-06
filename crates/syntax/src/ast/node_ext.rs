@@ -5,11 +5,11 @@ use std::{borrow::Cow, fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
-use rowan::{GreenNodeData, GreenTokenData, NodeOrToken};
+use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{self, support, AstNode, AstToken, AttrsOwner, NameOwner, SyntaxNode},
-    SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
+    NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
 impl ast::Lifetime {
@@ -32,19 +32,6 @@ impl ast::NameRef {
     pub fn as_tuple_field(&self) -> Option<usize> {
         self.text().parse().ok()
     }
-}
-
-fn _text_of_first_token(node: &SyntaxNode) -> Cow<'_, str> {
-    fn cow_map<F: FnOnce(&GreenNodeData) -> &str>(green: Cow<GreenNodeData>, f: F) -> Cow<str> {
-        match green {
-            Cow::Borrowed(green_ref) => Cow::Borrowed(f(green_ref)),
-            Cow::Owned(green) => Cow::Owned(f(&green).to_owned()),
-        }
-    }
-
-    cow_map(node.green(), |green_ref| {
-        green_ref.children().next().and_then(NodeOrToken::into_token).unwrap().text()
-    })
 }
 
 fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
