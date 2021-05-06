@@ -61,12 +61,12 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment,
-    QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
+    ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path,
+    PathSegment, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -821,7 +821,13 @@ pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
 pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    match get_parent_node(cx.tcx, e.hir_id) {
+    get_parent_expr_for_hir(cx, e.hir_id)
+}
+
+/// This retrieves the parent for the given `HirId` if it's an expression. This is useful for
+/// constraint lints
+pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId) -> Option<&'tcx Expr<'tcx>> {
+    match get_parent_node(cx.tcx, hir_id) {
         Some(Node::Expr(parent)) => Some(parent),
         _ => None,
     }
@@ -1299,6 +1305,40 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     }
 
     (conds, blocks)
+}
+
+/// Checks if the given function kind is an async function.
+pub fn is_async_fn(kind: FnKind<'_>) -> bool {
+    matches!(kind, FnKind::ItemFn(_, _, header, _) if header.asyncness == IsAsync::Async)
+}
+
+/// Peels away all the compiler generated code surrounding the body of an async function,
+pub fn get_async_fn_body(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Call(
+        _,
+        &[Expr {
+            kind: ExprKind::Closure(_, _, body, _, _),
+            ..
+        }],
+    ) = body.value.kind
+    {
+        if let ExprKind::Block(
+            Block {
+                stmts: [],
+                expr:
+                    Some(Expr {
+                        kind: ExprKind::DropTemps(expr),
+                        ..
+                    }),
+                ..
+            },
+            _,
+        ) = tcx.hir().body(body).value.kind
+        {
+            return Some(expr);
+        }
+    };
+    None
 }
 
 // Finds the `#[must_use]` attribute, if any

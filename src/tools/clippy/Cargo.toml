@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.53"
+version = "0.1.54"
 authors = ["The Rust Clippy Developers"]
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
@@ -52,6 +52,7 @@ rustc_tools_util = { version = "0.2.0", path = "rustc_tools_util" }
 deny-warnings = []
 integration = ["tempfile"]
 internal-lints = ["clippy_lints/internal-lints"]
+metadata-collector-lint = ["internal-lints", "clippy_lints/metadata-collector-lint"]
 
 [package.metadata.rust-analyzer]
 # This package uses #[feature(rustc_private)]
