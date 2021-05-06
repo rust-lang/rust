@@ -356,4 +356,22 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn no_panic_at_unimplemented_subpattern_type() {
+        check_diagnostics(
+            r#"
+struct S { a: char}
+fn main(v: S) {
+    match v { S{ a }      => {} }
+    match v { S{ a: x }   => {} }
+    match v { S{ a: 'a' } => {} }
+    match v { S{..}       => {} }
+    match v { _           => {} }
+    match v { }
+        //^ Missing match arm
+}
+"#,
+        );
+    }
 }

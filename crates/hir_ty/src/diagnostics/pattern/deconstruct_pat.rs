@@ -419,6 +419,8 @@ impl SplitWildcard {
         let cx = pcx.cx;
         let make_range =
             |start, end, scalar| IntRange(IntRange::from_range(cx, start, end, scalar));
+        // FIXME(iDawer) using NonExhaustive ctor for unhandled types
+        let unhandled = || smallvec![NonExhaustive];
 
         // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
@@ -431,7 +433,7 @@ impl SplitWildcard {
         let all_ctors = match pcx.ty.kind(&Interner) {
             TyKind::Scalar(Scalar::Bool) => smallvec![make_range(0, 1, Scalar::Bool)],
             // TyKind::Array(..) if ... => todo!(),
-            TyKind::Array(..) | TyKind::Slice(..) => todo!(),
+            TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
             &TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref _substs) => {
                 let enum_data = cx.db.enum_data(enum_id);
 
@@ -466,7 +468,7 @@ impl SplitWildcard {
                 } else if cx.feature_exhaustive_patterns() {
                     // If `exhaustive_patterns` is enabled, we exclude variants known to be
                     // uninhabited.
-                    todo!()
+                    unhandled()
                 } else {
                     enum_data
                         .variants
@@ -475,8 +477,8 @@ impl SplitWildcard {
                         .collect()
                 }
             }
-            TyKind::Scalar(Scalar::Char) => todo!(),
-            TyKind::Scalar(Scalar::Int(..)) | TyKind::Scalar(Scalar::Uint(..)) => todo!(),
+            TyKind::Scalar(Scalar::Char) => unhandled(),
+            TyKind::Scalar(Scalar::Int(..)) | TyKind::Scalar(Scalar::Uint(..)) => unhandled(),
             TyKind::Never if !cx.feature_exhaustive_patterns() && !pcx.is_top_level => {
                 smallvec![NonExhaustive]
             }
