@@ -3,7 +3,7 @@
 
 use std::thread;
 
-/* Test Send Trait */
+/* Test Send Trait Migration */
 struct SendPointer (*mut i32);
 unsafe impl Send for SendPointer {}
 
@@ -17,7 +17,7 @@ fn test_send_trait() {
     });
 }
 
-/* Test Sync Trait */
+/* Test Sync Trait Migration */
 struct CustomInt (*mut i32);
 struct SyncPointer (CustomInt);
 unsafe impl Sync for SyncPointer {}
@@ -34,7 +34,7 @@ fn test_sync_trait() {
     });
 }
 
-/* Test Clone Trait */
+/* Test Clone Trait Migration */
 struct S(String);
 struct T(i32);
 
