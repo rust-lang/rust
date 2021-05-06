@@ -2770,7 +2770,21 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             }
         } else if tcx.sess.check_name(attr, sym::target_feature) {
             if !tcx.is_closure(id) && tcx.fn_sig(id).unsafety() == hir::Unsafety::Normal {
-                if !tcx.features().target_feature_11 {
+                if tcx.sess.target.is_like_wasm {
+                    // The `#[target_feature]` attribute is allowed on
+                    // WebAssembly targets on all functions, including safe
+                    // ones. Other targets require that `#[target_feature]` is
+                    // only applied to unsafe funtions (pending the
+                    // `target_feature_11` feature) because on most targets
+                    // execution of instructions that are not supported is
+                    // considered undefined behavior. For WebAssembly which is a
+                    // 100% safe target at execution time it's not possible to
+                    // execute undefined instructions, and even if a future
+                    // feature was added in some form for this it would be a
+                    // deterministic trap. There is no undefined behavior when
+                    // executing WebAssembly so `#[target_feature]` is allowed
+                    // on safe functions (but again, only for WebAssembly)
+                } else if !tcx.features().target_feature_11 {
                     let mut err = feature_err(
                         &tcx.sess.parse_sess,
                         sym::target_feature_11,
