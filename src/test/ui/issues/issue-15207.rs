@@ -1,6 +1,6 @@
 fn main() {
     loop {
-        break.push(1) //~ ERROR type annotations needed
+        break.push(1) //~ ERROR no method named `push` found for unit type `()`
         ;
     }
 }

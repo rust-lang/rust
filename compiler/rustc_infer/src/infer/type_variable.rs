@@ -16,7 +16,7 @@ use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 /// Represents a single undo-able action that affects a type inference variable.
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
-    SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
+    SubRelation(sv::UndoLog<ut::Delegate<TyVidSubKey>>),
     Values(sv::UndoLog<Delegate>),
 }
 
@@ -28,8 +28,8 @@ impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
 }
 
 /// Convert from a specific kind of undo to the more general UndoLog
-impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::TyVid>>> for UndoLog<'tcx> {
-    fn from(l: sv::UndoLog<ut::Delegate<ty::TyVid>>) -> Self {
+impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidSubKey>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<TyVidSubKey>>) -> Self {
         UndoLog::SubRelation(l)
     }
 }
@@ -83,7 +83,7 @@ pub struct TypeVariableStorage<'tcx> {
     /// This is reasonable because, in Rust, subtypes have the same
     /// "skeleton" and hence there is no possible type such that
     /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
-    sub_relations: ut::UnificationTableStorage<ty::TyVid>,
+    sub_relations: ut::UnificationTableStorage<TyVidSubKey>,
 }
 
 pub struct TypeVariableTable<'a, 'tcx> {
@@ -169,6 +169,16 @@ impl<'tcx> TypeVariableStorage<'tcx> {
 }
 
 impl<'tcx> TypeVariableTable<'_, 'tcx> {
+    /// Returns `false` if all non-auxiliary type variables unified with
+    /// `vid` is diverging. Returns `true` otherwise.
+    ///
+    /// Precondition: `vid` should be unknown.
+    pub fn var_diverges_with_unification(&mut self, vid: ty::TyVid) -> bool {
+        debug_assert!(self.probe(vid).is_unknown());
+        let kind = self.sub_relations().inlined_probe_value(vid);
+        matches!(kind, TyVarUnifiedDiverging::Yes)
+    }
+
     /// Returns the diverges flag given when `vid` was created.
     ///
     /// Note that this function does not return care whether
@@ -243,8 +253,9 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     ) -> ty::TyVid {
         let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
 
-        let sub_key = self.sub_relations().new_key(());
-        assert_eq!(eq_key.vid, sub_key);
+        let diverging_kind = TyVarUnifiedDiverging::from(diverging, origin.kind);
+        let sub_key = self.sub_relations().new_key(diverging_kind);
+        assert_eq!(eq_key.vid, sub_key.vid);
 
         let index = self.values().push(TypeVariableData { origin, diverging });
         assert_eq!(eq_key.vid.index, index as u32);
@@ -279,7 +290,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     ///
     ///     exists X. (a <: X || X <: a) && (b <: X || X <: b)
     pub fn sub_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
-        self.sub_relations().find(vid)
+        self.sub_relations().find(vid).vid
     }
 
     /// Returns `true` if `a` and `b` have same "sub-root" (i.e., exists some
@@ -326,7 +337,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     }
 
     #[inline]
-    fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
+    fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidSubKey> {
         self.storage.sub_relations.with_log(self.undo_log)
     }
 
@@ -440,6 +451,87 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
                 let universe = cmp::min(universe1, universe2);
                 Ok(TypeVariableValue::Unknown { universe })
             }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+
+/// These structs (a newtyped TyVid) are used as the unification key
+/// for the `sub_relations`; they carry a `TyVarUnifiedDiverging`
+/// along with them.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) struct TyVidSubKey {
+    vid: ty::TyVid,
+}
+
+/// This enum denotes whether unified type variables are all diverging
+/// variables. Note auxiliary type variables (guessed with the help of
+/// `TypeVariableOriginKind`) should be ignored.
+#[derive(Copy, Clone, Debug)]
+pub enum TyVarUnifiedDiverging {
+    /// All unified type variables are diverging.
+    Yes,
+    /// Some unified type variable are not diverging.
+    No,
+    /// We don't know the final result at all because we haven't seen
+    /// any non-auxiliary type variables yet.
+    Maybe,
+}
+
+impl From<ty::TyVid> for TyVidSubKey {
+    fn from(vid: ty::TyVid) -> Self {
+        TyVidSubKey { vid }
+    }
+}
+
+impl ut::UnifyKey for TyVidSubKey {
+    type Value = TyVarUnifiedDiverging;
+    fn index(&self) -> u32 {
+        self.vid.index
+    }
+    fn from_index(i: u32) -> Self {
+        TyVidSubKey::from(ty::TyVid { index: i })
+    }
+    fn tag() -> &'static str {
+        "TyVidSubKey"
+    }
+}
+
+impl ut::UnifyValue for TyVarUnifiedDiverging {
+    type Error = ut::NoError;
+
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, ut::NoError> {
+        match (*value1, *value2) {
+            // Auxiliary type variables should be ignored.
+            (TyVarUnifiedDiverging::Maybe, other) => Ok(other),
+            (other, TyVarUnifiedDiverging::Maybe) => Ok(other),
+
+            // We've found some non-diverging type variables.
+            (TyVarUnifiedDiverging::No, _) => Ok(TyVarUnifiedDiverging::No),
+            (_, TyVarUnifiedDiverging::No) => Ok(TyVarUnifiedDiverging::No),
+
+            // All type variables are diverging yet.
+            (TyVarUnifiedDiverging::Yes, TyVarUnifiedDiverging::Yes) => {
+                Ok(TyVarUnifiedDiverging::Yes)
+            }
+        }
+    }
+}
+
+impl TyVarUnifiedDiverging {
+    #[inline]
+    fn from(diverging: bool, origin: TypeVariableOriginKind) -> Self {
+        if diverging {
+            return TyVarUnifiedDiverging::Yes;
+        }
+
+        // FIXME: Is it a complete list? Probably not.
+        match origin {
+            TypeVariableOriginKind::MiscVariable | TypeVariableOriginKind::LatticeVariable => {
+                TyVarUnifiedDiverging::Maybe
+            }
+            _ => TyVarUnifiedDiverging::No,
         }
     }
 }

@@ -1,0 +1,34 @@
+error[E0599]: no method named `test` found for type `!` in the current scope
+  --> $DIR/early-fallback.rs:6:44
+   |
+LL |     { if true { return } else { return } }.test();
+   |                                            ^^^^ method not found in `!`
+
+error[E0282]: type annotations needed
+  --> $DIR/early-fallback.rs:11:5
+   |
+LL |     { if true { Default::default() } else { return } }.test();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: type must be known at this point
+
+error[E0282]: type annotations needed
+  --> $DIR/early-fallback.rs:17:5
+   |
+LL |     let a = return;
+   |         - consider giving `a` a type
+LL |     { if true { return } else { a } }.test();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: type must be known at this point
+
+error[E0599]: no method named `test` found for type `!` in the current scope
+  --> $DIR/early-fallback.rs:23:39
+   |
+LL |     { if true { return } else { a } }.test();
+   |                                       ^^^^ method not found in `!`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0599.
+For more information about an error, try `rustc --explain E0282`.

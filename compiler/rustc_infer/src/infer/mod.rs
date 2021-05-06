@@ -1275,6 +1275,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns `false` if all non-auxiliary type variables unified with
+    /// `vid` is diverging. Returns `true` otherwise.
+    pub fn probe_ty_diverging(&self, vid: TyVid) -> bool {
+        let mut inner = self.inner.borrow_mut();
+        inner.type_variables().var_diverges_with_unification(vid)
+    }
+
     /// Resolve any type variables found in `value` -- but only one
     /// level.  So, if the variable `?X` is bound to some type
     /// `Foo<?Y>`, then this would return `Foo<?Y>` (but `?Y` may
