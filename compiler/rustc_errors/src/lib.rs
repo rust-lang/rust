@@ -294,6 +294,7 @@ impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, SubDiagnostic};
 pub use diagnostic_builder::DiagnosticBuilder;
+use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
@@ -317,7 +318,7 @@ struct HandlerInner {
     deduplicated_err_count: usize,
     emitter: Box<dyn Emitter + sync::Send>,
     delayed_span_bugs: Vec<Diagnostic>,
-    delayed_good_path_bugs: Vec<Diagnostic>,
+    delayed_good_path_bugs: Vec<DelayedDiagnostic>,
 
     /// This set contains the `DiagnosticId` of all emitted diagnostics to avoid
     /// emitting the same diagnostic with extended help (`--teach`) twice, which
@@ -388,7 +389,7 @@ impl Drop for HandlerInner {
         if !self.has_any_message() {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
-                bugs,
+                bugs.into_iter().map(DelayedDiagnostic::decorate).collect(),
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
             );
         }
@@ -968,12 +969,12 @@ impl HandlerInner {
     }
 
     fn delay_good_path_bug(&mut self, msg: &str) {
-        let mut diagnostic = Diagnostic::new(Level::Bug, msg);
+        let diagnostic = Diagnostic::new(Level::Bug, msg);
         if self.flags.report_delayed_bugs {
             self.emit_diagnostic(&diagnostic);
         }
-        diagnostic.note(&format!("delayed at {}", std::backtrace::Backtrace::force_capture()));
-        self.delayed_good_path_bugs.push(diagnostic);
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        self.delayed_good_path_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
 
     fn failure(&mut self, msg: &str) {
@@ -1039,6 +1040,22 @@ impl HandlerInner {
                 ),
             }
         }
+    }
+}
+
+struct DelayedDiagnostic {
+    inner: Diagnostic,
+    note: Backtrace,
+}
+
+impl DelayedDiagnostic {
+    fn with_backtrace(diagnostic: Diagnostic, backtrace: Backtrace) -> Self {
+        DelayedDiagnostic { inner: diagnostic, note: backtrace }
+    }
+
+    fn decorate(mut self) -> Diagnostic {
+        self.inner.note(&format!("delayed at {}", self.note));
+        self.inner
     }
 }
 
