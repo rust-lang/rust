@@ -1,3 +1,8 @@
+//! This test is a part of quality control and makes clippy eat what it produces. Awesome lints and
+//! long error messages
+//!
+//! See [Eating your own dog food](https://en.wikipedia.org/wiki/Eating_your_own_dog_food) for context
+
 // Dogfood cannot run on Windows
 #![cfg(not(windows))]
 #![feature(once_cell)]
@@ -17,12 +22,14 @@ fn dogfood_clippy() {
         return;
     }
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let enable_metadata_collection = std::env::var("ENABLE_METADATA_COLLECTION").unwrap_or_else(|_| "0".to_string());
 
     let mut command = Command::new(&*CLIPPY_PATH);
     command
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .env("CARGO_INCREMENTAL", "0")
+        .env("ENABLE_METADATA_COLLECTION", &enable_metadata_collection)
         .arg("clippy")
         .arg("--all-targets")
         .arg("--all-features")

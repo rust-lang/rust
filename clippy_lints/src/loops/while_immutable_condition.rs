@@ -28,11 +28,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, expr: &'
         return;
     }
     let used_in_condition = &var_visitor.ids;
-    let no_cond_variable_mutated = if let Some(used_mutably) = mutated_variables(expr, cx) {
-        used_in_condition.is_disjoint(&used_mutably)
-    } else {
-        return;
-    };
+    let mutated_in_body = mutated_variables(expr, cx);
+    let mutated_in_condition = mutated_variables(cond, cx);
+    let no_cond_variable_mutated =
+        if let (Some(used_mutably_body), Some(used_mutably_cond)) = (mutated_in_body, mutated_in_condition) {
+            used_in_condition.is_disjoint(&used_mutably_body) && used_in_condition.is_disjoint(&used_mutably_cond)
+        } else {
+            return;
+        };
     let mutable_static_in_cond = var_visitor.def_ids.iter().any(|(_, v)| *v);
 
     let mut has_break_or_return_visitor = HasBreakOrReturnVisitor {

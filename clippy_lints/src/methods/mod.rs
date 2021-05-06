@@ -2189,27 +2189,6 @@ const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
     ShouldImplTraitCase::new("std::ops::Sub", "sub",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
 ];
 
-#[rustfmt::skip]
-const PATTERN_METHODS: [(&str, usize); 17] = [
-    ("contains", 1),
-    ("starts_with", 1),
-    ("ends_with", 1),
-    ("find", 1),
-    ("rfind", 1),
-    ("split", 1),
-    ("rsplit", 1),
-    ("split_terminator", 1),
-    ("rsplit_terminator", 1),
-    ("splitn", 2),
-    ("rsplitn", 2),
-    ("matches", 1),
-    ("rmatches", 1),
-    ("match_indices", 1),
-    ("rmatch_indices", 1),
-    ("trim_start_matches", 1),
-    ("trim_end_matches", 1),
-];
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum SelfKind {
     Value,

@@ -280,22 +280,53 @@ pub fn snippet_with_context(
     default: &'a str,
     applicability: &mut Applicability,
 ) -> (Cow<'a, str>, bool) {
-    let outer_span = hygiene::walk_chain(span, outer);
-    let (span, is_macro_call) = if outer_span.ctxt() == outer {
-        (outer_span, span.ctxt() != outer)
-    } else {
-        // The span is from a macro argument, and the outer context is the macro using the argument
-        if *applicability != Applicability::Unspecified {
-            *applicability = Applicability::MaybeIncorrect;
-        }
-        // TODO: get the argument span.
-        (span, false)
-    };
+    let (span, is_macro_call) = walk_span_to_context(span, outer).map_or_else(
+        || {
+            // The span is from a macro argument, and the outer context is the macro using the argument
+            if *applicability != Applicability::Unspecified {
+                *applicability = Applicability::MaybeIncorrect;
+            }
+            // TODO: get the argument span.
+            (span, false)
+        },
+        |outer_span| (outer_span, span.ctxt() != outer),
+    );
 
     (
         snippet_with_applicability(cx, span, default, applicability),
         is_macro_call,
     )
+}
+
+/// Walks the span up to the target context, thereby returning the macro call site if the span is
+/// inside a macro expansion, or the original span if it is not. Note this will return `None` in the
+/// case of the span being in a macro expansion, but the target context is from expanding a macro
+/// argument.
+///
+/// Given the following
+///
+/// ```rust,ignore
+/// macro_rules! m { ($e:expr) => { f($e) }; }
+/// g(m!(0))
+/// ```
+///
+/// If called with a span of the call to `f` and a context of the call to `g` this will return a
+/// span containing `m!(0)`. However, if called with a span of the literal `0` this will give a span
+/// containing `0` as the context is the same as the outer context.
+///
+/// This will traverse through multiple macro calls. Given the following:
+///
+/// ```rust,ignore
+/// macro_rules! m { ($e:expr) => { n!($e, 0) }; }
+/// macro_rules! n { ($e:expr, $f:expr) => { f($e, $f) }; }
+/// g(m!(0))
+/// ```
+///
+/// If called with a span of the call to `f` and a context of the call to `g` this will return a
+/// span containing `m!(0)`.
+pub fn walk_span_to_context(span: Span, outer: SyntaxContext) -> Option<Span> {
+    let outer_span = hygiene::walk_chain(span, outer);
+    (outer_span.ctxt() == outer).then(|| outer_span)
 }
 
 /// Removes block comments from the given `Vec` of lines.

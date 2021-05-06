@@ -1,6 +1,6 @@
 [package]
 name = "clippy_utils"
-version = "0.1.53"
+version = "0.1.54"
 authors = ["The Rust Clippy Developers"]
 edition = "2018"
 publish = false
@@ -15,6 +15,7 @@ rustc-semver="1.1.0"
 
 [features]
 internal-lints = []
+metadata-collector-lint = []
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

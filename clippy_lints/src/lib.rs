@@ -383,6 +383,7 @@ mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 pub use crate::utils::conf::Conf;
+use crate::utils::conf::TryConf;
 
 /// Register all pre expansion lints
 ///
@@ -400,56 +401,40 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
 }
 
 #[doc(hidden)]
-pub fn read_conf(args: &[rustc_ast::NestedMetaItem], sess: &Session) -> Conf {
+pub fn read_conf(sess: &Session) -> Conf {
     use std::path::Path;
-    match utils::conf::file_from_args(args) {
-        Ok(file_name) => {
-            // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
-            // do not require the file to exist
-            let file_name = match file_name {
-                Some(file_name) => file_name,
-                None => match utils::conf::lookup_conf_file() {
-                    Ok(Some(path)) => path,
-                    Ok(None) => return Conf::default(),
-                    Err(error) => {
-                        sess.struct_err(&format!("error finding Clippy's configuration file: {}", error))
-                            .emit();
-                        return Conf::default();
-                    },
-                },
-            };
-
-            let file_name = if file_name.is_relative() {
-                sess.local_crate_source_file
-                    .as_deref()
-                    .and_then(Path::parent)
-                    .unwrap_or_else(|| Path::new(""))
-                    .join(file_name)
-            } else {
-                file_name
-            };
-
-            let (conf, errors) = utils::conf::read(&file_name);
-
-            // all conf errors are non-fatal, we just use the default conf in case of error
-            for error in errors {
-                sess.struct_err(&format!(
-                    "error reading Clippy's configuration file `{}`: {}",
-                    file_name.display(),
-                    error
-                ))
+    let file_name = match utils::conf::lookup_conf_file() {
+        Ok(Some(path)) => path,
+        Ok(None) => return Conf::default(),
+        Err(error) => {
+            sess.struct_err(&format!("error finding Clippy's configuration file: {}", error))
                 .emit();
-            }
+            return Conf::default();
+        },
+    };
 
-            conf
-        },
-        Err((err, span)) => {
-            sess.struct_span_err(span, err)
-                .span_note(span, "Clippy will use default configuration")
-                .emit();
-            Conf::default()
-        },
+    let file_name = if file_name.is_relative() {
+        sess.local_crate_source_file
+            .as_deref()
+            .and_then(Path::parent)
+            .unwrap_or_else(|| Path::new(""))
+            .join(file_name)
+    } else {
+        file_name
+    };
+
+    let TryConf { conf, errors } = utils::conf::read(&file_name);
+    // all conf errors are non-fatal, we just use the default conf in case of error
+    for error in errors {
+        sess.struct_err(&format!(
+            "error reading Clippy's configuration file `{}`: {}",
+            file_name.display(),
+            error
+        ))
+        .emit();
     }
+
+    conf
 }
 
 /// Register all lints and lint groups with the rustc plugin registry
@@ -1020,6 +1005,13 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| box utils::internal_lints::MatchTypeOnDiagItem);
         store.register_late_pass(|| box utils::internal_lints::OuterExpnDataPass);
     }
+    #[cfg(feature = "metadata-collector-lint")]
+    {
+        if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
+            store.register_late_pass(|| box utils::internal_lints::metadata_collector::MetadataCollector::default());
+        }
+    }
+
     store.register_late_pass(|| box utils::author::Author);
     store.register_late_pass(|| box await_holding_invalid::AwaitHolding);
     store.register_late_pass(|| box serde_api::SerdeApi);

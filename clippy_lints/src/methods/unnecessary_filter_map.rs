@@ -6,6 +6,7 @@ use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
+use rustc_middle::ty::{self, TyS};
 use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
@@ -28,25 +29,28 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         found_mapping |= return_visitor.found_mapping;
         found_filtering |= return_visitor.found_filtering;
 
-        if !found_filtering {
-            span_lint(
-                cx,
-                UNNECESSARY_FILTER_MAP,
-                expr.span,
-                "this `.filter_map` can be written more simply using `.map`",
-            );
+        let sugg = if !found_filtering {
+            "map"
+        } else if !found_mapping && !mutates_arg {
+            let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
+            match cx.typeck_results().expr_ty(&body.value).kind() {
+                ty::Adt(adt, subst)
+                    if cx.tcx.is_diagnostic_item(sym::option_type, adt.did)
+                        && TyS::same_type(in_ty, subst.type_at(0)) =>
+                {
+                    "filter"
+                },
+                _ => return,
+            }
+        } else {
             return;
-        }
-
-        if !found_mapping && !mutates_arg {
-            span_lint(
-                cx,
-                UNNECESSARY_FILTER_MAP,
-                expr.span,
-                "this `.filter_map` can be written more simply using `.filter`",
-            );
-            return;
-        }
+        };
+        span_lint(
+            cx,
+            UNNECESSARY_FILTER_MAP,
+            expr.span,
+            &format!("this `.filter_map` can be written more simply using `.{}`", sugg),
+        );
     }
 }
 
