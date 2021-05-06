@@ -1,0 +1,18 @@
+#![allow(incomplete_features)]
+#![feature(const_generics_defaults)]
+
+struct X<const N: u8>();
+
+impl X<N> {}
+//~^ ERROR cannot find type `N` in this scope
+//~| ERROR unresolved item provided when a constant was expected
+impl<T, const A: u8 = 2> X<N> {}
+//~^ ERROR cannot find type `N` in this scope
+//~| ERROR defaults for const parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+//~| ERROR unresolved item provided when a constant was expected
+
+fn bar<const N: u8>(a: A) {}
+//~^ ERROR cannot find type `A` in this scope
+
+fn main() {
+}
