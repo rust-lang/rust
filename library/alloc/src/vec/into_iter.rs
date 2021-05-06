@@ -94,6 +94,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// (&mut into_iter).for_each(core::mem::drop);
     /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     pub(super) fn forget_allocation_drop_remaining(&mut self) {
         let remaining = self.as_raw_mut_slice();
 
@@ -224,6 +225,7 @@ where
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
     #[cfg(not(test))]

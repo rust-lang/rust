@@ -255,19 +255,27 @@ use core::convert::{From, TryFrom};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
+#[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
-use core::mem::{self, align_of_val_raw, forget, size_of_val};
+#[cfg(not(no_global_oom_handling))]
+use core::mem::size_of_val;
+use core::mem::{self, align_of_val_raw, forget};
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
+#[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 
-use crate::alloc::{
-    box_free, handle_alloc_error, AllocError, Allocator, Global, Layout, WriteCloneIntoRaw,
-};
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::handle_alloc_error;
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::{box_free, WriteCloneIntoRaw};
+use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
+#[cfg(not(no_global_oom_handling))]
 use crate::string::String;
+#[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
 
 #[cfg(test)]
@@ -434,6 +442,7 @@ impl<T> Rc<T> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
         unsafe {
@@ -465,6 +474,7 @@ impl<T> Rc<T> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
         unsafe {
@@ -637,6 +647,7 @@ impl<T> Rc<[T]> {
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         unsafe { Rc::from_ptr(Rc::allocate_for_slice(len)) }
@@ -662,6 +673,7 @@ impl<T> Rc<[T]> {
     /// ```
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         unsafe {
@@ -1122,6 +1134,7 @@ impl<T: Clone> Rc<T> {
     /// assert!(76 == *data);
     /// assert!(weak.upgrade().is_none());
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
@@ -1195,6 +1208,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
@@ -1245,6 +1259,7 @@ impl<T: ?Sized> Rc<T> {
     }
 
     /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
+    #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
         // Allocate for the `RcBox<T>` using the given value.
         unsafe {
@@ -1256,6 +1271,7 @@ impl<T: ?Sized> Rc<T> {
         }
     }
 
+    #[cfg(not(no_global_oom_handling))]
     fn from_box(v: Box<T>) -> Rc<T> {
         unsafe {
             let (box_unique, alloc) = Box::into_unique(v);
@@ -1281,6 +1297,7 @@ impl<T: ?Sized> Rc<T> {
 
 impl<T> Rc<[T]> {
     /// Allocates an `RcBox<[T]>` with the given length.
+    #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
         unsafe {
             Self::allocate_for_layout(
@@ -1294,6 +1311,7 @@ impl<T> Rc<[T]> {
     /// Copy elements from slice into newly allocated Rc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`
+    #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
         unsafe {
             let ptr = Self::allocate_for_slice(v.len());
@@ -1305,6 +1323,7 @@ impl<T> Rc<[T]> {
     /// Constructs an `Rc<[T]>` from an iterator known to be of a certain size.
     ///
     /// Behavior is undefined should the size be wrong.
+    #[cfg(not(no_global_oom_handling))]
     unsafe fn from_iter_exact(iter: impl iter::Iterator<Item = T>, len: usize) -> Rc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
@@ -1356,6 +1375,7 @@ trait RcFromSlice<T> {
     fn from_slice(slice: &[T]) -> Self;
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
     #[inline]
     default fn from_slice(v: &[T]) -> Self {
@@ -1363,6 +1383,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T: Copy> RcFromSlice<T> for Rc<[T]> {
     #[inline]
     fn from_slice(v: &[T]) -> Self {
@@ -1717,6 +1738,7 @@ impl<T> From<T> for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: Clone> From<&[T]> for Rc<[T]> {
     /// Allocate a reference-counted slice and fill it by cloning `v`'s items.
@@ -1735,6 +1757,7 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Rc<str> {
     /// Allocate a reference-counted string slice and copy `v` into it.
@@ -1753,6 +1776,7 @@ impl From<&str> for Rc<str> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<String> for Rc<str> {
     /// Allocate a reference-counted string slice and copy `v` into it.
@@ -1771,6 +1795,7 @@ impl From<String> for Rc<str> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T: ?Sized> From<Box<T>> for Rc<T> {
     /// Move a boxed object to a new, reference counted, allocation.
@@ -1789,6 +1814,7 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl<T> From<Vec<T>> for Rc<[T]> {
     /// Allocate a reference-counted slice and move `v`'s items into it.
@@ -1842,6 +1868,7 @@ impl<T, const N: usize> TryFrom<Rc<[T]>> for Rc<[T; N]> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_iter", since = "1.37.0")]
 impl<T> iter::FromIterator<T> for Rc<[T]> {
     /// Takes each element in the `Iterator` and collects it into an `Rc<[T]>`.
@@ -1888,16 +1915,19 @@ impl<T> iter::FromIterator<T> for Rc<[T]> {
 }
 
 /// Specialization trait used for collecting into `Rc<[T]>`.
+#[cfg(not(no_global_oom_handling))]
 trait ToRcSlice<T>: Iterator<Item = T> + Sized {
     fn to_rc_slice(self) -> Rc<[T]>;
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T, I: Iterator<Item = T>> ToRcSlice<T> for I {
     default fn to_rc_slice(self) -> Rc<[T]> {
         self.collect::<Vec<T>>().into()
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
     fn to_rc_slice(self) -> Rc<[T]> {
         // This is the case for a `TrustedLen` iterator.
