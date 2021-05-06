@@ -67,6 +67,11 @@ pub enum PatKind {
         subpattern: Pat,
     },
 
+    // only bool for now
+    LiteralBool {
+        value: bool,
+    },
+
     /// An or-pattern, e.g. `p | q`.
     /// Invariant: `pats.len() >= 2`.
     Or {
@@ -98,6 +103,8 @@ impl<'a> PatCtxt<'a> {
 
         let kind = match self.body[pat] {
             hir_def::expr::Pat::Wild => PatKind::Wild,
+
+            hir_def::expr::Pat::Lit(expr) => self.lower_lit(expr),
 
             hir_def::expr::Pat::Path(ref path) => {
                 return self.lower_path(pat, path);
@@ -208,6 +215,18 @@ impl<'a> PatCtxt<'a> {
             None => {
                 self.errors.push(PatternError::Unimplemented);
                 pat_from_kind(PatKind::Wild)
+            }
+        }
+    }
+
+    fn lower_lit(&mut self, expr: hir_def::expr::ExprId) -> PatKind {
+        use hir_def::expr::{Expr, Literal::Bool};
+
+        match self.body[expr] {
+            Expr::Literal(Bool(value)) => PatKind::LiteralBool { value },
+            _ => {
+                self.errors.push(PatternError::Unimplemented);
+                PatKind::Wild
             }
         }
     }

@@ -275,14 +275,8 @@ impl Constructor {
             PatKind::Binding { .. } | PatKind::Wild => Wildcard,
             PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
             &PatKind::Variant { enum_variant, .. } => Variant(enum_variant),
-
-            //Todo
-            // &Pat::Lit(expr_id) => match cx.body[expr_id] {
-            //     Expr::Literal(Literal::Bool(val)) => IntRange(IntRange::from_bool(val)),
-            //     _ => todo!(),
-            // },
+            &PatKind::LiteralBool { value } => IntRange(IntRange::from_bool(value)),
             PatKind::Or { .. } => panic!("bug: Or-pattern should have been expanded earlier on."),
-            pat => todo!("Constructor::from_pat {:?}", pat),
         }
     }
 
@@ -690,7 +684,7 @@ impl Fields {
         let mut subpatterns =
             subpatterns_and_indices.iter().map(|&(_, p)| pcx.cx.pattern_arena.borrow()[p].clone());
         // FIXME(iDawer) witnesses are not yet used
-        const UNIMPLEMENTED: PatKind = PatKind::Wild;
+        const UNHANDLED: PatKind = PatKind::Wild;
 
         let pat = match ctor {
             Single | Variant(_) => match pcx.ty.kind(&Interner) {
@@ -728,10 +722,10 @@ impl Fields {
                 }
                 _ => PatKind::Wild,
             },
-            Constructor::Slice(slice) => UNIMPLEMENTED,
-            Str(_) => UNIMPLEMENTED,
-            FloatRange(..) => UNIMPLEMENTED,
-            Constructor::IntRange(_) => UNIMPLEMENTED,
+            Constructor::Slice(slice) => UNHANDLED,
+            Str(_) => UNHANDLED,
+            FloatRange(..) => UNHANDLED,
+            Constructor::IntRange(_) => UNHANDLED,
             NonExhaustive => PatKind::Wild,
             Wildcard => return Pat::wildcard_from_ty(pcx.ty),
             Opaque => panic!("bug: we should not try to apply an opaque constructor"),
@@ -855,7 +849,10 @@ impl Fields {
                 self.replace_with_fieldpats(subpatterns)
             }
 
-            PatKind::Wild | PatKind::Binding { .. } | PatKind::Or { .. } => self.clone(),
+            PatKind::Wild
+            | PatKind::Binding { .. }
+            | PatKind::LiteralBool { .. }
+            | PatKind::Or { .. } => self.clone(),
         }
     }
 }
