@@ -141,7 +141,11 @@ pub fn time_trace_profiler_finish(file_name: &str) {
 // which might lead to failures if the oldest tested / supported LLVM version
 // doesn't yet support the relevant intrinsics
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
-    let arch = if sess.target.arch == "x86_64" { "x86" } else { &*sess.target.arch };
+    let arch = match &sess.target.arch[..] {
+        "x86_64" => "x86",
+        "wasm64" => "wasm32",
+        other => other,
+    };
     match (arch, s) {
         ("x86", "pclmulqdq") => "pclmul",
         ("x86", "rdrand") => "rdrnd",
@@ -152,6 +156,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("x86", "avx512vpclmulqdq") => "vpclmulqdq",
         ("aarch64", "fp") => "fp-armv8",
         ("aarch64", "fp16") => "fullfp16",
+        ("wasm32", "wasm-simd128") => "simd128",
         (_, s) => s,
     }
 }

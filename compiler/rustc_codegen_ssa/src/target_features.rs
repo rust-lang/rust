@@ -131,6 +131,7 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 
 const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("simd128", Some(sym::wasm_target_feature)),
+    ("wasm-simd128", Some(sym::wasm_target_feature)),
     ("atomics", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
 ];
