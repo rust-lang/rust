@@ -291,6 +291,5 @@ pub trait BuilderMethods<'a, 'tcx>:
     ) -> Self::Value;
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
-    unsafe fn delete_basic_block(&mut self, bb: Self::BasicBlock);
     fn do_not_inline(&mut self, llret: Self::Value);
 }

@@ -1148,10 +1148,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.cx
     }
 
-    unsafe fn delete_basic_block(&mut self, bb: &'ll BasicBlock) {
-        llvm::LLVMDeleteBasicBlock(bb);
-    }
-
     fn do_not_inline(&mut self, llret: &'ll Value) {
         llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
     }
