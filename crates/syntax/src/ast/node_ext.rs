@@ -40,8 +40,8 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
     }
 
     match node.green() {
-        Cow::Borrowed(green_ref) => TokenText::Borrowed(first_token(green_ref).text()),
-        Cow::Owned(green) => TokenText::Owned(first_token(&green).to_owned()),
+        Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
+        Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
     }
 }
 

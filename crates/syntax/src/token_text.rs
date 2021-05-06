@@ -2,16 +2,28 @@
 
 use std::{cmp::Ordering, fmt, ops};
 
-pub enum TokenText<'a> {
+use rowan::GreenToken;
+
+pub struct TokenText<'a>(pub(crate) Repr<'a>);
+
+pub(crate) enum Repr<'a> {
     Borrowed(&'a str),
-    Owned(rowan::GreenToken),
+    Owned(GreenToken),
 }
 
-impl TokenText<'_> {
+impl<'a> TokenText<'a> {
+    pub(crate) fn borrowed(text: &'a str) -> Self {
+        TokenText(Repr::Borrowed(text))
+    }
+
+    pub(crate) fn owned(green: GreenToken) -> Self {
+        TokenText(Repr::Owned(green))
+    }
+
     pub fn as_str(&self) -> &str {
-        match self {
-            TokenText::Borrowed(it) => *it,
-            TokenText::Owned(green) => green.text(),
+        match self.0 {
+            Repr::Borrowed(it) => it,
+            Repr::Owned(ref green) => green.text(),
         }
     }
 }
