@@ -99,6 +99,10 @@ impl<'a> PatCtxt<'a> {
         let kind = match self.body[pat] {
             hir_def::expr::Pat::Wild => PatKind::Wild,
 
+            hir_def::expr::Pat::Path(ref path) => {
+                return self.lower_path(pat, path);
+            }
+
             hir_def::expr::Pat::Tuple { ref args, ellipsis } => {
                 let arity = match *ty.kind(&Interner) {
                     TyKind::Tuple(arity, _) => arity,
@@ -192,6 +196,20 @@ impl<'a> PatCtxt<'a> {
         };
         // TODO: do we need PatKind::AscribeUserType ?
         kind
+    }
+
+    fn lower_path(&mut self, pat: hir_def::expr::PatId, path: &hir_def::path::Path) -> Pat {
+        let ty = &self.infer[pat];
+
+        let pat_from_kind = |kind| Pat { ty: ty.clone(), kind: Box::new(kind) };
+
+        match self.infer.variant_resolution_for_pat(pat) {
+            Some(_) => pat_from_kind(self.lower_variant_or_leaf(pat, ty, Vec::new())),
+            None => {
+                self.errors.push(PatternError::Unimplemented);
+                pat_from_kind(PatKind::Wild)
+            }
+        }
     }
 }
 
