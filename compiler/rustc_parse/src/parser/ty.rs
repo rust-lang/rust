@@ -470,7 +470,7 @@ impl<'a> Parser<'a> {
     /// Is a `dyn B0 + ... + Bn` type allowed here?
     fn is_explicit_dyn_type(&mut self) -> bool {
         self.check_keyword(kw::Dyn)
-            && (self.token.uninterpolated_span().rust_2018()
+            && (!self.token.uninterpolated_span().rust_2015()
                 || self.look_ahead(1, |t| {
                     t.can_begin_bound() && !can_continue_type_after_non_fn_ident(t)
                 }))
@@ -539,7 +539,21 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
-        while self.can_begin_bound() {
+
+        while self.can_begin_bound() || self.token.is_keyword(kw::Dyn) {
+            if self.token.is_keyword(kw::Dyn) {
+                // Account for `&dyn Trait + dyn Other`.
+                self.struct_span_err(self.token.span, "invalid `dyn` keyword")
+                    .help("`dyn` is only needed at the start of a trait `+`-separated list")
+                    .span_suggestion(
+                        self.token.span,
+                        "remove this keyword",
+                        String::new(),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                self.bump();
+            }
             match self.parse_generic_bound()? {
                 Ok(bound) => bounds.push(bound),
                 Err(neg_sp) => negative_bounds.push(neg_sp),
@@ -721,7 +735,26 @@ impl<'a> Parser<'a> {
         let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
         let path = self.parse_path(PathStyle::Type)?;
         if has_parens {
-            self.expect(&token::CloseDelim(token::Paren))?;
+            if self.token.is_like_plus() {
+                // Someone has written something like `&dyn (Trait + Other)`. The correct code
+                // would be `&(dyn Trait + Other)`, but we don't have access to the appropriate
+                // span to suggest that. When written as `&dyn Trait + Other`, an appropriate
+                // suggestion is given.
+                let bounds = vec![];
+                self.parse_remaining_bounds(bounds, true)?;
+                self.expect(&token::CloseDelim(token::Paren))?;
+                let sp = vec![lo, self.prev_token.span];
+                let sugg: Vec<_> = sp.iter().map(|sp| (*sp, String::new())).collect();
+                self.struct_span_err(sp, "incorrect braces around trait bounds")
+                    .multipart_suggestion(
+                        "remove the parentheses",
+                        sugg,
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+            } else {
+                self.expect(&token::CloseDelim(token::Paren))?;
+            }
         }
 
         let modifier = modifiers.to_trait_bound_modifier();
