@@ -1399,7 +1399,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             // requirement, but the `-L` library path is not propagated across
             // separate compilations. We can add LLVM's library path to the
             // platform-specific environment variable as a workaround.
-            if !builder.config.dry_run && suite.ends_with("fulldeps") {
+            if !builder.config.dry_run && (suite == "ui-fulldeps" || mode == "run-make") {
                 let llvm_libdir = output(Command::new(&llvm_config).arg("--libdir"));
                 add_link_lib_path(vec![llvm_libdir.trim().into()], &mut cmd);
             }
