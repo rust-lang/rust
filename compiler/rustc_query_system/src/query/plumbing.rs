@@ -590,7 +590,18 @@ fn incremental_verify_ich<CTX, K, V: Debug>(
 
     let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
 
-    assert!(new_hash == old_hash, "found unstable fingerprints for {:?}: {:?}", dep_node, result);
+    if new_hash != old_hash {
+        let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
+            format!("`cargo clean -p {}` or `cargo clean`", crate_name)
+        } else {
+            "`cargo clean`".to_string()
+        };
+        tcx.sess().struct_err(&format!("internal compiler error: encountered incremental compilation error with {:?}", dep_node))
+            .help(&format!("This is a known issue with the compiler. Run {} to allow your project to compile", run_cmd))
+            .note(&format!("Please follow the instructions below to create a bug report with the provided information"))
+            .emit();
+        panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
+    }
 }
 
 fn force_query_with_job<C, CTX>(
