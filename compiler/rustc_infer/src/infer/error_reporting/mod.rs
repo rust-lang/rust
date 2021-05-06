@@ -2398,9 +2398,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.tcx.associated_item(def_id).ident
             ),
             infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{}`", name),
-            infer::BoundRegionInCoherence(name) => {
-                format!(" for lifetime parameter `{}` in coherence check", name)
-            }
             infer::UpvarRegion(ref upvar_id, _) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{}` by closure", var_name)
