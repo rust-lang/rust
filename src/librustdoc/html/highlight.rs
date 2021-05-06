@@ -13,7 +13,6 @@ use std::iter::Peekable;
 use rustc_lexer::{LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
-use rustc_span::with_default_session_globals;
 
 use super::format::Buffer;
 
@@ -238,28 +237,26 @@ impl<'a> Classifier<'a> {
     /// possibly giving it an HTML span with a class specifying what flavor of
     /// token is used.
     fn highlight(mut self, sink: &mut dyn FnMut(Highlight<'a>)) {
-        with_default_session_globals(|| {
-            loop {
-                if self
-                    .tokens
-                    .peek()
-                    .map(|t| matches!(t.0, TokenKind::Colon | TokenKind::Ident))
-                    .unwrap_or(false)
-                {
-                    let tokens = self.get_full_ident_path();
-                    for (token, start, end) in tokens {
-                        let text = &self.src[start..end];
-                        self.advance(token, text, sink);
-                        self.byte_pos += text.len() as u32;
-                    }
-                }
-                if let Some((token, text)) = self.next() {
+        loop {
+            if self
+                .tokens
+                .peek()
+                .map(|t| matches!(t.0, TokenKind::Colon | TokenKind::Ident))
+                .unwrap_or(false)
+            {
+                let tokens = self.get_full_ident_path();
+                for (token, start, end) in tokens {
+                    let text = &self.src[start..end];
                     self.advance(token, text, sink);
-                } else {
-                    break;
+                    self.byte_pos += text.len() as u32;
                 }
             }
-        })
+            if let Some((token, text)) = self.next() {
+                self.advance(token, text, sink);
+            } else {
+                break;
+            }
+        }
     }
 
     /// Single step of highlighting. This will classify `token`, but maybe also
