@@ -259,6 +259,7 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
 pub fn compute_stamp_hash(config: &Config) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
+    config.run.hash(&mut hash);
 
     match config.debugger {
         Some(Debugger::Cdb) => {
@@ -317,6 +318,7 @@ enum TestOutput {
 enum WillExecute {
     Yes,
     No,
+    Disabled,
 }
 
 /// Should `--emit metadata` be used?
@@ -357,14 +359,17 @@ impl<'test> TestCx<'test> {
     }
 
     fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
-        match self.config.mode {
-            Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => {
-                WillExecute::Yes
-            }
-            MirOpt if pm == Some(PassMode::Run) => WillExecute::Yes,
-            Ui | MirOpt => WillExecute::No,
+        let test_should_run = match self.config.mode {
+            Ui if pm == Some(PassMode::Run) || self.props.fail_mode == Some(FailMode::Run) => true,
+            MirOpt if pm == Some(PassMode::Run) => true,
+            Ui | MirOpt => false,
             mode => panic!("unimplemented for mode {:?}", mode),
-        }
+        };
+        if test_should_run { self.run_if_enabled() } else { WillExecute::No }
+    }
+
+    fn run_if_enabled(&self) -> WillExecute {
+        if self.config.run_enabled() { WillExecute::Yes } else { WillExecute::Disabled }
     }
 
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
@@ -439,10 +444,15 @@ impl<'test> TestCx<'test> {
 
     fn run_rfail_test(&self) {
         let pm = self.pass_mode();
-        let proc_res = self.compile_test(WillExecute::Yes, self.should_emit_metadata(pm));
+        let should_run = self.run_if_enabled();
+        let proc_res = self.compile_test(should_run, self.should_emit_metadata(pm));
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        if let WillExecute::Disabled = should_run {
+            return;
         }
 
         let proc_res = self.exec_compiled_test();
@@ -483,10 +493,15 @@ impl<'test> TestCx<'test> {
 
     fn run_rpass_test(&self) {
         let emit_metadata = self.should_emit_metadata(self.pass_mode());
-        let proc_res = self.compile_test(WillExecute::Yes, emit_metadata);
+        let should_run = self.run_if_enabled();
+        let proc_res = self.compile_test(should_run, emit_metadata);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        if let WillExecute::Disabled = should_run {
+            return;
         }
 
         // FIXME(#41968): Move this check to tidy?
@@ -510,10 +525,15 @@ impl<'test> TestCx<'test> {
             return self.run_rpass_test();
         }
 
-        let mut proc_res = self.compile_test(WillExecute::Yes, EmitMetadata::No);
+        let should_run = self.run_if_enabled();
+        let mut proc_res = self.compile_test(should_run, EmitMetadata::No);
 
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
+        }
+
+        if let WillExecute::Disabled = should_run {
+            return;
         }
 
         let mut new_config = self.config.clone();
@@ -732,9 +752,13 @@ impl<'test> TestCx<'test> {
 
     fn run_debuginfo_cdb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compile_result = self.compile_test(WillExecute::Yes, EmitMetadata::No);
+        let should_run = self.run_if_enabled();
+        let compile_result = self.compile_test(should_run, EmitMetadata::No);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
+        }
+        if let WillExecute::Disabled = should_run {
+            return;
         }
 
         let exe_file = self.make_exe_name();
@@ -826,9 +850,13 @@ impl<'test> TestCx<'test> {
         let mut cmds = commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compiler_run_result = self.compile_test(WillExecute::Yes, EmitMetadata::No);
+        let should_run = self.run_if_enabled();
+        let compiler_run_result = self.compile_test(should_run, EmitMetadata::No);
         if !compiler_run_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compiler_run_result);
+        }
+        if let WillExecute::Disabled = should_run {
+            return;
         }
 
         let exe_file = self.make_exe_name();
@@ -1044,9 +1072,13 @@ impl<'test> TestCx<'test> {
 
     fn run_debuginfo_lldb_test_no_opt(&self) {
         // compile test file (it should have 'compile-flags:-g' in the header)
-        let compile_result = self.compile_test(WillExecute::Yes, EmitMetadata::No);
+        let should_run = self.run_if_enabled();
+        let compile_result = self.compile_test(should_run, EmitMetadata::No);
         if !compile_result.status.success() {
             self.fatal_proc_rec("compilation failed!", &compile_result);
+        }
+        if let WillExecute::Disabled = should_run {
+            return;
         }
 
         let exe_file = self.make_exe_name();
@@ -1531,7 +1563,9 @@ impl<'test> TestCx<'test> {
         // Only use `make_exe_name` when the test ends up being executed.
         let output_file = match will_execute {
             WillExecute::Yes => TargetLocation::ThisFile(self.make_exe_name()),
-            WillExecute::No => TargetLocation::ThisDirectory(self.output_base_dir()),
+            WillExecute::No | WillExecute::Disabled => {
+                TargetLocation::ThisDirectory(self.output_base_dir())
+            }
         };
 
         let allow_unused = match self.config.mode {
