@@ -1,8 +1,13 @@
 #![crate_type = "lib"]
 
-#[no_coverage]
-#[feature(no_coverage)] // does not have to be enabled before `#[no_coverage]`
-fn no_coverage_is_enabled_on_this_function() {}
+#[derive(PartialEq, Eq)] // ensure deriving `Eq` does not enable `feature(no_coverage)`
+struct Foo {
+    a: u8,
+    b: u32,
+}
 
 #[no_coverage] //~ ERROR the `#[no_coverage]` attribute is an experimental feature
-fn requires_feature_no_coverage() {}
+fn requires_feature_no_coverage() -> bool {
+    let bar = Foo { a: 0, b: 0 };
+    bar == Foo { a: 0, b: 0 }
+}
