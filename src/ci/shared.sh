@@ -73,6 +73,18 @@ function isCiBranch {
     fi
 }
 
+function ciBaseBranch {
+    if isAzurePipelines; then
+        echo "unsupported on Azure Pipelines"
+        exit 1
+    elif isGitHubActions; then
+        echo "${GITHUB_BASE_REF#refs/heads/}"
+    else
+        echo "ciBaseBranch only works inside CI!"
+        exit 1
+    fi
+}
+
 function ciCommit {
     if isAzurePipelines; then
         echo "${BUILD_SOURCEVERSION}"
