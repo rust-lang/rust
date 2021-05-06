@@ -517,10 +517,9 @@ impl Item {
                                 Some(ExternalLocation::Remote(ref s)) => {
                                     format!("{}/std/", s.trim_end_matches('/'))
                                 }
-                                Some(ExternalLocation::Unknown) | None => format!(
-                                    "https://doc.rust-lang.org/{}/std/",
-                                    crate::doc_rust_lang_org_channel(),
-                                ),
+                                Some(ExternalLocation::Unknown) | None => {
+                                    "https://doc.rust-lang.org/nightly/std/".to_string()
+                                }
                             };
                             // This is a primitive so the url is done "by hand".
                             let tail = fragment.find('#').unwrap_or_else(|| fragment.len());

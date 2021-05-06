@@ -542,14 +542,3 @@ crate fn has_doc_flag(attrs: ty::Attributes<'_>, flag: Symbol) -> bool {
             && attr.meta_item_list().map_or(false, |l| rustc_attr::list_contains_name(&l, flag))
     })
 }
-
-/// Return a channel suitable for using in a `doc.rust-lang.org/{channel}` format string.
-crate fn doc_rust_lang_org_channel() -> &'static str {
-    match env!("CFG_RELEASE_CHANNEL") {
-        "stable" => env!("CFG_RELEASE_NUM"),
-        "beta" => "beta",
-        "nightly" | "dev" => "nightly",
-        // custom build of rustdoc maybe? link to the stable docs just in case
-        _ => "",
-    }
-}
