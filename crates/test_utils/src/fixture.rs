@@ -62,7 +62,7 @@
 //! ```
 
 use rustc_hash::FxHashMap;
-use stdx::{lines_with_ends, split_once, trim_indent};
+use stdx::trim_indent;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Fixture {
@@ -93,7 +93,7 @@ impl Fixture {
 
         let default = if ra_fixture.contains("//-") { None } else { Some("//- /main.rs") };
 
-        for (ix, line) in default.into_iter().chain(lines_with_ends(&fixture)).enumerate() {
+        for (ix, line) in default.into_iter().chain(fixture.split_inclusive('\n')).enumerate() {
             if line.contains("//-") {
                 assert!(
                     line.starts_with("//-"),
@@ -133,14 +133,14 @@ impl Fixture {
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = false;
         for component in components[1..].iter() {
-            let (key, value) = split_once(component, ':').unwrap();
+            let (key, value) = component.split_once(':').unwrap();
             match key {
                 "crate" => krate = Some(value.to_string()),
                 "deps" => deps = value.split(',').map(|it| it.to_string()).collect(),
                 "edition" => edition = Some(value.to_string()),
                 "cfg" => {
                     for entry in value.split(',') {
-                        match split_once(entry, '=') {
+                        match entry.split_once('=') {
                             Some((k, v)) => cfg_key_values.push((k.to_string(), v.to_string())),
                             None => cfg_atoms.push(entry.to_string()),
                         }
@@ -148,7 +148,7 @@ impl Fixture {
                 }
                 "env" => {
                     for key in value.split(',') {
-                        if let Some((k, v)) = split_once(key, '=') {
+                        if let Some((k, v)) = key.split_once('=') {
                             env.insert(k.into(), v.into());
                         }
                     }
