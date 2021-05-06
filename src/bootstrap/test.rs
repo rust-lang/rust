@@ -1240,6 +1240,11 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg(pass);
         }
 
+        if let Some(ref run) = builder.config.cmd.run() {
+            cmd.arg("--run");
+            cmd.arg(run);
+        }
+
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
         }
