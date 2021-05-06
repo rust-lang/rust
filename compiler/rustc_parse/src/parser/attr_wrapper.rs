@@ -342,16 +342,10 @@ impl<'a> Parser<'a> {
 
         // If we support tokens at all
         if let Some(target_tokens) = ret.tokens_mut() {
-            if let Some(target_tokens) = target_tokens {
-                assert!(
-                    !self.capture_cfg,
-                    "Encountered existing tokens with capture_cfg set: {:?}",
-                    target_tokens
-                );
-            } else {
+            if target_tokens.is_none() {
                 // Store se our newly captured tokens into the AST node
                 *target_tokens = Some(tokens.clone());
-            };
+            }
         }
 
         let final_attrs = ret.attrs();

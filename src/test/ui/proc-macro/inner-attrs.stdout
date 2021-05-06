@@ -705,7 +705,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:48:29: 48:40 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
+PRINT-ATTR INPUT (DISPLAY): (3, 4, { #! [rustc_dummy(innermost)] 5 })
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Parenthesis,
@@ -737,7 +737,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 stream: TokenStream [
                     Punct {
                         ch: '#',
-                        spacing: Joint,
+                        spacing: Alone,
                         span: $DIR/inner-attrs.rs:50:13: 50:14 (#0),
                     },
                     Punct {
@@ -749,50 +749,21 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         delimiter: Bracket,
                         stream: TokenStream [
                             Ident {
-                                ident: "cfg_attr",
-                                span: $DIR/inner-attrs.rs:50:16: 50:24 (#0),
+                                ident: "rustc_dummy",
+                                span: $DIR/inner-attrs.rs:50:37: 50:48 (#0),
                             },
                             Group {
                                 delimiter: Parenthesis,
                                 stream: TokenStream [
                                     Ident {
-                                        ident: "not",
-                                        span: $DIR/inner-attrs.rs:50:25: 50:28 (#0),
-                                    },
-                                    Group {
-                                        delimiter: Parenthesis,
-                                        stream: TokenStream [
-                                            Ident {
-                                                ident: "FALSE",
-                                                span: $DIR/inner-attrs.rs:50:29: 50:34 (#0),
-                                            },
-                                        ],
-                                        span: $DIR/inner-attrs.rs:50:28: 50:35 (#0),
-                                    },
-                                    Punct {
-                                        ch: ',',
-                                        spacing: Alone,
-                                        span: $DIR/inner-attrs.rs:50:35: 50:36 (#0),
-                                    },
-                                    Ident {
-                                        ident: "rustc_dummy",
-                                        span: $DIR/inner-attrs.rs:50:37: 50:48 (#0),
-                                    },
-                                    Group {
-                                        delimiter: Parenthesis,
-                                        stream: TokenStream [
-                                            Ident {
-                                                ident: "innermost",
-                                                span: $DIR/inner-attrs.rs:50:49: 50:58 (#0),
-                                            },
-                                        ],
-                                        span: $DIR/inner-attrs.rs:50:48: 50:59 (#0),
+                                        ident: "innermost",
+                                        span: $DIR/inner-attrs.rs:50:49: 50:58 (#0),
                                     },
                                 ],
-                                span: $DIR/inner-attrs.rs:50:24: 50:60 (#0),
+                                span: $DIR/inner-attrs.rs:50:48: 50:59 (#0),
                             },
                         ],
-                        span: $DIR/inner-attrs.rs:50:15: 50:61 (#0),
+                        span: $DIR/inner-attrs.rs:50:13: 50:14 (#0),
                     },
                     Literal {
                         kind: Integer,
@@ -806,11 +777,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         ],
         span: $DIR/inner-attrs.rs:48:43: 53:6 (#0),
     },
-    Punct {
-        ch: ';',
-        spacing: Alone,
-        span: $DIR/inner-attrs.rs:53:6: 53:7 (#0),
-    },
 ]
 PRINT-ATTR_ARGS INPUT (DISPLAY): tuple_attrs
 PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
@@ -819,7 +785,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:55:29: 55:40 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
+PRINT-ATTR INPUT (DISPLAY): (3, 4, { #! [rustc_dummy(innermost)] 5 })
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Parenthesis,
@@ -851,7 +817,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                 stream: TokenStream [
                     Punct {
                         ch: '#',
-                        spacing: Joint,
+                        spacing: Alone,
                         span: $DIR/inner-attrs.rs:57:13: 57:14 (#0),
                     },
                     Punct {
@@ -863,50 +829,21 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                         delimiter: Bracket,
                         stream: TokenStream [
                             Ident {
-                                ident: "cfg_attr",
-                                span: $DIR/inner-attrs.rs:57:16: 57:24 (#0),
+                                ident: "rustc_dummy",
+                                span: $DIR/inner-attrs.rs:57:37: 57:48 (#0),
                             },
                             Group {
                                 delimiter: Parenthesis,
                                 stream: TokenStream [
                                     Ident {
-                                        ident: "not",
-                                        span: $DIR/inner-attrs.rs:57:25: 57:28 (#0),
-                                    },
-                                    Group {
-                                        delimiter: Parenthesis,
-                                        stream: TokenStream [
-                                            Ident {
-                                                ident: "FALSE",
-                                                span: $DIR/inner-attrs.rs:57:29: 57:34 (#0),
-                                            },
-                                        ],
-                                        span: $DIR/inner-attrs.rs:57:28: 57:35 (#0),
-                                    },
-                                    Punct {
-                                        ch: ',',
-                                        spacing: Alone,
-                                        span: $DIR/inner-attrs.rs:57:35: 57:36 (#0),
-                                    },
-                                    Ident {
-                                        ident: "rustc_dummy",
-                                        span: $DIR/inner-attrs.rs:57:37: 57:48 (#0),
-                                    },
-                                    Group {
-                                        delimiter: Parenthesis,
-                                        stream: TokenStream [
-                                            Ident {
-                                                ident: "innermost",
-                                                span: $DIR/inner-attrs.rs:57:49: 57:58 (#0),
-                                            },
-                                        ],
-                                        span: $DIR/inner-attrs.rs:57:48: 57:59 (#0),
+                                        ident: "innermost",
+                                        span: $DIR/inner-attrs.rs:57:49: 57:58 (#0),
                                     },
                                 ],
-                                span: $DIR/inner-attrs.rs:57:24: 57:60 (#0),
+                                span: $DIR/inner-attrs.rs:57:48: 57:59 (#0),
                             },
                         ],
-                        span: $DIR/inner-attrs.rs:57:15: 57:61 (#0),
+                        span: $DIR/inner-attrs.rs:57:13: 57:14 (#0),
                     },
                     Literal {
                         kind: Integer,
@@ -919,11 +856,6 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
             },
         ],
         span: $DIR/inner-attrs.rs:55:43: 60:6 (#0),
-    },
-    Punct {
-        ch: ';',
-        spacing: Alone,
-        span: $DIR/inner-attrs.rs:60:6: 60:7 (#0),
     },
 ]
 PRINT-ATTR_ARGS INPUT (DISPLAY): tenth

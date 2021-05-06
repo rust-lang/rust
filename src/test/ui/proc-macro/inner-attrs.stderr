@@ -22,5 +22,36 @@ error: expected non-macro inner attribute, found attribute macro `print_attr`
 LL |         #![print_attr]
    |            ^^^^^^^^^^ not a non-macro inner attribute
 
-error: aborting due to 4 previous errors
+error[E0308]: mismatched types
+  --> $DIR/inner-attrs.rs:48:43
+   |
+LL |       #[print_target_and_args(tuple_attrs)] (
+   |  ___________________________________________^
+LL | |         3, 4, {
+LL | |             #![cfg_attr(not(FALSE), rustc_dummy(innermost))]
+LL | |             5
+LL | |         }
+LL | |     );
+   | |_____^ expected `()`, found tuple
+   |
+   = note: expected unit type `()`
+                  found tuple `({integer}, {integer}, {integer})`
 
+error[E0308]: mismatched types
+  --> $DIR/inner-attrs.rs:55:43
+   |
+LL |       #[print_target_and_args(tuple_attrs)] (
+   |  ___________________________________________^
+LL | |         3, 4, {
+LL | |             #![cfg_attr(not(FALSE), rustc_dummy(innermost))]
+LL | |             5
+LL | |         }
+LL | |     );
+   | |_____^ expected `()`, found tuple
+   |
+   = note: expected unit type `()`
+                  found tuple `({integer}, {integer}, {integer})`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

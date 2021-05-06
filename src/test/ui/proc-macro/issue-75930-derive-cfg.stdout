@@ -7,7 +7,7 @@ struct Foo < B >
          #[cfg(not(FALSE))] struct Inner ; match true
          { #[allow(warnings)] false => { }, _ => { } } ; #[print_helper(c)]
          #[cfg(not(FALSE))] fn kept_fn()
-         { # ! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
+         { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
          { Foo(#[cfg(not(FALSE))] i32, u8) } struct
          TupleStruct(#[cfg(not(FALSE))] i32, u8) ; 0
      }], #[print_helper(d)] fourth : B
