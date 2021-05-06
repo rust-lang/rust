@@ -77,7 +77,7 @@ fn main() {
     let error_kind = ErrorKind::NotFound;
     match error_kind {
         ErrorKind::NotFound => {},
-        ErrorKind::PermissionDenied | ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset | ErrorKind::ConnectionAborted | ErrorKind::NotConnected | ErrorKind::AddrInUse | ErrorKind::AddrNotAvailable | ErrorKind::BrokenPipe | ErrorKind::AlreadyExists | ErrorKind::WouldBlock | ErrorKind::InvalidInput | ErrorKind::InvalidData | ErrorKind::TimedOut | ErrorKind::WriteZero | ErrorKind::Interrupted | ErrorKind::Other | ErrorKind::UnexpectedEof | ErrorKind::Unsupported | _ => {},
+        ErrorKind::PermissionDenied | ErrorKind::ConnectionRefused | ErrorKind::ConnectionReset | ErrorKind::ConnectionAborted | ErrorKind::NotConnected | ErrorKind::AddrInUse | ErrorKind::AddrNotAvailable | ErrorKind::BrokenPipe | ErrorKind::AlreadyExists | ErrorKind::WouldBlock | ErrorKind::InvalidInput | ErrorKind::InvalidData | ErrorKind::TimedOut | ErrorKind::WriteZero | ErrorKind::Interrupted | ErrorKind::Other | ErrorKind::UnexpectedEof | ErrorKind::Unsupported | ErrorKind::OutOfMemory | _ => {},
     }
     match error_kind {
         ErrorKind::NotFound => {},
@@ -99,6 +99,7 @@ fn main() {
         ErrorKind::Other => {},
         ErrorKind::UnexpectedEof => {},
         ErrorKind::Unsupported => {},
+        ErrorKind::OutOfMemory => {},
         _ => {},
     }
 }
