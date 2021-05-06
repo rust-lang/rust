@@ -506,6 +506,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "this lint has been replaced by `manual_filter_map`, a more specific lint",
     );
     store.register_removed(
+        "clippy::pub_enum_variant_names",
+        "set the `avoid_breaking_exported_api` config option to `false` to enable the `enum_variant_names` lint for public items",
+    );
+    store.register_removed(
         "clippy::wrong_pub_self_convention",
         "set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items",
     );
@@ -622,7 +626,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         enum_variants::MODULE_NAME_REPETITIONS,
-        enum_variants::PUB_ENUM_VARIANT_NAMES,
         eq_op::EQ_OP,
         eq_op::OP_REF,
         erasing_op::ERASING_OP,
@@ -1080,7 +1083,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(doc::MISSING_PANICS_DOC),
         LintId::of(empty_enum::EMPTY_ENUM),
         LintId::of(enum_variants::MODULE_NAME_REPETITIONS),
-        LintId::of(enum_variants::PUB_ENUM_VARIANT_NAMES),
         LintId::of(eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
         LintId::of(excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS),
         LintId::of(excessive_bools::STRUCT_EXCESSIVE_BOOLS),
@@ -2015,7 +2017,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let literal_representation_threshold = conf.literal_representation_threshold;
     store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
-    store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
+    store.register_late_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold, avoid_breaking_exported_api));
     store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
     let upper_case_acronyms_aggressive = conf.upper_case_acronyms_aggressive;
     store.register_early_pass(move || box upper_case_acronyms::UpperCaseAcronyms::new(upper_case_acronyms_aggressive));
