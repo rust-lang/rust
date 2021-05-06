@@ -72,7 +72,7 @@ impl CfgExpander {
     }
 
     pub(crate) fn parse_attrs(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> Attrs {
-        RawAttrs::new(owner, &self.hygiene).filter(db, self.krate)
+        RawAttrs::new(db, owner, &self.hygiene).filter(db, self.krate)
     }
 
     pub(crate) fn is_cfg_enabled(&self, db: &dyn DefDatabase, owner: &dyn ast::AttrsOwner) -> bool {
@@ -192,8 +192,8 @@ impl Expander {
         self.current_file_id
     }
 
-    fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::with_hygiene(&self.cfg_expander.hygiene);
+    fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
+        let ctx = LowerCtx::with_hygiene(db, &self.cfg_expander.hygiene);
         Path::from_src(path, &ctx)
     }
 

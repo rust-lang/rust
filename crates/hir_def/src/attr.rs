@@ -95,13 +95,17 @@ impl ops::Deref for AttrsWithOwner {
 impl RawAttrs {
     pub(crate) const EMPTY: Self = Self { entries: None };
 
-    pub(crate) fn new(owner: &dyn ast::AttrsOwner, hygiene: &Hygiene) -> Self {
+    pub(crate) fn new(
+        db: &dyn DefDatabase,
+        owner: &dyn ast::AttrsOwner,
+        hygiene: &Hygiene,
+    ) -> Self {
         let entries = collect_attrs(owner)
             .enumerate()
             .flat_map(|(i, attr)| {
                 let index = AttrId(i as u32);
                 match attr {
-                    Either::Left(attr) => Attr::from_src(attr, hygiene, index),
+                    Either::Left(attr) => Attr::from_src(db, attr, hygiene, index),
                     Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
                         id: index,
                         input: Some(AttrInput::Literal(SmolStr::new(doc))),
@@ -116,7 +120,7 @@ impl RawAttrs {
 
     fn from_attrs_owner(db: &dyn DefDatabase, owner: InFile<&dyn ast::AttrsOwner>) -> Self {
         let hygiene = Hygiene::new(db.upcast(), owner.file_id);
-        Self::new(owner.value, &hygiene)
+        Self::new(db, owner.value, &hygiene)
     }
 
     pub(crate) fn merge(&self, other: Self) -> Self {
@@ -170,7 +174,7 @@ impl RawAttrs {
                     let attr = ast::Attr::parse(&format!("#[{}]", tree)).ok()?;
                     // FIXME hygiene
                     let hygiene = Hygiene::new_unhygienic();
-                    Attr::from_src(attr, &hygiene, index)
+                    Attr::from_src(db, attr, &hygiene, index)
                 });
 
                 let cfg_options = &crate_graph[krate].cfg_options;
@@ -627,8 +631,13 @@ pub enum AttrInput {
 }
 
 impl Attr {
-    fn from_src(ast: ast::Attr, hygiene: &Hygiene, id: AttrId) -> Option<Attr> {
-        let path = Interned::new(ModPath::from_src(ast.path()?, hygiene)?);
+    fn from_src(
+        db: &dyn DefDatabase,
+        ast: ast::Attr,
+        hygiene: &Hygiene,
+        id: AttrId,
+    ) -> Option<Attr> {
+        let path = Interned::new(ModPath::from_src(db, ast.path()?, hygiene)?);
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),

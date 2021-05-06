@@ -32,10 +32,14 @@ impl Hygiene {
     }
 
     // FIXME: this should just return name
-    pub fn name_ref_to_name(&self, name_ref: ast::NameRef) -> Either<Name, CrateId> {
+    pub fn name_ref_to_name(
+        &self,
+        db: &dyn AstDatabase,
+        name_ref: ast::NameRef,
+    ) -> Either<Name, CrateId> {
         if let Some(frames) = &self.frames {
             if name_ref.text() == "$crate" {
-                if let Some(krate) = frames.root_crate(name_ref.syntax()) {
+                if let Some(krate) = frames.root_crate(db, name_ref.syntax()) {
                     return Either::Right(krate);
                 }
             }
@@ -44,15 +48,19 @@ impl Hygiene {
         Either::Left(name_ref.as_name())
     }
 
-    pub fn local_inner_macros(&self, path: ast::Path) -> Option<CrateId> {
+    pub fn local_inner_macros(&self, db: &dyn AstDatabase, path: ast::Path) -> Option<CrateId> {
         let mut token = path.syntax().first_token()?.text_range();
         let frames = self.frames.as_ref()?;
         let mut current = frames.0.clone();
 
         loop {
-            let (mapped, origin) = current.expansion.as_ref()?.map_ident_up(token)?;
+            let (mapped, origin) = current.expansion.as_ref()?.map_ident_up(db, token)?;
             if origin == Origin::Def {
-                return if current.local_inner { frames.root_crate(path.syntax()) } else { None };
+                return if current.local_inner {
+                    frames.root_crate(db, path.syntax())
+                } else {
+                    None
+                };
             }
             current = current.call_site.as_ref()?.clone();
             token = mapped.value;
@@ -82,13 +90,13 @@ impl HygieneFrames {
         HygieneFrames(Arc::new(HygieneFrame::new(db, file_id)))
     }
 
-    fn root_crate(&self, node: &SyntaxNode) -> Option<CrateId> {
+    fn root_crate(&self, db: &dyn AstDatabase, node: &SyntaxNode) -> Option<CrateId> {
         let mut token = node.first_token()?.text_range();
         let mut result = self.0.krate;
         let mut current = self.0.clone();
 
         while let Some((mapped, origin)) =
-            current.expansion.as_ref().and_then(|it| it.map_ident_up(token))
+            current.expansion.as_ref().and_then(|it| it.map_ident_up(db, token))
         {
             result = current.krate;
 
@@ -112,7 +120,7 @@ impl HygieneFrames {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct HygieneInfo {
-    arg_start: InFile<TextSize>,
+    file: MacroFile,
     /// The `macro_rules!` arguments.
     def_start: Option<InFile<TextSize>>,
 
@@ -122,12 +130,24 @@ struct HygieneInfo {
 }
 
 impl HygieneInfo {
-    fn map_ident_up(&self, token: TextRange) -> Option<(InFile<TextRange>, Origin)> {
+    fn map_ident_up(
+        &self,
+        db: &dyn AstDatabase,
+        token: TextRange,
+    ) -> Option<(InFile<TextRange>, Origin)> {
         let token_id = self.exp_map.token_by_range(token)?;
 
         let (token_id, origin) = self.macro_def.map_id_up(token_id);
         let (token_map, tt) = match origin {
-            mbe::Origin::Call => (&self.macro_arg.1, self.arg_start),
+            mbe::Origin::Call => {
+                let call_id = match self.file.macro_call_id {
+                    MacroCallId::LazyMacro(lazy) => lazy,
+                    MacroCallId::EagerMacro(_) => unreachable!(),
+                };
+                let loc: MacroCallLoc = db.lookup_intern_macro(call_id);
+                let arg_start = loc.kind.arg(db)?.text_range().start();
+                (&self.macro_arg.1, InFile::new(loc.kind.file_id(), arg_start))
+            }
             mbe::Origin::Def => match (&*self.macro_def, self.def_start) {
                 (TokenExpander::MacroDef { def_site_token_map, .. }, Some(tt))
                 | (TokenExpander::MacroRules { def_site_token_map, .. }, Some(tt)) => {
@@ -147,8 +167,6 @@ fn make_hygiene_info(
     macro_file: MacroFile,
     loc: &MacroCallLoc,
 ) -> Option<HygieneInfo> {
-    let arg_tt = loc.kind.arg(db)?;
-
     let def_offset = loc.def.ast_id().left().and_then(|id| {
         let def_tt = match id.to_node(db) {
             ast::Macro::MacroRules(mac) => mac.token_tree()?.syntax().text_range().start(),
@@ -161,13 +179,7 @@ fn make_hygiene_info(
     let (_, exp_map) = db.parse_macro_expansion(macro_file).value?;
     let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
-    Some(HygieneInfo {
-        arg_start: InFile::new(loc.kind.file_id(), arg_tt.text_range().start()),
-        def_start: def_offset,
-        macro_arg,
-        macro_def,
-        exp_map,
-    })
+    Some(HygieneInfo { file: macro_file, def_start: def_offset, macro_arg, macro_def, exp_map })
 }
 
 impl HygieneFrame {
@@ -178,7 +190,8 @@ impl HygieneFrame {
                 MacroCallId::EagerMacro(_id) => (None, None, false),
                 MacroCallId::LazyMacro(id) => {
                     let loc = db.lookup_intern_macro(id);
-                    let info = make_hygiene_info(db, macro_file, &loc);
+                    let info = make_hygiene_info(db, macro_file, &loc)
+                        .map(|info| (loc.kind.file_id(), info));
                     match loc.def.kind {
                         MacroDefKind::Declarative(_) => {
                             (info, Some(loc.def.krate), loc.def.local_inner)
@@ -192,7 +205,7 @@ impl HygieneFrame {
             },
         };
 
-        let info = match info {
+        let (calling_file, info) = match info {
             None => {
                 return HygieneFrame {
                     expansion: None,
@@ -206,7 +219,7 @@ impl HygieneFrame {
         };
 
         let def_site = info.def_start.map(|it| db.hygiene_frame(it.file_id));
-        let call_site = Some(db.hygiene_frame(info.arg_start.file_id));
+        let call_site = Some(db.hygiene_frame(calling_file));
 
         HygieneFrame { expansion: Some(info), local_inner, krate, call_site, def_site }
     }

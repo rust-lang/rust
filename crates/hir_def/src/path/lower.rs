@@ -36,7 +36,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
         match segment.kind()? {
             ast::PathSegmentKind::Name(name_ref) => {
                 // FIXME: this should just return name
-                match hygiene.name_ref_to_name(name_ref) {
+                match hygiene.name_ref_to_name(ctx.db.upcast(), name_ref) {
                     Either::Left(name) => {
                         let args = segment
                             .generic_arg_list()
@@ -133,7 +133,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            if let Some(crate_id) = hygiene.local_inner_macros(path) {
+            if let Some(crate_id) = hygiene.local_inner_macros(ctx.db.upcast(), path) {
                 kind = PathKind::DollarCrate(crate_id);
             }
         }

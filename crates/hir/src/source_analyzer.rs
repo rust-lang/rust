@@ -283,7 +283,7 @@ impl SourceAnalyzer {
 
         // This must be a normal source file rather than macro file.
         let hygiene = Hygiene::new(db.upcast(), self.file_id);
-        let ctx = body::LowerCtx::with_hygiene(&hygiene);
+        let ctx = body::LowerCtx::with_hygiene(db.upcast(), &hygiene);
         let hir_path = Path::from_src(path.clone(), &ctx)?;
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we

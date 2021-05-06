@@ -1666,7 +1666,7 @@ impl Impl {
             .value
             .attrs()
             .filter_map(|it| {
-                let path = ModPath::from_src(it.path()?, &hygenic)?;
+                let path = ModPath::from_src(db.upcast(), it.path()?, &hygenic)?;
                 if path.as_ident()?.to_string() == "derive" {
                     Some(it)
                 } else {
