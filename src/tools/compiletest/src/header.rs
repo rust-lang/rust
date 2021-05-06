@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 use tracing::*;
 
-use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PassMode};
+use crate::common::{CompareMode, Config, Debugger, FailMode, Mode, PanicStrategy, PassMode};
 use crate::util;
 use crate::{extract_cdb_version, extract_gdb_version};
 
@@ -112,6 +112,12 @@ impl EarlyProps {
                 }
 
                 if !has_hwasan && config.parse_name_directive(ln, "needs-sanitizer-hwaddress") {
+                    props.ignore = true;
+                }
+
+                if config.target_panic == PanicStrategy::Abort
+                    && config.parse_name_directive(ln, "needs-unwind")
+                {
                     props.ignore = true;
                 }
 
