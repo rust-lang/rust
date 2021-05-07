@@ -249,7 +249,7 @@ fn save_function_record(
 ///
 /// We can find the unused functions (including generic functions) by the set difference of all MIR
 /// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
-/// `collect_and_partition_mono_items`).
+/// `codegened_and_inlined_items`).
 ///
 /// *HOWEVER* the codegenned `DefId`s are partitioned across multiple `CodegenUnit`s (CGUs), and
 /// this function is processing a `function_coverage_map` for the functions (`Instance`/`DefId`)
