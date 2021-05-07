@@ -833,7 +833,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         lhs: &'tcx hir::Expr<'tcx>,
         err_code: &'static str,
-        expr_span: &Span,
+        op_span: Span,
     ) {
         if lhs.is_syntactic_place_expr() {
             return;
@@ -841,11 +841,58 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
         let mut err = self.tcx.sess.struct_span_err_with_code(
-            *expr_span,
+            op_span,
             "invalid left-hand side of assignment",
             DiagnosticId::Error(err_code.into()),
         );
         err.span_label(lhs.span, "cannot assign to this expression");
+
+        let mut parent = self.tcx.hir().get_parent_node(lhs.hir_id);
+        while let Some(node) = self.tcx.hir().find(parent) {
+            match node {
+                hir::Node::Expr(hir::Expr {
+                    kind:
+                        hir::ExprKind::Loop(
+                            hir::Block {
+                                expr:
+                                    Some(hir::Expr {
+                                        kind:
+                                            hir::ExprKind::Match(expr, ..) | hir::ExprKind::If(expr, ..),
+                                        ..
+                                    }),
+                                ..
+                            },
+                            _,
+                            hir::LoopSource::While,
+                            _,
+                        ),
+                    ..
+                }) => {
+                    // We have a situation like `while Some(0) = value.get(0) {`, where `while let`
+                    // was more likely intended.
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_lo(),
+                        "you might have meant to use pattern destructuring",
+                        "let ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                    if !self.sess().features_untracked().destructuring_assignment {
+                        // We already emit an E0658 with a suggestion for `while let`, this is
+                        // redundant output.
+                        err.delay_as_bug();
+                    }
+                    break;
+                }
+                hir::Node::Item(_)
+                | hir::Node::ImplItem(_)
+                | hir::Node::TraitItem(_)
+                | hir::Node::Crate(_) => break,
+                _ => {
+                    parent = self.tcx.hir().get_parent_node(parent);
+                }
+            }
+        }
+
         err.emit();
     }
 
@@ -953,7 +1000,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 (Applicability::MaybeIncorrect, false)
             };
-            if !lhs.is_syntactic_place_expr() {
+            if !lhs.is_syntactic_place_expr() && !matches!(lhs.kind, hir::ExprKind::Lit(_)) {
                 // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
                 let hir = self.tcx.hir();
                 if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
@@ -965,7 +1012,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "let ".to_string(),
                         applicability,
                     );
-                }
+                };
             }
             if eq {
                 err.span_suggestion_verbose(
@@ -986,7 +1033,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         }
 
-        self.check_lhs_assignable(lhs, "E0070", span);
+        self.check_lhs_assignable(lhs, "E0070", *span);
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
         let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
