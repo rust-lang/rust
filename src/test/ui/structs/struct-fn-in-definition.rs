@@ -5,8 +5,27 @@
 
 struct S {
     field: usize,
-    fn do_something() {}
+
+    fn foo() {}
     //~^ ERROR functions are not allowed in struct definitions
+    //~| HELP unlike in C++, Java, and C#, functions are declared in `impl` blocks
+    //~| HELP see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+}
+
+union U {
+    variant: usize,
+
+    fn foo() {}
+    //~^ ERROR functions are not allowed in union definitions
+    //~| HELP unlike in C++, Java, and C#, functions are declared in `impl` blocks
+    //~| HELP see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+}
+
+enum E {
+    Variant,
+
+    fn foo() {}
+    //~^ ERROR functions are not allowed in enum definitions
     //~| HELP unlike in C++, Java, and C#, functions are declared in `impl` blocks
     //~| HELP see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
 }
