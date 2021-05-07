@@ -2024,6 +2024,46 @@ pub unsafe fn vcopyq_lane_f64<const LANE1: i32, const LANE2: i32>(a: float64x2_t
     }
 }
 
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop))]
+pub unsafe fn vcreate_f64(a: u64) -> float64x1_t {
+    transmute(a)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf))]
+pub unsafe fn vcvt_f64_s64(a: int64x1_t) -> float64x1_t {
+    simd_cast(a)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf))]
+pub unsafe fn vcvtq_f64_s64(a: int64x2_t) -> float64x2_t {
+    simd_cast(a)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub unsafe fn vcvt_f64_u64(a: uint64x1_t) -> float64x1_t {
+    simd_cast(a)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub unsafe fn vcvtq_f64_u64(a: uint64x2_t) -> float64x2_t {
+    simd_cast(a)
+}
+
 /// Floating-point convert to higher precision long
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2076,6 +2116,310 @@ pub unsafe fn vcvtx_f32_f64(a: float64x2_t) -> float32x2_t {
 #[cfg_attr(test, assert_instr(fcvtxn))]
 pub unsafe fn vcvtx_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
     simd_shuffle4(a, vcvtx_f32_f64(b), [0, 1, 2, 3])
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvt_n_f64_s64<const N: i32>(a: int64x1_t) -> float64x1_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.v1f64.v1i64")]
+        fn vcvt_n_f64_s64_(a: int64x1_t, n: i32) -> float64x1_t;
+    }
+    vcvt_n_f64_s64_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtq_n_f64_s64<const N: i32>(a: int64x2_t) -> float64x2_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.v2f64.v2i64")]
+        fn vcvtq_n_f64_s64_(a: int64x2_t, n: i32) -> float64x2_t;
+    }
+    vcvtq_n_f64_s64_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvts_n_f32_s32<const N: i32>(a: i32) -> f32 {
+    static_assert!(N : i32 where N >= 1 && N <= 32);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.f32.i32")]
+        fn vcvts_n_f32_s32_(a: i32, n: i32) -> f32;
+    }
+    vcvts_n_f32_s32_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtd_n_f64_s64<const N: i32>(a: i64) -> f64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxs2fp.f64.i64")]
+        fn vcvtd_n_f64_s64_(a: i64, n: i32) -> f64;
+    }
+    vcvtd_n_f64_s64_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvt_n_f64_u64<const N: i32>(a: uint64x1_t) -> float64x1_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.v1f64.v1i64")]
+        fn vcvt_n_f64_u64_(a: uint64x1_t, n: i32) -> float64x1_t;
+    }
+    vcvt_n_f64_u64_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtq_n_f64_u64<const N: i32>(a: uint64x2_t) -> float64x2_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.v2f64.v2i64")]
+        fn vcvtq_n_f64_u64_(a: uint64x2_t, n: i32) -> float64x2_t;
+    }
+    vcvtq_n_f64_u64_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvts_n_f32_u32<const N: i32>(a: u32) -> f32 {
+    static_assert!(N : i32 where N >= 1 && N <= 32);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.f32.i32")]
+        fn vcvts_n_f32_u32_(a: u32, n: i32) -> f32;
+    }
+    vcvts_n_f32_u32_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtd_n_f64_u64<const N: i32>(a: u64) -> f64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfxu2fp.f64.i64")]
+        fn vcvtd_n_f64_u64_(a: u64, n: i32) -> f64;
+    }
+    vcvtd_n_f64_u64_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzs, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvt_n_s64_f64<const N: i32>(a: float64x1_t) -> int64x1_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.v1i64.v1f64")]
+        fn vcvt_n_s64_f64_(a: float64x1_t, n: i32) -> int64x1_t;
+    }
+    vcvt_n_s64_f64_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzs, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtq_n_s64_f64<const N: i32>(a: float64x2_t) -> int64x2_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.v2i64.v2f64")]
+        fn vcvtq_n_s64_f64_(a: float64x2_t, n: i32) -> int64x2_t;
+    }
+    vcvtq_n_s64_f64_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzs, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvts_n_s32_f32<const N: i32>(a: f32) -> i32 {
+    static_assert!(N : i32 where N >= 1 && N <= 32);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.i32.f32")]
+        fn vcvts_n_s32_f32_(a: f32, n: i32) -> i32;
+    }
+    vcvts_n_s32_f32_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzs, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtd_n_s64_f64<const N: i32>(a: f64) -> i64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxs.i64.f64")]
+        fn vcvtd_n_s64_f64_(a: f64, n: i32) -> i64;
+    }
+    vcvtd_n_s64_f64_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvt_n_u64_f64<const N: i32>(a: float64x1_t) -> uint64x1_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.v1i64.v1f64")]
+        fn vcvt_n_u64_f64_(a: float64x1_t, n: i32) -> uint64x1_t;
+    }
+    vcvt_n_u64_f64_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtq_n_u64_f64<const N: i32>(a: float64x2_t) -> uint64x2_t {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.v2i64.v2f64")]
+        fn vcvtq_n_u64_f64_(a: float64x2_t, n: i32) -> uint64x2_t;
+    }
+    vcvtq_n_u64_f64_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvts_n_u32_f32<const N: i32>(a: f32) -> u32 {
+    static_assert!(N : i32 where N >= 1 && N <= 32);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.i32.f32")]
+        fn vcvts_n_u32_f32_(a: f32, n: i32) -> u32;
+    }
+    vcvts_n_u32_f32_(a, N)
+}
+
+/// Floating-point convert to fixed-point, rounding toward zero
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzu, N = 2))]
+#[rustc_legacy_const_generics(1)]
+pub unsafe fn vcvtd_n_u64_f64<const N: i32>(a: f64) -> u64 {
+    static_assert!(N : i32 where N >= 1 && N <= 64);
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.vcvtfp2fxu.i64.f64")]
+        fn vcvtd_n_u64_f64_(a: f64, n: i32) -> u64;
+    }
+    vcvtd_n_u64_f64_(a, N)
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf))]
+pub unsafe fn vcvts_f32_s32(a: i32) -> f32 {
+    a as f32
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(scvtf))]
+pub unsafe fn vcvtd_f64_s64(a: i64) -> f64 {
+    a as f64
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub unsafe fn vcvts_f32_u32(a: u32) -> f32 {
+    a as f32
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(ucvtf))]
+pub unsafe fn vcvtd_f64_u64(a: u64) -> f64 {
+    a as f64
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+pub unsafe fn vcvts_s32_f32(a: f32) -> i32 {
+    a as i32
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzs))]
+pub unsafe fn vcvtd_s64_f64(a: f64) -> i64 {
+    a as i64
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub unsafe fn vcvts_u32_f32(a: f32) -> u32 {
+    a as u32
+}
+
+/// Fixed-point convert to floating-point
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtzu))]
+pub unsafe fn vcvtd_u64_f64(a: f64) -> u64 {
+    a as u64
 }
 
 /// Floating-point convert to signed fixed-point, rounding toward zero
@@ -2162,6 +2506,58 @@ pub unsafe fn vcvtaq_s64_f64(a: float64x2_t) -> int64x2_t {
     vcvtaq_s64_f64_(a)
 }
 
+/// Floating-point convert to integer, rounding to nearest with ties to away
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtas))]
+pub unsafe fn vcvtas_s32_f32(a: f32) -> i32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.i32.f32")]
+        fn vcvtas_s32_f32_(a: f32) -> i32;
+    }
+    vcvtas_s32_f32_(a)
+}
+
+/// Floating-point convert to integer, rounding to nearest with ties to away
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtas))]
+pub unsafe fn vcvtad_s64_f64(a: f64) -> i64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtas.i64.f64")]
+        fn vcvtad_s64_f64_(a: f64) -> i64;
+    }
+    vcvtad_s64_f64_(a)
+}
+
+/// Floating-point convert to integer, rounding to nearest with ties to away
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtau))]
+pub unsafe fn vcvtas_u32_f32(a: f32) -> u32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.i32.f32")]
+        fn vcvtas_u32_f32_(a: f32) -> u32;
+    }
+    vcvtas_u32_f32_(a)
+}
+
+/// Floating-point convert to integer, rounding to nearest with ties to away
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtau))]
+pub unsafe fn vcvtad_u64_f64(a: f64) -> u64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtau.i64.f64")]
+        fn vcvtad_u64_f64_(a: f64) -> u64;
+    }
+    vcvtad_u64_f64_(a)
+}
+
 /// Floating-point convert to signed integer, rounding to nearest with ties to even
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2212,6 +2608,32 @@ pub unsafe fn vcvtnq_s64_f64(a: float64x2_t) -> int64x2_t {
         fn vcvtnq_s64_f64_(a: float64x2_t) -> int64x2_t;
     }
     vcvtnq_s64_f64_(a)
+}
+
+/// Floating-point convert to signed integer, rounding to nearest with ties to even
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtns))]
+pub unsafe fn vcvtns_s32_f32(a: f32) -> i32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.i32.f32")]
+        fn vcvtns_s32_f32_(a: f32) -> i32;
+    }
+    vcvtns_s32_f32_(a)
+}
+
+/// Floating-point convert to signed integer, rounding to nearest with ties to even
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtns))]
+pub unsafe fn vcvtnd_s64_f64(a: f64) -> i64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtns.i64.f64")]
+        fn vcvtnd_s64_f64_(a: f64) -> i64;
+    }
+    vcvtnd_s64_f64_(a)
 }
 
 /// Floating-point convert to signed integer, rounding toward minus infinity
@@ -2266,6 +2688,32 @@ pub unsafe fn vcvtmq_s64_f64(a: float64x2_t) -> int64x2_t {
     vcvtmq_s64_f64_(a)
 }
 
+/// Floating-point convert to signed integer, rounding toward minus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtms))]
+pub unsafe fn vcvtms_s32_f32(a: f32) -> i32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.i32.f32")]
+        fn vcvtms_s32_f32_(a: f32) -> i32;
+    }
+    vcvtms_s32_f32_(a)
+}
+
+/// Floating-point convert to signed integer, rounding toward minus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtms))]
+pub unsafe fn vcvtmd_s64_f64(a: f64) -> i64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtms.i64.f64")]
+        fn vcvtmd_s64_f64_(a: f64) -> i64;
+    }
+    vcvtmd_s64_f64_(a)
+}
+
 /// Floating-point convert to signed integer, rounding toward plus infinity
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2316,6 +2764,32 @@ pub unsafe fn vcvtpq_s64_f64(a: float64x2_t) -> int64x2_t {
         fn vcvtpq_s64_f64_(a: float64x2_t) -> int64x2_t;
     }
     vcvtpq_s64_f64_(a)
+}
+
+/// Floating-point convert to signed integer, rounding toward plus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtps))]
+pub unsafe fn vcvtps_s32_f32(a: f32) -> i32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.i32.f32")]
+        fn vcvtps_s32_f32_(a: f32) -> i32;
+    }
+    vcvtps_s32_f32_(a)
+}
+
+/// Floating-point convert to signed integer, rounding toward plus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtps))]
+pub unsafe fn vcvtpd_s64_f64(a: f64) -> i64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtps.i64.f64")]
+        fn vcvtpd_s64_f64_(a: f64) -> i64;
+    }
+    vcvtpd_s64_f64_(a)
 }
 
 /// Floating-point convert to unsigned integer, rounding to nearest with ties to away
@@ -2422,6 +2896,32 @@ pub unsafe fn vcvtnq_u64_f64(a: float64x2_t) -> uint64x2_t {
     vcvtnq_u64_f64_(a)
 }
 
+/// Floating-point convert to unsigned integer, rounding to nearest with ties to even
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtnu))]
+pub unsafe fn vcvtns_u32_f32(a: f32) -> u32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.i32.f32")]
+        fn vcvtns_u32_f32_(a: f32) -> u32;
+    }
+    vcvtns_u32_f32_(a)
+}
+
+/// Floating-point convert to unsigned integer, rounding to nearest with ties to even
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtnu))]
+pub unsafe fn vcvtnd_u64_f64(a: f64) -> u64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtnu.i64.f64")]
+        fn vcvtnd_u64_f64_(a: f64) -> u64;
+    }
+    vcvtnd_u64_f64_(a)
+}
+
 /// Floating-point convert to unsigned integer, rounding toward minus infinity
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2474,6 +2974,32 @@ pub unsafe fn vcvtmq_u64_f64(a: float64x2_t) -> uint64x2_t {
     vcvtmq_u64_f64_(a)
 }
 
+/// Floating-point convert to unsigned integer, rounding toward minus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtmu))]
+pub unsafe fn vcvtms_u32_f32(a: f32) -> u32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.i32.f32")]
+        fn vcvtms_u32_f32_(a: f32) -> u32;
+    }
+    vcvtms_u32_f32_(a)
+}
+
+/// Floating-point convert to unsigned integer, rounding toward minus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtmu))]
+pub unsafe fn vcvtmd_u64_f64(a: f64) -> u64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtmu.i64.f64")]
+        fn vcvtmd_u64_f64_(a: f64) -> u64;
+    }
+    vcvtmd_u64_f64_(a)
+}
+
 /// Floating-point convert to unsigned integer, rounding toward plus infinity
 #[inline]
 #[target_feature(enable = "neon")]
@@ -2524,6 +3050,32 @@ pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
         fn vcvtpq_u64_f64_(a: float64x2_t) -> uint64x2_t;
     }
     vcvtpq_u64_f64_(a)
+}
+
+/// Floating-point convert to unsigned integer, rounding toward plus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtpu))]
+pub unsafe fn vcvtps_u32_f32(a: f32) -> u32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.i32.f32")]
+        fn vcvtps_u32_f32_(a: f32) -> u32;
+    }
+    vcvtps_u32_f32_(a)
+}
+
+/// Floating-point convert to unsigned integer, rounding toward plus infinity
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fcvtpu))]
+pub unsafe fn vcvtpd_u64_f64(a: f64) -> u64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.fcvtpu.i64.f64")]
+        fn vcvtpd_u64_f64_(a: f64) -> u64;
+    }
+    vcvtpd_u64_f64_(a)
 }
 
 /// Set all vector lanes to the same value
@@ -9861,6 +10413,46 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vcreate_f64() {
+        let a: u64 = 0;
+        let e: f64 = 0.;
+        let r: f64 = transmute(vcreate_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_f64_s64() {
+        let a: i64x1 = i64x1::new(1);
+        let e: f64 = 1.;
+        let r: f64 = transmute(vcvt_f64_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_f64_s64() {
+        let a: i64x2 = i64x2::new(1, 2);
+        let e: f64x2 = f64x2::new(1., 2.);
+        let r: f64x2 = transmute(vcvtq_f64_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_f64_u64() {
+        let a: u64x1 = u64x1::new(1);
+        let e: f64 = 1.;
+        let r: f64 = transmute(vcvt_f64_u64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_f64_u64() {
+        let a: u64x2 = u64x2::new(1, 2);
+        let e: f64x2 = f64x2::new(1., 2.);
+        let r: f64x2 = transmute(vcvtq_f64_u64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vcvt_f64_f32() {
         let a: f32x2 = f32x2::new(-1.2, 1.2);
         let e: f64x2 = f64x2::new(-1.2f32 as f64, 1.2f32 as f64);
@@ -9907,6 +10499,198 @@ mod test {
         let b: f64x2 = f64x2::new(-3.0, 4.0);
         let e: f32x4 = f32x4::new(-1.0, 2.0, -3.0, 4.0);
         let r: f32x4 = transmute(vcvtx_high_f32_f64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_n_f64_s64() {
+        let a: i64x1 = i64x1::new(1);
+        let e: f64 = 0.25;
+        let r: f64 = transmute(vcvt_n_f64_s64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_n_f64_s64() {
+        let a: i64x2 = i64x2::new(1, 2);
+        let e: f64x2 = f64x2::new(0.25, 0.5);
+        let r: f64x2 = transmute(vcvtq_n_f64_s64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_n_f32_s32() {
+        let a: i32 = 1;
+        let e: f32 = 0.25;
+        let r: f32 = transmute(vcvts_n_f32_s32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_n_f64_s64() {
+        let a: i64 = 1;
+        let e: f64 = 0.25;
+        let r: f64 = transmute(vcvtd_n_f64_s64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_n_f64_u64() {
+        let a: u64x1 = u64x1::new(1);
+        let e: f64 = 0.25;
+        let r: f64 = transmute(vcvt_n_f64_u64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_n_f64_u64() {
+        let a: u64x2 = u64x2::new(1, 2);
+        let e: f64x2 = f64x2::new(0.25, 0.5);
+        let r: f64x2 = transmute(vcvtq_n_f64_u64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_n_f32_u32() {
+        let a: u32 = 1;
+        let e: f32 = 0.25;
+        let r: f32 = transmute(vcvts_n_f32_u32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_n_f64_u64() {
+        let a: u64 = 1;
+        let e: f64 = 0.25;
+        let r: f64 = transmute(vcvtd_n_f64_u64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_n_s64_f64() {
+        let a: f64 = 0.25;
+        let e: i64x1 = i64x1::new(1);
+        let r: i64x1 = transmute(vcvt_n_s64_f64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_n_s64_f64() {
+        let a: f64x2 = f64x2::new(0.25, 0.5);
+        let e: i64x2 = i64x2::new(1, 2);
+        let r: i64x2 = transmute(vcvtq_n_s64_f64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_n_s32_f32() {
+        let a: f32 = 0.25;
+        let e: i32 = 1;
+        let r: i32 = transmute(vcvts_n_s32_f32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_n_s64_f64() {
+        let a: f64 = 0.25;
+        let e: i64 = 1;
+        let r: i64 = transmute(vcvtd_n_s64_f64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvt_n_u64_f64() {
+        let a: f64 = 0.25;
+        let e: u64x1 = u64x1::new(1);
+        let r: u64x1 = transmute(vcvt_n_u64_f64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtq_n_u64_f64() {
+        let a: f64x2 = f64x2::new(0.25, 0.5);
+        let e: u64x2 = u64x2::new(1, 2);
+        let r: u64x2 = transmute(vcvtq_n_u64_f64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_n_u32_f32() {
+        let a: f32 = 0.25;
+        let e: u32 = 1;
+        let r: u32 = transmute(vcvts_n_u32_f32::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_n_u64_f64() {
+        let a: f64 = 0.25;
+        let e: u64 = 1;
+        let r: u64 = transmute(vcvtd_n_u64_f64::<2>(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_f32_s32() {
+        let a: i32 = 1;
+        let e: f32 = 1.;
+        let r: f32 = transmute(vcvts_f32_s32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_f64_s64() {
+        let a: i64 = 1;
+        let e: f64 = 1.;
+        let r: f64 = transmute(vcvtd_f64_s64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_f32_u32() {
+        let a: u32 = 1;
+        let e: f32 = 1.;
+        let r: f32 = transmute(vcvts_f32_u32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_f64_u64() {
+        let a: u64 = 1;
+        let e: f64 = 1.;
+        let r: f64 = transmute(vcvtd_f64_u64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_s32_f32() {
+        let a: f32 = 1.;
+        let e: i32 = 1;
+        let r: i32 = transmute(vcvts_s32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_s64_f64() {
+        let a: f64 = 1.;
+        let e: i64 = 1;
+        let r: i64 = transmute(vcvtd_s64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvts_u32_f32() {
+        let a: f32 = 1.;
+        let e: u32 = 1;
+        let r: u32 = transmute(vcvts_u32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtd_u64_f64() {
+        let a: f64 = 1.;
+        let e: u64 = 1;
+        let r: u64 = transmute(vcvtd_u64_f64(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -9975,6 +10759,38 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtas_s32_f32() {
+        let a: f32 = 2.9;
+        let e: i32 = 3;
+        let r: i32 = transmute(vcvtas_s32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtad_s64_f64() {
+        let a: f64 = 2.9;
+        let e: i64 = 3;
+        let r: i64 = transmute(vcvtad_s64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtas_u32_f32() {
+        let a: f32 = 2.9;
+        let e: u32 = 3;
+        let r: u32 = transmute(vcvtas_u32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtad_u64_f64() {
+        let a: f64 = 2.9;
+        let e: u64 = 3;
+        let r: u64 = transmute(vcvtad_u64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vcvtn_s32_f32() {
         let a: f32x2 = f32x2::new(-1.5, 2.1);
         let e: i32x2 = i32x2::new(-2, 2);
@@ -10003,6 +10819,22 @@ mod test {
         let a: f64x2 = f64x2::new(-1.5, 2.1);
         let e: i64x2 = i64x2::new(-2, 2);
         let r: i64x2 = transmute(vcvtnq_s64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtns_s32_f32() {
+        let a: f32 = -1.5;
+        let e: i32 = -2;
+        let r: i32 = transmute(vcvtns_s32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtnd_s64_f64() {
+        let a: f64 = -1.5;
+        let e: i64 = -2;
+        let r: i64 = transmute(vcvtnd_s64_f64(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -10039,6 +10871,22 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtms_s32_f32() {
+        let a: f32 = -1.1;
+        let e: i32 = -2;
+        let r: i32 = transmute(vcvtms_s32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtmd_s64_f64() {
+        let a: f64 = -1.1;
+        let e: i64 = -2;
+        let r: i64 = transmute(vcvtmd_s64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vcvtp_s32_f32() {
         let a: f32x2 = f32x2::new(-1.1, 2.1);
         let e: i32x2 = i32x2::new(-1, 3);
@@ -10067,6 +10915,22 @@ mod test {
         let a: f64x2 = f64x2::new(-1.1, 2.1);
         let e: i64x2 = i64x2::new(-1, 3);
         let r: i64x2 = transmute(vcvtpq_s64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtps_s32_f32() {
+        let a: f32 = -1.1;
+        let e: i32 = -1;
+        let r: i32 = transmute(vcvtps_s32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtpd_s64_f64() {
+        let a: f64 = -1.1;
+        let e: i64 = -1;
+        let r: i64 = transmute(vcvtpd_s64_f64(transmute(a)));
         assert_eq!(r, e);
     }
 
@@ -10135,6 +10999,22 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtns_u32_f32() {
+        let a: f32 = 1.5;
+        let e: u32 = 2;
+        let r: u32 = transmute(vcvtns_u32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtnd_u64_f64() {
+        let a: f64 = 1.5;
+        let e: u64 = 2;
+        let r: u64 = transmute(vcvtnd_u64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vcvtm_u32_f32() {
         let a: f32x2 = f32x2::new(1.1, 2.1);
         let e: u32x2 = u32x2::new(1, 2);
@@ -10167,6 +11047,22 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtms_u32_f32() {
+        let a: f32 = 1.1;
+        let e: u32 = 1;
+        let r: u32 = transmute(vcvtms_u32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtmd_u64_f64() {
+        let a: f64 = 1.1;
+        let e: u64 = 1;
+        let r: u64 = transmute(vcvtmd_u64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vcvtp_u32_f32() {
         let a: f32x2 = f32x2::new(1.1, 2.1);
         let e: u32x2 = u32x2::new(2, 3);
@@ -10195,6 +11091,22 @@ mod test {
         let a: f64x2 = f64x2::new(1.1, 2.1);
         let e: u64x2 = u64x2::new(2, 3);
         let r: u64x2 = transmute(vcvtpq_u64_f64(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtps_u32_f32() {
+        let a: f32 = 1.1;
+        let e: u32 = 2;
+        let r: u32 = transmute(vcvtps_u32_f32(transmute(a)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vcvtpd_u64_f64() {
+        let a: f64 = 1.1;
+        let e: u64 = 2;
+        let r: u64 = transmute(vcvtpd_u64_f64(transmute(a)));
         assert_eq!(r, e);
     }
 

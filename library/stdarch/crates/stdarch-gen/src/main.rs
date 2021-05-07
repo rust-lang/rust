@@ -92,9 +92,10 @@ fn type_bits(t: &str) -> usize {
         | "i8" | "u8" => 8,
         "int16x4_t" | "int16x8_t" | "uint16x4_t" | "uint16x8_t" | "poly16x4_t" | "poly16x8_t"
         | "i16" | "u16" => 16,
-        "int32x2_t" | "int32x4_t" | "uint32x2_t" | "uint32x4_t" | "i32" | "u32" => 32,
+        "int32x2_t" | "int32x4_t" | "uint32x2_t" | "uint32x4_t" | "i32" | "u32" | "float32x2_t"
+        | "float32x4_t" | "f32" => 32,
         "int64x1_t" | "int64x2_t" | "uint64x1_t" | "uint64x2_t" | "poly64x1_t" | "poly64x2_t"
-        | "i64" | "u64" => 64,
+        | "i64" | "u64" | "float64x1_t" | "float64x2_t" | "f64" => 64,
         _ => panic!("unknown type: {}", t),
     }
 }
@@ -303,9 +304,28 @@ fn type_to_unsigned(t: &str) -> &str {
 
 fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
     let mut str = String::new();
-    if type_to_suffix(in_t).starts_with("q") && type_to_suffix(out_t).starts_with("q") {
+    let suf = type_to_suffix(in_t);
+    if suf.starts_with("q") && type_to_suffix(out_t).starts_with("q") {
         str.push_str("q");
     }
+    if !suf.starts_with("_") && !suf.starts_with("q") {
+        str.push_str(&suf[0..1]);
+    }
+    str.push_str(type_to_noq_suffix(out_t));
+    str.push_str(type_to_noq_suffix(in_t));
+    str
+}
+
+fn type_to_double_n_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
+    let mut str = String::new();
+    let suf = type_to_suffix(in_t);
+    if suf.starts_with("q") && type_to_suffix(out_t).starts_with("q") {
+        str.push_str("q");
+    }
+    if !suf.starts_with("_") && !suf.starts_with("q") {
+        str.push_str(&suf[0..1]);
+    }
+    str.push_str("_n");
     str.push_str(type_to_noq_suffix(out_t));
     str.push_str(type_to_noq_suffix(in_t));
     str
@@ -329,8 +349,8 @@ fn type_to_noq_suffix(t: &str) -> &str {
         "uint32x2_t" | "uint32x4_t" | "u32" => "_u32",
         "uint64x1_t" | "uint64x2_t" | "u64" => "_u64",
         "float16x4_t" | "float16x8_t" => "_f16",
-        "float32x2_t" | "float32x4_t" => "_f32",
-        "float64x1_t" | "float64x2_t" => "_f64",
+        "float32x2_t" | "float32x4_t" | "f32" => "_f32",
+        "float64x1_t" | "float64x2_t" | "f64" => "_f64",
         "poly8x8_t" | "poly8x16_t" => "_p8",
         "poly16x4_t" | "poly16x8_t" => "_p16",
         "poly64x1_t" | "poly64x2_t" | "p64" => "_p64",
@@ -345,6 +365,7 @@ enum Suffix {
     NoQ,
     NoQDouble,
     NSuffix,
+    DoubleN,
     NoQNSuffix,
     OutSuffix,
     OutNSuffix,
@@ -489,14 +510,14 @@ fn type_to_ext(t: &str) -> &str {
         "poly8x16_t" => "v16i8",
         "poly16x4_t" => "v4i16",
         "poly16x8_t" => "v8i16",
-        "i8" => "v8i8",
-        "i16" => "v4i16",
-        "i32" => "v2i32",
-        "i64" => "v1i64",
-        "u8" => "v8i8",
-        "u16" => "v4i16",
-        "u32" => "v2i32",
-        "u64" => "v1i64",
+        "i8" => "i8",
+        "i16" => "i16",
+        "i32" => "i32",
+        "i64" => "i64",
+        "u8" => "i8",
+        "u16" => "i16",
+        "u32" => "i32",
+        "u64" => "i64",
         "f32" => "f32",
         "f64" => "f64",
         "p64" => "p64",
@@ -854,6 +875,11 @@ fn gen_aarch64(
             type_to_noq_double_suffixes(out_t, in_t[1])
         ),
         NSuffix => format!("{}{}", current_name, type_to_n_suffix(in_t[1])),
+        DoubleN => format!(
+            "{}{}",
+            current_name,
+            type_to_double_n_suffixes(out_t, in_t[1])
+        ),
         NoQNSuffix => format!("{}{}", current_name, type_to_noq_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         OutNSuffix => format!("{}{}", current_name, type_to_n_suffix(out_t)),
@@ -1295,6 +1321,11 @@ fn gen_arm(
             type_to_noq_double_suffixes(out_t, in_t[1])
         ),
         NSuffix => format!("{}{}", current_name, type_to_n_suffix(in_t[1])),
+        DoubleN => format!(
+            "{}{}",
+            current_name,
+            type_to_double_n_suffixes(out_t, in_t[1])
+        ),
         NoQNSuffix => format!("{}{}", current_name, type_to_noq_n_suffix(in_t[1])),
         OutSuffix => format!("{}{}", current_name, type_to_suffix(out_t)),
         OutNSuffix => format!("{}{}", current_name, type_to_n_suffix(out_t)),
@@ -1432,7 +1463,16 @@ fn gen_arm(
                 out_t
             );
         };
-        if const_arm.is_some() {
+        if let Some(const_arm) = const_arm {
+            let (_, const_type) = if const_arm.contains(":") {
+                let consts: Vec<_> = const_arm.split(':').map(|v| v.trim().to_string()).collect();
+                (consts[0].clone(), consts[1].clone())
+            } else {
+                (
+                    const_arm.to_string(),
+                    in_t[para_num as usize - 1].to_string(),
+                )
+            };
             ext_c_arm.push_str(&format!(
                 r#"#[allow(improper_ctypes)]
     extern "C" {{
@@ -1444,15 +1484,15 @@ fn gen_arm(
                 current_fn,
                 match para_num {
                     1 => {
-                        format!("a: {}, n: {}", in_t[0], in_t[0])
+                        format!("a: {}, n: {}", in_t[0], const_type)
                     }
                     2 => {
-                        format!("a: {}, b: {}, n: {}", in_t[0], in_t[1], in_t[1])
+                        format!("a: {}, b: {}, n: {}", in_t[0], in_t[1], const_type)
                     }
                     3 => {
                         format!(
                             "a: {}, b: {}, c: {}, n: {}",
-                            in_t[0], in_t[1], in_t[2], in_t[2]
+                            in_t[0], in_t[1], in_t[2], const_type
                         )
                     }
                     _ => unimplemented!("unknown para_num"),
@@ -1641,16 +1681,22 @@ fn gen_arm(
         (_, _, _) => String::new(),
     };
     let call_arm = if let Some(const_arm) = const_arm {
-        let const_arm = const_arm.replace("ttn", type_to_native_type(in_t[1]));
-        let mut cnt = String::from(in_t[1]);
-        cnt.push_str("(");
-        for i in 0..type_len(in_t[1]) {
-            if i != 0 {
-                cnt.push_str(", ");
+        let cnt = if const_arm.contains(':') {
+            let consts: Vec<_> = const_arm.split(':').map(|v| v.trim().to_string()).collect();
+            consts[0].clone()
+        } else {
+            let const_arm = const_arm.replace("ttn", type_to_native_type(in_t[1]));
+            let mut cnt = String::from(in_t[1]);
+            cnt.push_str("(");
+            for i in 0..type_len(in_t[1]) {
+                if i != 0 {
+                    cnt.push_str(", ");
+                }
+                cnt.push_str(&const_arm);
             }
-            cnt.push_str(&const_arm);
-        }
-        cnt.push_str(")");
+            cnt.push_str(")");
+            cnt
+        };
         match para_num {
             1 => format!(
                 r#"pub unsafe fn {}{}(a: {}) -> {} {{
@@ -1815,13 +1861,14 @@ fn gen_arm(
             r#"
 {}
 #[inline]
-#[target_feature(enable = "neon")]
+#[target_feature(enable = "{}")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "{}"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr({}{}))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({}{}))]{}
 {}
 "#,
             current_comment,
+            current_target_aarch64,
             current_target_arm,
             expand_intrinsic(&current_arm, in_t[1]),
             const_assert,
@@ -2305,7 +2352,7 @@ fn get_call(
         }
     }
     if param_str.is_empty() {
-        return fn_name;
+        return fn_name.replace("out_t", out_t);
     }
     let fn_str = if let Some((re_name, re_type)) = re.clone() {
         format!(
@@ -2453,6 +2500,8 @@ mod test {
             suffix = NoQDouble;
         } else if line.starts_with("n-suffix") {
             suffix = NSuffix;
+        } else if line.starts_with("double-n-suffixes") {
+            suffix = DoubleN;
         } else if line.starts_with("out-n-suffix") {
             suffix = OutNSuffix;
         } else if line.starts_with("noq-n-suffix") {

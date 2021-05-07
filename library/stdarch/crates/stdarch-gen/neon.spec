@@ -839,6 +839,51 @@ generate float32x4_t:float32x2_t:float32x4_t
 aarch64 = zip1
 generate float64x2_t:float64x1_t:float64x2_t
 
+/// Insert vector element from another vector element
+name = vcreate
+out-suffix
+multi_fn = transmute, a
+a = 1
+validate 1, 0, 0, 0, 0, 0, 0, 0
+
+aarch64 = nop
+arm = nop
+generate u64:int8x8_t, u64:int16x4_t: u64:int32x2_t, u64:int64x1_t
+generate u64:uint8x8_t, u64:uint16x4_t: u64:uint32x2_t, u64:uint64x1_t
+generate u64:poly8x8_t, u64:poly16x4_t
+target = crypto
+generate u64:poly64x1_t
+
+/// Insert vector element from another vector element
+name = vcreate
+out-suffix
+multi_fn = transmute, a
+a = 0
+validate 0., 0.
+
+aarch64 = nop
+generate u64:float64x1_t
+arm = nop
+generate u64:float32x2_t
+
+/// Fixed-point convert to floating-point
+name = vcvt
+double-suffixes
+fn = simd_cast
+a = 1, 2, 3, 4
+validate 1., 2., 3., 4.
+
+aarch64 = scvtf
+generate int64x1_t:float64x1_t, int64x2_t:float64x2_t
+aarch64 = ucvtf
+generate uint64x1_t:float64x1_t, uint64x2_t:float64x2_t
+
+arm = vcvt
+aarch64 = scvtf
+generate int32x2_t:float32x2_t, int32x4_t:float32x4_t
+aarch64 = ucvtf
+generate uint32x2_t:float32x2_t, uint32x4_t:float32x4_t
+
 /// Floating-point convert to higher precision long
 name = vcvt
 double-suffixes
@@ -902,6 +947,96 @@ validate -1.0, 2.0, -3.0, 4.0
 aarch64 = fcvtxn
 generate float32x2_t:float64x2_t:float32x4_t
 
+/// Fixed-point convert to floating-point
+name = vcvt
+double-n-suffixes
+constn = N
+multi_fn = static_assert-N-1-bits
+a = 1, 2, 3, 4
+n = 2
+validate 0.25, 0.5, 0.75, 1.
+
+aarch64 = scvtf
+link-aarch64 = vcvtfxs2fp._EXT2_._EXT_
+const-aarch64 = N
+generate int64x1_t:float64x1_t, int64x2_t:float64x2_t, i32:f32, i64:f64
+
+aarch64 = ucvtf
+link-aarch64 = vcvtfxu2fp._EXT2_._EXT_
+const-aarch64 = N
+generate uint64x1_t:float64x1_t, uint64x2_t:float64x2_t, u32:f32, u64:f64
+
+aarch64 = scvtf
+link-aarch64 = vcvtfxs2fp._EXT2_._EXT_
+arm = vcvt
+link-arm = vcvtfxs2fp._EXT2_._EXT_
+const-arm = N:i32
+generate int32x2_t:float32x2_t, int32x4_t:float32x4_t
+
+aarch64 = ucvtf
+link-aarch64 = vcvtfxu2fp._EXT2_._EXT_
+arm = vcvt
+link-arm = vcvtfxu2fp._EXT2_._EXT_
+const-arm = N:i32
+generate uint32x2_t:float32x2_t, uint32x4_t:float32x4_t
+
+/// Floating-point convert to fixed-point, rounding toward zero
+name = vcvt
+double-n-suffixes
+constn = N
+multi_fn = static_assert-N-1-bits
+a = 0.25, 0.5, 0.75, 1.
+n = 2
+validate 1, 2, 3, 4
+
+aarch64 = fcvtzs
+link-aarch64 = vcvtfp2fxs._EXT2_._EXT_
+const-aarch64 = N
+generate float64x1_t:int64x1_t, float64x2_t:int64x2_t, f32:i32, f64:i64
+
+aarch64 = fcvtzu
+link-aarch64 = vcvtfp2fxu._EXT2_._EXT_
+const-aarch64 = N
+generate float64x1_t:uint64x1_t, float64x2_t:uint64x2_t, f32:u32, f64:u64
+
+aarch64 = fcvtzs
+link-aarch64 = vcvtfp2fxs._EXT2_._EXT_
+arm = vcvt
+link-arm = vcvtfp2fxs._EXT2_._EXT_
+const-arm = N:i32
+generate float32x2_t:int32x2_t, float32x4_t:int32x4_t
+
+aarch64 = fcvtzu
+link-aarch64 = vcvtfp2fxu._EXT2_._EXT_
+arm = vcvt
+link-arm = vcvtfp2fxu._EXT2_._EXT_
+const-arm = N:i32
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t
+
+/// Fixed-point convert to floating-point
+name = vcvt
+double-suffixes
+multi_fn = a as out_t
+a = 1
+validate 1.
+
+aarch64 = scvtf
+generate i32:f32, i64:f64
+aarch64 = ucvtf
+generate u32:f32, u64:f64
+
+/// Fixed-point convert to floating-point
+name = vcvt
+double-suffixes
+multi_fn = a as out_t
+a = 1.
+validate 1
+
+aarch64 = fcvtzs
+generate f32:i32, f64:i64
+aarch64 = fcvtzu
+generate f32:u32, f64:u64
+
 /// Floating-point convert to signed fixed-point, rounding toward zero
 name = vcvt
 double-suffixes
@@ -938,6 +1073,20 @@ aarch64 = fcvtas
 link-aarch64 = fcvtas._EXT2_._EXT_
 generate float32x2_t:int32x2_t, float32x4_t:int32x4_t, float64x1_t:int64x1_t, float64x2_t:int64x2_t
 
+/// Floating-point convert to integer, rounding to nearest with ties to away
+name = vcvta
+double-suffixes
+a = 2.9
+validate 3
+
+aarch64 = fcvtas
+link-aarch64 = fcvtas._EXT2_._EXT_
+generate f32:i32, f64:i64
+
+aarch64 = fcvtau
+link-aarch64 = fcvtau._EXT2_._EXT_
+generate f32:u32, f64:u64
+
 /// Floating-point convert to signed integer, rounding to nearest with ties to even
 name = vcvtn
 double-suffixes
@@ -946,7 +1095,7 @@ validate -2, 2, -3, 4
 
 aarch64 = fcvtns
 link-aarch64 = fcvtns._EXT2_._EXT_
-generate float32x2_t:int32x2_t, float32x4_t:int32x4_t, float64x1_t:int64x1_t, float64x2_t:int64x2_t
+generate float32x2_t:int32x2_t, float32x4_t:int32x4_t, float64x1_t:int64x1_t, float64x2_t:int64x2_t, f32:i32, f64:i64
 
 /// Floating-point convert to signed integer, rounding toward minus infinity
 name = vcvtm
@@ -956,7 +1105,7 @@ validate -2, 2, -3, 3
 
 aarch64 = fcvtms
 link-aarch64 = fcvtms._EXT2_._EXT_
-generate float32x2_t:int32x2_t, float32x4_t:int32x4_t, float64x1_t:int64x1_t, float64x2_t:int64x2_t
+generate float32x2_t:int32x2_t, float32x4_t:int32x4_t, float64x1_t:int64x1_t, float64x2_t:int64x2_t, f32:i32, f64:i64
 
 /// Floating-point convert to signed integer, rounding toward plus infinity
 name = vcvtp
@@ -966,7 +1115,7 @@ validate -1, 3, -2, 4
 
 aarch64 = fcvtps
 link-aarch64 = fcvtps._EXT2_._EXT_
-generate float32x2_t:int32x2_t, float32x4_t:int32x4_t, float64x1_t:int64x1_t, float64x2_t:int64x2_t
+generate float32x2_t:int32x2_t, float32x4_t:int32x4_t, float64x1_t:int64x1_t, float64x2_t:int64x2_t, f32:i32, f64:i64
 
 /// Floating-point convert to unsigned integer, rounding to nearest with ties to away
 name = vcvta
@@ -986,7 +1135,7 @@ validate 2, 2, 3, 4
 
 aarch64 = fcvtnu
 link-aarch64 = fcvtnu._EXT2_._EXT_
-generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t, f32:u32, f64:u64
 
 /// Floating-point convert to unsigned integer, rounding toward minus infinity
 name = vcvtm
@@ -996,7 +1145,7 @@ validate 1, 2, 2, 3
 
 aarch64 = fcvtmu
 link-aarch64 = fcvtmu._EXT2_._EXT_
-generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t, f32:u32, f64:u64
 
 /// Floating-point convert to unsigned integer, rounding toward plus infinity
 name = vcvtp
@@ -1006,7 +1155,7 @@ validate 2, 3, 3, 4
 
 aarch64 = fcvtpu
 link-aarch64 = fcvtpu._EXT2_._EXT_
-generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t
+generate float32x2_t:uint32x2_t, float32x4_t:uint32x4_t, float64x1_t:uint64x1_t, float64x2_t:uint64x2_t, f32:u32, f64:u64
 
 /// Set all vector lanes to the same value
 name = vdup
