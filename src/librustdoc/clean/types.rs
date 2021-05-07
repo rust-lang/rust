@@ -444,7 +444,7 @@ impl Item {
             kind,
             box ast_attrs.clean(cx),
             cx,
-            ast_attrs.cfg(cx.sess().diagnostic()),
+            ast_attrs.cfg(cx.sess()),
         )
     }
 
@@ -456,7 +456,7 @@ impl Item {
         cx: &mut DocContext<'_>,
         cfg: Option<Arc<Cfg>>,
     ) -> Item {
-        debug!("name={:?}, def_id={:?}", name, def_id);
+        trace!("name={:?}, def_id={:?}", name, def_id);
 
         Item {
             def_id: def_id.into(),
@@ -795,7 +795,7 @@ crate trait AttributesExt {
 
     fn other_attrs(&self) -> Vec<ast::Attribute>;
 
-    fn cfg(&self, diagnostic: &::rustc_errors::Handler) -> Option<Arc<Cfg>>;
+    fn cfg(&self, sess: &Session) -> Option<Arc<Cfg>>;
 }
 
 impl AttributesExt for [ast::Attribute] {
@@ -820,17 +820,28 @@ impl AttributesExt for [ast::Attribute] {
         self.iter().filter(|attr| attr.doc_str().is_none()).cloned().collect()
     }
 
-    fn cfg(&self, diagnostic: &::rustc_errors::Handler) -> Option<Arc<Cfg>> {
+    fn cfg(&self, sess: &Session) -> Option<Arc<Cfg>> {
         let mut cfg = Cfg::True;
 
         for attr in self.iter() {
+            // #[doc]
             if attr.doc_str().is_none() && attr.has_name(sym::doc) {
-                if let Some(mi) = attr.meta() {
-                    if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
-                        // Extracted #[doc(cfg(...))]
-                        match Cfg::parse(cfg_mi) {
-                            Ok(new_cfg) => cfg &= new_cfg,
-                            Err(e) => diagnostic.span_err(e.span, e.msg),
+                // #[doc(...)]
+                if let Some(list) = attr.meta().as_ref().and_then(|mi| mi.meta_item_list()) {
+                    for item in list {
+                        // #[doc(include)]
+                        if !item.has_name(sym::cfg) {
+                            continue;
+                        }
+                        // #[doc(cfg(...))]
+                        if let Some(cfg_mi) = item
+                            .meta_item()
+                            .and_then(|item| rustc_expand::config::parse_cfg(&item, sess))
+                        {
+                            match Cfg::parse(&cfg_mi) {
+                                Ok(new_cfg) => cfg &= new_cfg,
+                                Err(e) => sess.span_err(e.span, e.msg),
+                            }
                         }
                     }
                 }
@@ -995,29 +1006,6 @@ pub struct RenderedLink {
 impl Attributes {
     crate fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
         self.other_attrs.lists(name)
-    }
-
-    /// Extracts the content from an attribute `#[doc(cfg(content))]`.
-    crate fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
-        use rustc_ast::NestedMetaItem::MetaItem;
-
-        if let ast::MetaItemKind::List(ref nmis) = mi.kind {
-            if nmis.len() == 1 {
-                if let MetaItem(ref cfg_mi) = nmis[0] {
-                    if cfg_mi.has_name(sym::cfg) {
-                        if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.kind {
-                            if cfg_nmis.len() == 1 {
-                                if let MetaItem(ref content_mi) = cfg_nmis[0] {
-                                    return Some(content_mi);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        None
     }
 
     /// Reads a `MetaItem` from within an attribute, looks for whether it is a
