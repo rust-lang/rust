@@ -4,7 +4,7 @@
 mod deconstruct_pat;
 // TODO: find a better place for this?
 mod pat_util;
-pub mod usefulness;
+pub(crate) mod usefulness;
 
 use hir_def::{body::Body, EnumVariantId, LocalFieldId, VariantId};
 use la_arena::Idx;
@@ -13,7 +13,7 @@ use crate::{db::HirDatabase, AdtId, InferenceResult, Interner, Substitution, Ty,
 
 use self::pat_util::EnumerateAndAdjustIterator;
 
-pub type PatId = Idx<Pat>;
+pub(crate) type PatId = Idx<Pat>;
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatternError {
@@ -21,15 +21,15 @@ pub(crate) enum PatternError {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct FieldPat {
-    pub field: LocalFieldId,
-    pub pattern: Pat,
+pub(crate) struct FieldPat {
+    pub(crate) field: LocalFieldId,
+    pub(crate) pattern: Pat,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Pat {
-    pub ty: Ty,
-    pub kind: Box<PatKind>,
+pub(crate) struct Pat {
+    pub(crate) ty: Ty,
+    pub(crate) kind: Box<PatKind>,
 }
 
 impl Pat {
@@ -39,7 +39,7 @@ impl Pat {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum PatKind {
+pub(crate) enum PatKind {
     Wild,
 
     /// `x`, `ref x`, `x @ P`, etc.

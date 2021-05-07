@@ -1,6 +1,6 @@
 use std::iter::{Enumerate, ExactSizeIterator};
 
-pub struct EnumerateAndAdjust<I> {
+pub(crate) struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,
     gap_pos: usize,
     gap_len: usize,
@@ -23,7 +23,7 @@ where
     }
 }
 
-pub trait EnumerateAndAdjustIterator {
+pub(crate) trait EnumerateAndAdjustIterator {
     fn enumerate_and_adjust(
         self,
         expected_len: usize,
