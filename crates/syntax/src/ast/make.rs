@@ -15,12 +15,22 @@ use stdx::format_to;
 use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
 
 pub fn name(text: &str) -> ast::Name {
-    ast_from_text(&format!("mod {};", text))
+    ast_from_text(&format!("mod {}{};", raw_ident_esc(text), text))
 }
 
 pub fn name_ref(text: &str) -> ast::NameRef {
-    ast_from_text(&format!("fn f() {{ {}; }}", text))
+    ast_from_text(&format!("fn f() {{ {}{}; }}", raw_ident_esc(text), text))
 }
+
+fn raw_ident_esc(ident: &str) -> &'static str {
+    let is_keyword = parser::SyntaxKind::from_keyword(ident).is_some();
+    if is_keyword && !matches!(ident, "self" | "crate" | "super" | "Self") {
+        "r#"
+    } else {
+        ""
+    }
+}
+
 // FIXME: replace stringly-typed constructor with a family of typed ctors, a-la
 // `expr_xxx`.
 pub fn ty(text: &str) -> ast::Type {
