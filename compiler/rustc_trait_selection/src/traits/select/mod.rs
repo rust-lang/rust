@@ -1814,6 +1814,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     /// candidates and prefer where-clause candidates.
     ///
     /// See the comment for "SelectionCandidate" for more details.
+    #[instrument(level = "debug", skip(self))]
     fn candidate_should_be_dropped_in_favor_of(
         &mut self,
         victim: &EvaluatedCandidate<'tcx>,
@@ -1837,13 +1838,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
         match (&other.candidate, &victim.candidate) {
-            (_, AutoImplCandidate) | (AutoImplCandidate, _) => {
-                bug!(
-                    "default implementations shouldn't be recorded \
-                    when there are other valid candidates"
-                );
-            }
-
             // FIXME(@jswrenn): this should probably be more sophisticated
             (TransmutabilityCandidate, _) | (_, TransmutabilityCandidate) => DropVictim::No,
 
@@ -1885,6 +1879,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ParamCandidate(ref other_cand),
                 ImplCandidate(..)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -1912,6 +1907,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
             (
                 ImplCandidate(_)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -1945,6 +1941,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             (
                 ObjectCandidate(_) | ProjectionCandidate(..),
                 ImplCandidate(..)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -1958,6 +1955,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             (
                 ImplCandidate(..)
+                | AutoImplCandidate
                 | ClosureCandidate { .. }
                 | GeneratorCandidate
                 | FutureCandidate
@@ -2046,6 +2044,19 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     }
                     None => DropVictim::No,
                 }
+            }
+
+            (AutoImplCandidate, ImplCandidate(_)) | (ImplCandidate(_), AutoImplCandidate) => {
+                DropVictim::No
+            }
+
+            (AutoImplCandidate, _) | (_, AutoImplCandidate) => {
+                bug!(
+                    "default implementations shouldn't be recorded \
+                    when there are other global candidates: {:?} {:?}",
+                    other,
+                    victim
+                );
             }
 
             // Everything else is ambiguous
