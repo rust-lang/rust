@@ -1,0 +1,16 @@
+error[E0277]: `Foo<T, U>` cannot be sent between threads safely
+  --> $DIR/issue-83857-ub.rs:18:38
+   |
+LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) {
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo<T, U>` cannot be sent between threads safely
+   |
+   = help: the trait `Send` is not implemented for `Foo<T, U>`
+   = note: required because of the requirements on the impl of `WithAssoc` for `Foo<T, U>`
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+   |
+LL | fn generic<T, U>(v: Foo<T, U>, f: fn(<Foo<T, U> as WithAssoc>::Output) -> i32) where Foo<T, U>: Send {
+   |                                                                                +++++++++++++++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

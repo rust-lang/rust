@@ -1518,6 +1518,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// candidates and prefer where-clause candidates.
     ///
     /// See the comment for "SelectionCandidate" for more details.
+    #[instrument(level = "debug", skip(self, needs_infer))]
     fn candidate_should_be_dropped_in_favor_of(
         &mut self,
         sized_predicate: bool,
@@ -1542,13 +1543,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
         match (&other.candidate, &victim.candidate) {
-            (_, AutoImplCandidate(..)) | (AutoImplCandidate(..), _) => {
-                bug!(
-                    "default implementations shouldn't be recorded \
-                    when there are other valid candidates"
-                );
-            }
-
             // (*)
             (
                 BuiltinCandidate { has_nested: false }
@@ -1610,6 +1604,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (
                 ParamCandidate(ref cand),
                 ImplCandidate(..)
+                | AutoImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
@@ -1621,6 +1616,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => !is_global(cand),
             (
                 ImplCandidate(_)
+                | AutoImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
@@ -1651,6 +1647,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (
                 ObjectCandidate(_) | ProjectionCandidate(_),
                 ImplCandidate(..)
+                | AutoImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
@@ -1663,6 +1660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             (
                 ImplCandidate(..)
+                | AutoImplCandidate(_)
                 | ClosureCandidate
                 | GeneratorCandidate
                 | FnPointerCandidate { .. }
@@ -1739,6 +1737,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 } else {
                     false
                 }
+            }
+
+            (AutoImplCandidate(_), ImplCandidate(_)) | (ImplCandidate(_), AutoImplCandidate(_)) => {
+                false
+            }
+
+            (AutoImplCandidate(_), _) | (_, AutoImplCandidate(_)) => {
+                bug!(
+                    "default implementations shouldn't be recorded \
+                    when there are other global candidates: {:?} {:?}",
+                    other,
+                    victim
+                );
             }
 
             // Everything else is ambiguous

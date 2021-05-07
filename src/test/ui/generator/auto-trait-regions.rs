@@ -23,7 +23,7 @@ fn assert_foo<T: Foo>(f: T) {}
 fn main() {
     // Make sure 'static is erased for generator interiors so we can't match it in trait selection
     let x: &'static _ = &OnlyFooIfStaticRef(No);
-    let gen = || {
+    let gen = move || {
         let x = x;
         yield;
         assert_foo(x);
@@ -34,7 +34,7 @@ fn main() {
 
     // Allow impls which matches any lifetime
     let x = &OnlyFooIfRef(No);
-    let gen = || {
+    let gen = move || {
         let x = x;
         yield;
         assert_foo(x);
@@ -42,7 +42,7 @@ fn main() {
     assert_foo(gen); // ok
 
     // Disallow impls which relates lifetimes in the generator interior
-    let gen = || {
+    let gen = move || {
         let a = A(&mut true, &mut true, No);
         yield;
         assert_foo(a);

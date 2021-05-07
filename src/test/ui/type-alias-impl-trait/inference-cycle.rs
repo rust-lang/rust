@@ -4,6 +4,8 @@
 mod m {
     type Foo = impl std::fmt::Debug;
     //~^ ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
+    //~| ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
+    //~| ERROR: cycle detected when computing type of `m::Foo::{opaque#0}` [E0391]
 
     // Cycle: error today, but it'd be nice if it eventually worked
 

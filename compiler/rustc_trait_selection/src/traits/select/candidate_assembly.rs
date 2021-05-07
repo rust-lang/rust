@@ -332,11 +332,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
             self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
-            // Auto implementations have lower priority, so we only
-            // consider triggering a default if there is no other impl that can apply.
-            if candidates.vec.is_empty() {
-                self.assemble_candidates_from_auto_impls(obligation, &mut candidates);
-            }
+            self.assemble_candidates_from_auto_impls(obligation, &mut candidates);
         }
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
@@ -600,7 +596,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // for an example of a test case that exercises
                     // this path.
                 }
-                ty::Infer(ty::TyVar(_)) => {
+                ty::Infer(ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_)) => {
                     // The auto impl might apply; we don't know.
                     candidates.ambiguous = true;
                 }
@@ -620,7 +616,48 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
 
-                _ => candidates.vec.push(AutoImplCandidate(def_id)),
+                ty::Placeholder(..)
+                | ty::Bound(..)
+                | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
+                    bug!(
+                        "asked to assemble auto trait candidates of unexpected type: {:?}",
+                        self_ty
+                    );
+                }
+
+                // Only consider auto impls if there are no manual impls for the root of `self_ty`.
+                //
+                // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
+                // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
+                // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
+                //
+                // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
+                // which may define impls for that type is either the crate defining the type
+                // or the trait. This should be guaranteed by the orphan check.
+                ty::Bool
+                | ty::Char
+                | ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Str
+                | ty::Array(_, _)
+                | ty::Slice(_)
+                | ty::Adt(..)
+                | ty::RawPtr(_)
+                | ty::Ref(..)
+                | ty::FnDef(..)
+                | ty::FnPtr(_)
+                | ty::Closure(_, _)
+                | ty::Generator(..)
+                | ty::Never
+                | ty::Tuple(_)
+                | ty::Opaque(_, _)
+                | ty::GeneratorWitness(_) => {
+                    if self.tcx().find_map_relevant_impl(def_id, self_ty, |_| Some(())).is_none() {
+                        candidates.vec.push(AutoImplCandidate(def_id))
+                    }
+                }
+                ty::Error(_) => {} // do not add an auto trait impl for `ty::Error` for now.
             }
         }
     }

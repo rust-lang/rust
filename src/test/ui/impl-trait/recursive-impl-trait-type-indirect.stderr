@@ -119,30 +119,57 @@ LL | |         x;
 LL | |     }
    | |_____- returning here with type `[generator@$DIR/recursive-impl-trait-type-indirect.rs:74:5: 78:6]`
 
-error[E0720]: cannot resolve opaque type
+error[E0391]: cycle detected when computing type of `mutual_recursion::{opaque#0}`
   --> $DIR/recursive-impl-trait-type-indirect.rs:86:26
    |
 LL | fn mutual_recursion() -> impl Sync {
-   |                          ^^^^^^^^^ recursive opaque type
-LL |
-LL |     mutual_recursion_b()
-   |     -------------------- returning here with type `impl Sized`
-...
-LL | fn mutual_recursion_b() -> impl Sized {
-   |                            ---------- returning this opaque type `impl Sized`
-
-error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:91:28
+   |                          ^^^^^^^^^
+   |
+note: ...which requires borrow-checking `mutual_recursion`...
+  --> $DIR/recursive-impl-trait-type-indirect.rs:86:1
    |
 LL | fn mutual_recursion() -> impl Sync {
-   |                          --------- returning this opaque type `impl Sync`
-...
-LL | fn mutual_recursion_b() -> impl Sized {
-   |                            ^^^^^^^^^^ recursive opaque type
-LL |
-LL |     mutual_recursion()
-   |     ------------------ returning here with type `impl Sync`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires processing `mutual_recursion`...
+  --> $DIR/recursive-impl-trait-type-indirect.rs:86:1
+   |
+LL | fn mutual_recursion() -> impl Sync {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires processing MIR for `mutual_recursion`...
+  --> $DIR/recursive-impl-trait-type-indirect.rs:86:1
+   |
+LL | fn mutual_recursion() -> impl Sync {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires unsafety-checking `mutual_recursion`...
+  --> $DIR/recursive-impl-trait-type-indirect.rs:86:1
+   |
+LL | fn mutual_recursion() -> impl Sync {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires building MIR for `mutual_recursion`...
+  --> $DIR/recursive-impl-trait-type-indirect.rs:86:1
+   |
+LL | fn mutual_recursion() -> impl Sync {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking `mutual_recursion`...
+  --> $DIR/recursive-impl-trait-type-indirect.rs:86:26
+   |
+LL | fn mutual_recursion() -> impl Sync {
+   |                          ^^^^^^^^^
+   = note: ...which requires evaluating trait selection obligation `impl Sized: core::marker::Sync`...
+   = note: ...which again requires computing type of `mutual_recursion::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/recursive-impl-trait-type-indirect.rs:4:1
+   |
+LL | / #![feature(generators)]
+LL | | #![allow(unconditional_recursion)]
+LL | |
+LL | | fn option(i: i32) -> impl Sized {
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 
-For more information about this error, try `rustc --explain E0720`.
+Some errors have detailed explanations: E0391, E0720.
+For more information about an error, try `rustc --explain E0391`.
