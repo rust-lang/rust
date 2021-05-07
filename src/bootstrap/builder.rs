@@ -377,6 +377,8 @@ impl<'a> Builder<'a> {
                 check::Rustdoc,
                 check::CodegenBackend,
                 check::Clippy,
+                check::Miri,
+                check::Rls,
                 check::Bootstrap
             ),
             Kind::Test => describe!(
