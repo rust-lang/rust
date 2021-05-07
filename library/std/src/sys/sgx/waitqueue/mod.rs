@@ -13,13 +13,8 @@
 #[cfg(test)]
 mod tests;
 
-/// A doubly-linked list where callers are in charge of memory allocation
-/// of the nodes in the list.
-mod unsafe_list;
-
-/// Trivial spinlock-based implementation of `sync::Mutex`.
-// FIXME: Perhaps use Intel TSX to avoid locking?
 mod spin_mutex;
+mod unsafe_list;
 
 use crate::num::NonZeroUsize;
 use crate::ops::{Deref, DerefMut};
