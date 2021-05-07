@@ -821,11 +821,9 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn link_whole_staticlib(&mut self, lib: Symbol, verbatim: bool, _search_path: &[PathBuf]) {
-        self.link_staticlib(lib, verbatim);
         self.cmd.arg(format!("/WHOLEARCHIVE:{}{}", lib, if verbatim { "" } else { ".lib" }));
     }
     fn link_whole_rlib(&mut self, path: &Path) {
-        self.link_rlib(path);
         let mut arg = OsString::from("/WHOLEARCHIVE:");
         arg.push(path);
         self.cmd.arg(arg);
