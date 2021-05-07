@@ -831,28 +831,14 @@ impl Step for RustdocGUI {
             command.arg("src/test/rustdoc-gui/lib.rs").arg("-o").arg(&out_dir);
             builder.run(&mut command);
 
-            let mut tests = Vec::new();
-            for file in fs::read_dir("src/test/rustdoc-gui").unwrap() {
-                let file = file.unwrap();
-                let file_path = file.path();
-                let file_name = file.file_name();
-
-                if !file_name.to_str().unwrap().ends_with(".goml") {
-                    continue;
-                }
-                tests.push(file_path);
-            }
-            tests.sort_unstable();
-            for test in tests {
-                let mut command = Command::new(&nodejs);
-                command
-                    .arg("src/tools/rustdoc-gui/tester.js")
-                    .arg("--doc-folder")
-                    .arg(out_dir.join("test_docs"))
-                    .arg("--test-file")
-                    .arg(test);
-                builder.run(&mut command);
-            }
+            let mut command = Command::new(&nodejs);
+            command
+                .arg("src/tools/rustdoc-gui/tester.js")
+                .arg("--doc-folder")
+                .arg(out_dir.join("test_docs"))
+                .arg("--tests-folder")
+                .arg("src/test/rustdoc-gui");
+            builder.run(&mut command);
         } else {
             builder.info("No nodejs found, skipping \"src/test/rustdoc-gui\" tests");
         }
