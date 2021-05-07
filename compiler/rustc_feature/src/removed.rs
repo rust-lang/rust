@@ -136,6 +136,9 @@ declare_features! (
     (removed, main, "1.53.0", Some(29634), None, None),
     (removed, pub_macro_rules, "1.53.0", Some(78855), None,
      Some("removed due to being incomplete, in particular it does not work across crates")),
+     /// Allows the definition of `const` functions with some advanced features.
+    (removed, const_fn, "1.54.0", Some(57563), None,
+     Some("split into finer-grained feature gates")),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

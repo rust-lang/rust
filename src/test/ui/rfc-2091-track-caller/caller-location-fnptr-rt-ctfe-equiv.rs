@@ -6,7 +6,7 @@
 // run-pass
 // compile-flags: -Z unleash-the-miri-inside-of-you
 
-#![feature(core_intrinsics, const_caller_location, const_fn)]
+#![feature(core_intrinsics, const_caller_location)]
 
 type L = &'static std::panic::Location<'static>;
 

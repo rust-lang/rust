@@ -2,7 +2,7 @@
 // revisions: default mir-opt
 //[mir-opt] compile-flags: -Zmir-opt-level=4
 
-#![feature(const_caller_location, const_fn)]
+#![feature(const_caller_location)]
 
 use std::panic::Location;
 

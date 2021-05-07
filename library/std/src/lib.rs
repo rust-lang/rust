@@ -246,7 +246,6 @@
 #![feature(const_cstr_unchecked)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_transmute)]
-#![feature(const_fn)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
