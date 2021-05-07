@@ -63,7 +63,7 @@ proc_macro_srv = { path = "../proc_macro_srv", version = "0.0.0" }
 winapi = "0.3.8"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = { version = "0.3.2", optional = true }
+tikv-jemallocator = { version = "0.4.1", optional = true }
 
 [dev-dependencies]
 expect-test = "1.1"
@@ -72,5 +72,5 @@ mbe = { path = "../mbe" }
 tt = { path = "../tt" }
 
 [features]
-jemalloc = ["jemallocator", "profile/jemalloc"]
+jemalloc = ["tikv-jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
