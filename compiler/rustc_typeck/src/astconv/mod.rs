@@ -431,6 +431,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 param.def_id,
                                 Some(arg.id()),
                                 arg.span(),
+                                None,
                                 |_, _| {
                                     // Default generic parameters may not be marked
                                     // with stability attributes, i.e. when the
@@ -1053,7 +1054,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .span_label(binding.span, "private associated type")
                 .emit();
         }
-        tcx.check_stability(assoc_ty.def_id, Some(hir_ref_id), binding.span);
+        tcx.check_stability(assoc_ty.def_id, Some(hir_ref_id), binding.span, None);
 
         if !speculative {
             dup_bindings
@@ -1659,7 +1660,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .find(|vd| tcx.hygienic_eq(assoc_ident, vd.ident, adt_def.did));
                 if let Some(variant_def) = variant_def {
                     if permit_variants {
-                        tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span);
+                        tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span, None);
                         self.prohibit_generics(slice::from_ref(assoc_segment));
                         return Ok((qself_ty, DefKind::Variant, variant_def.def_id));
                     } else {
@@ -1779,7 +1780,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .span_label(span, &format!("private {}", kind))
                 .emit();
         }
-        tcx.check_stability(item.def_id, Some(hir_ref_id), span);
+        tcx.check_stability(item.def_id, Some(hir_ref_id), span, None);
 
         if let Some(variant_def_id) = variant_resolution {
             tcx.struct_span_lint_hir(AMBIGUOUS_ASSOCIATED_ITEMS, hir_ref_id, span, |lint| {
