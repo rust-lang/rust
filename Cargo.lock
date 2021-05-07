@@ -480,6 +480,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "base_db",
+ "cfg",
  "either",
  "hir_def",
  "hir_expand",

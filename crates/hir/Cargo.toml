@@ -25,3 +25,4 @@ hir_expand = { path = "../hir_expand", version = "0.0.0" }
 hir_def = { path = "../hir_def", version = "0.0.0" }
 hir_ty = { path = "../hir_ty", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }
+cfg = { path = "../cfg", version = "0.0.0" }

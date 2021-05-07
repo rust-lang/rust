@@ -89,6 +89,7 @@ pub use crate::{
 // Generally, a refactoring which *removes* a name from this list is a good
 // idea!
 pub use {
+    cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
         adt::StructKind,
         attr::{Attr, Attrs, AttrsWithOwner, Documentation},
@@ -214,6 +215,10 @@ impl Crate {
         }).flatten().next();
 
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
+    }
+
+    pub fn cfg(&self, db: &dyn HirDatabase) -> CfgOptions {
+        db.crate_graph()[self.id].cfg_options.clone()
     }
 }
 
