@@ -74,7 +74,7 @@ error: any use of this value will cause an error
 LL |           unsafe { intrinsics::ptr_offset_from(self, origin) }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                    |
-   |                    null pointer is not allowed for this operation
+   |                    null pointer is not a valid pointer for this operation
    |                    inside `ptr::const_ptr::<impl *const u8>::offset_from` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                    inside `OFFSET_FROM_NULL` at $DIR/offset_from_ub.rs:36:14
    | 
