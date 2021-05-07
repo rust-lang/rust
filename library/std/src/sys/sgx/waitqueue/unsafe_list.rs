@@ -1,3 +1,6 @@
+//! A doubly-linked list where callers are in charge of memory allocation
+//! of the nodes in the list.
+
 #[cfg(test)]
 mod tests;
 
