@@ -1700,6 +1700,8 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// #![feature(iter_dedup)]
     ///
@@ -1712,6 +1714,15 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(3));
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Example of an infinite loop:
+    ///
+    /// ```no_run
+    /// #![feature(iter_dedup)]
+    ///
+    /// // this will never terminate
+    /// let _ = std::iter::repeat(2).dedup().next();
     /// ```
     #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
@@ -1736,6 +1747,8 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// #![feature(iter_dedup)]
     ///
@@ -1748,6 +1761,15 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some("baz"));
     /// assert_eq!(iter.next(), Some("bar"));
     /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Example of an infinite loop:
+    ///
+    /// ```no_run
+    /// #![feature(iter_dedup)]
+    ///
+    /// // this will never terminate
+    /// let _ = std::iter::repeat(2).dedup_by(|a, b| a == b).next();
     /// ```
     #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
@@ -1769,6 +1791,8 @@ pub trait Iterator {
     ///
     /// # Examples
     ///
+    /// Basic usage:
+    ///
     /// ```
     /// #![feature(iter_dedup)]
     ///
@@ -1781,6 +1805,15 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(30));
     /// assert_eq!(iter.next(), Some(20));
     /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// Example of an infinite loop:
+    ///
+    /// ```no_run
+    /// #![feature(iter_dedup)]
+    ///
+    /// // this will never terminate
+    /// let _ = std::iter::repeat(2).dedup_by_key(|&n| n).next();
     /// ```
     #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
     #[inline]
