@@ -986,7 +986,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             error.obligation.predicate.kind().skip_binder()
                         {
                             // If any of the type arguments in this path segment caused the
-                            // `FullfillmentError`, point at its span (#61860).
+                            // `FulfillmentError`, point at its span (#61860).
                             for arg in path
                                 .segments
                                 .iter()
