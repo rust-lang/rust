@@ -32,7 +32,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CharPos, Pos, SourceFile, Span, Symbol};
+use rustc_span::{CharPos, ExpnKind, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
 #[derive(Debug)]
@@ -113,8 +113,29 @@ struct Instrumentor<'a, 'tcx> {
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
         let source_map = tcx.sess.source_map();
-        let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, mir_body.source.def_id());
-        let body_span = hir_body.value.span;
+        let def_id = mir_body.source.def_id();
+        let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
+
+        let mut body_span = hir_body.value.span;
+
+        if tcx.is_closure(def_id) {
+            // If the MIR function is a closure, and if the closure body span
+            // starts from a macro, but it's content is not in that macro, try
+            // to find a non-macro callsite, and instrument the spans there
+            // instead.
+            loop {
+                let expn_data = body_span.ctxt().outer_expn_data();
+                if expn_data.is_root() {
+                    break;
+                }
+                if let ExpnKind::Macro(..) = expn_data.kind {
+                    body_span = expn_data.call_site;
+                } else {
+                    break;
+                }
+            }
+        }
+
         let source_file = source_map.lookup_source_file(body_span.lo());
         let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
             fn_sig.span.ctxt() == body_span.ctxt()

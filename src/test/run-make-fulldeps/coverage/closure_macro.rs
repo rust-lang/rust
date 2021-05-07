@@ -14,7 +14,7 @@ macro_rules! bail {
 
 macro_rules! on_error {
     ($value:expr, $error_message:expr) => {
-        $value.or_else(|e| {
+        $value.or_else(|e| { // FIXME(85000): no coverage in closure macros
             let message = format!($error_message, e);
             if message.len() > 0 {
                 println!("{}", message);
