@@ -13,7 +13,7 @@
 #[doc(hidden)]
 pub unsafe fn __readeflags() -> u32 {
     let eflags: u32;
-    asm!("pushfd", "pop {}", out(reg) eflags, options(nomem));
+    asm!("pushfd", "pop {}", out(reg) eflags, options(nomem, att_syntax));
     eflags
 }
 
@@ -30,7 +30,7 @@ pub unsafe fn __readeflags() -> u32 {
 #[doc(hidden)]
 pub unsafe fn __readeflags() -> u64 {
     let eflags: u64;
-    asm!("pushfq", "pop {}", out(reg) eflags, options(nomem));
+    asm!("pushfq", "pop {}", out(reg) eflags, options(nomem, att_syntax));
     eflags
 }
 
@@ -46,7 +46,7 @@ pub unsafe fn __readeflags() -> u64 {
 )]
 #[doc(hidden)]
 pub unsafe fn __writeeflags(eflags: u32) {
-    asm!("push {}", "popfd", in(reg) eflags, options(nomem));
+    asm!("push {}", "popfd", in(reg) eflags, options(nomem, att_syntax));
 }
 
 /// Write EFLAGS.
@@ -61,7 +61,7 @@ pub unsafe fn __writeeflags(eflags: u32) {
 )]
 #[doc(hidden)]
 pub unsafe fn __writeeflags(eflags: u64) {
-    asm!("push {}", "popfq", in(reg) eflags, options(nomem));
+    asm!("push {}", "popfq", in(reg) eflags, options(nomem, att_syntax));
 }
 
 #[cfg(test)]

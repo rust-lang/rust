@@ -61,27 +61,27 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     #[cfg(target_arch = "x86")]
     {
         asm!(
-            "mov {0}, ebx",
+            "movl %ebx, {0}",
             "cpuid",
-            "xchg {0}, ebx",
+            "xchgl %ebx, {0}",
             lateout(reg) ebx,
             inlateout("eax") leaf => eax,
             inlateout("ecx") sub_leaf => ecx,
             lateout("edx") edx,
-            options(nostack, preserves_flags),
+            options(nostack, preserves_flags, att_syntax),
         );
     }
     #[cfg(target_arch = "x86_64")]
     {
         asm!(
-            "mov {0:r}, rbx",
+            "movq %rbx, {0:r}",
             "cpuid",
-            "xchg {0:r}, rbx",
+            "xchgq %rbx, {0:r}",
             lateout(reg) ebx,
             inlateout("eax") leaf => eax,
             inlateout("ecx") sub_leaf => ecx,
             lateout("edx") edx,
-            options(nostack, preserves_flags),
+            options(nostack, preserves_flags, att_syntax),
         );
     }
     CpuidResult { eax, ebx, ecx, edx }
@@ -130,9 +130,9 @@ pub fn has_cpuid() -> bool {
                 // Read eflags and save a copy of it
                 "pushfd",
                 "pop {result}",
-                "mov {saved_flags}, {result}",
+                "mov {result}, {saved_flags}",
                 // Flip 21st bit of the flags
-                "xor {result}, 0x200000",
+                "xor $0x200000, {result}",
                 // Load the modified flags and read them back.
                 // Bit 21 can only be modified if cpuid is available.
                 "push {result}",
@@ -140,10 +140,10 @@ pub fn has_cpuid() -> bool {
                 "pushfd",
                 "pop {result}",
                 // Use xor to find out whether bit 21 has changed
-                "xor {result}, {saved_flags}",
+                "xor {saved_flags}, {result}",
                 result = out(reg) result,
                 saved_flags = out(reg) _,
-                options(nomem),
+                options(nomem, att_syntax),
             );
             // There is a race between popfd (A) and pushfd (B)
             // where other bits beyond 21st may have been modified due to

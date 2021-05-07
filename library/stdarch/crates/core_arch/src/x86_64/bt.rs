@@ -8,12 +8,12 @@ use stdarch_test::assert_instr;
 pub unsafe fn _bittest64(p: *const i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "bt [{p}], {b}",
+        "btq {b}, ({p})",
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
         r = out(reg_byte) r,
-        options(readonly, nostack, pure)
+        options(readonly, nostack, pure, att_syntax)
     );
     r
 }
@@ -25,12 +25,12 @@ pub unsafe fn _bittest64(p: *const i64, b: i64) -> u8 {
 pub unsafe fn _bittestandset64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "bts [{p}], {b}",
+        "btsq {b}, ({p})",
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
         r = out(reg_byte) r,
-        options(nostack)
+        options(nostack, att_syntax)
     );
     r
 }
@@ -42,12 +42,12 @@ pub unsafe fn _bittestandset64(p: *mut i64, b: i64) -> u8 {
 pub unsafe fn _bittestandreset64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "btr [{p}], {b}",
+        "btrq {b}, ({p})",
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
         r = out(reg_byte) r,
-        options(nostack)
+        options(nostack, att_syntax)
     );
     r
 }
@@ -59,12 +59,12 @@ pub unsafe fn _bittestandreset64(p: *mut i64, b: i64) -> u8 {
 pub unsafe fn _bittestandcomplement64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "btc [{p}], {b}",
+        "btcq {b}, ({p})",
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
         r = out(reg_byte) r,
-        options(nostack)
+        options(nostack, att_syntax)
     );
     r
 }
