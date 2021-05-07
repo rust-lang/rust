@@ -23,7 +23,7 @@ mod issue6983 {
     }
 
     struct FooNoCopy;
-    // trigger lint
+    // don't trigger
     impl ToU64 for FooNoCopy {
         fn to_u64(self) -> u64 {
             2
