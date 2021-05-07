@@ -405,7 +405,6 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
 
 #[doc(hidden)]
 pub fn read_conf(sess: &Session) -> Conf {
-    use std::path::Path;
     let file_name = match utils::conf::lookup_conf_file() {
         Ok(Some(path)) => path,
         Ok(None) => return Conf::default(),
@@ -414,16 +413,6 @@ pub fn read_conf(sess: &Session) -> Conf {
                 .emit();
             return Conf::default();
         },
-    };
-
-    let file_name = if file_name.is_relative() {
-        sess.local_crate_source_file
-            .as_deref()
-            .and_then(Path::parent)
-            .unwrap_or_else(|| Path::new(""))
-            .join(file_name)
-    } else {
-        file_name
     };
 
     let TryConf { conf, errors } = utils::conf::read(&file_name);

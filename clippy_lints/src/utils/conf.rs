@@ -210,15 +210,13 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
         .map_or_else(|| PathBuf::from("."), PathBuf::from);
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
-            let config_file = current.join(config_file_name);
-            match fs::metadata(&config_file) {
-                // Only return if it's a file to handle the unlikely situation of a directory named
-                // `clippy.toml`.
-                Ok(ref md) if !md.is_dir() => return Ok(Some(config_file)),
-                // Return the error if it's something other than `NotFound`; otherwise we didn't
-                // find the project file yet, and continue searching.
-                Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
-                _ => {},
+            if let Ok(config_file) = current.join(config_file_name).canonicalize() {
+                match fs::metadata(&config_file) {
+                    Err(e) if e.kind() == io::ErrorKind::NotFound => {},
+                    Err(e) => return Err(e),
+                    Ok(md) if md.is_dir() => {},
+                    Ok(_) => return Ok(Some(config_file)),
+                }
             }
         }
 
