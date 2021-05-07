@@ -35,7 +35,7 @@ use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::fast_reject;
+use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
@@ -2089,10 +2089,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             |(obligation_arg, impl_arg)| {
                 match (obligation_arg.unpack(), impl_arg.unpack()) {
                     (GenericArgKind::Type(obligation_ty), GenericArgKind::Type(impl_ty)) => {
-                        let simplified_obligation_ty =
-                            fast_reject::simplify_type(self.tcx(), obligation_ty, true);
-                        let simplified_impl_ty =
-                            fast_reject::simplify_type(self.tcx(), impl_ty, false);
+                        // Note, we simplify parameters for the obligation but not the
+                        // impl so that we do not reject a blanket impl but do reject
+                        // more concrete impls if we're searching for `T: Trait`.
+                        let simplified_obligation_ty = fast_reject::simplify_type(
+                            self.tcx(),
+                            obligation_ty,
+                            SimplifyParams::Yes,
+                            StripReferences::No,
+                        );
+                        let simplified_impl_ty = fast_reject::simplify_type(
+                            self.tcx(),
+                            impl_ty,
+                            SimplifyParams::No,
+                            StripReferences::No,
+                        );
 
                         simplified_obligation_ty.is_some()
                             && simplified_impl_ty.is_some()

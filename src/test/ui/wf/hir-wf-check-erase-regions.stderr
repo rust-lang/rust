@@ -5,7 +5,11 @@ LL |     type IntoIter = std::iter::Flatten<std::slice::Iter<'a, T>>;
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&T` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `&T`
-   = note: required because of the requirements on the impl of `IntoIterator` for `&T`
+note: required because of the requirements on the impl of `IntoIterator` for `&T`
+  --> $DIR/hir-wf-check-erase-regions.rs:6:29
+   |
+LL | impl<'a, T, const N: usize> IntoIterator for &'a Table<T, N> {
+   |                             ^^^^^^^^^^^^     ^^^^^^^^^^^^^^^
 note: required by a bound in `Flatten`
   --> $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
    |
@@ -19,7 +23,11 @@ LL |     fn into_iter(self) -> Self::IntoIter {
    |                           ^^^^^^^^^^^^^^ `&T` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `&T`
-   = note: required because of the requirements on the impl of `IntoIterator` for `&T`
+note: required because of the requirements on the impl of `IntoIterator` for `&T`
+  --> $DIR/hir-wf-check-erase-regions.rs:6:29
+   |
+LL | impl<'a, T, const N: usize> IntoIterator for &'a Table<T, N> {
+   |                             ^^^^^^^^^^^^     ^^^^^^^^^^^^^^^
 note: required by a bound in `Flatten`
   --> $SRC_DIR/core/src/iter/adapters/flatten.rs:LL:COL
    |

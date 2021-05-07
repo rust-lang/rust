@@ -10,7 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::ty::fast_reject::simplify_type;
+use rustc_middle::ty::fast_reject::{simplify_type, SimplifyParams, StripReferences};
 use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::lev_distance;
@@ -1703,7 +1703,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // FIXME: Even though negative bounds are not implemented, we could maybe handle
                 // cases where a positive bound implies a negative impl.
                 (candidates, Vec::new())
-            } else if let Some(simp_rcvr_ty) = simplify_type(self.tcx, rcvr_ty, true) {
+            } else if let Some(simp_rcvr_ty) =
+                simplify_type(self.tcx, rcvr_ty, SimplifyParams::Yes, StripReferences::No)
+            {
                 let mut potential_candidates = Vec::new();
                 let mut explicitly_negative = Vec::new();
                 for candidate in candidates {
@@ -1716,7 +1718,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .any(|imp_did| {
                             let imp = self.tcx.impl_trait_ref(imp_did).unwrap();
-                            let imp_simp = simplify_type(self.tcx, imp.self_ty(), true);
+                            let imp_simp = simplify_type(
+                                self.tcx,
+                                imp.self_ty(),
+                                SimplifyParams::Yes,
+                                StripReferences::No,
+                            );
                             imp_simp.map_or(false, |s| s == simp_rcvr_ty)
                         })
                     {
