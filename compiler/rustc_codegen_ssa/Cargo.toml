@@ -16,7 +16,6 @@ libc = "0.2.50"
 jobserver = "0.1.22"
 tempfile = "3.2"
 pathdiff = "0.2.0"
-object = "0.22.0"
 
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_ast = { path = "../rustc_ast" }
@@ -34,3 +33,8 @@ rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_target = { path = "../rustc_target" }
 rustc_session = { path = "../rustc_session" }
+
+[dependencies.object]
+version = "0.22.0"
+default-features = false
+features = ["read_core", "elf", "macho", "pe", "unaligned", "archive"]
