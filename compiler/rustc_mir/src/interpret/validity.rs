@@ -330,7 +330,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         vtable,
                         3 * self.ecx.tcx.data_layout.pointer_size, // drop, size, align
                         Some(self.ecx.tcx.data_layout.pointer_align.abi),
-                        CheckInAllocMsg::InboundsTest,
+                        CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
                     ),
                     self.path,
                     err_ub!(DanglingIntPointer(..)) |
@@ -416,7 +416,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 place.ptr,
                 size,
                 Some(align),
-                CheckInAllocMsg::InboundsTest,
+                CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
             err_ub!(AlignmentCheckFailed { required, has }) =>

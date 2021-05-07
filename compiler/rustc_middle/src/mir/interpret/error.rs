@@ -306,6 +306,9 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 ptr.alloc_id,
                 allocation_size.bytes()
             ),
+            DanglingIntPointer(_, CheckInAllocMsg::InboundsTest) => {
+                write!(f, "null pointer is not allowed for this operation")
+            }
             DanglingIntPointer(i, msg) => {
                 write!(f, "{} failed: 0x{:x} is not a valid pointer", msg, i)
             }

@@ -4,7 +4,7 @@ error: any use of this value will cause an error
 LL |         unsafe { intrinsics::offset(self, count) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                  |
-   |                  inbounds test failed: pointer must be in-bounds at offset $TWO_WORDS, but is outside bounds of alloc2 which has size $WORD
+   |                  pointer arithmetic failed: pointer must be in-bounds at offset $TWO_WORDS, but is outside bounds of alloc2 which has size $WORD
    |                  inside `ptr::const_ptr::<impl *const usize>::offset` at $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |                  inside `_` at $DIR/ptr_comparisons.rs:61:34
    | 
