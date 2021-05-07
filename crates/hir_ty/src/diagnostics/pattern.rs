@@ -11,7 +11,7 @@ use la_arena::Idx;
 
 use crate::{db::HirDatabase, AdtId, InferenceResult, Interner, Substitution, Ty, TyKind};
 
-use self::{deconstruct_pat::ToDo, pat_util::EnumerateAndAdjustIterator};
+use self::pat_util::EnumerateAndAdjustIterator;
 
 pub type PatId = Idx<Pat>;
 
@@ -45,7 +45,6 @@ pub enum PatKind {
     /// `x`, `ref x`, `x @ P`, etc.
     Binding {
         subpattern: Option<Pat>,
-        // todo: ToDo,
     },
 
     /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
@@ -119,6 +118,10 @@ impl<'a> PatCtxt<'a> {
                 PatKind::Leaf { subpatterns }
             }
 
+            hir_def::expr::Pat::Bind { subpat, .. } => {
+                PatKind::Binding { subpattern: self.lower_opt_pattern(subpat) }
+            }
+
             hir_def::expr::Pat::TupleStruct { ref args, ellipsis, .. } => {
                 let variant_data = match self.infer.variant_resolution_for_pat(pat) {
                     Some(variant_id) => variant_id.variant_data(self.db.upcast()),
@@ -173,6 +176,10 @@ impl<'a> PatCtxt<'a> {
 
     fn lower_patterns(&mut self, pats: &[hir_def::expr::PatId]) -> Vec<Pat> {
         pats.iter().map(|&p| self.lower_pattern(p)).collect()
+    }
+
+    fn lower_opt_pattern(&mut self, pat: Option<hir_def::expr::PatId>) -> Option<Pat> {
+        pat.map(|p| self.lower_pattern(p))
     }
 
     fn lower_variant_or_leaf(
@@ -383,12 +390,29 @@ fn main() {
 struct S { a: char}
 fn main(v: S) {
     match v { S{ a }      => {} }
-    match v { S{ a: x }   => {} }
+    match v { S{ a: _x }   => {} }
     match v { S{ a: 'a' } => {} }
     match v { S{..}       => {} }
     match v { _           => {} }
     match v { }
         //^ Missing match arm
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn binding() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match true {
+        _x @ true => {}
+        false     => {}
+    }
+    //FIXME: false negative. 
+    // Binding patterns should be expanded in `usefulness::expand_pattern()`
+    match true { _x @ true => {} }
 }
 "#,
         );

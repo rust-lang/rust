@@ -801,12 +801,7 @@ impl Fields {
         cx: &MatchCheckCtx<'_>,
         pats: impl IntoIterator<Item = Pat>,
     ) -> Self {
-        let pats = {
-            let tys: SmallVec<[Ty; 2]> = match self {
-                Fields::Vec(pats) => pats.iter().copied().map(|pat| cx.type_of(pat)).collect(),
-            };
-            pats.into_iter().zip(tys.into_iter()).map(move |(pat, ty)| cx.alloc_pat(pat)).collect()
-        };
+        let pats = pats.into_iter().map(|pat| cx.alloc_pat(pat)).collect();
 
         match self {
             Fields::Vec(_) => Fields::Vec(pats),
