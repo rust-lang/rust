@@ -5,7 +5,6 @@
 #![deny(rust_2018_idioms)]
 #![feature(
     asm,
-    const_fn,
     const_fn_union,
     const_fn_transmute,
     custom_inner_attributes,
