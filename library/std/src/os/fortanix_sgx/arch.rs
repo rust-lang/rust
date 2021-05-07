@@ -33,13 +33,13 @@ pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> 
 
         asm!(
             // rbx is reserved by LLVM
-            "xchg {0}, rbx",
+            "xchg %rbx, {0}",
             "enclu",
-            "mov rbx, {0}",
+            "mov {0}, %rbx",
             inout(reg) request => _,
             inlateout("eax") ENCLU_EGETKEY => error,
             in("rcx") out.as_mut_ptr(),
-            options(nostack),
+            options(att_syntax, nostack),
         );
 
         match error {
@@ -64,14 +64,14 @@ pub fn ereport(
 
         asm!(
             // rbx is reserved by LLVM
-            "xchg {0}, rbx",
+            "xchg %rbx, {0}",
             "enclu",
-            "mov rbx, {0}",
+            "mov {0}, %rbx",
             inout(reg) targetinfo => _,
             in("eax") ENCLU_EREPORT,
             in("rcx") reportdata,
             in("rdx") report.as_mut_ptr(),
-            options(preserves_flags, nostack),
+            options(att_syntax, preserves_flags, nostack),
         );
 
         report.assume_init()
