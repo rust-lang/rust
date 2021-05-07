@@ -654,6 +654,26 @@ fn test_fn() {
     }
 
     #[test]
+    fn test_fill_struct_fields_raw_ident() {
+        check_fix(
+            r#"
+struct TestStruct { r#type: u8 }
+
+fn test_fn() {
+    TestStruct { $0 };
+}
+"#,
+            r"
+struct TestStruct { r#type: u8 }
+
+fn test_fn() {
+    TestStruct { r#type: ()  };
+}
+",
+        );
+    }
+
+    #[test]
     fn test_fill_struct_fields_no_diagnostic() {
         check_no_diagnostics(
             r"
