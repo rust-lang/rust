@@ -4,7 +4,7 @@ use rustc_errors::{pluralize, Applicability};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_parse_format::{ParseMode, Parser, Piece};
-use rustc_span::{sym, symbol::kw, InnerSpan, Span, Symbol};
+use rustc_span::{hygiene, sym, symbol::kw, symbol::SymbolStr, InnerSpan, Span, Symbol};
 
 declare_lint! {
     /// The `non_fmt_panic` lint detects `panic!(..)` invocations where the first
@@ -67,7 +67,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
 
     // The argument is *not* a string literal.
 
-    let (span, panic) = panic_call(cx, f);
+    let (span, panic, symbol_str) = panic_call(cx, f);
 
     // Find the span of the argument to `panic!()`, before expansion in the
     // case of `panic!(some_macro!())`.
@@ -95,7 +95,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         }
         if arg_macro.map_or(false, |id| cx.tcx.is_diagnostic_item(sym::format_macro, id)) {
             // A case of `panic!(format!(..))`.
-            l.note("the panic!() macro supports formatting, so there's no need for the format!() macro here");
+            l.note(format!("the {}!() macro supports formatting, so there's no need for the format!() macro here", symbol_str).as_str());
             if let Some((open, close, _)) = find_delimiters(cx, arg_span) {
                 l.multipart_suggestion(
                     "remove the `format!(..)` macro call",
@@ -160,7 +160,7 @@ fn check_panic_str<'tcx>(
         Parser::new(fmt.as_ref(), style, snippet.clone(), false, ParseMode::Format);
     let n_arguments = (&mut fmt_parser).filter(|a| matches!(a, Piece::NextArgument(_))).count();
 
-    let (span, _) = panic_call(cx, f);
+    let (span, _, _) = panic_call(cx, f);
 
     if n_arguments > 0 && fmt_parser.errors.is_empty() {
         let arg_spans: Vec<_> = match &fmt_parser.arg_places[..] {
@@ -230,7 +230,7 @@ fn find_delimiters<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<(Span, Sp
     ))
 }
 
-fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol) {
+fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol, SymbolStr) {
     let mut expn = f.span.ctxt().outer_expn_data();
 
     let mut panic_macro = kw::Empty;
@@ -248,5 +248,10 @@ fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, 
         }
     }
 
-    (expn.call_site, panic_macro)
+    let macro_symbol = if let hygiene::ExpnKind::Macro(_, symbol) = expn.kind {
+        symbol
+    } else {
+        Symbol::intern("panic")
+    };
+    (expn.call_site, panic_macro, macro_symbol.as_str())
 }
