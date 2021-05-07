@@ -15,6 +15,7 @@ fn main() {
     shr_and_raw();
     disjoint_mutable_subborrows();
     raw_ref_to_part();
+    array_casts();
 }
 
 // Make sure that reading from an `&mut` does, like reborrowing to `&`,
@@ -173,4 +174,15 @@ fn raw_ref_to_part() {
     let typed = unsafe { &mut *(part as *mut Whole) };
     assert!(typed.extra == 42);
     drop(unsafe { Box::from_raw(whole) });
+}
+
+/// When casting an array reference to a raw element ptr, that should cover the whole array.
+fn array_casts() {
+    let mut x: [usize; 2] = [0, 0];
+    let p = &mut x as *mut usize;
+    unsafe { *p.add(1) = 1; }
+
+    let x: [usize; 2] = [0, 1];
+    let p = &x as *const usize;
+    assert_eq!(unsafe { *p.add(1) }, 1);
 }
