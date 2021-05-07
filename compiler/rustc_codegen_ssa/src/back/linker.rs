@@ -340,6 +340,14 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn link_dylib(&mut self, lib: Symbol, verbatim: bool, as_needed: bool) {
+        if self.sess.target.os == "illumos" && lib.as_str() == "c" {
+            // libc will be added via late_link_args on illumos so that it will
+            // appear last in the library search order.
+            // FIXME: This should be replaced by a more complete and generic
+            // mechanism for controlling the order of library arguments passed
+            // to the linker.
+            return;
+        }
         if !as_needed {
             if self.sess.target.is_like_osx {
                 // FIXME(81490): ld64 doesn't support these flags but macOS 11
