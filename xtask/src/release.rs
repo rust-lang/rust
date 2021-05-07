@@ -1,6 +1,6 @@
 mod changelog;
 
-use xshell::{cmd, cp, pushd, read_dir, write_file};
+use xshell::{cmd, pushd, read_dir, read_file, write_file};
 
 use crate::{codegen, date_iso, flags, is_release_tag, project_root, Result};
 
@@ -41,7 +41,9 @@ impl flags::Release {
         {
             let src = project_root().join("./docs/user/").join(adoc);
             let dst = website_root.join(adoc);
-            cp(src, dst)?;
+
+            let contents = read_file(src)?.replace("\n\n===", "\n\n// IMPORTANT: master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository\n\n==");
+            write_file(dst, contents)?;
         }
 
         let tags = cmd!("git tag --list").read()?;
