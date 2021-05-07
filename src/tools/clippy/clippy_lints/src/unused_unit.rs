@@ -47,7 +47,9 @@ impl EarlyLintPass for UnusedUnit {
         if_chain! {
             if let Some(stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.kind;
-            if is_unit_expr(expr) && !stmt.span.from_expansion();
+            if is_unit_expr(expr);
+            let ctxt = block.span.ctxt();
+            if stmt.span.ctxt() == ctxt && expr.span.ctxt() == ctxt;
             then {
                 let sp = expr.span;
                 span_lint_and_sugg(

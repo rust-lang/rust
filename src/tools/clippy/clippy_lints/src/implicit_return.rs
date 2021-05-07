@@ -1,13 +1,16 @@
-use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::match_panic_def_id;
-use clippy_utils::source::snippet_opt;
-use if_chain::if_chain;
+use clippy_utils::{
+    diagnostics::span_lint_and_sugg,
+    get_async_fn_body, is_async_fn,
+    source::{snippet_with_applicability, snippet_with_context, walk_span_to_context},
+    visitors::visit_break_exprs,
+};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, Expr, ExprKind, FnDecl, HirId, MatchSource, StmtKind};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, HirId};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for missing return statements at the end of a block.
@@ -39,89 +42,160 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ImplicitReturn => [IMPLICIT_RETURN]);
 
-static LINT_BREAK: &str = "change `break` to `return` as shown";
-static LINT_RETURN: &str = "add `return` as shown";
-
-fn lint(cx: &LateContext<'_>, outer_span: Span, inner_span: Span, msg: &str) {
-    let outer_span = outer_span.source_callsite();
-    let inner_span = inner_span.source_callsite();
-
-    span_lint_and_then(cx, IMPLICIT_RETURN, outer_span, "missing `return` statement", |diag| {
-        if let Some(snippet) = snippet_opt(cx, inner_span) {
-            diag.span_suggestion(
-                outer_span,
-                msg,
-                format!("return {}", snippet),
-                Applicability::MachineApplicable,
-            );
-        }
-    });
+fn lint_return(cx: &LateContext<'_>, span: Span) {
+    let mut app = Applicability::MachineApplicable;
+    let snip = snippet_with_applicability(cx, span, "..", &mut app);
+    span_lint_and_sugg(
+        cx,
+        IMPLICIT_RETURN,
+        span,
+        "missing `return` statement",
+        "add `return` as shown",
+        format!("return {}", snip),
+        app,
+    );
 }
 
-fn expr_match(cx: &LateContext<'_>, expr: &Expr<'_>) {
+fn lint_break(cx: &LateContext<'_>, break_span: Span, expr_span: Span) {
+    let mut app = Applicability::MachineApplicable;
+    let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
+    span_lint_and_sugg(
+        cx,
+        IMPLICIT_RETURN,
+        break_span,
+        "missing `return` statement",
+        "change `break` to `return` as shown",
+        format!("return {}", snip),
+        app,
+    )
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LintLocation {
+    /// The lint was applied to a parent expression.
+    Parent,
+    /// The lint was applied to this expression, a child, or not applied.
+    Inner,
+}
+impl LintLocation {
+    fn still_parent(self, b: bool) -> Self {
+        if b { self } else { Self::Inner }
+    }
+
+    fn is_parent(self) -> bool {
+        self == Self::Parent
+    }
+}
+
+// Gets the call site if the span is in a child context. Otherwise returns `None`.
+fn get_call_site(span: Span, ctxt: SyntaxContext) -> Option<Span> {
+    (span.ctxt() != ctxt).then(|| walk_span_to_context(span, ctxt).unwrap_or(span))
+}
+
+fn lint_implicit_returns(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    // The context of the function body.
+    ctxt: SyntaxContext,
+    // Whether the expression is from a macro expansion.
+    call_site_span: Option<Span>,
+) -> LintLocation {
     match expr.kind {
-        // loops could be using `break` instead of `return`
-        ExprKind::Block(block, ..) | ExprKind::Loop(block, ..) => {
-            if let Some(expr) = &block.expr {
-                expr_match(cx, expr);
+        ExprKind::Block(
+            Block {
+                expr: Some(block_expr), ..
+            },
+            _,
+        ) => lint_implicit_returns(
+            cx,
+            block_expr,
+            ctxt,
+            call_site_span.or_else(|| get_call_site(block_expr.span, ctxt)),
+        )
+        .still_parent(call_site_span.is_some()),
+
+        ExprKind::If(_, then_expr, Some(else_expr)) => {
+            // Both `then_expr` or `else_expr` are required to be blocks in the same context as the `if`. Don't
+            // bother checking.
+            let res = lint_implicit_returns(cx, then_expr, ctxt, call_site_span).still_parent(call_site_span.is_some());
+            if res.is_parent() {
+                // The return was added as a parent of this if expression.
+                return res;
             }
-            // only needed in the case of `break` with `;` at the end
-            else if let Some(stmt) = block.stmts.last() {
-                if_chain! {
-                    if let StmtKind::Semi(expr, ..) = &stmt.kind;
-                    // make sure it's a break, otherwise we want to skip
-                    if let ExprKind::Break(.., Some(break_expr)) = &expr.kind;
-                    then {
-                            lint(cx, expr.span, break_expr.span, LINT_BREAK);
+            lint_implicit_returns(cx, else_expr, ctxt, call_site_span).still_parent(call_site_span.is_some())
+        },
+
+        ExprKind::Match(_, arms, _) => {
+            for arm in arms {
+                let res = lint_implicit_returns(
+                    cx,
+                    arm.body,
+                    ctxt,
+                    call_site_span.or_else(|| get_call_site(arm.body.span, ctxt)),
+                )
+                .still_parent(call_site_span.is_some());
+                if res.is_parent() {
+                    // The return was added as a parent of this match expression.
+                    return res;
+                }
+            }
+            LintLocation::Inner
+        },
+
+        ExprKind::Loop(block, ..) => {
+            let mut add_return = false;
+            visit_break_exprs(block, |break_expr, dest, sub_expr| {
+                if dest.target_id.ok() == Some(expr.hir_id) {
+                    if call_site_span.is_none() && break_expr.span.ctxt() == ctxt {
+                        lint_break(cx, break_expr.span, sub_expr.unwrap().span);
+                    } else {
+                        // the break expression is from a macro call, add a return to the loop
+                        add_return = true;
                     }
                 }
-            }
-        },
-        // use `return` instead of `break`
-        ExprKind::Break(.., break_expr) => {
-            if let Some(break_expr) = break_expr {
-                lint(cx, expr.span, break_expr.span, LINT_BREAK);
-            }
-        },
-        ExprKind::If(.., if_expr, else_expr) => {
-            expr_match(cx, if_expr);
-
-            if let Some(else_expr) = else_expr {
-                expr_match(cx, else_expr);
-            }
-        },
-        ExprKind::Match(.., arms, source) => {
-            let check_all_arms = match source {
-                MatchSource::IfLetDesugar {
-                    contains_else_clause: has_else,
-                } => has_else,
-                _ => true,
-            };
-
-            if check_all_arms {
-                for arm in arms {
-                    expr_match(cx, arm.body);
+            });
+            if add_return {
+                #[allow(clippy::option_if_let_else)]
+                if let Some(span) = call_site_span {
+                    lint_return(cx, span);
+                    LintLocation::Parent
+                } else {
+                    lint_return(cx, expr.span);
+                    LintLocation::Inner
                 }
             } else {
-                expr_match(cx, arms.first().expect("`if let` doesn't have a single arm").body);
+                LintLocation::Inner
             }
         },
-        // skip if it already has a return statement
-        ExprKind::Ret(..) => (),
-        // make sure it's not a call that panics
-        ExprKind::Call(expr, ..) => {
-            if_chain! {
-                if let ExprKind::Path(qpath) = &expr.kind;
-                if let Some(path_def_id) = cx.qpath_res(qpath, expr.hir_id).opt_def_id();
-                if match_panic_def_id(cx, path_def_id);
-                then { }
-                else {
-                    lint(cx, expr.span, expr.span, LINT_RETURN)
-                }
+
+        // If expressions without an else clause, and blocks without a final expression can only be the final expression
+        // if they are divergent, or return the unit type.
+        ExprKind::If(_, _, None) | ExprKind::Block(Block { expr: None, .. }, _) | ExprKind::Ret(_) => {
+            LintLocation::Inner
+        },
+
+        // Any divergent expression doesn't need a return statement.
+        ExprKind::MethodCall(..)
+        | ExprKind::Call(..)
+        | ExprKind::Binary(..)
+        | ExprKind::Unary(..)
+        | ExprKind::Index(..)
+            if cx.typeck_results().expr_ty(expr).is_never() =>
+        {
+            LintLocation::Inner
+        },
+
+        _ =>
+        {
+            #[allow(clippy::option_if_let_else)]
+            if let Some(span) = call_site_span {
+                lint_return(cx, span);
+                LintLocation::Parent
+            } else {
+                lint_return(cx, expr.span);
+                LintLocation::Inner
             }
         },
-        // everything else is missing `return`
-        _ => lint(cx, expr.span, expr.span, LINT_RETURN),
     }
 }
 
@@ -129,19 +203,32 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
-        _: FnKind<'tcx>,
-        _: &'tcx FnDecl<'_>,
+        kind: FnKind<'tcx>,
+        decl: &'tcx FnDecl<'_>,
         body: &'tcx Body<'_>,
         span: Span,
         _: HirId,
     ) {
-        if span.from_expansion() {
+        if (!matches!(kind, FnKind::Closure) && matches!(decl.output, FnRetTy::DefaultReturn(_)))
+            || span.ctxt() != body.value.span.ctxt()
+            || in_external_macro(cx.sess(), span)
+        {
             return;
         }
-        let body = cx.tcx.hir().body(body.id());
-        if cx.typeck_results().expr_ty(&body.value).is_unit() {
+
+        let res_ty = cx.typeck_results().expr_ty(&body.value);
+        if res_ty.is_unit() || res_ty.is_never() {
             return;
         }
-        expr_match(cx, &body.value);
+
+        let expr = if is_async_fn(kind) {
+            match get_async_fn_body(cx.tcx, body) {
+                Some(e) => e,
+                None => return,
+            }
+        } else {
+            &body.value
+        };
+        lint_implicit_returns(cx, expr, expr.span.ctxt(), None);
     }
 }

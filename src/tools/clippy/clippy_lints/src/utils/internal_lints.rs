@@ -32,6 +32,9 @@ use rustc_typeck::hir_ty_to_ty;
 
 use std::borrow::{Borrow, Cow};
 
+#[cfg(feature = "metadata-collector-lint")]
+pub mod metadata_collector;
+
 declare_clippy_lint! {
     /// **What it does:** Checks for various things we like to keep tidy in clippy.
     ///
