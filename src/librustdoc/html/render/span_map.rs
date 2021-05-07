@@ -183,20 +183,13 @@ impl Visitor<'tcx> for SpanMapVisitor<'tcx> {
                         hir.maybe_body_owned_by(body_id).expect("a body which isn't a body"),
                     );
                     if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                        match hir.span_if_local(def_id) {
-                            Some(span) => {
-                                self.matches.insert(
-                                    LightSpan::new_from_span(method_span),
-                                    LinkFromSrc::Local(clean::Span::new(span)),
-                                );
-                            }
-                            None => {
-                                self.matches.insert(
-                                    LightSpan::new_from_span(method_span),
-                                    LinkFromSrc::External(def_id),
-                                );
-                            }
-                        }
+                        self.matches.insert(
+                            LightSpan::new_from_span(method_span),
+                            match hir.span_if_local(def_id) {
+                                Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
+                                None => LinkFromSrc::External(def_id),
+                            },
+                        );
                     }
                 }
             }

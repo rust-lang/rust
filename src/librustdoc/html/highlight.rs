@@ -573,24 +573,20 @@ fn string<T: Display>(
             });
         }
         if let Some(context_info) = context_info {
-            if let Some(href) = context_info
-                .context
-                .shared
-                .span_correspondance_map
-                .get(&def_span)
-                .and_then(|href| {
-                    let context = context_info.context;
-                    match href {
-                        LinkFromSrc::Local(span) => {
-                            context
+            if let Some(href) =
+                context_info.context.shared.span_correspondance_map.get(&def_span).and_then(
+                    |href| {
+                        let context = context_info.context;
+                        match href {
+                            LinkFromSrc::Local(span) => context
                                 .href_from_span(*span)
-                                .map(|s| format!("{}{}", context_info.root_path, s))
+                                .map(|s| format!("{}{}", context_info.root_path, s)),
+                            LinkFromSrc::External(def_id) => {
+                                format::href(*def_id, context).map(|(url, _, _)| url)
+                            }
                         }
-                        LinkFromSrc::External(def_id) => {
-                            format::href(*def_id, context).map(|(url, _, _)| url)
-                        }
-                    }
-                })
+                    },
+                )
             {
                 write!(out, "<a class=\"{}\" href=\"{}\">{}</a>", klass.as_html(), href, text);
                 return;
