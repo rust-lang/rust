@@ -252,7 +252,7 @@ checksum = "81a18687293a1546b67c246452202bbbf143d239cb43494cc163da14979082da"
 
 [[package]]
 name = "cargo"
-version = "0.54.0"
+version = "0.55.0"
 dependencies = [
  "anyhow",
  "atty",
