@@ -180,7 +180,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 fn default_hook(info: &PanicInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    let backtrace_env = if panic_count::get() >= 2 {
+    let backtrace_env = if panic_count::get_count() >= 2 {
         RustBacktrace::Print(crate::backtrace_rs::PrintFmt::Full)
     } else {
         backtrace::rust_backtrace_env()
@@ -233,6 +233,8 @@ pub mod panic_count {
     use crate::cell::Cell;
     use crate::sync::atomic::{AtomicUsize, Ordering};
 
+    pub const ALWAYS_ABORT_FLAG: usize = 1 << (usize::BITS - 1);
+
     // Panic count for the current thread.
     thread_local! { static LOCAL_PANIC_COUNT: Cell<usize> = Cell::new(0) }
 
@@ -241,33 +243,53 @@ pub mod panic_count {
     // thread, if that thread currently views `GLOBAL_PANIC_COUNT` as being zero,
     // then `LOCAL_PANIC_COUNT` in that thread is zero. This invariant holds before
     // and after increase and decrease, but not necessarily during their execution.
+    //
+    // Additionally, the top bit of GLOBAL_PANIC_COUNT (GLOBAL_ALWAYS_ABORT_FLAG)
+    // records whether panic::always_abort() has been called.  This can only be
+    // set, never cleared.
+    //
+    // This could be viewed as a struct containing a single bit and an n-1-bit
+    // value, but if we wrote it like that it would be more than a single word,
+    // and even a newtype around usize would be clumsy because we need atomics.
+    // But we use such a tuple for the return type of increase().
+    //
+    // Stealing a bit is fine because it just amounts to assuming that each
+    // panicking thread consumes at least 2 bytes of address space.
     static GLOBAL_PANIC_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-    pub fn increase() -> usize {
-        GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed);
-        LOCAL_PANIC_COUNT.with(|c| {
-            let next = c.get() + 1;
-            c.set(next);
-            next
-        })
+    pub fn increase() -> (bool, usize) {
+        (
+            GLOBAL_PANIC_COUNT.fetch_add(1, Ordering::Relaxed) & ALWAYS_ABORT_FLAG != 0,
+            LOCAL_PANIC_COUNT.with(|c| {
+                let next = c.get() + 1;
+                c.set(next);
+                next
+            }),
+        )
     }
 
-    pub fn decrease() -> usize {
+    pub fn decrease() {
         GLOBAL_PANIC_COUNT.fetch_sub(1, Ordering::Relaxed);
         LOCAL_PANIC_COUNT.with(|c| {
             let next = c.get() - 1;
             c.set(next);
             next
-        })
+        });
     }
 
-    pub fn get() -> usize {
+    pub fn set_always_abort() {
+        GLOBAL_PANIC_COUNT.fetch_or(ALWAYS_ABORT_FLAG, Ordering::Relaxed);
+    }
+
+    // Disregards ALWAYS_ABORT_FLAG
+    pub fn get_count() -> usize {
         LOCAL_PANIC_COUNT.with(|c| c.get())
     }
 
+    // Disregards ALWAYS_ABORT_FLAG
     #[inline]
-    pub fn is_zero() -> bool {
-        if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) == 0 {
+    pub fn count_is_zero() -> bool {
+        if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) & !ALWAYS_ABORT_FLAG == 0 {
             // Fast path: if `GLOBAL_PANIC_COUNT` is zero, all threads
             // (including the current one) will have `LOCAL_PANIC_COUNT`
             // equal to zero, so TLS access can be avoided.
@@ -410,7 +432,7 @@ pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>>
 /// Determines whether the current thread is unwinding because of panic.
 #[inline]
 pub fn panicking() -> bool {
-    !panic_count::is_zero()
+    !panic_count::count_is_zero()
 }
 
 /// The entry point for panicking with a formatted message.
@@ -563,15 +585,27 @@ fn rust_panic_with_hook(
     message: Option<&fmt::Arguments<'_>>,
     location: &Location<'_>,
 ) -> ! {
-    let panics = panic_count::increase();
+    let (must_abort, panics) = panic_count::increase();
 
     // If this is the third nested call (e.g., panics == 2, this is 0-indexed),
     // the panic hook probably triggered the last panic, otherwise the
     // double-panic check would have aborted the process. In this case abort the
     // process real quickly as we don't want to try calling it again as it'll
     // probably just panic again.
-    if panics > 2 {
-        util::dumb_print(format_args!("thread panicked while processing panic. aborting.\n"));
+    if must_abort || panics > 2 {
+        if panics > 2 {
+            // Don't try to print the message in this case
+            // - perhaps that is causing the recursive panics.
+            util::dumb_print(format_args!("thread panicked while processing panic. aborting.\n"));
+        } else {
+            // Unfortunately, this does not print a backtrace, because creating
+            // a `Backtrace` will allocate, which we must to avoid here.
+            let panicinfo = PanicInfo::internal_constructor(message, location);
+            util::dumb_print(format_args!(
+                "{}\npanicked after panic::always_abort(), aborting.\n",
+                panicinfo
+            ));
+        }
         intrinsics::abort()
     }
 

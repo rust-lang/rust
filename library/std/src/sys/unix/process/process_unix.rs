@@ -54,6 +54,7 @@ impl Command {
         let (env_lock, pid) = unsafe { (sys::os::env_read_lock(), cvt(libc::fork())?) };
 
         if pid == 0 {
+            crate::panic::always_abort();
             mem::forget(env_lock);
             drop(input);
             let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
