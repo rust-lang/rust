@@ -296,7 +296,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     let import_item = clean::Item {
                         def_id: import_def_id.into(),
                         attrs: import_attrs,
-                        cfg: ast_attrs.cfg(cx.tcx().sess.diagnostic()),
+                        cfg: ast_attrs.cfg(cx.sess()),
                         ..myitem.clone()
                     };
 

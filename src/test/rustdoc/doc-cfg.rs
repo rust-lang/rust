@@ -91,3 +91,11 @@ pub unsafe fn uses_target_feature() {
 pub fn uses_cfg_target_feature() {
     uses_target_feature();
 }
+
+// multiple attributes should be allowed
+// @has doc_cfg/fn.multiple_attrs.html \
+//  '//*[@id="main"]/*[@class="item-info"]/*[@class="stab portability"]' \
+//  'This is supported on x and y and z only.'
+#[doc(inline, cfg(x))]
+#[doc(cfg(y), cfg(z))]
+pub fn multiple_attrs() {}
