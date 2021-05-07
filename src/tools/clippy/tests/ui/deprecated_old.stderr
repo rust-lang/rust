@@ -18,11 +18,5 @@ error: lint `misaligned_transmute` has been removed: this lint has been split in
 LL | #[warn(misaligned_transmute)]
    |        ^^^^^^^^^^^^^^^^^^^^
 
-error: lint `unstable_as_slice` has been removed: `Vec::as_slice` has been stabilized in 1.7
-  --> $DIR/deprecated_old.rs:1:8
-   |
-LL | #[warn(unstable_as_slice)]
-   |        ^^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
