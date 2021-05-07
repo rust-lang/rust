@@ -31,7 +31,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         error: TypeError<'tcx>,
     ) {
-        info!(?expr, ?expr_ty, ?expected, ?expected_ty_expr);
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
@@ -166,8 +165,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: TypeError<'_>,
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-        let x = self.tcx.hir().find(parent);
-        info!(?parent, ?x);
         match (self.tcx.hir().find(parent), error) {
             (Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })), _)
                 if init.hir_id == expr.hir_id =>
@@ -176,11 +173,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(ty.span, "expected due to this");
             }
             (
-                Some(hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(l, r, _), .. })),
+                Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
+                })),
                 TypeError::Sorts(_),
-            ) if r.hir_id == expr.hir_id => {
+            ) if rhs.hir_id == expr.hir_id => {
                 // Point at the assigned-to binding.
-                err.span_label(l.span, "expected due to this");
+                err.span_label(lhs.span, "expected due to this");
+                if !lhs.is_syntactic_place_expr() {
+                    // We already emitted E0070 "invalid left-hand side of assignment", so we
+                    // silence this.
+                    err.delay_as_bug();
+                }
             }
             _ => {}
         }
