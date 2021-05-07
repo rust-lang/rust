@@ -166,8 +166,13 @@
 #![feature(const_caller_location)]
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
+#![cfg_attr(not(bootstrap), feature(no_coverage))] // rust-lang/rust#84605
 #![feature(int_error_matching)]
 #![deny(unsafe_op_in_unsafe_fn)]
+
+// allow using `core::` in intra-doc links
+#[allow(unused_extern_crates)]
+extern crate self as core;
 
 #[prelude_import]
 #[allow(unused)]

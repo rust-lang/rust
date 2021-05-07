@@ -723,7 +723,7 @@ extern "rust-intrinsic" {
     /// macro, which panics when it is executed, it is *undefined behavior* to
     /// reach code marked with this function.
     ///
-    /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`](crate::hint::unreachable_unchecked).
+    /// The stabilized version of this intrinsic is [`core::hint::unreachable_unchecked`].
     #[rustc_const_unstable(feature = "const_unreachable_unchecked", issue = "53188")]
     pub fn unreachable() -> !;
 
@@ -768,13 +768,13 @@ extern "rust-intrinsic" {
     /// More specifically, this is the offset in bytes between successive
     /// items of the same type, including alignment padding.
     ///
-    /// The stabilized version of this intrinsic is [`core::mem::size_of`](crate::mem::size_of).
+    /// The stabilized version of this intrinsic is [`core::mem::size_of`].
     #[rustc_const_stable(feature = "const_size_of", since = "1.40.0")]
     pub fn size_of<T>() -> usize;
 
     /// The minimum alignment of a type.
     ///
-    /// The stabilized version of this intrinsic is [`core::mem::align_of`](crate::mem::align_of).
+    /// The stabilized version of this intrinsic is [`core::mem::align_of`].
     #[rustc_const_stable(feature = "const_min_align_of", since = "1.40.0")]
     pub fn min_align_of<T>() -> usize;
     /// The preferred alignment of a type.
@@ -790,13 +790,13 @@ extern "rust-intrinsic" {
     pub fn size_of_val<T: ?Sized>(_: *const T) -> usize;
     /// The required alignment of the referenced value.
     ///
-    /// The stabilized version of this intrinsic is [`core::mem::align_of_val`](crate::mem::align_of_val).
+    /// The stabilized version of this intrinsic is [`core::mem::align_of_val`].
     #[rustc_const_unstable(feature = "const_align_of_val", issue = "46571")]
     pub fn min_align_of_val<T: ?Sized>(_: *const T) -> usize;
 
     /// Gets a static string slice containing the name of a type.
     ///
-    /// The stabilized version of this intrinsic is [`core::any::type_name`](crate::any::type_name).
+    /// The stabilized version of this intrinsic is [`core::any::type_name`].
     #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
@@ -804,7 +804,7 @@ extern "rust-intrinsic" {
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
     ///
-    /// The stabilized version of this intrinsic is [`core::any::TypeId::of`](crate::any::TypeId::of).
+    /// The stabilized version of this intrinsic is [`core::any::TypeId::of`].
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
@@ -829,7 +829,7 @@ extern "rust-intrinsic" {
 
     /// Gets a reference to a static `Location` indicating where it was called.
     ///
-    /// Consider using [`core::panic::Location::caller`](crate::panic::Location::caller) instead.
+    /// Consider using [`core::panic::Location::caller`] instead.
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
@@ -1158,11 +1158,11 @@ extern "rust-intrinsic" {
 
     /// Performs a volatile load from the `src` pointer.
     ///
-    /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`](crate::ptr::read_volatile).
+    /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Performs a volatile store to the `dst` pointer.
     ///
-    /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`](crate::ptr::write_volatile).
+    /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
     pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Performs a volatile load from the `src` pointer
@@ -1703,7 +1703,7 @@ extern "rust-intrinsic" {
     /// Returns the value of the discriminant for the variant in 'v';
     /// if `T` has no discriminant, returns `0`.
     ///
-    /// The stabilized version of this intrinsic is [`core::mem::discriminant`](crate::mem::discriminant).
+    /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
     #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
 
