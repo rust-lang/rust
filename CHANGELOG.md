@@ -8,7 +8,7 @@ document.
 
 [7c7683c...master](https://github.com/rust-lang/rust-clippy/compare/7c7683c...master)
 
-## Rust 1.52
+## Rust 1.53
 
 Current beta, release 2021-06-17
 
