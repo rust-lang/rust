@@ -10,6 +10,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeAndMut};
 use rustc_span::symbol::sym;
@@ -28,8 +29,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        error: TypeError<'tcx>,
     ) {
-        self.annotate_expected_due_to_let_ty(err, expr);
+        info!(?expr, ?expr_ty, ?expected, ?expected_ty_expr);
+        self.annotate_expected_due_to_let_ty(err, expr, error);
         self.suggest_compatible_variants(err, expr, expected, expr_ty);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
         if self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty) {
@@ -143,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
-        let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
+        let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e.clone());
 
         if self.is_assign_to_bool(expr, expected) {
             // Error reported in `check_assign` so avoid emitting error again.
@@ -151,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return (expected, None);
         }
 
-        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr);
+        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, e);
 
         (expected, Some(err))
     }
@@ -160,15 +163,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr<'_>,
+        error: TypeError<'_>,
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-        if let Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })) =
-            self.tcx.hir().find(parent)
-        {
-            if init.hir_id == expr.hir_id {
+        let x = self.tcx.hir().find(parent);
+        info!(?parent, ?x);
+        match (self.tcx.hir().find(parent), error) {
+            (Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })), _)
+                if init.hir_id == expr.hir_id =>
+            {
                 // Point at `let` assignment type.
                 err.span_label(ty.span, "expected due to this");
             }
+            (
+                Some(hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(l, r, _), .. })),
+                TypeError::Sorts(_),
+            ) if r.hir_id == expr.hir_id => {
+                // Point at the assigned-to binding.
+                err.span_label(l.span, "expected due to this");
+            }
+            _ => {}
         }
     }
 

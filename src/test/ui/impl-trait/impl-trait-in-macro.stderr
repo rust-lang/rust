@@ -8,7 +8,9 @@ LL |     ($($tr:tt)*) => { impl $($tr)* };
    |                       found type parameter
 ...
 LL |     a = y;
-   |         ^ expected type parameter `impl Debug`, found a different type parameter `impl Debug`
+   |     -   ^ expected type parameter `impl Debug`, found a different type parameter `impl Debug`
+   |     |
+   |     expected due to this
    |
    = note: expected type parameter `impl Debug` (type parameter `impl Debug`)
               found type parameter `impl Debug` (type parameter `impl Debug`)

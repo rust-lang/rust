@@ -1376,7 +1376,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             cause,
                             expected,
                             found,
-                            coercion_error,
+                            coercion_error.clone(),
                             fcx,
                             parent_id,
                             expression.map(|expr| (expr, blk_id)),
@@ -1390,7 +1390,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             cause,
                             expected,
                             found,
-                            coercion_error,
+                            coercion_error.clone(),
                             fcx,
                             id,
                             None,
@@ -1401,7 +1401,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         }
                     }
                     _ => {
-                        err = fcx.report_mismatched_types(cause, expected, found, coercion_error);
+                        err = fcx.report_mismatched_types(
+                            cause,
+                            expected,
+                            found,
+                            coercion_error.clone(),
+                        );
                     }
                 }
 
@@ -1410,7 +1415,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 }
 
                 if let Some(expr) = expression {
-                    fcx.emit_coerce_suggestions(&mut err, expr, found, expected, None);
+                    fcx.emit_coerce_suggestions(
+                        &mut err,
+                        expr,
+                        found,
+                        expected,
+                        None,
+                        coercion_error,
+                    );
                 }
 
                 // Error possibly reported in `check_assign` so avoid emitting error again.
