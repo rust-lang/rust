@@ -464,31 +464,9 @@ impl<'a> StripUnconfigured<'a> {
                     return true;
                 }
             };
-            let error = |span, msg, suggestion: &str| {
-                let mut err = self.sess.parse_sess.span_diagnostic.struct_span_err(span, msg);
-                if !suggestion.is_empty() {
-                    err.span_suggestion(
-                        span,
-                        "expected syntax is",
-                        suggestion.into(),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                err.emit();
-                true
-            };
-            let span = meta_item.span;
-            match meta_item.meta_item_list() {
-                None => error(span, "`cfg` is not followed by parentheses", "cfg(/* predicate */)"),
-                Some([]) => error(span, "`cfg` predicate is not specified", ""),
-                Some([_, .., l]) => error(l.span(), "multiple `cfg` predicates are specified", ""),
-                Some([single]) => match single.meta_item() {
-                    Some(meta_item) => {
-                        attr::cfg_matches(meta_item, &self.sess.parse_sess, self.features)
-                    }
-                    None => error(single.span(), "`cfg` predicate key cannot be a literal", ""),
-                },
-            }
+            parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
+                attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.features)
+            })
         })
     }
 
@@ -529,6 +507,32 @@ impl<'a> StripUnconfigured<'a> {
 
         self.process_cfg_attrs(expr);
         self.try_configure_tokens(&mut *expr);
+    }
+}
+
+pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItem> {
+    let error = |span, msg, suggestion: &str| {
+        let mut err = sess.parse_sess.span_diagnostic.struct_span_err(span, msg);
+        if !suggestion.is_empty() {
+            err.span_suggestion(
+                span,
+                "expected syntax is",
+                suggestion.into(),
+                Applicability::HasPlaceholders,
+            );
+        }
+        err.emit();
+        None
+    };
+    let span = meta_item.span;
+    match meta_item.meta_item_list() {
+        None => error(span, "`cfg` is not followed by parentheses", "cfg(/* predicate */)"),
+        Some([]) => error(span, "`cfg` predicate is not specified", ""),
+        Some([_, .., l]) => error(l.span(), "multiple `cfg` predicates are specified", ""),
+        Some([single]) => match single.meta_item() {
+            Some(meta_item) => Some(meta_item),
+            None => error(single.span(), "`cfg` predicate key cannot be a literal", ""),
+        },
     }
 }
 
