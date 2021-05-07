@@ -11,8 +11,27 @@
    11|       |    println!("called but not covered");
    12|       |}
    13|       |
-   14|      1|fn main() {
-   15|      1|    do_not_add_coverage_1();
-   16|      1|    do_not_add_coverage_2();
-   17|      1|}
+   14|       |#[no_coverage]
+   15|       |fn do_not_add_coverage_not_called() {
+   16|       |    println!("not called and not covered");
+   17|       |}
+   18|       |
+   19|      1|fn add_coverage_1() {
+   20|      1|    println!("called and covered");
+   21|      1|}
+   22|       |
+   23|      1|fn add_coverage_2() {
+   24|      1|    println!("called and covered");
+   25|      1|}
+   26|       |
+   27|      0|fn add_coverage_not_called() {
+   28|      0|    println!("not called but covered");
+   29|      0|}
+   30|       |
+   31|      1|fn main() {
+   32|      1|    do_not_add_coverage_1();
+   33|      1|    do_not_add_coverage_2();
+   34|      1|    add_coverage_1();
+   35|      1|    add_coverage_2();
+   36|      1|}
 

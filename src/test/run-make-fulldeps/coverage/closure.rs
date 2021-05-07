@@ -130,14 +130,14 @@ fn main() {
     let mut countdown = 10;
     let _short_unused_closure = | _unused_arg: u8 | countdown += 1;
 
-    // Macros can sometimes confuse the coverage results. Compare this next assignment, with an
-    // unused closure that invokes the `println!()` macro, with the closure assignment above, that
-    // does not use a macro. The closure above correctly shows `0` executions.
-    let _short_unused_closure = | _unused_arg: u8 | println!("not called");
-    // The closure assignment above is executed, with a line count of `1`, but the `println!()`
-    // could not have been called, and yet, there is no indication that it wasn't...
 
-    // ...but adding block braces gives the expected result, showing the block was not executed.
+    let short_used_covered_closure_macro = | used_arg: u8 | println!("called");
+    let short_used_not_covered_closure_macro = | used_arg: u8 | println!("not called");
+    let _short_unused_closure_macro = | _unused_arg: u8 | println!("not called");
+
+
+
+
     let _short_unused_closure_block = | _unused_arg: u8 | { println!("not called") };
 
     let _shortish_unused_closure = | _unused_arg: u8 | {
@@ -152,4 +152,64 @@ fn main() {
         _unused_arg: u8
     | { println!("not called") }
     ;
+
+
+
+
+
+    let _short_unused_closure_line_break_no_block = | _unused_arg: u8 |
+println!("not called")
+    ;
+
+    let _short_unused_closure_line_break_no_block2 =
+        | _unused_arg: u8 |
+            println!(
+                "not called"
+            )
+    ;
+
+    let short_used_not_covered_closure_line_break_no_block_embedded_branch =
+        | _unused_arg: u8 |
+            println!(
+                "not called: {}",
+                if is_true { "check" } else { "me" }
+            )
+    ;
+
+    let short_used_not_covered_closure_line_break_block_embedded_branch =
+        | _unused_arg: u8 |
+        {
+            println!(
+                "not called: {}",
+                if is_true { "check" } else { "me" }
+            )
+        }
+    ;
+
+    let short_used_covered_closure_line_break_no_block_embedded_branch =
+        | _unused_arg: u8 |
+            println!(
+                "not called: {}",
+                if is_true { "check" } else { "me" }
+            )
+    ;
+
+    let short_used_covered_closure_line_break_block_embedded_branch =
+        | _unused_arg: u8 |
+        {
+            println!(
+                "not called: {}",
+                if is_true { "check" } else { "me" }
+            )
+        }
+    ;
+
+    if is_false {
+        short_used_not_covered_closure_macro(0);
+        short_used_not_covered_closure_line_break_no_block_embedded_branch(0);
+        short_used_not_covered_closure_line_break_block_embedded_branch(0);
+    }
+    short_used_covered_closure_macro(0);
+    short_used_covered_closure_line_break_no_block_embedded_branch(0);
+    short_used_covered_closure_line_break_block_embedded_branch(0);
 }

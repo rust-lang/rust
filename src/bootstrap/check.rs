@@ -280,7 +280,7 @@ impl Step for CodegenBackend {
 }
 
 macro_rules! tool_check_step {
-    ($name:ident, $path:literal, $($alias:literal, )* $source_type:path) => {
+    ($name:ident, $path:literal, $($alias:literal, )* $source_type:path $(, $default:literal )?) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
             pub target: TargetSelection,
@@ -289,7 +289,7 @@ macro_rules! tool_check_step {
         impl Step for $name {
             type Output = ();
             const ONLY_HOSTS: bool = true;
-            const DEFAULT: bool = true;
+            const DEFAULT: bool = true $( && $default )?;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.paths(&[ $path, $($alias),* ])
@@ -368,7 +368,7 @@ tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InT
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
 
-tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree);
+tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.

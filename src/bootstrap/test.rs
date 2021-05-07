@@ -183,6 +183,7 @@ impl Step for Cargotest {
             builder,
             cmd.arg(&cargo)
                 .arg(&out_dir)
+                .args(builder.config.cmd.test_args())
                 .env("RUSTC", builder.rustc(compiler))
                 .env("RUSTDOC", builder.rustdoc(compiler)),
         );
@@ -830,6 +831,7 @@ impl Step for RustdocGUI {
             command.arg("src/test/rustdoc-gui/lib.rs").arg("-o").arg(&out_dir);
             builder.run(&mut command);
 
+            let mut tests = Vec::new();
             for file in fs::read_dir("src/test/rustdoc-gui").unwrap() {
                 let file = file.unwrap();
                 let file_path = file.path();
@@ -838,13 +840,17 @@ impl Step for RustdocGUI {
                 if !file_name.to_str().unwrap().ends_with(".goml") {
                     continue;
                 }
+                tests.push(file_path);
+            }
+            tests.sort_unstable();
+            for test in tests {
                 let mut command = Command::new(&nodejs);
                 command
                     .arg("src/tools/rustdoc-gui/tester.js")
                     .arg("--doc-folder")
                     .arg(out_dir.join("test_docs"))
                     .arg("--test-file")
-                    .arg(file_path);
+                    .arg(test);
                 builder.run(&mut command);
             }
         } else {
