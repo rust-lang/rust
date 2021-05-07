@@ -183,6 +183,7 @@ impl Step for Cargotest {
             builder,
             cmd.arg(&cargo)
                 .arg(&out_dir)
+                .args(builder.config.cmd.test_args())
                 .env("RUSTC", builder.rustc(compiler))
                 .env("RUSTDOC", builder.rustdoc(compiler)),
         );
