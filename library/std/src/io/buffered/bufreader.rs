@@ -170,6 +170,7 @@ impl<R> BufReader<R> {
     /// ```
     #[stable(feature = "bufreader_buffer", since = "1.37.0")]
     pub fn buffer(&self) -> &[u8] {
+        // SAFETY: self.cap is always <= self.init, so self.buf[self.pos..self.cap] is always init
         unsafe { MaybeUninit::slice_assume_init_ref(&self.buf[self.pos..self.cap]) }
     }
 
@@ -392,8 +393,7 @@ impl<R: Read> BufRead for BufReader<R> {
 
             self.pos = 0;
         }
-        // SAFETY: self.cap is always <= self.init, so self.buf[self.pos..self.cap] is always init
-        unsafe { Ok(MaybeUninit::slice_assume_init_ref(&self.buf[self.pos..self.cap])) }
+        Ok(self.buffer())
     }
 
     fn consume(&mut self, amt: usize) {
