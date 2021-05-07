@@ -37,6 +37,7 @@ fn exitstatus_display_tests() {
 }
 
 #[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn test_command_fork_no_unwind() {
     let got = catch_unwind(|| {
         let mut c = Command::new("echo");
