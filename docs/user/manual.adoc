@@ -6,8 +6,6 @@
 :source-highlighter: rouge
 :experimental:
 
-// Master copy of this document lives in the https://github.com/rust-analyzer/rust-analyzer repository
-
 At its core, rust-analyzer is a *library* for semantic analysis of Rust code as it changes over time.
 This manual focuses on a specific usage of the library -- running it as part of a server that implements the
 https://microsoft.github.io/language-server-protocol/[Language Server Protocol] (LSP).
