@@ -13,7 +13,7 @@ use tt::SmolStr;
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;
 
-/// Configuration options used for conditional compilition on items with `cfg` attributes.
+/// Configuration options used for conditional compilation on items with `cfg` attributes.
 /// We have two kind of options in different namespaces: atomic options like `unix`, and
 /// key-value options like `target_arch="x86"`.
 ///
