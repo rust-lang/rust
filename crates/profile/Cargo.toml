@@ -15,7 +15,7 @@ cfg-if = "1"
 libc = "0.2.73"
 la-arena = { version = "0.2.0", path = "../../lib/arena" }
 countme = { version = "2.0.1", features = ["enable"] }
-jemalloc-ctl = { version = "0.3.3", optional = true }
+jemalloc-ctl = { version = "0.4.1", package = "tikv-jemalloc-ctl", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 perf-event = "0.4"
