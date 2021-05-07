@@ -51,16 +51,23 @@ fn rev() -> String {
 }
 
 fn commit_hash() -> Option<String> {
-    output_to_string("git rev-parse --short HEAD")
+    exec("git rev-parse --short HEAD").ok()
 }
 
 fn build_date() -> Option<String> {
-    output_to_string("date -u +%Y-%m-%d")
+    exec("date -u +%Y-%m-%d").ok()
 }
 
-fn output_to_string(command: &str) -> Option<String> {
+fn exec(command: &str) -> std::io::Result<String> {
     let args = command.split_ascii_whitespace().collect::<Vec<_>>();
-    let output = Command::new(args[0]).args(&args[1..]).output().ok()?;
-    let stdout = String::from_utf8(output.stdout).ok()?;
-    Some(stdout.trim().to_string())
+    let output = Command::new(args[0]).args(&args[1..]).output()?;
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("command {:?} returned non-zero code", command,),
+        ));
+    }
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
+    Ok(stdout.trim().to_string())
 }
