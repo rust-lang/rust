@@ -313,7 +313,8 @@ impl<'a> CompletionContext<'a> {
                         cov_mark::hit!(expected_type_let_with_leading_char);
                         cov_mark::hit!(expected_type_let_without_leading_char);
                         let ty = it.pat()
-                            .and_then(|pat| self.sema.type_of_pat(&pat));
+                            .and_then(|pat| self.sema.type_of_pat(&pat))
+                            .or_else(|| it.initializer().and_then(|it| self.sema.type_of_expr(&it)));
                         let name = if let Some(ast::Pat::IdentPat(ident)) = it.pat() {
                             ident.name().map(NameOrNameRef::Name)
                         } else {
@@ -716,6 +717,26 @@ fn foo() {
 }
 "#,
             expect![[r#"ty: u32, name: x"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_let_pat() {
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    let x$0 = 0u32;
+}
+"#,
+            expect![[r#"ty: u32, name: ?"#]],
+        );
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    let $0 = 0u32;
+}
+"#,
+            expect![[r#"ty: u32, name: ?"#]],
         );
     }
 
