@@ -10,7 +10,6 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo::SyntaxRewriter,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
@@ -1362,7 +1361,8 @@ fn rewrite_body_segment(
     syntax: &SyntaxNode,
 ) -> SyntaxNode {
     let syntax = fix_param_usages(ctx, params, syntax);
-    update_external_control_flow(handler, &syntax)
+    update_external_control_flow(handler, &syntax);
+    syntax
 }
 
 /// change all usages to account for added `&`/`&mut` for some params
@@ -1415,75 +1415,65 @@ fn fix_param_usages(ctx: &AssistContext, params: &[Param], syntax: &SyntaxNode) 
     res
 }
 
-fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) -> SyntaxNode {
-    let mut rewriter = SyntaxRewriter::default();
-
+fn update_external_control_flow(handler: &FlowHandler, syntax: &SyntaxNode) {
     let mut nested_loop = None;
     let mut nested_scope = None;
     for event in syntax.preorder() {
-        let node = match event {
-            WalkEvent::Enter(e) => {
-                match e.kind() {
-                    SyntaxKind::LOOP_EXPR | SyntaxKind::WHILE_EXPR | SyntaxKind::FOR_EXPR => {
-                        if nested_loop.is_none() {
-                            nested_loop = Some(e.clone());
-                        }
+        match event {
+            WalkEvent::Enter(e) => match e.kind() {
+                SyntaxKind::LOOP_EXPR | SyntaxKind::WHILE_EXPR | SyntaxKind::FOR_EXPR => {
+                    if nested_loop.is_none() {
+                        nested_loop = Some(e.clone());
                     }
-                    SyntaxKind::FN
-                    | SyntaxKind::CONST
-                    | SyntaxKind::STATIC
-                    | SyntaxKind::IMPL
-                    | SyntaxKind::MODULE => {
-                        if nested_scope.is_none() {
-                            nested_scope = Some(e.clone());
-                        }
-                    }
-                    _ => {}
                 }
-                e
-            }
+                SyntaxKind::FN
+                | SyntaxKind::CONST
+                | SyntaxKind::STATIC
+                | SyntaxKind::IMPL
+                | SyntaxKind::MODULE => {
+                    if nested_scope.is_none() {
+                        nested_scope = Some(e.clone());
+                    }
+                }
+                _ => {}
+            },
             WalkEvent::Leave(e) => {
+                if nested_scope.is_none() {
+                    if let Some(expr) = ast::Expr::cast(e.clone()) {
+                        match expr {
+                            ast::Expr::ReturnExpr(return_expr) if nested_scope.is_none() => {
+                                let expr = return_expr.expr();
+                                if let Some(replacement) = make_rewritten_flow(handler, expr) {
+                                    ted::replace(return_expr.syntax(), replacement.syntax())
+                                }
+                            }
+                            ast::Expr::BreakExpr(break_expr) if nested_loop.is_none() => {
+                                let expr = break_expr.expr();
+                                if let Some(replacement) = make_rewritten_flow(handler, expr) {
+                                    ted::replace(break_expr.syntax(), replacement.syntax())
+                                }
+                            }
+                            ast::Expr::ContinueExpr(continue_expr) if nested_loop.is_none() => {
+                                if let Some(replacement) = make_rewritten_flow(handler, None) {
+                                    ted::replace(continue_expr.syntax(), replacement.syntax())
+                                }
+                            }
+                            _ => {
+                                // do nothing
+                            }
+                        }
+                    }
+                }
+
                 if nested_loop.as_ref() == Some(&e) {
                     nested_loop = None;
                 }
                 if nested_scope.as_ref() == Some(&e) {
                     nested_scope = None;
                 }
-                continue;
             }
         };
-        if nested_scope.is_some() {
-            continue;
-        }
-        let expr = match ast::Expr::cast(node) {
-            Some(e) => e,
-            None => continue,
-        };
-        match expr {
-            ast::Expr::ReturnExpr(return_expr) if nested_scope.is_none() => {
-                let expr = return_expr.expr();
-                if let Some(replacement) = make_rewritten_flow(handler, expr) {
-                    rewriter.replace_ast(&return_expr.into(), &replacement);
-                }
-            }
-            ast::Expr::BreakExpr(break_expr) if nested_loop.is_none() => {
-                let expr = break_expr.expr();
-                if let Some(replacement) = make_rewritten_flow(handler, expr) {
-                    rewriter.replace_ast(&break_expr.into(), &replacement);
-                }
-            }
-            ast::Expr::ContinueExpr(continue_expr) if nested_loop.is_none() => {
-                if let Some(replacement) = make_rewritten_flow(handler, None) {
-                    rewriter.replace_ast(&continue_expr.into(), &replacement);
-                }
-            }
-            _ => {
-                // do nothing
-            }
-        }
     }
-
-    rewriter.rewrite(syntax)
 }
 
 fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Option<ast::Expr> {
@@ -1502,7 +1492,7 @@ fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Op
             make::expr_call(make::expr_path(make_path_from_text("Err")), args)
         }
     };
-    Some(make::expr_return(Some(value)))
+    Some(make::expr_return(Some(value)).clone_for_update())
 }
 
 #[cfg(test)]
