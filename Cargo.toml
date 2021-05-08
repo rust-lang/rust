@@ -2,6 +2,10 @@
 members = ["xtask/", "lib/*", "crates/*"]
 
 [profile.dev]
+# We do want incremental builds, but they are broken at the moment :(
+# https://github.com/rust-lang/rust/issues/85003#issuecomment-833796289
+incremental = false
+
 # Disabling debug info speeds up builds a bunch,
 # and we don't rely on it for debugging that much.
 debug = 0
@@ -20,6 +24,9 @@ miniz_oxide.opt-level = 3
 # https://github.com/rust-lang/rust/issues/85003#issuecomment-833796289
 incremental = false
 debug = 0 # Set this to 1 or 2 to get more useful backtraces in debugger.
+
+[profile.test]
+incremental = false
 
 [patch.'crates-io']
 # rowan = { path = "../rowan" }
