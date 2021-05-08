@@ -9,11 +9,11 @@ use once_cell::unsync::OnceCell;
 use rustc_hash::FxHashMap;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{db::HirDatabase, InferenceResult, Ty};
+use crate::{db::HirDatabase, InferenceResult, Interner, Ty};
 
 use super::{
     deconstruct_pat::{Constructor, Fields, SplitWildcard},
-    Pat, PatId, PatKind,
+    Pat, PatId, PatKind, PatternFoldable, PatternFolder,
 };
 
 use self::{
@@ -75,8 +75,18 @@ pub(super) struct PatCtxt<'a> {
 }
 
 pub(crate) fn expand_pattern(pat: Pat) -> Pat {
-    // TODO: LiteralExpander, it is about string literal patterns
-    pat
+    LiteralExpander.fold_pattern(&pat)
+}
+
+struct LiteralExpander;
+
+impl PatternFolder for LiteralExpander {
+    fn fold_pattern(&mut self, pat: &Pat) -> Pat {
+        match (pat.ty.kind(&Interner), pat.kind.as_ref()) {
+            (_, PatKind::Binding { subpattern: Some(s), .. }) => s.fold_with(self),
+            _ => pat.super_fold_with(self),
+        }
+    }
 }
 
 impl Pat {
