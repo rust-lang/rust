@@ -54,6 +54,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
+use crate::clean::utils::print_const_expr;
 use crate::clean::{self, FakeDefId, GetDefId, RenderedLink, SelfTy};
 use crate::docfs::PathError;
 use crate::error::Error;
@@ -739,6 +740,7 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>)
     let name = it.name.as_ref().unwrap();
     let ty = match it.type_() {
         Typedef | AssocType => AssocType,
+        Constant | AssocConst => AssocConst,
         s => s,
     };
 
@@ -1365,6 +1367,35 @@ fn render_impl(
                     write_srclink(cx, item, w);
                     w.write_str("</h4>");
                 }
+            }
+            clean::ConstantItem(clean::Constant {
+                type_: ref ty,
+                kind: clean::ConstantKind::Local { body, .. },
+            }) => {
+                let item_type = ItemType::AssocConst;
+                let source_id = format!("{}.{}", item_type, name);
+                let id = cx.derive_id(source_id.clone());
+                write!(w, "<h4 id=\"{}\" class=\"{}{}\"><code>", id, item_type, in_trait_class);
+                assoc_const(
+                    w,
+                    item,
+                    ty,
+                    Some(&print_const_expr(tcx, body)),
+                    link.anchor(if trait_.is_some() { &source_id } else { &id }),
+                    "",
+                    cx,
+                );
+                w.write_str("</code>");
+                render_stability_since_raw(
+                    w,
+                    item.stable_since(tcx).as_deref(),
+                    item.const_stable_since(tcx).as_deref(),
+                    outer_version,
+                    outer_const_version,
+                );
+                write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
+                write_srclink(cx, item, w);
+                w.write_str("</h4>");
             }
             clean::TypedefItem(ref tydef, _) => {
                 let source_id = format!("{}.{}", ItemType::AssocType, name);
