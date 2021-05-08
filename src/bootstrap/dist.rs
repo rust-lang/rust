@@ -1896,7 +1896,7 @@ impl Step for Extended {
             if rust_demangler_installer.is_some() {
                 candle("RustDemanglerGroup.wxs".as_ref());
             }
-            candle("RustcCodegenCraneliftGroup".as_ref());
+            candle("RustcCodegenCraneliftGroup.wxs".as_ref());
             if rls_installer.is_some() {
                 candle("RlsGroup.wxs".as_ref());
             }
