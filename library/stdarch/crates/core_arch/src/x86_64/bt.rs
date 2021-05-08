@@ -1,6 +1,22 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
+// x32 wants to use a 32-bit address size, but asm! defaults to using the full
+// register name (e.g. rax). We have to explicitly override the placeholder to
+// use the 32-bit register name in that case.
+#[cfg(target_pointer_width = "32")]
+macro_rules! bt {
+    ($inst:expr) => {
+        concat!($inst, " {b}, ({p:e})")
+    };
+}
+#[cfg(target_pointer_width = "64")]
+macro_rules! bt {
+    ($inst:expr) => {
+        concat!($inst, " {b}, ({p})")
+    };
+}
+
 /// Returns the bit in position `b` of the memory addressed by `p`.
 #[inline]
 #[cfg_attr(test, assert_instr(bt))]
@@ -8,7 +24,7 @@ use stdarch_test::assert_instr;
 pub unsafe fn _bittest64(p: *const i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "btq {b}, ({p})",
+        bt!("btq"),
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
@@ -25,7 +41,7 @@ pub unsafe fn _bittest64(p: *const i64, b: i64) -> u8 {
 pub unsafe fn _bittestandset64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "btsq {b}, ({p})",
+        bt!("btsq"),
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
@@ -42,7 +58,7 @@ pub unsafe fn _bittestandset64(p: *mut i64, b: i64) -> u8 {
 pub unsafe fn _bittestandreset64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "btrq {b}, ({p})",
+        bt!("btrq"),
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
@@ -59,7 +75,7 @@ pub unsafe fn _bittestandreset64(p: *mut i64, b: i64) -> u8 {
 pub unsafe fn _bittestandcomplement64(p: *mut i64, b: i64) -> u8 {
     let r: u8;
     asm!(
-        "btcq {b}, ({p})",
+        bt!("btcq"),
         "setc {r}",
         p = in(reg) p,
         b = in(reg) b,
