@@ -359,7 +359,10 @@
                     ]
                 },
                 "rust-analyzer.debug.sourceFileMap": {
-                    "type": ["object", "string"],
+                    "type": [
+                        "object",
+                        "string"
+                    ],
                     "const": "auto",
                     "description": "Optional source file mappings passed to the debug engine.",
                     "default": {
