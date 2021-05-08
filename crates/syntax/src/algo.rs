@@ -1,10 +1,6 @@
 //! FIXME: write short doc here
 
-use std::{
-    fmt,
-    hash::BuildHasherDefault,
-    ops::{self, RangeInclusive},
-};
+use std::{fmt, hash::BuildHasherDefault, ops::RangeInclusive};
 
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -358,106 +354,10 @@ impl fmt::Debug for SyntaxRewriter<'_> {
 }
 
 impl SyntaxRewriter<'_> {
-    pub fn delete<T: Clone + Into<SyntaxElement>>(&mut self, what: &T) {
-        let what = what.clone().into();
-        let replacement = Replacement::Delete;
-        self.replacements.insert(what, replacement);
-    }
-    pub fn insert_before<T: Clone + Into<SyntaxElement>, U: Clone + Into<SyntaxElement>>(
-        &mut self,
-        before: &T,
-        what: &U,
-    ) {
-        let before = before.clone().into();
-        let pos = match before.prev_sibling_or_token() {
-            Some(sibling) => InsertPos::After(sibling),
-            None => match before.parent() {
-                Some(parent) => InsertPos::FirstChildOf(parent),
-                None => return,
-            },
-        };
-        self.insertions.entry(pos).or_insert_with(Vec::new).push(what.clone().into());
-    }
-    pub fn insert_after<T: Clone + Into<SyntaxElement>, U: Clone + Into<SyntaxElement>>(
-        &mut self,
-        after: &T,
-        what: &U,
-    ) {
-        self.insertions
-            .entry(InsertPos::After(after.clone().into()))
-            .or_insert_with(Vec::new)
-            .push(what.clone().into());
-    }
-    pub fn insert_as_first_child<T: Clone + Into<SyntaxNode>, U: Clone + Into<SyntaxElement>>(
-        &mut self,
-        parent: &T,
-        what: &U,
-    ) {
-        self.insertions
-            .entry(InsertPos::FirstChildOf(parent.clone().into()))
-            .or_insert_with(Vec::new)
-            .push(what.clone().into());
-    }
-    pub fn insert_many_before<
-        T: Clone + Into<SyntaxElement>,
-        U: IntoIterator<Item = SyntaxElement>,
-    >(
-        &mut self,
-        before: &T,
-        what: U,
-    ) {
-        let before = before.clone().into();
-        let pos = match before.prev_sibling_or_token() {
-            Some(sibling) => InsertPos::After(sibling),
-            None => match before.parent() {
-                Some(parent) => InsertPos::FirstChildOf(parent),
-                None => return,
-            },
-        };
-        self.insertions.entry(pos).or_insert_with(Vec::new).extend(what);
-    }
-    pub fn insert_many_after<
-        T: Clone + Into<SyntaxElement>,
-        U: IntoIterator<Item = SyntaxElement>,
-    >(
-        &mut self,
-        after: &T,
-        what: U,
-    ) {
-        self.insertions
-            .entry(InsertPos::After(after.clone().into()))
-            .or_insert_with(Vec::new)
-            .extend(what);
-    }
-    pub fn insert_many_as_first_children<
-        T: Clone + Into<SyntaxNode>,
-        U: IntoIterator<Item = SyntaxElement>,
-    >(
-        &mut self,
-        parent: &T,
-        what: U,
-    ) {
-        self.insertions
-            .entry(InsertPos::FirstChildOf(parent.clone().into()))
-            .or_insert_with(Vec::new)
-            .extend(what)
-    }
     pub fn replace<T: Clone + Into<SyntaxElement>>(&mut self, what: &T, with: &T) {
         let what = what.clone().into();
         let replacement = Replacement::Single(with.clone().into());
         self.replacements.insert(what, replacement);
-    }
-    pub fn replace_with_many<T: Clone + Into<SyntaxElement>>(
-        &mut self,
-        what: &T,
-        with: Vec<SyntaxElement>,
-    ) {
-        let what = what.clone().into();
-        let replacement = Replacement::Many(with);
-        self.replacements.insert(what, replacement);
-    }
-    pub fn replace_ast<T: AstNode>(&mut self, what: &T, with: &T) {
-        self.replace(what.syntax(), with.syntax())
     }
 
     pub fn rewrite(&self, node: &SyntaxNode) -> SyntaxNode {
@@ -534,10 +434,6 @@ impl SyntaxRewriter<'_> {
         if let Some(replacement) = self.replacement(&element) {
             match replacement {
                 Replacement::Single(element) => acc.push(element_to_green(element)),
-                Replacement::Many(replacements) => {
-                    acc.extend(replacements.into_iter().map(element_to_green))
-                }
-                Replacement::Delete => (),
             };
         } else {
             match element {
@@ -560,25 +456,9 @@ fn element_to_green(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, row
     }
 }
 
-impl ops::AddAssign for SyntaxRewriter<'_> {
-    fn add_assign(&mut self, rhs: SyntaxRewriter) {
-        self.replacements.extend(rhs.replacements);
-        for (pos, insertions) in rhs.insertions.into_iter() {
-            match self.insertions.entry(pos) {
-                indexmap::map::Entry::Occupied(mut occupied) => {
-                    occupied.get_mut().extend(insertions)
-                }
-                indexmap::map::Entry::Vacant(vacant) => drop(vacant.insert(insertions)),
-            }
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 enum Replacement {
-    Delete,
     Single(SyntaxElement),
-    Many(Vec<SyntaxElement>),
 }
 
 fn with_children(
