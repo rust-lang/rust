@@ -1,10 +1,13 @@
 mod sealed {
-pub trait Sealed {}
+    pub trait Sealed {}
 }
 use sealed::Sealed;
 
 /// Supporting trait for vector `select` function
-pub trait Select<Mask>: Sealed {}
+pub trait Select<Mask>: Sealed {
+    #[doc(hidden)]
+    fn select(mask: Mask, true_values: Self, false_values: Self) -> Self;
+}
 
 macro_rules! impl_select {
     {
@@ -17,8 +20,31 @@ macro_rules! impl_select {
             crate::$mask<LANES>: crate::Mask,
             crate::$bits_ty<LANES>: crate::LanesAtMost32,
             Self: crate::LanesAtMost32,
-        {}
+        {
+            #[doc(hidden)]
+            #[inline]
+            fn select(mask: crate::$mask<LANES>, true_values: Self, false_values: Self) -> Self {
+                unsafe { crate::intrinsics::simd_select(mask.to_int(), true_values, false_values) }
+            }
+        }
         )*
+
+        impl<const LANES: usize> Sealed for crate::$mask<LANES>
+        where
+            Self: crate::Mask,
+            crate::$bits_ty<LANES>: crate::LanesAtMost32,
+        {}
+        impl<const LANES: usize> Select<Self> for crate::$mask<LANES>
+        where
+            Self: crate::Mask,
+            crate::$bits_ty<LANES>: crate::LanesAtMost32,
+        {
+            #[doc(hidden)]
+            #[inline]
+            fn select(mask: Self, true_values: Self, false_values: Self) -> Self {
+                mask & true_values | !mask & false_values
+            }
+        }
 
         impl<const LANES: usize> crate::$mask<LANES>
         where
@@ -38,8 +64,19 @@ macro_rules! impl_select {
             /// let c = mask.select(a, b);
             /// assert_eq!(c.to_array(), [0, 5, 6, 3]);
             /// ```
+            ///
+            /// `select` can also be used with masks:
+            /// ```
+            /// # use core_simd::{Mask32};
+            /// let a = Mask32::from_array([true, true, false, false]);
+            /// let b = Mask32::from_array([false, false, true, true]);
+            /// let mask = Mask32::from_array([true, false, false, true]);
+            /// let c = mask.select(a, b);
+            /// assert_eq!(c.to_array(), [true, false, true, false]);
+            /// ```
+            #[inline]
             pub fn select<S: Select<Self>>(self, true_values: S, false_values: S) -> S {
-                unsafe { crate::intrinsics::simd_select(self.to_int(), true_values, false_values) }
+                S::select(self, true_values, false_values)
             }
         }
     }
