@@ -13,6 +13,7 @@ use build_helper::t;
 use crate::dist::{self, sanitize_sh};
 use crate::tarball::GeneratedTarball;
 use crate::Compiler;
+use crate::INTERNER;
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::{Config, TargetSelection};
@@ -239,6 +240,16 @@ install!((self, builder, _config),
             compiler: builder.compiler(builder.top_stage, self.target),
         });
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
+    };
+    RustcCodegenCranelift, "rustc_codegen_cranelift", Self::should_build(_config), only_hosts: true, {
+        // Note: Even though `should_build` may return true for `extended` default tools,
+        // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
+        // is also true, or the `tools` array explicitly includes "rust-demangler".
+        let tarball = builder.ensure(dist::CodegenBackend {
+            compiler: self.compiler,
+            backend: INTERNER.intern_str("cranelift"),
+        });
+        install_sh(builder, "rustc_codegen_cranelift", self.compiler.stage, Some(self.target), &tarball);
     };
 );
 
