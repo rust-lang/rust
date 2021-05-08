@@ -1,0 +1,29 @@
+error: functions are not allowed in struct definitions
+  --> $DIR/struct-fn-in-definition.rs:9:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^^^^
+   |
+   = help: unlike in C++, Java, and C#, functions are declared in `impl` blocks
+   = help: see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+
+error: functions are not allowed in union definitions
+  --> $DIR/struct-fn-in-definition.rs:18:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^^^^
+   |
+   = help: unlike in C++, Java, and C#, functions are declared in `impl` blocks
+   = help: see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+
+error: functions are not allowed in enum definitions
+  --> $DIR/struct-fn-in-definition.rs:27:5
+   |
+LL |     fn foo() {}
+   |     ^^^^^^^^^^^
+   |
+   = help: unlike in C++, Java, and C#, functions are declared in `impl` blocks
+   = help: see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information
+
+error: aborting due to 3 previous errors
+

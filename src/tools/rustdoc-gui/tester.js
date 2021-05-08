@@ -3,29 +3,30 @@
 // ```
 // npm install browser-ui-test
 // ```
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 const {Options, runTest} = require('browser-ui-test');
 
 function showHelp() {
     console.log("rustdoc-js options:");
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
     console.log("  --help                     : show this message then quit");
-    console.log("  --test-file [PATH]         : location of the JS test file");
+    console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
 }
 
 function parseOptions(args) {
     var opts = {
         "doc_folder": "",
-        "test_file": "",
+        "tests_folder": "",
     };
     var correspondances = {
         "--doc-folder": "doc_folder",
-        "--test-file": "test_file",
+        "--tests-folder": "tests_folder",
     };
 
     for (var i = 0; i < args.length; ++i) {
         if (args[i] === "--doc-folder"
-            || args[i] === "--test-file") {
+            || args[i] === "--tests-folder") {
             i += 1;
             if (i >= args.length) {
                 console.log("Missing argument after `" + args[i - 1] + "` option.");
@@ -41,8 +42,8 @@ function parseOptions(args) {
             return null;
         }
     }
-    if (opts["test_file"].length < 1) {
-        console.log("Missing `--test-file` option.");
+    if (opts["tests_folder"].length < 1) {
+        console.log("Missing `--tests-folder` option.");
     } else if (opts["doc_folder"].length < 1) {
         console.log("Missing `--doc-folder` option.");
     } else {
@@ -51,15 +52,8 @@ function parseOptions(args) {
     return null;
 }
 
-function checkFile(test_file, opts, loaded, index) {
-    const test_name = path.basename(test_file, ".js");
-
-    process.stdout.write('Checking "' + test_name + '" ... ');
-    return runChecks(test_file, loaded, index);
-}
-
-function main(argv) {
-    var opts = parseOptions(argv.slice(2));
+async function main(argv) {
+    let opts = parseOptions(argv.slice(2));
     if (opts === null) {
         process.exit(1);
     }
@@ -68,7 +62,7 @@ function main(argv) {
     try {
         // This is more convenient that setting fields one by one.
         options.parseArguments([
-            '--no-screenshot',
+            "--no-screenshot",
             "--variable", "DOC_PATH", opts["doc_folder"],
         ]);
     } catch (error) {
@@ -76,14 +70,26 @@ function main(argv) {
         process.exit(1);
     }
 
-    runTest(opts["test_file"], options).then(out => {
-        const [output, nb_failures] = out;
-        console.log(output);
-        process.exit(nb_failures);
-    }).catch(err => {
-        console.error(err);
+    let failed = false;
+    let files = fs.readdirSync(opts["tests_folder"]).filter(file => path.extname(file) == ".goml");
+
+    files.sort();
+    for (var i = 0; i < files.length; ++i) {
+        const testPath = path.join(opts["tests_folder"], files[i]);
+        await runTest(testPath, options).then(out => {
+            const [output, nb_failures] = out;
+            console.log(output);
+            if (nb_failures > 0) {
+                failed = true;
+            }
+        }).catch(err => {
+            console.error(err);
+            failed = true;
+        });
+    }
+    if (failed) {
         process.exit(1);
-    });
+    }
 }
 
 main(process.argv);
