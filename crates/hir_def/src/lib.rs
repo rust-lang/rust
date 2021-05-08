@@ -62,7 +62,8 @@ use hir_expand::{
     ast_id_map::FileAstId,
     eager::{expand_eager_macro, ErrorEmitted, ErrorSink},
     hygiene::Hygiene,
-    AstId, AttrId, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    AstId, AttrId, FragmentKind, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
+    MacroDefKind,
 };
 use la_arena::Idx;
 use nameres::DefMap;
@@ -652,6 +653,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
         mut error_sink: &mut dyn FnMut(mbe::ExpandError),
     ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
+        let fragment = hir_expand::to_fragment_kind(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
         let h = Hygiene::new(db.upcast(), self.file_id);
         let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &h));
@@ -667,6 +669,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
 
         macro_call_as_call_id(
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
+            fragment,
             db,
             krate,
             resolver,
@@ -695,6 +698,7 @@ pub struct UnresolvedMacro {
 
 fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,
+    fragment: FragmentKind,
     db: &dyn db::DefDatabase,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
@@ -718,7 +722,11 @@ fn macro_call_as_call_id(
         .map(MacroCallId::from)
     } else {
         Ok(def
-            .as_lazy_macro(db.upcast(), krate, MacroCallKind::FnLike { ast_id: call.ast_id })
+            .as_lazy_macro(
+                db.upcast(),
+                krate,
+                MacroCallKind::FnLike { ast_id: call.ast_id, fragment },
+            )
             .into())
     };
     Ok(res)

@@ -175,8 +175,13 @@ fn lazy_expand(
 ) -> ExpandResult<Option<InFile<SyntaxNode>>> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
+    let fragment = crate::to_fragment_kind(&macro_call.value);
     let id: MacroCallId = def
-        .as_lazy_macro(db, krate, MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id) })
+        .as_lazy_macro(
+            db,
+            krate,
+            MacroCallKind::FnLike { ast_id: macro_call.with_value(ast_id), fragment },
+        )
         .into();
 
     let err = db.macro_expand_error(id);

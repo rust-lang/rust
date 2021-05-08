@@ -629,7 +629,7 @@ mod diagnostics {
                 DiagnosticKind::UnresolvedProcMacro { ast } => {
                     let mut precise_location = None;
                     let (file, ast, name) = match ast {
-                        MacroCallKind::FnLike { ast_id } => {
+                        MacroCallKind::FnLike { ast_id, .. } => {
                             let node = ast_id.to_node(db.upcast());
                             (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)), None)
                         }
