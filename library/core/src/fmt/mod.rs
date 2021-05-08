@@ -4,11 +4,13 @@
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
+use crate::intrinsics::size_of;
 use crate::iter;
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::flt2dec;
 use crate::ops::Deref;
+use crate::ptr;
 use crate::result;
 use crate::str;
 
@@ -2130,6 +2132,15 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        if size_of::<*const T>() > size_of::<*const ()>() {
+            // Fat pointer, format as (address, metadata)
+            let meta = ptr::metadata(*self);
+            return f.debug_tuple("")
+                .field(&(*self as *const ()))
+                .field(&meta)
+                .finish();
+        }
+
         let old_width = f.width;
         let old_flags = f.flags;
 

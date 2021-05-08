@@ -1,6 +1,6 @@
 #![unstable(feature = "ptr_metadata", issue = "81513")]
 
-use crate::fmt;
+use crate::fmt::{self, Debug};
 use crate::hash::{Hash, Hasher};
 
 /// Provides the pointer metadata type of any pointed-to type.
@@ -56,7 +56,7 @@ pub trait Pointee {
     // NOTE: Keep trait bounds in `static_assert_expected_bounds_for_metadata`
     // in `library/core/src/ptr/metadata.rs`
     // in sync with those here:
-    type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
+    type Metadata: Copy + Send + Sync + Ord + Hash + Unpin + Debug;
 }
 
 /// Pointers to types implementing this trait alias are “thin”.
