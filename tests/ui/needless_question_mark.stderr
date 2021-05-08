@@ -67,7 +67,7 @@ LL |         return Ok(t.magic?);
    |                ^^^^^^^^^^^^ help: try: `t.magic`
 
 error: question mark operator is useless here
-  --> $DIR/needless_question_mark.rs:115:27
+  --> $DIR/needless_question_mark.rs:120:27
    |
 LL |         || -> Option<_> { Some(Some($expr)?) }()
    |                           ^^^^^^^^^^^^^^^^^^ help: try: `Some($expr)`
