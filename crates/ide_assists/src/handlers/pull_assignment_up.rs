@@ -37,22 +37,24 @@ use crate::{
 // ```
 pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let assign_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
-    let name_expr = if assign_expr.op_kind()? == ast::BinOp::Assignment {
-        assign_expr.lhs()?
-    } else {
-        return None;
-    };
 
-    let (old_stmt, new_stmt) = if let Some(if_expr) = ctx.find_node_at_offset::<ast::IfExpr>() {
-        (
-            ast::Expr::cast(if_expr.syntax().to_owned())?,
-            exprify_if(&if_expr, &ctx.sema, &name_expr)?.indent(if_expr.indent_level()),
-        )
+    let op_kind = assign_expr.op_kind()?;
+    if op_kind != ast::BinOp::Assignment {
+        cov_mark::hit!(test_cant_pull_non_assignments);
+        return None;
+    }
+
+    let name_expr = assign_expr.lhs()?;
+
+    let old_stmt: ast::Expr;
+    let new_stmt: ast::Expr;
+
+    if let Some(if_expr) = ctx.find_node_at_offset::<ast::IfExpr>() {
+        new_stmt = exprify_if(&if_expr, &ctx.sema, &name_expr)?.indent(if_expr.indent_level());
+        old_stmt = if_expr.into();
     } else if let Some(match_expr) = ctx.find_node_at_offset::<ast::MatchExpr>() {
-        (
-            ast::Expr::cast(match_expr.syntax().to_owned())?,
-            exprify_match(&match_expr, &ctx.sema, &name_expr)?,
-        )
+        new_stmt = exprify_match(&match_expr, &ctx.sema, &name_expr)?;
+        old_stmt = match_expr.into()
     } else {
         return None;
     };
@@ -99,9 +101,7 @@ fn exprify_if(
 ) -> Option<ast::Expr> {
     let then_branch = exprify_block(&statement.then_branch()?, sema, name)?;
     let else_branch = match statement.else_branch()? {
-        ast::ElseBranch::Block(ref block) => {
-            ast::ElseBranch::Block(exprify_block(block, sema, name)?)
-        }
+        ast::ElseBranch::Block(block) => ast::ElseBranch::Block(exprify_block(&block, sema, name)?),
         ast::ElseBranch::IfExpr(expr) => {
             cov_mark::hit!(test_pull_assignment_up_chained_if);
             ast::ElseBranch::IfExpr(ast::IfExpr::cast(
@@ -435,6 +435,26 @@ fn foo() {
     } else {
         3
     };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_cant_pull_non_assignments() {
+        cov_mark::check!(test_cant_pull_non_assignments);
+        check_assist_not_applicable(
+            pull_assignment_up,
+            r#"
+fn foo() {
+    let mut a = 1;
+    let b = &mut a;
+
+    if true {
+        $0*b + 2;
+    } else {
+        *b + 3;
+    }
 }
 "#,
         )
