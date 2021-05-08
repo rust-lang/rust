@@ -34,60 +34,53 @@ fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Domin
     }
 
     let mut visited = BitSet::new_empty(graph.num_nodes());
-    let mut parent: IndexVec<G::Node, Option<G::Node>> =
-        IndexVec::from_elem_n(None, graph.num_nodes());
-    let mut pre_order_index: IndexVec<G::Node, Option<usize>> =
-        IndexVec::from_elem_n(None, graph.num_nodes());
-    let mut pre_order_nodes = Vec::with_capacity(rpo.len());
+    let mut parent: IndexVec<usize, Option<usize>> = IndexVec::from_elem_n(None, rpo.len());
 
-    let mut stack = vec![PreOrderFrame {
-        node: graph.start_node(),
-        iter: graph.successors(graph.start_node()),
-    }];
+    let mut stack = vec![PreOrderFrame { node: 0, iter: graph.successors(graph.start_node()) }];
     visited.insert(graph.start_node());
-    let mut idx = 0;
-    pre_order_index[graph.start_node()] = Some(0);
-    idx += 1;
-    pre_order_nodes.push(graph.start_node());
+    let mut pre_order_to_real = Vec::with_capacity(rpo.len());
+    let mut real_to_pre_order: IndexVec<G::Node, Option<usize>> =
+        IndexVec::from_elem_n(None, graph.num_nodes());
+    pre_order_to_real.push(graph.start_node());
+    real_to_pre_order[graph.start_node()] = Some(0);
+    let mut idx = 1;
 
     'recurse: while let Some(frame) = stack.last_mut() {
         while let Some(successor) = frame.iter.next() {
             if visited.insert(successor) {
-                parent[successor] = Some(frame.node);
-                pre_order_index[successor] = Some(idx);
-                pre_order_nodes.push(successor);
-                idx += 1;
+                parent[idx] = Some(frame.node);
+                pre_order_to_real.push(successor);
+                real_to_pre_order[successor] = Some(idx);
 
-                stack.push(PreOrderFrame { node: successor, iter: graph.successors(successor) });
+                stack.push(PreOrderFrame { node: idx, iter: graph.successors(successor) });
+                idx += 1;
                 continue 'recurse;
             }
         }
         stack.pop();
     }
 
-    let mut idom = IndexVec::from_elem_n(graph.start_node(), graph.num_nodes());
-    let mut semi = IndexVec::from_fn_n(std::convert::identity, graph.num_nodes());
+    let mut idom = IndexVec::from_elem_n(0, pre_order_to_real.len());
+    let mut semi = IndexVec::from_fn_n(std::convert::identity, pre_order_to_real.len());
     let mut label = semi.clone();
-    let mut bucket = IndexVec::from_elem_n(vec![], graph.num_nodes());
+    let mut bucket = IndexVec::from_elem_n(vec![], pre_order_to_real.len());
     let mut lastlinked = None;
 
-    for &w in pre_order_nodes[1..].iter().rev() {
-        // Optimization: process buckets just once. We need not explicitly empty
-        // the bucket here, but mem::take is pretty cheap.
+    for w in (1..pre_order_to_real.len()).rev() {
+        // Optimization: process buckets just once, at the start of the
+        // iteration. Do not explicitly empty the bucket (even though it will
+        // not be used again), to save some instructions.
         let z = parent[w].unwrap();
-        for v in std::mem::take(&mut bucket[z]) {
-            let y = eval(&pre_order_index, &mut parent, lastlinked, &semi, &mut label, v);
-            idom[v] = if pre_order_index[semi[y]] < pre_order_index[z] { y } else { z };
+        for &v in bucket[z].iter() {
+            let y = eval(&mut parent, lastlinked, &semi, &mut label, v);
+            idom[v] = if semi[y] < z { y } else { z };
         }
 
         semi[w] = w;
-        for v in graph.predecessors(w) {
-            let x = eval(&pre_order_index, &mut parent, lastlinked, &semi, &mut label, v);
-            semi[w] = if pre_order_index[semi[w]].unwrap() < pre_order_index[semi[x]].unwrap() {
-                semi[w]
-            } else {
-                semi[x]
-            };
+        for v in graph.predecessors(pre_order_to_real[w]) {
+            let v = real_to_pre_order[v].unwrap();
+            let x = eval(&mut parent, lastlinked, &semi, &mut label, v);
+            semi[w] = std::cmp::min(semi[w], semi[x]);
         }
         // semi[w] is now semidominator(w).
 
@@ -103,59 +96,51 @@ fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Domin
         // processed elements; lastlinked represents the divider.
         lastlinked = Some(w);
     }
-    for &w in pre_order_nodes.iter().skip(1) {
+    for w in 1..pre_order_to_real.len() {
         if idom[w] != semi[w] {
             idom[w] = idom[idom[w]];
         }
     }
 
     let mut immediate_dominators = IndexVec::from_elem_n(None, graph.num_nodes());
-    for (node, idom_slot) in immediate_dominators.iter_enumerated_mut() {
-        if pre_order_index[node].is_some() {
-            *idom_slot = Some(idom[node]);
-        }
+    for (idx, node) in pre_order_to_real.iter().enumerate() {
+        immediate_dominators[*node] = Some(pre_order_to_real[idom[idx]]);
     }
 
     Dominators { post_order_rank, immediate_dominators }
 }
 
 fn eval<N: Idx>(
-    pre_order_index: &IndexVec<N, Option<usize>>,
     ancestor: &mut IndexVec<N, Option<N>>,
     lastlinked: Option<N>,
     semi: &IndexVec<N, N>,
     label: &mut IndexVec<N, N>,
     node: N,
 ) -> N {
-    if is_processed(pre_order_index, node, lastlinked) {
-        compress(pre_order_index, ancestor, lastlinked, semi, label, node);
+    if is_processed(node, lastlinked) {
+        compress(ancestor, lastlinked, semi, label, node);
         label[node]
     } else {
         node
     }
 }
 
-fn is_processed<N: Idx>(
-    pre_order_index: &IndexVec<N, Option<usize>>,
-    v: N,
-    lastlinked: Option<N>,
-) -> bool {
-    if let Some(ll) = lastlinked { pre_order_index[v] >= pre_order_index[ll] } else { false }
+fn is_processed<N: Idx>(v: N, lastlinked: Option<N>) -> bool {
+    if let Some(ll) = lastlinked { v >= ll } else { false }
 }
 
 fn compress<N: Idx>(
-    pre_order_index: &IndexVec<N, Option<usize>>,
     ancestor: &mut IndexVec<N, Option<N>>,
     lastlinked: Option<N>,
     semi: &IndexVec<N, N>,
     label: &mut IndexVec<N, N>,
     v: N,
 ) {
-    assert!(is_processed(pre_order_index, v, lastlinked));
+    assert!(is_processed(v, lastlinked));
     let u = ancestor[v].unwrap();
-    if is_processed(pre_order_index, u, lastlinked) {
-        compress(pre_order_index, ancestor, lastlinked, semi, label, u);
-        if pre_order_index[semi[label[u]]] < pre_order_index[semi[label[v]]] {
+    if is_processed(u, lastlinked) {
+        compress(ancestor, lastlinked, semi, label, u);
+        if semi[label[u]] < semi[label[v]] {
             label[v] = label[u];
         }
         ancestor[v] = ancestor[u];
