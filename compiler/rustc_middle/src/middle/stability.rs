@@ -306,10 +306,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
                     let kind = self.def_kind(def_id).descr(def_id);
                     let (message, lint) = deprecation_message(&depr_entry.attr, kind, path);
-                    let span = match method_span {
-                        None => span,
-                        Some(method_span) => method_span,
-                    };
+                    let span = method_span.unwrap_or(span);
                     late_report_deprecation(
                         self,
                         &message,
