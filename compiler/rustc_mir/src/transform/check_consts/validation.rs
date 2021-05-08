@@ -10,9 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{
-    self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
-};
+use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -636,17 +634,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 _,
             ) => self.check_op(ops::FnPtrCast),
 
-            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, cast_ty) => {
-                if let Some(TypeAndMut { ty, .. }) = cast_ty.builtin_deref(true) {
-                    let unsized_ty = self.tcx.struct_tail_erasing_lifetimes(ty, self.param_env);
-
-                    // Casting/coercing things to slices is fine.
-                    if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
-                        return;
-                    }
-                }
-
-                self.check_op(ops::UnsizingCast);
+            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
+                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
+                // in the type of any local, which also excludes casts).
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
