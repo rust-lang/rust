@@ -17,8 +17,8 @@ pub struct Second {
     d: Vec<First>,
 }
 
-struct Third<f> {
-    g: Vec<f>,
+struct Third<'a, f> {
+    g: Vec<(f, &'a f)>,
 }
 
 enum Ty {
@@ -38,29 +38,29 @@ struct Sixth {
 }
 
 #[rustc_evaluate_where_clauses]
-fn forward()
+fn forward<'a>()
 where
     Vec<First>: Unpin,
-    Third<Ty>: Unpin,
+    Third<'a, Ty>: Unpin,
 {
 }
 
 #[rustc_evaluate_where_clauses]
-fn reverse()
+fn reverse<'a>()
 where
-    Third<Ty>: Unpin,
+    Third<'a, Ty>: Unpin,
     Vec<First>: Unpin,
 {
 }
 
 fn main() {
-    // Key is that Vec<First> is "ok" and Third<Ty> is "ok modulo regions":
+    // Key is that Vec<First> is "ok" and Third<'_, Ty> is "ok modulo regions":
 
     forward();
     //~^ ERROR evaluate(Binder(TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>), [])) = Ok(EvaluatedToOk)
-    //~| ERROR evaluate(Binder(TraitPredicate(<Third<Ty> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
+    //~| ERROR evaluate(Binder(TraitPredicate(<Third<'_, Ty> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
 
     reverse();
     //~^ ERROR evaluate(Binder(TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>), [])) = Ok(EvaluatedToOk)
-    //~| ERROR evaluate(Binder(TraitPredicate(<Third<Ty> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
+    //~| ERROR evaluate(Binder(TraitPredicate(<Third<'_, Ty> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
 }

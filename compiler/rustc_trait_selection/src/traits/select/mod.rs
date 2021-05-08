@@ -492,7 +492,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     None => Ok(EvaluatedToAmbig),
                 },
 
-                ty::PredicateKind::TypeOutlives(..) | ty::PredicateKind::RegionOutlives(..) => {
+                ty::PredicateKind::TypeOutlives(pred) => {
+                    if pred.0.is_global() {
+                        Ok(EvaluatedToOk)
+                    } else {
+                        Ok(EvaluatedToOkModuloRegions)
+                    }
+                }
+
+                ty::PredicateKind::RegionOutlives(..) => {
                     // We do not consider region relationships when evaluating trait matches.
                     Ok(EvaluatedToOkModuloRegions)
                 }
