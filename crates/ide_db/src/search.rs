@@ -318,7 +318,7 @@ pub struct FindUsages<'a> {
 impl<'a> FindUsages<'a> {
     /// Enable searching for `Self` when the definition is a type.
     pub fn include_self_refs(mut self) -> FindUsages<'a> {
-        self.include_self_kw_refs = def_to_ty(self.sema.db, self.def);
+        self.include_self_kw_refs = def_to_ty(self.sema, self.def);
         self
     }
 
@@ -474,7 +474,7 @@ impl<'a> FindUsages<'a> {
                 sink(file_id, reference)
             }
             Some(NameRefClass::Definition(def)) if self.include_self_kw_refs.is_some() => {
-                if self.include_self_kw_refs == def_to_ty(self.sema.db, &def) {
+                if self.include_self_kw_refs == def_to_ty(self.sema, &def) {
                     let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                     let reference = FileReference {
                         range,
@@ -536,16 +536,22 @@ impl<'a> FindUsages<'a> {
     }
 }
 
-fn def_to_ty(db: &RootDatabase, def: &Definition) -> Option<hir::Type> {
+fn def_to_ty(sema: &Semantics<RootDatabase>, def: &Definition) -> Option<hir::Type> {
     match def {
         Definition::ModuleDef(def) => match def {
-            ModuleDef::Adt(adt) => Some(adt.ty(db)),
-            ModuleDef::TypeAlias(it) => Some(it.ty(db)),
-            ModuleDef::BuiltinType(_it) => None, // FIXME somehow acquire some module to construct the builtin type
-            ModuleDef::Trait(_it) => None,       // FIXME turn trait into its self-type
+            ModuleDef::Adt(adt) => Some(adt.ty(sema.db)),
+            ModuleDef::TypeAlias(it) => Some(it.ty(sema.db)),
+            ModuleDef::BuiltinType(it) => {
+                let graph = sema.db.crate_graph();
+                let krate = graph.iter().next()?;
+                let root_file = graph[krate].root_file_id;
+                let module = sema.to_module_def(root_file)?;
+                Some(it.ty(sema.db, module))
+            }
+            ModuleDef::Trait(_it) => None, // FIXME turn trait into its self-type
             _ => None,
         },
-        Definition::SelfType(it) => Some(it.self_ty(db)),
+        Definition::SelfType(it) => Some(it.self_ty(sema.db)),
         _ => None,
     }
 }
