@@ -4,10 +4,10 @@ use ide_db::{
     defs::{Definition, NameRefClass},
     search::SearchScope,
 };
+use stdx::never;
 use syntax::{
-    algo::SyntaxRewriter,
     ast::{self, make},
-    AstNode, Direction, SyntaxNode, SyntaxToken, T,
+    ted, AstNode, Direction, SyntaxNode, SyntaxToken, T,
 };
 
 use crate::{
@@ -42,6 +42,7 @@ use crate::{
 // ```
 pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let star = ctx.find_token_syntax_at_offset(T![*])?;
+    let use_tree = star.parent().and_then(ast::UseTree::cast)?;
     let (parent, mod_path) = find_parent_and_path(&star)?;
     let target_module = match ctx.sema.resolve_path(&mod_path)? {
         PathResolution::Def(ModuleDef::Module(it)) => it,
@@ -53,7 +54,6 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
 
     let refs_in_target = find_refs_in_mod(ctx, target_module, Some(current_module))?;
     let imported_defs = find_imported_defs(ctx, star)?;
-    let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
 
     let target = parent.clone().either(|n| n.syntax().clone(), |n| n.syntax().clone());
     acc.add(
@@ -61,9 +61,32 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
         "Expand glob import",
         target.text_range(),
         |builder| {
-            let mut rewriter = SyntaxRewriter::default();
-            replace_ast(&mut rewriter, parent, mod_path, names_to_import);
-            builder.rewrite(rewriter);
+            let use_tree = builder.make_ast_mut(use_tree);
+
+            let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
+            let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
+                let path =
+                    make::path_unqualified(make::path_segment(make::name_ref(&n.to_string())));
+                make::use_tree(path, None, None, false)
+            }))
+            .clone_for_update();
+
+            match use_tree.star_token() {
+                Some(star) => {
+                    let needs_braces = use_tree.path().is_some() && names_to_import.len() > 1;
+                    if needs_braces {
+                        ted::replace(star, expanded.syntax())
+                    } else {
+                        let without_braces = expanded
+                            .syntax()
+                            .children_with_tokens()
+                            .filter(|child| !matches!(child.kind(), T!['{'] | T!['}']))
+                            .collect();
+                        ted::replace_with_many(star, without_braces)
+                    }
+                }
+                None => never!(),
+            }
         },
     )
 }
@@ -232,53 +255,6 @@ fn find_names_to_import(
     used_refs.0.iter().map(|r| r.visible_name.clone()).collect()
 }
 
-fn replace_ast(
-    rewriter: &mut SyntaxRewriter,
-    parent: Either<ast::UseTree, ast::UseTreeList>,
-    path: ast::Path,
-    names_to_import: Vec<Name>,
-) {
-    let existing_use_trees = match parent.clone() {
-        Either::Left(_) => vec![],
-        Either::Right(u) => u
-            .use_trees()
-            .filter(|n|
-            // filter out star
-            n.star_token().is_none())
-            .collect(),
-    };
-
-    let new_use_trees: Vec<ast::UseTree> = names_to_import
-        .iter()
-        .map(|n| {
-            let path = make::path_unqualified(make::path_segment(make::name_ref(&n.to_string())));
-            make::use_tree(path, None, None, false)
-        })
-        .collect();
-
-    let use_trees = [&existing_use_trees[..], &new_use_trees[..]].concat();
-
-    match use_trees.as_slice() {
-        [name] => {
-            if let Some(end_path) = name.path() {
-                rewriter.replace_ast(
-                    &parent.left_or_else(|tl| tl.parent_use_tree()),
-                    &make::use_tree(make::path_concat(path, end_path), None, None, false),
-                );
-            }
-        }
-        names => match &parent {
-            Either::Left(parent) => rewriter.replace_ast(
-                parent,
-                &make::use_tree(path, Some(make::use_tree_list(names.to_owned())), None, false),
-            ),
-            Either::Right(parent) => {
-                rewriter.replace_ast(parent, &make::use_tree_list(names.to_owned()))
-            }
-        },
-    };
-}
-
 #[cfg(test)]
 mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
@@ -350,7 +326,7 @@ mod foo {
     pub fn f() {}
 }
 
-use foo::{f, Baz, Bar};
+use foo::{Baz, Bar, f};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -389,7 +365,7 @@ mod foo {
 }
 
 use foo::Bar;
-use foo::{f, Baz};
+use foo::{Baz, f};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -439,7 +415,7 @@ mod foo {
     }
 }
 
-use foo::{bar::{f, Baz, Bar}, baz::*};
+use foo::{bar::{Baz, Bar, f}, baz::*};
 
 fn qux(bar: Bar, baz: Baz) {
     f();
@@ -891,7 +867,7 @@ mod foo {
     pub struct Bar;
 }
 
-use foo::Bar;
+use foo::{Bar};
 
 struct Baz {
     bar: Bar

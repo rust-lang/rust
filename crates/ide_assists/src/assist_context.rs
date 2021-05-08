@@ -13,7 +13,7 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    algo::{self, find_node_at_offset, find_node_at_range, SyntaxRewriter},
+    algo::{self, find_node_at_offset, find_node_at_range},
     AstNode, AstToken, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxNodePtr,
     SyntaxToken, TextRange, TextSize, TokenAtOffset,
 };
@@ -289,12 +289,6 @@ impl AssistBuilder {
     }
     pub(crate) fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
         algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
-    }
-    pub(crate) fn rewrite(&mut self, rewriter: SyntaxRewriter) {
-        if let Some(node) = rewriter.rewrite_root() {
-            let new = rewriter.rewrite(&node);
-            algo::diff(&node, &new).into_text_edit(&mut self.edit);
-        }
     }
     pub(crate) fn create_file(&mut self, dst: AnchoredPathBuf, content: impl Into<String>) {
         let file_system_edit =
