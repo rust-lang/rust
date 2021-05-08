@@ -65,9 +65,9 @@ macro_rules! impl_select {
             /// assert_eq!(c.to_array(), [0, 5, 6, 3]);
             /// ```
             ///
-            /// `select` can also be used with masks:
+            /// `select` can also be used on masks:
             /// ```
-            /// # use core_simd::{Mask32};
+            /// # use core_simd::Mask32;
             /// let a = Mask32::from_array([true, true, false, false]);
             /// let b = Mask32::from_array([false, false, true, true]);
             /// let mask = Mask32::from_array([true, false, false, true]);
