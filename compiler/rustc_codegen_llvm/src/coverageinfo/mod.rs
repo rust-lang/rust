@@ -244,15 +244,9 @@ fn add_unused_function_coverage(
 ) {
     let tcx = cx.tcx;
 
-    let mut function_coverage = FunctionCoverage::unused(tcx, instance);
-    for (index, &code_region) in tcx.covered_code_regions(def_id).iter().enumerate() {
-        if index == 0 {
-            // Insert at least one real counter so the LLVM CoverageMappingReader will find expected
-            // definitions.
-            function_coverage.add_counter(UNUSED_FUNCTION_COUNTER_ID, code_region.clone());
-        } else {
-            function_coverage.add_unreachable_region(code_region.clone());
-        }
+    let mut function_coverage = FunctionCoverage::unused(instance);
+    for &code_region in tcx.covered_code_regions(def_id).iter() {
+        function_coverage.add_unreachable_region(code_region.clone());
     }
 
     if let Some(coverage_context) = cx.coverage_context() {

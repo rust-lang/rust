@@ -28,6 +28,7 @@ pub struct Expression {
 /// only whitespace or comments). According to LLVM Code Coverage Mapping documentation, "A count
 /// for a gap area is only used as the line execution count if there are no other regions on a
 /// line."
+#[derive(Debug)]
 pub struct FunctionCoverage<'tcx> {
     instance: Instance<'tcx>,
     source_hash: u64,
@@ -40,26 +41,30 @@ pub struct FunctionCoverage<'tcx> {
 impl<'tcx> FunctionCoverage<'tcx> {
     /// Creates a new set of coverage data for a used (called) function.
     pub fn new(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
-        Self::create(tcx, instance, true)
-    }
-
-    /// Creates a new set of coverage data for an unused (never called) function.
-    pub fn unused(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
-        Self::create(tcx, instance, false)
-    }
-
-    fn create(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, is_used: bool) -> Self {
         let coverageinfo = tcx.coverageinfo(instance.def_id());
         debug!(
-            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}. is_used={}",
-            instance, coverageinfo, is_used
+            "FunctionCoverage::new(instance={:?}) has coverageinfo={:?}",
+            instance, coverageinfo
         );
         Self {
             instance,
             source_hash: 0, // will be set with the first `add_counter()`
-            is_used,
+            is_used: true,
             counters: IndexVec::from_elem_n(None, coverageinfo.num_counters as usize),
             expressions: IndexVec::from_elem_n(None, coverageinfo.num_expressions as usize),
+            unreachable_regions: Vec::new(),
+        }
+    }
+
+    /// Creates a new set of coverage data for an unused (never called) function.
+    pub fn unused(instance: Instance<'tcx>) -> Self {
+        debug!("FunctionCoverage::unused(instance={:?})", instance);
+        Self {
+            instance,
+            source_hash: 0, // will be set with the first `add_counter()`
+            is_used: false,
+            counters: IndexVec::from_elem_n(None, CounterValueReference::START.as_usize()),
+            expressions: IndexVec::new(),
             unreachable_regions: Vec::new(),
         }
     }
@@ -142,13 +147,33 @@ impl<'tcx> FunctionCoverage<'tcx> {
     /// associated `Regions` (from which the LLVM-specific `CoverageMapGenerator` will create
     /// `CounterMappingRegion`s.
     pub fn get_expressions_and_counter_regions<'a>(
-        &'a self,
+        &'a mut self,
     ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &'a CodeRegion)>) {
-        assert!(
-            self.source_hash != 0 || !self.is_used,
-            "No counters provided the source_hash for used function: {:?}",
-            self.instance
-        );
+        if self.source_hash == 0 {
+            // Either this `FunctionCoverage` is _not_ used (created via
+            // `unused()`, or the function had all statements removed, including
+            // all `Counter`s.
+            //
+            // Dead blocks (removed during MIR transform, typically because
+            // const evaluation can determine that the block will never be
+            // called) are removed before codegen, but any coverage statements
+            // are replaced by `Coverage::unreachable` statements at the top of
+            // the MIR CFG.
+            debug!("No counters provided the source_hash for used function:\n{:?}", self);
+            assert_eq!(
+                self.expressions.len(),
+                0,
+                "Expressions (from MIR) without counters: {:?}",
+                self.instance
+            );
+            // If there are `Unreachable` code regions, but no `Counter`s, we
+            // need to add at least one Counter, because LLVM seems to require
+            // it.
+            if let Some(unreachable_code_region) = self.unreachable_regions.pop() {
+                // Replace any one of the `Unreachable`s with a counter.
+                self.counters.push(Some(unreachable_code_region));
+            }
+        }
 
         let counter_regions = self.counter_regions();
         let (counter_expressions, expression_regions) = self.expressions_with_regions();
