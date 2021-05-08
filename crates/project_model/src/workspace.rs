@@ -143,7 +143,8 @@ impl ProjectWorkspace {
                 } else {
                     None
                 };
-                let rustc_cfg = rustc_cfg::get(config.target.as_deref());
+
+                let rustc_cfg = rustc_cfg::get(Some(&cargo_toml), config.target.as_deref());
                 ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg }
             }
         };
@@ -159,7 +160,7 @@ impl ProjectWorkspace {
             Some(path) => Some(Sysroot::load(path)?),
             None => None,
         };
-        let rustc_cfg = rustc_cfg::get(target);
+        let rustc_cfg = rustc_cfg::get(None, target);
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
     }
 
@@ -310,7 +311,7 @@ fn project_json_to_crate_graph(
 
             let target_cfgs = match krate.target.as_deref() {
                 Some(target) => {
-                    cfg_cache.entry(target).or_insert_with(|| rustc_cfg::get(Some(target)))
+                    cfg_cache.entry(target).or_insert_with(|| rustc_cfg::get(None, Some(target)))
                 }
                 None => &rustc_cfg,
             };
