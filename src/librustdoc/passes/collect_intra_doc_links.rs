@@ -1207,7 +1207,11 @@ impl LinkCollector<'_, '_> {
             // item can be non-local e.g. when using #[doc(primitive = "pointer")]
             if let Some((src_id, dst_id)) = id
                 .as_local()
-                .and_then(|dst_id| item.def_id.as_local().map(|src_id| (src_id, dst_id)))
+                // The `expect_real()` should be okay because `local_def_id_to_hir_id`
+                // would presumably panic if a fake `DefIndex` were passed.
+                .and_then(|dst_id| {
+                    item.def_id.expect_real().as_local().map(|src_id| (src_id, dst_id))
+                })
             {
                 use rustc_hir::def_id::LOCAL_CRATE;
 

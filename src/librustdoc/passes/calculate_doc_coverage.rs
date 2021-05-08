@@ -213,7 +213,13 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
 
                 let filename = i.span(self.ctx.tcx).filename(self.ctx.sess());
                 let has_doc_example = tests.found_tests != 0;
-                let hir_id = self.ctx.tcx.hir().local_def_id_to_hir_id(i.def_id.expect_local());
+                // The `expect_real()` should be okay because `local_def_id_to_hir_id`
+                // would presumably panic if a fake `DefIndex` were passed.
+                let hir_id = self
+                    .ctx
+                    .tcx
+                    .hir()
+                    .local_def_id_to_hir_id(i.def_id.expect_real().expect_local());
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
                 // `missing_docs` is allow-by-default, so don't treat this as ignoring the item
                 // unless the user had an explicit `allow`

@@ -18,7 +18,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
@@ -83,22 +83,6 @@ impl FakeDefId {
             FakeDefId::Real(id) => id.is_local(),
             FakeDefId::Fake(_, krate) => krate == LOCAL_CRATE,
         }
-    }
-
-    #[inline]
-    crate fn as_local(self) -> Option<LocalDefId> {
-        match self {
-            FakeDefId::Real(id) => id.as_local(),
-            FakeDefId::Fake(idx, krate) => {
-                (krate == LOCAL_CRATE).then(|| LocalDefId { local_def_index: idx })
-            }
-        }
-    }
-
-    #[inline]
-    crate fn expect_local(self) -> LocalDefId {
-        self.as_local()
-            .unwrap_or_else(|| panic!("FakeDefId::expect_local: `{:?}` isn't local", self))
     }
 
     #[inline]
