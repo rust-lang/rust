@@ -242,11 +242,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   call void @__enzyme_differential_mpi_wait(i8* %51, i64 %52, i8* %53, i64 %54, i64 %55, i8* %56, i8 %57, %struct.ompi_request_t** %"r1'ipa")
 ; CHECK-NEXT:   %58 = call i32 @MPI_Wait(%struct.ompi_request_t** %"r1'ipa", %struct.ompi_status_public_t* %3)
 ; CHECK-NEXT:   %59 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %4)
-; CHECK-NEXT:   %60 = bitcast i8* %malloccall4 to float*
-; CHECK-NEXT:   %_unwrap = load i32, i32* %4
-; CHECK-NEXT:   %_unwrap6 = zext i32 %_unwrap to i64
-; CHECK-NEXT:   %61 = udiv i64 %_unwrap6, 4
-; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %60, float* %"val1'", i64 %61)
+; CHECK-NEXT:   %60 = load i32, i32* %4
+; CHECK-NEXT:   %61 = zext i32 %60 to i64
+; CHECK-NEXT:   %62 = bitcast i8* %malloccall4 to float*
+; CHECK-NEXT:   %63 = udiv i64 %61, 4
+; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %62, float* %"val1'", i64 %63)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall4)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

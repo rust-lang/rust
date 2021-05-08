@@ -167,8 +167,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     if (origParent)                                                            \
       if (auto opinst = dyn_cast<Instruction>(v)) {                            \
         v = fixLCSSA(opinst, origParent);                                      \
-        if (check)                                                             \
-          assert(v != val);                                                    \
       }                                                                        \
     Value *___res;                                                             \
     if (mode == UnwrapMode::LegalFullUnwrap ||                                 \

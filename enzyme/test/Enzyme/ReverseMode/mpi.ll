@@ -150,9 +150,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %12 = tail call i8* @malloc(i64 %11)
 ; CHECK-NEXT:   %13 = call i32 @MPI_Recv(i8* %12, i32 1, %struct.ompi_datatype_t* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to %struct.ompi_datatype_t*), i32 %numprocsuiv, i32 %etiquette, %struct.ompi_communicator_t* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to %struct.ompi_communicator_t*), %struct.ompi_status_public_t* %1)
 ; CHECK-NEXT:   %14 = bitcast i8* %12 to float*
-; CHECK-NEXT:   %_unwrap = load i32, i32* %2
-; CHECK-NEXT:   %_unwrap2 = zext i32 %_unwrap to i64
-; CHECK-NEXT:   %15 = udiv i64 %_unwrap2, 4
+; CHECK-NEXT:   %15 = udiv i64 %11, 4
 ; CHECK-NEXT:   call void @__enzyme_memcpyadd_floatda1sa1(float* %14, float* %"val1'", i64 %15)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %12)
 ; CHECK-NEXT:   ret void

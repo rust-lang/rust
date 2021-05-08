@@ -1213,6 +1213,22 @@ Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
     PA.preserve<PhiValuesAnalysis>();
 #endif
     FAM.invalidate(*NewF, PA);
+
+  /*
+   for (auto &Arg : NewF->args()) {
+     if (!Arg.hasName())
+       Arg.setName("arg");
+   }
+   for (BasicBlock &BB : *NewF) {
+     if (!BB.hasName())
+       BB.setName("bb");
+  
+     for (Instruction &I : BB) {
+       if (!I.hasName() && !I.getType()->isVoidTy())
+         I.setName("i");
+     }
+   }
+   */
   }
 
 #if LLVM_VERSION_MAJOR >= 8

@@ -1025,14 +1025,18 @@ public:
                   bool mergeIfTrue = false) {
     assert(inst->getName() != "<badref>");
     LoopContext lc;
+
+    if (inst->getParent() == inversionAllocs)
+      return inst;
+
+    if (!isOriginalBlock(*forwardBlock)) {
+      forwardBlock = originalForReverseBlock(*forwardBlock);
+    }
+
     bool inLoop = getContext(inst->getParent(), lc);
+    bool isChildLoop = false;
+
     if (inLoop) {
-      bool isChildLoop = false;
-
-      if (!isOriginalBlock(*forwardBlock)) {
-        forwardBlock = originalForReverseBlock(*forwardBlock);
-      }
-
       auto builderLoop = LI.getLoopFor(forwardBlock);
       while (builderLoop) {
         if (builderLoop->getHeader() == lc.header) {
@@ -1041,87 +1045,100 @@ public:
         }
         builderLoop = builderLoop->getParentLoop();
       }
+    }
 
-      if (!isChildLoop) {
-        if (lcssaFixes.find(inst) == lcssaFixes.end()) {
-          lcssaFixes[inst][inst->getParent()] = inst;
-          SmallPtrSet<BasicBlock *, 4> seen;
-          std::deque<BasicBlock *> todo = {inst->getParent()};
-          while (todo.size()) {
-            BasicBlock *cur = todo.front();
-            todo.pop_front();
-            if (seen.count(cur))
-              continue;
-            seen.insert(cur);
-            for (auto Succ : successors(cur)) {
-              todo.push_back(Succ);
-            }
-          }
-          for (auto &BB : *inst->getParent()->getParent()) {
-            if (!seen.count(&BB)) {
-              lcssaFixes[inst][&BB] = UndefValue::get(inst->getType());
-            }
-          }
+
+    if ( (forwardBlock == inst->getParent() || DT.dominates(inst, forwardBlock))
+         && (!inLoop || isChildLoop) ) {
+      return inst;
+    }
+
+    if (!inLoop || isChildLoop) mergeIfTrue = true;
+
+    //llvm::errs() << " inst: " << *inst << "\n";
+    //llvm::errs() << " seen: " << *inst->getParent() << "\n";
+    assert(inst->getParent() != inversionAllocs);
+    assert(isOriginalBlock(*inst->getParent()));
+
+    if (lcssaFixes.find(inst) == lcssaFixes.end()) {
+      lcssaFixes[inst][inst->getParent()] = inst;
+      SmallPtrSet<BasicBlock *, 4> seen;
+      std::deque<BasicBlock *> todo = {inst->getParent()};
+      while (todo.size()) {
+        BasicBlock *cur = todo.front();
+        todo.pop_front();
+        if (seen.count(cur))
+          continue;
+        seen.insert(cur);
+        for (auto Succ : successors(cur)) {
+          todo.push_back(Succ);
         }
-
-        if (lcssaFixes[inst].find(forwardBlock) != lcssaFixes[inst].end()) {
-          return lcssaFixes[inst][forwardBlock];
+      }
+      for (auto &BB : *inst->getParent()->getParent()) {
+        if (!seen.count(&BB) || (inst->getParent() != &BB && DT.dominates(&BB, inst->getParent()))) {
+          lcssaFixes[inst][&BB] = UndefValue::get(inst->getType());
         }
-
-        // TODO replace forwardBlock with the first block dominated by inst,
-        // that dominates (or is) forwardBlock to ensuring maximum reuse
-        IRBuilder<> lcssa(&forwardBlock->front());
-        auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1,
-                                        inst->getName() + "!manual_lcssa");
-        lcssaFixes[inst][forwardBlock] = lcssaPHI;
-        for (auto pred : predecessors(forwardBlock)) {
-          Value *val = nullptr;
-          if (inst->getParent() == pred || DT.dominates(inst, pred)) {
-            val = inst;
-          }
-          if (val == nullptr) {
-            for (const auto &pair : lcssaFixes[inst]) {
-              if (!isa<UndefValue>(pair.second) &&
-                  (pred == pair.first || DT.dominates(pair.first, pred))) {
-                val = pair.second;
-                assert(pair.second->getType() == inst->getType());
-                break;
-              }
-            }
-          }
-          if (val == nullptr) {
-            val = fixLCSSA(inst, pred, /*mergeIfPossible*/ true);
-            assert(val->getType() == inst->getType());
-          }
-          assert(val->getType() == inst->getType());
-          lcssaPHI->addIncoming(val, pred);
-        }
-
-        if (mergeIfTrue) {
-          Value *val = lcssaPHI;
-          for (auto &v : lcssaPHI->incoming_values()) {
-            if (v == lcssaPHI)
-              continue;
-            if (val == lcssaPHI)
-              val = v;
-            if (v != val) {
-              val = nullptr;
-              break;
-            }
-          }
-          if (val && val != lcssaPHI) {
-            if (lcssaPHI->hasNUses(0)) {
-              lcssaFixes[inst].erase(forwardBlock);
-              lcssaPHI->eraseFromParent();
-            }
-            return val;
-          }
-        }
-
-        return lcssaPHI;
       }
     }
-    return inst;
+
+    if (lcssaFixes[inst].find(forwardBlock) != lcssaFixes[inst].end()) {
+      return lcssaFixes[inst][forwardBlock];
+    }
+
+    // TODO replace forwardBlock with the first block dominated by inst,
+    // that dominates (or is) forwardBlock to ensuring maximum reuse
+    IRBuilder<> lcssa(&forwardBlock->front());
+    auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1,
+                                    inst->getName() + "!manual_lcssa");
+    lcssaFixes[inst][forwardBlock] = lcssaPHI;
+    for (auto pred : predecessors(forwardBlock)) {
+      Value *val = nullptr;
+      if (inst->getParent() == pred || DT.dominates(inst, pred)) {
+        val = inst;
+      }
+      if (val == nullptr) {
+        // Todo, this optimization can't be done unless the block is also proven
+        // to never reach inst->getParent() as a successor
+        /*
+        for (const auto &pair : lcssaFixes[inst]) {
+          if (!isa<UndefValue>(pair.second) &&
+              (pred == pair.first || DT.dominates(pair.first, pred))) {
+            val = pair.second;
+            assert(pair.second->getType() == inst->getType());
+            break;
+          }
+        }
+        */
+      }
+      if (val == nullptr) {
+        val = fixLCSSA(inst, pred, /*mergeIfPossible*/ true);
+        assert(val->getType() == inst->getType());
+      }
+      assert(val->getType() == inst->getType());
+      lcssaPHI->addIncoming(val, pred);
+    }
+
+    if (mergeIfTrue) {
+      Value *val = lcssaPHI;
+      for (auto &v : lcssaPHI->incoming_values()) {
+        if (v == lcssaPHI)
+          continue;
+        if (val == lcssaPHI)
+          val = v;
+        if (v != val) {
+          val = nullptr;
+          break;
+        }
+      }
+      if (val && val != lcssaPHI) {
+        if (lcssaPHI->hasNUses(0)) {
+          lcssaFixes[inst].erase(forwardBlock);
+          lcssaPHI->eraseFromParent();
+        }
+        return val;
+      }
+    }
+    return lcssaPHI;
   }
 
   Value *

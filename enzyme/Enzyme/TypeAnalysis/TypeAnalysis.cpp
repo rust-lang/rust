@@ -637,7 +637,7 @@ void TypeAnalyzer::considerTBAA() {
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
-        if (F && F->getName() == "__enzyme_integer") {
+        if (F && (F->getName() == "__enzyme_integer" || F->getName() == "enzyme_integer_")) {
           assert(call->getNumArgOperands() == 1 ||
                  call->getNumArgOperands() == 2);
           assert(call->getArgOperand(0)->getType()->isPointerTy());

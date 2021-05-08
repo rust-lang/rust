@@ -2790,7 +2790,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     // set derivative of function arguments
     auto newArgs = gutils->newFunc->arg_begin();
 
-    for (int i = 0; i < constant_args.size(); ++i) {
+    for (size_t i = 0; i < constant_args.size(); ++i) {
       auto arg = constant_args[i];
       if (arg == DIFFE_TYPE::DUP_ARG) {
         newArgs += 1;

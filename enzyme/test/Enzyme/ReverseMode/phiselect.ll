@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -early-cse-memssa -simplifycfg -instsimplify -adce -simplifycfg -loop-deletion -simplifycfg -S | FileCheck %s
+; RUN: if [ %llvmver -ge 8 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -enzyme-phi-restructure -mem2reg -early-cse-memssa -simplifycfg -instsimplify -adce -simplifycfg -loop-deletion -simplifycfg -S | FileCheck %s; fi
 
 ; ModuleID = 'wa.cpp'
 source_filename = "wa.cpp"

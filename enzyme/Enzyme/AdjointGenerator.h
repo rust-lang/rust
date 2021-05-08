@@ -2225,7 +2225,7 @@ public:
           cal->setCallingConv(ExpF->getCallingConv());
           cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
-          Value *dif0 = Builder2.CreateFMul(vdiff, lookup(cal, Builder2));
+          Value *dif0 = Builder2.CreateFMul(vdiff, cal);
           if (ID != Intrinsic::exp) {
             dif0 = Builder2.CreateFMul(
                 dif0, ConstantFP::get(I.getType(), 0.6931471805599453));
@@ -3046,7 +3046,7 @@ public:
               length = ConstantInt::get(len_arg->getType(), nextStart);
             }
             if (start != 0)
-              length = BuilderZ.CreateSub(
+              length = Builder2.CreateSub(
                   length, ConstantInt::get(len_arg->getType(), start));
 
             if (auto secretty = dt.isFloat()) {
@@ -3061,8 +3061,7 @@ public:
               if (offset != 0)
                 srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
               args.push_back(Builder2.CreatePointerCast(srco, secretpt));
-              args.push_back(Builder2.CreateUDiv(
-                  lookup(length, Builder2),
+              args.push_back(Builder2.CreateUDiv(length,
 
                   ConstantInt::get(length->getType(),
                                    Builder2.GetInsertBlock()
@@ -3250,7 +3249,7 @@ public:
             length = ConstantInt::get(len_arg->getType(), nextStart);
           }
           if (start != 0)
-            length = BuilderZ.CreateSub(
+            length = Builder2.CreateSub(
                 length, ConstantInt::get(len_arg->getType(), start));
 
           if (auto secretty = dt.isFloat()) {
@@ -3265,8 +3264,7 @@ public:
             if (offset != 0)
               srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
             args.push_back(Builder2.CreatePointerCast(srco, secretpt));
-            args.push_back(Builder2.CreateUDiv(
-                lookup(length, Builder2),
+            args.push_back(Builder2.CreateUDiv(length,
 
                 ConstantInt::get(length->getType(),
                                  Builder2.GetInsertBlock()
