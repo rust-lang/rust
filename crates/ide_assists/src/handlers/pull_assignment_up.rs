@@ -1,6 +1,6 @@
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make},
-    AstNode,
+    ast::{self, make},
+    ted, AstNode,
 };
 
 use crate::{
@@ -37,103 +37,101 @@ use crate::{
 // ```
 pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let assign_expr = ctx.find_node_at_offset::<ast::BinExpr>()?;
-    let name_expr = if assign_expr.op_kind()? == ast::BinOp::Assignment {
-        assign_expr.lhs()?
-    } else {
+
+    let op_kind = assign_expr.op_kind()?;
+    if op_kind != ast::BinOp::Assignment {
+        cov_mark::hit!(test_cant_pull_non_assignments);
         return None;
+    }
+
+    let mut collector = AssignmentsCollector {
+        sema: &ctx.sema,
+        common_lhs: assign_expr.lhs()?,
+        assignments: Vec::new(),
     };
 
-    let (old_stmt, new_stmt) = if let Some(if_expr) = ctx.find_node_at_offset::<ast::IfExpr>() {
-        (
-            ast::Expr::cast(if_expr.syntax().to_owned())?,
-            exprify_if(&if_expr, &ctx.sema, &name_expr)?.indent(if_expr.indent_level()),
-        )
+    let tgt: ast::Expr = if let Some(if_expr) = ctx.find_node_at_offset::<ast::IfExpr>() {
+        collector.collect_if(&if_expr)?;
+        if_expr.into()
     } else if let Some(match_expr) = ctx.find_node_at_offset::<ast::MatchExpr>() {
-        (
-            ast::Expr::cast(match_expr.syntax().to_owned())?,
-            exprify_match(&match_expr, &ctx.sema, &name_expr)?,
-        )
+        collector.collect_match(&match_expr)?;
+        match_expr.into()
     } else {
         return None;
     };
-
-    let expr_stmt = make::expr_stmt(new_stmt);
 
     acc.add(
         AssistId("pull_assignment_up", AssistKind::RefactorExtract),
         "Pull assignment up",
-        old_stmt.syntax().text_range(),
+        tgt.syntax().text_range(),
         move |edit| {
-            edit.replace(old_stmt.syntax().text_range(), format!("{} = {};", name_expr, expr_stmt));
+            let assignments: Vec<_> = collector
+                .assignments
+                .into_iter()
+                .map(|(stmt, rhs)| (edit.make_ast_mut(stmt), rhs.clone_for_update()))
+                .collect();
+
+            let tgt = edit.make_ast_mut(tgt);
+
+            for (stmt, rhs) in assignments {
+                ted::replace(stmt.syntax(), rhs.syntax());
+            }
+            let assign_expr = make::expr_assignment(collector.common_lhs, tgt.clone());
+            let assign_stmt = make::expr_stmt(assign_expr);
+
+            ted::replace(tgt.syntax(), assign_stmt.syntax().clone_for_update());
         },
     )
 }
 
-fn exprify_match(
-    match_expr: &ast::MatchExpr,
-    sema: &hir::Semantics<ide_db::RootDatabase>,
-    name: &ast::Expr,
-) -> Option<ast::Expr> {
-    let new_arm_list = match_expr
-        .match_arm_list()?
-        .arms()
-        .map(|arm| {
-            if let ast::Expr::BlockExpr(block) = arm.expr()? {
-                let new_block = exprify_block(&block, sema, name)?.indent(block.indent_level());
-                Some(arm.replace_descendant(block, new_block))
-            } else {
-                None
+struct AssignmentsCollector<'a> {
+    sema: &'a hir::Semantics<'a, ide_db::RootDatabase>,
+    common_lhs: ast::Expr,
+    assignments: Vec<(ast::ExprStmt, ast::Expr)>,
+}
+
+impl<'a> AssignmentsCollector<'a> {
+    fn collect_match(&mut self, match_expr: &ast::MatchExpr) -> Option<()> {
+        for arm in match_expr.match_arm_list()?.arms() {
+            match arm.expr()? {
+                ast::Expr::BlockExpr(block) => self.collect_block(&block)?,
+                _ => return None,
             }
-        })
-        .collect::<Option<Vec<_>>>()?;
-    let new_arm_list = match_expr
-        .match_arm_list()?
-        .replace_descendants(match_expr.match_arm_list()?.arms().zip(new_arm_list));
-    Some(make::expr_match(match_expr.expr()?, new_arm_list))
-}
-
-fn exprify_if(
-    statement: &ast::IfExpr,
-    sema: &hir::Semantics<ide_db::RootDatabase>,
-    name: &ast::Expr,
-) -> Option<ast::Expr> {
-    let then_branch = exprify_block(&statement.then_branch()?, sema, name)?;
-    let else_branch = match statement.else_branch()? {
-        ast::ElseBranch::Block(ref block) => {
-            ast::ElseBranch::Block(exprify_block(block, sema, name)?)
         }
-        ast::ElseBranch::IfExpr(expr) => {
-            cov_mark::hit!(test_pull_assignment_up_chained_if);
-            ast::ElseBranch::IfExpr(ast::IfExpr::cast(
-                exprify_if(&expr, sema, name)?.syntax().to_owned(),
-            )?)
-        }
-    };
-    Some(make::expr_if(statement.condition()?, then_branch, Some(else_branch)))
-}
 
-fn exprify_block(
-    block: &ast::BlockExpr,
-    sema: &hir::Semantics<ide_db::RootDatabase>,
-    name: &ast::Expr,
-) -> Option<ast::BlockExpr> {
-    if block.tail_expr().is_some() {
-        return None;
+        Some(())
     }
+    fn collect_if(&mut self, if_expr: &ast::IfExpr) -> Option<()> {
+        let then_branch = if_expr.then_branch()?;
+        self.collect_block(&then_branch)?;
 
-    let mut stmts: Vec<_> = block.statements().collect();
-    let stmt = stmts.pop()?;
-
-    if let ast::Stmt::ExprStmt(stmt) = stmt {
-        if let ast::Expr::BinExpr(expr) = stmt.expr()? {
-            if expr.op_kind()? == ast::BinOp::Assignment && is_equivalent(sema, &expr.lhs()?, name)
-            {
-                // The last statement in the block is an assignment to the name we want
-                return Some(make::block_expr(stmts, Some(expr.rhs()?)));
+        match if_expr.else_branch()? {
+            ast::ElseBranch::Block(block) => self.collect_block(&block),
+            ast::ElseBranch::IfExpr(expr) => {
+                cov_mark::hit!(test_pull_assignment_up_chained_if);
+                self.collect_if(&expr)
             }
         }
     }
-    None
+    fn collect_block(&mut self, block: &ast::BlockExpr) -> Option<()> {
+        if block.tail_expr().is_some() {
+            return None;
+        }
+
+        let last_stmt = block.statements().last()?;
+        if let ast::Stmt::ExprStmt(stmt) = last_stmt {
+            if let ast::Expr::BinExpr(expr) = stmt.expr()? {
+                if expr.op_kind()? == ast::BinOp::Assignment
+                    && is_equivalent(self.sema, &expr.lhs()?, &self.common_lhs)
+                {
+                    self.assignments.push((stmt, expr.rhs()?));
+                    return Some(());
+                }
+            }
+        }
+
+        None
+    }
 }
 
 fn is_equivalent(
@@ -234,6 +232,38 @@ fn foo() {
         2 => {
             3
         },
+        3 => {
+            4
+        }
+    };
+}"#,
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn test_pull_assignment_up_assignment_expressions() {
+        check_assist(
+            pull_assignment_up,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    match 1 {
+        1 => { $0a = 2; },
+        2 => a = 3,
+        3 => {
+            a = 4
+        }
+    }
+}"#,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    a = match 1 {
+        1 => { 2 },
+        2 => 3,
         3 => {
             4
         }
@@ -435,6 +465,26 @@ fn foo() {
     } else {
         3
     };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_cant_pull_non_assignments() {
+        cov_mark::check!(test_cant_pull_non_assignments);
+        check_assist_not_applicable(
+            pull_assignment_up,
+            r#"
+fn foo() {
+    let mut a = 1;
+    let b = &mut a;
+
+    if true {
+        $0*b + 2;
+    } else {
+        *b + 3;
+    }
 }
 "#,
         )

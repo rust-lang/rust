@@ -275,6 +275,9 @@ pub fn expr_tuple(elements: impl IntoIterator<Item = ast::Expr>) -> ast::Expr {
     let expr = elements.into_iter().format(", ");
     expr_from_text(&format!("({})", expr))
 }
+pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
+    expr_from_text(&format!("{} = {}", lhs, rhs))
+}
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
