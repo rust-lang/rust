@@ -665,18 +665,8 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
 
     #[must_use]
     fn replace_descendant<D: AstNode>(&self, old: D, new: D) -> Self {
-        self.replace_descendants(iter::once((old, new)))
-    }
-
-    #[must_use]
-    fn replace_descendants<D: AstNode>(
-        &self,
-        replacement_map: impl IntoIterator<Item = (D, D)>,
-    ) -> Self {
         let mut rewriter = SyntaxRewriter::default();
-        for (from, to) in replacement_map {
-            rewriter.replace(from.syntax(), to.syntax())
-        }
+        rewriter.replace(old.syntax(), new.syntax());
         rewriter.rewrite_ast(self)
     }
     fn indent_level(&self) -> IndentLevel {
