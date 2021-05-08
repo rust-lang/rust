@@ -1464,17 +1464,23 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
 
 fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
     if item.is_non_exhaustive() {
-        write!(w, "<div class=\"docblock non-exhaustive non-exhaustive-{}\">", {
-            if item.is_struct() {
-                "struct"
-            } else if item.is_enum() {
-                "enum"
-            } else if item.is_variant() {
-                "variant"
-            } else {
-                "type"
+        write!(
+            w,
+            "<details class=\"rustdoc-toggle non-exhaustive\">\
+                 <summary class=\"hideme\"><span>{}</span></summary>\
+                 <div class=\"docblock\">",
+            {
+                if item.is_struct() {
+                    "This struct is marked as non-exhaustive"
+                } else if item.is_enum() {
+                    "This enum is marked as non-exhaustive"
+                } else if item.is_variant() {
+                    "This variant is marked as non-exhaustive"
+                } else {
+                    "This type is marked as non-exhaustive"
+                }
             }
-        });
+        );
 
         if item.is_struct() {
             w.write_str(
@@ -1502,6 +1508,6 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
             );
         }
 
-        w.write_str("</div>");
+        w.write_str("</div></details>");
     }
 }
