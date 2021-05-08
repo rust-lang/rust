@@ -1680,55 +1680,6 @@ fn add_local_crate_metadata_objects(
     }
 }
 
-/// Link native libraries corresponding to the current crate and all libraries corresponding to
-/// all its dependency crates.
-/// FIXME: Consider combining this with the functions above adding object files for the local crate.
-fn link_local_crate_native_libs_and_dependent_crate_libs<'a, B: ArchiveBuilder<'a>>(
-    cmd: &mut dyn Linker,
-    sess: &'a Session,
-    crate_type: CrateType,
-    codegen_results: &CodegenResults,
-    tmpdir: &Path,
-) {
-    // Take careful note of the ordering of the arguments we pass to the linker
-    // here. Linkers will assume that things on the left depend on things to the
-    // right. Things on the right cannot depend on things on the left. This is
-    // all formally implemented in terms of resolving symbols (libs on the right
-    // resolve unknown symbols of libs on the left, but not vice versa).
-    //
-    // For this reason, we have organized the arguments we pass to the linker as
-    // such:
-    //
-    // 1. The local object that LLVM just generated
-    // 2. Local native libraries
-    // 3. Upstream rust libraries
-    // 4. Upstream native libraries
-    //
-    // The rationale behind this ordering is that those items lower down in the
-    // list can't depend on items higher up in the list. For example nothing can
-    // depend on what we just generated (e.g., that'd be a circular dependency).
-    // Upstream rust libraries are not allowed to depend on our local native
-    // libraries as that would violate the structure of the DAG, in that
-    // scenario they are required to link to them as well in a shared fashion.
-    //
-    // Note that upstream rust libraries may contain native dependencies as
-    // well, but they also can't depend on what we just started to add to the
-    // link line. And finally upstream native libraries can't depend on anything
-    // in this DAG so far because they're only dylibs and dylibs can only depend
-    // on other dylibs (e.g., other native deps).
-    //
-    // If -Zlink-native-libraries=false is set, then the assumption is that an
-    // external build system already has the native dependencies defined, and it
-    // will provide them to the linker itself.
-    if sess.opts.debugging_opts.link_native_libraries {
-        add_local_native_libraries(cmd, sess, codegen_results);
-    }
-    add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
-    if sess.opts.debugging_opts.link_native_libraries {
-        add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
-    }
-}
-
 /// Add sysroot and other globally set directories to the directory search list.
 fn add_library_search_dirs(cmd: &mut dyn Linker, sess: &Session, self_contained: bool) {
     // The default library location, we need this to find the runtime.
@@ -1932,14 +1883,44 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         cmd.no_default_libraries();
     }
 
-    // OBJECT-FILES-YES
-    link_local_crate_native_libs_and_dependent_crate_libs::<B>(
-        cmd,
-        sess,
-        crate_type,
-        codegen_results,
-        tmpdir,
-    );
+    // OBJECT-FILES-NO, AUDIT-ORDER
+    // Take careful note of the ordering of the arguments we pass to the linker
+    // here. Linkers will assume that things on the left depend on things to the
+    // right. Things on the right cannot depend on things on the left. This is
+    // all formally implemented in terms of resolving symbols (libs on the right
+    // resolve unknown symbols of libs on the left, but not vice versa).
+    //
+    // For this reason, we have organized the arguments we pass to the linker as
+    // such:
+    //
+    // 1. The local object that LLVM just generated
+    // 2. Local native libraries
+    // 3. Upstream rust libraries
+    // 4. Upstream native libraries
+    //
+    // The rationale behind this ordering is that those items lower down in the
+    // list can't depend on items higher up in the list. For example nothing can
+    // depend on what we just generated (e.g., that'd be a circular dependency).
+    // Upstream rust libraries are not allowed to depend on our local native
+    // libraries as that would violate the structure of the DAG, in that
+    // scenario they are required to link to them as well in a shared fashion.
+    //
+    // Note that upstream rust libraries may contain native dependencies as
+    // well, but they also can't depend on what we just started to add to the
+    // link line. And finally upstream native libraries can't depend on anything
+    // in this DAG so far because they're only dylibs and dylibs can only depend
+    // on other dylibs (e.g., other native deps).
+    //
+    // If -Zlink-native-libraries=false is set, then the assumption is that an
+    // external build system already has the native dependencies defined, and it
+    // will provide them to the linker itself.
+    if sess.opts.debugging_opts.link_native_libraries {
+        add_local_native_libraries(cmd, sess, codegen_results);
+    }
+    add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
+    if sess.opts.debugging_opts.link_native_libraries {
+        add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
+    }
 
     // OBJECT-FILES-NO, AUDIT-ORDER
     if sess.opts.cg.profile_generate.enabled() || sess.instrument_coverage() {
