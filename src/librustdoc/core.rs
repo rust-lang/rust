@@ -576,12 +576,12 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
 /// for `impl Trait` in argument position.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 crate enum ImplTraitParam {
-    DefId(FakeDefId),
+    DefId(DefId),
     ParamIndex(u32),
 }
 
-impl From<FakeDefId> for ImplTraitParam {
-    fn from(did: FakeDefId) -> Self {
+impl From<DefId> for ImplTraitParam {
+    fn from(did: DefId) -> Self {
         ImplTraitParam::DefId(did)
     }
 }
