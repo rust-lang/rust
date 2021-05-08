@@ -65,7 +65,7 @@ pub(crate) fn find_all_refs(
             (find_def(&sema, &syntax, position)?, false)
         };
 
-    let mut usages = def.usages(sema).set_scope(search_scope).all();
+    let mut usages = def.usages(sema).set_scope(search_scope).include_self_refs().all();
     if is_literal_search {
         // filter for constructor-literals
         let refs = usages.references.values_mut();
@@ -1163,21 +1163,75 @@ fn foo<const FOO$0: usize>() -> usize {
     }
 
     #[test]
-    fn test_find_self_ty_in_trait_def() {
+    fn test_trait() {
         check(
             r#"
-trait Foo {
-    fn f() -> Self$0;
-}
+trait Foo$0 where Self: {}
+
+impl Foo for () {}
 "#,
             expect![[r#"
-                Self TypeParam FileId(0) 6..9 6..9
+                Foo Trait FileId(0) 0..24 6..9
 
-                FileId(0) 26..30
+                FileId(0) 31..34
             "#]],
         );
     }
 
+    #[test]
+    fn test_trait_self() {
+        check(
+            r#"
+trait Foo where Self$0 {
+    fn f() -> Self;
+}
+
+impl Foo for () {}
+"#,
+            expect![[r#"
+                Self TypeParam FileId(0) 6..9 6..9
+
+                FileId(0) 16..20
+                FileId(0) 37..41
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_self_ty() {
+        check(
+            r#"
+        struct $0Foo;
+
+        impl Foo where Self: {
+            fn f() -> Self;
+        }
+        "#,
+            expect![[r#"
+                Foo Struct FileId(0) 0..11 7..10
+
+                FileId(0) 18..21
+                FileId(0) 28..32
+                FileId(0) 50..54
+            "#]],
+        );
+        check(
+            r#"
+struct Foo;
+
+impl Foo where Self: {
+    fn f() -> Self$0;
+}
+"#,
+            expect![[r#"
+                impl Impl FileId(0) 13..57 18..21
+
+                FileId(0) 18..21
+                FileId(0) 28..32
+                FileId(0) 50..54
+            "#]],
+        );
+    }
     #[test]
     fn test_self_variant_with_payload() {
         check(

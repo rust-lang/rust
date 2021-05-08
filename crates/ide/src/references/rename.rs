@@ -1888,4 +1888,21 @@ impl Foo {
             "error: Cannot rename `Self`",
         );
     }
+
+    #[test]
+    fn test_rename_ignores_self_ty() {
+        check(
+            "Fo0",
+            r#"
+struct $0Foo;
+
+impl Foo where Self: {}
+"#,
+            r#"
+struct Fo0;
+
+impl Fo0 where Self: {}
+"#,
+        );
+    }
 }

@@ -233,6 +233,13 @@ impl Definition {
             };
         }
 
+        if let Definition::SelfType(impl_) = self {
+            return match impl_.source(db).map(|src| src.value.syntax().text_range()) {
+                Some(range) => SearchScope::file_range(FileRange { file_id, range }),
+                None => SearchScope::single_file(file_id),
+            };
+        }
+
         if let Definition::GenericParam(hir::GenericParam::LifetimeParam(param)) = self {
             let range = match param.parent(db) {
                 hir::GenericDef::Function(it) => {
@@ -297,7 +304,7 @@ impl Definition {
     }
 
     pub fn usages<'a>(&'a self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
-        FindUsages { def: self, sema, scope: None, include_self_kw_refs: false }
+        FindUsages { def: self, sema, scope: None, include_self_kw_refs: None }
     }
 }
 
@@ -305,12 +312,13 @@ pub struct FindUsages<'a> {
     def: &'a Definition,
     sema: &'a Semantics<'a, RootDatabase>,
     scope: Option<SearchScope>,
-    include_self_kw_refs: bool,
+    include_self_kw_refs: Option<hir::Type>,
 }
 
 impl<'a> FindUsages<'a> {
-    pub fn include_self_kw_refs(mut self, include: bool) -> FindUsages<'a> {
-        self.include_self_kw_refs = include;
+    /// Enable searching for `Self` when the definition is a type.
+    pub fn include_self_refs(mut self) -> FindUsages<'a> {
+        self.include_self_kw_refs = def_to_ty(self.sema, self.def);
         self
     }
 
@@ -354,13 +362,18 @@ impl<'a> FindUsages<'a> {
             }
         };
 
-        let name = match self.def.name(sema.db) {
-            Some(it) => it.to_string(),
+        let name = self.def.name(sema.db).or_else(|| {
+            self.include_self_kw_refs.as_ref().and_then(|ty| {
+                ty.as_adt()
+                    .map(|adt| adt.name(self.sema.db))
+                    .or_else(|| ty.as_builtin().map(|builtin| builtin.name()))
+            })
+        });
+        let name = match name {
+            Some(name) => name.to_string(),
             None => return,
         };
-
-        let pat = name.as_str();
-        let search_for_self = self.include_self_kw_refs;
+        let name = name.as_str();
 
         for (file_id, search_range) in search_scope {
             let text = sema.db.file_text(file_id);
@@ -369,48 +382,60 @@ impl<'a> FindUsages<'a> {
 
             let tree = Lazy::new(|| sema.parse(file_id).syntax().clone());
 
-            let mut handle_match = |idx: usize| -> bool {
+            for (idx, _) in text.match_indices(name) {
                 let offset: TextSize = idx.try_into().unwrap();
                 if !search_range.contains_inclusive(offset) {
-                    return false;
+                    continue;
                 }
 
                 if let Some(name) = sema.find_node_at_offset_with_descend(&tree, offset) {
-                    match name {
-                        ast::NameLike::NameRef(name_ref) => {
-                            if self.found_name_ref(&name_ref, sink) {
-                                return true;
-                            }
-                        }
-                        ast::NameLike::Name(name) => {
-                            if self.found_name(&name, sink) {
-                                return true;
-                            }
-                        }
-                        ast::NameLike::Lifetime(lifetime) => {
-                            if self.found_lifetime(&lifetime, sink) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-
-                return false;
-            };
-
-            for (idx, _) in text.match_indices(pat) {
-                if handle_match(idx) {
-                    return;
-                }
-            }
-
-            if search_for_self {
-                for (idx, _) in text.match_indices("Self") {
-                    if handle_match(idx) {
+                    if match name {
+                        ast::NameLike::NameRef(name_ref) => self.found_name_ref(&name_ref, sink),
+                        ast::NameLike::Name(name) => self.found_name(&name, sink),
+                        ast::NameLike::Lifetime(lifetime) => self.found_lifetime(&lifetime, sink),
+                    } {
                         return;
                     }
                 }
             }
+            if let Some(self_ty) = &self.include_self_kw_refs {
+                for (idx, _) in text.match_indices("Self") {
+                    let offset: TextSize = idx.try_into().unwrap();
+                    if !search_range.contains_inclusive(offset) {
+                        continue;
+                    }
+
+                    if let Some(ast::NameLike::NameRef(name_ref)) =
+                        sema.find_node_at_offset_with_descend(&tree, offset)
+                    {
+                        if self.found_self_ty_name_ref(&self_ty, &name_ref, sink) {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn found_self_ty_name_ref(
+        &self,
+        self_ty: &hir::Type,
+        name_ref: &ast::NameRef,
+        sink: &mut dyn FnMut(FileId, FileReference) -> bool,
+    ) -> bool {
+        match NameRefClass::classify(self.sema, &name_ref) {
+            Some(NameRefClass::Definition(Definition::SelfType(impl_)))
+                if impl_.self_ty(self.sema.db) == *self_ty =>
+            {
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let reference = FileReference {
+                    range,
+                    name: ast::NameLike::NameRef(name_ref.clone()),
+                    access: None,
+                };
+                sink(file_id, reference)
+            }
+            _ => false,
         }
     }
 
@@ -429,7 +454,7 @@ impl<'a> FindUsages<'a> {
                 };
                 sink(file_id, reference)
             }
-            _ => false, // not a usage
+            _ => false,
         }
     }
 
@@ -448,42 +473,35 @@ impl<'a> FindUsages<'a> {
                 };
                 sink(file_id, reference)
             }
-            Some(NameRefClass::Definition(Definition::SelfType(impl_))) => {
-                let ty = impl_.self_ty(self.sema.db);
-
-                if let Some(adt) = ty.as_adt() {
-                    if &Definition::ModuleDef(ModuleDef::Adt(adt)) == self.def {
-                        let FileRange { file_id, range } =
-                            self.sema.original_range(name_ref.syntax());
-                        let reference = FileReference {
-                            range,
-                            name: ast::NameLike::NameRef(name_ref.clone()),
-                            access: None,
-                        };
-                        return sink(file_id, reference);
-                    }
+            Some(NameRefClass::Definition(def)) if self.include_self_kw_refs.is_some() => {
+                if self.include_self_kw_refs == def_to_ty(self.sema, &def) {
+                    let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                    let reference = FileReference {
+                        range,
+                        name: ast::NameLike::NameRef(name_ref.clone()),
+                        access: reference_access(&def, &name_ref),
+                    };
+                    sink(file_id, reference)
+                } else {
+                    false
                 }
-
-                false
             }
             Some(NameRefClass::FieldShorthand { local_ref: local, field_ref: field }) => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
-                let reference = match self.def {
-                    Definition::Field(_) if &field == self.def => FileReference {
-                        range,
-                        name: ast::NameLike::NameRef(name_ref.clone()),
-                        access: reference_access(&field, &name_ref),
-                    },
-                    Definition::Local(l) if &local == l => FileReference {
-                        range,
-                        name: ast::NameLike::NameRef(name_ref.clone()),
-                        access: reference_access(&Definition::Local(local), &name_ref),
-                    },
-                    _ => return false, // not a usage
+                let access = match self.def {
+                    Definition::Field(_) if &field == self.def => {
+                        reference_access(&field, &name_ref)
+                    }
+                    Definition::Local(l) if &local == l => {
+                        reference_access(&Definition::Local(local), &name_ref)
+                    }
+                    _ => return false,
                 };
+                let reference =
+                    FileReference { range, name: ast::NameLike::NameRef(name_ref.clone()), access };
                 sink(file_id, reference)
             }
-            _ => false, // not a usage
+            _ => false,
         }
     }
 
@@ -513,8 +531,27 @@ impl<'a> FindUsages<'a> {
                     FileReference { range, name: ast::NameLike::Name(name.clone()), access: None };
                 sink(file_id, reference)
             }
-            _ => false, // not a usage
+            _ => false,
         }
+    }
+}
+
+fn def_to_ty(sema: &Semantics<RootDatabase>, def: &Definition) -> Option<hir::Type> {
+    match def {
+        Definition::ModuleDef(def) => match def {
+            ModuleDef::Adt(adt) => Some(adt.ty(sema.db)),
+            ModuleDef::TypeAlias(it) => Some(it.ty(sema.db)),
+            ModuleDef::BuiltinType(it) => {
+                let graph = sema.db.crate_graph();
+                let krate = graph.iter().next()?;
+                let root_file = graph[krate].root_file_id;
+                let module = sema.to_module_def(root_file)?;
+                Some(it.ty(sema.db, module))
+            }
+            _ => None,
+        },
+        Definition::SelfType(it) => Some(it.self_ty(sema.db)),
+        _ => None,
     }
 }
 

@@ -107,7 +107,7 @@ fn edit_struct_references(
     names: &[ast::Name],
 ) {
     let strukt_def = Definition::ModuleDef(hir::ModuleDef::Adt(hir::Adt::Struct(strukt)));
-    let usages = strukt_def.usages(&ctx.sema).include_self_kw_refs(true).all();
+    let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
     let edit_node = |edit: &mut AssistBuilder, node: SyntaxNode| -> Option<()> {
         match_ast! {
