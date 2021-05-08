@@ -226,14 +226,7 @@ crate fn create_config(
     lints_to_show.extend(crate::lint::RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
     let (lint_opts, lint_caps) = crate::lint::init_lints(lints_to_show, lint_opts, |lint| {
-        // FIXME: why is this necessary?
-        if lint.name == crate::lint::BROKEN_INTRA_DOC_LINKS.name
-            || lint.name == crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name
-        {
-            None
-        } else {
-            Some((lint.name_lower(), lint::Allow))
-        }
+        Some((lint.name_lower(), lint::Allow))
     });
 
     let crate_types =
