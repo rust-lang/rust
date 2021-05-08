@@ -8,7 +8,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::{Attribute, Lit, LitKind, NestedMetaItem};
+use rustc_ast::{AttrStyle, Attribute, Lit, LitKind, NestedMetaItem};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -564,7 +564,7 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
-    fn check_attr_crate_level(
+    fn check_attr_not_crate_level(
         &self,
         meta: &NestedMetaItem,
         hir_id: HirId,
@@ -586,6 +586,48 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    fn check_attr_crate_level(
+        &self,
+        attr: &Attribute,
+        meta: &NestedMetaItem,
+        hir_id: HirId,
+    ) -> bool {
+        if hir_id != CRATE_HIR_ID {
+            self.tcx.struct_span_lint_hir(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                |lint| {
+                    let mut err = lint.build(
+                        "this attribute can only be applied at the crate level",
+                    );
+                    if attr.style == AttrStyle::Outer && self.tcx.hir().get_parent_item(hir_id) == CRATE_HIR_ID {
+                        if let Ok(mut src) =
+                            self.tcx.sess.source_map().span_to_snippet(attr.span)
+                        {
+                            src.insert(1, '!');
+                            err.span_suggestion_verbose(
+                                attr.span,
+                                "to apply to the crate, use an inner attribute",
+                                src,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_help(
+                                attr.span,
+                                "to apply to the crate, use an inner attribute",
+                            );
+                        }
+                    }
+                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level for more information")
+                        .emit();
+                },
+            );
+            return false;
+        }
+        true
+    }
+
     fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
         let mut is_valid = true;
 
@@ -594,33 +636,56 @@ impl CheckAttrVisitor<'tcx> {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
                         sym::alias
-                            if !self.check_attr_crate_level(&meta, hir_id, "alias")
+                            if !self.check_attr_not_crate_level(&meta, hir_id, "alias")
                                 || !self.check_doc_alias(&meta, hir_id, target) =>
                         {
                             is_valid = false
                         }
 
                         sym::keyword
-                            if !self.check_attr_crate_level(&meta, hir_id, "keyword")
+                            if !self.check_attr_not_crate_level(&meta, hir_id, "keyword")
                                 || !self.check_doc_keyword(&meta, hir_id) =>
                         {
                             is_valid = false
                         }
 
-                        sym::test if CRATE_HIR_ID != hir_id => {
+                        sym::html_favicon_url
+                        | sym::html_logo_url
+                        | sym::html_playground_url
+                        | sym::issue_tracker_base_url
+                        | sym::html_root_url
+                        | sym::html_no_source
+                        | sym::test
+                            if !self.check_attr_crate_level(&attr, &meta, hir_id) =>
+                        {
+                            is_valid = false;
+                        }
+
+                        sym::inline | sym::no_inline if target != Target::Use => {
                             self.tcx.struct_span_lint_hir(
                                 INVALID_DOC_ATTRIBUTES,
                                 hir_id,
                                 meta.span(),
                                 |lint| {
-                                    lint.build(
-                                        "`#![doc(test(...)]` is only allowed \
-                                         as a crate-level attribute",
-                                    )
-                                    .emit();
+                                    let mut err = lint.build(
+                                        "this attribute can only be applied to a `use` item",
+                                    );
+                                    err.span_label(meta.span(), "only applicable on `use` items");
+                                    if attr.style == AttrStyle::Outer {
+                                        err.span_label(
+                                            self.tcx.hir().span(hir_id),
+                                            "not a `use` item",
+                                        );
+                                    }
+                                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information")
+                                        .emit();
                                 },
                             );
                             is_valid = false;
+                        }
+
+                        sym::inline | sym::no_inline => {
+                            // FIXME(#80275): conflicting inline attributes
                         }
 
                         // no_default_passes: deprecated
@@ -635,12 +700,10 @@ impl CheckAttrVisitor<'tcx> {
                         | sym::html_playground_url
                         | sym::html_root_url
                         | sym::include
-                        | sym::inline
                         | sym::issue_tracker_base_url
                         | sym::keyword
                         | sym::masked
                         | sym::no_default_passes
-                        | sym::no_inline
                         | sym::notable_trait
                         | sym::passes
                         | sym::plugins
