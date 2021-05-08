@@ -162,6 +162,8 @@ macro_rules! extract_msrv_attr {
 mod consts;
 #[macro_use]
 mod utils;
+#[cfg(feature = "metadata-collector-lint")]
+mod deprecated_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absurd_extreme_comparisons;
