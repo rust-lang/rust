@@ -624,7 +624,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             Some(profiler.start_recording_interval_event_detached(
                 name,
                 EventId::from_label(name),
-                0
+                ecx.get_active_thread().to_u32()
             ))
         } else {
             None
