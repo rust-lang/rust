@@ -125,8 +125,11 @@ pub fn remove_all_iter(range: impl IntoIterator<Item = SyntaxElement>) {
 }
 
 pub fn replace(old: impl Element, new: impl Element) {
+    replace_with_many(old, vec![new.syntax_element()])
+}
+pub fn replace_with_many(old: impl Element, new: Vec<SyntaxElement>) {
     let old = old.syntax_element();
-    replace_all(old.clone()..=old, vec![new.syntax_element()])
+    replace_all(old.clone()..=old, new)
 }
 pub fn replace_all(range: RangeInclusive<SyntaxElement>, new: Vec<SyntaxElement>) {
     let start = range.start().index();
