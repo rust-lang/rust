@@ -137,41 +137,6 @@ If you're not using Code, you can compile and install only the LSP server:
 $ cargo xtask install --server
 ----
 
-==== Troubleshooting
-
-Start with looking at the rust-analyzer version.
-Try **Rust Analyzer: Show RA Version** and `rust-analyzer --version` in the command line.
-If the date is more than a week ago, it's better to update rust-analyzer version.
-
-The next thing to check would be panic messages in rust-analyzer's log.
-Log messages are printed to stderr, in VS Code you can see then in the `Output > Rust Analyzer Language Server` tab of the panel.
-To see more logs, set `RA_LOG=info` environmental variable.
-
-To fully capture LSP messages between the editor and the server, set `"rust-analyzer.trace.server": "verbose"` config and check
-`Output > Rust Analyzer Language Server Trace`.
-
-The root cause for many "`nothing works`" problems is that rust-analyzer fails to understand the project structure.
-To debug that, first note the `rust-analyzer` section in the status bar.
-If it has an error icon and red, that's the problem (hover will have somewhat helpful error message).
-**Rust Analyzer: Status** prints dependency information for the current file.
-Finally, `RA_LOG=project_model=debug` enables verbose logs during project loading.
-
-If rust-analyzer outright crashes, try running `rust-analyzer analysis-stats /path/to/project/directory/` on the command line.
-This command type checks the whole project in batch mode bypassing LSP machinery.
-
-When filing issues, it is useful (but not necessary) to try to minimize examples.
-An ideal bug reproduction looks like this:
-
-```bash
-$ git clone https://github.com/username/repo.git && cd repo && git switch --detach commit-hash
-$ rust-analyzer --version
-rust-analyzer dd12184e4 2021-05-08 dev
-$ rust-analyzer analysis-stats .
-💀 💀 💀
-```
-
-It is especially useful when the `repo` doesn't use external crates or the standard library.
-
 === rust-analyzer Language Server Binary
 
 Other editors generally require the `rust-analyzer` binary to be in `$PATH`.
@@ -433,6 +398,41 @@ With
         },
 ----
 Then click on apply, and restart the LSP server for your rust project.
+
+== Troubleshooting
+
+Start with looking at the rust-analyzer version.
+Try **Rust Analyzer: Show RA Version** in VS Code and `rust-analyzer --version` in the command line.
+If the date is more than a week ago, it's better to update rust-analyzer version.
+
+The next thing to check would be panic messages in rust-analyzer's log.
+Log messages are printed to stderr, in VS Code you can see then in the `Output > Rust Analyzer Language Server` tab of the panel.
+To see more logs, set `RA_LOG=info` environmental variable.
+
+To fully capture LSP messages between the editor and the server, set `"rust-analyzer.trace.server": "verbose"` config and check
+`Output > Rust Analyzer Language Server Trace`.
+
+The root cause for many "`nothing works`" problems is that rust-analyzer fails to understand the project structure.
+To debug that, first note the `rust-analyzer` section in the status bar.
+If it has an error icon and red, that's the problem (hover will have somewhat helpful error message).
+**Rust Analyzer: Status** prints dependency information for the current file.
+Finally, `RA_LOG=project_model=debug` enables verbose logs during project loading.
+
+If rust-analyzer outright crashes, try running `rust-analyzer analysis-stats /path/to/project/directory/` on the command line.
+This command type checks the whole project in batch mode bypassing LSP machinery.
+
+When filing issues, it is useful (but not necessary) to try to minimize examples.
+An ideal bug reproduction looks like this:
+
+```bash
+$ git clone https://github.com/username/repo.git && cd repo && git switch --detach commit-hash
+$ rust-analyzer --version
+rust-analyzer dd12184e4 2021-05-08 dev
+$ rust-analyzer analysis-stats .
+💀 💀 💀
+```
+
+It is especially useful when the `repo` doesn't use external crates or the standard library.
 
 == Configuration
 
