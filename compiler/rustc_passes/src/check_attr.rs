@@ -22,7 +22,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{MultiSpan, Span, DUMMY_SP};
 
 pub(crate) fn target_from_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -67,6 +67,7 @@ impl CheckAttrVisitor<'tcx> {
         item: Option<ItemLike<'_>>,
     ) {
         let mut is_valid = true;
+        let mut specified_inline = None;
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
             is_valid &= match attr.name_or_empty() {
@@ -77,7 +78,7 @@ impl CheckAttrVisitor<'tcx> {
                 sym::track_caller => {
                     self.check_track_caller(hir_id, &attr.span, attrs, span, target)
                 }
-                sym::doc => self.check_doc_attrs(attr, hir_id, target),
+                sym::doc => self.check_doc_attrs(attr, hir_id, target, &mut specified_inline),
                 sym::no_link => self.check_no_link(hir_id, &attr, span, target),
                 sym::export_name => self.check_export_name(hir_id, &attr, span, target),
                 sym::rustc_args_required_const => {
@@ -564,6 +565,60 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    fn check_doc_inline(
+        &self,
+        attr: &Attribute,
+        meta: &NestedMetaItem,
+        hir_id: HirId,
+        target: Target,
+        specified_inline: &mut Option<(bool, Span)>,
+    ) -> bool {
+        if target == Target::Use {
+            let do_inline = meta.name_or_empty() == sym::inline;
+            if let Some((prev_inline, prev_span)) = *specified_inline {
+                if do_inline != prev_inline {
+                    let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
+                    spans.push_span_label(prev_span, String::from("this attribute..."));
+                    spans.push_span_label(
+                        meta.span(),
+                        String::from("...conflicts with this attribute"),
+                    );
+                    self.tcx
+                        .sess
+                        .struct_span_err(spans, "conflicting doc inlining attributes")
+                        .help("remove one of the conflicting attributes")
+                        .emit();
+                    return false;
+                }
+                true
+            } else {
+                *specified_inline = Some((do_inline, meta.span()));
+                true
+            }
+        } else {
+            self.tcx.struct_span_lint_hir(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                |lint| {
+                    let mut err = lint.build(
+                        "this attribute can only be applied to a `use` item",
+                    );
+                    err.span_label(meta.span(), "only applicable on `use` items");
+                    if attr.style == AttrStyle::Outer {
+                        err.span_label(
+                            self.tcx.hir().span(hir_id),
+                            "not a `use` item",
+                        );
+                    }
+                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information")
+                        .emit();
+                },
+            );
+            false
+        }
+    }
+
     fn check_attr_not_crate_level(
         &self,
         meta: &NestedMetaItem,
@@ -628,7 +683,13 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
-    fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
+    fn check_doc_attrs(
+        &self,
+        attr: &Attribute,
+        hir_id: HirId,
+        target: Target,
+        specified_inline: &mut Option<(bool, Span)>,
+    ) -> bool {
         let mut is_valid = true;
 
         if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
@@ -661,31 +722,16 @@ impl CheckAttrVisitor<'tcx> {
                             is_valid = false;
                         }
 
-                        sym::inline | sym::no_inline if target != Target::Use => {
-                            self.tcx.struct_span_lint_hir(
-                                INVALID_DOC_ATTRIBUTES,
+                        sym::inline | sym::no_inline
+                            if !self.check_doc_inline(
+                                &attr,
+                                &meta,
                                 hir_id,
-                                meta.span(),
-                                |lint| {
-                                    let mut err = lint.build(
-                                        "this attribute can only be applied to a `use` item",
-                                    );
-                                    err.span_label(meta.span(), "only applicable on `use` items");
-                                    if attr.style == AttrStyle::Outer {
-                                        err.span_label(
-                                            self.tcx.hir().span(hir_id),
-                                            "not a `use` item",
-                                        );
-                                    }
-                                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information")
-                                        .emit();
-                                },
-                            );
+                                target,
+                                specified_inline,
+                            ) =>
+                        {
                             is_valid = false;
-                        }
-
-                        sym::inline | sym::no_inline => {
-                            // FIXME(#80275): conflicting inline attributes
                         }
 
                         // no_default_passes: deprecated
@@ -700,10 +746,12 @@ impl CheckAttrVisitor<'tcx> {
                         | sym::html_playground_url
                         | sym::html_root_url
                         | sym::include
+                        | sym::inline
                         | sym::issue_tracker_base_url
                         | sym::keyword
                         | sym::masked
                         | sym::no_default_passes
+                        | sym::no_inline
                         | sym::notable_trait
                         | sym::passes
                         | sym::plugins
