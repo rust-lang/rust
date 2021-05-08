@@ -1163,33 +1163,38 @@ fn foo<const FOO$0: usize>() -> usize {
     }
 
     #[test]
-    fn test_find_self_ty_in_trait_def() {
+    fn test_trait() {
         check(
             r#"
-trait Foo where Self: {
-    fn f() -> Self$0;
+trait Foo$0 where Self: {}
+
+impl Foo for () {}
+"#,
+            expect![[r#"
+                Foo Trait FileId(0) 0..24 6..9
+
+                FileId(0) 31..34
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_trait_self() {
+        check(
+            r#"
+trait Foo where Self$0 {
+    fn f() -> Self;
 }
+
+impl Foo for () {}
 "#,
             expect![[r#"
                 Self TypeParam FileId(0) 6..9 6..9
 
                 FileId(0) 16..20
-                FileId(0) 38..42
+                FileId(0) 37..41
             "#]],
         );
-        //         check(
-        //             r#"
-        // trait Foo$0 where Self: {
-        //     fn f() -> Self;
-        // }
-        // "#,
-        //             expect![[r#"
-        //                 Foo Trait FileId(0) 0..45 6..9
-
-        //                 FileId(0) 16..20
-        //                 FileId(0) 38..42
-        //             "#]],
-        //         );
     }
 
     #[test]
@@ -1203,12 +1208,12 @@ trait Foo where Self: {
         }
         "#,
             expect![[r#"
-                        Foo Struct FileId(0) 0..11 7..10
+                Foo Struct FileId(0) 0..11 7..10
 
-                        FileId(0) 18..21
-                        FileId(0) 28..32
-                        FileId(0) 50..54
-                    "#]],
+                FileId(0) 18..21
+                FileId(0) 28..32
+                FileId(0) 50..54
+            "#]],
         );
         check(
             r#"

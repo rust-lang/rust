@@ -548,7 +548,6 @@ fn def_to_ty(sema: &Semantics<RootDatabase>, def: &Definition) -> Option<hir::Ty
                 let module = sema.to_module_def(root_file)?;
                 Some(it.ty(sema.db, module))
             }
-            ModuleDef::Trait(_it) => None, // FIXME turn trait into its self-type
             _ => None,
         },
         Definition::SelfType(it) => Some(it.self_ty(sema.db)),
