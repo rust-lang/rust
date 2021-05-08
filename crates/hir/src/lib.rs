@@ -2071,6 +2071,10 @@ impl Type {
         Some(adt.into())
     }
 
+    pub fn as_builtin(&self) -> Option<BuiltinType> {
+        self.ty.as_builtin().map(|inner| BuiltinType { inner })
+    }
+
     pub fn as_dyn_trait(&self) -> Option<Trait> {
         self.ty.dyn_trait().map(Into::into)
     }
