@@ -10,6 +10,8 @@ use std::time::Instant;
 use log::trace;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
+use std::collections::hash_map::Entry;
+use measureme::{Profiler, StringId, EventId, DetachedTiming};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::{
@@ -34,7 +36,6 @@ pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
 pub const NUM_CPUS: u64 = 1;
 
 /// Extra data stored with each stack frame
-#[derive(Debug)]
 pub struct FrameData<'tcx> {
     /// Extra data for Stacked Borrows.
     pub call_id: stacked_borrows::CallId,
@@ -43,6 +44,8 @@ pub struct FrameData<'tcx> {
     /// called by `try`). When this frame is popped during unwinding a panic,
     /// we stop unwinding, use the `CatchUnwindData` to handle catching.
     pub catch_unwind: Option<CatchUnwindData<'tcx>>,
+
+    pub timing: Option<DetachedTiming>,
 }
 
 /// Extra memory kinds
@@ -270,16 +273,21 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Allocations that are considered roots of static memory (that may leak).
     pub(crate) static_roots: Vec<AllocId>,
+
+    profiler: Option<Profiler>,
+    string_cache: FxHashMap<String, StringId>,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     pub(crate) fn new(
-        communicate: bool,
-        validate: bool,
+        config: &MiriConfig,
         layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
     ) -> Self {
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
+        let profiler = config.measureme_out.as_ref().map(|out| {
+            Profiler::new(out).expect("Couldn't create `measureme` profiler")
+        });
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
@@ -288,14 +296,16 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             argv: None,
             cmd_line: None,
             tls: TlsData::default(),
-            communicate,
-            validate,
+            communicate: config.communicate,
+            validate: config.validate,
             file_handler: Default::default(),
             dir_handler: Default::default(),
             time_anchor: Instant::now(),
             layouts,
             threads: ThreadManager::default(),
             static_roots: Vec::new(),
+            profiler,
+            string_cache: Default::default(),
         }
     }
 }
@@ -601,7 +611,26 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let call_id = stacked_borrows.map_or(NonZeroU64::new(1).unwrap(), |stacked_borrows| {
             stacked_borrows.borrow_mut().new_call()
         });
-        let extra = FrameData { call_id, catch_unwind: None };
+        let timing = if let Some(profiler) = ecx.machine.profiler.as_ref() {
+            let fn_name = frame.instance.to_string();
+            let entry = ecx.machine.string_cache.entry(fn_name.clone());
+            let name = match entry {
+                Entry::Occupied(e) => *e.get(),
+                Entry::Vacant(e) => {
+                    *e.insert(profiler.alloc_string(&*fn_name))
+                }
+            };
+
+            Some(profiler.start_recording_interval_event_detached(
+                name,
+                EventId::from_label(name),
+                0
+            ))
+        } else {
+            None
+        };
+
+        let extra = FrameData { call_id, catch_unwind: None, timing };
         Ok(frame.with_extra(extra))
     }
 
@@ -625,10 +654,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     #[inline(always)]
     fn after_stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx, Tag, FrameData<'tcx>>,
+        mut frame: Frame<'mir, 'tcx, Tag, FrameData<'tcx>>,
         unwinding: bool,
     ) -> InterpResult<'tcx, StackPopJump> {
-        ecx.handle_stack_pop(frame.extra, unwinding)
+        let timing = frame.extra.timing.take();
+        let res = ecx.handle_stack_pop(frame.extra, unwinding);
+        if let Some(profiler) = ecx.machine.profiler.as_ref() {
+            profiler.finish_recording_interval_event(timing.unwrap());
+        }
+        res
     }
 
     #[inline(always)]

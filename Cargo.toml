@@ -18,6 +18,7 @@ test = false # we have no unit tests
 doctest = false # and no doc tests
 
 [dependencies]
+measureme = { git = "https://github.com/rust-lang/measureme", rev = "501d6a3c192beee5e633a6c5f79130bedfdadcb5" }
 getrandom = { version = "0.2", features = ["std"] }
 env_logger = "0.8"
 log = "0.4"

@@ -318,6 +318,10 @@ fn main() {
                     };
                     miri_config.cmpxchg_weak_failure_rate = rate;
                 }
+                arg if arg.starts_with("-Zmiri-measureme=") => {
+                    let measureme_out = arg.strip_prefix("-Zmiri-measureme=").unwrap();
+                    miri_config.measureme_out = Some(measureme_out.to_string());
+                }
                 _ => {
                     // Forward to rustc.
                     rustc_args.push(arg);
