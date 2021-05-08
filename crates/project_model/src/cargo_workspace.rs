@@ -375,14 +375,10 @@ fn rustc_discover_host_triple(cargo_toml: &AbsPath) -> Option<String> {
 
 fn cargo_config_build_target(cargo_toml: &AbsPath) -> Option<String> {
     let mut cargo_config = Command::new(toolchain::cargo());
-    cargo_config.current_dir(cargo_toml.parent().unwrap()).args(&[
-        "+nightly",
-        "-Z",
-        "unstable-options",
-        "config",
-        "get",
-        "build.target",
-    ]);
+    cargo_config
+        .current_dir(cargo_toml.parent().unwrap())
+        .args(&["-Z", "unstable-options", "config", "get", "build.target"])
+        .env("RUSTC_BOOTSTRAP", "1");
     // if successful we receive `build.target = "target-triple"`
     log::debug!("Discovering cargo config target by {:?}", cargo_config);
     match utf8_stdout(cargo_config) {
