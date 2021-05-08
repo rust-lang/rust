@@ -86,6 +86,7 @@ impl FakeDefId {
     }
 
     #[inline]
+    #[track_caller]
     crate fn expect_real(self) -> rustc_hir::def_id::DefId {
         self.as_real().unwrap_or_else(|| panic!("FakeDefId::expect_real: `{:?}` isn't real", self))
     }
