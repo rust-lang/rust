@@ -4,7 +4,6 @@
 //! "Linear-Time Algorithms for Dominators and Related Problems",
 //! ftp://ftp.cs.princeton.edu/techreports/2005/737.pdf
 
-use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
 use rustc_index::vec::{Idx, IndexVec};
 use std::cmp::Ordering;
@@ -12,38 +11,26 @@ use std::cmp::Ordering;
 #[cfg(test)]
 mod tests;
 
-pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
-    let start_node = graph.start_node();
-    let rpo = reverse_post_order(&graph, start_node);
-    dominators_given_rpo(graph, &rpo)
-}
-
 struct PreOrderFrame<Node, Iter> {
     node: Node,
     iter: Iter,
 }
 
-fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Dominators<G::Node> {
-    let start_node = graph.start_node();
-    assert_eq!(rpo[0], start_node);
-
+pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
-    for (index, node) in rpo.iter().rev().cloned().enumerate() {
-        post_order_rank[node] = index;
-    }
-
     let mut visited = BitSet::new_empty(graph.num_nodes());
-    let mut parent: IndexVec<usize, Option<usize>> = IndexVec::from_elem_n(None, rpo.len());
+    let mut parent: IndexVec<usize, Option<usize>> = IndexVec::from_elem_n(None, graph.num_nodes());
 
     let mut stack = vec![PreOrderFrame { node: 0, iter: graph.successors(graph.start_node()) }];
     visited.insert(graph.start_node());
-    let mut pre_order_to_real = Vec::with_capacity(rpo.len());
+    let mut pre_order_to_real = Vec::with_capacity(graph.num_nodes());
     let mut real_to_pre_order: IndexVec<G::Node, Option<usize>> =
         IndexVec::from_elem_n(None, graph.num_nodes());
     pre_order_to_real.push(graph.start_node());
     real_to_pre_order[graph.start_node()] = Some(0);
     let mut idx = 1;
+    let mut post_order_idx = 0;
 
     'recurse: while let Some(frame) = stack.last_mut() {
         while let Some(successor) = frame.iter.next() {
@@ -57,6 +44,9 @@ fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Domin
                 continue 'recurse;
             }
         }
+        post_order_rank[pre_order_to_real[frame.node]] = post_order_idx;
+        post_order_idx += 1;
+
         stack.pop();
     }
 
