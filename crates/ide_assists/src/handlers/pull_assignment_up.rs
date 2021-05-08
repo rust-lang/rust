@@ -95,7 +95,6 @@ impl<'a> AssignmentsCollector<'a> {
         for arm in match_expr.match_arm_list()?.arms() {
             match arm.expr()? {
                 ast::Expr::BlockExpr(block) => self.collect_block(&block)?,
-                // TODO: Handle this while we are at it?
                 _ => return None,
             }
         }
@@ -233,6 +232,38 @@ fn foo() {
         2 => {
             3
         },
+        3 => {
+            4
+        }
+    };
+}"#,
+        );
+    }
+
+    #[test]
+    #[ignore]
+    fn test_pull_assignment_up_assignment_expressions() {
+        check_assist(
+            pull_assignment_up,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    match 1 {
+        1 => { $0a = 2; },
+        2 => a = 3,
+        3 => {
+            a = 4
+        }
+    }
+}"#,
+            r#"
+fn foo() {
+    let mut a = 1;
+
+    a = match 1 {
+        1 => { 2 },
+        2 => 3,
         3 => {
             4
         }
