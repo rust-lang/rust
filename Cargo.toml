@@ -16,7 +16,9 @@ text-size.opt-level = 3
 miniz_oxide.opt-level = 3
 
 [profile.release]
-incremental = true
+# We do want incremental release builds, but they are broken at the moment :(
+# https://github.com/rust-lang/rust/issues/85003#issuecomment-833796289
+incremental = false
 debug = 0 # Set this to 1 or 2 to get more useful backtraces in debugger.
 
 [patch.'crates-io']
