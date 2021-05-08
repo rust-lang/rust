@@ -33,7 +33,12 @@ impl<'a> RequestDispatcher<'a> {
         let world = panic::AssertUnwindSafe(&mut *self.global_state);
 
         let response = panic::catch_unwind(move || {
-            let _pctx = stdx::panic_context::enter(format!("request: {} {:#?}", R::METHOD, params));
+            let _pctx = stdx::panic_context::enter(format!(
+                "\nversion: {}\nrequest: {} {:#?}",
+                env!("REV"),
+                R::METHOD,
+                params
+            ));
             let result = f(world.0, params);
             result_to_response::<R>(id, result)
         })
@@ -61,8 +66,12 @@ impl<'a> RequestDispatcher<'a> {
             let world = self.global_state.snapshot();
 
             move || {
-                let _pctx =
-                    stdx::panic_context::enter(format!("request: {} {:#?}", R::METHOD, params));
+                let _pctx = stdx::panic_context::enter(format!(
+                    "\nversion: {}\nrequest: {} {:#?}",
+                    env!("REV"),
+                    R::METHOD,
+                    params
+                ));
                 let result = f(world, params);
                 Task::Response(result_to_response::<R>(id, result))
             }
@@ -166,7 +175,11 @@ impl<'a> NotificationDispatcher<'a> {
                 return Ok(self);
             }
         };
-        let _pctx = stdx::panic_context::enter(format!("notification: {}", N::METHOD));
+        let _pctx = stdx::panic_context::enter(format!(
+            "\nversion: {}\nnotification: {}",
+            env!("REV"),
+            N::METHOD
+        ));
         f(self.global_state, params)?;
         Ok(self)
     }
