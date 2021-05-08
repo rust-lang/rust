@@ -1,12 +1,10 @@
-// only-x86_64
+#![feature(rustc_attrs)]
 
-#[cfg(target_arch = "x86")]
-use std::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
+#[rustc_args_required_const(0)]
+fn foo(_imm8: i32) {}
 
-unsafe fn pclmul(a: __m128i, b: __m128i) -> __m128i {
-    _mm_clmulepi64_si128(a, b, *&mut 42) //~ ERROR argument 3 is required to be a constant
+fn bar() {
+    foo(*&mut 42) //~ ERROR argument 1 is required to be a constant
 }
 
 fn main() {}
