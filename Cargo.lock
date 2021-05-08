@@ -3749,6 +3749,7 @@ dependencies = [
  "stacker",
  "tempfile",
  "tracing",
+ "twox-hash",
  "winapi 0.3.9",
 ]
 
@@ -4894,6 +4895,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "std"
 version = "0.0.0"
 dependencies = [
@@ -5389,6 +5396,17 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "twox-hash"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04f8ab788026715fa63b31960869617cba39117e520eb415b0139543e325ab59"
+dependencies = [
+ "cfg-if 0.1.10",
+ "rand 0.7.3",
+ "static_assertions",
 ]
 
 [[package]]
