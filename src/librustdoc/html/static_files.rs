@@ -41,6 +41,9 @@ crate static BRUSH_SVG: &[u8] = include_bytes!("static/brush.svg");
 /// The file contents of `wheel.svg`, the icon used for the settings button.
 crate static WHEEL_SVG: &[u8] = include_bytes!("static/wheel.svg");
 
+/// The file contents of `clipboard.svg`, the icon used for the "copy path" button.
+crate static CLIPBOARD_SVG: &[u8] = include_bytes!("static/clipboard.svg");
+
 /// The file contents of `down-arrow.svg`, the icon used for the crate choice combobox.
 crate static DOWN_ARROW_SVG: &[u8] = include_bytes!("static/down-arrow.svg");
 

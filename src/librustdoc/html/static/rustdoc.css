@@ -1321,11 +1321,12 @@ h4 > .notable-traits {
 }
 
 #copy-path {
-	height: 30px;
-	font-size: 18px;
 	margin-left: 10px;
-	padding: 0 6px;
-	width: 28px;
+	padding: 0;
+	padding-left: 2px;
+}
+#copy-path> img {
+	margin-bottom: 2px;
 }
 
 #theme-choices {

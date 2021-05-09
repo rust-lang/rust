@@ -509,7 +509,7 @@ kbd {
 	color: #fff;
 }
 
-#theme-picker > img, #settings-menu > img {
+#theme-picker > img, #settings-menu > img, #copy-path > img {
 	filter: invert(100);
 }
 
