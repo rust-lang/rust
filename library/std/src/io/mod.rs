@@ -448,6 +448,15 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
     }
 }
 
+pub(crate) fn default_read_buf<F>(read: F, buf: &mut ReadBuf<'_>) -> Result<()>
+where
+    F: FnOnce(&mut [u8]) -> Result<usize>,
+{
+    let n = read(buf.initialize_unfilled())?;
+    buf.add_filled(n);
+    Ok(())
+}
+
 /// The `Read` trait allows for reading bytes from a source.
 ///
 /// Implementors of the `Read` trait are called 'readers'.
@@ -787,9 +796,7 @@ pub trait Read {
     /// The default implementation delegates to `read`.
     #[unstable(feature = "read_buf", issue = "78485")]
     fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
-        let n = self.read(buf.initialize_unfilled())?;
-        buf.add_filled(n);
-        Ok(())
+        default_read_buf(|b| self.read(b), buf)
     }
 
     /// Read the exact number of bytes required to fill `buf`.

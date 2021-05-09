@@ -13,7 +13,7 @@ mod tests;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -622,6 +622,10 @@ impl Read for File {
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
+    }
+
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        self.inner.read_buf(buf)
     }
 
     #[inline]

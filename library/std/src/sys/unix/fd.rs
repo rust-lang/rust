@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::cmp;
-use crate::io::{self, IoSlice, IoSliceMut, Read};
+use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -125,6 +125,23 @@ impl FileDesc {
             )
             .map(|n| n as usize)
         }
+    }
+
+    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        let ret = cvt(unsafe {
+            libc::read(
+                self.as_raw_fd(),
+                buf.unfilled_mut().as_mut_ptr() as *mut c_void,
+                cmp::min(buf.remaining(), READ_LIMIT),
+            )
+        })?;
+
+        // Safety: `ret` bytes were written to the initialized portion of the buffer
+        unsafe {
+            buf.assume_init(ret as usize);
+        }
+        buf.add_filled(ret as usize);
+        Ok(())
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
