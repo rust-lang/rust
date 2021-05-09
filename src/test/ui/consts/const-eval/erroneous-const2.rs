@@ -8,15 +8,13 @@ impl<T> PrintName<T> {
     //~| WARN this was previously accepted by the compiler but is being phased out
 }
 
-const fn no_codegen<T>() {
+pub static FOO: () = {
     if false {
-        // This bad constant is only used in dead code in a no-codegen function... and yet we still
+        // This bad constant is only used in dead code in a static initializer... and yet we still
         // must make sure that the build fails.
-        let _ = PrintName::<T>::VOID; //~ERROR could not evaluate static initializer
+        let _ = PrintName::<i32>::VOID; //~ERROR could not evaluate static initializer
     }
-}
-
-pub static FOO: () = no_codegen::<i32>();
+};
 
 fn main() {
     FOO
