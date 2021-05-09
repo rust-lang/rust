@@ -1,3 +1,12 @@
+error[E0119]: conflicting implementations of trait `Trait` for type `Wrapper<OpaqueClosure>`
+  --> $DIR/coherence-with-closure.rs:12:1
+   |
+LL | impl Trait for Wrapper<OpaqueClosure> {}
+   | ------------------------------------- first implementation here
+LL |
+LL | impl<T: Sync> Trait for Wrapper<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Wrapper<OpaqueClosure>`
+
 error: cannot implement trait on type alias impl trait
   --> $DIR/coherence-with-closure.rs:10:24
    |
@@ -9,15 +18,6 @@ note: type alias impl trait defined here
    |
 LL | type OpaqueClosure = impl Sized;
    |                      ^^^^^^^^^^
-
-error[E0119]: conflicting implementations of trait `Trait` for type `Wrapper<OpaqueClosure>`
-  --> $DIR/coherence-with-closure.rs:12:1
-   |
-LL | impl Trait for Wrapper<OpaqueClosure> {}
-   | ------------------------------------- first implementation here
-LL |
-LL | impl<T: Sync> Trait for Wrapper<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Wrapper<OpaqueClosure>`
 
 error: aborting due to 2 previous errors
 

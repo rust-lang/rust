@@ -513,7 +513,15 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     })?;
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("coherence_checking", || coherence::check_coherence(tcx));
+        tcx.sess.time("coherence_checking", || {
+            for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
+                tcx.ensure().coherent_trait(trait_def_id);
+            }
+
+            // these queries are executed for side-effects (error reporting):
+            tcx.ensure().crate_inherent_impls(());
+            tcx.ensure().crate_inherent_impls_overlap_check(());
+        });
     })?;
 
     if tcx.features().rustc_attrs {

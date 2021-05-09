@@ -906,9 +906,10 @@ rustc_queries! {
 
     /// Checks whether all impls in the crate pass the overlap check, returning
     /// which impls fail it. If all impls are correct, the returned slice is empty.
-    query orphan_check_crate(_: ()) -> &'tcx [LocalDefId] {
-        desc {
-            "checking whether the immpl in the this crate follow the orphan rules",
+    query orphan_check_impl(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc { |tcx|
+            "checking whether impl `{}` follows the orphan rules",
+            tcx.def_path_str(key.to_def_id()),
         }
     }
 

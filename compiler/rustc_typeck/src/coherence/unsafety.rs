@@ -6,37 +6,18 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::Unsafety;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::def_id::LocalDefId;
 
-pub fn check(tcx: TyCtxt<'_>) {
-    for id in tcx.hir().items() {
-        if matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
-            let item = tcx.hir().item(id);
-            if let hir::ItemKind::Impl(ref impl_) = item.kind {
-                check_unsafety_coherence(
-                    tcx,
-                    item,
-                    Some(&impl_.generics),
-                    impl_.unsafety,
-                    impl_.polarity,
-                );
-            }
-        }
-    }
-}
+pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Impl));
+    let item = tcx.hir().expect_item(def_id);
+    let hir::ItemKind::Impl(ref impl_) = item.kind else { bug!() };
 
-fn check_unsafety_coherence<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: &hir::Item<'_>,
-    impl_generics: Option<&hir::Generics<'_>>,
-    unsafety: hir::Unsafety,
-    polarity: hir::ImplPolarity,
-) {
     if let Some(trait_ref) = tcx.impl_trait_ref(item.def_id) {
         let trait_def = tcx.trait_def(trait_ref.def_id);
-        let unsafe_attr = impl_generics.and_then(|generics| {
-            generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle")
-        });
-        match (trait_def.unsafety, unsafe_attr, unsafety, polarity) {
+        let unsafe_attr =
+            impl_.generics.params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
+        match (trait_def.unsafety, unsafe_attr, impl_.unsafety, impl_.polarity) {
             (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
                 struct_span_err!(
                     tcx.sess,

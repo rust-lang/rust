@@ -146,7 +146,7 @@ pub fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
     use self::inherent_impls::{crate_incoherent_impls, crate_inherent_impls, inherent_impls};
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
-    use self::orphan::orphan_check_crate;
+    use self::orphan::orphan_check_impl;
 
     *providers = Providers {
         coherent_trait,
@@ -155,7 +155,7 @@ pub fn provide(providers: &mut Providers) {
         inherent_impls,
         crate_inherent_impls_overlap_check,
         coerce_unsized_info,
-        orphan_check_crate,
+        orphan_check_impl,
         ..*providers
     };
 }
@@ -171,21 +171,12 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) {
 
         check_impl(tcx, impl_def_id, trait_ref);
         check_object_overlap(tcx, impl_def_id, trait_ref);
+
+        tcx.sess.time("unsafety_checking", || unsafety::check_item(tcx, impl_def_id));
+        tcx.sess.time("orphan_checking", || tcx.ensure().orphan_check_impl(impl_def_id));
     }
+
     builtin::check_trait(tcx, def_id);
-}
-
-pub fn check_coherence(tcx: TyCtxt<'_>) {
-    tcx.sess.time("unsafety_checking", || unsafety::check(tcx));
-    tcx.ensure().orphan_check_crate(());
-
-    for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-        tcx.ensure().coherent_trait(trait_def_id);
-    }
-
-    // these queries are executed for side-effects (error reporting):
-    tcx.ensure().crate_inherent_impls(());
-    tcx.ensure().crate_inherent_impls_overlap_check(());
 }
 
 /// Checks whether an impl overlaps with the automatic `impl Trait for dyn Trait`.
