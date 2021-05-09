@@ -305,7 +305,6 @@ where
     let base_intern_mode = match intern_kind {
         InternKind::Static(mutbl) => InternMode::Static(mutbl),
         // `Constant` includes array lengths.
-        // `Promoted` includes non-`Copy` array initializers and `rustc_args_required_const` arguments.
         InternKind::Constant | InternKind::Promoted => InternMode::Const,
     };
 

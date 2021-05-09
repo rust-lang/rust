@@ -32,8 +32,8 @@ use crate::transform::MirPass;
 
 /// A `MirPass` for promotion.
 ///
-/// Promotion is the extraction of promotable temps into separate MIR bodies. This pass also emits
-/// errors when promotion of `#[rustc_args_required_const]` arguments fails.
+/// Promotion is the extraction of promotable temps into separate MIR bodies so they can have
+/// `'static` lifetime.
 ///
 /// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
 /// newly created `Constant`.
