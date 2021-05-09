@@ -1,8 +1,0 @@
-error: argument 1 is required to be a constant
-  --> $DIR/const_arg_wrapper.rs:7:5
-   |
-LL |     foo(imm8)
-   |     ^^^^^^^^^
-
-error: aborting due to previous error
-
