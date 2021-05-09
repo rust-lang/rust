@@ -27,18 +27,19 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         IndexVec::from_elem_n(None, graph.num_nodes());
     pre_order_to_real.push(graph.start_node());
     real_to_pre_order[graph.start_node()] = Some(0);
-    let mut idx = 1;
     let mut post_order_idx = 0;
 
     'recurse: while let Some(frame) = stack.last_mut() {
         while let Some(successor) = frame.iter.next() {
             if real_to_pre_order[successor].is_none() {
-                real_to_pre_order[successor] = Some(idx);
-                parent[idx] = Some(frame.node);
-                pre_order_to_real.push(successor);
+                let pre_order_idx = pre_order_to_real.len();
 
-                stack.push(PreOrderFrame { node: idx, iter: graph.successors(successor) });
-                idx += 1;
+                real_to_pre_order[successor] = Some(pre_order_idx);
+                parent[pre_order_idx] = Some(frame.node);
+                pre_order_to_real.push(successor);
+                stack
+                    .push(PreOrderFrame { node: pre_order_idx, iter: graph.successors(successor) });
+
                 continue 'recurse;
             }
         }
@@ -48,13 +49,15 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         stack.pop();
     }
 
-    let mut idom = IndexVec::from_elem_n(0, pre_order_to_real.len());
-    let mut semi = IndexVec::from_fn_n(std::convert::identity, pre_order_to_real.len());
+    let reachable_vertices = pre_order_to_real.len();
+
+    let mut idom = IndexVec::from_elem_n(0, reachable_vertices);
+    let mut semi = IndexVec::from_fn_n(std::convert::identity, reachable_vertices);
     let mut label = semi.clone();
-    let mut bucket = IndexVec::from_elem_n(vec![], pre_order_to_real.len());
+    let mut bucket = IndexVec::from_elem_n(vec![], reachable_vertices);
     let mut lastlinked = None;
 
-    for w in (1..pre_order_to_real.len()).rev() {
+    for w in (1..reachable_vertices).rev() {
         // Optimization: process buckets just once, at the start of the
         // iteration. Do not explicitly empty the bucket (even though it will
         // not be used again), to save some instructions.
@@ -84,7 +87,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // processed elements; lastlinked represents the divider.
         lastlinked = Some(w);
     }
-    for w in 1..pre_order_to_real.len() {
+    for w in 1..reachable_vertices {
         if idom[w] != semi[w] {
             idom[w] = idom[idom[w]];
         }
