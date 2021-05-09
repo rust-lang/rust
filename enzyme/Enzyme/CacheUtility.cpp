@@ -570,11 +570,9 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
                                  loopContexts[L].preheader->getTerminator());
     loopContexts[L].dynamic = false;
     loopContexts[L].maxLimit = LimitVar;
-  } else if (assumeDynamicLoopOfSizeOne(L)) {
-    loopContexts[L].dynamic = false;
-    loopContexts[L].maxLimit = LimitVar =
-        ConstantInt::get(CanonicalIV->getType(), 0);
   } else {
+    // TODO if assumeDynamicLoopOfSizeOne(L), only lazily allocate the scope
+    // cache
     DebugLoc loc = L->getHeader()->begin()->getDebugLoc();
     for (auto &I : *L->getHeader()) {
       if (loc)

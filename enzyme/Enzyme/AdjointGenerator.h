@@ -3061,7 +3061,8 @@ public:
               if (offset != 0)
                 srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
               args.push_back(Builder2.CreatePointerCast(srco, secretpt));
-              args.push_back(Builder2.CreateUDiv(length,
+              args.push_back(Builder2.CreateUDiv(
+                  length,
 
                   ConstantInt::get(length->getType(),
                                    Builder2.GetInsertBlock()
@@ -3264,7 +3265,8 @@ public:
             if (offset != 0)
               srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
             args.push_back(Builder2.CreatePointerCast(srco, secretpt));
-            args.push_back(Builder2.CreateUDiv(length,
+            args.push_back(Builder2.CreateUDiv(
+                length,
 
                 ConstantInt::get(length->getType(),
                                  Builder2.GetInsertBlock()

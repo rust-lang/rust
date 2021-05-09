@@ -297,10 +297,10 @@ public:
   /// given location, this will null. This high-level utility should be
   /// implemented based off the low-level caching infrastructure provided in
   /// this class.
-  virtual llvm::Value *unwrapM(llvm::Value *const val,
-                               llvm::IRBuilder<> &BuilderM,
-                               const llvm::ValueToValueMapTy &available,
-                               UnwrapMode mode, bool permitCache = true) = 0;
+  virtual llvm::Value *
+  unwrapM(llvm::Value *const val, llvm::IRBuilder<> &BuilderM,
+          const llvm::ValueToValueMapTy &available, UnwrapMode mode,
+          llvm::BasicBlock *scope = nullptr, bool permitCache = true) = 0;
 
   /// High-level utility to get the value an instruction at a new location
   /// specified by BuilderM. Unlike unwrap, this function can never fail --

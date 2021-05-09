@@ -441,7 +441,8 @@ private:
   unsigned tapeidx;
   Value *tape;
 
-  std::map<BasicBlock *, std::map<Value *, Value *>> unwrap_cache;
+  std::map<BasicBlock *, std::map<std::pair<Value *, BasicBlock *>, Value *>>
+      unwrap_cache;
   std::map<BasicBlock *, std::map<Value *, Value *>> lookup_cache;
 
 public:
@@ -510,12 +511,12 @@ public:
     }
 
     for (auto &pair : unwrap_cache) {
-      std::vector<Value *> cache_pairs;
+      std::vector<std::pair<Value *, BasicBlock *>> cache_pairs;
       for (auto &a : pair.second) {
         if (a.second == I) {
           cache_pairs.push_back(a.first);
         }
-        if (a.first == I) {
+        if (a.first.first == I) {
           cache_pairs.push_back(a.first);
         }
       }
@@ -1000,6 +1001,7 @@ public:
   /// etc
   Value *unwrapM(Value *const val, IRBuilder<> &BuilderM,
                  const ValueToValueMapTy &available, UnwrapMode mode,
+                 BasicBlock *scope = nullptr,
                  bool permitCache = true) override final;
 
   void ensureLookupCached(Instruction *inst, bool shouldFree = true) {
@@ -1047,16 +1049,17 @@ public:
       }
     }
 
-
-    if ( (forwardBlock == inst->getParent() || DT.dominates(inst, forwardBlock))
-         && (!inLoop || isChildLoop) ) {
+    if ((forwardBlock == inst->getParent() ||
+         DT.dominates(inst, forwardBlock)) &&
+        (!inLoop || isChildLoop)) {
       return inst;
     }
 
-    if (!inLoop || isChildLoop) mergeIfTrue = true;
+    if (!inLoop || isChildLoop)
+      mergeIfTrue = true;
 
-    //llvm::errs() << " inst: " << *inst << "\n";
-    //llvm::errs() << " seen: " << *inst->getParent() << "\n";
+    // llvm::errs() << " inst: " << *inst << "\n";
+    // llvm::errs() << " seen: " << *inst->getParent() << "\n";
     assert(inst->getParent() != inversionAllocs);
     assert(isOriginalBlock(*inst->getParent()));
 
@@ -1075,7 +1078,8 @@ public:
         }
       }
       for (auto &BB : *inst->getParent()->getParent()) {
-        if (!seen.count(&BB) || (inst->getParent() != &BB && DT.dominates(&BB, inst->getParent()))) {
+        if (!seen.count(&BB) || (inst->getParent() != &BB &&
+                                 DT.dominates(&BB, inst->getParent()))) {
           lcssaFixes[inst][&BB] = UndefValue::get(inst->getType());
         }
       }
@@ -1088,8 +1092,8 @@ public:
     // TODO replace forwardBlock with the first block dominated by inst,
     // that dominates (or is) forwardBlock to ensuring maximum reuse
     IRBuilder<> lcssa(&forwardBlock->front());
-    auto lcssaPHI = lcssa.CreatePHI(inst->getType(), 1,
-                                    inst->getName() + "!manual_lcssa");
+    auto lcssaPHI =
+        lcssa.CreatePHI(inst->getType(), 1, inst->getName() + "!manual_lcssa");
     lcssaFixes[inst][forwardBlock] = lcssaPHI;
     for (auto pred : predecessors(forwardBlock)) {
       Value *val = nullptr;
@@ -1131,12 +1135,28 @@ public:
         }
       }
       if (val && val != lcssaPHI) {
-        if (lcssaPHI->hasNUses(0)) {
+        bool nonSelfUse = false;
+        for (auto u : lcssaPHI->users()) {
+          if (u != lcssaPHI) {
+            nonSelfUse = true;
+            break;
+          }
+        }
+        if (!nonSelfUse) {
           lcssaFixes[inst].erase(forwardBlock);
+          while (lcssaPHI->getNumOperands())
+            lcssaPHI->removeIncomingValue(lcssaPHI->getNumOperands() - 1,
+                                          false);
           lcssaPHI->eraseFromParent();
         }
         return val;
       }
+    }
+    if (inst->getName().contains("fval") && forwardBlock->getName() != "mid") {
+      assert(forwardBlock->getName() != "loop2");
+      llvm::errs() << *forwardBlock << "\n";
+      llvm::errs() << *inst << "\n";
+      assert(0);
     }
     return lcssaPHI;
   }
