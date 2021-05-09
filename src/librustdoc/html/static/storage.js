@@ -59,15 +59,15 @@ function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
         var length = arr.length;
         var i;
-        if (reversed !== true) {
-            for (i = 0; i < length; ++i) {
-                if (func(arr[i]) === true) {
+        if (reversed) {
+            for (i = length - 1; i >= 0; --i) {
+                if (func(arr[i])) {
                     return true;
                 }
             }
         } else {
-            for (i = length - 1; i >= 0; --i) {
-                if (func(arr[i]) === true) {
+            for (i = 0; i < length; ++i) {
+                if (func(arr[i])) {
                     return true;
                 }
             }
@@ -111,7 +111,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
 
     // If this new value comes from a system setting or from the previously
     // saved theme, no need to save it.
-    if (saveTheme === true) {
+    if (saveTheme) {
         updateLocalStorage("rustdoc-theme", newTheme);
     }
 
@@ -131,7 +131,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
             return true;
         }
     });
-    if (found === true) {
+    if (found) {
         styleElem.href = newHref;
     }
 }
