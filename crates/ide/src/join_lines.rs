@@ -67,18 +67,6 @@ fn remove_newlines(edit: &mut TextEditBuilder, token: &SyntaxToken, range: TextR
 
 fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextSize) {
     if token.kind() != WHITESPACE || token.text().bytes().filter(|&b| b == b'\n').count() != 1 {
-        let mut no_space = false;
-        if let Some(string) = ast::String::cast(token.clone()) {
-            if let Some(range) = string.open_quote_text_range() {
-                cov_mark::hit!(join_string_literal_open_quote);
-                no_space |= range.end() == offset;
-            }
-            if let Some(range) = string.close_quote_text_range() {
-                cov_mark::hit!(join_string_literal_close_quote);
-                no_space |= range.start() == offset + TextSize::of('\n');
-            }
-        }
-
         let n_spaces_after_line_break = {
             let suff = &token.text()[TextRange::new(
                 offset - token.text_range().start() + TextSize::of('\n'),

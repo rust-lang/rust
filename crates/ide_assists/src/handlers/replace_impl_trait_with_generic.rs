@@ -55,12 +55,8 @@ mod tests {
     fn replace_impl_trait_with_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<G>(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<G, B: Bar>(bar: B) {}
-            "#,
+            r#"fn foo<G>(bar: $0impl Bar) {}"#,
+            r#"fn foo<G, B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -68,12 +64,8 @@ mod tests {
     fn replace_impl_trait_without_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<B: Bar>(bar: B) {}
-            "#,
+            r#"fn foo(bar: $0impl Bar) {}"#,
+            r#"fn foo<B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -81,12 +73,8 @@ mod tests {
     fn replace_two_impl_trait_with_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}
-            "#,
+            r#"fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}"#,
+            r#"fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}"#,
         );
     }
 
@@ -94,12 +82,8 @@ mod tests {
     fn replace_impl_trait_with_empty_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<>(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<B: Bar>(bar: B) {}
-            "#,
+            r#"fn foo<>(bar: $0impl Bar) {}"#,
+            r#"fn foo<B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -108,13 +92,13 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<
-            >(bar: $0impl Bar) {}
-            "#,
+fn foo<
+>(bar: $0impl Bar) {}
+"#,
             r#"
-            fn foo<B: Bar
-            >(bar: B) {}
-            "#,
+fn foo<B: Bar
+>(bar: B) {}
+"#,
         );
     }
 
@@ -123,12 +107,8 @@ mod tests {
     fn replace_impl_trait_with_exist_generic_letter() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<B>(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<B, C: Bar>(bar: C) {}
-            "#,
+            r#"fn foo<B>(bar: $0impl Bar) {}"#,
+            r#"fn foo<B, C: Bar>(bar: C) {}"#,
         );
     }
 
@@ -137,19 +117,19 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<
-                G: Foo,
-                F,
-                H,
-            >(bar: $0impl Bar) {}
-            "#,
+fn foo<
+    G: Foo,
+    F,
+    H,
+>(bar: $0impl Bar) {}
+"#,
             r#"
-            fn foo<
-                G: Foo,
-                F,
-                H, B: Bar
-            >(bar: B) {}
-            "#,
+fn foo<
+    G: Foo,
+    F,
+    H, B: Bar
+>(bar: B) {}
+"#,
         );
     }
 
@@ -157,12 +137,8 @@ mod tests {
     fn replace_impl_trait_multiple() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo(bar: $0impl Foo + Bar) {}
-            "#,
-            r#"
-            fn foo<F: Foo + Bar>(bar: F) {}
-            "#,
+            r#"fn foo(bar: $0impl Foo + Bar) {}"#,
+            r#"fn foo<F: Foo + Bar>(bar: F) {}"#,
         );
     }
 }
