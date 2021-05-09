@@ -421,7 +421,7 @@ impl Session {
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_fatal(sp, msg).raise()
+        self.diagnostic().span_fatal(sp, msg)
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
@@ -429,7 +429,7 @@ impl Session {
         msg: &str,
         code: DiagnosticId,
     ) -> ! {
-        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
+        self.diagnostic().span_fatal_with_code(sp, msg, code)
     }
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().fatal(msg).raise()
@@ -491,12 +491,6 @@ impl Session {
     }
     pub fn warn(&self, msg: &str) {
         self.diagnostic().warn(msg)
-    }
-    pub fn opt_span_warn<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) {
-        match opt_sp {
-            Some(sp) => self.span_warn(sp, msg),
-            None => self.warn(msg),
-        }
     }
     /// Delay a span_bug() call until abort_if_errors()
     #[track_caller]

@@ -1236,9 +1236,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (Some(..), Some(..), HalfOpen) => hir::LangItem::Range,
             (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
-            (_, None, Closed) => {
-                self.diagnostic().span_fatal(span, "inclusive range with no end").raise()
-            }
+            (_, None, Closed) => self.diagnostic().span_fatal(span, "inclusive range with no end"),
         };
 
         let fields = self.arena.alloc_from_iter(
