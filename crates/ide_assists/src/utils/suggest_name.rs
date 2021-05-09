@@ -6,7 +6,7 @@ use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, NameOwner},
-    match_ast, AstNode,
+    match_ast, AstNode, SmolStr,
 };
 
 /// Trait names, that will be ignored when in `impl Trait` and `dyn Trait`
@@ -56,6 +56,14 @@ const USELESS_METHODS: &[&str] = &[
     "into_iter",
     "iter_mut",
 ];
+
+pub(crate) fn generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
+    let c = ty
+        .type_bound_list()
+        .and_then(|bounds| bounds.syntax().text().char_at(0.into()))
+        .unwrap_or('T');
+    c.encode_utf8(&mut [0; 4]).into()
+}
 
 /// Suggest name of variable for given expression
 ///

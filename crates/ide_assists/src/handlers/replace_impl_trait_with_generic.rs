@@ -1,6 +1,6 @@
 use syntax::ast::{self, edit::AstNodeEdit, make, AstNode, GenericParamsOwner};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_impl_trait_with_generic
 //
@@ -17,30 +17,30 @@ pub(crate) fn replace_impl_trait_with_generic(
     acc: &mut Assists,
     ctx: &AssistContext,
 ) -> Option<()> {
-    let type_impl_trait = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
-    let type_param = type_impl_trait.syntax().parent().and_then(ast::Param::cast)?;
-    let type_fn = type_param.syntax().ancestors().find_map(ast::Fn::cast)?;
+    let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
+    let param = impl_trait_type.syntax().parent().and_then(ast::Param::cast)?;
+    let fn_ = param.syntax().ancestors().find_map(ast::Fn::cast)?;
 
-    let impl_trait_ty = type_impl_trait.type_bound_list()?;
+    let type_bound_list = impl_trait_type.type_bound_list()?;
 
-    let target = type_fn.syntax().text_range();
+    let target = fn_.syntax().text_range();
     acc.add(
         AssistId("replace_impl_trait_with_generic", AssistKind::RefactorRewrite),
         "Replace impl trait with generic",
         target,
         |edit| {
-            let generic_letter = impl_trait_ty.to_string().chars().next().unwrap().to_string();
+            let type_param_name = suggest_name::generic_parameter(&impl_trait_type);
 
-            let generic_param_list = type_fn
+            let generic_param_list = fn_
                 .generic_param_list()
                 .unwrap_or_else(|| make::generic_param_list(None))
-                .append_param(make::generic_param(generic_letter.clone(), Some(impl_trait_ty)));
+                .append_param(make::generic_param(&type_param_name, Some(type_bound_list)));
 
-            let new_type_fn = type_fn
-                .replace_descendant::<ast::Type>(type_impl_trait.into(), make::ty(&generic_letter))
+            let new_type_fn = fn_
+                .replace_descendant::<ast::Type>(impl_trait_type.into(), make::ty(&type_param_name))
                 .with_generic_param_list(generic_param_list);
 
-            edit.replace_ast(type_fn.clone(), new_type_fn);
+            edit.replace_ast(fn_.clone(), new_type_fn);
         },
     )
 }

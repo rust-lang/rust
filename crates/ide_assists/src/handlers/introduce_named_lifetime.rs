@@ -139,12 +139,12 @@ fn generate_unique_lifetime_param_name(
 
 fn add_lifetime_param(type_params: ast::GenericParamList, new_lifetime_param: char) {
     let generic_param =
-        make::generic_param(format!("'{}", new_lifetime_param), None).clone_for_update();
+        make::generic_param(&format!("'{}", new_lifetime_param), None).clone_for_update();
     type_params.add_generic_param(generic_param);
 }
 
 fn make_ast_lifetime(new_lifetime_param: char) -> ast::Lifetime {
-    make::generic_param(format!("'{}", new_lifetime_param), None)
+    make::generic_param(&format!("'{}", new_lifetime_param), None)
         .syntax()
         .descendants()
         .find_map(ast::Lifetime::cast)
