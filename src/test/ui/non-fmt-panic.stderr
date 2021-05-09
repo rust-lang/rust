@@ -213,7 +213,33 @@ LL |     panic!("{}", 1);
    |           --     --
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:40:12
+  --> $DIR/non-fmt-panic.rs:39:20
+   |
+LL |     assert!(false, format!("{}", 1));
+   |                    ^^^^^^^^^^^^^^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+   = note: the assert!() macro supports formatting, so there's no need for the format!() macro here
+help: remove the `format!(..)` macro call
+   |
+LL |     assert!(false, "{}", 1);
+   |                   --     --
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:40:26
+   |
+LL |     debug_assert!(false, format!("{}", 1));
+   |                          ^^^^^^^^^^^^^^^^
+   |
+   = note: this is no longer accepted in Rust 2021
+   = note: the debug_assert!() macro supports formatting, so there's no need for the format!() macro here
+help: remove the `format!(..)` macro call
+   |
+LL |     debug_assert!(false, "{}", 1);
+   |                         --     --
+
+warning: panic message is not a string literal
+  --> $DIR/non-fmt-panic.rs:42:12
    |
 LL |     panic![123];
    |            ^^^
@@ -229,7 +255,7 @@ LL |     std::panic::panic_any(123);
    |     ^^^^^^^^^^^^^^^^^^^^^^   ^
 
 warning: panic message is not a string literal
-  --> $DIR/non-fmt-panic.rs:41:12
+  --> $DIR/non-fmt-panic.rs:43:12
    |
 LL |     panic!{123};
    |            ^^^
@@ -244,5 +270,5 @@ help: or use std::panic::panic_any instead
 LL |     std::panic::panic_any(123);
    |     ^^^^^^^^^^^^^^^^^^^^^^   ^
 
-warning: 18 warnings emitted
+warning: 20 warnings emitted
 
