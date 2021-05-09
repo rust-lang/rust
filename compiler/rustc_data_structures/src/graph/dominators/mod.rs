@@ -11,39 +11,45 @@ use std::cmp::Ordering;
 #[cfg(test)]
 mod tests;
 
-struct PreOrderFrame<Node, Iter> {
-    node: Node,
+struct PreOrderFrame<Iter> {
+    pre_order_idx: PreorderIndex,
     iter: Iter,
+}
+
+rustc_index::newtype_index! {
+    struct PreorderIndex { .. }
 }
 
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
-    let mut parent: IndexVec<usize, Option<usize>> = IndexVec::from_elem_n(None, graph.num_nodes());
+    let mut parent: IndexVec<PreorderIndex, Option<PreorderIndex>> =
+        IndexVec::from_elem_n(None, graph.num_nodes());
 
-    let mut stack = vec![PreOrderFrame { node: 0, iter: graph.successors(graph.start_node()) }];
-    let mut pre_order_to_real = Vec::with_capacity(graph.num_nodes());
-    let mut real_to_pre_order: IndexVec<G::Node, Option<usize>> =
+    let mut stack = vec![PreOrderFrame {
+        pre_order_idx: PreorderIndex::new(0),
+        iter: graph.successors(graph.start_node()),
+    }];
+    let mut pre_order_to_real: IndexVec<PreorderIndex, G::Node> =
+        IndexVec::with_capacity(graph.num_nodes());
+    let mut real_to_pre_order: IndexVec<G::Node, Option<PreorderIndex>> =
         IndexVec::from_elem_n(None, graph.num_nodes());
     pre_order_to_real.push(graph.start_node());
-    real_to_pre_order[graph.start_node()] = Some(0);
+    real_to_pre_order[graph.start_node()] = Some(PreorderIndex::new(0));
     let mut post_order_idx = 0;
 
     'recurse: while let Some(frame) = stack.last_mut() {
         while let Some(successor) = frame.iter.next() {
             if real_to_pre_order[successor].is_none() {
-                let pre_order_idx = pre_order_to_real.len();
-
+                let pre_order_idx = pre_order_to_real.push(successor);
                 real_to_pre_order[successor] = Some(pre_order_idx);
-                parent[pre_order_idx] = Some(frame.node);
-                pre_order_to_real.push(successor);
-                stack
-                    .push(PreOrderFrame { node: pre_order_idx, iter: graph.successors(successor) });
+                parent[pre_order_idx] = Some(frame.pre_order_idx);
+                stack.push(PreOrderFrame { pre_order_idx, iter: graph.successors(successor) });
 
                 continue 'recurse;
             }
         }
-        post_order_rank[pre_order_to_real[frame.node]] = post_order_idx;
+        post_order_rank[pre_order_to_real[frame.pre_order_idx]] = post_order_idx;
         post_order_idx += 1;
 
         stack.pop();
@@ -51,13 +57,13 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
 
     let reachable_vertices = pre_order_to_real.len();
 
-    let mut idom = IndexVec::from_elem_n(0, reachable_vertices);
+    let mut idom = IndexVec::from_elem_n(PreorderIndex::new(0), reachable_vertices);
     let mut semi = IndexVec::from_fn_n(std::convert::identity, reachable_vertices);
     let mut label = semi.clone();
     let mut bucket = IndexVec::from_elem_n(vec![], reachable_vertices);
     let mut lastlinked = None;
 
-    for w in (1..reachable_vertices).rev() {
+    for w in (PreorderIndex::new(1)..PreorderIndex::new(reachable_vertices)).rev() {
         // Optimization: process buckets just once, at the start of the
         // iteration. Do not explicitly empty the bucket (even though it will
         // not be used again), to save some instructions.
@@ -87,27 +93,28 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // processed elements; lastlinked represents the divider.
         lastlinked = Some(w);
     }
-    for w in 1..reachable_vertices {
+    for w in PreorderIndex::new(1)..PreorderIndex::new(reachable_vertices) {
         if idom[w] != semi[w] {
             idom[w] = idom[idom[w]];
         }
     }
 
     let mut immediate_dominators = IndexVec::from_elem_n(None, graph.num_nodes());
-    for (idx, node) in pre_order_to_real.iter().enumerate() {
+    for (idx, node) in pre_order_to_real.iter_enumerated() {
         immediate_dominators[*node] = Some(pre_order_to_real[idom[idx]]);
     }
 
     Dominators { post_order_rank, immediate_dominators }
 }
 
-fn eval<N: Idx>(
-    ancestor: &mut IndexVec<N, Option<N>>,
-    lastlinked: Option<N>,
-    semi: &IndexVec<N, N>,
-    label: &mut IndexVec<N, N>,
-    node: N,
-) -> N {
+#[inline]
+fn eval(
+    ancestor: &mut IndexVec<PreorderIndex, Option<PreorderIndex>>,
+    lastlinked: Option<PreorderIndex>,
+    semi: &IndexVec<PreorderIndex, PreorderIndex>,
+    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    node: PreorderIndex,
+) -> PreorderIndex {
     if is_processed(node, lastlinked) {
         compress(ancestor, lastlinked, semi, label, node);
         label[node]
@@ -116,16 +123,18 @@ fn eval<N: Idx>(
     }
 }
 
-fn is_processed<N: Idx>(v: N, lastlinked: Option<N>) -> bool {
+#[inline]
+fn is_processed(v: PreorderIndex, lastlinked: Option<PreorderIndex>) -> bool {
     if let Some(ll) = lastlinked { v >= ll } else { false }
 }
 
-fn compress<N: Idx>(
-    ancestor: &mut IndexVec<N, Option<N>>,
-    lastlinked: Option<N>,
-    semi: &IndexVec<N, N>,
-    label: &mut IndexVec<N, N>,
-    v: N,
+#[inline]
+fn compress(
+    ancestor: &mut IndexVec<PreorderIndex, Option<PreorderIndex>>,
+    lastlinked: Option<PreorderIndex>,
+    semi: &IndexVec<PreorderIndex, PreorderIndex>,
+    label: &mut IndexVec<PreorderIndex, PreorderIndex>,
+    v: PreorderIndex,
 ) {
     assert!(is_processed(v, lastlinked));
     let u = ancestor[v].unwrap();
