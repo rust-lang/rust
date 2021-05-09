@@ -12,13 +12,14 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
 use rustdoc_json_types as types;
 
 use crate::clean;
-use crate::clean::{ExternalCrate, FakeDefId};
+use crate::clean::ExternalCrate;
 use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -42,7 +43,7 @@ impl JsonRenderer<'tcx> {
         self.tcx.sess
     }
 
-    fn get_trait_implementors(&mut self, id: FakeDefId) -> Vec<types::Id> {
+    fn get_trait_implementors(&mut self, id: DefId) -> Vec<types::Id> {
         Rc::clone(&self.cache)
             .implementors
             .get(&id)
@@ -59,10 +60,10 @@ impl JsonRenderer<'tcx> {
             .unwrap_or_default()
     }
 
-    fn get_impls(&mut self, id: FakeDefId) -> Vec<types::Id> {
+    fn get_impls(&mut self, id: DefId) -> Vec<types::Id> {
         Rc::clone(&self.cache)
             .impls
-            .get(&id.expect_real())
+            .get(&id)
             .map(|impls| {
                 impls
                     .iter()
@@ -163,11 +164,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let id = item.def_id;
         if let Some(mut new_item) = self.convert_item(item) {
             if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
-                t.implementors = self.get_trait_implementors(id)
+                t.implementors = self.get_trait_implementors(id.expect_real())
             } else if let types::ItemEnum::Struct(ref mut s) = new_item.inner {
-                s.impls = self.get_impls(id)
+                s.impls = self.get_impls(id.expect_real())
             } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
-                e.impls = self.get_impls(id)
+                e.impls = self.get_impls(id.expect_real())
             }
             let removed = self.index.borrow_mut().insert(from_def_id(id), new_item.clone());
 
