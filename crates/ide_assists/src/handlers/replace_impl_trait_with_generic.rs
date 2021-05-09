@@ -1,6 +1,9 @@
-use syntax::ast::{self, edit::AstNodeEdit, make, AstNode, GenericParamsOwner};
+use syntax::{
+    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode},
+    ted,
+};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
 // Assist: replace_impl_trait_with_generic
 //
@@ -17,30 +20,29 @@ pub(crate) fn replace_impl_trait_with_generic(
     acc: &mut Assists,
     ctx: &AssistContext,
 ) -> Option<()> {
-    let type_impl_trait = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
-    let type_param = type_impl_trait.syntax().parent().and_then(ast::Param::cast)?;
-    let type_fn = type_param.syntax().ancestors().find_map(ast::Fn::cast)?;
+    let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
+    let param = impl_trait_type.syntax().parent().and_then(ast::Param::cast)?;
+    let fn_ = param.syntax().ancestors().find_map(ast::Fn::cast)?;
 
-    let impl_trait_ty = type_impl_trait.type_bound_list()?;
+    let type_bound_list = impl_trait_type.type_bound_list()?;
 
-    let target = type_fn.syntax().text_range();
+    let target = fn_.syntax().text_range();
     acc.add(
         AssistId("replace_impl_trait_with_generic", AssistKind::RefactorRewrite),
         "Replace impl trait with generic",
         target,
         |edit| {
-            let generic_letter = impl_trait_ty.to_string().chars().next().unwrap().to_string();
+            let impl_trait_type = edit.make_ast_mut(impl_trait_type);
+            let fn_ = edit.make_ast_mut(fn_);
 
-            let generic_param_list = type_fn
-                .generic_param_list()
-                .unwrap_or_else(|| make::generic_param_list(None))
-                .append_param(make::generic_param(generic_letter.clone(), Some(impl_trait_ty)));
+            let type_param_name = suggest_name::for_generic_parameter(&impl_trait_type);
 
-            let new_type_fn = type_fn
-                .replace_descendant::<ast::Type>(type_impl_trait.into(), make::ty(&generic_letter))
-                .with_generic_param_list(generic_param_list);
+            let type_param =
+                make::generic_param(&type_param_name, Some(type_bound_list)).clone_for_update();
+            let new_ty = make::ty(&type_param_name).clone_for_update();
 
-            edit.replace_ast(type_fn.clone(), new_type_fn);
+            ted::replace(impl_trait_type.syntax(), new_ty.syntax());
+            fn_.get_or_create_generic_param_list().add_generic_param(type_param)
         },
     )
 }
@@ -55,12 +57,8 @@ mod tests {
     fn replace_impl_trait_with_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<G>(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<G, B: Bar>(bar: B) {}
-            "#,
+            r#"fn foo<G>(bar: $0impl Bar) {}"#,
+            r#"fn foo<G, B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -68,12 +66,8 @@ mod tests {
     fn replace_impl_trait_without_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<B: Bar>(bar: B) {}
-            "#,
+            r#"fn foo(bar: $0impl Bar) {}"#,
+            r#"fn foo<B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -81,12 +75,8 @@ mod tests {
     fn replace_two_impl_trait_with_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}
-            "#,
+            r#"fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}"#,
+            r#"fn foo<G, B: Bar>(foo: impl Foo, bar: B) {}"#,
         );
     }
 
@@ -94,12 +84,8 @@ mod tests {
     fn replace_impl_trait_with_empty_generic_params() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<>(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<B: Bar>(bar: B) {}
-            "#,
+            r#"fn foo<>(bar: $0impl Bar) {}"#,
+            r#"fn foo<B: Bar>(bar: B) {}"#,
         );
     }
 
@@ -108,13 +94,13 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<
-            >(bar: $0impl Bar) {}
-            "#,
+fn foo<
+>(bar: $0impl Bar) {}
+"#,
             r#"
-            fn foo<B: Bar
-            >(bar: B) {}
-            "#,
+fn foo<B: Bar
+>(bar: B) {}
+"#,
         );
     }
 
@@ -123,12 +109,8 @@ mod tests {
     fn replace_impl_trait_with_exist_generic_letter() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo<B>(bar: $0impl Bar) {}
-            "#,
-            r#"
-            fn foo<B, C: Bar>(bar: C) {}
-            "#,
+            r#"fn foo<B>(bar: $0impl Bar) {}"#,
+            r#"fn foo<B, C: Bar>(bar: C) {}"#,
         );
     }
 
@@ -137,19 +119,19 @@ mod tests {
         check_assist(
             replace_impl_trait_with_generic,
             r#"
-            fn foo<
-                G: Foo,
-                F,
-                H,
-            >(bar: $0impl Bar) {}
-            "#,
+fn foo<
+    G: Foo,
+    F,
+    H,
+>(bar: $0impl Bar) {}
+"#,
             r#"
-            fn foo<
-                G: Foo,
-                F,
-                H, B: Bar
-            >(bar: B) {}
-            "#,
+fn foo<
+    G: Foo,
+    F,
+    H, B: Bar,
+>(bar: B) {}
+"#,
         );
     }
 
@@ -157,12 +139,8 @@ mod tests {
     fn replace_impl_trait_multiple() {
         check_assist(
             replace_impl_trait_with_generic,
-            r#"
-            fn foo(bar: $0impl Foo + Bar) {}
-            "#,
-            r#"
-            fn foo<F: Foo + Bar>(bar: F) {}
-            "#,
+            r#"fn foo(bar: $0impl Foo + Bar) {}"#,
+            r#"fn foo<F: Foo + Bar>(bar: F) {}"#,
         );
     }
 }

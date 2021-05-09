@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use ide_assists::utils::extract_trivial_expression;
 use itertools::Itertools;
 use syntax::{
@@ -65,6 +67,14 @@ fn remove_newlines(edit: &mut TextEditBuilder, token: &SyntaxToken, range: TextR
 
 fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextSize) {
     if token.kind() != WHITESPACE || token.text().bytes().filter(|&b| b == b'\n').count() != 1 {
+        let n_spaces_after_line_break = {
+            let suff = &token.text()[TextRange::new(
+                offset - token.text_range().start() + TextSize::of('\n'),
+                TextSize::of(token.text()),
+            )];
+            suff.bytes().take_while(|&b| b == b' ').count()
+        };
+
         let mut no_space = false;
         if let Some(string) = ast::String::cast(token.clone()) {
             if let Some(range) = string.open_quote_text_range() {
@@ -73,17 +83,12 @@ fn remove_newline(edit: &mut TextEditBuilder, token: &SyntaxToken, offset: TextS
             }
             if let Some(range) = string.close_quote_text_range() {
                 cov_mark::hit!(join_string_literal_close_quote);
-                no_space |= range.start() == offset + TextSize::of('\n');
+                no_space |= range.start()
+                    == offset
+                        + TextSize::of('\n')
+                        + TextSize::try_from(n_spaces_after_line_break).unwrap();
             }
         }
-
-        let n_spaces_after_line_break = {
-            let suff = &token.text()[TextRange::new(
-                offset - token.text_range().start() + TextSize::of('\n'),
-                TextSize::of(token.text()),
-            )];
-            suff.bytes().take_while(|&b| b == b' ').count()
-        };
 
         let range = TextRange::at(offset, ((n_spaces_after_line_break + 1) as u32).into());
         let replace_with = if no_space { "" } else { " " };
@@ -832,6 +837,19 @@ fn main() {
                 r#"
 fn main() {
     $0"hello";
+}
+"#,
+            );
+            check_join_lines(
+                r#"
+fn main() {
+    $0r"hello
+    ";
+}
+"#,
+                r#"
+fn main() {
+    $0r"hello";
 }
 "#,
             );

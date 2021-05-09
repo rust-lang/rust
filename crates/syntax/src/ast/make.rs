@@ -475,8 +475,8 @@ pub fn param_list(
     };
     ast_from_text(&list)
 }
-
-pub fn generic_param(name: String, ty: Option<ast::TypeBoundList>) -> ast::GenericParam {
+// FIXME: s/&str/ast:Name
+pub fn generic_param(name: &str, ty: Option<ast::TypeBoundList>) -> ast::GenericParam {
     let bound = match ty {
         Some(it) => format!(": {}", it),
         None => String::new(),
