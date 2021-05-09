@@ -1885,7 +1885,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     check_thread_count(&debugging_opts, error_format);
 
-    let incremental = cg.incremental.as_ref().map(PathBuf::from);
+    let incremental =
+        if std::env::var_os("RUSTC_FORCE_INCREMENTAL").map(|v| v == "1").unwrap_or(false) {
+            cg.incremental.as_ref().map(PathBuf::from)
+        } else {
+            None
+        };
 
     if debugging_opts.profile && incremental.is_some() {
         early_error(
