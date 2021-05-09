@@ -13,13 +13,6 @@ help: you might have meant to use pattern destructuring
 LL |     while let Some(0) = value.get(0) {
    |           ^^^
 
-error[E0308]: mismatched types
-  --> $DIR/issue-77218.rs:4:11
-   |
-LL |     while Some(0) = value.get(0) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0308, E0658.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0658`.
