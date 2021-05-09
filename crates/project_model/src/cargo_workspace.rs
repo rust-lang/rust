@@ -201,31 +201,12 @@ impl CargoWorkspace {
         if let Some(parent) = cargo_toml.parent() {
             meta.current_dir(parent.to_path_buf());
         }
-        let target = if let Some(target) = config.target.as_ref() {
+        let target = if let Some(target) = &config.target {
             Some(target.clone())
+        } else if let stdout @ Some(_) = cargo_config_build_target(cargo_toml) {
+            stdout
         } else {
-            // cargo metadata defaults to giving information for _all_ targets.
-            // In the absence of a preference from the user, we use the host platform.
-            let mut rustc = Command::new(toolchain::rustc());
-            rustc.current_dir(cargo_toml.parent().unwrap()).arg("-vV");
-            log::debug!("Discovering host platform by {:?}", rustc);
-            match utf8_stdout(rustc) {
-                Ok(stdout) => {
-                    let field = "host: ";
-                    let target = stdout.lines().find_map(|l| l.strip_prefix(field));
-                    if let Some(target) = target {
-                        Some(target.to_string())
-                    } else {
-                        // If we fail to resolve the host platform, it's not the end of the world.
-                        log::info!("rustc -vV did not report host platform, got:\n{}", stdout);
-                        None
-                    }
-                }
-                Err(e) => {
-                    log::warn!("Failed to discover host platform: {}", e);
-                    None
-                }
-            }
+            rustc_discover_host_triple(cargo_toml)
         };
         if let Some(target) = target {
             meta.other_options(vec![String::from("--filter-platform"), target]);
@@ -366,5 +347,45 @@ impl CargoWorkspace {
 
     fn is_unique(&self, name: &str) -> bool {
         self.packages.iter().filter(|(_, v)| v.name == name).count() == 1
+    }
+}
+
+fn rustc_discover_host_triple(cargo_toml: &AbsPath) -> Option<String> {
+    let mut rustc = Command::new(toolchain::rustc());
+    rustc.current_dir(cargo_toml.parent().unwrap()).arg("-vV");
+    log::debug!("Discovering host platform by {:?}", rustc);
+    match utf8_stdout(rustc) {
+        Ok(stdout) => {
+            let field = "host: ";
+            let target = stdout.lines().find_map(|l| l.strip_prefix(field));
+            if let Some(target) = target {
+                Some(target.to_string())
+            } else {
+                // If we fail to resolve the host platform, it's not the end of the world.
+                log::info!("rustc -vV did not report host platform, got:\n{}", stdout);
+                None
+            }
+        }
+        Err(e) => {
+            log::warn!("Failed to discover host platform: {}", e);
+            None
+        }
+    }
+}
+
+fn cargo_config_build_target(cargo_toml: &AbsPath) -> Option<String> {
+    let mut cargo_config = Command::new(toolchain::cargo());
+    cargo_config
+        .current_dir(cargo_toml.parent().unwrap())
+        .args(&["-Z", "unstable-options", "config", "get", "build.target"])
+        .env("RUSTC_BOOTSTRAP", "1");
+    // if successful we receive `build.target = "target-triple"`
+    log::debug!("Discovering cargo config target by {:?}", cargo_config);
+    match utf8_stdout(cargo_config) {
+        Ok(stdout) => stdout
+            .strip_prefix("build.target = \"")
+            .and_then(|stdout| stdout.strip_suffix('"'))
+            .map(ToOwned::to_owned),
+        Err(_) => None,
     }
 }
