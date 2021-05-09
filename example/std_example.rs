@@ -187,20 +187,6 @@ unsafe fn test_mm_slli_si128() {
     );
     let r = _mm_slli_si128(a, 16);
     assert_eq_m128i(r, _mm_set1_epi8(0));
-
-    #[rustfmt::skip]
-    let a = _mm_setr_epi8(
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-    );
-    let r = _mm_slli_si128(a, -1);
-    assert_eq_m128i(_mm_set1_epi8(0), r);
-
-    #[rustfmt::skip]
-    let a = _mm_setr_epi8(
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-    );
-    let r = _mm_slli_si128(a, -0x80000000);
-    assert_eq_m128i(r, _mm_set1_epi8(0));
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -295,7 +281,7 @@ unsafe fn test_mm_extract_epi8() {
         8, 9, 10, 11, 12, 13, 14, 15
     );
     let r1 = _mm_extract_epi8(a, 0);
-    let r2 = _mm_extract_epi8(a, 19);
+    let r2 = _mm_extract_epi8(a, 3);
     assert_eq!(r1, 0xFF);
     assert_eq!(r2, 3);
 }

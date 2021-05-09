@@ -24,14 +24,22 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         let true_ = fx.bcx.ins().iconst(types::I32, 1);
         fx.bcx.ins().trapnz(true_, TrapCode::User(1));
         return;
-    } else if template[0] == InlineAsmTemplatePiece::String("mov rsi, rbx".to_string())
-        && template[1] == InlineAsmTemplatePiece::String("\n".to_string())
-        && template[2] == InlineAsmTemplatePiece::String("cpuid".to_string())
-        && template[3] == InlineAsmTemplatePiece::String("\n".to_string())
-        && template[4] == InlineAsmTemplatePiece::String("xchg rsi, rbx".to_string())
+    } else if template[0] == InlineAsmTemplatePiece::String("movq %rbx, ".to_string())
+        && matches!(
+            template[1],
+            InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: Some('r'), span: _ }
+        )
+        && template[2] == InlineAsmTemplatePiece::String("\n".to_string())
+        && template[3] == InlineAsmTemplatePiece::String("cpuid".to_string())
+        && template[4] == InlineAsmTemplatePiece::String("\n".to_string())
+        && template[5] == InlineAsmTemplatePiece::String("xchgq %rbx, ".to_string())
+        && matches!(
+            template[6],
+            InlineAsmTemplatePiece::Placeholder { operand_idx: 0, modifier: Some('r'), span: _ }
+        )
     {
         assert_eq!(operands.len(), 4);
-        let (leaf, eax_place) = match operands[0] {
+        let (leaf, eax_place) = match operands[1] {
             InlineAsmOperand::InOut { reg, late: true, ref in_value, out_place } => {
                 let reg = expect_reg(reg);
                 assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::ax));
@@ -42,10 +50,14 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             }
             _ => unreachable!(),
         };
-        let ebx_place = match operands[1] {
+        let ebx_place = match operands[0] {
             InlineAsmOperand::Out { reg, late: true, place } => {
-                let reg = expect_reg(reg);
-                assert_eq!(reg, InlineAsmReg::X86(X86InlineAsmReg::si));
+                assert_eq!(
+                    reg,
+                    InlineAsmRegOrRegClass::RegClass(InlineAsmRegClass::X86(
+                        X86InlineAsmRegClass::reg
+                    ))
+                );
                 crate::base::codegen_place(fx, place.unwrap())
             }
             _ => unreachable!(),
