@@ -583,6 +583,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.infcx.predicate_may_hold(&obligation)
     }
 
+    /// Returns true if migration is needed for trait for the provided var_hir_id
+    fn need_2229_migrations_for_trait(
+        &self,
+        min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
+        var_hir_id: hir::HirId,
+        check_trait: Option<DefId>,
+    ) -> bool {
+        let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
+            min_captures.and_then(|m| m.get(&var_hir_id))
+        {
+            root_var_min_capture_list
+        } else {
+            return false;
+        };
+
+        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+
+        let cause = ObligationCause::misc(self.tcx.hir().span(var_hir_id), self.body_id);
+
+        let obligation_should_hold = check_trait
+            .map(|check_trait| self.ty_impls_trait(ty, &cause, check_trait))
+            .unwrap_or(false);
+
+        // Check whether catpured fields also implement the trait
+
+        for capture in root_var_min_capture_list.iter() {
+            let ty = capture.place.ty();
+
+            let obligation_holds_for_capture = check_trait
+                .map(|check_trait| self.ty_impls_trait(ty, &cause, check_trait))
+                .unwrap_or(false);
+
+            if !obligation_holds_for_capture && obligation_should_hold {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Figures out the list of root variables (and their types) that aren't completely
     /// captured by the closure when `capture_disjoint_fields` is enabled and auto-traits
     /// differ between the root variable and the captured paths.
@@ -596,116 +635,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn compute_2229_migrations_for_trait(
         &self,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-        _closure_clause: hir::CaptureBy,
         var_hir_id: hir::HirId,
     ) -> Option<FxHashSet<&str>> {
-        let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
-            min_captures.and_then(|m| m.get(&var_hir_id))
-        {
-            root_var_min_capture_list
-        } else {
-            return None;
-        };
-
-        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
-
         let tcx = self.infcx.tcx;
-
-        let cause = ObligationCause::misc(self.tcx.hir().span(var_hir_id), self.body_id);
-
-        let clone_obligation_should_hold = tcx
-            .lang_items()
-            .clone_trait()
-            .map(|clone_trait| self.ty_impls_trait(ty, &cause, clone_trait))
-            .unwrap_or(false);
-        let sync_obligation_should_hold = tcx
-            .lang_items()
-            .sync_trait()
-            .map(|sync_trait| self.ty_impls_trait(ty, &cause, sync_trait))
-            .unwrap_or(false);
-        let send_obligation_should_hold = tcx
-            .lang_items()
-            .send_trait()
-            .map(|send_trait| self.ty_impls_trait(ty, &cause, send_trait))
-            .unwrap_or(false);
-        let unpin_obligation_should_hold = tcx
-            .lang_items()
-            .unpin_trait()
-            .map(|unpin_trait| self.ty_impls_trait(ty, &cause, unpin_trait))
-            .unwrap_or(false);
-        let unwind_safe_obligation_should_hold = tcx
-            .lang_items()
-            .unwind_safe_trait()
-            .map(|unwind_safe_trait| self.ty_impls_trait(ty, &cause, unwind_safe_trait))
-            .unwrap_or(false);
-        let ref_unwind_safe_obligation_should_hold = tcx
-            .lang_items()
-            .ref_unwind_safe_trait()
-            .map(|ref_unwind_safe_trait| self.ty_impls_trait(ty, &cause, ref_unwind_safe_trait))
-            .unwrap_or(false);
 
         // Check whether catpured fields also implement the trait
         let mut auto_trait_reasons = FxHashSet::default();
 
-        for capture in root_var_min_capture_list.iter() {
-            let ty = capture.place.ty();
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().clone_trait(),
+        ) {
+            auto_trait_reasons.insert("`Clone`");
+        }
 
-            let clone_obligation_holds_for_capture = tcx
-                .lang_items()
-                .clone_trait()
-                .map(|clone_trait| self.ty_impls_trait(ty, &cause, clone_trait))
-                .unwrap_or(false);
-            let sync_obligation_holds_for_capture = tcx
-                .lang_items()
-                .sync_trait()
-                .map(|sync_trait| self.ty_impls_trait(ty, &cause, sync_trait))
-                .unwrap_or(false);
-            let send_obligation_holds_for_capture = tcx
-                .lang_items()
-                .send_trait()
-                .map(|send_trait| self.ty_impls_trait(ty, &cause, send_trait))
-                .unwrap_or(false);
-            let unpin_obligation_holds_for_capture = tcx
-                .lang_items()
-                .unpin_trait()
-                .map(|unpin_trait| self.ty_impls_trait(ty, &cause, unpin_trait))
-                .unwrap_or(false);
-            let unwind_safe_obligation_holds_for_capture = tcx
-                .lang_items()
-                .unwind_safe_trait()
-                .map(|unwind_safe| self.ty_impls_trait(ty, &cause, unwind_safe))
-                .unwrap_or(false);
-            let ref_unwind_safe_obligation_holds_for_capture = tcx
-                .lang_items()
-                .ref_unwind_safe_trait()
-                .map(|ref_unwind_safe_trait| self.ty_impls_trait(ty, &cause, ref_unwind_safe_trait))
-                .unwrap_or(false);
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().sync_trait(),
+        ) {
+            auto_trait_reasons.insert("`Sync`");
+        }
 
-            if !clone_obligation_holds_for_capture && clone_obligation_should_hold {
-                auto_trait_reasons.insert("`Clone`");
-            }
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().send_trait(),
+        ) {
+            auto_trait_reasons.insert("`Send`");
+        }
 
-            if !sync_obligation_holds_for_capture && sync_obligation_should_hold {
-                auto_trait_reasons.insert("`Sync`");
-            }
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().unpin_trait(),
+        ) {
+            auto_trait_reasons.insert("`Unpin`");
+        }
 
-            if !send_obligation_holds_for_capture && send_obligation_should_hold {
-                auto_trait_reasons.insert("`Send`");
-            }
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().unwind_safe_trait(),
+        ) {
+            auto_trait_reasons.insert("`UnwindSafe`");
+        }
 
-            if !unpin_obligation_holds_for_capture && unpin_obligation_should_hold {
-                auto_trait_reasons.insert("`Unpin`");
-            }
-
-            if !unwind_safe_obligation_holds_for_capture && unwind_safe_obligation_should_hold {
-                auto_trait_reasons.insert("`UnwindSafe`");
-            }
-
-            if !ref_unwind_safe_obligation_holds_for_capture
-                && ref_unwind_safe_obligation_should_hold
-            {
-                auto_trait_reasons.insert("`RefUnwindSafe`");
-            }
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().ref_unwind_safe_trait(),
+        ) {
+            auto_trait_reasons.insert("`RefUnwindSafe`");
         }
 
         if auto_trait_reasons.len() > 0 {
@@ -796,7 +778,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - One of the paths starting at this root variable, that is not captured needs Drop **or**
     /// - One of the paths captured does not implement all the auto-traits its root variable
     ///   implements.
-    /// 
+    ///
     /// Returns a tuple containing a vector of HirIds as well as a String containing the reason
     /// why root variables whose HirId is contained in the vector should be fully captured.
     fn compute_2229_migrations(
@@ -820,7 +802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (&var_hir_id, _) in upvars.iter() {
             let mut need_migration = false;
             if let Some(trait_migration_cause) =
-                self.compute_2229_migrations_for_trait(min_captures, closure_clause, var_hir_id)
+                self.compute_2229_migrations_for_trait(min_captures, var_hir_id)
             {
                 need_migration = true;
                 auto_trait_reasons.extend(trait_migration_cause);
