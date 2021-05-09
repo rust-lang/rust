@@ -788,9 +788,9 @@ mod tests {
             r##"
             #[rustc_builtin_macro]
             macro_rules! concat {}
-            concat!("foo", "r", 0, r#"bar"#, false);
+            concat!("foo", "r", 0, r#"bar"#, "\n", false);
             "##,
-            expect![[r#""foor0barfalse""#]],
+            expect![[r#""foor0bar\nfalse""#]],
         );
     }
 }
