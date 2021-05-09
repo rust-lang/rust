@@ -1,3 +1,4 @@
+use core::iter::SourceIter;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveError::*;
@@ -992,7 +993,7 @@ fn test_from_iter_partially_drained_in_place_specialization() {
 
 #[test]
 fn test_from_iter_specialization_with_iterator_adapters() {
-    fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {}
+    fn assert_in_place_trait<T: InPlaceIterable + SourceIter>(_: &T) {}
     let src: Vec<usize> = vec![0usize; 256];
     let srcptr = src.as_ptr();
     let iter = src

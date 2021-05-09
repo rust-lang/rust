@@ -1,3 +1,4 @@
+use core::iter::{InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess};
 use rand::RngCore;
 use std::iter::{repeat, FromIterator};
 use test::{black_box, Bencher};
@@ -457,47 +458,96 @@ bench_in_place![
     bench_in_place_u128_1000_i1, u128, 1000, 1
 ];
 
+fn assert_in_place_trait<T: InPlaceIterable + SourceIter>(_: &T) {}
+fn assert_trusted_len<T: TrustedLen>(_: &T) {}
+fn assert_trusted_random_access<T: TrustedRandomAccess>(_: &T) {}
+
 #[bench]
-fn bench_in_place_recycle(b: &mut Bencher) {
-    let mut data = vec![0; 1000];
+fn bench_in_place_recycle_default(b: &mut Bencher) {
+    let mut data = vec![0; 4096];
 
     b.iter(|| {
         let tmp = std::mem::take(&mut data);
-        data = black_box(
-            tmp.into_iter()
-                .enumerate()
-                .map(|(idx, e)| idx.wrapping_add(e))
-                .fuse()
-                .peekable()
-                .collect::<Vec<usize>>(),
-        );
+        let iter = tmp.into_iter().enumerate().map(|(idx, e)| idx.wrapping_add(e)).filter(|_| true); // filter() removes TrustedLen and TrustedRandomAccess markers
+        assert_in_place_trait(&iter);
+        data = black_box(iter.collect::<Vec<usize>>());
     });
 }
 
 #[bench]
-fn bench_in_place_zip_recycle(b: &mut Bencher) {
-    let mut data = vec![0u8; 1000];
+fn bench_in_place_recycle_trusted_len(b: &mut Bencher) {
+    let mut data = vec![0; 4096];
+
+    b.iter(|| {
+        let tmp = std::mem::take(&mut data);
+        let iter = tmp.into_iter().enumerate().map(|(idx, e)| idx.wrapping_add(e)).peekable(); // peekable currently prevents TrustedRandomAccess but not TrustedLen
+        assert_in_place_trait(&iter);
+        assert_trusted_len(&iter);
+        data = black_box(iter.collect::<Vec<usize>>());
+    });
+}
+
+#[bench]
+fn bench_in_place_recycle_trusted_random_access(b: &mut Bencher) {
+    let mut data = vec![0; 4096];
+
+    b.iter(|| {
+        let tmp = std::mem::take(&mut data);
+        let iter = tmp.into_iter().enumerate().map(|(idx, e)| idx.wrapping_add(e));
+        assert_in_place_trait(&iter);
+        assert_trusted_len(&iter);
+        assert_trusted_random_access(&iter);
+        data = black_box(iter.collect::<Vec<usize>>());
+    });
+}
+
+#[bench]
+fn bench_in_place_zip_recycle_trusted_len(b: &mut Bencher) {
+    let mut data = vec![0u8; 4096];
     let mut rng = rand::thread_rng();
-    let mut subst = vec![0u8; 1000];
+    let mut subst = vec![0u8; 4096];
     rng.fill_bytes(&mut subst[..]);
 
     b.iter(|| {
         let tmp = std::mem::take(&mut data);
-        let mangled = tmp
+        let iter = tmp
             .into_iter()
             .zip(subst.iter().copied())
             .enumerate()
             .map(|(i, (d, s))| d.wrapping_add(i as u8) ^ s)
-            .collect::<Vec<_>>();
-        data = black_box(mangled);
+            .peekable();
+        assert_in_place_trait(&iter);
+        assert_trusted_len(&iter);
+        data = black_box(iter.collect::<Vec<_>>());
+    });
+}
+
+#[bench]
+fn bench_in_place_zip_recycle_trusted_random_access(b: &mut Bencher) {
+    let mut data = vec![0u8; 4096];
+    let mut rng = rand::thread_rng();
+    let mut subst = vec![0u8; 4096];
+    rng.fill_bytes(&mut subst[..]);
+
+    b.iter(|| {
+        let tmp = std::mem::take(&mut data);
+        let iter = tmp
+            .into_iter()
+            .zip(subst.iter().copied())
+            .enumerate()
+            .map(|(i, (d, s))| d.wrapping_add(i as u8) ^ s);
+        assert_in_place_trait(&iter);
+        assert_trusted_len(&iter);
+        assert_trusted_random_access(&iter);
+        data = black_box(iter.collect::<Vec<_>>());
     });
 }
 
 #[bench]
 fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
-    let mut data = vec![0u8; 256];
+    let mut data = vec![0u8; 4096];
     let mut rng = rand::thread_rng();
-    let mut subst = vec![0u8; 1000];
+    let mut subst = vec![0u8; 4096];
     rng.fill_bytes(&mut subst[..]);
 
     b.iter(|| {
@@ -509,18 +559,68 @@ fn bench_in_place_zip_iter_mut(b: &mut Bencher) {
     black_box(data);
 }
 
-pub fn vec_cast<T, U>(input: Vec<T>) -> Vec<U> {
+fn vec_cast_default<T, U>(input: Vec<T>) -> Vec<U> {
+    input.into_iter().map(|e| unsafe { std::mem::transmute_copy(&e) }).filter(|_| true).collect()
+}
+
+fn vec_cast_trusted_len<T, U>(input: Vec<T>) -> Vec<U> {
+    input.into_iter().map(|e| unsafe { std::mem::transmute_copy(&e) }).peekable().collect()
+}
+
+fn vec_cast_trusted_random_access<T, U>(input: Vec<T>) -> Vec<U> {
     input.into_iter().map(|e| unsafe { std::mem::transmute_copy(&e) }).collect()
 }
 
 #[bench]
-fn bench_transmute(b: &mut Bencher) {
-    let mut vec = vec![10u32; 100];
-    b.bytes = 800; // 2 casts x 4 bytes x 100
+fn bench_transmute_recycle_default(b: &mut Bencher) {
+    let mut vec = vec![10u32; 10000];
+    b.bytes = 80000; // 2 casts x 4 bytes x 10000
+
     b.iter(|| {
         let v = std::mem::take(&mut vec);
-        let v = black_box(vec_cast::<u32, i32>(v));
-        let v = black_box(vec_cast::<i32, u32>(v));
+        let v = black_box(vec_cast_default::<u32, i32>(v));
+        let v = black_box(vec_cast_default::<i32, u32>(v));
+        vec = v;
+    });
+}
+
+#[bench]
+fn bench_transmute_recycle_trusted_len(b: &mut Bencher) {
+    let mut vec = vec![10u32; 10000];
+    b.bytes = 80000; // 2 casts x 4 bytes x 10000
+
+    b.iter(|| {
+        let v = std::mem::take(&mut vec);
+        let v = black_box(vec_cast_trusted_len::<u32, i32>(v));
+        let v = black_box(vec_cast_trusted_len::<i32, u32>(v));
+        vec = v;
+    });
+}
+
+#[bench]
+fn bench_transmute_recycle_no_copy(b: &mut Bencher) {
+    struct NoCopy(u128);
+    let mut vec = Vec::with_capacity(10000);
+    vec.resize_with(10000, || NoCopy(10));
+    b.bytes = 320000; // 2 casts x 16 bytes x 10000
+
+    b.iter(|| {
+        let v = std::mem::take(&mut vec);
+        let v = black_box(vec_cast_trusted_random_access::<NoCopy, u128>(v));
+        let v = black_box(vec_cast_trusted_random_access::<u128, NoCopy>(v));
+        vec = v;
+    });
+}
+
+#[bench]
+fn bench_transmute_recycle_trusted_random_access(b: &mut Bencher) {
+    let mut vec = vec![10u32; 10000];
+    b.bytes = 80000; // 2 casts x 4 bytes x 10000
+
+    b.iter(|| {
+        let v = std::mem::take(&mut vec);
+        let v = black_box(vec_cast_trusted_random_access::<u32, i32>(v));
+        let v = black_box(vec_cast_trusted_random_access::<i32, u32>(v));
         vec = v;
     });
 }
