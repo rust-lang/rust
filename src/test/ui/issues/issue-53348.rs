@@ -5,12 +5,11 @@ fn main() {
 
     v.into_iter().map(|s|s.to_owned()).collect::<Vec<_>>();
 
-    let mut a = String::new();
+    let mut a = String::new(); //~ NOTE expected due to this value
     for i in v {
         a = *i.to_string();
         //~^ ERROR mismatched types
         //~| NOTE expected struct `String`, found `str`
-        //~| NOTE expected due to this
         v2.push(a);
     }
 }
