@@ -61,7 +61,9 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 ignore: true,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                #[cfg(not(bootstrap))]
                 compile_fail: false,
+                #[cfg(not(bootstrap))]
                 no_run: false,
                 test_type: TestType::Unknown,
             },
@@ -73,7 +75,9 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 ignore: false,
                 should_panic: ShouldPanic::No,
                 allow_fail: false,
+                #[cfg(not(bootstrap))]
                 compile_fail: false,
+                #[cfg(not(bootstrap))]
                 no_run: false,
                 test_type: TestType::Unknown,
             },
@@ -93,7 +97,9 @@ pub fn do_not_run_ignored_tests() {
             ignore: true,
             should_panic: ShouldPanic::No,
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -114,7 +120,9 @@ pub fn ignored_tests_result_in_ignored() {
             ignore: true,
             should_panic: ShouldPanic::No,
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -139,7 +147,9 @@ fn test_should_panic() {
             ignore: false,
             should_panic: ShouldPanic::Yes,
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -164,7 +174,9 @@ fn test_should_panic_good_message() {
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage("error message"),
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -194,7 +206,9 @@ fn test_should_panic_bad_message() {
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage(expected),
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -228,7 +242,9 @@ fn test_should_panic_non_string_message_type() {
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage(expected),
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -254,7 +270,9 @@ fn test_should_panic_but_succeeds() {
                 ignore: false,
                 should_panic,
                 allow_fail: false,
+                #[cfg(not(bootstrap))]
                 compile_fail: false,
+                #[cfg(not(bootstrap))]
                 no_run: false,
                 test_type: TestType::Unknown,
             },
@@ -288,7 +306,9 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
             ignore: false,
             should_panic: ShouldPanic::No,
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -323,7 +343,9 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
             ignore: false,
             should_panic: ShouldPanic::No,
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type,
         },
@@ -362,7 +384,9 @@ fn typed_test_desc(test_type: TestType) -> TestDesc {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        #[cfg(not(bootstrap))]
         compile_fail: false,
+        #[cfg(not(bootstrap))]
         no_run: false,
         test_type,
     }
@@ -475,7 +499,9 @@ pub fn exclude_should_panic_option() {
             ignore: false,
             should_panic: ShouldPanic::Yes,
             allow_fail: false,
+            #[cfg(not(bootstrap))]
             compile_fail: false,
+            #[cfg(not(bootstrap))]
             no_run: false,
             test_type: TestType::Unknown,
         },
@@ -499,7 +525,9 @@ pub fn exact_filter_match() {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
+                    #[cfg(not(bootstrap))]
                     compile_fail: false,
+                    #[cfg(not(bootstrap))]
                     no_run: false,
                     test_type: TestType::Unknown,
                 },
@@ -593,7 +621,9 @@ pub fn sort_tests() {
                     ignore: false,
                     should_panic: ShouldPanic::No,
                     allow_fail: false,
+                    #[cfg(not(bootstrap))]
                     compile_fail: false,
+                    #[cfg(not(bootstrap))]
                     no_run: false,
                     test_type: TestType::Unknown,
                 },
@@ -672,7 +702,9 @@ pub fn test_bench_no_iter() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        #[cfg(not(bootstrap))]
         compile_fail: false,
+        #[cfg(not(bootstrap))]
         no_run: false,
         test_type: TestType::Unknown,
     };
@@ -694,7 +726,9 @@ pub fn test_bench_iter() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        #[cfg(not(bootstrap))]
         compile_fail: false,
+        #[cfg(not(bootstrap))]
         no_run: false,
         test_type: TestType::Unknown,
     };
@@ -710,7 +744,9 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        #[cfg(not(bootstrap))]
         compile_fail: false,
+        #[cfg(not(bootstrap))]
         no_run: false,
         test_type: TestType::Unknown,
     };
@@ -720,7 +756,9 @@ fn should_sort_failures_before_printing_them() {
         ignore: false,
         should_panic: ShouldPanic::No,
         allow_fail: false,
+        #[cfg(not(bootstrap))]
         compile_fail: false,
+        #[cfg(not(bootstrap))]
         no_run: false,
         test_type: TestType::Unknown,
     };

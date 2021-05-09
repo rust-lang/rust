@@ -124,7 +124,9 @@ pub struct TestDesc {
     pub ignore: bool,
     pub should_panic: options::ShouldPanic,
     pub allow_fail: bool,
+    #[cfg(not(bootstrap))]
     pub compile_fail: bool,
+    #[cfg(not(bootstrap))]
     pub no_run: bool,
     pub test_type: TestType,
 }
@@ -143,7 +145,8 @@ impl TestDesc {
         }
     }
 
-    pub fn test_mode_string(&self) -> &'static str {
+    #[cfg(not(bootstrap))]
+    pub fn test_mode(&self) -> &'static str {
         if self.ignore {
             return &"ignore";
         }
@@ -163,6 +166,11 @@ impl TestDesc {
             return &"compile";
         }
         &"run"
+    }
+
+    #[cfg(bootstrap)]
+    pub fn test_mode(&self) -> &'static str {
+        &""
     }
 }
 
