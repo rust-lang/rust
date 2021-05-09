@@ -9,6 +9,27 @@ LL | impl Copy for i32 {}
    |
    = note: define and implement a trait or new type instead
 
+error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`
+  --> $DIR/coherence-impls-copy.rs:28:1
+   |
+LL | impl Copy for &'static NotSync {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `core`:
+           - impl<T> Copy for &T
+             where T: ?Sized;
+
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence-impls-copy.rs:33:1
+   |
+LL | impl Copy for &'static [NotSync] {}
+   | ^^^^^^^^^^^^^^------------------
+   | |             |
+   | |             this is not defined in the current crate because slices are always foreign
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
+
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence-impls-copy.rs:25:1
    |
@@ -30,27 +51,6 @@ LL | impl Copy for [MyType] {}
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead
-
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/coherence-impls-copy.rs:33:1
-   |
-LL | impl Copy for &'static [NotSync] {}
-   | ^^^^^^^^^^^^^^------------------
-   | |             |
-   | |             this is not defined in the current crate because slices are always foreign
-   | impl doesn't use only types from inside the current crate
-   |
-   = note: define and implement a trait or new type instead
-
-error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&NotSync`
-  --> $DIR/coherence-impls-copy.rs:28:1
-   |
-LL | impl Copy for &'static NotSync {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `core`:
-           - impl<T> Copy for &T
-             where T: ?Sized;
 
 error[E0206]: the trait `Copy` may not be implemented for this type
   --> $DIR/coherence-impls-copy.rs:21:15

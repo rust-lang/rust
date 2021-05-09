@@ -10,21 +10,8 @@ use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 
-pub(super) fn orphan_check_crate(tcx: TyCtxt<'_>, (): ()) -> &[LocalDefId] {
-    let mut errors = Vec::new();
-    for (_trait, impls_of_trait) in tcx.all_local_trait_impls(()) {
-        for &impl_of_trait in impls_of_trait {
-            match orphan_check_impl(tcx, impl_of_trait) {
-                Ok(()) => {}
-                Err(ErrorReported) => errors.push(impl_of_trait),
-            }
-        }
-    }
-    tcx.arena.alloc_slice(&errors)
-}
-
 #[instrument(skip(tcx), level = "debug")]
-fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorReported> {
+pub(super) fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorReported> {
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
     let trait_def_id = trait_ref.def_id;
 

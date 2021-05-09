@@ -447,7 +447,7 @@ fn report_conflicting_impls(
     match used_to_be_allowed {
         None => {
             sg.has_errored = true;
-            if overlap.with_impl.is_local() || !tcx.orphan_check_crate(()).contains(&impl_def_id) {
+            if overlap.with_impl.is_local() || tcx.orphan_check_impl(impl_def_id).is_ok() {
                 let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
                 decorate(LintDiagnosticBuilder::new(err));
             } else {
