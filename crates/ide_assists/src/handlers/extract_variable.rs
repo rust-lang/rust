@@ -54,7 +54,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
 
             let var_name = match &field_shorthand {
                 Some(it) => it.to_string(),
-                None => suggest_name::variable(&to_extract, &ctx.sema),
+                None => suggest_name::for_variable(&to_extract, &ctx.sema),
             };
             let expr_range = match &field_shorthand {
                 Some(it) => it.syntax().text_range().cover(to_extract.syntax().text_range()),

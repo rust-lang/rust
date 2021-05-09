@@ -57,7 +57,7 @@ const USELESS_METHODS: &[&str] = &[
     "iter_mut",
 ];
 
-pub(crate) fn generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
+pub(crate) fn for_generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
     let c = ty
         .type_bound_list()
         .and_then(|bounds| bounds.syntax().text().char_at(0.into()))
@@ -83,7 +83,8 @@ pub(crate) fn generic_parameter(ty: &ast::ImplTraitType) -> SmolStr {
 /// It also applies heuristics to filter out less informative names
 ///
 /// Currently it sticks to the first name found.
-pub(crate) fn variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
+// FIXME: Microoptimize and return a `SmolStr` here.
+pub(crate) fn for_variable(expr: &ast::Expr, sema: &Semantics<'_, RootDatabase>) -> String {
     // `from_param` does not benifit from stripping
     // it need the largest context possible
     // so we check firstmost
@@ -284,7 +285,7 @@ mod tests {
             frange.range,
             "selection is not an expression(yet contained in one)"
         );
-        let name = variable(&expr, &sema);
+        let name = for_variable(&expr, &sema);
         assert_eq!(&name, expected);
     }
 
