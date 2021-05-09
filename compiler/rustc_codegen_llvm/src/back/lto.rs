@@ -568,10 +568,11 @@ fn thin_lto(
 
 pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
     thin: bool,
-) {
+) -> Result<(), FatalError> {
     let _timer = cgcx.prof.extra_verbose_generic_activity("LLVM_lto_optimize", &module.name[..]);
 
     // Now we have one massive module inside of llmod. Time to run the
@@ -584,15 +585,16 @@ pub(crate) fn run_pass_manager(
         if write::should_use_new_llvm_pass_manager(config) {
             let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
             let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-            // See comment below for why this is necessary.
-            let opt_level = if let config::OptLevel::No = opt_level {
-                config::OptLevel::Less
-            } else {
-                opt_level
-            };
-            write::optimize_with_new_llvm_pass_manager(cgcx, module, config, opt_level, opt_stage);
+            write::optimize_with_new_llvm_pass_manager(
+                cgcx,
+                diag_handler,
+                module,
+                config,
+                opt_level,
+                opt_stage,
+            )?;
             debug!("lto done");
-            return;
+            return Ok(());
         }
 
         let pm = llvm::LLVMCreatePassManager();
@@ -603,26 +605,10 @@ pub(crate) fn run_pass_manager(
             llvm::LLVMRustAddPass(pm, pass.unwrap());
         }
 
-        // When optimizing for LTO we don't actually pass in `-O0`, but we force
-        // it to always happen at least with `-O1`.
-        //
-        // With ThinLTO we mess around a lot with symbol visibility in a way
-        // that will actually cause linking failures if we optimize at O0 which
-        // notable is lacking in dead code elimination. To ensure we at least
-        // get some optimizations and correctly link we forcibly switch to `-O1`
-        // to get dead code elimination.
-        //
-        // Note that in general this shouldn't matter too much as you typically
-        // only turn on ThinLTO when you're compiling with optimizations
-        // otherwise.
         let opt_level = config
             .opt_level
             .map(|x| to_llvm_opt_settings(x).0)
             .unwrap_or(llvm::CodeGenOptLevel::None);
-        let opt_level = match opt_level {
-            llvm::CodeGenOptLevel::None => llvm::CodeGenOptLevel::Less,
-            level => level,
-        };
         with_llvm_pmb(module.module_llvm.llmod(), config, opt_level, false, &mut |b| {
             if thin {
                 llvm::LLVMRustPassManagerBuilderPopulateThinLTOPassManager(b, pm);
@@ -650,6 +636,7 @@ pub(crate) fn run_pass_manager(
         llvm::LLVMDisposePassManager(pm);
     }
     debug!("lto done");
+    Ok(())
 }
 
 pub struct ModuleBuffer(&'static mut llvm::ModuleBuffer);
@@ -872,7 +859,7 @@ pub unsafe fn optimize_thin_module(
         {
             info!("running thin lto passes over {}", module.name);
             let config = cgcx.config(module.kind);
-            run_pass_manager(cgcx, &module, config, true);
+            run_pass_manager(cgcx, &diag_handler, &module, config, true)?;
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }

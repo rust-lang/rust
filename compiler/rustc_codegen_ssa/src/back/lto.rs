@@ -72,7 +72,7 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
                 let module = module.take().unwrap();
                 {
                     let config = cgcx.config(module.kind);
-                    B::run_lto_pass_manager(cgcx, &module, config, false);
+                    B::run_lto_pass_manager(cgcx, &module, config, false)?;
                 }
                 Ok(module)
             }

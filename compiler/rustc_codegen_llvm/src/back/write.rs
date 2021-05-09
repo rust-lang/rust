@@ -410,16 +410,17 @@ fn get_pgo_use_path(config: &ModuleConfig) -> Option<CString> {
 
 pub(crate) fn should_use_new_llvm_pass_manager(config: &ModuleConfig) -> bool {
     // The new pass manager is disabled by default.
-    config.new_llvm_pass_manager
+    config.new_llvm_pass_manager.unwrap_or(false)
 }
 
 pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
+    diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
-) {
+) -> Result<(), FatalError> {
     let unroll_loops =
         opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
@@ -449,13 +450,12 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         std::ptr::null_mut()
     };
 
+    let extra_passes = config.passes.join(",");
+
     // FIXME: NewPM doesn't provide a facility to pass custom InlineParams.
     // We would have to add upstream support for this first, before we can support
     // config.inline_threshold and our more aggressive default thresholds.
-    // FIXME: NewPM uses an different and more explicit way to textually represent
-    // pass pipelines. It would probably make sense to expose this, but it would
-    // require a different format than the current -C passes.
-    llvm::LLVMRustOptimizeWithNewPassManager(
+    let result = llvm::LLVMRustOptimizeWithNewPassManager(
         module.module_llvm.llmod(),
         &*module.module_llvm.tm,
         to_pass_builder_opt_level(opt_level),
@@ -472,10 +472,15 @@ pub(crate) unsafe fn optimize_with_new_llvm_pass_manager(
         sanitizer_options.as_ref(),
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
+        config.instrument_coverage,
+        config.instrument_gcov,
         llvm_selfprofiler,
         selfprofile_before_pass_callback,
         selfprofile_after_pass_callback,
+        extra_passes.as_ptr().cast(),
+        extra_passes.len(),
     );
+    result.into_result().map_err(|()| llvm_err(diag_handler, "failed to run LLVM passes"))
 }
 
 // Unsafe due to LLVM calls.
@@ -484,7 +489,7 @@ pub(crate) unsafe fn optimize(
     diag_handler: &Handler,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
-) {
+) -> Result<(), FatalError> {
     let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_optimize", &module.name[..]);
 
     let llmod = module.module_llvm.llmod();
@@ -509,8 +514,14 @@ pub(crate) unsafe fn optimize(
                 _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
                 _ => llvm::OptStage::PreLinkNoLTO,
             };
-            optimize_with_new_llvm_pass_manager(cgcx, module, config, opt_level, opt_stage);
-            return;
+            return optimize_with_new_llvm_pass_manager(
+                cgcx,
+                diag_handler,
+                module,
+                config,
+                opt_level,
+                opt_stage,
+            );
         }
 
         if cgcx.prof.llvm_recording_enabled() {
@@ -545,15 +556,6 @@ pub(crate) unsafe fn optimize(
                     llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
                     continue;
                 }
-                if pass_name == "insert-gcov-profiling" || pass_name == "instrprof" {
-                    // Instrumentation must be inserted before optimization,
-                    // otherwise LLVM may optimize some functions away which
-                    // breaks llvm-cov.
-                    //
-                    // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
-                    llvm::LLVMRustAddPass(mpm, find_pass(pass_name).unwrap());
-                    continue;
-                }
 
                 if let Some(pass) = find_pass(pass_name) {
                     extra_passes.push(pass);
@@ -564,6 +566,18 @@ pub(crate) unsafe fn optimize(
                 if pass_name == "name-anon-globals" {
                     have_name_anon_globals_pass = true;
                 }
+            }
+
+            // Instrumentation must be inserted before optimization,
+            // otherwise LLVM may optimize some functions away which
+            // breaks llvm-cov.
+            //
+            // This mirrors what Clang does in lib/CodeGen/BackendUtil.cpp.
+            if config.instrument_gcov {
+                llvm::LLVMRustAddPass(mpm, find_pass("insert-gcov-profiling").unwrap());
+            }
+            if config.instrument_coverage {
+                llvm::LLVMRustAddPass(mpm, find_pass("instrprof").unwrap());
             }
 
             add_sanitizer_passes(config, &mut extra_passes);
@@ -642,6 +656,7 @@ pub(crate) unsafe fn optimize(
         llvm::LLVMDisposePassManager(fpm);
         llvm::LLVMDisposePassManager(mpm);
     }
+    Ok(())
 }
 
 unsafe fn add_sanitizer_passes(config: &ModuleConfig, passes: &mut Vec<&'static mut llvm::Pass>) {

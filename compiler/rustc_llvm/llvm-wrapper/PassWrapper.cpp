@@ -32,6 +32,8 @@
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Support/TimeProfiler.h"
+#include "llvm/Transforms/Instrumentation/GCOVProfiler.h"
+#include "llvm/Transforms/Instrumentation/InstrProfiling.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
@@ -734,7 +736,7 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeHWAddressRecover;
 };
 
-extern "C" void
+extern "C" LLVMRustResult
 LLVMRustOptimizeWithNewPassManager(
     LLVMModuleRef ModuleRef,
     LLVMTargetMachineRef TMRef,
@@ -745,9 +747,11 @@ LLVMRustOptimizeWithNewPassManager(
     bool DisableSimplifyLibCalls, bool EmitLifetimeMarkers,
     LLVMRustSanitizerOptions *SanitizerOptions,
     const char *PGOGenPath, const char *PGOUsePath,
+    bool InstrumentCoverage, bool InstrumentGCOV,
     void* LlvmSelfProfiler,
     LLVMRustSelfProfileBeforePassCallback BeforePassCallback,
-    LLVMRustSelfProfileAfterPassCallback AfterPassCallback) {
+    LLVMRustSelfProfileAfterPassCallback AfterPassCallback,
+    const char *ExtraPasses, size_t ExtraPassesLen) {
   Module *TheModule = unwrap(ModuleRef);
   TargetMachine *TM = unwrap(TMRef);
   PassBuilder::OptimizationLevel OptLevel = fromRust(OptLevelRust);
@@ -830,6 +834,23 @@ LLVMRustOptimizeWithNewPassManager(
     PipelineStartEPCallbacks.push_back(
       [VerifyIR](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
         MPM.addPass(VerifierPass());
+      }
+    );
+  }
+
+  if (InstrumentGCOV) {
+    PipelineStartEPCallbacks.push_back(
+      [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        MPM.addPass(GCOVProfilerPass(GCOVOptions::getDefault()));
+      }
+    );
+  }
+
+  if (InstrumentCoverage) {
+    PipelineStartEPCallbacks.push_back(
+      [](ModulePassManager &MPM, PassBuilder::OptimizationLevel Level) {
+        InstrProfOptions Options;
+        MPM.addPass(InstrProfiling(Options, false));
       }
     );
   }
@@ -1042,6 +1063,14 @@ LLVMRustOptimizeWithNewPassManager(
     }
   }
 
+  if (ExtraPassesLen) {
+    if (auto Err = PB.parsePassPipeline(MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
+      std::string ErrMsg = toString(std::move(Err));
+      LLVMRustSetLastError(ErrMsg.c_str());
+      return LLVMRustResult::Failure;
+    }
+  }
+
   if (NeedThinLTOBufferPasses) {
     MPM.addPass(CanonicalizeAliasesPass());
     MPM.addPass(NameAnonGlobalPass());
@@ -1052,6 +1081,7 @@ LLVMRustOptimizeWithNewPassManager(
     UpgradeCallsToIntrinsic(&*I++); // must be post-increment, as we remove
 
   MPM.run(*TheModule, MAM);
+  return LLVMRustResult::Success;
 }
 
 // Callback to demangle function name

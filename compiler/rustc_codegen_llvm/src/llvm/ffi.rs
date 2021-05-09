@@ -2203,10 +2203,14 @@ extern "C" {
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
+        InstrumentCoverage: bool,
+        InstrumentGCOV: bool,
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,
-    );
+        ExtraPasses: *const c_char,
+        ExtraPassesLen: size_t,
+    ) -> LLVMRustResult;
     pub fn LLVMRustPrintModule(
         M: &'a Module,
         Output: *const c_char,
