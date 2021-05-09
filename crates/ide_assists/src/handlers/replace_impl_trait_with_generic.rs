@@ -37,12 +37,12 @@ pub(crate) fn replace_impl_trait_with_generic(
 
             let type_param_name = suggest_name::for_generic_parameter(&impl_trait_type);
 
-            let type_param =
-                make::generic_param(&type_param_name, Some(type_bound_list)).clone_for_update();
+            let type_param = make::type_param(make::name(&type_param_name), Some(type_bound_list))
+                .clone_for_update();
             let new_ty = make::ty(&type_param_name).clone_for_update();
 
             ted::replace(impl_trait_type.syntax(), new_ty.syntax());
-            fn_.get_or_create_generic_param_list().add_generic_param(type_param)
+            fn_.get_or_create_generic_param_list().add_generic_param(type_param.into())
         },
     )
 }
