@@ -196,7 +196,7 @@ pub unsafe fn _mm256_andnot_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vmaxpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_max_pd(a: __m256d, b: __m256d) -> __m256d {
-    simd_fmax(a, b)
+    vmaxpd(a, b)
 }
 
 /// Compares packed single-precision (32-bit) floating-point elements in `a`
@@ -208,7 +208,7 @@ pub unsafe fn _mm256_max_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vmaxps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_max_ps(a: __m256, b: __m256) -> __m256 {
-    simd_fmax(a, b)
+    vmaxps(a, b)
 }
 
 /// Compares packed double-precision (64-bit) floating-point elements
@@ -220,7 +220,7 @@ pub unsafe fn _mm256_max_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vminpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_min_pd(a: __m256d, b: __m256d) -> __m256d {
-    simd_fmin(a, b)
+    vminpd(a, b)
 }
 
 /// Compares packed single-precision (32-bit) floating-point elements in `a`
@@ -232,7 +232,7 @@ pub unsafe fn _mm256_min_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vminps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_min_ps(a: __m256, b: __m256) -> __m256 {
-    simd_fmin(a, b)
+    vminps(a, b)
 }
 
 /// Multiplies packed double-precision (64-bit) floating-point elements
@@ -3034,6 +3034,14 @@ extern "C" {
     fn movmskpd256(a: __m256d) -> i32;
     #[link_name = "llvm.x86.avx.movmsk.ps.256"]
     fn movmskps256(a: __m256) -> i32;
+    #[link_name = "llvm.x86.avx.min.ps.256"]
+    fn vminps(a: __m256, b: __m256) -> __m256;
+    #[link_name = "llvm.x86.avx.max.ps.256"]
+    fn vmaxps(a: __m256, b: __m256) -> __m256;
+    #[link_name = "llvm.x86.avx.min.pd.256"]
+    fn vminpd(a: __m256d, b: __m256d) -> __m256d;
+    #[link_name = "llvm.x86.avx.max.pd.256"]
+    fn vmaxpd(a: __m256d, b: __m256d) -> __m256d;
 }
 
 #[cfg(test)]
@@ -3138,6 +3146,23 @@ mod tests {
         let r = _mm256_max_pd(a, b);
         let e = _mm256_setr_pd(2., 4., 6., 8.);
         assert_eq_m256d(r, e);
+        // > If the values being compared are both 0.0s (of either sign), the
+        // > value in the second operand (source operand) is returned.
+        let w = _mm256_max_pd(_mm256_set1_pd(0.0), _mm256_set1_pd(-0.0));
+        let x = _mm256_max_pd(_mm256_set1_pd(-0.0), _mm256_set1_pd(0.0));
+        let wu: [u64; 4] = transmute(w);
+        let xu: [u64; 4] = transmute(x);
+        assert_eq!(wu, [0x8000_0000_0000_0000u64; 4]);
+        assert_eq!(xu, [0u64; 4]);
+        // > If only one value is a NaN (SNaN or QNaN) for this instruction, the
+        // > second operand (source operand), either a NaN or a valid
+        // > floating-point value, is written to the result.
+        let y = _mm256_max_pd(_mm256_set1_pd(f64::NAN), _mm256_set1_pd(0.0));
+        let z = _mm256_max_pd(_mm256_set1_pd(0.0), _mm256_set1_pd(f64::NAN));
+        let yf: [f64; 4] = transmute(y);
+        let zf: [f64; 4] = transmute(z);
+        assert_eq!(yf, [0.0; 4]);
+        assert!(zf.iter().all(|f| f.is_nan()), "{:?}", zf);
     }
 
     #[simd_test(enable = "avx")]
@@ -3147,6 +3172,23 @@ mod tests {
         let r = _mm256_max_ps(a, b);
         let e = _mm256_setr_ps(2., 4., 6., 8., 10., 12., 14., 16.);
         assert_eq_m256(r, e);
+        // > If the values being compared are both 0.0s (of either sign), the
+        // > value in the second operand (source operand) is returned.
+        let w = _mm256_max_ps(_mm256_set1_ps(0.0), _mm256_set1_ps(-0.0));
+        let x = _mm256_max_ps(_mm256_set1_ps(-0.0), _mm256_set1_ps(0.0));
+        let wu: [u32; 8] = transmute(w);
+        let xu: [u32; 8] = transmute(x);
+        assert_eq!(wu, [0x8000_0000u32; 8]);
+        assert_eq!(xu, [0u32; 8]);
+        // > If only one value is a NaN (SNaN or QNaN) for this instruction, the
+        // > second operand (source operand), either a NaN or a valid
+        // > floating-point value, is written to the result.
+        let y = _mm256_max_ps(_mm256_set1_ps(f32::NAN), _mm256_set1_ps(0.0));
+        let z = _mm256_max_ps(_mm256_set1_ps(0.0), _mm256_set1_ps(f32::NAN));
+        let yf: [f32; 8] = transmute(y);
+        let zf: [f32; 8] = transmute(z);
+        assert_eq!(yf, [0.0; 8]);
+        assert!(zf.iter().all(|f| f.is_nan()), "{:?}", zf);
     }
 
     #[simd_test(enable = "avx")]
@@ -3156,6 +3198,23 @@ mod tests {
         let r = _mm256_min_pd(a, b);
         let e = _mm256_setr_pd(1., 3., 5., 7.);
         assert_eq_m256d(r, e);
+        // > If the values being compared are both 0.0s (of either sign), the
+        // > value in the second operand (source operand) is returned.
+        let w = _mm256_min_pd(_mm256_set1_pd(0.0), _mm256_set1_pd(-0.0));
+        let x = _mm256_min_pd(_mm256_set1_pd(-0.0), _mm256_set1_pd(0.0));
+        let wu: [u64; 4] = transmute(w);
+        let xu: [u64; 4] = transmute(x);
+        assert_eq!(wu, [0x8000_0000_0000_0000u64; 4]);
+        assert_eq!(xu, [0u64; 4]);
+        // > If only one value is a NaN (SNaN or QNaN) for this instruction, the
+        // > second operand (source operand), either a NaN or a valid
+        // > floating-point value, is written to the result.
+        let y = _mm256_min_pd(_mm256_set1_pd(f64::NAN), _mm256_set1_pd(0.0));
+        let z = _mm256_min_pd(_mm256_set1_pd(0.0), _mm256_set1_pd(f64::NAN));
+        let yf: [f64; 4] = transmute(y);
+        let zf: [f64; 4] = transmute(z);
+        assert_eq!(yf, [0.0; 4]);
+        assert!(zf.iter().all(|f| f.is_nan()), "{:?}", zf);
     }
 
     #[simd_test(enable = "avx")]
@@ -3165,6 +3224,23 @@ mod tests {
         let r = _mm256_min_ps(a, b);
         let e = _mm256_setr_ps(1., 3., 5., 7., 9., 11., 13., 15.);
         assert_eq_m256(r, e);
+        // > If the values being compared are both 0.0s (of either sign), the
+        // > value in the second operand (source operand) is returned.
+        let w = _mm256_min_ps(_mm256_set1_ps(0.0), _mm256_set1_ps(-0.0));
+        let x = _mm256_min_ps(_mm256_set1_ps(-0.0), _mm256_set1_ps(0.0));
+        let wu: [u32; 8] = transmute(w);
+        let xu: [u32; 8] = transmute(x);
+        assert_eq!(wu, [0x8000_0000u32; 8]);
+        assert_eq!(xu, [0u32; 8]);
+        // > If only one value is a NaN (SNaN or QNaN) for this instruction, the
+        // > second operand (source operand), either a NaN or a valid
+        // > floating-point value, is written to the result.
+        let y = _mm256_min_ps(_mm256_set1_ps(f32::NAN), _mm256_set1_ps(0.0));
+        let z = _mm256_min_ps(_mm256_set1_ps(0.0), _mm256_set1_ps(f32::NAN));
+        let yf: [f32; 8] = transmute(y);
+        let zf: [f32; 8] = transmute(z);
+        assert_eq!(yf, [0.0; 8]);
+        assert!(zf.iter().all(|f| f.is_nan()), "{:?}", zf);
     }
 
     #[simd_test(enable = "avx")]
