@@ -72,6 +72,14 @@ fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Domin
     let mut lastlinked = None;
 
     for &w in pre_order_nodes[1..].iter().rev() {
+        // Optimization: process buckets just once. We need not explicitly empty
+        // the bucket here, but mem::take is pretty cheap.
+        let z = parent[w].unwrap();
+        for v in std::mem::take(&mut bucket[z]) {
+            let y = eval(&pre_order_index, &mut parent, lastlinked, &semi, &mut label, v);
+            idom[v] = if pre_order_index[semi[y]] < pre_order_index[z] { y } else { z };
+        }
+
         semi[w] = w;
         for v in graph.predecessors(w) {
             let x = eval(&pre_order_index, &mut parent, lastlinked, &semi, &mut label, v);
@@ -84,13 +92,6 @@ fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Domin
         // semi[w] is now semidominator(w).
 
         bucket[semi[w]].push(w);
-
-        link(&mut ancestor, &parent, w);
-        let z = parent[w].unwrap();
-        for v in std::mem::take(&mut bucket[z]) {
-            let y = eval(&pre_order_index, &mut ancestor, &semi, &mut label, v);
-            idom[v] = if pre_order_index[semi[y]] < pre_order_index[z] { y } else { z };
-        }
 
         // Optimization: We share the parent array between processed and not
         // processed elements; lastlinked represents the divider.
