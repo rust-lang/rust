@@ -8,9 +8,7 @@ use parser::FragmentKind;
 use syntax::{
     algo::diff,
     ast::{self, NameOwner},
-    AstNode, GreenNode, Parse,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken,
+    AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken,
 };
 
 use crate::{
@@ -160,7 +158,7 @@ pub fn expand_hypothetical(
 
     let hypothetical_expansion = macro_def.expand(db, lazy_id, &tt);
 
-    let fragment_kind = to_fragment_kind(db, actual_macro_call);
+    let fragment_kind = macro_fragment_kind(db, actual_macro_call);
 
     let (node, tmap_2) =
         mbe::token_tree_to_syntax_node(&hypothetical_expansion.value, fragment_kind).ok()?;
@@ -226,7 +224,7 @@ fn parse_macro_expansion(
         None => return ExpandResult { value: None, err: result.err },
     };
 
-    let fragment_kind = to_fragment_kind(db, macro_file.macro_call_id);
+    let fragment_kind = macro_fragment_kind(db, macro_file.macro_call_id);
 
     log::debug!("expanded = {}", tt.as_debug_string());
     log::debug!("kind = {:?}", fragment_kind);
@@ -427,62 +425,15 @@ fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> 
     Arc::new(HygieneFrame::new(db, file_id))
 }
 
-/// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
-/// FIXME: Not completed
-fn to_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
-    let lazy_id = match id {
-        MacroCallId::LazyMacro(id) => id,
+fn macro_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
+    match id {
+        MacroCallId::LazyMacro(id) => {
+            let loc: MacroCallLoc = db.lookup_intern_macro(id);
+            loc.kind.fragment_kind()
+        }
         MacroCallId::EagerMacro(id) => {
-            return db.lookup_intern_eager_expansion(id).fragment;
-        }
-    };
-    let syn = db.lookup_intern_macro(lazy_id).kind.node(db).value;
-
-    let parent = match syn.parent() {
-        Some(it) => it,
-        None => return FragmentKind::Statements,
-    };
-
-    match parent.kind() {
-        MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
-        MACRO_STMTS => FragmentKind::Statements,
-        MACRO_PAT => FragmentKind::Pattern,
-        MACRO_TYPE => FragmentKind::Type,
-        ITEM_LIST => FragmentKind::Items,
-        LET_STMT => {
-            // FIXME: Handle LHS Pattern
-            FragmentKind::Expr
-        }
-        EXPR_STMT => FragmentKind::Statements,
-        BLOCK_EXPR => FragmentKind::Statements,
-        ARG_LIST => FragmentKind::Expr,
-        TRY_EXPR => FragmentKind::Expr,
-        TUPLE_EXPR => FragmentKind::Expr,
-        PAREN_EXPR => FragmentKind::Expr,
-        ARRAY_EXPR => FragmentKind::Expr,
-        FOR_EXPR => FragmentKind::Expr,
-        PATH_EXPR => FragmentKind::Expr,
-        CLOSURE_EXPR => FragmentKind::Expr,
-        CONDITION => FragmentKind::Expr,
-        BREAK_EXPR => FragmentKind::Expr,
-        RETURN_EXPR => FragmentKind::Expr,
-        MATCH_EXPR => FragmentKind::Expr,
-        MATCH_ARM => FragmentKind::Expr,
-        MATCH_GUARD => FragmentKind::Expr,
-        RECORD_EXPR_FIELD => FragmentKind::Expr,
-        CALL_EXPR => FragmentKind::Expr,
-        INDEX_EXPR => FragmentKind::Expr,
-        METHOD_CALL_EXPR => FragmentKind::Expr,
-        FIELD_EXPR => FragmentKind::Expr,
-        AWAIT_EXPR => FragmentKind::Expr,
-        CAST_EXPR => FragmentKind::Expr,
-        REF_EXPR => FragmentKind::Expr,
-        PREFIX_EXPR => FragmentKind::Expr,
-        RANGE_EXPR => FragmentKind::Expr,
-        BIN_EXPR => FragmentKind::Expr,
-        _ => {
-            // Unknown , Just guess it is `Items`
-            FragmentKind::Items
+            let loc: EagerCallLoc = db.lookup_intern_eager_expansion(id);
+            loc.fragment
         }
     }
 }

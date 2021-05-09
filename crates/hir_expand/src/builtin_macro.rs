@@ -578,6 +578,7 @@ mod tests {
                     krate,
                     kind: MacroCallKind::FnLike {
                         ast_id: AstId::new(file_id.into(), ast_id_map.ast_id(&macro_call)),
+                        fragment: FragmentKind::Expr,
                     },
                 };
 

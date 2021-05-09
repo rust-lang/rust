@@ -16,7 +16,9 @@ pub mod quote;
 pub mod eager;
 
 use either::Either;
+
 pub use mbe::{ExpandError, ExpandResult};
+pub use parser::FragmentKind;
 
 use std::hash::Hash;
 use std::sync::Arc;
@@ -290,7 +292,7 @@ pub struct MacroCallLoc {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
-    FnLike { ast_id: AstId<ast::MacroCall> },
+    FnLike { ast_id: AstId<ast::MacroCall>, fragment: FragmentKind },
     Derive { ast_id: AstId<ast::Item>, derive_name: String, derive_attr: AttrId },
 }
 
@@ -322,6 +324,13 @@ impl MacroCallKind {
                 Some(ast_id.to_node(db).token_tree()?.syntax().clone())
             }
             MacroCallKind::Derive { ast_id, .. } => Some(ast_id.to_node(db).syntax().clone()),
+        }
+    }
+
+    fn fragment_kind(&self) -> FragmentKind {
+        match self {
+            MacroCallKind::FnLike { fragment, .. } => *fragment,
+            MacroCallKind::Derive { .. } => FragmentKind::Items,
         }
     }
 }
@@ -357,7 +366,6 @@ pub struct ExpansionInfo {
 }
 
 pub use mbe::Origin;
-use parser::FragmentKind;
 
 impl ExpansionInfo {
     pub fn call_node(&self) -> Option<InFile<SyntaxNode>> {
@@ -560,5 +568,61 @@ impl<N: AstNode> InFile<N> {
 
     pub fn syntax(&self) -> InFile<&SyntaxNode> {
         self.with_value(self.value.syntax())
+    }
+}
+
+/// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
+/// FIXME: Not completed
+pub fn to_fragment_kind(call: &ast::MacroCall) -> FragmentKind {
+    use syntax::SyntaxKind::*;
+
+    let syn = call.syntax();
+
+    let parent = match syn.parent() {
+        Some(it) => it,
+        None => return FragmentKind::Statements,
+    };
+
+    match parent.kind() {
+        MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
+        MACRO_STMTS => FragmentKind::Statements,
+        MACRO_PAT => FragmentKind::Pattern,
+        MACRO_TYPE => FragmentKind::Type,
+        ITEM_LIST => FragmentKind::Items,
+        LET_STMT => {
+            // FIXME: Handle LHS Pattern
+            FragmentKind::Expr
+        }
+        EXPR_STMT => FragmentKind::Statements,
+        BLOCK_EXPR => FragmentKind::Statements,
+        ARG_LIST => FragmentKind::Expr,
+        TRY_EXPR => FragmentKind::Expr,
+        TUPLE_EXPR => FragmentKind::Expr,
+        PAREN_EXPR => FragmentKind::Expr,
+        ARRAY_EXPR => FragmentKind::Expr,
+        FOR_EXPR => FragmentKind::Expr,
+        PATH_EXPR => FragmentKind::Expr,
+        CLOSURE_EXPR => FragmentKind::Expr,
+        CONDITION => FragmentKind::Expr,
+        BREAK_EXPR => FragmentKind::Expr,
+        RETURN_EXPR => FragmentKind::Expr,
+        MATCH_EXPR => FragmentKind::Expr,
+        MATCH_ARM => FragmentKind::Expr,
+        MATCH_GUARD => FragmentKind::Expr,
+        RECORD_EXPR_FIELD => FragmentKind::Expr,
+        CALL_EXPR => FragmentKind::Expr,
+        INDEX_EXPR => FragmentKind::Expr,
+        METHOD_CALL_EXPR => FragmentKind::Expr,
+        FIELD_EXPR => FragmentKind::Expr,
+        AWAIT_EXPR => FragmentKind::Expr,
+        CAST_EXPR => FragmentKind::Expr,
+        REF_EXPR => FragmentKind::Expr,
+        PREFIX_EXPR => FragmentKind::Expr,
+        RANGE_EXPR => FragmentKind::Expr,
+        BIN_EXPR => FragmentKind::Expr,
+        _ => {
+            // Unknown , Just guess it is `Items`
+            FragmentKind::Items
+        }
     }
 }

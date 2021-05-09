@@ -13,7 +13,7 @@ use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{AsName, Name},
     proc_macro::ProcMacroExpander,
-    AttrId, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    AttrId, FragmentKind, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -215,7 +215,7 @@ struct MacroDirective {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MacroDirectiveKind {
-    FnLike { ast_id: AstIdWithPath<ast::MacroCall> },
+    FnLike { ast_id: AstIdWithPath<ast::MacroCall>, fragment: FragmentKind },
     Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId },
 }
 
@@ -807,9 +807,10 @@ impl DefCollector<'_> {
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id } => {
+                MacroDirectiveKind::FnLike { ast_id, fragment } => {
                     match macro_call_as_call_id(
                         ast_id,
+                        *fragment,
                         self.db,
                         self.def_map.krate,
                         |path| {
@@ -926,8 +927,9 @@ impl DefCollector<'_> {
 
         for directive in &self.unexpanded_macros {
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, .. } => match macro_call_as_call_id(
+                MacroDirectiveKind::FnLike { ast_id, fragment } => match macro_call_as_call_id(
                     ast_id,
+                    *fragment,
                     self.db,
                     self.def_map.krate,
                     |path| {
@@ -1496,6 +1498,7 @@ impl ModCollector<'_, '_> {
         let mut error = None;
         match macro_call_as_call_id(
             &ast_id,
+            mac.fragment,
             self.def_collector.db,
             self.def_collector.def_map.krate,
             |path| {
@@ -1524,9 +1527,14 @@ impl ModCollector<'_, '_> {
             }
             Ok(Err(_)) => {
                 // Built-in macro failed eager expansion.
+
+                // FIXME: don't parse the file here
+                let fragment = hir_expand::to_fragment_kind(
+                    &ast_id.ast_id.to_node(self.def_collector.db.upcast()),
+                );
                 self.def_collector.def_map.diagnostics.push(DefDiagnostic::macro_error(
                     self.module_id,
-                    MacroCallKind::FnLike { ast_id: ast_id.ast_id },
+                    MacroCallKind::FnLike { ast_id: ast_id.ast_id, fragment },
                     error.unwrap().to_string(),
                 ));
                 return;
@@ -1543,7 +1551,7 @@ impl ModCollector<'_, '_> {
         self.def_collector.unexpanded_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
-            kind: MacroDirectiveKind::FnLike { ast_id },
+            kind: MacroDirectiveKind::FnLike { ast_id, fragment: mac.fragment },
         });
     }
 

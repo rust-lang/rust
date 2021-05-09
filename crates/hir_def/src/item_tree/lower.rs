@@ -624,7 +624,8 @@ impl<'a> Ctx<'a> {
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
         let path = Interned::new(ModPath::from_src(self.db, m.path()?, &self.hygiene)?);
         let ast_id = self.source_ast_id_map.ast_id(m);
-        let res = MacroCall { path, ast_id };
+        let fragment = hir_expand::to_fragment_kind(m);
+        let res = MacroCall { path, ast_id, fragment };
         Some(id(self.data().macro_calls.alloc(res)))
     }
 
