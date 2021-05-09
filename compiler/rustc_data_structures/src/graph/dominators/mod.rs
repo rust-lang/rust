@@ -19,11 +19,9 @@ struct PreOrderFrame<Node, Iter> {
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
-    let mut visited = BitSet::new_empty(graph.num_nodes());
     let mut parent: IndexVec<usize, Option<usize>> = IndexVec::from_elem_n(None, graph.num_nodes());
 
     let mut stack = vec![PreOrderFrame { node: 0, iter: graph.successors(graph.start_node()) }];
-    visited.insert(graph.start_node());
     let mut pre_order_to_real = Vec::with_capacity(graph.num_nodes());
     let mut real_to_pre_order: IndexVec<G::Node, Option<usize>> =
         IndexVec::from_elem_n(None, graph.num_nodes());
@@ -34,10 +32,10 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
 
     'recurse: while let Some(frame) = stack.last_mut() {
         while let Some(successor) = frame.iter.next() {
-            if visited.insert(successor) {
+            if real_to_pre_order[successor].is_none() {
+                real_to_pre_order[successor] = Some(idx);
                 parent[idx] = Some(frame.node);
                 pre_order_to_real.push(successor);
-                real_to_pre_order[successor] = Some(idx);
 
                 stack.push(PreOrderFrame { node: idx, iter: graph.successors(successor) });
                 idx += 1;
