@@ -88,7 +88,7 @@ fn on_char_typed_inner(
 }
 
 /// Inserts a closing `}` when the user types an opening `{`, wrapping an existing expression in a
-/// block.
+/// block, or a part of a `use` item.
 fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<TextEdit> {
     if !stdx::always!(file.tree().syntax().text().char_at(offset) == Some('{')) {
         return None;
@@ -99,30 +99,59 @@ fn on_opening_brace_typed(file: &Parse<SourceFile>, offset: TextSize) -> Option<
     // Remove the `{` to get a better parse tree, and reparse
     let file = file.reparse(&Indel::delete(brace_token.text_range()));
 
-    let mut expr: ast::Expr = find_node_at_offset(file.tree().syntax(), offset)?;
-    if expr.syntax().text_range().start() != offset {
-        return None;
+    if let Some(edit) = brace_expr(&file.tree(), offset) {
+        return Some(edit);
     }
 
-    // Enclose the outermost expression starting at `offset`
-    while let Some(parent) = expr.syntax().parent() {
-        if parent.text_range().start() != expr.syntax().text_range().start() {
-            break;
+    if let Some(edit) = brace_use_path(&file.tree(), offset) {
+        return Some(edit);
+    }
+
+    return None;
+
+    fn brace_use_path(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+        let segment: ast::PathSegment = find_node_at_offset(file.syntax(), offset)?;
+        if segment.syntax().text_range().start() != offset {
+            return None;
         }
 
-        match ast::Expr::cast(parent) {
-            Some(parent) => expr = parent,
-            None => break,
+        let tree: ast::UseTree = find_node_at_offset(file.syntax(), offset)?;
+
+        Some(TextEdit::insert(
+            tree.syntax().text_range().end() + TextSize::of("{"),
+            "}".to_string(),
+        ))
+    }
+
+    fn brace_expr(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+        let mut expr: ast::Expr = find_node_at_offset(file.syntax(), offset)?;
+        if expr.syntax().text_range().start() != offset {
+            return None;
         }
-    }
 
-    // If it's a statement in a block, we don't know how many statements should be included
-    if ast::ExprStmt::can_cast(expr.syntax().parent()?.kind()) {
-        return None;
-    }
+        // Enclose the outermost expression starting at `offset`
+        while let Some(parent) = expr.syntax().parent() {
+            if parent.text_range().start() != expr.syntax().text_range().start() {
+                break;
+            }
 
-    // Insert `}` right after the expression.
-    Some(TextEdit::insert(expr.syntax().text_range().end() + TextSize::of("{"), "}".to_string()))
+            match ast::Expr::cast(parent) {
+                Some(parent) => expr = parent,
+                None => break,
+            }
+        }
+
+        // If it's a statement in a block, we don't know how many statements should be included
+        if ast::ExprStmt::can_cast(expr.syntax().parent()?.kind()) {
+            return None;
+        }
+
+        // Insert `}` right after the expression.
+        Some(TextEdit::insert(
+            expr.syntax().text_range().end() + TextSize::of("{"),
+            "}".to_string(),
+        ))
+    }
 }
 
 /// Returns an edit which should be applied after `=` was typed. Primarily,
@@ -440,7 +469,7 @@ fn foo() -> { 92 }
     }
 
     #[test]
-    fn adds_closing_brace() {
+    fn adds_closing_brace_for_expr() {
         type_char(
             '{',
             r#"
@@ -516,6 +545,89 @@ fn f() {
         1 => (),
     }
 }
+            "#,
+        );
+    }
+
+    #[test]
+    fn adds_closing_brace_for_use_tree() {
+        type_char(
+            '{',
+            r#"
+use some::$0Path;
+            "#,
+            r#"
+use some::{Path};
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+use some::{Path, $0Other};
+            "#,
+            r#"
+use some::{Path, {Other}};
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+use some::{$0Path, Other};
+            "#,
+            r#"
+use some::{{Path}, Other};
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+use some::path::$0to::Item;
+            "#,
+            r#"
+use some::path::{to::Item};
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+use some::$0path::to::Item;
+            "#,
+            r#"
+use some::{path::to::Item};
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+use $0some::path::to::Item;
+            "#,
+            r#"
+use {some::path::to::Item};
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+use some::path::$0to::{Item};
+            "#,
+            r#"
+use some::path::{to::{Item}};
+            "#,
+        );
+        type_char(
+            '{',
+            r#"
+use $0Thing as _;
+            "#,
+            r#"
+use {Thing as _};
+            "#,
+        );
+
+        type_char_noop(
+            '{',
+            r#"
+use some::pa$0th::to::Item;
             "#,
         );
     }
