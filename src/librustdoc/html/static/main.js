@@ -381,56 +381,9 @@ function hideThemeButtonState() {
         }
     }
 
-    function highlightSourceLines(match, ev) {
-        if (typeof match === "undefined") {
-            // If we're in mobile mode, we should hide the sidebar in any case.
-            hideSidebar();
-            match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
-        }
-        if (!match) {
-            return;
-        }
-        var from = parseInt(match[1], 10);
-        var to = from;
-        if (typeof match[2] !== "undefined") {
-            to = parseInt(match[2], 10);
-        }
-        if (to < from) {
-            var tmp = to;
-            to = from;
-            from = tmp;
-        }
-        var elem = document.getElementById(from);
-        if (!elem) {
-            return;
-        }
-        if (!ev) {
-            var x = document.getElementById(from);
-            if (x) {
-                x.scrollIntoView();
-            }
-        }
-        onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
-            onEachLazy(e.getElementsByTagName("span"), function(i_e) {
-                removeClass(i_e, "line-highlighted");
-            });
-        });
-        for (var i = from; i <= to; ++i) {
-            elem = document.getElementById(i);
-            if (!elem) {
-                break;
-            }
-            addClass(elem, "line-highlighted");
-        }
-    }
-
     function onHashChange(ev) {
         // If we're in mobile mode, we should hide the sidebar in any case.
         hideSidebar();
-        var match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
-        if (match) {
-            return highlightSourceLines(match, ev);
-        }
         handleHashes(ev);
     }
 
@@ -585,77 +538,8 @@ function hideThemeButtonState() {
         }
     }
 
-    function findParentElement(elem, tagName) {
-        do {
-            if (elem && elem.tagName === tagName) {
-                return elem;
-            }
-            elem = elem.parentNode;
-        } while (elem);
-        return null;
-    }
-
     document.addEventListener("keypress", handleShortcut);
     document.addEventListener("keydown", handleShortcut);
-
-    var handleSourceHighlight = (function() {
-        var prev_line_id = 0;
-
-        var set_fragment = function(name) {
-            var x = window.scrollX,
-                y = window.scrollY;
-            if (searchState.browserSupportsHistoryApi()) {
-                history.replaceState(null, null, "#" + name);
-                highlightSourceLines();
-            } else {
-                location.replace("#" + name);
-            }
-            // Prevent jumps when selecting one or many lines
-            window.scrollTo(x, y);
-        };
-
-        return function(ev) {
-            var cur_line_id = parseInt(ev.target.id, 10);
-            ev.preventDefault();
-
-            if (ev.shiftKey && prev_line_id) {
-                // Swap selection if needed
-                if (prev_line_id > cur_line_id) {
-                    var tmp = prev_line_id;
-                    prev_line_id = cur_line_id;
-                    cur_line_id = tmp;
-                }
-
-                set_fragment(prev_line_id + "-" + cur_line_id);
-            } else {
-                prev_line_id = cur_line_id;
-
-                set_fragment(cur_line_id);
-            }
-        };
-    }());
-
-    document.addEventListener("click", function(ev) {
-        var helpElem = getHelpElement(false);
-        if (hasClass(ev.target, "help-button")) {
-            displayHelp(true, ev);
-        } else if (ev.target.tagName === "SPAN" && hasClass(ev.target.parentNode, "line-numbers")) {
-            handleSourceHighlight(ev);
-        } else if (helpElem && hasClass(helpElem, "hidden") === false) {
-            var is_inside_help_popup = ev.target !== helpElem && helpElem.contains(ev.target);
-            if (is_inside_help_popup === false) {
-                addClass(helpElem, "hidden");
-                removeClass(document.body, "blur");
-            }
-        } else {
-            // Making a collapsed element visible on onhashchange seems
-            // too late
-            var a = findParentElement(ev.target, "A");
-            if (a && a.hash) {
-                expandSection(a.hash.replace(/^#/, ""));
-            }
-        }
-    });
 
     (function() {
         var x = document.getElementsByClassName("version-selector");
@@ -1121,6 +1005,27 @@ function hideThemeButtonState() {
         });
     }());
 
+    function handleClick(id, f) {
+        var elem = document.getElementById(id);
+        if (elem) {
+            elem.addEventListener("click", f);
+        }
+    }
+    handleClick("help-button", function(ev) {
+        displayHelp(true, ev);
+    });
+
+    onEachLazy(document.getElementsByTagName("a"), function(el) {
+        // For clicks on internal links (<A> tags with a hash property), we expand the section we're
+        // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
+        // the height of the document so we wind up scrolled to the wrong place.
+        if (el.hash) {
+            el.addEventListener("click", function() {
+                expandSection(el.hash.slice(1));
+            });
+        }
+    });
+
     onEachLazy(document.getElementsByClassName("notable-traits"), function(e) {
         e.onclick = function() {
             this.getElementsByClassName('notable-traits-tooltiptext')[0]
@@ -1164,6 +1069,13 @@ function hideThemeButtonState() {
         var popup = document.createElement("aside");
         addClass(popup, "hidden");
         popup.id = "help";
+
+        popup.addEventListener("click", function(ev) {
+            if (ev.target === popup) {
+                // Clicked the blurred zone outside the help popup; dismiss help.
+                displayHelp(false, ev);
+            }
+        });
 
         var book_info = document.createElement("span");
         book_info.innerHTML = "You can find more information in \
@@ -1223,7 +1135,7 @@ function hideThemeButtonState() {
     }
 
     onHashChange(null);
-    window.onhashchange = onHashChange;
+    window.addEventListener("hashchange", onHashChange);
     searchState.setup();
 }());
 
