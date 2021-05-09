@@ -801,7 +801,10 @@ impl<'a> Clean<Function> for (&'a hir::FnSig<'a>, &'a hir::Generics<'a>, hir::Bo
     fn clean(&self, cx: &mut DocContext<'_>) -> Function {
         let (generics, decl) =
             enter_impl_trait(cx, |cx| (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx)));
-        Function { decl, generics, header: self.0.header }
+        let mut function = Function { decl, generics, header: self.0.header, call_locations: None };
+        let def_id = self.2.hir_id.owner.to_def_id();
+        function.load_call_locations(def_id, cx);
+        function
     }
 }
 
@@ -933,12 +936,14 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     let (generics, decl) = enter_impl_trait(cx, |cx| {
                         (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
                     });
-                    let mut t = Function { header: sig.header, decl, generics };
+                    let mut t =
+                        Function { header: sig.header, decl, generics, call_locations: None };
                     if t.header.constness == hir::Constness::Const
                         && is_unstable_const_fn(cx.tcx, local_did).is_some()
                     {
                         t.header.constness = hir::Constness::NotConst;
                     }
+                    t.load_call_locations(self.def_id.to_def_id(), cx);
                     TyMethodItem(t)
                 }
                 hir::TraitItemKind::Type(ref bounds, ref default) => {
@@ -1057,21 +1062,21 @@ impl Clean<Item> for ty::AssocItem {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
                     };
-                    MethodItem(
-                        Function {
-                            generics,
-                            decl,
-                            header: hir::FnHeader {
-                                unsafety: sig.unsafety(),
-                                abi: sig.abi(),
-                                constness,
-                                asyncness,
-                            },
+                    let mut function = Function {
+                        generics,
+                        decl,
+                        header: hir::FnHeader {
+                            unsafety: sig.unsafety(),
+                            abi: sig.abi(),
+                            constness,
+                            asyncness,
                         },
-                        defaultness,
-                    )
+                        call_locations: None,
+                    };
+                    function.load_call_locations(self.def_id, cx);
+                    MethodItem(function, defaultness)
                 } else {
-                    TyMethodItem(Function {
+                    let mut function = Function {
                         generics,
                         decl,
                         header: hir::FnHeader {
@@ -1080,7 +1085,10 @@ impl Clean<Item> for ty::AssocItem {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                    })
+                        call_locations: None,
+                    };
+                    function.load_call_locations(self.def_id, cx);
+                    TyMethodItem(function)
                 }
             }
             ty::AssocKind::Type => {
@@ -2098,6 +2106,7 @@ impl Clean<Item> for (&hir::ForeignItem<'_>, Option<Symbol>) {
                             constness: hir::Constness::NotConst,
                             asyncness: hir::IsAsync::NotAsync,
                         },
+                        call_locations: None,
                     })
                 }
                 hir::ForeignItemKind::Static(ref ty, mutability) => {

@@ -25,6 +25,7 @@ use crate::html::render::StylePath;
 use crate::html::static_files;
 use crate::opts;
 use crate::passes::{self, Condition, DefaultPassOption};
+use crate::scrape_examples::AllCallLocations;
 use crate::theme;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -158,6 +159,8 @@ crate struct Options {
     crate json_unused_externs: bool,
     /// Whether to skip capturing stdout and stderr of tests.
     crate nocapture: bool,
+
+    crate scrape_examples: Vec<String>,
 }
 
 impl fmt::Debug for Options {
@@ -280,6 +283,8 @@ crate struct RenderOptions {
     crate emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
     crate generate_link_to_definition: bool,
+    crate call_locations: Option<AllCallLocations>,
+    crate repository_url: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -671,6 +676,9 @@ impl Options {
             return Err(1);
         }
 
+        let repository_url = matches.opt_str("repository-url");
+        let scrape_examples = matches.opt_strs("scrape-examples");
+
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
         Ok(Options {
@@ -737,10 +745,13 @@ impl Options {
                 ),
                 emit,
                 generate_link_to_definition,
+                call_locations: None,
+                repository_url,
             },
             crate_name,
             output_format,
             json_unused_externs,
+            scrape_examples,
         })
     }
 

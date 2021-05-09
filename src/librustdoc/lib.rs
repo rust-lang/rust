@@ -119,6 +119,7 @@ mod json;
 crate mod lint;
 mod markdown;
 mod passes;
+mod scrape_examples;
 mod theme;
 mod visit_ast;
 mod visit_lib;
@@ -618,6 +619,8 @@ fn opts() -> Vec<RustcOptGroup> {
                 "Make the identifiers in the HTML source code pages navigable",
             )
         }),
+        unstable("scrape-examples", |o| o.optmulti("", "scrape-examples", "", "")),
+        unstable("repository-url", |o| o.optopt("", "repository-url", "", "TODO")),
     ]
 }
 
@@ -697,7 +700,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     }
 }
 
-fn main_options(options: config::Options) -> MainResult {
+fn main_options(mut options: config::Options) -> MainResult {
     let diag = core::new_handler(options.error_format, None, &options.debugging_opts);
 
     match (options.should_test, options.markdown_input()) {
@@ -710,6 +713,15 @@ fn main_options(options: config::Options) -> MainResult {
             );
         }
         (false, false) => {}
+    }
+
+    if options.scrape_examples.len() > 0 {
+        if let Some(crate_name) = &options.crate_name {
+            options.render_options.call_locations =
+                Some(scrape_examples::scrape(&options.scrape_examples, crate_name)?);
+        } else {
+            // raise an error?
+        }
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
