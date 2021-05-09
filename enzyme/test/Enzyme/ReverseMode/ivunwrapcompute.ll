@@ -90,7 +90,7 @@ exit:                                        ; preds = %loop2
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %loop2 ], [ 0, %mid.thread ]
 ; CHECK-NEXT:   %tmp35 = phi double [ %tmp38, %loop2 ], [ 1.000000e+00, %mid.thread ]
 ; CHECK-NEXT:   %2 = getelementptr inbounds double, double* %tmp35_malloccache, i64 %iv1
-; CHECK-NEXT:   store double %tmp35, double* %2, align 8, !invariant.group !8
+; CHECK-NEXT:   store double %tmp35, double* %2, align 8
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %tmp38 = fneg double %tmp35
 ; CHECK-NEXT:   %tmp40 = icmp eq i64 %iv.next2, %0
@@ -121,7 +121,7 @@ exit:                                        ; preds = %loop2
 ; CHECK-NEXT:   %"arg'de.0" = phi double [ %8, %incinvertloop2 ], [ 0.000000e+00, %loop2 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %10, %incinvertloop2 ], [ %1, %loop2 ]
 ; CHECK-NEXT:   %6 = getelementptr inbounds double, double* %tmp35_malloccache, i64 %"iv1'ac.0"
-; CHECK-NEXT:   %7 = load double, double* %6, align 8, !invariant.group !8
+; CHECK-NEXT:   %7 = load double, double* %6, align 8
 ; CHECK-NEXT:   %m0diffearg = fmul fast double %differeturn, %7
 ; CHECK-NEXT:   %8 = fadd fast double %"arg'de.0", %m0diffearg
 ; CHECK-NEXT:   %9 = icmp eq i64 %"iv1'ac.0", 0

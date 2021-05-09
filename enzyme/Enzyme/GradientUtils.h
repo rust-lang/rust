@@ -1152,12 +1152,6 @@ public:
         return val;
       }
     }
-    if (inst->getName().contains("fval") && forwardBlock->getName() != "mid") {
-      assert(forwardBlock->getName() != "loop2");
-      llvm::errs() << *forwardBlock << "\n";
-      llvm::errs() << *inst << "\n";
-      assert(0);
-    }
     return lcssaPHI;
   }
 

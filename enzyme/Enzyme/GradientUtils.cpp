@@ -179,8 +179,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         if (origParent)                                                        \
           if (auto opinst = dyn_cast<Instruction>(v)) {                        \
             v = fixLCSSA(opinst, origParent);                                  \
-            if (check)                                                         \
-              assert(v != val);                                                \
           }                                                                    \
         ___res = lookupM(v, Builder, available, v != val);                     \
       }                                                                        \
@@ -190,8 +188,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (origParent)                                                          \
         if (auto opinst = dyn_cast<Instruction>(v)) {                          \
           v = fixLCSSA(opinst, origParent);                                    \
-          if (check)                                                           \
-            assert(v != val);                                                  \
         }                                                                      \
       assert(mode == UnwrapMode::AttemptSingleUnwrap);                         \
       ___res = lookupM(v, Builder, available, v != val);                       \
@@ -540,7 +536,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           return nullptr;
         }
 
-        Value *pidx = getOp(invertPointerM(dli->getOperand(0), BuilderM));
+        Value *pidx = invertPointerM(dli->getOperand(0), BuilderM);
         if (pidx == nullptr)
           goto endCheck;
 

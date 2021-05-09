@@ -3455,6 +3455,49 @@ public:
         return;
       }
 
+      if (called->getName() == "coshf" || called->getName() == "cosh") {
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            gutils->isConstantInstruction(orig))
+          return;
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                          Builder2);
+
+        SmallVector<Value *, 1> args = {x};
+        auto sinhf = gutils->oldFunc->getParent()->getOrInsertFunction(
+            (called->getName() == "cosh") ? "sinh" : "sinhf",
+            called->getFunctionType(), called->getAttributes());
+        auto cal = cast<CallInst>(Builder2.CreateCall(sinhf, args));
+        Value *dif0 = Builder2.CreateFMul(diffe(orig, Builder2), cal);
+        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+        addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+        return;
+      }
+      if (called->getName() == "sinhf" || called->getName() == "sinh") {
+        eraseIfUnused(*orig);
+        if (Mode == DerivativeMode::ReverseModePrimal ||
+            gutils->isConstantInstruction(orig))
+          return;
+
+        IRBuilder<> Builder2(call.getParent());
+        getReverseBuilder(Builder2);
+        Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                          Builder2);
+
+        SmallVector<Value *, 1> args = {x};
+        auto sinhf = gutils->oldFunc->getParent()->getOrInsertFunction(
+            (called->getName() == "sinh") ? "cosh" : "coshf",
+            called->getFunctionType(), called->getAttributes());
+        auto cal = cast<CallInst>(Builder2.CreateCall(sinhf, args));
+        Value *dif0 = Builder2.CreateFMul(diffe(orig, Builder2), cal);
+        setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
+        addToDiffe(orig->getArgOperand(0), dif0, Builder2, x->getType());
+        return;
+      }
+
       if (called) {
         if (called->getName() == "erf") {
           eraseIfUnused(*orig);
