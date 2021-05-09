@@ -159,8 +159,8 @@ pub fn add_trait_assoc_items_to_impl(
         match fn_def.body() {
             Some(_) => fn_def,
             None => {
-                let body =
-                    make::block_expr(None, Some(make::expr_todo())).indent(edit::IndentLevel(1));
+                let body = make::block_expr(None, Some(make::ext::expr_todo()))
+                    .indent(edit::IndentLevel(1));
                 fn_def.with_body(body)
             }
         }

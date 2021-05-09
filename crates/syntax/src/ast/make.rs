@@ -3,7 +3,7 @@
 //!
 //! Note that all functions here intended to be stupid constructors, which just
 //! assemble a finish node from immediate children. If you want to do something
-//! smarter than that, it probably doesn't belong in this module.
+//! smarter than that, it belongs to the `ext` submodule.
 //!
 //! Keep in mind that `from_text` functions should be kept private. The public
 //! API should require to assemble every node piecewise. The trick of
@@ -14,12 +14,48 @@ use stdx::{format_to, never};
 
 use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
 
+/// While the parent module defines basic atomic "constructors", the `ext`
+/// module defines shortcuts for common things.
+///
+/// It's named `ext` rather than `shortcuts` just to keep it short.
+pub mod ext {
+    use super::*;
+
+    pub fn ident_path(ident: &str) -> ast::Path {
+        path_unqualified(path_segment(name_ref(ident)))
+    }
+
+    pub fn expr_unreachable() -> ast::Expr {
+        expr_from_text("unreachable!()")
+    }
+    pub fn expr_todo() -> ast::Expr {
+        expr_from_text("todo!()")
+    }
+
+    pub fn ty_bool() -> ast::Type {
+        ty_path(ident_path("bool"))
+    }
+    pub fn ty_option(t: ast::Type) -> ast::Type {
+        ty_from_text(&format!("Option<{}>", t))
+    }
+    pub fn ty_result(t: ast::Type, e: ast::Type) -> ast::Type {
+        ty_from_text(&format!("Result<{}, {}>", t, e))
+    }
+}
+
 pub fn name(text: &str) -> ast::Name {
     ast_from_text(&format!("mod {}{};", raw_ident_esc(text), text))
 }
-
 pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}{}; }}", raw_ident_esc(text), text))
+}
+fn raw_ident_esc(ident: &str) -> &'static str {
+    let is_keyword = parser::SyntaxKind::from_keyword(ident).is_some();
+    if is_keyword && !matches!(ident, "self" | "crate" | "super" | "Self") {
+        "r#"
+    } else {
+        ""
+    }
 }
 
 pub fn lifetime(text: &str) -> ast::Lifetime {
@@ -32,15 +68,6 @@ pub fn lifetime(text: &str) -> ast::Lifetime {
     ast_from_text(&format!("fn f<{}>() {{ }}", text))
 }
 
-fn raw_ident_esc(ident: &str) -> &'static str {
-    let is_keyword = parser::SyntaxKind::from_keyword(ident).is_some();
-    if is_keyword && !matches!(ident, "self" | "crate" | "super" | "Self") {
-        "r#"
-    } else {
-        ""
-    }
-}
-
 // FIXME: replace stringly-typed constructor with a family of typed ctors, a-la
 // `expr_xxx`.
 pub fn ty(text: &str) -> ast::Type {
@@ -48,9 +75,6 @@ pub fn ty(text: &str) -> ast::Type {
 }
 pub fn ty_unit() -> ast::Type {
     ty_from_text("()")
-}
-pub fn ty_bool() -> ast::Type {
-    ty_path(path_unqualified(path_segment(name_ref("bool"))))
 }
 pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
     let mut count: usize = 0;
@@ -60,11 +84,6 @@ pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
     }
 
     ty_from_text(&format!("({})", contents))
-}
-// FIXME: handle path to type
-pub fn ty_generic(name: ast::NameRef, types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
-    let contents = types.into_iter().join(", ");
-    ty_from_text(&format!("{}<{}>", name, contents))
 }
 pub fn ty_ref(target: ast::Type, exclusive: bool) -> ast::Type {
     ty_from_text(&if exclusive { format!("&mut {}", target) } else { format!("&{}", target) })
@@ -107,7 +126,7 @@ pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
 pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
     ast_from_text(&format!("{}::{}", qual, segment))
 }
-
+// FIXME: path concatenation operation doesn't make sense as AST op.
 pub fn path_concat(first: ast::Path, second: ast::Path) -> ast::Path {
     ast_from_text(&format!("{}::{}", first, second))
 }
@@ -123,15 +142,14 @@ pub fn path_from_segments(
         format!("use {};", segments)
     })
 }
-
+// FIXME: should not be pub
 pub fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(&format!("fn main() {{ let test = {}; }}", text))
 }
 
-pub fn glob_use_tree() -> ast::UseTree {
+pub fn use_tree_glob() -> ast::UseTree {
     ast_from_text("use *;")
 }
-
 pub fn use_tree(
     path: ast::Path,
     use_tree_list: Option<ast::UseTreeList>,
@@ -225,15 +243,6 @@ pub fn expr_literal(text: &str) -> ast::Literal {
 
 pub fn expr_empty_block() -> ast::Expr {
     expr_from_text("{}")
-}
-pub fn expr_unimplemented() -> ast::Expr {
-    expr_from_text("unimplemented!()")
-}
-pub fn expr_unreachable() -> ast::Expr {
-    expr_from_text("unreachable!()")
-}
-pub fn expr_todo() -> ast::Expr {
-    expr_from_text("todo!()")
 }
 pub fn expr_path(path: ast::Path) -> ast::Expr {
     expr_from_text(&path.to_string())
@@ -463,17 +472,6 @@ pub fn expr_stmt(expr: ast::Expr) -> ast::ExprStmt {
     ast_from_text(&format!("fn f() {{ {}{} (); }}", expr, semi))
 }
 
-pub fn token(kind: SyntaxKind) -> SyntaxToken {
-    tokens::SOURCE_FILE
-        .tree()
-        .syntax()
-        .clone_for_update()
-        .descendants_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.kind() == kind)
-        .unwrap_or_else(|| panic!("unhandled token: {:?}", kind))
-}
-
 pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {
     ast_from_text(&format!("fn f({}: {}) {{ }}", pat, ty))
 }
@@ -609,6 +607,17 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
 
 fn unroot(n: SyntaxNode) -> SyntaxNode {
     SyntaxNode::new_root(n.green().into())
+}
+
+pub fn token(kind: SyntaxKind) -> SyntaxToken {
+    tokens::SOURCE_FILE
+        .tree()
+        .syntax()
+        .clone_for_update()
+        .descendants_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|it| it.kind() == kind)
+        .unwrap_or_else(|| panic!("unhandled token: {:?}", kind))
 }
 
 pub mod tokens {

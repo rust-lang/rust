@@ -175,7 +175,7 @@ impl FunctionBuilder {
     }
 
     fn render(self) -> FunctionTemplate {
-        let placeholder_expr = make::expr_todo();
+        let placeholder_expr = make::ext::expr_todo();
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
         let visibility = if self.needs_pub { Some(make::visibility_pub_crate()) } else { None };
         let mut fn_def = make::fn_(

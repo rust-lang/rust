@@ -54,9 +54,7 @@ pub(crate) fn wrap_return_type_in_result(acc: &mut Assists, ctx: &AssistContext)
 
             for ret_expr_arg in tail_return_expr_collector.exprs_to_wrap {
                 let ok_wrapped = make::expr_call(
-                    make::expr_path(make::path_unqualified(make::path_segment(make::name_ref(
-                        "Ok",
-                    )))),
+                    make::expr_path(make::ext::ident_path("Ok")),
                     make::arg_list(iter::once(ret_expr_arg.clone())),
                 );
                 builder.replace_ast(ret_expr_arg, ok_wrapped);

@@ -1531,7 +1531,7 @@ enum Result<T, E> { Ok(T), Err(E) }
 fn main() {
     let x: Result<i32, i32> = Result::Ok(92);
     let y = match x {
-        Ok(a) => a,
+        Ok(it) => it,
         $0_ => unreachable!(),
     };
 }

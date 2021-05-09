@@ -43,7 +43,7 @@ impl TryEnum {
     pub fn sad_pattern(self) -> ast::Pat {
         match self {
             TryEnum::Result => make::tuple_struct_pat(
-                make::path_unqualified(make::path_segment(make::name_ref("Err"))),
+                make::ext::ident_path("Err"),
                 iter::once(make::wildcard_pat().into()),
             )
             .into(),
@@ -54,12 +54,12 @@ impl TryEnum {
     pub fn happy_pattern(self) -> ast::Pat {
         match self {
             TryEnum::Result => make::tuple_struct_pat(
-                make::path_unqualified(make::path_segment(make::name_ref("Ok"))),
+                make::ext::ident_path("Ok"),
                 iter::once(make::wildcard_pat().into()),
             )
             .into(),
             TryEnum::Option => make::tuple_struct_pat(
-                make::path_unqualified(make::path_segment(make::name_ref("Some"))),
+                make::ext::ident_path("Some"),
                 iter::once(make::wildcard_pat().into()),
             )
             .into(),

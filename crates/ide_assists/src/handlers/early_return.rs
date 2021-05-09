@@ -130,9 +130,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                                 once(make::ident_pat(make::name("it")).into()),
                             );
                             let expr = {
-                                let name_ref = make::name_ref("it");
-                                let segment = make::path_segment(name_ref);
-                                let path = make::path_unqualified(segment);
+                                let path = make::ext::ident_path("it");
                                 make::expr_path(path)
                             };
                             make::match_arm(once(pat.into()), expr)

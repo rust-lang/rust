@@ -53,7 +53,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
             let with_placeholder: ast::Pat = match happy_variant {
                 None => make::wildcard_pat().into(),
                 Some(var_name) => make::tuple_struct_pat(
-                    make::path_unqualified(make::path_segment(make::name_ref(var_name))),
+                    make::ext::ident_path(var_name),
                     once(make::wildcard_pat().into()),
                 )
                 .into(),

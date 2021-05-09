@@ -956,10 +956,10 @@ fn format_replacement(ctx: &AssistContext, fun: &Function, indent: IndentLevel) 
     let args = fun.params.iter().map(|param| param.to_arg(ctx));
     let args = make::arg_list(args);
     let call_expr = if fun.self_param.is_some() {
-        let self_arg = make::expr_path(make_path_from_text("self"));
+        let self_arg = make::expr_path(make::ext::ident_path("self"));
         make::expr_method_call(self_arg, &fun.name, args)
     } else {
-        let func = make::expr_path(make_path_from_text(&fun.name));
+        let func = make::expr_path(make::ext::ident_path(&fun.name));
         make::expr_call(func, args)
     };
 
@@ -1054,11 +1054,11 @@ impl FlowHandler {
                 make::expr_if(condition, block, None)
             }
             FlowHandler::IfOption { action } => {
-                let path = make_path_from_text("Some");
+                let path = make::ext::ident_path("Some");
                 let value_pat = make::ident_pat(make::name("value"));
                 let pattern = make::tuple_struct_pat(path, iter::once(value_pat.into()));
                 let cond = make::condition(call_expr, Some(pattern.into()));
-                let value = make::expr_path(make_path_from_text("value"));
+                let value = make::expr_path(make::ext::ident_path("value"));
                 let action_expr = action.make_result_handler(Some(value));
                 let action_stmt = make::expr_stmt(action_expr);
                 let then = make::block_expr(iter::once(action_stmt.into()), None);
@@ -1068,14 +1068,14 @@ impl FlowHandler {
                 let some_name = "value";
 
                 let some_arm = {
-                    let path = make_path_from_text("Some");
+                    let path = make::ext::ident_path("Some");
                     let value_pat = make::ident_pat(make::name(some_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
-                    let value = make::expr_path(make_path_from_text(some_name));
+                    let value = make::expr_path(make::ext::ident_path(some_name));
                     make::match_arm(iter::once(pat.into()), value)
                 };
                 let none_arm = {
-                    let path = make_path_from_text("None");
+                    let path = make::ext::ident_path("None");
                     let pat = make::path_pat(path);
                     make::match_arm(iter::once(pat), none.make_result_handler(None))
                 };
@@ -1087,17 +1087,17 @@ impl FlowHandler {
                 let err_name = "value";
 
                 let ok_arm = {
-                    let path = make_path_from_text("Ok");
+                    let path = make::ext::ident_path("Ok");
                     let value_pat = make::ident_pat(make::name(ok_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
-                    let value = make::expr_path(make_path_from_text(ok_name));
+                    let value = make::expr_path(make::ext::ident_path(ok_name));
                     make::match_arm(iter::once(pat.into()), value)
                 };
                 let err_arm = {
-                    let path = make_path_from_text("Err");
+                    let path = make::ext::ident_path("Err");
                     let value_pat = make::ident_pat(make::name(err_name));
                     let pat = make::tuple_struct_pat(path, iter::once(value_pat.into()));
-                    let value = make::expr_path(make_path_from_text(err_name));
+                    let value = make::expr_path(make::ext::ident_path(err_name));
                     make::match_arm(iter::once(pat.into()), err.make_result_handler(Some(value)))
                 };
                 let arms = make::match_arm_list(vec![ok_arm, err_arm]);
@@ -1107,13 +1107,9 @@ impl FlowHandler {
     }
 }
 
-fn make_path_from_text(text: &str) -> ast::Path {
-    make::path_unqualified(make::path_segment(make::name_ref(text)))
-}
-
 fn path_expr_from_local(ctx: &AssistContext, var: Local) -> ast::Expr {
     let name = var.name(ctx.db()).unwrap().to_string();
-    make::expr_path(make_path_from_text(&name))
+    make::expr_path(make::ext::ident_path(&name))
 }
 
 fn format_function(
@@ -1179,7 +1175,7 @@ fn make_ret_ty(ctx: &AssistContext, module: hir::Module, fun: &Function) -> Opti
             fun_ty.make_ty(ctx, module)
         }
         FlowHandler::Try { kind: TryKind::Option } => {
-            make::ty_generic(make::name_ref("Option"), iter::once(fun_ty.make_ty(ctx, module)))
+            make::ext::ty_option(fun_ty.make_ty(ctx, module))
         }
         FlowHandler::Try { kind: TryKind::Result { ty: parent_ret_ty } } => {
             let handler_ty = parent_ret_ty
@@ -1187,29 +1183,21 @@ fn make_ret_ty(ctx: &AssistContext, module: hir::Module, fun: &Function) -> Opti
                 .nth(1)
                 .map(|ty| make_ty(&ty, ctx, module))
                 .unwrap_or_else(make::ty_unit);
-            make::ty_generic(
-                make::name_ref("Result"),
-                vec![fun_ty.make_ty(ctx, module), handler_ty],
-            )
+            make::ext::ty_result(fun_ty.make_ty(ctx, module), handler_ty)
         }
-        FlowHandler::If { .. } => make::ty_bool(),
+        FlowHandler::If { .. } => make::ext::ty_bool(),
         FlowHandler::IfOption { action } => {
             let handler_ty = action
                 .expr_ty(ctx)
                 .map(|ty| make_ty(&ty, ctx, module))
                 .unwrap_or_else(make::ty_unit);
-            make::ty_generic(make::name_ref("Option"), iter::once(handler_ty))
+            make::ext::ty_option(handler_ty)
         }
-        FlowHandler::MatchOption { .. } => {
-            make::ty_generic(make::name_ref("Option"), iter::once(fun_ty.make_ty(ctx, module)))
-        }
+        FlowHandler::MatchOption { .. } => make::ext::ty_option(fun_ty.make_ty(ctx, module)),
         FlowHandler::MatchResult { err } => {
             let handler_ty =
                 err.expr_ty(ctx).map(|ty| make_ty(&ty, ctx, module)).unwrap_or_else(make::ty_unit);
-            make::ty_generic(
-                make::name_ref("Result"),
-                vec![fun_ty.make_ty(ctx, module), handler_ty],
-            )
+            make::ext::ty_result(fun_ty.make_ty(ctx, module), handler_ty)
         }
     };
     Some(make::ret_type(ret_ty))
@@ -1296,7 +1284,7 @@ fn make_body(
                     TryKind::Option => "Some",
                     TryKind::Result { .. } => "Ok",
                 };
-                let func = make::expr_path(make_path_from_text(constructor));
+                let func = make::expr_path(make::ext::ident_path(constructor));
                 let args = make::arg_list(iter::once(tail_expr));
                 make::expr_call(func, args)
             })
@@ -1306,16 +1294,16 @@ fn make_body(
             with_tail_expr(block, lit_false.into())
         }
         FlowHandler::IfOption { .. } => {
-            let none = make::expr_path(make_path_from_text("None"));
+            let none = make::expr_path(make::ext::ident_path("None"));
             with_tail_expr(block, none)
         }
         FlowHandler::MatchOption { .. } => map_tail_expr(block, |tail_expr| {
-            let some = make::expr_path(make_path_from_text("Some"));
+            let some = make::expr_path(make::ext::ident_path("Some"));
             let args = make::arg_list(iter::once(tail_expr));
             make::expr_call(some, args)
         }),
         FlowHandler::MatchResult { .. } => map_tail_expr(block, |tail_expr| {
-            let ok = make::expr_path(make_path_from_text("Ok"));
+            let ok = make::expr_path(make::ext::ident_path("Ok"));
             let args = make::arg_list(iter::once(tail_expr));
             make::expr_call(ok, args)
         }),
@@ -1483,13 +1471,13 @@ fn make_rewritten_flow(handler: &FlowHandler, arg_expr: Option<ast::Expr>) -> Op
         FlowHandler::IfOption { .. } => {
             let expr = arg_expr.unwrap_or_else(|| make::expr_tuple(Vec::new()));
             let args = make::arg_list(iter::once(expr));
-            make::expr_call(make::expr_path(make_path_from_text("Some")), args)
+            make::expr_call(make::expr_path(make::ext::ident_path("Some")), args)
         }
-        FlowHandler::MatchOption { .. } => make::expr_path(make_path_from_text("None")),
+        FlowHandler::MatchOption { .. } => make::expr_path(make::ext::ident_path("None")),
         FlowHandler::MatchResult { .. } => {
             let expr = arg_expr.unwrap_or_else(|| make::expr_tuple(Vec::new()));
             let args = make::arg_list(iter::once(expr));
-            make::expr_call(make::expr_path(make_path_from_text("Err")), args)
+            make::expr_call(make::expr_path(make::ext::ident_path("Err")), args)
         }
     };
     Some(make::expr_return(Some(value)).clone_for_update())

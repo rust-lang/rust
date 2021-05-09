@@ -137,7 +137,7 @@ fn recursive_merge(
                             None,
                             false,
                         );
-                        use_trees.insert(idx, make::glob_use_tree());
+                        use_trees.insert(idx, make::use_tree_glob());
                         continue;
                     }
 
