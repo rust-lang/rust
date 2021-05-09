@@ -1077,7 +1077,7 @@ impl<'a> Parser<'a> {
                     let span = expr.span;
 
                     match &expr.kind {
-                        // Not gated to supporte things like `doc = $expr` that work on stable.
+                        // Not gated to support things like `doc = $expr` that work on stable.
                         _ if is_interpolated_expr => {}
                         ExprKind::Lit(lit) if lit.kind.is_unsuffixed() => {}
                         _ => self.sess.gated_spans.gate(sym::extended_key_value_attributes, span),
