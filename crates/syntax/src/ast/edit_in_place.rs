@@ -195,18 +195,13 @@ impl ast::GenericParamList {
     pub fn add_generic_param(&self, generic_param: ast::GenericParam) {
         match self.generic_params().last() {
             Some(last_param) => {
-                let mut elems = Vec::new();
-                if !last_param
-                    .syntax()
-                    .siblings_with_tokens(Direction::Next)
-                    .any(|it| it.kind() == T![,])
-                {
-                    elems.push(make::token(T![,]).into());
-                    elems.push(make::tokens::single_space().into());
-                };
-                elems.push(generic_param.syntax().clone().into());
-                let after_last_param = Position::after(last_param.syntax());
-                ted::insert_all(after_last_param, elems);
+                let position = Position::after(last_param.syntax());
+                let elements = vec![
+                    make::token(T![,]).into(),
+                    make::tokens::single_space().into(),
+                    generic_param.syntax().clone().into(),
+                ];
+                ted::insert_all(position, elements);
             }
             None => {
                 let after_l_angle = Position::after(self.l_angle_token().unwrap());

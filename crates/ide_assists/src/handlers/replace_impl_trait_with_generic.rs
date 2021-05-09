@@ -1,4 +1,7 @@
-use syntax::ast::{self, edit::AstNodeEdit, make, AstNode, GenericParamsOwner};
+use syntax::{
+    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, AstNode},
+    ted,
+};
 
 use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 
@@ -29,18 +32,17 @@ pub(crate) fn replace_impl_trait_with_generic(
         "Replace impl trait with generic",
         target,
         |edit| {
+            let impl_trait_type = edit.make_ast_mut(impl_trait_type);
+            let fn_ = edit.make_ast_mut(fn_);
+
             let type_param_name = suggest_name::for_generic_parameter(&impl_trait_type);
 
-            let generic_param_list = fn_
-                .generic_param_list()
-                .unwrap_or_else(|| make::generic_param_list(None))
-                .append_param(make::generic_param(&type_param_name, Some(type_bound_list)));
+            let type_param =
+                make::generic_param(&type_param_name, Some(type_bound_list)).clone_for_update();
+            let new_ty = make::ty(&type_param_name).clone_for_update();
 
-            let new_type_fn = fn_
-                .replace_descendant::<ast::Type>(impl_trait_type.into(), make::ty(&type_param_name))
-                .with_generic_param_list(generic_param_list);
-
-            edit.replace_ast(fn_.clone(), new_type_fn);
+            ted::replace(impl_trait_type.syntax(), new_ty.syntax());
+            fn_.get_or_create_generic_param_list().add_generic_param(type_param)
         },
     )
 }
@@ -127,7 +129,7 @@ fn foo<
 fn foo<
     G: Foo,
     F,
-    H, B: Bar
+    H, B: Bar,
 >(bar: B) {}
 "#,
         );
