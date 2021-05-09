@@ -2638,7 +2638,7 @@ impl<'test> TestCx<'test> {
         let mut tested = 0;
         for _ in res.stdout.split('\n').filter(|s| s.starts_with("test ")).inspect(|s| {
             let tmp: Vec<&str> = s.split(" - ").collect();
-            if tmp.len() == 2 {
+            if tmp.len() == 3 {
                 let path = tmp[0].rsplit("test ").next().unwrap();
                 if let Some(ref mut v) = files.get_mut(&path.replace('\\', "/")) {
                     tested += 1;
