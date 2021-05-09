@@ -837,8 +837,6 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
     render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
-
-    document_type_layout(w, cx, def_id);
 }
 
 fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {
