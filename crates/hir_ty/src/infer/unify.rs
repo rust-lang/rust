@@ -4,7 +4,6 @@ use std::{borrow::Cow, fmt, sync::Arc};
 
 use chalk_ir::{
     cast::Cast, fold::Fold, interner::HasInterner, FloatTy, IntTy, TyVariableKind, UniverseIndex,
-    VariableKind,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
@@ -12,7 +11,7 @@ use ena::unify::UnifyKey;
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
     db::HirDatabase, fold_tys, static_lifetime, BoundVar, Canonical, DebruijnIndex, GenericArg,
-    InferenceVar, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyKind,
+    InferenceVar, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyKind, VariableKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -112,19 +111,28 @@ pub(crate) fn unify(
     }
     // default any type vars that weren't unified back to their original bound vars
     // (kind of hacky)
-    for (i, var) in vars.iter(&Interner).enumerate() {
-        let var = var.assert_ty_ref(&Interner);
-        if &*table.resolve_ty_shallow(var) == var {
-            table.unify(
-                var,
-                &TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, i)).intern(&Interner),
-            );
-        }
-    }
+    let find_var = |iv| {
+        vars.iter(&Interner).position(|v| match v.interned() {
+            chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(&Interner),
+            chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(&Interner),
+            chalk_ir::GenericArgData::Const(c) => c.inference_var(&Interner),
+        } == Some(iv))
+    };
+    let fallback = |iv, kind, default| match kind {
+        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv).map_or(default, |i| {
+            BoundVar::new(DebruijnIndex::INNERMOST, i).to_ty(&Interner).cast(&Interner)
+        }),
+        chalk_ir::VariableKind::Lifetime => find_var(iv).map_or(default, |i| {
+            BoundVar::new(DebruijnIndex::INNERMOST, i).to_lifetime(&Interner).cast(&Interner)
+        }),
+        chalk_ir::VariableKind::Const(ty) => find_var(iv).map_or(default, |i| {
+            BoundVar::new(DebruijnIndex::INNERMOST, i).to_const(&Interner, ty).cast(&Interner)
+        }),
+    };
     Some(Substitution::from_iter(
         &Interner,
         vars.iter(&Interner)
-            .map(|v| table.resolve_ty_completely(v.assert_ty_ref(&Interner).clone())),
+            .map(|v| table.resolve_with_fallback(v.assert_ty_ref(&Interner).clone(), fallback)),
     ))
 }
 
@@ -201,8 +209,65 @@ impl<'a> InferenceTable<'a> {
         self.new_var(TyVariableKind::General, true)
     }
 
+    pub(crate) fn resolve_with_fallback<T>(
+        &mut self,
+        t: T,
+        fallback: impl Fn(InferenceVar, VariableKind, GenericArg) -> GenericArg,
+    ) -> T::Result
+    where
+        T: HasInterner<Interner = Interner> + Fold<Interner>,
+    {
+        self.resolve_with_fallback_inner(&mut Vec::new(), t, &fallback)
+    }
+
+    fn resolve_with_fallback_inner<T>(
+        &mut self,
+        var_stack: &mut Vec<InferenceVar>,
+        t: T,
+        fallback: &impl Fn(InferenceVar, VariableKind, GenericArg) -> GenericArg,
+    ) -> T::Result
+    where
+        T: HasInterner<Interner = Interner> + Fold<Interner>,
+    {
+        fold_tys(
+            t,
+            |ty, _| match ty.kind(&Interner) {
+                &TyKind::InferenceVar(tv, kind) => {
+                    if var_stack.contains(&tv) {
+                        cov_mark::hit!(type_var_cycles_resolve_as_possible);
+                        // recursive type
+                        let default =
+                            self.type_variable_table.fallback_value(tv, kind).cast(&Interner);
+                        return fallback(tv, VariableKind::Ty(kind), default)
+                            .assert_ty_ref(&Interner)
+                            .clone();
+                    }
+                    if let Some(known_ty) = self.var_unification_table.probe_var(tv) {
+                        // known_ty may contain other variables that are known by now
+                        var_stack.push(tv);
+                        let result = self.resolve_with_fallback_inner(
+                            var_stack,
+                            known_ty.assert_ty_ref(&Interner).clone(),
+                            fallback,
+                        );
+                        var_stack.pop();
+                        result
+                    } else {
+                        let default =
+                            self.type_variable_table.fallback_value(tv, kind).cast(&Interner);
+                        fallback(tv, VariableKind::Ty(kind), default)
+                            .assert_ty_ref(&Interner)
+                            .clone()
+                    }
+                }
+                _ => ty,
+            },
+            DebruijnIndex::INNERMOST,
+        )
+    }
+
     pub(crate) fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
-        self.resolve_ty_completely_inner(&mut Vec::new(), ty)
+        self.resolve_with_fallback(ty, |_, _, d| d)
     }
 
     // FIXME get rid of this, instead resolve shallowly where necessary
@@ -275,38 +340,6 @@ impl<'a> InferenceTable<'a> {
                         result
                     } else {
                         ty
-                    }
-                }
-                _ => ty,
-            },
-            DebruijnIndex::INNERMOST,
-        )
-    }
-
-    /// Resolves the type completely; type variables without known type are
-    /// replaced by TyKind::Unknown.
-    fn resolve_ty_completely_inner(&mut self, tv_stack: &mut Vec<InferenceVar>, ty: Ty) -> Ty {
-        // FIXME implement as a proper Folder, handle lifetimes and consts as well
-        fold_tys(
-            ty,
-            |ty, _| match ty.kind(&Interner) {
-                &TyKind::InferenceVar(tv, kind) => {
-                    if tv_stack.contains(&tv) {
-                        cov_mark::hit!(type_var_cycles_resolve_completely);
-                        // recursive type
-                        return self.type_variable_table.fallback_value(tv, kind);
-                    }
-                    if let Some(known_ty) = self.var_unification_table.probe_var(tv) {
-                        // known_ty may contain other variables that are known by now
-                        tv_stack.push(tv);
-                        let result = self.resolve_ty_completely_inner(
-                            tv_stack,
-                            known_ty.assert_ty_ref(&Interner).clone(),
-                        );
-                        tv_stack.pop();
-                        result
-                    } else {
-                        self.type_variable_table.fallback_value(tv, kind)
                     }
                 }
                 _ => ty,
