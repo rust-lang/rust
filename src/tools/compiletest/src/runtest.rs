@@ -229,7 +229,15 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
         print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
-    let props = TestProps::from_file(&testpaths.file, revision, &config);
+    let mut props = TestProps::from_file(&testpaths.file, revision, &config);
+
+    // Currently, incremental is soft disabled unless this environment
+    // variable is set. A bunch of our tests assume it's enabled, though - so
+    // just enable it for our tests.
+    //
+    // This is deemed preferable to ignoring those tests; we still want to test
+    // incremental somewhat, as users can opt in to it.
+    props.rustc_env.push((String::from("RUSTC_FORCE_INCREMENTAL"), String::from("1")));
 
     let cx = TestCx { config: &config, props: &props, testpaths, revision };
     create_dir_all(&cx.output_base_dir()).unwrap();
@@ -240,7 +248,11 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
         assert!(!props.revisions.is_empty(), "Incremental tests require revisions.");
         cx.init_incremental_test();
         for revision in &props.revisions {
-            let revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
+            let mut revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
+            // See above - need to enable it explicitly for now.
+            revision_props
+                .rustc_env
+                .push((String::from("RUSTC_FORCE_INCREMENTAL"), String::from("1")));
             let rev_cx = TestCx {
                 config: &config,
                 props: &revision_props,
