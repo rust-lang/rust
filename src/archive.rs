@@ -85,8 +85,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         ));
     }
 
-    fn add_native_library(&mut self, name: rustc_span::symbol::Symbol) {
-        let location = find_library(name, &self.lib_search_paths, self.sess);
+    fn add_native_library(&mut self, name: rustc_span::symbol::Symbol, verbatim: bool) {
+        let location = find_library(name, verbatim, &self.lib_search_paths, self.sess);
         self.add_archive(location.clone(), |_| false).unwrap_or_else(|e| {
             panic!("failed to add native library {}: {}", location.to_string_lossy(), e);
         });
