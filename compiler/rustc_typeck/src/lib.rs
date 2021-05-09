@@ -509,7 +509,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("impl_wf_inference", || impl_wf_check::impl_wf_check(tcx));
+        tcx.sess.time("impl_wf_inference", || {
+            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
+        });
     })?;
 
     tcx.sess.track_errors(|| {

@@ -54,13 +54,6 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-pub fn impl_wf_check(tcx: TyCtxt<'_>) {
-    // We will tag this as part of the WF check -- logically, it is,
-    // but it's one that we must perform earlier than the rest of
-    // WfCheck.
-    tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
-}
-
 fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     let min_specialization = tcx.features().min_specialization;
     let module = tcx.hir_module_items(module_def_id);
