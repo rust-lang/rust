@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, const_fn)]
+#![feature(rustc_attrs)]
 
 #[rustc_args_required_const(0)]
 fn foo(_a: i32) {

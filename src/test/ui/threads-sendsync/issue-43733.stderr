@@ -1,5 +1,5 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/issue-43733.rs:18:5
+  --> $DIR/issue-43733.rs:17:5
    |
 LL |     __KEY.get(Default::default)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
@@ -7,7 +7,7 @@ LL |     __KEY.get(Default::default)
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/issue-43733.rs:22:5
+  --> $DIR/issue-43733.rs:21:5
    |
 LL |     std::thread::LocalKey::new(__getit);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
