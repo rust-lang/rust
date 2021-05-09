@@ -489,7 +489,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
+            tcx.hir()
+                .par_for_each_module(|module| outlives::test::test_inferred_outlives(tcx, module))
         })?;
     }
 

@@ -1,9 +1,12 @@
 use rustc_errors::struct_span_err;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::sym;
 
-pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
-    for id in tcx.hir().items() {
+pub fn test_inferred_outlives(tcx: TyCtxt<'_>, module: LocalDefId) {
+    let _timer = tcx.sess.timer("outlives_testing");
+
+    for id in tcx.hir().module_items(module) {
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.
         if tcx.has_attr(id.owner_id.to_def_id(), sym::rustc_outlives) {
