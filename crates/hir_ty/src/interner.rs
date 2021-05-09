@@ -15,8 +15,14 @@ use std::{fmt, sync::Arc};
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Interner;
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct InternedWrapper<T>(T);
+
+impl<T: fmt::Debug> fmt::Debug for InternedWrapper<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
 
 impl<T> std::ops::Deref for InternedWrapper<T> {
     type Target = T;
