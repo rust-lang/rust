@@ -1192,7 +1192,7 @@ fn make_ret_ty(ctx: &AssistContext, module: hir::Module, fun: &Function) -> Opti
                 vec![fun_ty.make_ty(ctx, module), handler_ty],
             )
         }
-        FlowHandler::If { .. } => make::ty("bool"),
+        FlowHandler::If { .. } => make::ty_bool(),
         FlowHandler::IfOption { action } => {
             let handler_ty = action
                 .expr_ty(ctx)

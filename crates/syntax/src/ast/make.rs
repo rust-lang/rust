@@ -10,7 +10,7 @@
 //! `parse(format!())` we use internally is an implementation detail -- long
 //! term, it will be replaced with direct tree manipulation.
 use itertools::Itertools;
-use stdx::format_to;
+use stdx::{format_to, never};
 
 use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
 
@@ -20,6 +20,16 @@ pub fn name(text: &str) -> ast::Name {
 
 pub fn name_ref(text: &str) -> ast::NameRef {
     ast_from_text(&format!("fn f() {{ {}{}; }}", raw_ident_esc(text), text))
+}
+
+pub fn lifetime(text: &str) -> ast::Lifetime {
+    let mut text = text;
+    let tmp;
+    if never!(!text.starts_with('\'')) {
+        tmp = format!("'{}", text);
+        text = &tmp;
+    }
+    ast_from_text(&format!("fn f<{}>() {{ }}", text))
 }
 
 fn raw_ident_esc(ident: &str) -> &'static str {
@@ -34,10 +44,13 @@ fn raw_ident_esc(ident: &str) -> &'static str {
 // FIXME: replace stringly-typed constructor with a family of typed ctors, a-la
 // `expr_xxx`.
 pub fn ty(text: &str) -> ast::Type {
-    ast_from_text(&format!("fn f() -> {} {{}}", text))
+    ty_from_text(text)
 }
 pub fn ty_unit() -> ast::Type {
-    ty("()")
+    ty_from_text("()")
+}
+pub fn ty_bool() -> ast::Type {
+    ty_path(path_unqualified(path_segment(name_ref("bool"))))
 }
 pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
     let mut count: usize = 0;
@@ -46,15 +59,21 @@ pub fn ty_tuple(types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
         contents.push(',');
     }
 
-    ty(&format!("({})", contents))
+    ty_from_text(&format!("({})", contents))
 }
 // FIXME: handle path to type
 pub fn ty_generic(name: ast::NameRef, types: impl IntoIterator<Item = ast::Type>) -> ast::Type {
     let contents = types.into_iter().join(", ");
-    ty(&format!("{}<{}>", name, contents))
+    ty_from_text(&format!("{}<{}>", name, contents))
 }
 pub fn ty_ref(target: ast::Type, exclusive: bool) -> ast::Type {
-    ty(&if exclusive { format!("&mut {}", target) } else { format!("&{}", target) })
+    ty_from_text(&if exclusive { format!("&mut {}", target) } else { format!("&{}", target) })
+}
+pub fn ty_path(path: ast::Path) -> ast::Type {
+    ty_from_text(&path.to_string())
+}
+fn ty_from_text(text: &str) -> ast::Type {
+    ast_from_text(&format!("type _T = {};", text))
 }
 
 pub fn assoc_item_list() -> ast::AssocItemList {
@@ -475,13 +494,17 @@ pub fn param_list(
     };
     ast_from_text(&list)
 }
-// FIXME: s/&str/ast:Name
-pub fn generic_param(name: &str, ty: Option<ast::TypeBoundList>) -> ast::GenericParam {
+
+pub fn type_param(name: ast::Name, ty: Option<ast::TypeBoundList>) -> ast::TypeParam {
     let bound = match ty {
         Some(it) => format!(": {}", it),
         None => String::new(),
     };
     ast_from_text(&format!("fn f<{}{}>() {{ }}", name, bound))
+}
+
+pub fn lifetime_param(lifetime: ast::Lifetime) -> ast::LifetimeParam {
+    ast_from_text(&format!("fn f<{}>() {{ }}", lifetime))
 }
 
 pub fn generic_param_list(
