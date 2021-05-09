@@ -649,6 +649,7 @@ impl Step for Rustdoc {
 
         cargo.rustdocflag("--document-private-items");
         cargo.rustdocflag("--enable-index-page");
+        cargo.rustdocflag("--show-type-layout");
         cargo.rustdocflag("-Zunstable-options");
         builder.run(&mut cargo.into());
     }
