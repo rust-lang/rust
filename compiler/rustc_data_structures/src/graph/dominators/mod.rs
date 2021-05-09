@@ -91,7 +91,13 @@ fn dominators_given_rpo<G: ControlFlowGraph>(graph: G, rpo: &[G::Node]) -> Domin
         }
         // semi[w] is now semidominator(w).
 
-        bucket[semi[w]].push(w);
+        // Optimization: Do not insert into buckets if parent[w] = semi[w], as
+        // we then immediately know the idom.
+        if parent[w].unwrap() != semi[w] {
+            bucket[semi[w]].push(w);
+        } else {
+            idom[w] = parent[w].unwrap();
+        }
 
         // Optimization: We share the parent array between processed and not
         // processed elements; lastlinked represents the divider.
