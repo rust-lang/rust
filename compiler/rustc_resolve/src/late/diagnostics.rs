@@ -1821,21 +1821,19 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     crate fn add_missing_lifetime_specifiers_label(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        spans: Vec<Span>,
-        counts: Vec<usize>,
+        spans_with_counts: Vec<(Span, usize)>,
         lifetime_names: &FxHashSet<Symbol>,
         lifetime_spans: Vec<Span>,
         params: &[ElisionFailureInfo],
     ) {
-        let snippets: Vec<Option<String>> = spans
+        let snippets: Vec<Option<String>> = spans_with_counts
             .iter()
-            .copied()
-            .map(|span| self.tcx.sess.source_map().span_to_snippet(span).ok())
+            .map(|(span, _)| self.tcx.sess.source_map().span_to_snippet(*span).ok())
             .collect();
 
-        for (span, count) in spans.iter().zip(counts.iter()) {
+        for (span, count) in &spans_with_counts {
             err.span_label(
-                span.clone(),
+                *span,
                 format!(
                     "expected {} lifetime parameter{}",
                     if *count == 1 { "named".to_string() } else { count.to_string() },
@@ -1847,7 +1845,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         let suggest_existing =
             |err: &mut DiagnosticBuilder<'_>,
              name: &str,
-             formatters: &Vec<Option<Box<dyn Fn(&str) -> String>>>| {
+             formatters: Vec<Option<Box<dyn Fn(&str) -> String>>>| {
                 if let Some(MissingLifetimeSpot::HigherRanked { span: for_span, span_type }) =
                     self.missing_named_lifetime_spots.iter().rev().next()
                 {
@@ -1892,9 +1890,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         }
                     }
                     introduce_suggestion.push((*for_span, for_sugg));
-                    for (span, formatter) in spans.iter().copied().zip(formatters.iter()) {
+                    for ((span, _), formatter) in spans_with_counts.iter().zip(formatters.iter()) {
                         if let Some(formatter) = formatter {
-                            introduce_suggestion.push((span, formatter(&lt_name)));
+                            introduce_suggestion.push((*span, formatter(&lt_name)));
                         }
                     }
                     err.multipart_suggestion_with_style(
@@ -1905,12 +1903,12 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     );
                 }
 
-                let mut spans_suggs: Vec<_> = Vec::new();
-                for (span, fmt) in spans.iter().copied().zip(formatters.iter()) {
-                    if let Some(formatter) = fmt {
-                        spans_suggs.push((span, formatter(name)));
-                    }
-                }
+                let spans_suggs: Vec<_> = formatters
+                    .into_iter()
+                    .filter_map(|fmt| fmt)
+                    .zip(spans_with_counts.iter())
+                    .map(|(formatter, (span, _))| (*span, formatter(name)))
+                    .collect();
                 err.multipart_suggestion_with_style(
                     &format!(
                         "consider using the `{}` lifetime",
@@ -1921,7 +1919,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     SuggestionStyle::ShowAlways,
                 );
             };
-        let suggest_new = |err: &mut DiagnosticBuilder<'_>, suggs: &Vec<Option<String>>| {
+        let suggest_new = |err: &mut DiagnosticBuilder<'_>, suggs: Vec<Option<String>>| {
             for missing in self.missing_named_lifetime_spots.iter().rev() {
                 let mut introduce_suggestion = vec![];
                 let msg;
@@ -1967,8 +1965,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     }
                     MissingLifetimeSpot::Static => {
                         let mut spans_suggs = Vec::new();
-                        for ((span, snippet), count) in
-                            spans.iter().copied().zip(snippets.iter()).zip(counts.iter().copied())
+                        for ((span, count), snippet) in
+                            spans_with_counts.iter().copied().zip(snippets.iter())
                         {
                             let (span, sugg) = match snippet.as_deref() {
                                 Some("&") => (span.shrink_to_hi(), "'static ".to_owned()),
@@ -2018,7 +2016,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         }
                     }
                 }
-                for (span, sugg) in spans.iter().copied().zip(suggs.iter()) {
+                for ((span, _), sugg) in spans_with_counts.iter().copied().zip(suggs.iter()) {
                     if let Some(sugg) = sugg {
                         introduce_suggestion.push((span, sugg.to_string()));
                     }
@@ -2039,68 +2037,57 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         match &lifetime_names[..] {
             [name] => {
                 let mut suggs: Vec<Option<Box<dyn Fn(&str) -> String>>> = Vec::new();
-                for (snippet, count) in snippets.iter().cloned().zip(counts.iter().copied()) {
-                    if snippet == Some("&".to_string()) {
-                        suggs.push(Some(Box::new(|name| format!("&{} ", name))));
-                    } else if snippet == Some("'_".to_string()) {
-                        suggs.push(Some(Box::new(|n| n.to_string())));
-                    } else if snippet == Some("".to_string()) {
-                        suggs.push(Some(Box::new(move |n| format!("{}, ", n).repeat(count))));
-                    } else if let Some(snippet) = snippet {
-                        if !snippet.ends_with('>') {
-                            suggs.push(Some(Box::new(move |name| {
-                                format!(
-                                    "{}<{}>",
-                                    snippet,
-                                    std::iter::repeat(name.to_string())
-                                        .take(count)
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                )
-                            })));
-                        } else {
-                            suggs.push(None);
-                        }
-                    } else {
-                        suggs.push(None);
-                    }
-                }
-                suggest_existing(err, &name.as_str()[..], &suggs);
-            }
-            [] => {
-                let mut suggs: Vec<Option<String>> = Vec::new();
-                for (snippet, count) in snippets.iter().cloned().zip(counts.iter().copied()) {
-                    if snippet == Some("&".to_string()) {
-                        suggs.push(Some("&'a ".to_string()));
-                    } else if snippet == Some("'_".to_string()) {
-                        suggs.push(Some("'a".to_string()));
-                    } else if let Some(snippet) = snippet {
-                        if snippet == "" {
-                            suggs.push(Some(
-                                std::iter::repeat("'a, ").take(count).collect::<Vec<_>>().join(""),
-                            ));
-                        } else {
-                            suggs.push(Some(format!(
+                for (snippet, (_, count)) in snippets.iter().zip(spans_with_counts.iter().copied())
+                {
+                    suggs.push(match snippet.as_deref() {
+                        Some("&") => Some(Box::new(|name| format!("&{} ", name))),
+                        Some("'_") => Some(Box::new(|n| n.to_string())),
+                        Some("") => Some(Box::new(move |n| format!("{}, ", n).repeat(count))),
+                        Some(snippet) if !snippet.ends_with('>') => Some(Box::new(move |name| {
+                            format!(
                                 "{}<{}>",
                                 snippet,
-                                std::iter::repeat("'a").take(count).collect::<Vec<_>>().join(", ")
-                            )));
-                        }
-                    } else {
-                        suggs.push(None);
-                    }
+                                std::iter::repeat(name.to_string())
+                                    .take(count)
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            )
+                        })),
+                        _ => None,
+                    });
                 }
-                suggest_new(err, &suggs);
+                suggest_existing(err, &name.as_str()[..], suggs);
+            }
+            [] => {
+                let mut suggs = Vec::new();
+                for (snippet, (_, count)) in
+                    snippets.iter().cloned().zip(spans_with_counts.iter().copied())
+                {
+                    suggs.push(match snippet.as_deref() {
+                        Some("&") => Some("&'a ".to_string()),
+                        Some("'_") => Some("'a".to_string()),
+                        Some("") => {
+                            Some(std::iter::repeat("'a, ").take(count).collect::<Vec<_>>().join(""))
+                        }
+                        Some(snippet) => Some(format!(
+                            "{}<{}>",
+                            snippet,
+                            std::iter::repeat("'a").take(count).collect::<Vec<_>>().join(", "),
+                        )),
+                        None => None,
+                    });
+                }
+                suggest_new(err, suggs);
             }
             lts if lts.len() > 1 => {
                 err.span_note(lifetime_spans, "these named lifetimes are available to use");
 
                 let mut spans_suggs: Vec<_> = Vec::new();
-                for (span, snippet) in spans.iter().copied().zip(snippets.iter()) {
-                    if Some("") == snippet.as_deref() {
-                        spans_suggs.push((span, "'lifetime, ".to_string()));
-                    } else if Some("&") == snippet.as_deref() {
-                        spans_suggs.push((span, "&'lifetime ".to_string()));
+                for ((span, _), snippet) in spans_with_counts.iter().copied().zip(snippets.iter()) {
+                    match snippet.as_deref() {
+                        Some("") => spans_suggs.push((span, "'lifetime, ".to_string())),
+                        Some("&") => spans_suggs.push((span, "&'lifetime ".to_string())),
+                        _ => {}
                     }
                 }
 

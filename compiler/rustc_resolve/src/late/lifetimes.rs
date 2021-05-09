@@ -3038,8 +3038,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         spans.sort();
         let mut spans_dedup = spans.clone();
         spans_dedup.dedup();
-        let counts: Vec<_> =
-            spans_dedup.iter().map(|sp| spans.iter().filter(|nsp| *nsp == sp).count()).collect();
+        let spans_with_counts: Vec<_> = spans_dedup
+            .into_iter()
+            .map(|sp| (sp, spans.iter().filter(|nsp| *nsp == &sp).count()))
+            .collect();
 
         let mut err = self.report_missing_lifetime_specifiers(spans.clone(), lifetime_refs.len());
 
@@ -3052,8 +3054,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         self.add_missing_lifetime_specifiers_label(
             &mut err,
-            spans,
-            counts,
+            spans_with_counts,
             &lifetime_names,
             lifetime_spans,
             error.unwrap_or(&[]),
