@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     f5.2 = Bar1 {f: 36};
    |     ----   ^^^^^^^^^^^^ expected trait object `dyn ToBar`, found struct `Bar1`
    |     |
-   |     expected due to this
+   |     expected due to the type of this binding
    |
    = note: expected trait object `dyn ToBar`
                     found struct `Bar1`

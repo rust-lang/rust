@@ -179,7 +179,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 TypeError::Sorts(_),
             ) if rhs.hir_id == expr.hir_id => {
                 // Point at the assigned-to binding.
-                err.span_label(lhs.span, "expected due to this");
+                let mut primary_span = lhs.span;
+                let mut secondary_span = lhs.span;
+                let mut post_message = "";
+                if let hir::ExprKind::Path(hir::QPath::Resolved(
+                    None,
+                    hir::Path { res: hir::def::Res::Local(hir_id), .. },
+                )) = lhs.kind
+                {
+                    if let Some(hir::Node::Binding(pat)) = self.tcx.hir().find(*hir_id) {
+                        let parent = self.tcx.hir().get_parent_node(pat.hir_id);
+                        primary_span = pat.span;
+                        secondary_span = pat.span;
+                        match self.tcx.hir().find(parent) {
+                            Some(hir::Node::Local(hir::Local { ty: Some(ty), .. })) => {
+                                primary_span = ty.span;
+                                post_message = " type";
+                            }
+                            Some(hir::Node::Local(hir::Local { init: Some(init), .. })) => {
+                                primary_span = init.span;
+                                post_message = " value";
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                if primary_span != secondary_span
+                    && self
+                        .tcx
+                        .sess
+                        .source_map()
+                        .is_multiline(secondary_span.shrink_to_hi().until(primary_span))
+                {
+                    // We are pointing at the binding's type or initializer value, but it's pattern
+                    // is in a different line, so we point at both.
+                    err.span_label(secondary_span, "expected due to the type of this binding");
+                    err.span_label(primary_span, &format!("expected due to this{}", post_message));
+                } else if post_message == "" {
+                    // We are pointing at either the assignment lhs or the binding def pattern.
+                    err.span_label(primary_span, "expected due to the type of this binding");
+                } else {
+                    // We are pointing at the binding's type or initializer value.
+                    err.span_label(primary_span, &format!("expected due to this{}", post_message));
+                }
+
                 if !lhs.is_syntactic_place_expr() {
                     // We already emitted E0070 "invalid left-hand side of assignment", so we
                     // silence this.
