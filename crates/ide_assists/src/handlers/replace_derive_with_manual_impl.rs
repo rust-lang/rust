@@ -84,7 +84,7 @@ pub(crate) fn replace_derive_with_manual_impl(
         add_assist(acc, ctx, &attr, &args, &trait_path, Some(trait_), &adt)?;
     }
     if no_traits_found {
-        let trait_path = make::path_unqualified(make::path_segment(make::name_ref(trait_name)));
+        let trait_path = make::ext::ident_path(trait_name);
         add_assist(acc, ctx, &attr, &args, &trait_path, None, &adt)?;
     }
     Some(())
@@ -159,10 +159,8 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let impl_def = make::impl_trait(
-        trait_path.clone(),
-        make::path_unqualified(make::path_segment(make::name_ref(&annotated_name.text()))),
-    );
+    let impl_def =
+        make::impl_trait(trait_path.clone(), make::ext::ident_path(&annotated_name.text()));
     let (impl_def, first_assoc_item) =
         add_trait_assoc_items_to_impl(sema, trait_items, trait_, impl_def, target_scope);
     Some((impl_def, first_assoc_item))
