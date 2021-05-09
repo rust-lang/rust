@@ -2030,8 +2030,7 @@ fn add_local_native_libraries(
             NativeLibKind::Framework { as_needed } => {
                 cmd.link_framework(name, as_needed.unwrap_or(true))
             }
-            NativeLibKind::Static { bundle: None | Some(true), .. }
-            | NativeLibKind::Static { whole_archive: Some(true), .. } => {
+            NativeLibKind::Static { whole_archive: Some(true), .. } => {
                 cmd.link_whole_staticlib(name, verbatim, &search_path);
             }
             NativeLibKind::Static { .. } => cmd.link_staticlib(name, verbatim),
@@ -2137,7 +2136,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
         match data[cnum.as_usize() - 1] {
             _ if codegen_results.crate_info.profiler_runtime == Some(cnum) => {
-                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum)
             }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
@@ -2146,9 +2145,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                 compiler_builtins = Some(cnum);
             }
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
-            Linkage::Static => {
-                add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
-            }
+            Linkage::Static => add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum),
             Linkage::Dynamic => add_dynamic_crate(cmd, sess, &src.dylib.as_ref().unwrap().0),
         }
 
@@ -2163,7 +2160,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
     // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
-        add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
+        add_static_crate::<B>(cmd, sess, codegen_results, tmpdir, cnum);
     }
 
     // Converts a library file-stem into a cc -l argument
@@ -2194,7 +2191,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         sess: &'a Session,
         codegen_results: &CodegenResults,
         tmpdir: &Path,
-        crate_type: CrateType,
         cnum: CrateNum,
     ) {
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
@@ -2208,14 +2204,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             // Note, though, that we don't want to include the whole of a
             // compiler-builtins crate (e.g., compiler-rt) because it'll get
             // repeatedly linked anyway.
-            let path = fix_windows_verbatim_for_gcc(path);
-            if crate_type == CrateType::Dylib
-                && codegen_results.crate_info.compiler_builtins != Some(cnum)
-            {
-                cmd.link_whole_rlib(&path);
-            } else {
-                cmd.link_rlib(&path);
-            }
+            cmd.link_rlib(&fix_windows_verbatim_for_gcc(path));
         };
 
         // See the comment above in `link_staticlib` and `link_rlib` for why if
