@@ -1276,9 +1276,14 @@ pub fn build_session(
         DiagnosticOutput::Raw(write) => Some(write),
     };
 
-    let target_cfg = config::build_target_config(&sopts, target_override);
+    let sysroot = match &sopts.maybe_sysroot {
+        Some(sysroot) => sysroot.clone(),
+        None => filesearch::get_or_default_sysroot(),
+    };
+
+    let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
-    let host = Target::search(&host_triple).unwrap_or_else(|e| {
+    let host = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
         early_error(sopts.error_format, &format!("Error loading host specification: {}", e))
     });
 
@@ -1325,10 +1330,6 @@ pub fn build_session(
 
     let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
     parse_sess.assume_incomplete_release = sopts.debugging_opts.assume_incomplete_release;
-    let sysroot = match &sopts.maybe_sysroot {
-        Some(sysroot) => sysroot.clone(),
-        None => filesearch::get_or_default_sysroot(),
-    };
 
     let host_triple = config::host_triple();
     let target_triple = sopts.target_triple.triple();

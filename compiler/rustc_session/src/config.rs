@@ -893,8 +893,13 @@ pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateCo
     user_cfg
 }
 
-pub(super) fn build_target_config(opts: &Options, target_override: Option<Target>) -> Target {
-    let target_result = target_override.map_or_else(|| Target::search(&opts.target_triple), Ok);
+pub(super) fn build_target_config(
+    opts: &Options,
+    target_override: Option<Target>,
+    sysroot: &PathBuf,
+) -> Target {
+    let target_result =
+        target_override.map_or_else(|| Target::search(&opts.target_triple, sysroot), Ok);
     let target = target_result.unwrap_or_else(|e| {
         early_error(
             opts.error_format,

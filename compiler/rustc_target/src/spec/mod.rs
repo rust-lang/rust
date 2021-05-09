@@ -1898,13 +1898,15 @@ impl Target {
     }
 
     /// Search RUST_TARGET_PATH for a JSON file specifying the given target
-    /// triple. Note that it could also just be a bare filename already, so also
+    /// triple. If none is found, look for a file called `target.json` inside
+    /// the sysroot under the target-triple's `rustlib` directory.
+    /// Note that it could also just be a bare filename already, so also
     /// check for that. If one of the hardcoded targets we know about, just
     /// return it directly.
     ///
     /// The error string could come from any of the APIs called, including
     /// filesystem access and JSON decoding.
-    pub fn search(target_triple: &TargetTriple) -> Result<Target, String> {
+    pub fn search(target_triple: &TargetTriple, sysroot: &PathBuf) -> Result<Target, String> {
         use rustc_serialize::json;
         use std::env;
         use std::fs;
@@ -1931,14 +1933,21 @@ impl Target {
 
                 let target_path = env::var_os("RUST_TARGET_PATH").unwrap_or_default();
 
-                // FIXME 16351: add a sane default search path?
-
                 for dir in env::split_paths(&target_path) {
                     let p = dir.join(&path);
                     if p.is_file() {
                         return load_file(&p);
                     }
                 }
+
+                // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
+                // as a fallback.
+                let p =
+                    sysroot.join("lib").join("rustlib").join(&target_triple).join("target.json");
+                if p.is_file() {
+                    return load_file(&p);
+                }
+
                 Err(format!("Could not find specification for target {:?}", target_triple))
             }
             TargetTriple::TargetPath(ref target_path) => {
