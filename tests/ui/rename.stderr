@@ -24,11 +24,5 @@ error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redunda
 LL | #[warn(clippy::const_static_lifetime)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
 
-error: lint `clippy::cyclomatic_complexity` has been renamed to `clippy::cognitive_complexity`
-  --> $DIR/rename.rs:10:9
-   |
-LL | #![warn(clippy::cyclomatic_complexity)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::cognitive_complexity`
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
