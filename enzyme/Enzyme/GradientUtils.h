@@ -1023,8 +1023,10 @@ public:
   }
 
   std::map<Instruction *, ValueMap<BasicBlock *, WeakTrackingVH>> lcssaFixes;
+  std::map<PHINode*, WeakTrackingVH> lcssaPHIToOrig;
   Value *fixLCSSA(Instruction *inst, BasicBlock *forwardBlock,
-                  bool mergeIfTrue = false) {
+                  bool mergeIfTrue = false,
+                  bool guaranteeVisible=true) {
     assert(inst->getName() != "<badref>");
     LoopContext lc;
 
@@ -1049,7 +1051,7 @@ public:
       }
     }
 
-    if ((forwardBlock == inst->getParent() ||
+    if ((!guaranteeVisible || forwardBlock == inst->getParent() ||
          DT.dominates(inst, forwardBlock)) &&
         (!inLoop || isChildLoop)) {
       return inst;
@@ -1095,6 +1097,7 @@ public:
     auto lcssaPHI =
         lcssa.CreatePHI(inst->getType(), 1, inst->getName() + "!manual_lcssa");
     lcssaFixes[inst][forwardBlock] = lcssaPHI;
+    lcssaPHIToOrig[lcssaPHI] = inst;
     for (auto pred : predecessors(forwardBlock)) {
       Value *val = nullptr;
       if (inst->getParent() == pred || DT.dominates(inst, pred)) {
@@ -1124,7 +1127,11 @@ public:
 
     if (mergeIfTrue) {
       Value *val = lcssaPHI;
-      for (auto &v : lcssaPHI->incoming_values()) {
+      for (Value *v : lcssaPHI->incoming_values()) {
+        if (auto PN = dyn_cast<PHINode>(v))
+          if (lcssaPHIToOrig.find(PN) != lcssaPHIToOrig.end()) {
+              v = lcssaPHIToOrig[PN];
+          }
         if (v == lcssaPHI)
           continue;
         if (val == lcssaPHI)
@@ -1134,7 +1141,7 @@ public:
           break;
         }
       }
-      if (val && val != lcssaPHI) {
+      if (val && val != lcssaPHI && (!guaranteeVisible || !isa<Instruction>(val) || DT.dominates(cast<Instruction>(val), lcssaPHI))) {
         bool nonSelfUse = false;
         for (auto u : lcssaPHI->users()) {
           if (u != lcssaPHI) {
@@ -1147,6 +1154,7 @@ public:
           while (lcssaPHI->getNumOperands())
             lcssaPHI->removeIncomingValue(lcssaPHI->getNumOperands() - 1,
                                           false);
+          lcssaPHIToOrig.erase(lcssaPHI);
           lcssaPHI->eraseFromParent();
         }
         return val;

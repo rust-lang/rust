@@ -178,7 +178,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (!___res && mode == UnwrapMode::AttemptFullUnwrapWithLookup) {        \
         if (origParent)                                                        \
           if (auto opinst = dyn_cast<Instruction>(v)) {                        \
-            v = fixLCSSA(opinst, origParent);                                  \
+            v = fixLCSSA(opinst, origParent, /*mergeIfTrue*/ false,            \
+                         /*guaranteedVisible*/ false);                         \
           }                                                                    \
         ___res = lookupM(v, Builder, available, v != val);                     \
       }                                                                        \
@@ -187,7 +188,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     } else {                                                                   \
       if (origParent)                                                          \
         if (auto opinst = dyn_cast<Instruction>(v)) {                          \
-          v = fixLCSSA(opinst, origParent);                                    \
+          v = fixLCSSA(opinst, origParent, /*mergeIfTrue*/ false,              \
+                       /*guaranteedVisible*/ false);                           \
         }                                                                      \
       assert(mode == UnwrapMode::AttemptSingleUnwrap);                         \
       ___res = lookupM(v, Builder, available, v != val);                       \
@@ -1058,7 +1060,8 @@ endCheck:
     Value *nval = val;
     if (scope)
       if (auto opinst = dyn_cast<Instruction>(nval)) {
-        nval = fixLCSSA(opinst, scope);
+        nval = fixLCSSA(opinst, scope, /*mergeIfTrue*/ false,
+                        /*guaranteedVisible*/ false);
       }
     auto toreturn =
         lookupM(nval, BuilderM, available, /*tryLegalRecomputeCheck*/ false);
@@ -1202,11 +1205,11 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
         assert(innerType == Type::getInt8Ty(malloc->getContext()));
       } else {
         if (innerType != malloc->getType()) {
-          llvm::errs() << *cast<Instruction>(malloc)->getParent()->getParent()
-                       << "\n";
+          llvm::errs() << *oldFunc << "\n";
+          llvm::errs() << *newFunc << "\n";
           llvm::errs() << "innerType: " << *innerType << "\n";
           llvm::errs() << "malloc->getType(): " << *malloc->getType() << "\n";
-          llvm::errs() << "ret: " << *ret << "\n";
+          llvm::errs() << "ret: " << *ret << " - " << *ret->getType() << "\n";
           llvm::errs() << "malloc: " << *malloc << "\n";
         }
       }
@@ -2903,7 +2906,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   Instruction *prelcssaInst = inst;
 
   assert(inst->getName() != "<badref>");
-  val = fixLCSSA(inst, BuilderM.GetInsertBlock());
+  val = fixLCSSA(inst, BuilderM.GetInsertBlock(), /*mergeIfTrue*/ false,
+                 /*guaranteedVisible*/ false);
   if (isa<UndefValue>(val)) {
     llvm::errs() << *oldFunc << "\n";
     llvm::errs() << *newFunc << "\n";

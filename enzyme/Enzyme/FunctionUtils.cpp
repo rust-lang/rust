@@ -134,6 +134,11 @@ static cl::opt<bool> EnzymePHIRestructure(
     "enzyme-phi-restructure", cl::init(false), cl::Hidden,
     cl::desc("Whether to restructure phi's to have better unwrap behavior"));
 #endif
+
+cl::opt<bool>
+    EnzymeNameInstructions("enzyme-name-instructions", cl::init(false),
+                           cl::Hidden,
+                           cl::desc("Have enzyme name all instructions"));
 }
 
 /// Is the use of value val as an argument of call CI potentially captured
@@ -1213,6 +1218,21 @@ Function *PreProcessCache::preprocessForClone(Function *F, bool topLevel) {
     PA.preserve<PhiValuesAnalysis>();
 #endif
     FAM.invalidate(*NewF, PA);
+    if (EnzymeNameInstructions) {
+      for (auto &Arg : NewF->args()) {
+        if (!Arg.hasName())
+          Arg.setName("arg");
+      }
+      for (BasicBlock &BB : *NewF) {
+        if (!BB.hasName())
+          BB.setName("bb");
+
+        for (Instruction &I : BB) {
+          if (!I.hasName() && !I.getType()->isVoidTy())
+            I.setName("i");
+        }
+      }
+    }
   }
 
 #if LLVM_VERSION_MAJOR >= 8

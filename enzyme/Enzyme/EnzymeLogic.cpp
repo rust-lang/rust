@@ -275,6 +275,16 @@ struct CacheAnalysis {
             for (auto lim = LS; lim != SE.getCouldNotCompute();) {
               // [start load, L+Size] [S, S+Size]
               for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
+                  auto SH = SExpr->getLoop()->getHeader();
+                  if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
+                    auto LH = LExpr->getLoop()->getHeader();
+                    if (SH != LH && !DT.dominates(SH, LH) && !DT.dominates(LH, SH)) {
+                      continue;
+                    }
+                  }
+                }
+
                 auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
                 // llvm::errs() << " *** " << *lsub << "|" << *slim << "|" <<
                 // *lim << "\n";
@@ -323,6 +333,16 @@ struct CacheAnalysis {
             for (auto lim = LS; lim != SE.getCouldNotCompute();) {
               // [S, S+Size][start load, L+Size]
               for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
+                  auto SH = SExpr->getLoop()->getHeader();
+                  if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
+                    auto LH = LExpr->getLoop()->getHeader();
+                    if (SH != LH && !DT.dominates(SH, LH) && !DT.dominates(LH, SH)) {
+                      continue;
+                    }
+                  }
+                }
+                
                 auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
                 // llvm::errs() << " $$$ " << *lsub << "|" << *slim << "|" <<
                 // *lim << "\n";
