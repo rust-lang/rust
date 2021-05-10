@@ -386,14 +386,15 @@ macro_rules! define_queries {
             }
 
             #[inline]
-            fn compute(tcx: QueryCtxt<'tcx>, key: Self::Key) -> Self::Value {
+            fn compute_fn(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
+                fn(TyCtxt<'tcx>, Self::Key) -> Self::Value
+            {
                 let is_local = key.query_crate() == LOCAL_CRATE;
-                let provider = if is_local {
+                if is_local {
                     tcx.queries.local_providers.$name
                 } else {
                     tcx.queries.extern_providers.$name
-                };
-                provider(*tcx, key)
+                }
             }
 
             fn hash_result(
