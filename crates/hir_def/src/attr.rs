@@ -9,7 +9,7 @@ use std::{
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{hygiene::Hygiene, name::AsName, AstId, AttrId, InFile};
+use hir_expand::{hygiene::Hygiene, name::AsName, AstId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use mbe::ast_to_token_tree;
@@ -614,6 +614,9 @@ impl DocsRangeMap {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AttrId(pub u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {

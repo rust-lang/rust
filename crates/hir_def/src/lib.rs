@@ -62,14 +62,14 @@ use hir_expand::{
     ast_id_map::FileAstId,
     eager::{expand_eager_macro, ErrorEmitted, ErrorSink},
     hygiene::Hygiene,
-    AstId, AttrId, FragmentKind, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
-    MacroDefKind,
+    AstId, FragmentKind, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use la_arena::Idx;
 use nameres::DefMap;
 use path::ModPath;
 use syntax::ast;
 
+use crate::attr::AttrId;
 use crate::builtin_type::BuiltinType;
 use item_tree::{
     Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, ModItem, Static, Struct, Trait,
@@ -753,7 +753,7 @@ fn derive_macro_as_call_id(
             MacroCallKind::Derive {
                 ast_id: item_attr.ast_id,
                 derive_name: last_segment.to_string(),
-                derive_attr,
+                derive_attr_index: derive_attr.0,
             },
         )
         .into();

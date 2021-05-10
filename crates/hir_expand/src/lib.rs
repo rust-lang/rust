@@ -293,11 +293,8 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
     FnLike { ast_id: AstId<ast::MacroCall>, fragment: FragmentKind },
-    Derive { ast_id: AstId<ast::Item>, derive_name: String, derive_attr: AttrId },
+    Derive { ast_id: AstId<ast::Item>, derive_name: String, derive_attr_index: u32 },
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct AttrId(pub u32);
 
 impl MacroCallKind {
     fn file_id(&self) -> HirFileId {

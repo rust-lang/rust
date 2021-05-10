@@ -13,14 +13,14 @@ use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{AsName, Name},
     proc_macro::ProcMacroExpander,
-    AttrId, FragmentKind, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    FragmentKind, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 
 use crate::{
-    attr::Attrs,
+    attr::{AttrId, Attrs},
     db::DefDatabase,
     derive_macro_as_call_id,
     intern::Interned,
