@@ -447,7 +447,8 @@ private:
 
 public:
   bool legalRecompute(const Value *val, const ValueToValueMapTy &available,
-                      IRBuilder<> *BuilderM, bool reverse = false) const;
+                      IRBuilder<> *BuilderM, bool reverse = false,
+                      bool legalRecomputeCache = true) const;
   std::map<const Value *, bool> knownRecomputeHeuristic;
   bool shouldRecompute(const Value *val, const ValueToValueMapTy &available,
                        IRBuilder<> *BuilderM);
@@ -1023,10 +1024,9 @@ public:
   }
 
   std::map<Instruction *, ValueMap<BasicBlock *, WeakTrackingVH>> lcssaFixes;
-  std::map<PHINode*, WeakTrackingVH> lcssaPHIToOrig;
+  std::map<PHINode *, WeakTrackingVH> lcssaPHIToOrig;
   Value *fixLCSSA(Instruction *inst, BasicBlock *forwardBlock,
-                  bool mergeIfTrue = false,
-                  bool guaranteeVisible=true) {
+                  bool mergeIfTrue = false, bool guaranteeVisible = true) {
     assert(inst->getName() != "<badref>");
     LoopContext lc;
 
@@ -1130,7 +1130,7 @@ public:
       for (Value *v : lcssaPHI->incoming_values()) {
         if (auto PN = dyn_cast<PHINode>(v))
           if (lcssaPHIToOrig.find(PN) != lcssaPHIToOrig.end()) {
-              v = lcssaPHIToOrig[PN];
+            v = lcssaPHIToOrig[PN];
           }
         if (v == lcssaPHI)
           continue;
@@ -1141,7 +1141,9 @@ public:
           break;
         }
       }
-      if (val && val != lcssaPHI && (!guaranteeVisible || !isa<Instruction>(val) || DT.dominates(cast<Instruction>(val), lcssaPHI))) {
+      if (val && val != lcssaPHI &&
+          (!guaranteeVisible || !isa<Instruction>(val) ||
+           DT.dominates(cast<Instruction>(val), lcssaPHI))) {
         bool nonSelfUse = false;
         for (auto u : lcssaPHI->users()) {
           if (u != lcssaPHI) {

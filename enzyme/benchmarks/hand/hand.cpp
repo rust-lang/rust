@@ -153,28 +153,15 @@ void resize(Matrix* mat, int nrows, int ncols)
 void mat_mult(const Matrix* __restrict lhs, const Matrix* __restrict rhs, Matrix* __restrict out)
 {
     int i, j, k;
-    //resize(out, lhs->nrows, rhs->ncols);
-    {
-
-    if (out->ncols != 13)
-    {
-        free(out->data);
-        out->data = (double*)malloc(lhs->nrows * rhs->ncols * sizeof(double));
-    }
-
-    //out->ncols = rhs->ncols;
-    out->nrows = lhs->nrows;
-    }
+    resize(out, lhs->nrows, rhs->ncols);
     for (i = 0; i < lhs->nrows; i++)
     {
-        k = 0;
         for (k = 0; k < rhs->ncols; k++)
         {
-            int lncols = lhs->ncols;
-            //out->data[i + k * out->nrows] = 0;//lhs->data[i + 0 * lhs->nrows] * rhs->data[0 + k * rhs->nrows];
-            for (j = 0; j < lncols; j++)
+            out->data[i + k * out->nrows] = lhs->data[i + 0 * lhs->nrows] * rhs->data[0 + k * rhs->nrows];
+            for (j = 1; j < lhs->ncols; j++)
             {
-                out->data[i + k] += lhs->data[i + j] * lhs->data[i + j] ;// * rhs->data[j + k * rhs->nrows];
+                out->data[i + k * out->nrows] += lhs->data[i + j * lhs->nrows] * rhs->data[j + k * rhs->nrows];
             }
         }
     }
@@ -348,15 +335,15 @@ void relatives_to_absolutes(
 )
 {
     int i;
-    for (i = 0; i < 20; i++)
+    for (i = 0; i < count; i++)
     {
-        //if (parents[i] == -1)
-        //{
-        //    copy(&absolutes[i], &relatives[i]);
-        //}
-        //else
+        if (parents[i] == -1)
         {
-            mat_mult(&absolutes[i], &relatives[i], &absolutes[i]);
+            copy(&absolutes[i], &relatives[i]);
+        }
+        else
+        {
+            mat_mult(&absolutes[parents[i]], &relatives[i], &absolutes[i]);
         }
     }
 }
@@ -445,6 +432,58 @@ static inline void get_skinned_vertex_positions(
     int apply_global
 )
 {
+    int i;
+
+    Matrix* relatives = get_matrix_array(bone_count);
+    Matrix* absolutes = get_matrix_array(bone_count);
+    Matrix* transforms = get_matrix_array(bone_count);
+
+    get_posed_relatives(bone_count, base_relatives, pose_params, relatives);
+    relatives_to_absolutes(bone_count, relatives, parents, absolutes);
+
+    // Get bone transforms->
+    for (i = 0; i < bone_count; i++)
+    {
+        mat_mult(&absolutes[i], &inverse_base_absolutes[i], &transforms[i]);
+    }
+
+    // Transform vertices by necessary transforms-> + apply skinning
+    resize(positions, 3, base_positions->ncols);
+    fill(positions, 0.0);
+    Matrix* curr_positions = get_new_matrix(4, base_positions->ncols);
+
+    int i_bone, i_vert;
+    for (i_bone = 0; i_bone < bone_count; i_bone++)
+    {
+        mat_mult(&transforms[i_bone], base_positions, curr_positions);
+        for (i_vert = 0; i_vert < positions->ncols; i_vert++)
+        {
+            for (i = 0; i < 3; i++)
+            {
+                positions->data[i + i_vert * positions->nrows] +=
+                    curr_positions->data[i + i_vert * curr_positions->nrows] *
+                    weights->data[i_bone + i_vert * weights->nrows];
+            }
+        }
+    }
+
+    if (is_mirrored)
+    {
+        for (i = 0; i < positions->ncols; i++)
+        {
+            positions->data[0 + i * positions->nrows] *= -1;
+        }
+    }
+
+    if (apply_global)
+    {
+        apply_global_transform(pose_params, positions);
+    }
+
+    delete_matrix(curr_positions);
+    delete_light_matrix_array(relatives, bone_count);
+    delete_light_matrix_array(absolutes, bone_count);
+    delete_light_matrix_array(transforms, bone_count);
 }
 
 
@@ -517,21 +556,23 @@ void hand_objective(
     double* __restrict err
 )
 {
-    //Matrix* pose_params = get_new_empty_matrix();
-    //to_pose_params(bone_count, theta, bone_names, pose_params);
+    Matrix* pose_params = get_new_empty_matrix();
+    to_pose_params(bone_count, theta, bone_names, pose_params);
 
-    
-    //Matrix* vertex_positions = get_new_empty_matrix();
+    Matrix* vertex_positions = get_new_empty_matrix();
+    get_skinned_vertex_positions(
+        bone_count,
+        base_relatives,
+        parents,
+        inverse_base_absolutes,
+        base_positions,
+        weights,
+        is_mirrored,
+        pose_params,
+        vertex_positions,
+        1
+    );
 
-
-    //Matrix* relatives = get_matrix_array(bone_count);
-    Matrix* absolutes = get_matrix_array(bone_count);
-    //Matrix* transforms = get_matrix_array(bone_count);
-
-    //get_posed_relatives(bone_count, base_relatives, pose_params, relatives);
-    relatives_to_absolutes(bone_count, base_relatives, parents, absolutes);
-
-    /*
     int i, j;
     for (i = 0; i < corresp_count; i++)
     {
@@ -545,7 +586,6 @@ void hand_objective(
 
     delete_matrix(pose_params);
     delete_matrix(vertex_positions);
-    */
 }
 
 
@@ -568,13 +608,38 @@ void hand_objective_complicated(
     double* err
 )
 {
-    //Matrix* pose_params = get_new_empty_matrix();
-    //to_pose_params(bone_count, theta, bone_names, pose_params);
+    Matrix* pose_params = get_new_empty_matrix();
+    to_pose_params(bone_count, theta, bone_names, pose_params);
 
-    //Matrix* vertex_positions = get_new_empty_matrix();
+    Matrix* vertex_positions = get_new_empty_matrix();
+    get_skinned_vertex_positions(
+        bone_count,
+        base_relatives,
+        parents,
+        inverse_base_absolutes,
+        base_positions,
+        weights,
+        is_mirrored,
+        pose_params,
+        vertex_positions,
+        1
+    );
 
-    mat_mult(base_relatives, weights, points);
-    err[0] = points->data[0];
+    int i, j;
+    for (i = 0; i < corresp_count; i++)
+    {
+        const int* verts = triangles[correspondences[i]].verts;
+        double const* u = &us[2 * i];
+        for (j = 0; j < 3; j++)
+        {
+            double hand_point_coord =
+                u[0] * vertex_positions->data[j + verts[0] * vertex_positions->nrows] +
+                u[1] * vertex_positions->data[j + verts[1] * vertex_positions->nrows] +
+                (1.0 - u[0] - u[1]) * vertex_positions->data[j + verts[2] * vertex_positions->nrows];
+
+            err[i * 3 + j] = points->data[j + i * points->nrows] - hand_point_coord;
+        }
+    }
 }
 
 //*      tapenade -o hand_tapenade -head "hand_objective(err)/(theta) hand_objective_complicated(err)/(theta us)" hand.c
@@ -622,7 +687,6 @@ void dhand_objective(
     );
 }
 
-/*
 void dhand_objective_complicated(
     double const* theta,
     double* dtheta,
@@ -661,7 +725,6 @@ void dhand_objective_complicated(
         enzyme_dupnoneed, err, derr
     );
 }
-*/
 
 }
 
@@ -2934,4 +2997,3 @@ void hand_objective_b(const double *theta, double *thetab, int bone_count,
 }
 
 #endif
-

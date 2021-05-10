@@ -279,7 +279,8 @@ struct CacheAnalysis {
                   auto SH = SExpr->getLoop()->getHeader();
                   if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
                     auto LH = LExpr->getLoop()->getHeader();
-                    if (SH != LH && !DT.dominates(SH, LH) && !DT.dominates(LH, SH)) {
+                    if (SH != LH && !DT.dominates(SH, LH) &&
+                        !DT.dominates(LH, SH)) {
                       continue;
                     }
                   }
@@ -337,12 +338,13 @@ struct CacheAnalysis {
                   auto SH = SExpr->getLoop()->getHeader();
                   if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
                     auto LH = LExpr->getLoop()->getHeader();
-                    if (SH != LH && !DT.dominates(SH, LH) && !DT.dominates(LH, SH)) {
+                    if (SH != LH && !DT.dominates(SH, LH) &&
+                        !DT.dominates(LH, SH)) {
                       continue;
                     }
                   }
                 }
-                
+
                 auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
                 // llvm::errs() << " $$$ " << *lsub << "|" << *slim << "|" <<
                 // *lim << "\n";

@@ -207,9 +207,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 #define getOpUnchecked(vtmp)                                                   \
   ({                                                                           \
     BasicBlock *parent = scope;                                                \
-    if (parent == nullptr)                                                     \
-      if (auto originst = dyn_cast<Instruction>(val))                          \
-        parent = originst->getParent();                                        \
     getOpFullest(BuilderM, vtmp, parent, false);                               \
   })
 #define getOp(vtmp)                                                            \
@@ -435,19 +432,29 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     bool legalMove = mode == UnwrapMode::LegalFullUnwrap;
     if (mode != UnwrapMode::LegalFullUnwrap) {
-      // TODO actually consider whether this is legal to move to the new
-      // location, rather than recomputable anywhere
-      legalMove = legalRecompute(load, available, &BuilderM);
+      BasicBlock *parent = nullptr;
+      if (isOriginalBlock(*BuilderM.GetInsertBlock()))
+        parent = BuilderM.GetInsertBlock();
+      if (!parent ||
+          LI.getLoopFor(parent) == LI.getLoopFor(load->getParent()) ||
+          DT.dominates(load, parent))
+        legalMove = legalRecompute(load, available, &BuilderM);
+      else
+        legalMove =
+            legalRecompute(load, available, &BuilderM, /*reverse*/ false,
+                           /*legalRecomputeCache*/ false);
     }
     if (!legalMove) {
       EmitWarning("UncacheableUnwrap", load->getDebugLoc(),
                   load->getParent()->getParent(), load->getParent(),
                   "Load cannot be unwrapped ", *load, " in ",
-                  BuilderM.GetInsertBlock()->getName());
+                  BuilderM.GetInsertBlock()->getName(), " - ",
+                  BuilderM.GetInsertBlock()->getParent()->getName());
       return nullptr;
     }
 
     Value *pidx = getOp(load->getOperand(0));
+
     if (pidx == nullptr)
       goto endCheck;
 
@@ -1588,7 +1595,8 @@ void GradientUtils::forceContexts() {
 
 bool GradientUtils::legalRecompute(const Value *val,
                                    const ValueToValueMapTy &available,
-                                   IRBuilder<> *BuilderM, bool reverse) const {
+                                   IRBuilder<> *BuilderM, bool reverse,
+                                   bool legalRecomputeCache) const {
   if (available.count(val)) {
     return true;
   }
@@ -1649,8 +1657,10 @@ bool GradientUtils::legalRecompute(const Value *val,
   }
 
   // If this is a load from cache already, dont force a cache of this
-  if (isa<LoadInst>(val) && CacheLookups.count(cast<LoadInst>(val)))
+  if (legalRecomputeCache && isa<LoadInst>(val) &&
+      CacheLookups.count(cast<LoadInst>(val))) {
     return true;
+  }
 
   // TODO consider callinst here
 
