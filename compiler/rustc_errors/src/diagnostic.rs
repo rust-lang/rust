@@ -283,20 +283,12 @@ impl Diagnostic {
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self {
-        assert!(!suggestion.is_empty());
-        self.suggestions.push(CodeSuggestion {
-            substitutions: vec![Substitution {
-                parts: suggestion
-                    .into_iter()
-                    .map(|(span, snippet)| SubstitutionPart { snippet, span })
-                    .collect(),
-            }],
-            msg: msg.to_owned(),
-            style: SuggestionStyle::ShowCode,
+        self.multipart_suggestion_with_style(
+            msg,
+            suggestion,
             applicability,
-            tool_metadata: Default::default(),
-        });
-        self
+            SuggestionStyle::ShowCode,
+        )
     }
 
     /// [`Diagnostic::multipart_suggestion()`] but you can set the [`SuggestionStyle`].

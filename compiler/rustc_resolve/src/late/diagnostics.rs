@@ -1905,9 +1905,11 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
 
                 let spans_suggs: Vec<_> = formatters
                     .into_iter()
-                    .filter_map(|fmt| fmt)
                     .zip(spans_with_counts.iter())
-                    .map(|(formatter, (span, _))| (*span, formatter(name)))
+                    .filter_map(|(fmt, (span, _))| {
+                        if let Some(formatter) = fmt { Some((formatter, span)) } else { None }
+                    })
+                    .map(|(formatter, span)| (*span, formatter(name)))
                     .collect();
                 err.multipart_suggestion_with_style(
                     &format!(
