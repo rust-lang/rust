@@ -1,3 +1,4 @@
+// compile-flags: --error-format human-annotate-rs
 #![feature(associated_type_bounds)]
 
 use std::fmt::Debug;

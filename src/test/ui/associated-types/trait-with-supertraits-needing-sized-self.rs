@@ -1,3 +1,4 @@
+// compile-flags: --error-format human-annotate-rs
 use std::ops::{Add, Sub, Mul, Div};
 
 trait ArithmeticOps: Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Div<Output=Self> {}

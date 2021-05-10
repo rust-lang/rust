@@ -1,4 +1,5 @@
 // edition:2018
+// compile-flags: --error-format human-annotate-rs
 
 use std::sync::{Arc, Mutex};
 

@@ -1,3 +1,4 @@
+// compile-flags: --error-format human-annotate-rs
 // Check that associated type defaults are wf checked.
 
 #![feature(associated_type_defaults)]

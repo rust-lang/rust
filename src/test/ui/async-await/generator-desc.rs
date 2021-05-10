@@ -1,4 +1,5 @@
 // edition:2018
+// compile-flags: --error-format human-annotate-rs
 #![feature(async_closure)]
 use std::future::Future;
 

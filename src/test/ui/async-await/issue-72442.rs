@@ -1,5 +1,5 @@
 // edition:2018
-// compile-flags:-Cincremental=tmp/issue-72442
+// compile-flags:-Cincremental=tmp/issue-72442 --error-format human-annotate-rs
 
 use std::fs::File;
 use std::future::Future;
