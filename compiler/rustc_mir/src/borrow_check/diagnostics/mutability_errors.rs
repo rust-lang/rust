@@ -524,74 +524,59 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             return (false, None);
         }
         let hir_map = self.infcx.tcx.hir();
-        let my_hir = hir_map.local_def_id_to_hir_id(
-            self.body.source.def_id().as_local().unwrap(),
-        );
-        match hir_map.find(hir_map.get_parent_node(my_hir)) {
-            Some(Node::Item(hir::Item {
-                kind:
-                    hir::ItemKind::Impl(hir::Impl {
-                        of_trait:
-                            Some(hir::TraitRef {
-                                path:
-                                    hir::Path {
-                                        res:
-                                            hir::def::Res::Def(_, td),
-                                        ..
-                                    },
-                                ..
-                            }),
-                        ..
-                    }),
-                ..
-            })) => {
-                (true, td.as_local().and_then(|tld| {
-                    let h = hir_map.local_def_id_to_hir_id(tld);
-                    match hir_map.find(h) {
-                        Some(Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(
-                                _, _, _, _,
-                                items
-                            ),
-                            ..
-                        })) => {
-                            let mut f_in_trait_opt = None;
-                            for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
-                                let hi = fi.hir_id();
-                                if !matches!(k, hir::AssocItemKind::Fn { .. }) {
-                                    continue;
-                                }
-                                if hir_map.name(hi) != hir_map.name(my_hir) {
-                                    continue;
-                                }
-                                f_in_trait_opt = Some(hi);
-                                break;
-                            }
-                            f_in_trait_opt.and_then(|f_in_trait| {
-                                match hir_map.find(f_in_trait) {
-                                    Some(Node::TraitItem(hir::TraitItem {
-                                        kind: hir::TraitItemKind::Fn(hir::FnSig {
-                                            decl: hir::FnDecl {
-                                                inputs,
-                                                ..
-                                            },
-                                            ..
-                                        }, _),
-                                        ..
-                                    })) => {
-                                        let hir::Ty { span, .. } = inputs[local.index() - 1];
-                                        Some(span)
-                                    },
-                                    _ => None,
-                                }
-                            })
+        let my_def = self.body.source.def_id();
+        let my_hir = hir_map.local_def_id_to_hir_id(my_def.as_local().unwrap());
+        let td = if let Some(a) = self.infcx.tcx.impl_of_method(my_def).and_then(|x| {
+            self.infcx.tcx.trait_id_of_impl(x)
+        }) {
+            a
+        } else {
+            return (false, None);
+        };
+        (true, td.as_local().and_then(|tld| {
+            let h = hir_map.local_def_id_to_hir_id(tld);
+            match hir_map.find(h) {
+                Some(Node::Item(hir::Item {
+                    kind: hir::ItemKind::Trait(
+                        _, _, _, _,
+                        items
+                    ),
+                    ..
+                })) => {
+                    let mut f_in_trait_opt = None;
+                    for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
+                        let hi = fi.hir_id();
+                        if !matches!(k, hir::AssocItemKind::Fn { .. }) {
+                            continue;
                         }
-                        _ => None
+                        if hir_map.name(hi) != hir_map.name(my_hir) {
+                            continue;
+                        }
+                        f_in_trait_opt = Some(hi);
+                        break;
                     }
-                }))
+                    f_in_trait_opt.and_then(|f_in_trait| {
+                        match hir_map.find(f_in_trait) {
+                            Some(Node::TraitItem(hir::TraitItem {
+                                kind: hir::TraitItemKind::Fn(hir::FnSig {
+                                    decl: hir::FnDecl {
+                                        inputs,
+                                        ..
+                                    },
+                                    ..
+                                }, _),
+                                ..
+                            })) => {
+                                let hir::Ty { span, .. } = inputs[local.index() - 1];
+                                Some(span)
+                            },
+                            _ => None,
+                        }
+                    })
+                }
+                _ => None
             }
-            _ => (false, None),
-        }
+        }))
     }
 
     // point to span of upvar making closure call require mutable borrow
