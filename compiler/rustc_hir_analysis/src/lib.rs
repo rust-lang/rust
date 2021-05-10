@@ -514,7 +514,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
-            tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
+            tcx.hir().par_for_each_module(|module| variance::test::test_variance(tcx, module))
         })?;
     }
 
