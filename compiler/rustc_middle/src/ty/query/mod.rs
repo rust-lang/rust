@@ -232,6 +232,7 @@ macro_rules! define_callbacks {
         }
 
         pub trait QueryEngine<'tcx>: rustc_data_structures::sync::Sync {
+            #[cfg(parallel_compiler)]
             unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry);
 
             fn encode_query_results(
