@@ -1801,16 +1801,17 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // such:
     //
     // 1. The local object that LLVM just generated
-    // 2. Upstream rust libraries
-    // 3. Local native libraries
+    // 2. Local native libraries
+    // 3. Upstream rust libraries
     // 4. Upstream native libraries
     //
     // The rationale behind this ordering is that those items lower down in the
     // list can't depend on items higher up in the list. For example nothing can
     // depend on what we just generated (e.g., that'd be a circular dependency).
-    // Upstream rust libraries are not allowed to depend on our local native
+    // Upstream rust libraries are not supposed to depend on our local native
     // libraries as that would violate the structure of the DAG, in that
     // scenario they are required to link to them as well in a shared fashion.
+    // (The current implementation still doesn't prevent it though, see the FIXME below.)
     //
     // Note that upstream rust libraries may contain native dependencies as
     // well, but they also can't depend on what we just started to add to the
@@ -1821,6 +1822,14 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
     add_local_crate_allocator_objects(cmd, codegen_results);
 
+    // FIXME: Move this below to other native libraries
+    // (or alternatively link all native libraries after their respective crates).
+    // This change is somewhat breaking in practice due to local static libraries being linked
+    // as whole-archive (#85144), so removing whole-archive may be a pre-requisite.
+    if sess.opts.debugging_opts.link_native_libraries {
+        add_local_native_libraries(cmd, sess, codegen_results);
+    }
+
     // Rust libraries.
     add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
 
@@ -1829,7 +1838,6 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // external build system already has the native dependencies defined, and it
     // will provide them to the linker itself.
     if sess.opts.debugging_opts.link_native_libraries {
-        add_local_native_libraries(cmd, sess, codegen_results);
         add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
     }
 
