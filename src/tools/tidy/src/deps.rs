@@ -42,7 +42,6 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("snap", "BSD-3-Clause"),           // rustc
     // FIXME: this dependency violates the documentation comment above:
     ("fortanix-sgx-abi", "MPL-2.0"), // libstd but only for `sgx` target
-    ("wasmparser", "Apache-2.0 WITH LLVM-exception"), // rustc
 ];
 
 const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
@@ -223,7 +222,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "vcpkg",
     "version_check",
     "wasi",
-    "wasmparser",
     "winapi",
     "winapi-build",
     "winapi-i686-pc-windows-gnu",
