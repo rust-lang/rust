@@ -7,10 +7,7 @@ use std::str::FromStr;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_session::config::{self, parse_crate_types_from_list, parse_externs, CrateType};
-use rustc_session::config::{
-    build_codegen_options, build_debugging_options, get_cmd_lint_options, host_triple,
-    nightly_options,
-};
+use rustc_session::config::{get_cmd_lint_options, host_triple, nightly_options};
 use rustc_session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc_session::getopts;
 use rustc_session::lint::Level;
@@ -360,8 +357,8 @@ impl Options {
             config::parse_json(&matches);
         let error_format = config::parse_error_format(&matches, color, json_rendered);
 
-        let codegen_options = build_codegen_options(matches, error_format);
-        let debugging_opts = build_debugging_options(matches, error_format);
+        let codegen_options = CodegenOptions::build(matches, error_format);
+        let debugging_opts = DebuggingOptions::build(matches, error_format);
 
         let diag = new_handler(error_format, None, &debugging_opts);
 

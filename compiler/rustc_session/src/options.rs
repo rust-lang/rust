@@ -210,9 +210,7 @@ top_level_options!(
 /// generated code to parse an option into its respective field in the struct. There are a few
 /// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {
-    ($struct_name:ident, $setter_name:ident, $defaultfn:ident,
-     $buildfn:ident, $prefix:expr, $outputname:expr,
-     $stat:ident,
+    ($struct_name:ident, $stat:ident, $prefix:expr, $outputname:expr,
      $($( #[$attr:meta] )* $opt:ident : $t:ty = (
         $init:expr,
         $parse:ident,
@@ -223,50 +221,20 @@ macro_rules! options {
     #[derive(Clone)]
     pub struct $struct_name { $(pub $opt: $t),* }
 
-    pub fn $defaultfn() -> $struct_name {
-        $struct_name { $( $( #[$attr] )* $opt: $init),* }
-    }
-
-    pub fn $buildfn(matches: &getopts::Matches, error_format: ErrorOutputType) -> $struct_name
-    {
-        let mut op = $defaultfn();
-        for option in matches.opt_strs($prefix) {
-            let (key, value) = match option.split_once('=') {
-                None => (option, None),
-                Some((k, v)) => (k.to_string(), Some(v)),
-            };
-            let option_to_lookup = key.replace("-", "_");
-            let mut found = false;
-            for &(candidate, setter, type_desc, _) in $stat {
-                if option_to_lookup != candidate { continue }
-                if !setter(&mut op, value) {
-                    match value {
-                        None => {
-                            early_error(error_format, &format!("{0} option `{1}` requires \
-                                                                {2} ({3} {1}=<value>)",
-                                                               $outputname, key,
-                                                               type_desc, $prefix))
-                        }
-                        Some(value) => {
-                            early_error(error_format, &format!("incorrect value `{}` for {} \
-                                                                option `{}` - {} was expected",
-                                                               value, $outputname,
-                                                               key, type_desc))
-                        }
-                    }
-                }
-                found = true;
-                break;
-            }
-            if !found {
-                early_error(error_format, &format!("unknown {} option: `{}`",
-                                                   $outputname, key));
-            }
+    impl Default for $struct_name {
+        fn default() -> $struct_name {
+            $struct_name { $( $( #[$attr] )* $opt: $init),* }
         }
-        return op;
     }
 
     impl $struct_name {
+        pub fn build(
+            matches: &getopts::Matches,
+            error_format: ErrorOutputType,
+        ) -> $struct_name {
+            build_options(matches, $stat, $prefix, $outputname, error_format)
+        }
+
         fn dep_tracking_hash(&self, _for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
             let mut sub_hashes = BTreeMap::new();
             $({
@@ -284,25 +252,75 @@ macro_rules! options {
         }
     }
 
-    pub type $setter_name = fn(&mut $struct_name, v: Option<&str>) -> bool;
-    pub const $stat: &[(&str, $setter_name, &str, &str)] =
-        &[ $( (stringify!($opt), $crate::options::parse::$opt, $crate::options::desc::$parse, $desc) ),* ];
-
-    // Sometimes different options need to build a common structure.
-    // That structure can kept in one of the options' fields, the others become dummy.
-    macro_rules! redirect_field {
-        ($cg:ident.link_arg) => { $cg.link_args };
-        ($cg:ident.pre_link_arg) => { $cg.pre_link_args };
-        ($cg:ident.$field:ident) => { $cg.$field };
-    }
+    pub const $stat: OptionDescrs<$struct_name> =
+        &[ $( (stringify!($opt), $opt, desc::$parse, $desc) ),* ];
 
     $(
-        pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
-            $crate::options::parse::$parse(&mut redirect_field!(cg.$opt), v)
+        fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
+            parse::$parse(&mut redirect_field!(cg.$opt), v)
         }
     )*
 
 ) }
+
+// Sometimes different options need to build a common structure.
+// That structure can be kept in one of the options' fields, the others become dummy.
+macro_rules! redirect_field {
+    ($cg:ident.link_arg) => {
+        $cg.link_args
+    };
+    ($cg:ident.pre_link_arg) => {
+        $cg.pre_link_args
+    };
+    ($cg:ident.$field:ident) => {
+        $cg.$field
+    };
+}
+
+type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
+type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
+
+fn build_options<O: Default>(
+    matches: &getopts::Matches,
+    descrs: OptionDescrs<O>,
+    prefix: &str,
+    outputname: &str,
+    error_format: ErrorOutputType,
+) -> O {
+    let mut op = O::default();
+    for option in matches.opt_strs(prefix) {
+        let (key, value) = match option.split_once('=') {
+            None => (option, None),
+            Some((k, v)) => (k.to_string(), Some(v)),
+        };
+
+        let option_to_lookup = key.replace("-", "_");
+        match descrs.iter().find(|(name, ..)| *name == option_to_lookup) {
+            Some((_, setter, type_desc, _)) => {
+                if !setter(&mut op, value) {
+                    match value {
+                        None => early_error(
+                            error_format,
+                            &format!(
+                                "{0} option `{1}` requires {2} ({3} {1}=<value>)",
+                                outputname, key, type_desc, prefix
+                            ),
+                        ),
+                        Some(value) => early_error(
+                            error_format,
+                            &format!(
+                                "incorrect value `{}` for {} option `{}` - {} was expected",
+                                value, outputname, key, type_desc
+                            ),
+                        ),
+                    }
+                }
+            }
+            None => early_error(error_format, &format!("unknown {} option: `{}`", outputname, key)),
+        }
+    }
+    return op;
+}
 
 #[allow(non_upper_case_globals)]
 mod desc {
@@ -847,9 +865,8 @@ mod parse {
     }
 }
 
-options! {CodegenOptions, CodegenSetter, basic_codegen_options,
-          build_codegen_options, "C", "codegen",
-          CG_OPTIONS,
+options! {
+    CodegenOptions, CG_OPTIONS, "C", "codegen",
 
     // This list is in alphabetical order.
     //
@@ -957,9 +974,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     // - src/doc/rustc/src/codegen-options/index.md
 }
 
-options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
-          build_debugging_options, "Z", "debugging",
-          DB_OPTIONS,
+options! {
+    DebuggingOptions, DB_OPTIONS, "Z", "debugging",
 
     // This list is in alphabetical order.
     //

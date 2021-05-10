@@ -76,7 +76,6 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         externs: options.externs.clone(),
         unstable_features: options.render_options.unstable_features,
         actually_rustdoc: true,
-        debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,
         target_triple: options.target.clone(),
         crate_name: options.crate_name.clone(),
