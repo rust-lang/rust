@@ -53,7 +53,7 @@ span code {
 .docblock code, .docblock-short code {
 	background-color: #191f26;
 }
-pre {
+pre, .rustdoc.source .example-wrap {
 	color: #e6e1cf;
 	background-color: #191f26;
 }

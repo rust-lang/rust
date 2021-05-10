@@ -24,6 +24,7 @@ crate fn render_with_highlighting(
     playground_button: Option<&str>,
     tooltip: Option<(Option<Edition>, &str)>,
     edition: Edition,
+    extra_content: Option<Buffer>,
 ) {
     debug!("highlighting: ================\n{}\n==============", src);
     if let Some((edition_info, class)) = tooltip {
@@ -39,13 +40,21 @@ crate fn render_with_highlighting(
         );
     }
 
-    write_header(out, class);
+    write_header(out, class, extra_content);
     write_code(out, &src, edition);
     write_footer(out, playground_button);
 }
 
-fn write_header(out: &mut Buffer, class: Option<&str>) {
-    writeln!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">", class.unwrap_or_default());
+fn write_header(out: &mut Buffer, class: Option<&str>, extra_content: Option<Buffer>) {
+    write!(out, "<div class=\"example-wrap\">");
+    if let Some(extra) = extra_content {
+        out.push_buffer(extra);
+    }
+    if let Some(class) = class {
+        writeln!(out, "<pre class=\"rust {}\">", class);
+    } else {
+        writeln!(out, "<pre class=\"rust\">");
+    }
 }
 
 fn write_code(out: &mut Buffer, src: &str, edition: Edition) {

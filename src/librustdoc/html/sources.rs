@@ -169,16 +169,17 @@ where
 /// adding line numbers to the left-hand side.
 fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
     let lines = s.lines().count();
+    let mut line_numbers = Buffer::empty_from(buf);
     let mut cols = 0;
     let mut tmp = lines;
     while tmp > 0 {
         cols += 1;
         tmp /= 10;
     }
-    buf.write_str("<pre class=\"line-numbers\">");
+    line_numbers.write_str("<pre class=\"line-numbers\">");
     for i in 1..=lines {
-        writeln!(buf, "<span id=\"{0}\">{0:1$}</span>", i, cols);
+        writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols);
     }
-    buf.write_str("</pre>");
-    highlight::render_with_highlighting(s, buf, None, None, None, edition);
+    line_numbers.write_str("</pre>");
+    highlight::render_with_highlighting(s, buf, None, None, None, edition, Some(line_numbers));
 }
