@@ -131,7 +131,7 @@ where
             }
         }
     }
-    write_document(tcx, def_id, span_viewables, title, w)?;
+    write_document(tcx, fn_span(tcx, def_id), span_viewables, title, w)?;
     Ok(())
 }
 
@@ -139,7 +139,7 @@ where
 /// list `SpanViewable`s.
 pub fn write_document<'tcx, W>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    spanview_span: Span,
     mut span_viewables: Vec<SpanViewable>,
     title: &str,
     w: &mut W,
@@ -147,16 +147,16 @@ pub fn write_document<'tcx, W>(
 where
     W: Write,
 {
-    let fn_span = fn_span(tcx, def_id);
-    let mut from_pos = fn_span.lo();
-    let end_pos = fn_span.hi();
+    let mut from_pos = spanview_span.lo();
+    let end_pos = spanview_span.hi();
     let source_map = tcx.sess.source_map();
     let start = source_map.lookup_char_pos(from_pos);
     let indent_to_initial_start_col = " ".repeat(start.col.to_usize());
     debug!(
-        "fn_span source is:\n{}{}",
+        "spanview_span={:?}; source is:\n{}{}",
+        spanview_span,
         indent_to_initial_start_col,
-        source_map.span_to_snippet(fn_span).expect("function should have printable source")
+        source_map.span_to_snippet(spanview_span).expect("function should have printable source")
     );
     writeln!(w, "{}", HEADER)?;
     writeln!(w, "<title>{}</title>", title)?;

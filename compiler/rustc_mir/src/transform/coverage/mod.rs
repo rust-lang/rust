@@ -204,6 +204,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 self.mir_body,
                 &self.basic_coverage_blocks,
                 self.pass_name,
+                body_span,
                 &coverage_spans,
             );
         }
