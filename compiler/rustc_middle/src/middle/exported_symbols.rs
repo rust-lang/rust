@@ -49,7 +49,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
 pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
     format!(
         "rust_metadata_{}_{:08x}",
-        tcx.original_crate_name(LOCAL_CRATE),
+        tcx.crate_name(LOCAL_CRATE),
         tcx.sess.local_stable_crate_id().to_u64(),
     )
 }

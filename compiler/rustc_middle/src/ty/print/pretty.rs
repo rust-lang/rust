@@ -452,7 +452,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             // Re-exported `extern crate` (#43189).
             DefPathData::CrateRoot => {
-                data = DefPathData::TypeNs(self.tcx().original_crate_name(def_id.krate));
+                data = DefPathData::TypeNs(self.tcx().crate_name(def_id.krate));
             }
             _ => {}
         }

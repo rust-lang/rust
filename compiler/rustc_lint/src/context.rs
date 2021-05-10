@@ -922,7 +922,7 @@ impl<'tcx> LateContext<'tcx> {
             }
 
             fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-                Ok(vec![self.tcx.original_crate_name(cnum)])
+                Ok(vec![self.tcx.crate_name(cnum)])
             }
 
             fn path_qualified(
