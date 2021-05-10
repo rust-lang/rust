@@ -509,7 +509,7 @@ fn document(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, parent: Option
         info!("Documenting {}", name);
     }
     document_item_info(w, cx, item, parent);
-    document_full(w, item, cx);
+    document_full_collapsible(w, item, cx);
 }
 
 /// Render md_text as markdown.
@@ -561,10 +561,29 @@ fn document_short(
     }
 }
 
+fn document_full_collapsible(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>) {
+    document_full_inner(w, item, cx, true);
+}
+
 fn document_full(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>) {
+    document_full_inner(w, item, cx, false);
+}
+
+fn document_full_inner(w: &mut Buffer, item: &clean::Item, cx: &Context<'_>, is_collapsible: bool) {
     if let Some(s) = cx.shared.maybe_collapsed_doc_value(item) {
         debug!("Doc block: =====\n{}\n=====", s);
-        render_markdown(w, cx, &s, item.links(cx));
+        if is_collapsible {
+            w.write_str(
+                "<details class=\"rustdoc-toggle top-doc\" open>\
+                <summary class=\"hideme\">\
+                     <span>Expand description</span>\
+                </summary>",
+            );
+            render_markdown(w, cx, &s, item.links(cx));
+            w.write_str("</details>");
+        } else {
+            render_markdown(w, cx, &s, item.links(cx));
+        }
     }
 }
 

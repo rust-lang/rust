@@ -2,19 +2,19 @@
 
 // @has issue_55364/subone/index.html
 // These foo/bar links in the module's documentation should refer inside `subone`
-// @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.foo.html"]' 'foo'
-// @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.bar.html"]' 'bar'
+// @has - '//section[@id="main"]/details[@open=""]/div[@class="docblock"]//a[@href="fn.foo.html"]' 'foo'
+// @has - '//section[@id="main"]/details[@open=""]/div[@class="docblock"]//a[@href="fn.bar.html"]' 'bar'
 pub mod subone {
     //! See either [foo] or [bar].
 
     // This should refer to subone's `bar`
     // @has issue_55364/subone/fn.foo.html
-    // @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.bar.html"]' 'bar'
+    // @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="fn.bar.html"]' 'bar'
     /// See [bar]
     pub fn foo() {}
     // This should refer to subone's `foo`
     // @has issue_55364/subone/fn.bar.html
-    // @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.foo.html"]' 'foo'
+    // @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="fn.foo.html"]' 'foo'
     /// See [foo]
     pub fn bar() {}
 }
@@ -26,8 +26,8 @@ pub mod subone {
 // @!has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.foo.html"]' 'foo'
 // @!has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.bar.html"]' 'bar'
 // Instead it should be referencing the top level functions
-// @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="../fn.foo.html"]' 'foo'
-// @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="../fn.bar.html"]' 'bar'
+// @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="../fn.foo.html"]' 'foo'
+// @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="../fn.bar.html"]' 'bar'
 // Though there should be such links later
 // @has - '//section[@id="main"]/table//tr[@class="module-item"]/td/a[@class="fn"][@href="fn.foo.html"]' 'foo'
 // @has - '//section[@id="main"]/table//tr[@class="module-item"]/td/a[@class="fn"][@href="fn.bar.html"]' 'bar'
@@ -37,13 +37,13 @@ pub mod subtwo {
     // Despite the module's docs referring to the top level foo/bar,
     // this should refer to subtwo's `bar`
     // @has issue_55364/subtwo/fn.foo.html
-    // @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.bar.html"]' 'bar'
+    // @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="fn.bar.html"]' 'bar'
     /// See [bar]
     pub fn foo() {}
     // Despite the module's docs referring to the top level foo/bar,
     // this should refer to subtwo's `foo`
     // @has issue_55364/subtwo/fn.bar.html
-    // @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="fn.foo.html"]' 'foo'
+    // @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="fn.foo.html"]' 'foo'
     /// See [foo]
     pub fn bar() {}
 }
@@ -59,8 +59,8 @@ pub fn bar() {}
 
 // @has issue_55364/subthree/index.html
 // This module should also refer to the top level foo/bar
-// @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="../fn.foo.html"]' 'foo'
-// @has - '//section[@id="main"]/div[@class="docblock"]//a[@href="../fn.bar.html"]' 'bar'
+// @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="../fn.foo.html"]' 'foo'
+// @has - '//section[@id="main"]/details/div[@class="docblock"]//a[@href="../fn.bar.html"]' 'bar'
 pub mod subthree {
     //! See either [foo][super::foo] or [bar][super::bar]
 }

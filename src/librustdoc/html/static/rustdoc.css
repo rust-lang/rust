@@ -1790,6 +1790,18 @@ details.rustdoc-toggle > summary::before {
 	cursor: pointer;
 }
 
+details.rustdoc-toggle.top-doc > summary,
+details.rustdoc-toggle.top-doc > summary::before,
+details.rustdoc-toggle.non-exhaustive > summary,
+details.rustdoc-toggle.non-exhaustive > summary::before {
+	font-family: 'Fira Sans';
+	font-size: 16px;
+}
+
+details.non-exhaustive {
+	margin-bottom: 8px;
+}
+
 details.rustdoc-toggle > summary.hideme::before {
 	position: relative;
 }

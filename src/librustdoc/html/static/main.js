@@ -377,28 +377,7 @@ function hideThemeButtonState() {
             if (savedHash.length === 0) {
                 return;
             }
-            elem = document.getElementById(savedHash.slice(1)); // we remove the '#'
-            if (!elem || !isHidden(elem)) {
-                return;
-            }
-            var parent = elem.parentNode;
-            if (parent && hasClass(parent, "impl-items")) {
-                // In case this is a trait implementation item, we first need to toggle
-                // the "Show hidden undocumented items".
-                onEachLazy(parent.getElementsByClassName("collapsed"), function(e) {
-                    if (e.parentNode === parent) {
-                        // Only click on the toggle we're looking for.
-                        e.click();
-                        return true;
-                    }
-                });
-                if (isHidden(elem)) {
-                    // The whole parent is collapsed. We need to click on its toggle as well!
-                    if (hasClass(parent.lastElementChild, "collapse-toggle")) {
-                        parent.lastElementChild.click();
-                    }
-                }
-            }
+            expandSection(savedHash.slice(1)); // we remove the '#'
         }
     }
 
@@ -465,25 +444,7 @@ function hideThemeButtonState() {
     }
 
     function expandSection(id) {
-        var elem = document.getElementById(id);
-        if (elem && isHidden(elem)) {
-            var h3 = elem.parentNode.previousElementSibling;
-            if (h3 && h3.tagName !== "H3") {
-                h3 = h3.previousElementSibling; // skip div.docblock
-            }
-
-            if (h3) {
-                var collapses = h3.getElementsByClassName("collapse-toggle");
-                if (collapses.length > 0) {
-                    // The element is not visible, we need to make it appear!
-                    collapseDocs(collapses[0], "show");
-                }
-                // Open all ancestor <details> to make this element visible.
-                openParentDetails(h3.parentNode);
-            } else {
-                openParentDetails(elem.parentNode);
-            }
-        }
+        openParentDetails(document.getElementById(id));
     }
 
     function getHelpElement(build) {
@@ -678,10 +639,6 @@ function hideThemeButtonState() {
         var helpElem = getHelpElement(false);
         if (hasClass(ev.target, "help-button")) {
             displayHelp(true, ev);
-        } else if (hasClass(ev.target, "collapse-toggle")) {
-            collapseDocs(ev.target, "toggle");
-        } else if (hasClass(ev.target.parentNode, "collapse-toggle")) {
-            collapseDocs(ev.target.parentNode, "toggle");
         } else if (ev.target.tagName === "SPAN" && hasClass(ev.target.parentNode, "line-numbers")) {
             handleSourceHighlight(ev);
         } else if (helpElem && hasClass(helpElem, "hidden") === false) {
@@ -898,72 +855,34 @@ function hideThemeButtonState() {
         return "\u2212"; // "\u2212" is "−" minus sign
     }
 
-    function onEveryMatchingChild(elem, className, func) {
-        if (elem && className && func) {
-            var length = elem.childNodes.length;
-            var nodes = elem.childNodes;
-            for (var i = 0; i < length; ++i) {
-                if (hasClass(nodes[i], className)) {
-                    func(nodes[i]);
-                } else {
-                    onEveryMatchingChild(nodes[i], className, func);
-                }
-            }
-        }
-    }
-
-    function toggleAllDocs(fromAutoCollapse) {
+    function toggleAllDocs() {
         var innerToggle = document.getElementById(toggleAllDocsId);
         if (!innerToggle) {
             return;
         }
+        var sectionIsCollapsed = false;
         if (hasClass(innerToggle, "will-expand")) {
             removeClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByTagName("details"), function(e) {
-                e.open = true;
-            });
-            onEveryMatchingChild(innerToggle, "inner", function(e) {
-                e.innerHTML = labelForToggleButton(false);
+            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
+                if (!hasClass(e, "type-contents-toggle")) {
+                    e.open = true;
+                }
             });
             innerToggle.title = "collapse all docs";
-            if (fromAutoCollapse !== true) {
-                onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
-                    collapseDocs(e, "show");
-                });
-            }
         } else {
             addClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByTagName("details"), function(e) {
-                e.open = false;
-            });
-            onEveryMatchingChild(innerToggle, "inner", function(e) {
-                var parent = e.parentNode;
-                var superParent = null;
-
-                if (parent) {
-                    superParent = parent.parentNode;
-                }
-                if (!parent || !superParent || superParent.id !== "main" ||
-                    hasClass(parent, "impl") === false) {
-                    e.innerHTML = labelForToggleButton(true);
+            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
+                if (e.parentNode.id !== "main" ||
+                    (!hasClass(e, "implementors-toggle") &&
+                     !hasClass(e, "type-contents-toggle")))
+                {
+                    e.open = false;
                 }
             });
+            sectionIsCollapsed = true;
             innerToggle.title = "expand all docs";
-            if (fromAutoCollapse !== true) {
-                onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
-                    var parent = e.parentNode;
-                    var superParent = null;
-
-                    if (parent) {
-                        superParent = parent.parentNode;
-                    }
-                    if (!parent || !superParent || superParent.id !== "main" ||
-                        hasClass(parent, "impl") === false) {
-                        collapseDocs(e, "hide");
-                    }
-                });
-            }
         }
+        innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
     }
 
     function collapseDocs(toggle, mode) {
@@ -1102,71 +1021,26 @@ function hideThemeButtonState() {
         referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
     }
 
-    function createSimpleToggle(sectionIsCollapsed) {
-        var toggle = document.createElement("a");
-        toggle.href = "javascript:void(0)";
-        toggle.className = "collapse-toggle";
-        toggle.innerHTML = "[<span class=\"inner\">" + labelForToggleButton(sectionIsCollapsed) +
-                           "</span>]";
-        return toggle;
-    }
-
-    function createToggle(toggle, otherMessage, fontSize, extraClass, show) {
-        var span = document.createElement("span");
-        span.className = "toggle-label";
-        if (show) {
-            span.style.display = "none";
-        }
-        if (!otherMessage) {
-            span.innerHTML = "&nbsp;Expand&nbsp;description";
-        } else {
-            span.innerHTML = otherMessage;
-        }
-
-        if (fontSize) {
-            span.style.fontSize = fontSize;
-        }
-
-        var mainToggle = toggle.cloneNode(true);
-        mainToggle.appendChild(span);
-
-        var wrapper = document.createElement("div");
-        wrapper.className = "toggle-wrapper";
-        if (!show) {
-            addClass(wrapper, "collapsed");
-            var inner = mainToggle.getElementsByClassName("inner");
-            if (inner && inner.length > 0) {
-                inner[0].innerHTML = "+";
-            }
-        }
-        if (extraClass) {
-            addClass(wrapper, extraClass);
-        }
-        wrapper.appendChild(mainToggle);
-        return wrapper;
-    }
-
     (function() {
         var toggles = document.getElementById(toggleAllDocsId);
         if (toggles) {
             toggles.onclick = toggleAllDocs;
         }
 
-        var toggle = createSimpleToggle(false);
         var hideMethodDocs = getSettingValue("auto-hide-method-docs") === "true";
         var hideImplementors = getSettingValue("auto-collapse-implementors") !== "false";
         var hideLargeItemContents = getSettingValue("auto-hide-large-items") !== "false";
 
         var impl_list = document.getElementById("trait-implementations-list");
         if (impl_list !== null) {
-            onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
+            onEachLazy(impl_list.getElementsByClassName("rustdoc-toggle"), function(e) {
                 collapseNonInherent(e);
             });
         }
 
         var blanket_list = document.getElementById("blanket-implementations-list");
         if (blanket_list !== null) {
-            onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
+            onEachLazy(blanket_list.getElementsByClassName("rustdoc-toggle"), function(e) {
                 collapseNonInherent(e);
             });
         }
@@ -1204,66 +1078,6 @@ function hideThemeButtonState() {
                 });
             }
         }
-
-        function buildToggleWrapper(e) {
-            if (hasClass(e, "autohide")) {
-                var wrap = e.previousElementSibling;
-                if (wrap && hasClass(wrap, "toggle-wrapper")) {
-                    var inner_toggle = wrap.childNodes[0];
-                    var extra = e.childNodes[0].tagName === "H3";
-
-                    e.style.display = "none";
-                    addClass(wrap, "collapsed");
-                    onEachLazy(inner_toggle.getElementsByClassName("inner"), function(e) {
-                        e.innerHTML = labelForToggleButton(true);
-                    });
-                    onEachLazy(inner_toggle.getElementsByClassName("toggle-label"), function(e) {
-                        e.style.display = "inline-block";
-                        if (extra === true) {
-                            e.innerHTML = " Show " + e.childNodes[0].innerHTML;
-                        }
-                    });
-                }
-            }
-            if (e.parentNode.id === "main") {
-                var otherMessage = "";
-                var fontSize;
-                var extraClass;
-
-                if (hasClass(e, "type-decl")) {
-                    // We do something special for these
-                    return;
-                } else if (hasClass(e, "non-exhaustive")) {
-                    otherMessage = "&nbsp;This&nbsp;";
-                    if (hasClass(e, "non-exhaustive-struct")) {
-                        otherMessage += "struct";
-                    } else if (hasClass(e, "non-exhaustive-enum")) {
-                        otherMessage += "enum";
-                    } else if (hasClass(e, "non-exhaustive-variant")) {
-                        otherMessage += "enum variant";
-                    } else if (hasClass(e, "non-exhaustive-type")) {
-                        otherMessage += "type";
-                    }
-                    otherMessage += "&nbsp;is&nbsp;marked&nbsp;as&nbsp;non-exhaustive";
-                } else if (hasClass(e.childNodes[0], "impl-items")) {
-                    extraClass = "marg-left";
-                }
-
-                e.parentNode.insertBefore(
-                    createToggle(
-                        toggle,
-                        otherMessage,
-                        fontSize,
-                        extraClass,
-                        true),
-                    e);
-                if (hasClass(e, "non-exhaustive") === true) {
-                    collapseDocs(e.previousSibling.childNodes[0], "toggle");
-                }
-            }
-        }
-
-        onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
 
         var pageId = getPageId();
         if (pageId !== null) {
