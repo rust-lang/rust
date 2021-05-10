@@ -36,6 +36,8 @@ fn main() {
     panic!(a!()); //~ WARN panic message is not a string literal
 
     panic!(format!("{}", 1)); //~ WARN panic message is not a string literal
+    assert!(false, format!("{}", 1)); //~ WARN panic message is not a string literal
+    debug_assert!(false, format!("{}", 1)); //~ WARN panic message is not a string literal
 
     panic![123]; //~ WARN panic message is not a string literal
     panic!{123}; //~ WARN panic message is not a string literal
