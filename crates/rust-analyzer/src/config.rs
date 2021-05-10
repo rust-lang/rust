@@ -36,7 +36,7 @@ config_data! {
     struct ConfigData {
         /// The strategy to use when inserting new imports or merging imports.
         assist_importMergeBehavior |
-        assist_importMergeBehaviour: MergeBehaviorDef  = "\"full\"",
+        assist_importMergeBehaviour: MergeBehaviorDef  = "\"crate\"",
         /// The path structure for newly inserted paths to use.
         assist_importPrefix: ImportPrefixDef           = "\"plain\"",
         /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
@@ -604,8 +604,8 @@ impl Config {
         InsertUseConfig {
             merge: match self.data.assist_importMergeBehavior {
                 MergeBehaviorDef::None => None,
-                MergeBehaviorDef::Full => Some(MergeBehavior::Full),
-                MergeBehaviorDef::Last => Some(MergeBehavior::Last),
+                MergeBehaviorDef::Crate => Some(MergeBehavior::Crate),
+                MergeBehaviorDef::Module => Some(MergeBehavior::Module),
             },
             prefix_kind: match self.data.assist_importPrefix {
                 ImportPrefixDef::Plain => PrefixKind::Plain,
@@ -709,8 +709,10 @@ enum ManifestOrProjectJson {
 #[serde(rename_all = "snake_case")]
 enum MergeBehaviorDef {
     None,
-    Full,
-    Last,
+    #[serde(alias = "full")]
+    Crate,
+    #[serde(alias = "last")]
+    Module,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -867,11 +869,11 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         },
         "MergeBehaviorDef" => set! {
             "type": "string",
-            "enum": ["none", "full", "last"],
+            "enum": ["none", "crate", "module"],
             "enumDescriptions": [
-                "No merging",
-                "Merge all layers of the import trees",
-                "Only merge the last layer of the import trees"
+                "Do not merge imports at all.",
+                "Merge imports from the same crate into a single `use` statement.",
+                "Merge imports from the same module into a single `use` statement."
             ],
         },
         "ImportPrefixDef" => set! {

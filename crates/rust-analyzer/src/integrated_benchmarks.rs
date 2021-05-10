@@ -133,7 +133,7 @@ fn integrated_completion_benchmark() {
             add_call_argument_snippets: true,
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
-                merge: Some(MergeBehavior::Full),
+                merge: Some(MergeBehavior::Crate),
                 prefix_kind: hir::PrefixKind::ByCrate,
                 group: true,
             },
@@ -166,7 +166,7 @@ fn integrated_completion_benchmark() {
             add_call_argument_snippets: true,
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
-                merge: Some(MergeBehavior::Full),
+                merge: Some(MergeBehavior::Crate),
                 prefix_kind: hir::PrefixKind::ByCrate,
                 group: true,
             },
