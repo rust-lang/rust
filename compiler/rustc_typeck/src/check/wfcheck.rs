@@ -18,6 +18,7 @@ use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{self, RegionckMode};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -1731,14 +1732,8 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
 }
 
 #[derive(Clone, Copy)]
-pub struct CheckTypeWellFormedVisitor<'tcx> {
+struct CheckTypeWellFormedVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> CheckTypeWellFormedVisitor<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>) -> CheckTypeWellFormedVisitor<'tcx> {
-        CheckTypeWellFormedVisitor { tcx }
-    }
 }
 
 impl<'tcx> ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
@@ -1871,4 +1866,13 @@ fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuild
         struct_span_err!(tcx.sess, span, E0392, "parameter `{}` is never used", param_name);
     err.span_label(span, "unused parameter");
     err
+}
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        check_mod_type_wf: |tcx, module| {
+            tcx.hir().par_visit_item_likes_in_module(module, &CheckTypeWellFormedVisitor { tcx })
+        },
+        ..*providers
+    };
 }

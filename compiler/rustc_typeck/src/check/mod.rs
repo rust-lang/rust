@@ -90,11 +90,11 @@ mod upvar;
 mod wfcheck;
 pub mod writeback;
 
+pub use check::check_item_type;
 use check::{
     check_abi, check_fn, check_impl_item_well_formed, check_item_well_formed, check_mod_item_types,
     check_trait_item_well_formed,
 };
-pub use check::{check_item_type, check_wf_new};
 pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
@@ -237,6 +237,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
+    wfcheck::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
         typeck_const_arg,

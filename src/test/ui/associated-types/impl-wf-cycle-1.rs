@@ -13,6 +13,7 @@ trait Grault {
 }
 
 impl<T: Grault> Grault for (T,)
+//~^ ERROR overflow evaluating the requirement `<(T,) as Grault>::A == _`
 where
     Self::A: Baz,
     Self::B: Fiz,
@@ -22,7 +23,6 @@ where
     type B = bool;
     //~^ ERROR overflow evaluating the requirement `<(T,) as Grault>::A == _`
 }
-//~^^^^^^^^^^ ERROR overflow evaluating the requirement `<(T,) as Grault>::A == _`
 
 fn main() {
     let x: <(_,) as Grault>::A = ();
