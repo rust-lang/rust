@@ -58,7 +58,8 @@ pub fn write_compressed_metadata<'tcx>(
     // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
     //
     // As a result, we choose a slightly shorter name! As to why
-    // `.note.rustc` works on MinGW, that's another good question...
+    // `.note.rustc` works on MinGW, see
+    // https://github.com/llvm/llvm-project/blob/llvmorg-12.0.0/lld/COFF/Writer.cpp#L1190-L1197
     let section_name = if tcx.sess.target.is_like_osx { "__DATA,.rustc" } else { ".rustc" };
 
     let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
