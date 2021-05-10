@@ -215,7 +215,7 @@ impl<'tcx> Context<'tcx> {
                 &self.shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
-                |buf: &mut _| print_item(self, it, buf),
+                |buf: &mut _| print_item(self, it, buf, &page),
                 &self.shared.style_files,
             )
         } else {
