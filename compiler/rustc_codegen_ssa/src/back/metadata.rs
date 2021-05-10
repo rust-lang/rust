@@ -28,8 +28,10 @@ fn load_metadata_with(
     path: &Path,
     f: impl for<'a> FnOnce(&'a [u8]) -> Result<&'a [u8], String>,
 ) -> Result<MetadataRef, String> {
-    let file = File::open(path).map_err(|e| format!("{:?}", e))?;
-    let data = unsafe { Mmap::map(file) }.map_err(|e| format!("{:?}", e))?;
+    let file =
+        File::open(path).map_err(|e| format!("failed to open file '{}': {}", path.display(), e))?;
+    let data = unsafe { Mmap::map(file) }
+        .map_err(|e| format!("failed to mmap file '{}': {}", path.display(), e))?;
     let metadata = OwningRef::new(data).try_map(f)?;
     return Ok(rustc_erase_owner!(metadata.map_owner_box()));
 }
@@ -38,16 +40,17 @@ impl MetadataLoader for DefaultMetadataLoader {
     fn get_rlib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
-                .map_err(|e| format!("{:?}", e))?;
+                .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
 
             for entry_result in archive.members() {
-                let entry = entry_result.map_err(|e| format!("{:?}", e))?;
+                let entry = entry_result
+                    .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
                 if entry.name() == METADATA_FILENAME.as_bytes() {
                     return Ok(entry.data());
                 }
             }
 
-            Err("couldn't find metadata entry".to_string())
+            Err(format!("metadata not found in rlib '{}'", path.display()))
         })
     }
 
@@ -55,11 +58,14 @@ impl MetadataLoader for DefaultMetadataLoader {
         use object::{Object, ObjectSection};
 
         load_metadata_with(path, |data| {
-            let file = object::File::parse(&data).map_err(|e| format!("parse: {:?}", e))?;
+            let file = object::File::parse(&data)
+                .map_err(|e| format!("failed to parse dylib '{}': {}", path.display(), e))?;
             file.section_by_name(".rustc")
-                .ok_or("no .rustc section")?
+                .ok_or_else(|| format!("no .rustc section in '{}'", path.display()))?
                 .data()
-                .map_err(|e| format!("failed to read .rustc section: {:?}", e))
+                .map_err(|e| {
+                    format!("failed to read .rustc section in '{}': {}", path.display(), e)
+                })
         })
     }
 }
