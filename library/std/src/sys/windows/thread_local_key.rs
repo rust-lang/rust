@@ -225,7 +225,7 @@ unsafe fn run_dtors() {
             let ptr = c::TlsGetValue((*cur).key);
 
             if !ptr.is_null() {
-                c::TlsSetValue((*cur).key, ptr::null_mut());
+                c::TlsFree((*cur).key);
                 ((*cur).dtor)(ptr as *mut _);
                 any_run = true;
             }

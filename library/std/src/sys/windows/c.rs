@@ -848,6 +848,7 @@ extern "system" {
         args: *const c_void,
     ) -> DWORD;
     pub fn TlsAlloc() -> DWORD;
+    pub fn TlsFree(dwTlsIndex: DWORD) -> DWORD;
     pub fn TlsGetValue(dwTlsIndex: DWORD) -> LPVOID;
     pub fn TlsSetValue(dwTlsIndex: DWORD, lpTlsvalue: LPVOID) -> BOOL;
     pub fn GetLastError() -> DWORD;
