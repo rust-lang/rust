@@ -94,15 +94,18 @@ impl<T: PartialEq> FnMut<(&T, &T)> for ByPartialEq {
 /// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
-pub struct Dedup<I, F, T> {
+pub struct Dedup<I, F>
+where
+    I: Iterator,
+{
     inner: I,
     same_bucket: F,
-    last: Option<T>,
+    last: Option<I::Item>,
 }
 
-impl<I, F, T> Dedup<I, F, T>
+impl<I, F> Dedup<I, F>
 where
-    I: Iterator<Item = T>,
+    I: Iterator,
 {
     pub(crate) fn new(inner: I, same_bucket: F) -> Self {
         let mut inner = inner;
@@ -111,12 +114,12 @@ where
 }
 
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-impl<I, F, T> Iterator for Dedup<I, F, T>
+impl<I, F> Iterator for Dedup<I, F>
 where
-    I: Iterator<Item = T>,
-    F: FnMut(&T, &T) -> bool,
+    I: Iterator,
+    F: FnMut(&I::Item, &I::Item) -> bool,
 {
-    type Item = T;
+    type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
         let last_item = self.last.as_ref()?;
@@ -143,7 +146,7 @@ where
 }
 
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-unsafe impl<S, I, F, T> SourceIter for Dedup<I, F, T>
+unsafe impl<S, I, F> SourceIter for Dedup<I, F>
 where
     S: Iterator,
     I: Iterator + SourceIter<Source = S>,
@@ -157,9 +160,9 @@ where
 }
 
 #[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-unsafe impl<I, F, T> InPlaceIterable for Dedup<I, F, T>
+unsafe impl<I, F> InPlaceIterable for Dedup<I, F>
 where
-    I: InPlaceIterable<Item = T>,
-    F: FnMut(&T, &T) -> bool,
+    I: InPlaceIterable,
+    F: FnMut(&I::Item, &I::Item) -> bool,
 {
 }
