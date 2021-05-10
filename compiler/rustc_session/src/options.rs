@@ -621,9 +621,9 @@ mod parse {
         true
     }
 
-    crate fn parse_linker_flavor(slote: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
+    crate fn parse_linker_flavor(slot: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
         match v.and_then(LinkerFlavor::from_str) {
-            Some(lf) => *slote = Some(lf),
+            Some(lf) => *slot = Some(lf),
             _ => return false,
         }
         true
