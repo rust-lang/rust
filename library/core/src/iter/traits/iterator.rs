@@ -2418,7 +2418,8 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
         R: Try<Output = bool>,
-        // FIXME: This is a weird bound; the API should change
+        // FIXME: This bound is rather strange, but means minimal breakage on nightly.
+        // See #85115 for the issue tracking a holistic solution for this and try_map.
         R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
     {
         #[inline]

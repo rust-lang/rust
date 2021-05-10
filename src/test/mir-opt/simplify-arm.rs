@@ -28,10 +28,10 @@ fn from_error<T, E>(e: E) -> Result<T, E> {
     Err(e)
 }
 
-// This was written to the `?` from `try_trait`,
-// but `try_trait_v2` uses a different structure,
-// so the relevant desugar is copied inline
-// in order to keep the test testing the same thing.
+// This was written to the `?` from `try_trait`, but `try_trait_v2` uses a different structure,
+// so the relevant desugar is copied inline in order to keep the test testing the same thing.
+// FIXME: while this might be useful for `r#try!`, it would be nice to have a MIR optimization
+// that picks up the `?` desugaring, as `SimplifyArmIdentity` does not.  See #85133
 fn id_try(r: Result<u8, i32>) -> Result<u8, i32> {
     let x = match into_result(r) {
         Err(e) => return from_error(From::from(e)),
