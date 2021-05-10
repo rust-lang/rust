@@ -21,6 +21,7 @@ pub(crate) type PatId = Idx<Pat>;
 #[derive(Clone, Debug)]
 pub(crate) enum PatternError {
     Unimplemented,
+    UnresolvedVariant,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -103,6 +104,7 @@ impl<'a> PatCtxt<'a> {
 
     fn lower_pattern_unadjusted(&mut self, pat: hir_def::expr::PatId) -> Pat {
         let ty = &self.infer[pat];
+        let variant = self.infer.variant_resolution_for_pat(pat);
 
         let kind = match self.body[pat] {
             hir_def::expr::Pat::Wild => PatKind::Wild,
@@ -126,21 +128,14 @@ impl<'a> PatCtxt<'a> {
                 PatKind::Binding { subpattern: self.lower_opt_pattern(subpat) }
             }
 
-            hir_def::expr::Pat::TupleStruct { ref args, ellipsis, .. } => {
-                let variant_data = match self.infer.variant_resolution_for_pat(pat) {
-                    Some(variant_id) => variant_id.variant_data(self.db.upcast()),
-                    None => panic!("tuple struct pattern not applied to an ADT {:?}", ty),
-                };
-                let subpatterns =
-                    self.lower_tuple_subpats(args, variant_data.fields().len(), ellipsis);
+            hir_def::expr::Pat::TupleStruct { ref args, ellipsis, .. } if variant.is_some() => {
+                let expected_len = variant.unwrap().variant_data(self.db.upcast()).fields().len();
+                let subpatterns = self.lower_tuple_subpats(args, expected_len, ellipsis);
                 self.lower_variant_or_leaf(pat, ty, subpatterns)
             }
 
-            hir_def::expr::Pat::Record { ref args, .. } => {
-                let variant_data = match self.infer.variant_resolution_for_pat(pat) {
-                    Some(variant_id) => variant_id.variant_data(self.db.upcast()),
-                    None => panic!("record pattern not applied to an ADT {:?}", ty),
-                };
+            hir_def::expr::Pat::Record { ref args, .. } if variant.is_some() => {
+                let variant_data = variant.unwrap().variant_data(self.db.upcast());
                 let subpatterns = args
                     .iter()
                     .map(|field| FieldPat {
@@ -150,6 +145,10 @@ impl<'a> PatCtxt<'a> {
                     })
                     .collect();
                 self.lower_variant_or_leaf(pat, ty, subpatterns)
+            }
+            hir_def::expr::Pat::TupleStruct { .. } | hir_def::expr::Pat::Record { .. } => {
+                self.errors.push(PatternError::UnresolvedVariant);
+                PatKind::Wild
             }
 
             hir_def::expr::Pat::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
@@ -208,7 +207,7 @@ impl<'a> PatCtxt<'a> {
                 }
             }
             None => {
-                self.errors.push(PatternError::Unimplemented);
+                self.errors.push(PatternError::UnresolvedVariant);
                 PatKind::Wild
             }
         };
@@ -223,7 +222,7 @@ impl<'a> PatCtxt<'a> {
         match self.infer.variant_resolution_for_pat(pat) {
             Some(_) => pat_from_kind(self.lower_variant_or_leaf(pat, ty, Vec::new())),
             None => {
-                self.errors.push(PatternError::Unimplemented);
+                self.errors.push(PatternError::UnresolvedVariant);
                 pat_from_kind(PatKind::Wild)
             }
         }
@@ -509,41 +508,5 @@ fn main() {
 }
 "#,
         );
-    }
-
-    /// These failing tests are narrowed down from "hir_ty::diagnostics::match_check::tests"
-    // TODO fix
-    mod failing {
-        use super::*;
-
-        #[test]
-        fn never() {
-            check_diagnostics(
-                r#"
-enum Never {}
-
-fn enum_ref(never: &Never) {
-    match never {}
-}
-"#,
-            );
-        }
-
-        #[test]
-        fn unknown_type() {
-            check_diagnostics(
-                r#"
-enum Option<T> { Some(T), None }
-
-fn main() {
-    // `Never` is deliberately not defined so that it's an uninferred type.
-    match Option::<Never>::None {
-        None => {}
-        Some(never) => {}
-    }
-}
-"#,
-            );
-        }
     }
 }

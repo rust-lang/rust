@@ -1357,6 +1357,7 @@ fn enum_(never: Never) {
 }
 fn enum_ref(never: &Never) {
     match never {}
+        //^^^^^ Missing match arm
 }
 fn bang(never: !) {
     match never {}
