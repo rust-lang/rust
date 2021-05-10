@@ -14,6 +14,7 @@ pub mod builtin_macro;
 pub mod proc_macro;
 pub mod quote;
 pub mod eager;
+mod input;
 
 use either::Either;
 
@@ -292,8 +293,19 @@ pub struct MacroCallLoc {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MacroCallKind {
-    FnLike { ast_id: AstId<ast::MacroCall>, fragment: FragmentKind },
-    Derive { ast_id: AstId<ast::Item>, derive_name: String, derive_attr_index: u32 },
+    FnLike {
+        ast_id: AstId<ast::MacroCall>,
+        fragment: FragmentKind,
+    },
+    Derive {
+        ast_id: AstId<ast::Item>,
+        derive_name: String,
+        /// Syntactical index of the invoking `#[derive]` attribute.
+        ///
+        /// Outer attributes are counted first, then inner attributes. This does not support
+        /// out-of-line modules, which may have attributes spread across 2 files!
+        derive_attr_index: u32,
+    },
 }
 
 impl MacroCallKind {
