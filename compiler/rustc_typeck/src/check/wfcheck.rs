@@ -14,6 +14,7 @@ use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -67,7 +68,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
     }
 }
 
-pub(crate) fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+fn check_well_formed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let node = tcx.hir().expect_owner(def_id);
     match node {
         hir::OwnerNode::Crate(_) => {}
@@ -1858,8 +1859,8 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
     fcx.select_all_obligations_or_error();
 }
 
-pub(crate) fn check_wf_new(tcx: TyCtxt<'_>) {
-    let items = tcx.hir_crate_items(());
+fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalDefId) {
+    let items = tcx.hir_module_items(module);
     par_for_each_in(items.items(), |item| tcx.ensure().check_well_formed(item.def_id));
     par_for_each_in(items.impl_items(), |item| tcx.ensure().check_well_formed(item.def_id));
     par_for_each_in(items.trait_items(), |item| tcx.ensure().check_well_formed(item.def_id));
@@ -1947,4 +1948,8 @@ fn error_392(
     let mut err = struct_span_err!(tcx.sess, span, E0392, "parameter `{param_name}` is never used");
     err.span_label(span, "unused parameter");
     err
+}
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { check_mod_type_wf, check_well_formed, ..*providers };
 }

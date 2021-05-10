@@ -826,6 +826,10 @@ rustc_queries! {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
     }
 
+    query check_mod_type_wf(key: LocalDefId) -> () {
+        desc { |tcx| "checking that types are well-formed in {}", describe_as_module(key, tcx) }
+    }
+
     query collect_mod_item_types(key: LocalDefId) -> () {
         desc { |tcx| "collecting item types in {}", describe_as_module(key, tcx) }
     }

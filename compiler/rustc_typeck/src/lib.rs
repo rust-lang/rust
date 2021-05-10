@@ -525,7 +525,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("wf_checking", || check::check_wf_new(tcx));
+        tcx.sess.time("wf_checking", || {
+            tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
+        });
     })?;
 
     // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.

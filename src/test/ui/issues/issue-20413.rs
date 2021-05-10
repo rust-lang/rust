@@ -1,5 +1,5 @@
 trait Foo {
-  fn answer(self);
+    fn answer(self);
 }
 
 struct NoData<T>;
@@ -13,11 +13,11 @@ impl<T> Foo for T where NoData<T>: Foo {
 }
 
 trait Bar {
-  fn answer(self);
+    fn answer(self);
 }
 
 trait Baz {
-  fn answer(self);
+    fn answer(self);
 }
 
 struct AlmostNoData<T>(Option<T>);

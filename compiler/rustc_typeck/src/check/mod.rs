@@ -99,8 +99,6 @@ pub use expectation::Expectation;
 pub use fn_ctxt::*;
 use hir::def::CtorOf;
 pub use inherited::{Inherited, InheritedBuilder};
-use wfcheck::check_well_formed;
-pub(crate) use wfcheck::check_wf_new;
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
@@ -243,6 +241,7 @@ impl<'tcx> EnclosingBreakables<'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
+    wfcheck::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
         typeck_const_arg,
@@ -251,7 +250,6 @@ pub fn provide(providers: &mut Providers) {
         has_typeck_results,
         adt_destructor,
         used_trait_imports,
-        check_well_formed,
         check_mod_item_types,
         region_scope_tree,
         ..*providers
