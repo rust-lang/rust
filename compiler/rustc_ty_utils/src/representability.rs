@@ -25,12 +25,17 @@ pub enum Representability {
 pub fn ty_is_representable<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, sp: Span) -> Representability {
     debug!("is_type_representable: {:?}", ty);
     // To avoid a stack overflow when checking an enum variant or struct that
-    // contains a different, structurally recursive type, maintain a stack
-    // of seen types and check recursion for each of them (issues #3008, #3779).
+    // contains a different, structurally recursive type, maintain a stack of
+    // seen types and check recursion for each of them (issues #3008, #3779,
+    // #74224, #84611). `shadow_seen` contains the full stack and `seen` only
+    // the one for the current type (e.g. if we have structs A and B, B contains
+    // a field of type A, and we're currently looking at B, then `seen` will be
+    // cleared when recursing to check A, but `shadow_seen` won't, so that we
+    // can catch cases of mutual recursion where A also contains B).
     let mut seen: Vec<Ty<'_>> = Vec::new();
-    let mut shadow_seen: Vec<Ty<'_>> = Vec::new();
+    let mut shadow_seen: Vec<&'tcx ty::AdtDef> = Vec::new();
     let mut representable_cache = FxHashMap::default();
-    let mut f_res = false;
+    let mut force_result = false;
     let r = is_type_structurally_recursive(
         tcx,
         sp,
@@ -38,7 +43,7 @@ pub fn ty_is_representable<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, sp: Span) -> R
         &mut shadow_seen,
         &mut representable_cache,
         ty,
-        &mut f_res,
+        &mut force_result,
     );
     debug!("is_type_representable: {:?} is {:?}", ty, r);
     r
@@ -58,10 +63,10 @@ fn are_inner_types_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<Ty<'tcx>>,
+    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
-    f_res: &mut bool,
+    force_result: &mut bool,
 ) -> Representability {
     debug!("are_inner_types_recursive({:?}, {:?}, {:?})", ty, seen, shadow_seen);
     match ty.kind() {
@@ -75,7 +80,7 @@ fn are_inner_types_recursive<'tcx>(
                     shadow_seen,
                     representable_cache,
                     ty,
-                    f_res,
+                    force_result,
                 )
             }))
         }
@@ -88,7 +93,7 @@ fn are_inner_types_recursive<'tcx>(
             shadow_seen,
             representable_cache,
             ty,
-            f_res,
+            force_result,
         ),
         ty::Adt(def, substs) => {
             // Find non representable fields with their spans
@@ -125,22 +130,12 @@ fn are_inner_types_recursive<'tcx>(
                 // case (shadow_seen.first() is the type we are originally
                 // interested in, and if we ever encounter the same AdtDef again,
                 // we know that it must be SelfRecursive) and "forcibly" returning
-                // SelfRecursive (by setting f_res, which tells the calling
+                // SelfRecursive (by setting force_result, which tells the calling
                 // invocations of are_inner_types_representable to forward the
                 // result without adjusting).
-                if shadow_seen.len() > 1 && shadow_seen.len() > seen.len() {
-                    match shadow_seen.first().map(|ty| ty.kind()) {
-                        Some(ty::Adt(f_def, _)) => {
-                            if f_def == def {
-                                *f_res = true;
-                                result = Some(Representability::SelfRecursive(vec![span]));
-                            }
-                        }
-                        Some(_) => {
-                            bug!("shadow_seen stack contains non-ADT type: {:?}", ty);
-                        }
-                        None => unreachable!(),
-                    }
+                if shadow_seen.len() > seen.len() && shadow_seen.first() == Some(def) {
+                    *force_result = true;
+                    result = Some(Representability::SelfRecursive(vec![span]));
                 }
 
                 if result == None {
@@ -154,15 +149,11 @@ fn are_inner_types_recursive<'tcx>(
                     // If we have encountered an ADT definition that we have not seen
                     // before (no need to check them twice), recurse to see whether that
                     // definition is SelfRecursive. If so, we must be ContainsRecursive.
-                    if shadow_seen.iter().len() > 1
-                        && !shadow_seen.iter().take(shadow_seen.iter().len() - 1).any(|seen_ty| {
-                            match seen_ty.kind() {
-                                ty::Adt(seen_def, _) => seen_def == def,
-                                _ => {
-                                    bug!("seen stack contains non-ADT type: {:?}", seen_ty);
-                                }
-                            }
-                        })
+                    if shadow_seen.len() > 1
+                        && !shadow_seen
+                            .iter()
+                            .take(shadow_seen.len() - 1)
+                            .any(|seen_def| seen_def == def)
                     {
                         let adt_def_id = def.did;
                         let raw_adt_ty = tcx.type_of(adt_def_id);
@@ -180,10 +171,10 @@ fn are_inner_types_recursive<'tcx>(
                                 shadow_seen,
                                 representable_cache,
                                 raw_adt_ty,
-                                f_res,
+                                force_result,
                             ) {
                                 Representability::SelfRecursive(_) => {
-                                    if *f_res {
+                                    if *force_result {
                                         Representability::SelfRecursive(vec![span])
                                     } else {
                                         Representability::ContainsRecursive
@@ -227,7 +218,7 @@ fn are_inner_types_recursive<'tcx>(
                                 shadow_seen,
                                 representable_cache,
                                 ty,
-                                f_res,
+                                force_result,
                             ) {
                                 Representability::SelfRecursive(_) => {
                                     Representability::SelfRecursive(vec![span])
@@ -263,10 +254,10 @@ fn is_type_structurally_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<Ty<'tcx>>,
+    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
-    f_res: &mut bool,
+    force_result: &mut bool,
 ) -> Representability {
     debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
     if let Some(representability) = representable_cache.get(ty) {
@@ -284,7 +275,7 @@ fn is_type_structurally_recursive<'tcx>(
         shadow_seen,
         representable_cache,
         ty,
-        f_res,
+        force_result,
     );
 
     representable_cache.insert(ty, representability.clone());
@@ -295,10 +286,10 @@ fn is_type_structurally_recursive_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<Ty<'tcx>>,
+    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
-    f_res: &mut bool,
+    force_result: &mut bool,
 ) -> Representability {
     match ty.kind() {
         ty::Adt(def, _) => {
@@ -346,7 +337,7 @@ fn is_type_structurally_recursive_inner<'tcx>(
             // For structs and enums, track all previously seen types by pushing them
             // onto the 'seen' stack.
             seen.push(ty);
-            shadow_seen.push(ty);
+            shadow_seen.push(def);
             let out = are_inner_types_recursive(
                 tcx,
                 sp,
@@ -354,7 +345,7 @@ fn is_type_structurally_recursive_inner<'tcx>(
                 shadow_seen,
                 representable_cache,
                 ty,
-                f_res,
+                force_result,
             );
             shadow_seen.pop();
             seen.pop();
@@ -362,7 +353,15 @@ fn is_type_structurally_recursive_inner<'tcx>(
         }
         _ => {
             // No need to push in other cases.
-            are_inner_types_recursive(tcx, sp, seen, shadow_seen, representable_cache, ty, f_res)
+            are_inner_types_recursive(
+                tcx,
+                sp,
+                seen,
+                shadow_seen,
+                representable_cache,
+                ty,
+                force_result,
+            )
         }
     }
 }
