@@ -422,12 +422,13 @@ macro_rules! uint_impl {
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
-            issue = "none",
+            issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+        pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_add`.
             unsafe { intrinsics::unchecked_add(self, rhs) }
@@ -460,12 +461,13 @@ macro_rules! uint_impl {
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
-            issue = "none",
+            issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+        pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_sub`.
             unsafe { intrinsics::unchecked_sub(self, rhs) }
@@ -498,12 +500,13 @@ macro_rules! uint_impl {
         #[unstable(
             feature = "unchecked_math",
             reason = "niche optimization path",
-            issue = "none",
+            issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
         #[inline(always)]
-        pub unsafe fn unchecked_mul(self, rhs: Self) -> Self {
+        pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
             // SAFETY: the caller must uphold the safety contract for
             // `unchecked_mul`.
             unsafe { intrinsics::unchecked_mul(self, rhs) }

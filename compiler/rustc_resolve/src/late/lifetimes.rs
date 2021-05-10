@@ -2956,7 +2956,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             return;
         }
 
-        let span = lifetime_refs[0].span;
         let mut late_depth = 0;
         let mut scope = self.scope;
         let mut lifetime_names = FxHashSet::default();
@@ -3035,7 +3034,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
 
-        let mut err = self.report_missing_lifetime_specifiers(span, lifetime_refs.len());
+        let mut spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
+        spans.sort();
+        let mut spans_dedup = spans.clone();
+        spans_dedup.dedup();
+        let spans_with_counts: Vec<_> = spans_dedup
+            .into_iter()
+            .map(|sp| (sp, spans.iter().filter(|nsp| *nsp == &sp).count()))
+            .collect();
+
+        let mut err = self.report_missing_lifetime_specifiers(spans.clone(), lifetime_refs.len());
 
         if let Some(params) = error {
             // If there's no lifetime available, suggest `'static`.
@@ -3043,10 +3051,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 lifetime_names.insert(kw::StaticLifetime);
             }
         }
+
         self.add_missing_lifetime_specifiers_label(
             &mut err,
-            span,
-            lifetime_refs.len(),
+            spans_with_counts,
             &lifetime_names,
             lifetime_spans,
             error.unwrap_or(&[]),

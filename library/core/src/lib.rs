@@ -77,6 +77,7 @@
 #![feature(const_float_classify)]
 #![feature(const_float_bits_conv)]
 #![feature(const_int_unchecked_arith)]
+#![feature(const_inherent_unchecked_arith)]
 #![feature(const_mut_refs)]
 #![feature(const_refs_to_cell)]
 #![feature(const_panic)]
