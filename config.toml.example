@@ -372,8 +372,6 @@ changelog-seen = 2
 # This is mostly useful for tools; if you have changes to `compiler/` they will be ignored.
 #
 # You can set this to "if-unchanged" to only download if `compiler/` has not been modified.
-#
-# FIXME(#82739): currently, this also uses the downloaded compiler for stage0, but that causes unnecessary rebuilds.
 #download-rustc = false
 
 # Number of codegen units to use for each compiler invocation. A value of 0
