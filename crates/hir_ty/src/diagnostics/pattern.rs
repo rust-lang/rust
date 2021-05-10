@@ -511,4 +511,40 @@ fn main() {
 "#,
         );
     }
+
+    /// These failing tests are narrowed down from "hir_ty::diagnostics::match_check::tests"
+    // TODO fix
+    mod failing {
+        use super::*;
+
+        #[test]
+        fn never() {
+            check_diagnostics(
+                r#"
+enum Never {}
+
+fn enum_ref(never: &Never) {
+    match never {}
+}
+"#,
+            );
+        }
+
+        #[test]
+        fn unknown_type() {
+            check_diagnostics(
+                r#"
+enum Option<T> { Some(T), None }
+
+fn main() {
+    // `Never` is deliberately not defined so that it's an uninferred type.
+    match Option::<Never>::None {
+        None => {}
+        Some(never) => {}
+    }
+}
+"#,
+            );
+        }
+    }
 }
