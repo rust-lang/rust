@@ -18,13 +18,13 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        SemanticTokensRangeRequest, WillRenameFiles
+        SemanticTokensRangeRequest, WillRenameFiles,
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
-    PartialResultParams, Position, Range, RenameFilesParams, SemanticTokensRangeParams, TextDocumentItem,
-    TextDocumentPositionParams, WorkDoneProgressParams,
-    SemanticTokens
+    PartialResultParams, Position, Range, RenameFilesParams, SemanticTokens,
+    SemanticTokensRangeParams, TextDocumentItem, TextDocumentPositionParams,
+    WorkDoneProgressParams,
 };
 use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::{from_value, json};
@@ -56,10 +56,9 @@ version = "0.0.0"
 const foo: &'static str = "hi";
 "#,
         )
-        .with_config(serde_json::json!({
-            "semanticStringTokens": semantic_strings 
-        }))
-        .server().wait_until_workspace_is_loaded();
+        .with_config(serde_json::json!({ "semanticStringTokens": semantic_strings }))
+        .server()
+        .wait_until_workspace_is_loaded();
 
         let res = server.send_request::<SemanticTokensRangeRequest>(SemanticTokensRangeParams {
             text_document: server.doc_id("src/lib.rs"),
@@ -72,7 +71,6 @@ const foo: &'static str = "hi";
         assert!(tok_res.data.len() == *semantic_strings as usize);
     });
 }
-
 
 #[test]
 fn completes_items_from_standard_library() {

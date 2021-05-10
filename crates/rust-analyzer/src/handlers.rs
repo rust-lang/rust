@@ -1377,7 +1377,8 @@ pub(crate) fn handle_semantic_tokens_full(
 
     let highlights = snap.analysis.highlight(file_id)?;
     let semantic_strings = snap.config.semantic_strings();
-    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
+    let semantic_tokens =
+        to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
 
     // Unconditionally cache the tokens
     snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens.clone());
@@ -1397,7 +1398,8 @@ pub(crate) fn handle_semantic_tokens_full_delta(
 
     let highlights = snap.analysis.highlight(file_id)?;
     let semantic_strings = snap.config.semantic_strings();
-    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
+    let semantic_tokens =
+        to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
 
     let mut cache = snap.semantic_tokens_cache.lock();
     let cached_tokens = cache.entry(params.text_document.uri).or_default();
@@ -1427,7 +1429,8 @@ pub(crate) fn handle_semantic_tokens_range(
 
     let highlights = snap.analysis.highlight_range(frange)?;
     let semantic_strings = snap.config.semantic_strings();
-    let semantic_tokens = to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
+    let semantic_tokens =
+        to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
     Ok(Some(semantic_tokens.into()))
 }
 

@@ -770,6 +770,11 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.semanticStringTokens": {
+                    "markdownDescription": "Use semantic tokens for strings.\n\nIn some editors (e.g. vscode) semantic tokens override other highlighting grammars.\nBy disabling semantic tokens for strings, other grammars can be used to highlight\ntheir contents.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "$generated-end": false
             }
         },

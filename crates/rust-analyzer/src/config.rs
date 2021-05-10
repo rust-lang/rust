@@ -44,9 +44,6 @@ config_data! {
         /// Show function name and docs in parameter hints.
         callInfo_full: bool = "true",
 
-        /// Use semantic tokens for strings. Disable to support injected grammars
-        semanticStringTokens: bool = "true",
-
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` changes.
         cargo_autoreload: bool           = "true",
@@ -211,6 +208,13 @@ config_data! {
         /// Advanced option, fully override the command rust-analyzer uses for
         /// formatting.
         rustfmt_overrideCommand: Option<Vec<String>> = "null",
+
+        /// Use semantic tokens for strings.
+        ///
+        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
+        /// By disabling semantic tokens for strings, other grammars can be used to highlight
+        /// their contents.
+        semanticStringTokens: bool = "true",
     }
 }
 
