@@ -1,7 +1,7 @@
 use crate::alloc::{Allocator, Global};
 use core::fmt;
 use core::iter::{FusedIterator, TrustedLen};
-use core::mem::{self};
+use core::mem::{self, MaybeUninit};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -104,16 +104,11 @@ impl<T, A: Allocator> DoubleEndedIterator for Drain<'_, T, A> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator> Drop for Drain<'_, T, A> {
     fn drop(&mut self) {
-        /// Continues dropping the remaining elements in the `Drain`, then moves back the
-        /// un-`Drain`ed elements to restore the original `Vec`.
+        /// Moves back the un-`Drain`ed elements to restore the original `Vec`.
         struct DropGuard<'r, 'a, T, A: Allocator>(&'r mut Drain<'a, T, A>);
 
         impl<'r, 'a, T, A: Allocator> Drop for DropGuard<'r, 'a, T, A> {
             fn drop(&mut self) {
-                // Continue the same loop we have below. If the loop already finished, this does
-                // nothing.
-                self.0.for_each(drop);
-
                 if self.0.tail_len > 0 {
                     unsafe {
                         let source_vec = self.0.vec.as_mut();
@@ -131,15 +126,43 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             }
         }
 
-        // exhaust self first
-        while let Some(item) = self.next() {
-            let guard = DropGuard(self);
-            drop(item);
-            mem::forget(guard);
+        let iter = mem::replace(&mut self.iter, (&mut []).iter());
+        let drop_len = iter.len();
+        let drop_ptr = iter.as_slice().as_ptr();
+
+        // forget iter so there's no aliasing reference
+        drop(iter);
+
+        let mut vec = self.vec;
+
+        if mem::size_of::<T>() == 0 {
+            // ZSTs have no identity, so we don't need to move them around, we only need to drop the correct amount.
+            // this can be achieved by manipulating the Vec length instead of moving values out from `iter`.
+            unsafe {
+                let vec = vec.as_mut();
+                let old_len = vec.len();
+                vec.set_len(old_len + drop_len + self.tail_len);
+                vec.truncate(old_len + self.tail_len);
+            }
+
+            return;
         }
 
-        // Drop a `DropGuard` to move back the non-drained tail of `self`.
-        DropGuard(self);
+        // ensure elements are moved back into their appropriate places, even when drop_in_place panics
+        let _guard = DropGuard(self);
+
+        if drop_len == 0 {
+            return;
+        }
+
+        unsafe {
+            let vec = vec.as_mut();
+            let spare_capacity = vec.spare_capacity_mut();
+            let drop_offset = drop_ptr.offset_from(spare_capacity.as_ptr() as *const _) as usize;
+            let drop_range = drop_offset..(drop_offset + drop_len);
+            let to_drop = &mut spare_capacity[drop_range];
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(to_drop));
+        }
     }
 }
 
