@@ -54,6 +54,14 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Text
             cov_mark::hit!(indent_block_contents);
             return Some(edit);
         }
+
+        // Typing enter after the `{` of a use tree list.
+        if let Some(edit) = find_node_at_offset(file.syntax(), position.offset - TextSize::of('{'))
+            .and_then(|list| on_enter_in_use_tree_list(list, position))
+        {
+            cov_mark::hit!(indent_block_contents);
+            return Some(edit);
+        }
     }
 
     None
@@ -108,6 +116,21 @@ fn on_enter_in_block(block: ast::BlockExpr, position: FilePosition) -> Option<Te
     let indent = IndentLevel::from_node(block.syntax());
     let mut edit = TextEdit::insert(position.offset, format!("\n{}$0", indent + 1));
     edit.union(TextEdit::insert(contents.text_range().end(), format!("\n{}", indent))).ok()?;
+    Some(edit)
+}
+
+fn on_enter_in_use_tree_list(list: ast::UseTreeList, position: FilePosition) -> Option<TextEdit> {
+    if list.syntax().text().contains_char('\n') {
+        return None;
+    }
+
+    let indent = IndentLevel::from_node(list.syntax());
+    let mut edit = TextEdit::insert(position.offset, format!("\n{}$0", indent + 1));
+    edit.union(TextEdit::insert(
+        list.r_curly_token()?.text_range().start(),
+        format!("\n{}", indent),
+    ))
+    .ok()?;
     Some(edit)
 }
 
@@ -482,6 +505,98 @@ fn f() {$0
 
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn indents_use_tree_list() {
+        do_check(
+            r#"
+use crate::{$0};
+            "#,
+            r#"
+use crate::{
+    $0
+};
+            "#,
+        );
+        do_check(
+            r#"
+use crate::{$0Object, path::to::OtherThing};
+            "#,
+            r#"
+use crate::{
+    $0Object, path::to::OtherThing
+};
+            "#,
+        );
+        do_check(
+            r#"
+use {crate::{$0Object, path::to::OtherThing}};
+            "#,
+            r#"
+use {crate::{
+    $0Object, path::to::OtherThing
+}};
+            "#,
+        );
+        do_check(
+            r#"
+use {
+    crate::{$0Object, path::to::OtherThing}
+};
+            "#,
+            r#"
+use {
+    crate::{
+        $0Object, path::to::OtherThing
+    }
+};
+            "#,
+        );
+    }
+
+    #[test]
+    fn does_not_indent_use_tree_list_when_not_at_curly_brace() {
+        do_check_noop(
+            r#"
+use path::{Thing$0};
+            "#,
+        );
+    }
+
+    #[test]
+    fn does_not_indent_use_tree_list_without_curly_braces() {
+        do_check_noop(
+            r#"
+use path::Thing$0;
+            "#,
+        );
+        do_check_noop(
+            r#"
+use path::$0Thing;
+            "#,
+        );
+        do_check_noop(
+            r#"
+use path::Thing$0};
+            "#,
+        );
+        do_check_noop(
+            r#"
+use path::{$0Thing;
+            "#,
+        );
+    }
+
+    #[test]
+    fn does_not_indent_multiline_use_tree_list() {
+        do_check_noop(
+            r#"
+use path::{$0
+    Thing
+};
+            "#,
         );
     }
 }
