@@ -1606,7 +1606,6 @@ impl Type {
                 }
             }
             RawPointer(..) => Some(PrimitiveType::RawPointer),
-            BorrowedRef { type_: box Generic(..), .. } => Some(PrimitiveType::Reference),
             BareFunction(..) => Some(PrimitiveType::Fn),
             Never => Some(PrimitiveType::Never),
             _ => None,
@@ -1665,13 +1664,7 @@ impl Type {
     }
 
     crate fn is_primitive(&self) -> bool {
-        match self {
-            Self::Primitive(_) => true,
-            Self::BorrowedRef { ref type_, .. } | Self::RawPointer(_, ref type_) => {
-                type_.is_primitive()
-            }
-            _ => false,
-        }
+        self.primitive_type().is_some()
     }
 
     crate fn projection(&self) -> Option<(&Type, DefId, Symbol)> {
