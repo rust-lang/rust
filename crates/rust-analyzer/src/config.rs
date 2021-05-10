@@ -44,6 +44,9 @@ config_data! {
         /// Show function name and docs in parameter hints.
         callInfo_full: bool = "true",
 
+        /// Use semantic tokens for strings. Disable to support injected grammars
+        semanticStringTokens: bool = "true",
+
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` changes.
         cargo_autoreload: bool           = "true",
@@ -380,6 +383,9 @@ impl Config {
     }
     pub fn line_folding_only(&self) -> bool {
         try_or!(self.caps.text_document.as_ref()?.folding_range.as_ref()?.line_folding_only?, false)
+    }
+    pub fn semantic_strings(&self) -> bool {
+        self.data.semanticStringTokens
     }
     pub fn hierarchical_symbols(&self) -> bool {
         try_or!(

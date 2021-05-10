@@ -18,15 +18,16 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        WillRenameFiles,
+        SemanticTokensRangeRequest, WillRenameFiles
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
-    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
+    PartialResultParams, Position, Range, RenameFilesParams, SemanticTokensRangeParams, TextDocumentItem,
     TextDocumentPositionParams, WorkDoneProgressParams,
+    SemanticTokens
 };
 use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
-use serde_json::json;
+use serde_json::{from_value, json};
 use test_utils::skip_slow_tests;
 
 use crate::{
@@ -36,6 +37,42 @@ use crate::{
 
 const PROFILE: &str = "";
 // const PROFILE: &'static str = "*@3>100";
+
+#[test]
+fn can_disable_semantic_strings() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    [true, false].iter().for_each(|semantic_strings| {
+        let server = Project::with_fixture(
+            r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+const foo: &'static str = "hi";
+"#,
+        )
+        .with_config(serde_json::json!({
+            "semanticStringTokens": semantic_strings 
+        }))
+        .server().wait_until_workspace_is_loaded();
+
+        let res = server.send_request::<SemanticTokensRangeRequest>(SemanticTokensRangeParams {
+            text_document: server.doc_id("src/lib.rs"),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
+            range: Range::new(Position::new(0, 26), Position::new(0, 30)),
+        });
+
+        let tok_res: SemanticTokens = from_value(res).expect("invalid server response");
+        assert!(tok_res.data.len() == *semantic_strings as usize);
+    });
+}
+
 
 #[test]
 fn completes_items_from_standard_library() {
