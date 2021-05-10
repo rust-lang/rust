@@ -106,7 +106,7 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     /// For any `a` and `n`, where no overflow occurs:
     ///
     /// * `Step::forward_unchecked(a, n)` is equivalent to `Step::forward(a, n)`
-    #[unstable(feature = "unchecked_math", reason = "niche optimization path", issue = "none")]
+    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
         Step::forward(start, count)
     }
@@ -178,7 +178,7 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     /// For any `a` and `n`, where no overflow occurs:
     ///
     /// * `Step::backward_unchecked(a, n)` is equivalent to `Step::backward(a, n)`
-    #[unstable(feature = "unchecked_math", reason = "niche optimization path", issue = "none")]
+    #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
     unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
         Step::backward(start, count)
     }

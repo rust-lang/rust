@@ -51,6 +51,14 @@ pub struct Feature {
     pub has_gate_test: bool,
     pub tracking_issue: Option<NonZeroU32>,
 }
+impl Feature {
+    fn tracking_issue_display(&self) -> impl fmt::Display {
+        match self.tracking_issue {
+            None => "none".to_string(),
+            Some(x) => x.to_string(),
+        }
+    }
+}
 
 pub type Features = HashMap<String, Feature>;
 
@@ -361,10 +369,12 @@ fn get_and_check_lib_features(
                     if f.tracking_issue != s.tracking_issue && f.level != Status::Stable {
                         tidy_error!(
                             bad,
-                            "{}:{}: mismatches the `issue` in {}",
+                            "{}:{}: `issue` \"{}\" mismatches the {} `issue` of \"{}\"",
                             file.display(),
                             line,
-                            display
+                            f.tracking_issue_display(),
+                            display,
+                            s.tracking_issue_display(),
                         );
                     }
                 }
