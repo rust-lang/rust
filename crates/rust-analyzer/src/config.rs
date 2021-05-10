@@ -709,9 +709,9 @@ enum ManifestOrProjectJson {
 #[serde(rename_all = "snake_case")]
 enum MergeBehaviorDef {
     None,
-    #[serde(alias = "Full")]
+    #[serde(alias = "full")]
     Crate,
-    #[serde(alias = "Last")]
+    #[serde(alias = "last")]
     Module,
 }
 
