@@ -1671,7 +1671,7 @@ pub trait Seek {
 
     /// Rewind to the beginning of a stream.
     ///
-    /// This is a convenience method, equivalent to `seek(SeekFrom::Start(0)`.
+    /// This is a convenience method, equivalent to `seek(SeekFrom::Start(0))`.
     ///
     /// # Errors
     ///
