@@ -293,35 +293,30 @@ fn build_options<O: Default>(
             None => (option, None),
             Some((k, v)) => (k.to_string(), Some(v)),
         };
+
         let option_to_lookup = key.replace("-", "_");
-        let mut found = false;
-        for &(candidate, setter, type_desc, _) in descrs {
-            if option_to_lookup != candidate {
-                continue;
-            }
-            if !setter(&mut op, value) {
-                match value {
-                    None => early_error(
-                        error_format,
-                        &format!(
-                            "{0} option `{1}` requires {2} ({3} {1}=<value>)",
-                            outputname, key, type_desc, prefix
+        match descrs.iter().find(|(name, ..)| *name == option_to_lookup) {
+            Some((_, setter, type_desc, _)) => {
+                if !setter(&mut op, value) {
+                    match value {
+                        None => early_error(
+                            error_format,
+                            &format!(
+                                "{0} option `{1}` requires {2} ({3} {1}=<value>)",
+                                outputname, key, type_desc, prefix
+                            ),
                         ),
-                    ),
-                    Some(value) => early_error(
-                        error_format,
-                        &format!(
-                            "incorrect value `{}` for {} option `{}` - {} was expected",
-                            value, outputname, key, type_desc
+                        Some(value) => early_error(
+                            error_format,
+                            &format!(
+                                "incorrect value `{}` for {} option `{}` - {} was expected",
+                                value, outputname, key, type_desc
+                            ),
                         ),
-                    ),
+                    }
                 }
             }
-            found = true;
-            break;
-        }
-        if !found {
-            early_error(error_format, &format!("unknown {} option: `{}`", outputname, key));
+            None => early_error(error_format, &format!("unknown {} option: `{}`", outputname, key)),
         }
     }
     return op;
