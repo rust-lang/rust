@@ -478,8 +478,8 @@ impl Build {
             job::setup(self);
         }
 
-        if let Subcommand::Format { check } = self.config.cmd {
-            return format::format(self, check);
+        if let Subcommand::Format { check, paths } = &self.config.cmd {
+            return format::format(self, *check, &paths);
         }
 
         if let Subcommand::Clean { all } = self.config.cmd {
