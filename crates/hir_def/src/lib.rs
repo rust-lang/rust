@@ -753,7 +753,7 @@ fn derive_macro_as_call_id(
             MacroCallKind::Derive {
                 ast_id: item_attr.ast_id,
                 derive_name: last_segment.to_string(),
-                derive_attr_index: derive_attr.0,
+                derive_attr_index: derive_attr.ast_index,
             },
         )
         .into();
