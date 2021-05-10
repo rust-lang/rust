@@ -1,15 +1,18 @@
-#![deny(elided_lifetimes_in_paths)]
-#![allow(unused)] // todo remove
+//! Validation of matches.
+//!
+//! This module provides lowering from [hir_def::expr::Pat] to [self::Pat] and match
+//! checking algorithm.
+//!
+//! It is a loose port of `rustc_mir_build::thir::pattern` module.
 
 mod deconstruct_pat;
-// TODO: find a better place for this?
 mod pat_util;
 pub(crate) mod usefulness;
 
 use hir_def::{body::Body, EnumVariantId, LocalFieldId, VariantId};
 use la_arena::Idx;
 
-use crate::{db::HirDatabase, AdtId, InferenceResult, Interner, Substitution, Ty, TyKind};
+use crate::{db::HirDatabase, InferenceResult, Interner, Substitution, Ty, TyKind};
 
 use self::pat_util::EnumerateAndAdjustIterator;
 
@@ -38,6 +41,7 @@ impl Pat {
     }
 }
 
+/// Close relative to `rustc_mir_build::thir::pattern::PatKind`
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PatKind {
     Wild,
@@ -66,7 +70,7 @@ pub(crate) enum PatKind {
         subpattern: Pat,
     },
 
-    // only bool for now
+    // FIXME: for now, only bool literals are implemented
     LiteralBool {
         value: bool,
     },
@@ -91,7 +95,7 @@ impl<'a> PatCtxt<'a> {
     }
 
     pub(crate) fn lower_pattern(&mut self, pat: hir_def::expr::PatId) -> Pat {
-        // TODO: pattern adjustments (implicit dereference)
+        // FIXME: implement pattern adjustments (implicit pattern dereference; "RFC 2005-match-ergonomics")
         // More info https://github.com/rust-lang/rust/issues/42640#issuecomment-313535089
         let unadjusted_pat = self.lower_pattern_unadjusted(pat);
         unadjusted_pat
@@ -141,7 +145,7 @@ impl<'a> PatCtxt<'a> {
                     .iter()
                     .map(|field| FieldPat {
                         // XXX(iDawer): field lookup is inefficient
-                        field: variant_data.field(&field.name).unwrap_or_else(|| todo!()),
+                        field: variant_data.field(&field.name).unwrap(),
                         pattern: self.lower_pattern(field.pat),
                     })
                     .collect();
@@ -208,11 +212,10 @@ impl<'a> PatCtxt<'a> {
                 PatKind::Wild
             }
         };
-        // TODO: do we need PatKind::AscribeUserType ?
         kind
     }
 
-    fn lower_path(&mut self, pat: hir_def::expr::PatId, path: &hir_def::path::Path) -> Pat {
+    fn lower_path(&mut self, pat: hir_def::expr::PatId, _path: &hir_def::path::Path) -> Pat {
         let ty = &self.infer[pat];
 
         let pat_from_kind = |kind| Pat { ty: ty.clone(), kind: Box::new(kind) };
@@ -338,8 +341,6 @@ impl PatternFoldable for PatKind {
 mod tests {
     use crate::diagnostics::tests::check_diagnostics;
 
-    use super::*;
-
     #[test]
     fn unit() {
         check_diagnostics(
@@ -372,8 +373,6 @@ fn main() {
 
     #[test]
     fn tuple_with_ellipsis() {
-        // TODO: test non-exhaustive match with ellipsis in the middle
-        // of a pattern, check reported witness
         check_diagnostics(
             r#"
 struct A; struct B;

@@ -1,14 +1,54 @@
+//! [`super::usefulness`] explains most of what is happening in this file. As explained there,
+//! values and patterns are made from constructors applied to fields. This file defines a
+//! `Constructor` enum, a `Fields` struct, and various operations to manipulate them and convert
+//! them from/to patterns.
+//!
+//! There's one idea that is not detailed in [`super::usefulness`] because the details are not
+//! needed there: _constructor splitting_.
+//!
+//! # Constructor splitting
+//!
+//! The idea is as follows: given a constructor `c` and a matrix, we want to specialize in turn
+//! with all the value constructors that are covered by `c`, and compute usefulness for each.
+//! Instead of listing all those constructors (which is intractable), we group those value
+//! constructors together as much as possible. Example:
+//!
+//! ```
+//! match (0, false) {
+//!     (0 ..=100, true) => {} // `p_1`
+//!     (50..=150, false) => {} // `p_2`
+//!     (0 ..=200, _) => {} // `q`
+//! }
+//! ```
+//!
+//! The naive approach would try all numbers in the range `0..=200`. But we can be a lot more
+//! clever: `0` and `1` for example will match the exact same rows, and return equivalent
+//! witnesses. In fact all of `0..50` would. We can thus restrict our exploration to 4
+//! constructors: `0..50`, `50..=100`, `101..=150` and `151..=200`. That is enough and infinitely
+//! more tractable.
+//!
+//! We capture this idea in a function `split(p_1 ... p_n, c)` which returns a list of constructors
+//! `c'` covered by `c`. Given such a `c'`, we require that all value ctors `c''` covered by `c'`
+//! return an equivalent set of witnesses after specializing and computing usefulness.
+//! In the example above, witnesses for specializing by `c''` covered by `0..50` will only differ
+//! in their first element.
+//!
+//! We usually also ask that the `c'` together cover all of the original `c`. However we allow
+//! skipping some constructors as long as it doesn't change whether the resulting list of witnesses
+//! is empty of not. We use this in the wildcard `_` case.
+//!
+//! Splitting is implemented in the [`Constructor::split`] function. We don't do splitting for
+//! or-patterns; instead we just try the alternatives one-by-one. For details on splitting
+//! wildcards, see [`SplitWildcard`]; for integer ranges, see [`SplitIntRange`]; for slices, see
+//! [`SplitVarLenSlice`].
+
 use std::{
     cmp::{max, min},
     iter::once,
     ops::RangeInclusive,
 };
 
-use hir_def::{
-    expr::{Expr, Literal, RecordFieldPat},
-    type_ref::Mutability,
-    AttrDefId, EnumVariantId, HasModule, LocalFieldId, VariantId,
-};
+use hir_def::{EnumVariantId, HasModule, LocalFieldId, VariantId};
 use smallvec::{smallvec, SmallVec};
 
 use crate::{AdtId, Interner, Scalar, Ty, TyExt, TyKind};
@@ -20,9 +60,21 @@ use super::{
 
 use self::Constructor::*;
 
+/// [Constructor] uses this in umimplemented variants.
+/// It allows porting match expressions from upstream algorithm without losing semantics.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(super) enum ToDo {}
+pub(super) enum Void {}
 
+/// An inclusive interval, used for precise integer exhaustiveness checking.
+/// `IntRange`s always store a contiguous range. This means that values are
+/// encoded such that `0` encodes the minimum value for the integer,
+/// regardless of the signedness.
+/// For example, the pattern `-128..=127i8` is encoded as `0..=255`.
+/// This makes comparisons and arithmetic on interval endpoints much more
+/// straightforward. See `signed_bias` for details.
+///
+/// `IntRange` is never used to encode an empty range or a "range" that wraps
+/// around the (offset) space: i.e., `range.lo <= range.hi`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct IntRange {
     range: RangeInclusive<u128>,
@@ -55,11 +107,11 @@ impl IntRange {
     }
 
     #[inline]
-    fn from_range(cx: &MatchCheckCtx<'_>, lo: u128, hi: u128, scalar_ty: Scalar) -> IntRange {
+    fn from_range(lo: u128, hi: u128, scalar_ty: Scalar) -> IntRange {
         if let Scalar::Bool = scalar_ty {
             IntRange { range: lo..=hi }
         } else {
-            todo!()
+            unimplemented!()
         }
     }
 
@@ -188,13 +240,13 @@ impl SplitIntRange {
 /// A constructor for array and slice patterns.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) struct Slice {
-    todo: ToDo,
+    _unimplemented: Void,
 }
 
 impl Slice {
     /// See `Constructor::is_covered_by`
-    fn is_covered_by(self, other: Self) -> bool {
-        todo!()
+    fn is_covered_by(self, _other: Self) -> bool {
+        unimplemented!() // never called as Slice contains Void
     }
 }
 
@@ -205,6 +257,7 @@ impl Slice {
 /// `specialize_constructor` returns the list of fields corresponding to a pattern, given a
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
+#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Constructor {
     /// The constructor for patterns that have a single constructor, like tuples, struct patterns
@@ -215,9 +268,9 @@ pub(super) enum Constructor {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    FloatRange(ToDo),
+    FloatRange(Void),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
-    Str(ToDo),
+    Str(Void),
     /// Array and slice patterns.
     Slice(Slice),
     /// Constants that must not be matched structurally. They are treated as black
@@ -253,7 +306,7 @@ impl Constructor {
         }
     }
 
-    fn variant_id_for_adt(&self, adt: hir_def::AdtId, cx: &MatchCheckCtx<'_>) -> VariantId {
+    fn variant_id_for_adt(&self, adt: hir_def::AdtId) -> VariantId {
         match *self {
             Variant(id) => id.into(),
             Single => {
@@ -270,7 +323,6 @@ impl Constructor {
 
     /// Determines the constructor that the given pattern can be specialized to.
     pub(super) fn from_pat(cx: &MatchCheckCtx<'_>, pat: PatId) -> Self {
-        let ty = cx.type_of(pat);
         match cx.pattern_arena.borrow()[pat].kind.as_ref() {
             PatKind::Binding { .. } | PatKind::Wild => Wildcard,
             PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
@@ -312,7 +364,7 @@ impl Constructor {
                 split_range.split(int_ranges.cloned());
                 split_range.iter().map(IntRange).collect()
             }
-            Slice(_) => todo!("Constructor::split Slice"),
+            Slice(_) => unimplemented!(),
             // Any other constructor can be used unchanged.
             _ => smallvec![self.clone()],
         }
@@ -323,7 +375,7 @@ impl Constructor {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(super) fn is_covered_by(&self, pcx: PatCtxt<'_>, other: &Self) -> bool {
+    pub(super) fn is_covered_by(&self, _pcx: PatCtxt<'_>, other: &Self) -> bool {
         // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
@@ -336,10 +388,10 @@ impl Constructor {
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_covered_by(other_range),
             (FloatRange(..), FloatRange(..)) => {
-                todo!()
+                unimplemented!()
             }
-            (Str(self_val), Str(other_val)) => {
-                todo!()
+            (Str(..), Str(..)) => {
+                unimplemented!()
             }
             (Slice(self_slice), Slice(other_slice)) => self_slice.is_covered_by(*other_slice),
 
@@ -358,7 +410,7 @@ impl Constructor {
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
     /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
     /// assumed to have been split from a wildcard.
-    fn is_covered_by_any(&self, pcx: PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
+    fn is_covered_by_any(&self, _pcx: PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
         if used_ctors.is_empty() {
             return false;
         }
@@ -411,9 +463,10 @@ pub(super) struct SplitWildcard {
 impl SplitWildcard {
     pub(super) fn new(pcx: PatCtxt<'_>) -> Self {
         let cx = pcx.cx;
-        let make_range =
-            |start, end, scalar| IntRange(IntRange::from_range(cx, start, end, scalar));
-        // FIXME(iDawer) using NonExhaustive ctor for unhandled types
+        let make_range = |start, end, scalar| IntRange(IntRange::from_range(start, end, scalar));
+
+        // Unhandled types are treated as non-exhaustive. Being explicit here instead of falling
+        // to catchall arm to ease further implementation.
         let unhandled = || smallvec![NonExhaustive];
 
         // This determines the set of all possible constructors for the type `pcx.ty`. For numbers,
@@ -426,7 +479,7 @@ impl SplitWildcard {
         // `cx.is_uninhabited()`).
         let all_ctors = match pcx.ty.kind(&Interner) {
             TyKind::Scalar(Scalar::Bool) => smallvec![make_range(0, 1, Scalar::Bool)],
-            // TyKind::Array(..) if ... => todo!(),
+            // TyKind::Array(..) if ... => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
             &TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ref _substs) => {
                 let enum_data = cx.db.enum_data(enum_id);
@@ -556,26 +609,6 @@ impl SplitWildcard {
     }
 }
 
-#[test]
-fn it_works2() {}
-
-/// Some fields need to be explicitly hidden away in certain cases; see the comment above the
-/// `Fields` struct. This struct represents such a potentially-hidden field.
-#[derive(Debug, Copy, Clone)]
-pub(super) enum FilteredField {
-    Kept(PatId),
-    Hidden,
-}
-
-impl FilteredField {
-    fn kept(self) -> Option<PatId> {
-        match self {
-            FilteredField::Kept(p) => Some(p),
-            FilteredField::Hidden => None,
-        }
-    }
-}
-
 /// A value can be decomposed into a constructor applied to some fields. This struct represents
 /// those fields, generalized to allow patterns in each field. See also `Constructor`.
 /// This is constructed from a constructor using [`Fields::wildcards()`].
@@ -623,14 +656,13 @@ impl Fields {
                 }
                 TyKind::Ref(.., rty) => Fields::from_single_pattern(wildcard_from_ty(rty)),
                 TyKind::Adt(AdtId(adt), substs) => {
-                    let adt_is_box = false; // TODO(iDawer): handle box patterns
+                    let adt_is_box = false; // TODO(iDawer): implement this
                     if adt_is_box {
                         // Use T as the sub pattern type of Box<T>.
-                        let ty = substs.at(&Interner, 0).assert_ty_ref(&Interner);
-                        Fields::from_single_pattern(wildcard_from_ty(ty))
+                        let subst_ty = substs.at(&Interner, 0).assert_ty_ref(&Interner);
+                        Fields::from_single_pattern(wildcard_from_ty(subst_ty))
                     } else {
-                        let variant_id = constructor.variant_id_for_adt(*adt, cx);
-                        let variant = variant_id.variant_data(cx.db.upcast());
+                        let variant_id = constructor.variant_id_for_adt(*adt);
                         let adt_is_local =
                             variant_id.module(cx.db.upcast()).krate() == cx.module.krate();
                         // Whether we must not match the fields of this variant exhaustively.
@@ -655,8 +687,8 @@ impl Fields {
                 }
                 _ => panic!("Unexpected type for `Single` constructor: {:?}", ty),
             },
-            Slice(slice) => {
-                todo!()
+            Slice(..) => {
+                unimplemented!()
             }
             Str(..) | FloatRange(..) | IntRange(..) | NonExhaustive | Opaque | Missing
             | Wildcard => Fields::Vec(Default::default()),
@@ -722,7 +754,7 @@ impl Fields {
                 }
                 _ => PatKind::Wild,
             },
-            Constructor::Slice(slice) => UNHANDLED,
+            Constructor::Slice(_) => UNHANDLED,
             Str(_) => UNHANDLED,
             FloatRange(..) => UNHANDLED,
             Constructor::IntRange(_) => UNHANDLED,
@@ -828,7 +860,7 @@ impl Fields {
         pat: PatId,
         cx: &MatchCheckCtx<'_>,
     ) -> Self {
-        // TODO: these alocations and clones are so unfortunate (+1 for switching to references)
+        // FIXME(iDawer): these alocations and clones are so unfortunate (+1 for switching to references)
         let mut arena = cx.pattern_arena.borrow_mut();
         match arena[pat].kind.as_ref() {
             PatKind::Deref { subpattern } => {
@@ -860,6 +892,3 @@ fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_>) -
     };
     cx.db.attrs(attr_def_id).by_key("non_exhaustive").exists()
 }
-
-#[test]
-fn it_works() {}

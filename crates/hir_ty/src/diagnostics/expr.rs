@@ -437,7 +437,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let cx = usefulness::MatchCheckCtx {
             module: self.owner.module(db.upcast()),
             match_expr,
-            body,
             infer: &infer,
             db,
             pattern_arena: &pattern_arena,
