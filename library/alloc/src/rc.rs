@@ -1733,6 +1733,19 @@ impl<T: ?Sized> fmt::Pointer for Rc<T> {
 
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Rc<T> {
+    /// Converts a generic type `T` into a `Rc<T>`
+    ///
+    /// The conversion allocates on the heap and moves `t`
+    /// from the stack into it.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::rc::Rc;
+    /// let x = 5;
+    /// let rc = Rc::new(5);
+    ///
+    /// assert_eq!(Rc::from(x), rc);
+    /// ```
     fn from(t: T) -> Self {
         Rc::new(t)
     }
