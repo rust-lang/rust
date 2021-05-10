@@ -31,6 +31,9 @@ pub mod ext {
     pub fn expr_todo() -> ast::Expr {
         expr_from_text("todo!()")
     }
+    pub fn empty_block_expr() -> ast::BlockExpr {
+        block_expr(None, None)
+    }
 
     pub fn ty_bool() -> ast::Type {
         ty_path(ident_path("bool"))

@@ -50,21 +50,18 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
         "Replace with if-let",
         target,
         |edit| {
-            let with_placeholder: ast::Pat = match happy_variant {
-                None => make::wildcard_pat().into(),
-                Some(var_name) => make::tuple_struct_pat(
-                    make::ext::ident_path(var_name),
-                    once(make::wildcard_pat().into()),
-                )
-                .into(),
+            let pat = match happy_variant {
+                None => original_pat,
+                Some(var_name) => {
+                    make::tuple_struct_pat(make::ext::ident_path(var_name), once(original_pat))
+                        .into()
+                }
             };
-            let block =
-                make::block_expr(None, None).indent(IndentLevel::from_node(let_stmt.syntax()));
-            let if_ = make::expr_if(make::condition(init, Some(with_placeholder)), block, None);
-            let stmt = make::expr_stmt(if_);
 
-            let placeholder = stmt.syntax().descendants().find_map(ast::WildcardPat::cast).unwrap();
-            let stmt = stmt.replace_descendant(placeholder.into(), original_pat);
+            let block =
+                make::ext::empty_block_expr().indent(IndentLevel::from_node(let_stmt.syntax()));
+            let if_ = make::expr_if(make::condition(init, Some(pat)), block, None);
+            let stmt = make::expr_stmt(if_);
 
             edit.replace_ast(ast::Stmt::from(let_stmt), ast::Stmt::from(stmt));
         },
