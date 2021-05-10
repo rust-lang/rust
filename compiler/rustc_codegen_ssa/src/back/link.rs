@@ -1576,7 +1576,7 @@ fn add_rpath_args(
         let target_triple = sess.opts.target_triple.triple();
         let mut get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
-            let tlib = filesearch::relative_target_lib_path(&sess.sysroot, target_triple);
+            let tlib = rustc_target::target_rustlib_path(&sess.sysroot, target_triple).join("lib");
             let mut path = PathBuf::from(install_prefix);
             path.push(&tlib);
 

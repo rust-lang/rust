@@ -1897,15 +1897,15 @@ impl Target {
         Ok(base)
     }
 
-    /// Search RUST_TARGET_PATH for a JSON file specifying the given target
-    /// triple. If none is found, look for a file called `target.json` inside
-    /// the sysroot under the target-triple's `rustlib` directory.
-    /// Note that it could also just be a bare filename already, so also
-    /// check for that. If one of the hardcoded targets we know about, just
-    /// return it directly.
+    /// Search for a JSON file specifying the given target triple.
     ///
-    /// The error string could come from any of the APIs called, including
-    /// filesystem access and JSON decoding.
+    /// If none is found in `$RUST_TARGET_PATH`, look for a file called `target.json` inside the
+    /// sysroot under the target-triple's `rustlib` directory.  Note that it could also just be a
+    /// bare filename already, so also check for that. If one of the hardcoded targets we know
+    /// about, just return it directly.
+    ///
+    /// The error string could come from any of the APIs called, including filesystem access and
+    /// JSON decoding.
     pub fn search(target_triple: &TargetTriple, sysroot: &PathBuf) -> Result<Target, String> {
         use rustc_serialize::json;
         use std::env;
@@ -1942,8 +1942,13 @@ impl Target {
 
                 // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
                 // as a fallback.
-                let p =
-                    sysroot.join("lib").join("rustlib").join(&target_triple).join("target.json");
+                let rustlib_path = crate::target_rustlib_path(&sysroot, &target_triple);
+                let p = std::array::IntoIter::new([
+                    Path::new(sysroot),
+                    Path::new(&rustlib_path),
+                    Path::new("target.json"),
+                ])
+                .collect::<PathBuf>();
                 if p.is_file() {
                     return load_file(&p);
                 }
