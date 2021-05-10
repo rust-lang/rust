@@ -1,6 +1,7 @@
 #[macro_use]
 mod mask_macros;
 
+#[rustfmt::skip]
 mod mask8;
 mod mask16;
 mod mask32;
