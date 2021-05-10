@@ -1663,6 +1663,8 @@ pub trait Seek {
     ///
     /// # Errors
     ///
+    /// Seeking can fail, for example becaue it might involve flushing a buffer.
+    ///
     /// Seeking to a negative offset is considered an error.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
