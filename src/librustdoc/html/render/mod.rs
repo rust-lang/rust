@@ -1371,7 +1371,7 @@ fn render_impl(
                         .map(|item| format!("{}.{}", item.type_(), name));
                     write!(
                         w,
-                        "<div id=\"{}\" class=\"{}{}\" role=\"heading\" aria-level=\"4\">",
+                        "<div id=\"{}\" class=\"{}{}\" data-level=\"2\">",
                         id, item_type, in_trait_class,
                     );
                     w.write_str("<code>");
@@ -1400,7 +1400,7 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{}\" role=\"heading\" aria-level=\"4\"><code>",
+                    "<div id=\"{}\" class=\"{}{}\" data-level=\"2\"><code>",
                     id, item_type, in_trait_class
                 );
                 assoc_type(
@@ -1421,7 +1421,7 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{}\" role=\"heading\" aria-level=\"4\"><code>",
+                    "<div id=\"{}\" class=\"{}{}\" data-level=\"2\"><code>",
                     id, item_type, in_trait_class
                 );
                 assoc_const(
@@ -1450,7 +1450,7 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{}\" role=\"heading\" aria-level=\"4\"><code>",
+                    "<div id=\"{}\" class=\"{}{}\" data-level=\"2\"><code>",
                     id, item_type, in_trait_class,
                 );
                 assoc_type(
@@ -1593,7 +1593,7 @@ fn render_impl(
         if let Some(use_absolute) = use_absolute {
             write!(
                 w,
-                "{}<div id=\"{}\" class=\"impl\"{} role=\"heading\" aria-level=\"3\">\
+                "{}<div id=\"{}\" class=\"impl\"{} data-level=\"1\">\
                      <code class=\"in-band\">",
                 open_details(&mut close_tags, is_implementing_trait),
                 id,
@@ -1621,7 +1621,7 @@ fn render_impl(
         } else {
             write!(
                 w,
-                "{}<div id=\"{}\" class=\"impl\"{} role=\"heading\" aria-level=\"3\">\
+                "{}<div id=\"{}\" class=\"impl\"{} data-level=\"1\">\
                      <code class=\"in-band\">{}</code>",
                 open_details(&mut close_tags, is_implementing_trait),
                 id,

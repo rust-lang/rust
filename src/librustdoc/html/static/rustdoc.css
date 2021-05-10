@@ -137,19 +137,19 @@ h1.fqn > .in-band > a:hover {
 h2, h3, h4 {
 	border-bottom: 1px solid;
 }
-div[aria-level="3"].impl, div[aria-level="3"].method, div[aria-level="4"].method,
-div[aria-level="3"].type, div[aria-level="4"].type, div[aria-level="4"].associatedconstant,
-div[aria-level="4"].associatedtype {
+div[data-level="1"].impl, div[data-level="1"].method, div[data-level="2"].method,
+div[data-level="1"].type, div[data-level="2"].type, div[data-level="2"].associatedconstant,
+div[data-level="2"].associatedtype {
 	flex-basis: 100%;
 	font-weight: 600;
 	margin-top: 16px;
 	margin-bottom: 10px;
 	position: relative;
 }
-div[aria-level="3"].impl, div[aria-level="3"].method, div[aria-level="4"].method.trait-impl,
-div[aria-level="3"].type, div[aria-level="4"].type.trait-impl,
-div[aria-level="4"].associatedconstant.trait-impl,
-div[aria-level="4"].associatedtype.trait-impl {
+div[data-level="1"].impl, div[data-level="1"].method, div[data-level="2"].method.trait-impl,
+div[data-level="1"].type, div[data-level="2"].type.trait-impl,
+div[data-level="2"].associatedconstant.trait-impl,
+div[data-level="2"].associatedtype.trait-impl {
 	padding-left: 15px;
 }
 
@@ -467,15 +467,15 @@ nav.sub {
 	font-weight: normal;
 }
 
-div[aria-level="3"].impl > .out-of-band {
+div[data-level="1"].impl > .out-of-band {
 	font-size: 21px;
 }
 
-div[aria-level="4"].method > .out-of-band {
+div[data-level="2"].method > .out-of-band {
 	font-size: 19px;
 }
 
-div[aria-level="3"] > code, div[aria-level="4"] > code, .invisible > code {
+div[data-level="1"] > code, div[data-level="2"] > code, .invisible > code {
 	max-width: calc(100% - 41px);
 	display: block;
 }
@@ -569,7 +569,7 @@ div[aria-level="3"] > code, div[aria-level="4"] > code, .invisible > code {
 	margin-left: 20px;
 	margin-top: -34px;
 }
-.content .docblock > .impl-items > div[aria-level="4"] {
+.content .docblock > .impl-items > div[data-level="2"] {
 	border-bottom: 0;
 }
 .content .docblock >.impl-items .table-display {
@@ -694,7 +694,7 @@ a {
 }
 
 .invisible > .srclink,
-div[aria-level="3"] > code + .srclink, div[aria-level="4"] > code + .srclink {
+div[data-level="1"] > code + .srclink, div[data-level="2"] > code + .srclink {
 	position: absolute;
 	top: 0;
 	right: 0;
@@ -929,8 +929,8 @@ body.blur > :not(#help) {
 	flex-grow: 1;
 }
 
-.impl-items div[aria-level="4"], div[aria-level="4"].impl, div[aria-level="3"].impl,
-.methods div[aria-level="3"] {
+.impl-items div[data-level="2"], div[data-level="2"].impl, div[data-level="1"].impl,
+.methods div[data-level="1"] {
 	display: flex;
 	flex-basis: 100%;
 	font-size: 16px;
@@ -999,7 +999,7 @@ a.test-arrow:hover{
 	top: 0;
 }
 
-div[aria-level="3"] > .collapse-toggle, div[aria-level="4"] > .collapse-toggle {
+div[data-level="1"] > .collapse-toggle, div[data-level="2"] > .collapse-toggle {
 	font-size: 0.8em;
 	top: 5px;
 }
@@ -1243,7 +1243,7 @@ pre.rust {
 	margin-left: 5px;
 }
 
-div[aria-level="4"] > .notable-traits {
+div[data-level="2"] > .notable-traits {
 	position: absolute;
 	left: -44px;
 	top: 2px;
@@ -1661,7 +1661,7 @@ details.undocumented[open] > summary::before {
 		padding: 0;
 	}
 
-	.content div[aria-level="4"] > .out-of-band {
+	.content div[data-level="2"] > .out-of-band {
 		position: inherit;
 	}
 
@@ -1684,7 +1684,7 @@ details.undocumented[open] > summary::before {
 		z-index: 1;
 	}
 
-	div[aria-level="4"] > .notable-traits {
+	div[data-level="2"] > .notable-traits {
 		position: absolute;
 		left: -22px;
 		top: 24px;

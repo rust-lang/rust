@@ -585,7 +585,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         if toggled {
             write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
         }
-        write!(w, "<div id=\"{}\" class=\"method\" role=\"heading\" aria-level=\"3\"><code>", id);
+        write!(w, "<div id=\"{}\" class=\"method\" data-level=\"1\"><code>", id);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
         w.write_str("</code>");
         render_stability_since(w, m, t, cx.tcx());
