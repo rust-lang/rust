@@ -12,7 +12,7 @@
 use itertools::Itertools;
 use stdx::{format_to, never};
 
-use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxNode, SyntaxToken};
+use crate::{ast, AstNode, SourceFile, SyntaxKind, SyntaxToken};
 
 /// While the parent module defines basic atomic "constructors", the `ext`
 /// module defines shortcuts for common things.
@@ -601,15 +601,9 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
             panic!("Failed to make ast node `{}` from text {}", std::any::type_name::<N>(), text)
         }
     };
-    let node = node.syntax().clone();
-    let node = unroot(node);
-    let node = N::cast(node).unwrap();
+    let node = node.clone_subtree();
     assert_eq!(node.syntax().text_range().start(), 0.into());
     node
-}
-
-fn unroot(n: SyntaxNode) -> SyntaxNode {
-    SyntaxNode::new_root(n.green().into())
 }
 
 pub fn token(kind: SyntaxKind) -> SyntaxToken {

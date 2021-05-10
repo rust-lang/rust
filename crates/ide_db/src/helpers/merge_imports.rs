@@ -2,8 +2,9 @@
 use std::cmp::Ordering;
 
 use itertools::{EitherOrBoth, Itertools};
-use syntax::ast::{
-    self, edit::AstNodeEdit, make, AstNode, AttrsOwner, PathSegmentKind, VisibilityOwner,
+use syntax::{
+    ast::{self, make, AstNode, AttrsOwner, PathSegmentKind, VisibilityOwner},
+    ted,
 };
 
 /// What type of merges are allowed.
@@ -65,7 +66,7 @@ pub fn try_merge_trees(
     } else {
         (lhs.split_prefix(&lhs_prefix), rhs.split_prefix(&rhs_prefix))
     };
-    recursive_merge(&lhs, &rhs, merge)
+    recursive_merge(&lhs, &rhs, merge).map(|it| it.clone_for_update())
 }
 
 /// Recursively "zips" together lhs and rhs.
@@ -78,7 +79,8 @@ fn recursive_merge(
         .use_tree_list()
         .into_iter()
         .flat_map(|list| list.use_trees())
-        // we use Option here to early return from this function(this is not the same as a `filter` op)
+        // We use Option here to early return from this function(this is not the
+        // same as a `filter` op).
         .map(|tree| match merge.is_tree_allowed(&tree) {
             true => Some(tree),
             false => None,
@@ -111,8 +113,10 @@ fn recursive_merge(
                     let tree_is_self = |tree: ast::UseTree| {
                         tree.path().as_ref().map(path_is_self).unwrap_or(false)
                     };
-                    // check if only one of the two trees has a tree list, and whether that then contains `self` or not.
-                    // If this is the case we can skip this iteration since the path without the list is already included in the other one via `self`
+                    // Check if only one of the two trees has a tree list, and
+                    // whether that then contains `self` or not. If this is the
+                    // case we can skip this iteration since the path without
+                    // the list is already included in the other one via `self`.
                     let tree_contains_self = |tree: &ast::UseTree| {
                         tree.use_tree_list()
                             .map(|tree_list| tree_list.use_trees().any(tree_is_self))
@@ -127,9 +131,11 @@ fn recursive_merge(
                         _ => (),
                     }
 
-                    // glob imports arent part of the use-tree lists so we need to special handle them here as well
-                    // this special handling is only required for when we merge a module import into a glob import of said module
-                    // see the `merge_self_glob` or `merge_mod_into_glob` tests
+                    // Glob imports aren't part of the use-tree lists so we need
+                    // to special handle them here as well this special handling
+                    // is only required for when we merge a module import into a
+                    // glob import of said module see the `merge_self_glob` or
+                    // `merge_mod_into_glob` tests.
                     if lhs_t.star_token().is_some() || rhs_t.star_token().is_some() {
                         *lhs_t = make::use_tree(
                             make::path_unqualified(make::path_segment_self()),
@@ -165,11 +171,11 @@ fn recursive_merge(
         }
     }
 
-    Some(if let Some(old) = lhs.use_tree_list() {
-        lhs.replace_descendant(old, make::use_tree_list(use_trees)).clone_for_update()
-    } else {
-        lhs.clone()
-    })
+    let lhs = lhs.clone_subtree().clone_for_update();
+    if let Some(old) = lhs.use_tree_list() {
+        ted::replace(old.syntax(), make::use_tree_list(use_trees).syntax().clone_for_update());
+    }
+    ast::UseTree::cast(lhs.syntax().clone_subtree())
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.

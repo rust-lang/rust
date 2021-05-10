@@ -337,7 +337,7 @@ enum InsertPos {
 }
 
 #[derive(Default)]
-pub struct SyntaxRewriter<'a> {
+pub(crate) struct SyntaxRewriter<'a> {
     //FIXME: add debug_assertions that all elements are in fact from the same file.
     replacements: FxHashMap<SyntaxElement, Replacement>,
     insertions: IndexMap<InsertPos, Vec<SyntaxElement>>,
@@ -354,13 +354,13 @@ impl fmt::Debug for SyntaxRewriter<'_> {
 }
 
 impl SyntaxRewriter<'_> {
-    pub fn replace<T: Clone + Into<SyntaxElement>>(&mut self, what: &T, with: &T) {
+    pub(crate) fn replace<T: Clone + Into<SyntaxElement>>(&mut self, what: &T, with: &T) {
         let what = what.clone().into();
         let replacement = Replacement::Single(with.clone().into());
         self.replacements.insert(what, replacement);
     }
 
-    pub fn rewrite(&self, node: &SyntaxNode) -> SyntaxNode {
+    pub(crate) fn rewrite(&self, node: &SyntaxNode) -> SyntaxNode {
         let _p = profile::span("rewrite");
 
         if self.replacements.is_empty() && self.insertions.is_empty() {
@@ -370,35 +370,8 @@ impl SyntaxRewriter<'_> {
         with_green(node, green)
     }
 
-    pub fn rewrite_ast<N: AstNode>(self, node: &N) -> N {
+    pub(crate) fn rewrite_ast<N: AstNode>(self, node: &N) -> N {
         N::cast(self.rewrite(node.syntax())).unwrap()
-    }
-
-    /// Returns a node that encompasses all replacements to be done by this rewriter.
-    ///
-    /// Passing the returned node to `rewrite` will apply all replacements queued up in `self`.
-    ///
-    /// Returns `None` when there are no replacements.
-    pub fn rewrite_root(&self) -> Option<SyntaxNode> {
-        let _p = profile::span("rewrite_root");
-        fn element_to_node_or_parent(element: &SyntaxElement) -> Option<SyntaxNode> {
-            match element {
-                SyntaxElement::Node(it) => Some(it.clone()),
-                SyntaxElement::Token(it) => it.parent(),
-            }
-        }
-
-        self.replacements
-            .keys()
-            .filter_map(element_to_node_or_parent)
-            .chain(self.insertions.keys().filter_map(|pos| match pos {
-                InsertPos::FirstChildOf(it) => Some(it.clone()),
-                InsertPos::After(it) => element_to_node_or_parent(it),
-            }))
-            // If we only have one replacement/insertion, we must return its parent node, since `rewrite` does
-            // not replace the node passed to it.
-            .map(|it| it.parent().unwrap_or(it))
-            .fold1(|a, b| least_common_ancestor(&a, &b).unwrap())
     }
 
     fn replacement(&self, element: &SyntaxElement) -> Option<Replacement> {

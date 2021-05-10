@@ -951,6 +951,28 @@ match p.current() {
 
 ## Documentation
 
+Style inline code comments as proper sentences.
+Start with a capital letter, end with a dot.
+
+```rust
+// GOOD
+
+// Only simple single segment paths are allowed.
+MergeBehavior::Last => {
+    tree.use_tree_list().is_none() && tree.path().map(path_len) <= Some(1)
+}
+
+// BAD
+
+// only simple single segment paths are allowed
+MergeBehavior::Last => {
+    tree.use_tree_list().is_none() && tree.path().map(path_len) <= Some(1)
+}
+```
+
+**Rationale:** writing a sentence (or maybe even a paragraph) rather just "a comment" creates a more appropriate frame of mind.
+It tricks you into writing down more of the context you keep in your head while coding.
+
 For `.md` and `.adoc` files, prefer a sentence-per-line format, don't wrap lines.
 If the line is too long, you want to split the sentence in two :-)
 
