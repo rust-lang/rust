@@ -8,9 +8,6 @@
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
 
-// # NITs
-// - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
-
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{

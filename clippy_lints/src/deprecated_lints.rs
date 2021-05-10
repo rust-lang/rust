@@ -1,5 +1,5 @@
 /// This struct fakes the `Lint` declaration that is usually created by `declare_lint!`. This
-/// enables the simple extraction of the metadata without changing the current depreciation
+/// enables the simple extraction of the metadata without changing the current deprecation
 /// declaration.
 pub struct ClippyDeprecatedLint;
 
