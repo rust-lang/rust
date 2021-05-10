@@ -9,19 +9,19 @@ use syntax::ast::{
 /// What type of merges are allowed.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MergeBehavior {
-    /// Merge everything together creating deeply nested imports.
-    Full,
-    /// Only merge the last import level, doesn't allow import nesting.
-    Last,
+    /// Merge imports from the same crate into a single use statement.
+    Crate,
+    /// Merge imports from the same module into a single use statement.
+    Module,
 }
 
 impl MergeBehavior {
     #[inline]
     fn is_tree_allowed(&self, tree: &ast::UseTree) -> bool {
         match self {
-            MergeBehavior::Full => true,
+            MergeBehavior::Crate => true,
             // only simple single segment paths are allowed
-            MergeBehavior::Last => {
+            MergeBehavior::Module => {
                 tree.use_tree_list().is_none() && tree.path().map(path_len) <= Some(1)
             }
         }
@@ -153,7 +153,7 @@ fn recursive_merge(
                 }
             }
             Err(_)
-                if merge == MergeBehavior::Last
+                if merge == MergeBehavior::Module
                     && use_trees.len() > 0
                     && rhs_t.use_tree_list().is_some() =>
             {

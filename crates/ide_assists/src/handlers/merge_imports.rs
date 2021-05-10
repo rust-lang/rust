@@ -27,14 +27,14 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
     if let Some(use_item) = tree.syntax().parent().and_then(ast::Use::cast) {
         let (merged, to_remove) =
             next_prev().filter_map(|dir| neighbor(&use_item, dir)).find_map(|use_item2| {
-                try_merge_imports(&use_item, &use_item2, MergeBehavior::Full).zip(Some(use_item2))
+                try_merge_imports(&use_item, &use_item2, MergeBehavior::Crate).zip(Some(use_item2))
             })?;
 
         imports = Some((use_item, merged, to_remove));
     } else {
         let (merged, to_remove) =
             next_prev().filter_map(|dir| neighbor(&tree, dir)).find_map(|use_tree| {
-                try_merge_trees(&tree, &use_tree, MergeBehavior::Full).zip(Some(use_tree))
+                try_merge_trees(&tree, &use_tree, MergeBehavior::Crate).zip(Some(use_tree))
             })?;
 
         uses = Some((tree.clone(), merged, to_remove))

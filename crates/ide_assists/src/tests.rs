@@ -21,7 +21,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     snippet_cap: SnippetCap::new(true),
     allowed: None,
     insert_use: InsertUseConfig {
-        merge: Some(MergeBehavior::Full),
+        merge: Some(MergeBehavior::Crate),
         prefix_kind: hir::PrefixKind::Plain,
         group: true,
     },
