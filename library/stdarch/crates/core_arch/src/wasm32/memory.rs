@@ -24,6 +24,7 @@ extern "C" {
 #[cfg_attr(test, assert_instr("memory.size", MEM = 0))]
 #[rustc_legacy_const_generics(0)]
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
+#[doc(alias("memory.size"))]
 pub fn memory_size<const MEM: u32>() -> usize {
     static_assert!(MEM: u32 where MEM == 0);
     unsafe { llvm_memory_size(MEM) as usize }
@@ -48,6 +49,7 @@ pub fn memory_size<const MEM: u32>() -> usize {
 #[cfg_attr(test, assert_instr("memory.grow", MEM = 0))]
 #[rustc_legacy_const_generics(0)]
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
+#[doc(alias("memory.grow"))]
 pub fn memory_grow<const MEM: u32>(delta: usize) -> usize {
     unsafe {
         static_assert!(MEM: u32 where MEM == 0);
