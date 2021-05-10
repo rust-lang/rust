@@ -53,7 +53,7 @@ span code {
 .docblock code, .docblock-short code {
 	background-color: #191f26;
 }
-pre {
+pre, .rustdoc.source .example-wrap {
 	color: #e6e1cf;
 	background-color: #191f26;
 }
@@ -509,7 +509,7 @@ kbd {
 	color: #fff;
 }
 
-#theme-picker > img, #settings-menu > img {
+#theme-picker > img, #settings-menu > img, #copy-path > img {
 	filter: invert(100);
 }
 

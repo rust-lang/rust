@@ -1252,15 +1252,31 @@ function hideThemeButtonState() {
         document.execCommand('copy');
         document.body.removeChild(el);
 
-        but.textContent = '✓';
+        // There is always one children, but multiple childNodes.
+        but.children[0].style.display = 'none';
+
+        var tmp;
+        if (but.childNodes.length < 2) {
+            tmp = document.createTextNode('✓');
+            but.appendChild(tmp);
+        } else {
+            onEachLazy(but.childNodes, function(e) {
+                if (e.nodeType === Node.TEXT_NODE) {
+                    tmp = e;
+                    return true;
+                }
+            });
+            tmp.textContent = '✓';
+        }
 
         if (reset_button_timeout !== null) {
             window.clearTimeout(reset_button_timeout);
         }
 
         function reset_button() {
-            but.textContent = '⎘';
+            tmp.textContent = '';
             reset_button_timeout = null;
+            but.children[0].style.display = "";
         }
 
         reset_button_timeout = window.setTimeout(reset_button, 1000);

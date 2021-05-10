@@ -206,7 +206,6 @@ li {
 	max-width: none;
 	overflow: visible;
 	margin-left: 0px;
-	min-width: 70em;
 }
 
 nav.sub {
@@ -357,7 +356,7 @@ nav.sub {
 	padding-left: 0;
 }
 
-.rustdoc:not(.source) .example-wrap {
+.rustdoc .example-wrap {
 	display: inline-flex;
 	margin-bottom: 10px;
 }
@@ -370,8 +369,6 @@ nav.sub {
 .example-wrap > pre.line-number {
 	overflow: initial;
 	border: 1px solid;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
 	padding: 13px 8px;
 	text-align: right;
 }
@@ -381,7 +378,7 @@ nav.sub {
 	overflow-x: auto;
 }
 
-.rustdoc:not(.source) .example-wrap > pre {
+.rustdoc .example-wrap > pre {
 	margin: 0;
 }
 
@@ -395,15 +392,14 @@ nav.sub {
 	table-layout: fixed;
 }
 
-.content pre.line-numbers {
-	float: left;
-	border: none;
+.content > .example-wrap pre.line-numbers {
 	position: relative;
-
 	-webkit-user-select: none;
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
 }
 .line-numbers span {
 	cursor: pointer;
@@ -1321,11 +1317,12 @@ h4 > .notable-traits {
 }
 
 #copy-path {
-	height: 30px;
-	font-size: 18px;
 	margin-left: 10px;
-	padding: 0 6px;
-	width: 28px;
+	padding: 0;
+	padding-left: 2px;
+}
+#copy-path> img {
+	margin-bottom: 2px;
 }
 
 #theme-choices {

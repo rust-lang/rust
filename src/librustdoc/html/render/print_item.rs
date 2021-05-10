@@ -22,9 +22,10 @@ use crate::formats::{AssocItemRender, Impl, RenderMode};
 use crate::html::escape::Escape;
 use crate::html::format::{print_abi_with_space, print_where_clause, Buffer, PrintWithSpace};
 use crate::html::highlight;
+use crate::html::layout::Page;
 use crate::html::markdown::MarkdownSummaryLine;
 
-pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer) {
+pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer, page: &Page<'_>) {
     debug_assert!(!item.is_stripped());
     // Write the breadcrumb trail header for the top
     buf.write_str("<h1 class=\"fqn\"><span class=\"in-band\">");
@@ -74,7 +75,16 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer)
         }
     }
     write!(buf, "<a class=\"{}\" href=\"\">{}</a>", item.type_(), item.name.as_ref().unwrap());
-    write!(buf, "<button id=\"copy-path\" onclick=\"copy_path(this)\">⎘</button>");
+    write!(
+        buf,
+        "<button id=\"copy-path\" onclick=\"copy_path(this)\">\
+            <img src=\"{static_root_path}clipboard{suffix}.svg\" \
+                width=\"19\" height=\"18\" \
+                alt=\"Copy item import\">\
+         </button>",
+        static_root_path = page.get_static_root_path(),
+        suffix = page.resource_suffix,
+    );
 
     buf.write_str("</span>"); // in-band
     buf.write_str("<span class=\"out-of-band\">");
@@ -1016,6 +1026,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             None,
             None,
             it.span(cx.tcx()).inner().edition(),
+            None,
         );
     });
     document(w, cx, it, None)

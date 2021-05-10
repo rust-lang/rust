@@ -34,6 +34,12 @@ crate struct Page<'a> {
     crate static_extra_scripts: &'a [&'a str],
 }
 
+impl<'a> Page<'a> {
+    crate fn get_static_root_path(&self) -> &str {
+        self.static_root_path.unwrap_or(self.root_path)
+    }
+}
+
 crate fn render<T: Print, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
@@ -41,7 +47,7 @@ crate fn render<T: Print, S: Print>(
     t: T,
     style_files: &[StylePath],
 ) -> String {
-    let static_root_path = page.static_root_path.unwrap_or(page.root_path);
+    let static_root_path = page.get_static_root_path();
     format!(
         "<!DOCTYPE html>\
 <html lang=\"en\">\

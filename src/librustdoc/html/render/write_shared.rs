@@ -207,6 +207,7 @@ pub(super) fn write_shared(
     }
     write_toolchain("brush.svg", static_files::BRUSH_SVG)?;
     write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
+    write_toolchain("clipboard.svg", static_files::CLIPBOARD_SVG)?;
     write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
 
     let mut themes: Vec<&String> = themes.iter().collect();

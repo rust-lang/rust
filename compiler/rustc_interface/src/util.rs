@@ -423,8 +423,7 @@ pub fn get_codegen_sysroot(
         .iter()
         .chain(sysroot_candidates.iter())
         .map(|sysroot| {
-            let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir).with_file_name("codegen-backends")
+            filesearch::make_target_lib_path(&sysroot, &target).with_file_name("codegen-backends")
         })
         .find(|f| {
             info!("codegen backend candidate: {}", f.display());
