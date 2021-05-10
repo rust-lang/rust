@@ -565,6 +565,15 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    /// Checks `#[doc(inline)]`/`#[doc(no_inline)]` attributes. Returns `true` if valid.
+    ///
+    /// A doc inlining attribute is invalid if it is applied to a non-`use` item, or
+    /// if there are conflicting attributes for one item.
+    ///
+    /// `specified_inline` is used to keep track of whether we have
+    /// already seen an inlining attribute for this item.
+    /// If so, `specified_inline` holds the value and the span of
+    /// the first `inline`/`no_inline` attribute.
     fn check_doc_inline(
         &self,
         attr: &Attribute,
@@ -619,6 +628,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
+    /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
     fn check_attr_not_crate_level(
         &self,
         meta: &NestedMetaItem,
@@ -641,6 +651,7 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    /// Checks that an attribute is used at the crate level. Returns `true` if valid.
     fn check_attr_crate_level(
         &self,
         attr: &Attribute,
@@ -683,6 +694,12 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
+    /// Runs various checks on `#[doc]` attributes. Returns `true` if valid.
+    ///
+    /// `specified_inline` should be initialized to `None` and kept for the scope
+    /// of one item. Read the documentation of [`check_doc_inline`] for more information.
+    ///
+    /// [`check_doc_inline`]: Self::check_doc_inline
     fn check_doc_attrs(
         &self,
         attr: &Attribute,
