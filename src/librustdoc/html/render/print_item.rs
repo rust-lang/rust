@@ -1026,6 +1026,7 @@ fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Mac
             None,
             None,
             it.span(cx.tcx()).inner().edition(),
+            None,
         );
     });
     document(w, cx, it, None)

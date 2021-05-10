@@ -28,7 +28,7 @@ h4:not(.method):not(.type):not(.tymethod) {
 .docblock code, .docblock-short code {
 	background-color: #F5F5F5;
 }
-pre {
+pre, .rustdoc.source .example-wrap {
 	background-color: #F5F5F5;
 }
 
