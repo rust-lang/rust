@@ -1005,7 +1005,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
-    pub crate_name: Symbol,
+    crate_name: Symbol,
 
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,

@@ -1673,7 +1673,7 @@ impl EncodeContext<'a, 'tcx> {
             .iter()
             .map(|&cnum| {
                 let dep = CrateDep {
-                    name: self.tcx.original_crate_name(cnum),
+                    name: self.tcx.crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),

@@ -1621,7 +1621,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     fn item_name_from_def_id(self, def_id: DefId) -> Option<Symbol> {
         if def_id.index == CRATE_DEF_INDEX {
-            Some(self.original_crate_name(def_id.krate))
+            Some(self.crate_name(def_id.krate))
         } else {
             let def_key = self.def_key(def_id);
             match def_key.disambiguated_data.data {
