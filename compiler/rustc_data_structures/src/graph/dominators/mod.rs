@@ -23,8 +23,11 @@ rustc_index::newtype_index! {
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     // compute the post order index (rank) for each node
     let mut post_order_rank = IndexVec::from_elem_n(0, graph.num_nodes());
-    let mut parent: IndexVec<PreorderIndex, Option<PreorderIndex>> =
-        IndexVec::from_elem_n(None, graph.num_nodes());
+
+    // We allocate capacity for the full set of nodes, because most of the time
+    // most of the nodes *are* reachable.
+    let mut parent: IndexVec<PreorderIndex, PreorderIndex> =
+        IndexVec::with_capacity(graph.num_nodes());
 
     let mut stack = vec![PreOrderFrame {
         pre_order_idx: PreorderIndex::new(0),
@@ -35,6 +38,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
     let mut real_to_pre_order: IndexVec<G::Node, Option<PreorderIndex>> =
         IndexVec::from_elem_n(None, graph.num_nodes());
     pre_order_to_real.push(graph.start_node());
+    parent.push(PreorderIndex::new(0)); // the parent of the root node is the root for now.
     real_to_pre_order[graph.start_node()] = Some(PreorderIndex::new(0));
     let mut post_order_idx = 0;
 
@@ -43,7 +47,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
             if real_to_pre_order[successor].is_none() {
                 let pre_order_idx = pre_order_to_real.push(successor);
                 real_to_pre_order[successor] = Some(pre_order_idx);
-                parent[pre_order_idx] = Some(frame.pre_order_idx);
+                parent.push(frame.pre_order_idx);
                 stack.push(PreOrderFrame { pre_order_idx, iter: graph.successors(successor) });
 
                 continue 'recurse;
@@ -67,7 +71,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // Optimization: process buckets just once, at the start of the
         // iteration. Do not explicitly empty the bucket (even though it will
         // not be used again), to save some instructions.
-        let z = parent[w].unwrap();
+        let z = parent[w];
         for &v in bucket[z].iter() {
             let y = eval(&mut parent, lastlinked, &semi, &mut label, v);
             idom[v] = if semi[y] < z { y } else { z };
@@ -83,10 +87,10 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
 
         // Optimization: Do not insert into buckets if parent[w] = semi[w], as
         // we then immediately know the idom.
-        if parent[w].unwrap() != semi[w] {
+        if parent[w] != semi[w] {
             bucket[semi[w]].push(w);
         } else {
-            idom[w] = parent[w].unwrap();
+            idom[w] = parent[w];
         }
 
         // Optimization: We share the parent array between processed and not
@@ -109,7 +113,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
 
 #[inline]
 fn eval(
-    ancestor: &mut IndexVec<PreorderIndex, Option<PreorderIndex>>,
+    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
     semi: &IndexVec<PreorderIndex, PreorderIndex>,
     label: &mut IndexVec<PreorderIndex, PreorderIndex>,
@@ -130,14 +134,14 @@ fn is_processed(v: PreorderIndex, lastlinked: Option<PreorderIndex>) -> bool {
 
 #[inline]
 fn compress(
-    ancestor: &mut IndexVec<PreorderIndex, Option<PreorderIndex>>,
+    ancestor: &mut IndexVec<PreorderIndex, PreorderIndex>,
     lastlinked: Option<PreorderIndex>,
     semi: &IndexVec<PreorderIndex, PreorderIndex>,
     label: &mut IndexVec<PreorderIndex, PreorderIndex>,
     v: PreorderIndex,
 ) {
     assert!(is_processed(v, lastlinked));
-    let u = ancestor[v].unwrap();
+    let u = ancestor[v];
     if is_processed(u, lastlinked) {
         compress(ancestor, lastlinked, semi, label, u);
         if semi[label[u]] < semi[label[v]] {
