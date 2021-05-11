@@ -13,8 +13,8 @@ use ide_db::{
 
 // Feature: View Crate Graph
 //
-// Renders the currently loaded crate graph as an SVG graphic. Requires the `dot` tool to be
-// installed.
+// Renders the currently loaded crate graph as an SVG graphic. Requires the `dot` tool, which
+// is part of graphviz, to be installed.
 //
 // |===
 // | Editor  | Action Name
