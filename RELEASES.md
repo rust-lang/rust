@@ -58,7 +58,7 @@ The following previously stable APIs are now `const`.
 Rustdoc
 -------
 - [Rustdoc lints are now treated as a tool lint, meaning that
-  lints are now prefixed with `rustdoc::` (e.g. `#[warn(rustdoc::non_autolinks)]`).][80527]
+  lints are now prefixed with `rustdoc::` (e.g. `#[warn(rustdoc::broken_intra_doc_links)]`).][80527]
   Using the old style is still allowed, and will become a warning in
   a future release.
 - [Rustdoc now supports argument files.][82261]
