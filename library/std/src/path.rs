@@ -315,7 +315,7 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
 }
 
 // basic workhorse for splitting stem and extension
-fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
+fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     if os_str_as_u8_slice(file) == b".." {
         return (Some(file), None);
     }
@@ -330,6 +330,29 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     if before == Some(b"") {
         (Some(file), None)
     } else {
+        unsafe { (before.map(|s| u8_slice_as_os_str(s)), after.map(|s| u8_slice_as_os_str(s))) }
+    }
+}
+
+fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
+    let slice = os_str_as_u8_slice(file);
+    if slice == b".." {
+        return (Some(file), None);
+    }
+
+    // The unsafety here stems from converting between &OsStr and &[u8]
+    // and back. This is safe to do because (1) we only look at ASCII
+    // contents of the encoding and (2) new &OsStr values are produced
+    // only from ASCII-bounded slices of existing &OsStr values.
+    let i = match slice[1..].iter().position(|b| *b == b'.') {
+        Some(i) => i + 1,
+        None => slice.len(),
+    };
+    if i == slice.len() {
+        (Some(file), None)
+    } else {
+        let before = Some(&slice[..i]);
+        let after = Some(&slice[i + 1..]);
         unsafe { (before.map(|s| u8_slice_as_os_str(s)), after.map(|s| u8_slice_as_os_str(s))) }
     }
 }
@@ -2158,6 +2181,32 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
+        self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.or(after))
+    }
+
+    /// Extracts the prefix (non-extension(s)) portion of [`self.file_name`]. This is a "left"
+    /// variant of `file_stem` - meaning it takes the portion of the file name before the *first* `.`
+    ///
+    /// [`self.file_name`]: Path::file_name
+    ///
+    /// The prefix is:
+    ///
+    /// * [`None`], if there is no file name;
+    /// * The entire file name if there is no embedded `.`;
+    /// * The entire file name if the file name begins with `.` and has no other `.`s within;
+    /// * Otherwise, the portion of the file name before the first `.`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(path_file_prefix)]
+    /// use std::path::Path;
+    ///
+    /// assert_eq!("foo", Path::new("foo.rs").file_prefix().unwrap());
+    /// assert_eq!("foo", Path::new("foo.tar.gz").file_prefix().unwrap());
+    /// ```
+    #[unstable(feature = "path_file_prefix", issue = "none")]
+    pub fn file_prefix(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.or(after))
     }
 
@@ -2182,7 +2231,7 @@ impl Path {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn extension(&self) -> Option<&OsStr> {
-        self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.and(after))
+        self.file_name().map(rsplit_file_at_dot).and_then(|(before, after)| before.and(after))
     }
 
     /// Creates an owned [`PathBuf`] with `path` adjoined to `self`.
