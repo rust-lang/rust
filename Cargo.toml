@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = ["xtask/", "lib/*", "crates/*"]
 
 [profile.dev]
