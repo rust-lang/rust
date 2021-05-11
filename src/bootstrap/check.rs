@@ -289,7 +289,8 @@ macro_rules! tool_check_step {
         impl Step for $name {
             type Output = ();
             const ONLY_HOSTS: bool = true;
-            const DEFAULT: bool = true $( && $default )?;
+            // don't ever check out-of-tree tools by default, they'll fail when toolstate is broken
+            const DEFAULT: bool = matches!($source_type, SourceType::InTree) $( && $default )?;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.paths(&[ $path, $($alias),* ])
@@ -367,6 +368,8 @@ tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InT
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
+tool_check_step!(Miri, "src/tools/miri", SourceType::Submodule);
+tool_check_step!(Rls, "src/tools/rls", SourceType::Submodule);
 
 tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
 
