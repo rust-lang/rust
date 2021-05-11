@@ -746,7 +746,7 @@ impl<'a> InferenceContext<'a> {
                     ty: TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
                     value: ConstValue::Concrete(chalk_ir::ConcreteConst {
                         interned: len
-                            .map(|len| ConstScalar::Usize(len))
+                            .map(|len| ConstScalar::Usize(len as u64))
                             .unwrap_or(ConstScalar::Unknown),
                     }),
                 };
