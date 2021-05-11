@@ -8,7 +8,7 @@ use rustc_middle::hir::map::Map;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_ast::{Attribute, Lit, LitKind, NestedMetaItem};
+use rustc_ast::{AttrStyle, Attribute, Lit, LitKind, NestedMetaItem};
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
@@ -22,7 +22,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{MultiSpan, Span, DUMMY_SP};
 
 pub(crate) fn target_from_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -67,6 +67,7 @@ impl CheckAttrVisitor<'tcx> {
         item: Option<ItemLike<'_>>,
     ) {
         let mut is_valid = true;
+        let mut specified_inline = None;
         let attrs = self.tcx.hir().attrs(hir_id);
         for attr in attrs {
             is_valid &= match attr.name_or_empty() {
@@ -77,7 +78,7 @@ impl CheckAttrVisitor<'tcx> {
                 sym::track_caller => {
                     self.check_track_caller(hir_id, &attr.span, attrs, span, target)
                 }
-                sym::doc => self.check_doc_attrs(attr, hir_id, target),
+                sym::doc => self.check_doc_attrs(attr, hir_id, target, &mut specified_inline),
                 sym::no_link => self.check_no_link(hir_id, &attr, span, target),
                 sym::export_name => self.check_export_name(hir_id, &attr, span, target),
                 sym::rustc_args_required_const => {
@@ -564,7 +565,71 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
-    fn check_attr_crate_level(
+    /// Checks `#[doc(inline)]`/`#[doc(no_inline)]` attributes. Returns `true` if valid.
+    ///
+    /// A doc inlining attribute is invalid if it is applied to a non-`use` item, or
+    /// if there are conflicting attributes for one item.
+    ///
+    /// `specified_inline` is used to keep track of whether we have
+    /// already seen an inlining attribute for this item.
+    /// If so, `specified_inline` holds the value and the span of
+    /// the first `inline`/`no_inline` attribute.
+    fn check_doc_inline(
+        &self,
+        attr: &Attribute,
+        meta: &NestedMetaItem,
+        hir_id: HirId,
+        target: Target,
+        specified_inline: &mut Option<(bool, Span)>,
+    ) -> bool {
+        if target == Target::Use {
+            let do_inline = meta.name_or_empty() == sym::inline;
+            if let Some((prev_inline, prev_span)) = *specified_inline {
+                if do_inline != prev_inline {
+                    let mut spans = MultiSpan::from_spans(vec![prev_span, meta.span()]);
+                    spans.push_span_label(prev_span, String::from("this attribute..."));
+                    spans.push_span_label(
+                        meta.span(),
+                        String::from("...conflicts with this attribute"),
+                    );
+                    self.tcx
+                        .sess
+                        .struct_span_err(spans, "conflicting doc inlining attributes")
+                        .help("remove one of the conflicting attributes")
+                        .emit();
+                    return false;
+                }
+                true
+            } else {
+                *specified_inline = Some((do_inline, meta.span()));
+                true
+            }
+        } else {
+            self.tcx.struct_span_lint_hir(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                |lint| {
+                    let mut err = lint.build(
+                        "this attribute can only be applied to a `use` item",
+                    );
+                    err.span_label(meta.span(), "only applicable on `use` items");
+                    if attr.style == AttrStyle::Outer {
+                        err.span_label(
+                            self.tcx.hir().span(hir_id),
+                            "not a `use` item",
+                        );
+                    }
+                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#docno_inlinedocinline for more information")
+                        .emit();
+                },
+            );
+            false
+        }
+    }
+
+    /// Checks that an attribute is *not* used at the crate level. Returns `true` if valid.
+    fn check_attr_not_crate_level(
         &self,
         meta: &NestedMetaItem,
         hir_id: HirId,
@@ -586,7 +651,62 @@ impl CheckAttrVisitor<'tcx> {
         true
     }
 
-    fn check_doc_attrs(&self, attr: &Attribute, hir_id: HirId, target: Target) -> bool {
+    /// Checks that an attribute is used at the crate level. Returns `true` if valid.
+    fn check_attr_crate_level(
+        &self,
+        attr: &Attribute,
+        meta: &NestedMetaItem,
+        hir_id: HirId,
+    ) -> bool {
+        if hir_id != CRATE_HIR_ID {
+            self.tcx.struct_span_lint_hir(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                |lint| {
+                    let mut err = lint.build(
+                        "this attribute can only be applied at the crate level",
+                    );
+                    if attr.style == AttrStyle::Outer && self.tcx.hir().get_parent_item(hir_id) == CRATE_HIR_ID {
+                        if let Ok(mut src) =
+                            self.tcx.sess.source_map().span_to_snippet(attr.span)
+                        {
+                            src.insert(1, '!');
+                            err.span_suggestion_verbose(
+                                attr.span,
+                                "to apply to the crate, use an inner attribute",
+                                src,
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            err.span_help(
+                                attr.span,
+                                "to apply to the crate, use an inner attribute",
+                            );
+                        }
+                    }
+                    err.note("read https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level for more information")
+                        .emit();
+                },
+            );
+            return false;
+        }
+        true
+    }
+
+    /// Runs various checks on `#[doc]` attributes. Returns `true` if valid.
+    ///
+    /// `specified_inline` should be initialized to `None` and kept for the scope
+    /// of one item. Read the documentation of [`check_doc_inline`] for more information.
+    ///
+    /// [`check_doc_inline`]: Self::check_doc_inline
+    fn check_doc_attrs(
+        &self,
+        attr: &Attribute,
+        hir_id: HirId,
+        target: Target,
+        specified_inline: &mut Option<(bool, Span)>,
+    ) -> bool {
         let mut is_valid = true;
 
         if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
@@ -594,32 +714,40 @@ impl CheckAttrVisitor<'tcx> {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
                         sym::alias
-                            if !self.check_attr_crate_level(&meta, hir_id, "alias")
+                            if !self.check_attr_not_crate_level(&meta, hir_id, "alias")
                                 || !self.check_doc_alias(&meta, hir_id, target) =>
                         {
                             is_valid = false
                         }
 
                         sym::keyword
-                            if !self.check_attr_crate_level(&meta, hir_id, "keyword")
+                            if !self.check_attr_not_crate_level(&meta, hir_id, "keyword")
                                 || !self.check_doc_keyword(&meta, hir_id) =>
                         {
                             is_valid = false
                         }
 
-                        sym::test if CRATE_HIR_ID != hir_id => {
-                            self.tcx.struct_span_lint_hir(
-                                INVALID_DOC_ATTRIBUTES,
+                        sym::html_favicon_url
+                        | sym::html_logo_url
+                        | sym::html_playground_url
+                        | sym::issue_tracker_base_url
+                        | sym::html_root_url
+                        | sym::html_no_source
+                        | sym::test
+                            if !self.check_attr_crate_level(&attr, &meta, hir_id) =>
+                        {
+                            is_valid = false;
+                        }
+
+                        sym::inline | sym::no_inline
+                            if !self.check_doc_inline(
+                                &attr,
+                                &meta,
                                 hir_id,
-                                meta.span(),
-                                |lint| {
-                                    lint.build(
-                                        "`#![doc(test(...)]` is only allowed \
-                                         as a crate-level attribute",
-                                    )
-                                    .emit();
-                                },
-                            );
+                                target,
+                                specified_inline,
+                            ) =>
+                        {
                             is_valid = false;
                         }
 
