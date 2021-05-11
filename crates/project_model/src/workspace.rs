@@ -390,6 +390,7 @@ fn cargo_to_crate_graph(
                     &cfg_options,
                     proc_macro_loader,
                     file_id,
+                    &cargo[tgt].name,
                 );
                 if cargo[tgt].kind == TargetKind::Lib {
                     lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
@@ -505,6 +506,7 @@ fn handle_rustc_crates(
                         &cfg_options,
                         proc_macro_loader,
                         file_id,
+                        &rustc_workspace[tgt].name,
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -560,6 +562,7 @@ fn add_target_crate_root(
     cfg_options: &CfgOptions,
     proc_macro_loader: &dyn Fn(&Path) -> Vec<ProcMacro>,
     file_id: FileId,
+    cargo_name: &str,
 ) -> CrateId {
     let edition = pkg.edition;
     let cfg_options = {
@@ -586,7 +589,7 @@ fn add_target_crate_root(
         .map(|it| proc_macro_loader(&it))
         .unwrap_or_default();
 
-    let display_name = CrateDisplayName::from_canonical_name(pkg.name.clone());
+    let display_name = CrateDisplayName::from_canonical_name(cargo_name.to_string());
     let crate_id = crate_graph.add_crate_root(
         file_id,
         edition,
