@@ -54,13 +54,13 @@ where
 }
 
 fn main() {
-    // The only ERROR included here is the one that is totally wrong:
+    // Key is that Vec<First> is "ok" and Third<Ty> is "ok modulo regions":
 
     forward();
-    //~^ ERROR evaluate(Binder(TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
+    //~^ ERROR evaluate(Binder(TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>), [])) = Ok(EvaluatedToOk)
     //~| ERROR evaluate(Binder(TraitPredicate(<Third<Ty> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
 
     reverse();
-    //~^ ERROR evaluate(Binder(TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
+    //~^ ERROR evaluate(Binder(TraitPredicate(<std::vec::Vec<First> as std::marker::Unpin>), [])) = Ok(EvaluatedToOk)
     //~| ERROR evaluate(Binder(TraitPredicate(<Third<Ty> as std::marker::Unpin>), [])) = Ok(EvaluatedToOkModuloRegions)
 }
