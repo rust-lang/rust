@@ -117,6 +117,12 @@ pub(crate) fn handle_view_hir(
     Ok(res)
 }
 
+pub(crate) fn handle_view_crate_graph(snap: GlobalStateSnapshot, (): ()) -> Result<String> {
+    let _p = profile::span("handle_view_crate_graph");
+    let res = snap.analysis.view_crate_graph()??;
+    Ok(res)
+}
+
 pub(crate) fn handle_expand_macro(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ExpandMacroParams,

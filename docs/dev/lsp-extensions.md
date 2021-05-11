@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 28a9d5a24b7ca396
+lsp_ext.rs hash: 6e57fc1b345b00e9
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -485,6 +485,16 @@ Primarily for debugging, but very useful for all people working on rust-analyzer
 
 Returns a textual representation of the HIR of the function containing the cursor.
 For debugging or when working on rust-analyzer itself.
+
+## View Crate Graph
+
+**Method:** `rust-analyzer/viewCrateGraph`
+
+**Request:** `null`
+
+**Response:** `string`
+
+Renders rust-analyzer's crate graph as an SVG image.
 
 ## Expand Macro
 

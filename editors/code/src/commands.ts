@@ -429,6 +429,14 @@ export function viewHir(ctx: Ctx): Cmd {
     };
 }
 
+export function viewCrateGraph(ctx: Ctx): Cmd {
+    return async () => {
+        const panel = vscode.window.createWebviewPanel("rust-analyzer.crate-graph", "rust-analyzer crate graph", vscode.ViewColumn.Two);
+        const svg = await ctx.client.sendRequest(ra.viewCrateGraph);
+        panel.webview.html = svg;
+    };
+}
+
 // Opens the virtual file that will show the syntax tree
 //
 // The contents of the file come from the `TextDocumentContentProvider`

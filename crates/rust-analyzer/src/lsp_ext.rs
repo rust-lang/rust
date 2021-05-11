@@ -61,6 +61,14 @@ impl Request for ViewHir {
     const METHOD: &'static str = "rust-analyzer/viewHir";
 }
 
+pub enum ViewCrateGraph {}
+
+impl Request for ViewCrateGraph {
+    type Params = ();
+    type Result = String;
+    const METHOD: &'static str = "rust-analyzer/viewCrateGraph";
+}
+
 pub enum ExpandMacro {}
 
 impl Request for ExpandMacro {
