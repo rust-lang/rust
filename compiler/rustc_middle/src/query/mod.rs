@@ -1207,7 +1207,7 @@ rustc_queries! {
     query plugin_registrar_fn(_: ()) -> Option<LocalDefId> {
         desc { "looking up the plugin registrar for a crate" }
     }
-    query proc_macro_decls_static(_: CrateNum) -> Option<DefId> {
+    query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the derive registrar for a crate" }
     }
     query crate_disambiguator(_: CrateNum) -> CrateDisambiguator {

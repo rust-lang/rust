@@ -169,7 +169,7 @@ fn compute_symbol_name(
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id.to_def_id()) {
+        if tcx.proc_macro_decls_static(()) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_proc_macro_decls_symbol(disambiguator);
         }

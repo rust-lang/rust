@@ -824,7 +824,9 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
                 sess.time("looking_for_plugin_registrar", || tcx.ensure().plugin_registrar_fn(()));
 
-                sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
+                sess.time("looking_for_derive_registrar", || {
+                    tcx.ensure().proc_macro_decls_static(())
+                });
 
                 let cstore = tcx
                     .cstore_as_any()

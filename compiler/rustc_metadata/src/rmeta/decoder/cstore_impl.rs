@@ -185,14 +185,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     foreign_modules => { cdata.get_foreign_modules(tcx) }
-    proc_macro_decls_static => {
-        cdata.root.proc_macro_data.as_ref().map(|data| {
-            DefId {
-                krate: def_id.krate,
-                index: data.proc_macro_decls_static,
-            }
-        })
-    }
     crate_disambiguator => { cdata.root.disambiguator }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }

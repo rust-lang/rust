@@ -1575,7 +1575,7 @@ impl EncodeContext<'a, 'tcx> {
             let tcx = self.tcx;
             let hir = tcx.hir();
 
-            let proc_macro_decls_static = tcx.proc_macro_decls_static(LOCAL_CRATE).unwrap().index;
+            let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).copied();
             let macros = self.lazy(hir.krate().proc_macros.iter().map(|p| p.owner.local_def_index));
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
