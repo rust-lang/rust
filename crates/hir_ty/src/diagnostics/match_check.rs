@@ -1,864 +1,340 @@
-//! This module implements match statement exhaustiveness checking and usefulness checking
-//! for match arms.
+//! Validation of matches.
 //!
-//! It is modeled on the rustc module `librustc_mir_build::hair::pattern::_match`, which
-//! contains very detailed documentation about the algorithms used here. I've duplicated
-//! most of that documentation below.
+//! This module provides lowering from [hir_def::expr::Pat] to [self::Pat] and match
+//! checking algorithm.
 //!
-//! This file includes the logic for exhaustiveness and usefulness checking for
-//! pattern-matching. Specifically, given a list of patterns for a type, we can
-//! tell whether:
-//! - (a) the patterns cover every possible constructor for the type (exhaustiveness).
-//! - (b) each pattern is necessary (usefulness).
-//!
-//! The algorithm implemented here is a modified version of the one described in
-//! <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
-//! However, to save future implementors from reading the original paper, we
-//! summarize the algorithm here to hopefully save time and be a little clearer
-//! (without being so rigorous).
-//!
-//! The core of the algorithm revolves about a "usefulness" check. In particular, we
-//! are trying to compute a predicate `U(P, p)` where `P` is a list of patterns (we refer to this as
-//! a matrix). `U(P, p)` represents whether, given an existing list of patterns
-//! `P_1 ..= P_m`, adding a new pattern `p` will be "useful" (that is, cover previously-
-//! uncovered values of the type).
-//!
-//! If we have this predicate, then we can easily compute both exhaustiveness of an
-//! entire set of patterns and the individual usefulness of each one.
-//! (a) the set of patterns is exhaustive iff `U(P, _)` is false (i.e., adding a wildcard
-//! match doesn't increase the number of values we're matching)
-//! (b) a pattern `P_i` is not useful if `U(P[0..=(i-1), P_i)` is false (i.e., adding a
-//! pattern to those that have come before it doesn't increase the number of values
-//! we're matching).
-//!
-//! During the course of the algorithm, the rows of the matrix won't just be individual patterns,
-//! but rather partially-deconstructed patterns in the form of a list of patterns. The paper
-//! calls those pattern-vectors, and we will call them pattern-stacks. The same holds for the
-//! new pattern `p`.
-//!
-//! For example, say we have the following:
-//!
-//! ```ignore
-//! // x: (Option<bool>, Result<()>)
-//! match x {
-//!     (Some(true), _) => (),
-//!     (None, Err(())) => (),
-//!     (None, Err(_)) => (),
-//! }
-//! ```
-//!
-//! Here, the matrix `P` starts as:
-//!
-//! ```text
-//! [
-//!     [(Some(true), _)],
-//!     [(None, Err(()))],
-//!     [(None, Err(_))],
-//! ]
-//! ```
-//!
-//! We can tell it's not exhaustive, because `U(P, _)` is true (we're not covering
-//! `[(Some(false), _)]`, for instance). In addition, row 3 is not useful, because
-//! all the values it covers are already covered by row 2.
-//!
-//! A list of patterns can be thought of as a stack, because we are mainly interested in the top of
-//! the stack at any given point, and we can pop or apply constructors to get new pattern-stacks.
-//! To match the paper, the top of the stack is at the beginning / on the left.
-//!
-//! There are two important operations on pattern-stacks necessary to understand the algorithm:
-//!
-//! 1. We can pop a given constructor off the top of a stack. This operation is called
-//!    `specialize`, and is denoted `S(c, p)` where `c` is a constructor (like `Some` or
-//!    `None`) and `p` a pattern-stack.
-//!    If the pattern on top of the stack can cover `c`, this removes the constructor and
-//!    pushes its arguments onto the stack. It also expands OR-patterns into distinct patterns.
-//!    Otherwise the pattern-stack is discarded.
-//!    This essentially filters those pattern-stacks whose top covers the constructor `c` and
-//!    discards the others.
-//!
-//!    For example, the first pattern above initially gives a stack `[(Some(true), _)]`. If we
-//!    pop the tuple constructor, we are left with `[Some(true), _]`, and if we then pop the
-//!    `Some` constructor we get `[true, _]`. If we had popped `None` instead, we would get
-//!    nothing back.
-//!
-//!    This returns zero or more new pattern-stacks, as follows. We look at the pattern `p_1`
-//!    on top of the stack, and we have four cases:
-//!
-//!    * 1.1. `p_1 = c(r_1, .., r_a)`, i.e. the top of the stack has constructor `c`. We push onto
-//!           the stack the arguments of this constructor, and return the result:
-//!
-//!          r_1, .., r_a, p_2, .., p_n
-//!
-//!    * 1.2. `p_1 = c'(r_1, .., r_a')` where `c ≠ c'`. We discard the current stack and return
-//!           nothing.
-//!    * 1.3. `p_1 = _`. We push onto the stack as many wildcards as the constructor `c` has
-//!           arguments (its arity), and return the resulting stack:
-//!
-//!          _, .., _, p_2, .., p_n
-//!
-//!    * 1.4. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting stack:
-//!
-//!          S(c, (r_1, p_2, .., p_n))
-//!          S(c, (r_2, p_2, .., p_n))
-//!
-//! 2. We can pop a wildcard off the top of the stack. This is called `D(p)`, where `p` is
-//!    a pattern-stack.
-//!    This is used when we know there are missing constructor cases, but there might be
-//!    existing wildcard patterns, so to check the usefulness of the matrix, we have to check
-//!    all its *other* components.
-//!
-//!    It is computed as follows. We look at the pattern `p_1` on top of the stack,
-//!    and we have three cases:
-//!    * 1.1. `p_1 = c(r_1, .., r_a)`. We discard the current stack and return nothing.
-//!    * 1.2. `p_1 = _`. We return the rest of the stack:
-//!
-//!          p_2, .., p_n
-//!
-//!    * 1.3. `p_1 = r_1 | r_2`. We expand the OR-pattern and then recurse on each resulting stack:
-//!
-//!          D((r_1, p_2, .., p_n))
-//!          D((r_2, p_2, .., p_n))
-//!
-//!    Note that the OR-patterns are not always used directly in Rust, but are used to derive the
-//!    exhaustive integer matching rules, so they're written here for posterity.
-//!
-//! Both those operations extend straightforwardly to a list or pattern-stacks, i.e. a matrix, by
-//! working row-by-row. Popping a constructor ends up keeping only the matrix rows that start with
-//! the given constructor, and popping a wildcard keeps those rows that start with a wildcard.
-//!
-//!
-//! The algorithm for computing `U`
-//! -------------------------------
-//! The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).
-//! That means we're going to check the components from left-to-right, so the algorithm
-//! operates principally on the first component of the matrix and new pattern-stack `p`.
-//! This algorithm is realized in the `is_useful` function.
-//!
-//! Base case (`n = 0`, i.e., an empty tuple pattern):
-//! - If `P` already contains an empty pattern (i.e., if the number of patterns `m > 0`), then
-//!   `U(P, p)` is false.
-//! - Otherwise, `P` must be empty, so `U(P, p)` is true.
-//!
-//! Inductive step (`n > 0`, i.e., whether there's at least one column [which may then be expanded
-//! into further columns later]). We're going to match on the top of the new pattern-stack, `p_1`:
-//!
-//! - If `p_1 == c(r_1, .., r_a)`, i.e. we have a constructor pattern.
-//!   Then, the usefulness of `p_1` can be reduced to whether it is useful when
-//!   we ignore all the patterns in the first column of `P` that involve other constructors.
-//!   This is where `S(c, P)` comes in:
-//!
-//!   ```text
-//!   U(P, p) := U(S(c, P), S(c, p))
-//!   ```
-//!
-//!   This special case is handled in `is_useful_specialized`.
-//!
-//!   For example, if `P` is:
-//!
-//!   ```text
-//!   [
-//!       [Some(true), _],
-//!       [None, 0],
-//!   ]
-//!   ```
-//!
-//!   and `p` is `[Some(false), 0]`, then we don't care about row 2 since we know `p` only
-//!   matches values that row 2 doesn't. For row 1 however, we need to dig into the
-//!   arguments of `Some` to know whether some new value is covered. So we compute
-//!   `U([[true, _]], [false, 0])`.
-//!
-//! - If `p_1 == _`, then we look at the list of constructors that appear in the first component of
-//!   the rows of `P`:
-//!     - If there are some constructors that aren't present, then we might think that the
-//!       wildcard `_` is useful, since it covers those constructors that weren't covered
-//!       before.
-//!       That's almost correct, but only works if there were no wildcards in those first
-//!       components. So we need to check that `p` is useful with respect to the rows that
-//!       start with a wildcard, if there are any. This is where `D` comes in:
-//!       `U(P, p) := U(D(P), D(p))`
-//!
-//!       For example, if `P` is:
-//!       ```text
-//!       [
-//!           [_, true, _],
-//!           [None, false, 1],
-//!       ]
-//!       ```
-//!       and `p` is `[_, false, _]`, the `Some` constructor doesn't appear in `P`. So if we
-//!       only had row 2, we'd know that `p` is useful. However row 1 starts with a
-//!       wildcard, so we need to check whether `U([[true, _]], [false, 1])`.
-//!
-//!     - Otherwise, all possible constructors (for the relevant type) are present. In this
-//!       case we must check whether the wildcard pattern covers any unmatched value. For
-//!       that, we can think of the `_` pattern as a big OR-pattern that covers all
-//!       possible constructors. For `Option`, that would mean `_ = None | Some(_)` for
-//!       example. The wildcard pattern is useful in this case if it is useful when
-//!       specialized to one of the possible constructors. So we compute:
-//!       `U(P, p) := ∃(k ϵ constructors) U(S(k, P), S(k, p))`
-//!
-//!       For example, if `P` is:
-//!       ```text
-//!       [
-//!           [Some(true), _],
-//!           [None, false],
-//!       ]
-//!       ```
-//!       and `p` is `[_, false]`, both `None` and `Some` constructors appear in the first
-//!       components of `P`. We will therefore try popping both constructors in turn: we
-//!       compute `U([[true, _]], [_, false])` for the `Some` constructor, and `U([[false]],
-//!       [false])` for the `None` constructor. The first case returns true, so we know that
-//!       `p` is useful for `P`. Indeed, it matches `[Some(false), _]` that wasn't matched
-//!       before.
-//!
-//! - If `p_1 == r_1 | r_2`, then the usefulness depends on each `r_i` separately:
-//!
-//!   ```text
-//!   U(P, p) := U(P, (r_1, p_2, .., p_n))
-//!            || U(P, (r_2, p_2, .., p_n))
-//!   ```
-use std::{iter, sync::Arc};
+//! It is modeled on the rustc module `rustc_mir_build::thir::pattern`.
 
-use hir_def::{
-    adt::VariantData,
-    body::Body,
-    expr::{Expr, Literal, Pat, PatId},
-    EnumVariantId, StructId, VariantId,
-};
+mod deconstruct_pat;
+mod pat_util;
+pub(crate) mod usefulness;
+
+use hir_def::{body::Body, EnumVariantId, LocalFieldId, VariantId};
 use la_arena::Idx;
-use smallvec::{smallvec, SmallVec};
 
-use crate::{db::HirDatabase, AdtId, InferenceResult, Interner, TyExt, TyKind};
+use crate::{db::HirDatabase, InferenceResult, Interner, Substitution, Ty, TyKind};
 
-#[derive(Debug, Clone, Copy)]
-/// Either a pattern from the source code being analyzed, represented as
-/// as `PatId`, or a `Wild` pattern which is created as an intermediate
-/// step in the match checking algorithm and thus is not backed by a
-/// real `PatId`.
-///
-/// Note that it is totally valid for the `PatId` variant to contain
-/// a `PatId` which resolves to a `Wild` pattern, if that wild pattern
-/// exists in the source code being analyzed.
-enum PatIdOrWild {
-    PatId(PatId),
-    Wild,
-}
+use self::pat_util::EnumerateAndAdjustIterator;
 
-impl PatIdOrWild {
-    fn as_pat(self, cx: &MatchCheckCtx) -> Pat {
-        match self {
-            PatIdOrWild::PatId(id) => cx.body.pats[id].clone(),
-            PatIdOrWild::Wild => Pat::Wild,
-        }
-    }
+pub(crate) use self::usefulness::MatchArm;
 
-    fn as_id(self) -> Option<PatId> {
-        match self {
-            PatIdOrWild::PatId(id) => Some(id),
-            PatIdOrWild::Wild => None,
-        }
-    }
-}
+pub(crate) type PatId = Idx<Pat>;
 
-impl From<PatId> for PatIdOrWild {
-    fn from(pat_id: PatId) -> Self {
-        Self::PatId(pat_id)
-    }
-}
-
-impl From<&PatId> for PatIdOrWild {
-    fn from(pat_id: &PatId) -> Self {
-        Self::PatId(*pat_id)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) enum MatchCheckErr {
-    NotImplemented,
-    MalformedMatchArm,
-    /// Used when type inference cannot resolve the type of
-    /// a pattern or expression.
-    Unknown,
-}
-
-/// The return type of `is_useful` is either an indication of usefulness
-/// of the match arm, or an error in the case the match statement
-/// is made up of types for which exhaustiveness checking is currently
-/// not completely implemented.
-///
-/// The `std::result::Result` type is used here rather than a custom enum
-/// to allow the use of `?`.
-pub(super) type MatchCheckResult<T> = Result<T, MatchCheckErr>;
-
-#[derive(Debug)]
-/// A row in a Matrix.
-///
-/// This type is modeled from the struct of the same name in `rustc`.
-pub(super) struct PatStack(PatStackInner);
-type PatStackInner = SmallVec<[PatIdOrWild; 2]>;
-
-impl PatStack {
-    pub(super) fn from_pattern(pat_id: PatId) -> PatStack {
-        Self(smallvec!(pat_id.into()))
-    }
-
-    pub(super) fn from_wild() -> PatStack {
-        Self(smallvec!(PatIdOrWild::Wild))
-    }
-
-    fn from_slice(slice: &[PatIdOrWild]) -> PatStack {
-        Self(SmallVec::from_slice(slice))
-    }
-
-    fn from_vec(v: PatStackInner) -> PatStack {
-        Self(v)
-    }
-
-    fn get_head(&self) -> Option<PatIdOrWild> {
-        self.0.first().copied()
-    }
-
-    fn tail(&self) -> &[PatIdOrWild] {
-        self.0.get(1..).unwrap_or(&[])
-    }
-
-    fn to_tail(&self) -> PatStack {
-        Self::from_slice(self.tail())
-    }
-
-    fn replace_head_with<I, T>(&self, pats: I) -> PatStack
-    where
-        I: Iterator<Item = T>,
-        T: Into<PatIdOrWild>,
-    {
-        let mut patterns: PatStackInner = smallvec![];
-        for pat in pats {
-            patterns.push(pat.into());
-        }
-        for pat in &self.0[1..] {
-            patterns.push(*pat);
-        }
-        PatStack::from_vec(patterns)
-    }
-
-    /// Computes `D(self)`.
-    ///
-    /// See the module docs and the associated documentation in rustc for details.
-    fn specialize_wildcard(&self, cx: &MatchCheckCtx) -> Option<PatStack> {
-        if matches!(self.get_head()?.as_pat(cx), Pat::Wild) {
-            Some(self.to_tail())
-        } else {
-            None
-        }
-    }
-
-    /// Computes `S(constructor, self)`.
-    ///
-    /// See the module docs and the associated documentation in rustc for details.
-    fn specialize_constructor(
-        &self,
-        cx: &MatchCheckCtx,
-        constructor: &Constructor,
-    ) -> MatchCheckResult<Option<PatStack>> {
-        let head = match self.get_head() {
-            Some(head) => head,
-            None => return Ok(None),
-        };
-
-        let head_pat = head.as_pat(cx);
-        let result = match (head_pat, constructor) {
-            (Pat::Tuple { args: pat_ids, ellipsis }, &Constructor::Tuple { arity }) => {
-                if let Some(ellipsis) = ellipsis {
-                    let (pre, post) = pat_ids.split_at(ellipsis);
-                    let n_wild_pats = arity.saturating_sub(pat_ids.len());
-                    let pre_iter = pre.iter().map(Into::into);
-                    let wildcards = iter::repeat(PatIdOrWild::Wild).take(n_wild_pats);
-                    let post_iter = post.iter().map(Into::into);
-                    Some(self.replace_head_with(pre_iter.chain(wildcards).chain(post_iter)))
-                } else {
-                    Some(self.replace_head_with(pat_ids.iter()))
-                }
-            }
-            (Pat::Lit(lit_expr), Constructor::Bool(constructor_val)) => {
-                match cx.body.exprs[lit_expr] {
-                    Expr::Literal(Literal::Bool(pat_val)) if *constructor_val == pat_val => {
-                        Some(self.to_tail())
-                    }
-                    // it was a bool but the value doesn't match
-                    Expr::Literal(Literal::Bool(_)) => None,
-                    // perhaps this is actually unreachable given we have
-                    // already checked that these match arms have the appropriate type?
-                    _ => return Err(MatchCheckErr::NotImplemented),
-                }
-            }
-            (Pat::Wild, constructor) => Some(self.expand_wildcard(cx, constructor)?),
-            (Pat::Path(_), constructor) => {
-                // unit enum variants become `Pat::Path`
-                let pat_id = head.as_id().expect("we know this isn't a wild");
-                let variant_id: VariantId = match constructor {
-                    &Constructor::Enum(e) => e.into(),
-                    &Constructor::Struct(s) => s.into(),
-                    _ => return Err(MatchCheckErr::NotImplemented),
-                };
-                if Some(variant_id) != cx.infer.variant_resolution_for_pat(pat_id) {
-                    None
-                } else {
-                    Some(self.to_tail())
-                }
-            }
-            (Pat::TupleStruct { args: ref pat_ids, ellipsis, .. }, constructor) => {
-                let pat_id = head.as_id().expect("we know this isn't a wild");
-                let variant_id: VariantId = match constructor {
-                    &Constructor::Enum(e) => e.into(),
-                    &Constructor::Struct(s) => s.into(),
-                    _ => return Err(MatchCheckErr::MalformedMatchArm),
-                };
-                if Some(variant_id) != cx.infer.variant_resolution_for_pat(pat_id) {
-                    None
-                } else {
-                    let constructor_arity = constructor.arity(cx)?;
-                    if let Some(ellipsis_position) = ellipsis {
-                        // If there are ellipsis in the pattern, the ellipsis must take the place
-                        // of at least one sub-pattern, so `pat_ids` should be smaller than the
-                        // constructor arity.
-                        if pat_ids.len() < constructor_arity {
-                            let mut new_patterns: Vec<PatIdOrWild> = vec![];
-
-                            for pat_id in &pat_ids[0..ellipsis_position] {
-                                new_patterns.push((*pat_id).into());
-                            }
-
-                            for _ in 0..(constructor_arity - pat_ids.len()) {
-                                new_patterns.push(PatIdOrWild::Wild);
-                            }
-
-                            for pat_id in &pat_ids[ellipsis_position..pat_ids.len()] {
-                                new_patterns.push((*pat_id).into());
-                            }
-
-                            Some(self.replace_head_with(new_patterns.into_iter()))
-                        } else {
-                            return Err(MatchCheckErr::MalformedMatchArm);
-                        }
-                    } else {
-                        // If there is no ellipsis in the tuple pattern, the number
-                        // of patterns must equal the constructor arity.
-                        if pat_ids.len() == constructor_arity {
-                            Some(self.replace_head_with(pat_ids.into_iter()))
-                        } else {
-                            return Err(MatchCheckErr::MalformedMatchArm);
-                        }
-                    }
-                }
-            }
-            (Pat::Record { args: ref arg_patterns, .. }, constructor) => {
-                let pat_id = head.as_id().expect("we know this isn't a wild");
-                let (variant_id, variant_data) = match constructor {
-                    &Constructor::Enum(e) => (
-                        e.into(),
-                        cx.db.enum_data(e.parent).variants[e.local_id].variant_data.clone(),
-                    ),
-                    &Constructor::Struct(s) => {
-                        (s.into(), cx.db.struct_data(s).variant_data.clone())
-                    }
-                    _ => return Err(MatchCheckErr::MalformedMatchArm),
-                };
-                if Some(variant_id) != cx.infer.variant_resolution_for_pat(pat_id) {
-                    None
-                } else {
-                    match variant_data.as_ref() {
-                        VariantData::Record(struct_field_arena) => {
-                            // Here we treat any missing fields in the record as the wild pattern, as
-                            // if the record has ellipsis. We want to do this here even if the
-                            // record does not contain ellipsis, because it allows us to continue
-                            // enforcing exhaustiveness for the rest of the match statement.
-                            //
-                            // Creating the diagnostic for the missing field in the pattern
-                            // should be done in a different diagnostic.
-                            let patterns = struct_field_arena.iter().map(|(_, struct_field)| {
-                                arg_patterns
-                                    .iter()
-                                    .find(|pat| pat.name == struct_field.name)
-                                    .map(|pat| PatIdOrWild::from(pat.pat))
-                                    .unwrap_or(PatIdOrWild::Wild)
-                            });
-
-                            Some(self.replace_head_with(patterns))
-                        }
-                        _ => return Err(MatchCheckErr::Unknown),
-                    }
-                }
-            }
-            (Pat::Or(_), _) => return Err(MatchCheckErr::NotImplemented),
-            (_, _) => return Err(MatchCheckErr::NotImplemented),
-        };
-
-        Ok(result)
-    }
-
-    /// A special case of `specialize_constructor` where the head of the pattern stack
-    /// is a Wild pattern.
-    ///
-    /// Replaces the Wild pattern at the head of the pattern stack with N Wild patterns
-    /// (N >= 0), where N is the arity of the given constructor.
-    fn expand_wildcard(
-        &self,
-        cx: &MatchCheckCtx,
-        constructor: &Constructor,
-    ) -> MatchCheckResult<PatStack> {
-        assert_eq!(
-            Pat::Wild,
-            self.get_head().expect("expand_wildcard called on empty PatStack").as_pat(cx),
-            "expand_wildcard must only be called on PatStack with wild at head",
-        );
-
-        let mut patterns: PatStackInner = smallvec![];
-
-        for _ in 0..constructor.arity(cx)? {
-            patterns.push(PatIdOrWild::Wild);
-        }
-
-        for pat in &self.0[1..] {
-            patterns.push(*pat);
-        }
-
-        Ok(PatStack::from_vec(patterns))
-    }
-}
-
-/// A collection of PatStack.
-///
-/// This type is modeled from the struct of the same name in `rustc`.
-pub(super) struct Matrix(Vec<PatStack>);
-
-impl Matrix {
-    pub(super) fn empty() -> Self {
-        Self(vec![])
-    }
-
-    pub(super) fn push(&mut self, cx: &MatchCheckCtx, row: PatStack) {
-        if let Some(Pat::Or(pat_ids)) = row.get_head().map(|pat_id| pat_id.as_pat(cx)) {
-            // Or patterns are expanded here
-            for pat_id in pat_ids {
-                self.0.push(row.replace_head_with([pat_id].iter()));
-            }
-        } else {
-            self.0.push(row);
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    fn heads(&self) -> Vec<PatIdOrWild> {
-        self.0.iter().flat_map(|p| p.get_head()).collect()
-    }
-
-    /// Computes `D(self)` for each contained PatStack.
-    ///
-    /// See the module docs and the associated documentation in rustc for details.
-    fn specialize_wildcard(&self, cx: &MatchCheckCtx) -> Self {
-        Self::collect(cx, self.0.iter().filter_map(|r| r.specialize_wildcard(cx)))
-    }
-
-    /// Computes `S(constructor, self)` for each contained PatStack.
-    ///
-    /// See the module docs and the associated documentation in rustc for details.
-    fn specialize_constructor(
-        &self,
-        cx: &MatchCheckCtx,
-        constructor: &Constructor,
-    ) -> MatchCheckResult<Self> {
-        let mut new_matrix = Matrix::empty();
-        for pat in &self.0 {
-            if let Some(pat) = pat.specialize_constructor(cx, constructor)? {
-                new_matrix.push(cx, pat);
-            }
-        }
-
-        Ok(new_matrix)
-    }
-
-    fn collect<T: IntoIterator<Item = PatStack>>(cx: &MatchCheckCtx, iter: T) -> Self {
-        let mut matrix = Matrix::empty();
-
-        for pat in iter {
-            // using push ensures we expand or-patterns
-            matrix.push(cx, pat);
-        }
-
-        matrix
-    }
+#[derive(Clone, Debug)]
+pub(crate) enum PatternError {
+    Unimplemented,
+    UnresolvedVariant,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-/// An indication of the usefulness of a given match arm, where
-/// usefulness is defined as matching some patterns which were
-/// not matched by an prior match arms.
-///
-/// We may eventually need an `Unknown` variant here.
-pub(super) enum Usefulness {
-    Useful,
-    NotUseful,
+pub(crate) struct FieldPat {
+    pub(crate) field: LocalFieldId,
+    pub(crate) pattern: Pat,
 }
 
-pub(super) struct MatchCheckCtx<'a> {
-    pub(super) match_expr: Idx<Expr>,
-    pub(super) body: Arc<Body>,
-    pub(super) infer: Arc<InferenceResult>,
-    pub(super) db: &'a dyn HirDatabase,
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Pat {
+    pub(crate) ty: Ty,
+    pub(crate) kind: Box<PatKind>,
 }
 
-/// Given a set of patterns `matrix`, and pattern to consider `v`, determines
-/// whether `v` is useful. A pattern is useful if it covers cases which were
-/// not previously covered.
-///
-/// When calling this function externally (that is, not the recursive calls) it
-/// expected that you have already type checked the match arms. All patterns in
-/// matrix should be the same type as v, as well as they should all be the same
-/// type as the match expression.
-pub(super) fn is_useful(
-    cx: &MatchCheckCtx,
-    matrix: &Matrix,
-    v: &PatStack,
-) -> MatchCheckResult<Usefulness> {
-    // Handle two special cases:
-    // - enum with no variants
-    // - `!` type
-    // In those cases, no match arm is useful.
-    match cx.infer[cx.match_expr].strip_references().kind(&Interner) {
-        TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), ..) => {
-            if cx.db.enum_data(*enum_id).variants.is_empty() {
-                return Ok(Usefulness::NotUseful);
-            }
-        }
-        TyKind::Never => return Ok(Usefulness::NotUseful),
-        _ => (),
+impl Pat {
+    pub(crate) fn wildcard_from_ty(ty: &Ty) -> Self {
+        Pat { ty: ty.clone(), kind: Box::new(PatKind::Wild) }
+    }
+}
+
+/// Close relative to `rustc_mir_build::thir::pattern::PatKind`
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum PatKind {
+    Wild,
+
+    /// `x`, `ref x`, `x @ P`, etc.
+    Binding {
+        subpattern: Option<Pat>,
+    },
+
+    /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
+    /// multiple variants.
+    Variant {
+        substs: Substitution,
+        enum_variant: EnumVariantId,
+        subpatterns: Vec<FieldPat>,
+    },
+
+    /// `(...)`, `Foo(...)`, `Foo{...}`, or `Foo`, where `Foo` is a variant name from an ADT with
+    /// a single variant.
+    Leaf {
+        subpatterns: Vec<FieldPat>,
+    },
+
+    /// `box P`, `&P`, `&mut P`, etc.
+    Deref {
+        subpattern: Pat,
+    },
+
+    // FIXME: for now, only bool literals are implemented
+    LiteralBool {
+        value: bool,
+    },
+
+    /// An or-pattern, e.g. `p | q`.
+    /// Invariant: `pats.len() >= 2`.
+    Or {
+        pats: Vec<Pat>,
+    },
+}
+
+pub(crate) struct PatCtxt<'a> {
+    db: &'a dyn HirDatabase,
+    infer: &'a InferenceResult,
+    body: &'a Body,
+    pub(crate) errors: Vec<PatternError>,
+}
+
+impl<'a> PatCtxt<'a> {
+    pub(crate) fn new(db: &'a dyn HirDatabase, infer: &'a InferenceResult, body: &'a Body) -> Self {
+        Self { db, infer, body, errors: Vec::new() }
     }
 
-    let head = match v.get_head() {
-        Some(head) => head,
-        None => {
-            let result = if matrix.is_empty() { Usefulness::Useful } else { Usefulness::NotUseful };
-
-            return Ok(result);
-        }
-    };
-
-    if let Pat::Or(pat_ids) = head.as_pat(cx) {
-        let mut found_unimplemented = false;
-        let any_useful = pat_ids.iter().any(|&pat_id| {
-            let v = PatStack::from_pattern(pat_id);
-
-            match is_useful(cx, matrix, &v) {
-                Ok(Usefulness::Useful) => true,
-                Ok(Usefulness::NotUseful) => false,
-                _ => {
-                    found_unimplemented = true;
-                    false
-                }
-            }
-        });
-
-        return if any_useful {
-            Ok(Usefulness::Useful)
-        } else if found_unimplemented {
-            Err(MatchCheckErr::NotImplemented)
-        } else {
-            Ok(Usefulness::NotUseful)
-        };
+    pub(crate) fn lower_pattern(&mut self, pat: hir_def::expr::PatId) -> Pat {
+        // FIXME: implement pattern adjustments (implicit pattern dereference; "RFC 2005-match-ergonomics")
+        // More info https://github.com/rust-lang/rust/issues/42640#issuecomment-313535089
+        let unadjusted_pat = self.lower_pattern_unadjusted(pat);
+        unadjusted_pat
     }
 
-    if let Some(constructor) = pat_constructor(cx, head)? {
-        let matrix = matrix.specialize_constructor(&cx, &constructor)?;
-        let v = v
-            .specialize_constructor(&cx, &constructor)?
-            .expect("we know this can't fail because we get the constructor from `v.head()` above");
+    fn lower_pattern_unadjusted(&mut self, pat: hir_def::expr::PatId) -> Pat {
+        let ty = &self.infer[pat];
+        let variant = self.infer.variant_resolution_for_pat(pat);
 
-        is_useful(&cx, &matrix, &v)
-    } else {
-        // expanding wildcard
-        let mut used_constructors: Vec<Constructor> = vec![];
-        for pat in matrix.heads() {
-            if let Some(constructor) = pat_constructor(cx, pat)? {
-                used_constructors.push(constructor);
+        let kind = match self.body[pat] {
+            hir_def::expr::Pat::Wild => PatKind::Wild,
+
+            hir_def::expr::Pat::Lit(expr) => self.lower_lit(expr),
+
+            hir_def::expr::Pat::Path(ref path) => {
+                return self.lower_path(pat, path);
             }
-        }
 
-        // We assume here that the first constructor is the "correct" type. Since we
-        // only care about the "type" of the constructor (i.e. if it is a bool we
-        // don't care about the value), this assumption should be valid as long as
-        // the match statement is well formed. We currently uphold this invariant by
-        // filtering match arms before calling `is_useful`, only passing in match arms
-        // whose type matches the type of the match expression.
-        match &used_constructors.first() {
-            Some(constructor) if all_constructors_covered(&cx, constructor, &used_constructors) => {
-                // If all constructors are covered, then we need to consider whether
-                // any values are covered by this wildcard.
-                //
-                // For example, with matrix '[[Some(true)], [None]]', all
-                // constructors are covered (`Some`/`None`), so we need
-                // to perform specialization to see that our wildcard will cover
-                // the `Some(false)` case.
-                //
-                // Here we create a constructor for each variant and then check
-                // usefulness after specializing for that constructor.
-                let mut found_unimplemented = false;
-                for constructor in constructor.all_constructors(cx) {
-                    let matrix = matrix.specialize_constructor(&cx, &constructor)?;
-                    let v = v.expand_wildcard(&cx, &constructor)?;
-
-                    match is_useful(&cx, &matrix, &v) {
-                        Ok(Usefulness::Useful) => return Ok(Usefulness::Useful),
-                        Ok(Usefulness::NotUseful) => continue,
-                        _ => found_unimplemented = true,
-                    };
-                }
-
-                if found_unimplemented {
-                    Err(MatchCheckErr::NotImplemented)
-                } else {
-                    Ok(Usefulness::NotUseful)
-                }
+            hir_def::expr::Pat::Tuple { ref args, ellipsis } => {
+                let arity = match *ty.kind(&Interner) {
+                    TyKind::Tuple(arity, _) => arity,
+                    _ => panic!("unexpected type for tuple pattern: {:?}", ty),
+                };
+                let subpatterns = self.lower_tuple_subpats(args, arity, ellipsis);
+                PatKind::Leaf { subpatterns }
             }
+
+            hir_def::expr::Pat::Bind { subpat, .. } => {
+                PatKind::Binding { subpattern: self.lower_opt_pattern(subpat) }
+            }
+
+            hir_def::expr::Pat::TupleStruct { ref args, ellipsis, .. } if variant.is_some() => {
+                let expected_len = variant.unwrap().variant_data(self.db.upcast()).fields().len();
+                let subpatterns = self.lower_tuple_subpats(args, expected_len, ellipsis);
+                self.lower_variant_or_leaf(pat, ty, subpatterns)
+            }
+
+            hir_def::expr::Pat::Record { ref args, .. } if variant.is_some() => {
+                let variant_data = variant.unwrap().variant_data(self.db.upcast());
+                let subpatterns = args
+                    .iter()
+                    .map(|field| FieldPat {
+                        // XXX(iDawer): field lookup is inefficient
+                        field: variant_data.field(&field.name).unwrap(),
+                        pattern: self.lower_pattern(field.pat),
+                    })
+                    .collect();
+                self.lower_variant_or_leaf(pat, ty, subpatterns)
+            }
+            hir_def::expr::Pat::TupleStruct { .. } | hir_def::expr::Pat::Record { .. } => {
+                self.errors.push(PatternError::UnresolvedVariant);
+                PatKind::Wild
+            }
+
+            hir_def::expr::Pat::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
+
             _ => {
-                // Either not all constructors are covered, or the only other arms
-                // are wildcards. Either way, this pattern is useful if it is useful
-                // when compared to those arms with wildcards.
-                let matrix = matrix.specialize_wildcard(&cx);
-                let v = v.to_tail();
-
-                is_useful(&cx, &matrix, &v)
+                self.errors.push(PatternError::Unimplemented);
+                PatKind::Wild
             }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-/// Similar to TypeCtor, but includes additional information about the specific
-/// value being instantiated. For example, TypeCtor::Bool doesn't contain the
-/// boolean value.
-enum Constructor {
-    Bool(bool),
-    Tuple { arity: usize },
-    Enum(EnumVariantId),
-    Struct(StructId),
-}
-
-impl Constructor {
-    fn arity(&self, cx: &MatchCheckCtx) -> MatchCheckResult<usize> {
-        let arity = match self {
-            Constructor::Bool(_) => 0,
-            Constructor::Tuple { arity } => *arity,
-            Constructor::Enum(e) => {
-                match cx.db.enum_data(e.parent).variants[e.local_id].variant_data.as_ref() {
-                    VariantData::Tuple(struct_field_data) => struct_field_data.len(),
-                    VariantData::Record(struct_field_data) => struct_field_data.len(),
-                    VariantData::Unit => 0,
-                }
-            }
-            &Constructor::Struct(s) => match cx.db.struct_data(s).variant_data.as_ref() {
-                VariantData::Tuple(struct_field_data) => struct_field_data.len(),
-                VariantData::Record(struct_field_data) => struct_field_data.len(),
-                VariantData::Unit => 0,
-            },
         };
 
-        Ok(arity)
+        Pat { ty: ty.clone(), kind: Box::new(kind) }
     }
 
-    fn all_constructors(&self, cx: &MatchCheckCtx) -> Vec<Constructor> {
+    fn lower_tuple_subpats(
+        &mut self,
+        pats: &[hir_def::expr::PatId],
+        expected_len: usize,
+        ellipsis: Option<usize>,
+    ) -> Vec<FieldPat> {
+        pats.iter()
+            .enumerate_and_adjust(expected_len, ellipsis)
+            .map(|(i, &subpattern)| FieldPat {
+                field: LocalFieldId::from_raw((i as u32).into()),
+                pattern: self.lower_pattern(subpattern),
+            })
+            .collect()
+    }
+
+    fn lower_patterns(&mut self, pats: &[hir_def::expr::PatId]) -> Vec<Pat> {
+        pats.iter().map(|&p| self.lower_pattern(p)).collect()
+    }
+
+    fn lower_opt_pattern(&mut self, pat: Option<hir_def::expr::PatId>) -> Option<Pat> {
+        pat.map(|p| self.lower_pattern(p))
+    }
+
+    fn lower_variant_or_leaf(
+        &mut self,
+        pat: hir_def::expr::PatId,
+        ty: &Ty,
+        subpatterns: Vec<FieldPat>,
+    ) -> PatKind {
+        let kind = match self.infer.variant_resolution_for_pat(pat) {
+            Some(variant_id) => {
+                if let VariantId::EnumVariantId(enum_variant) = variant_id {
+                    let substs = match ty.kind(&Interner) {
+                        TyKind::Adt(_, substs) | TyKind::FnDef(_, substs) => substs.clone(),
+                        TyKind::Error => {
+                            return PatKind::Wild;
+                        }
+                        _ => panic!("inappropriate type for def: {:?}", ty),
+                    };
+                    PatKind::Variant { substs, enum_variant, subpatterns }
+                } else {
+                    PatKind::Leaf { subpatterns }
+                }
+            }
+            None => {
+                self.errors.push(PatternError::UnresolvedVariant);
+                PatKind::Wild
+            }
+        };
+        kind
+    }
+
+    fn lower_path(&mut self, pat: hir_def::expr::PatId, _path: &hir_def::path::Path) -> Pat {
+        let ty = &self.infer[pat];
+
+        let pat_from_kind = |kind| Pat { ty: ty.clone(), kind: Box::new(kind) };
+
+        match self.infer.variant_resolution_for_pat(pat) {
+            Some(_) => pat_from_kind(self.lower_variant_or_leaf(pat, ty, Vec::new())),
+            None => {
+                self.errors.push(PatternError::UnresolvedVariant);
+                pat_from_kind(PatKind::Wild)
+            }
+        }
+    }
+
+    fn lower_lit(&mut self, expr: hir_def::expr::ExprId) -> PatKind {
+        use hir_def::expr::{Expr, Literal::Bool};
+
+        match self.body[expr] {
+            Expr::Literal(Bool(value)) => PatKind::LiteralBool { value },
+            _ => {
+                self.errors.push(PatternError::Unimplemented);
+                PatKind::Wild
+            }
+        }
+    }
+}
+
+pub(crate) trait PatternFoldable: Sized {
+    fn fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        self.super_fold_with(folder)
+    }
+
+    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self;
+}
+
+pub(crate) trait PatternFolder: Sized {
+    fn fold_pattern(&mut self, pattern: &Pat) -> Pat {
+        pattern.super_fold_with(self)
+    }
+
+    fn fold_pattern_kind(&mut self, kind: &PatKind) -> PatKind {
+        kind.super_fold_with(self)
+    }
+}
+
+impl<T: PatternFoldable> PatternFoldable for Box<T> {
+    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        let content: T = (**self).fold_with(folder);
+        Box::new(content)
+    }
+}
+
+impl<T: PatternFoldable> PatternFoldable for Vec<T> {
+    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        self.iter().map(|t| t.fold_with(folder)).collect()
+    }
+}
+
+impl<T: PatternFoldable> PatternFoldable for Option<T> {
+    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        self.as_ref().map(|t| t.fold_with(folder))
+    }
+}
+
+macro_rules! clone_impls {
+    ($($ty:ty),+) => {
+        $(
+            impl PatternFoldable for $ty {
+                fn super_fold_with<F: PatternFolder>(&self, _: &mut F) -> Self {
+                    Clone::clone(self)
+                }
+            }
+        )+
+    }
+}
+
+clone_impls! { LocalFieldId, Ty, Substitution, EnumVariantId }
+
+impl PatternFoldable for FieldPat {
+    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        FieldPat { field: self.field.fold_with(folder), pattern: self.pattern.fold_with(folder) }
+    }
+}
+
+impl PatternFoldable for Pat {
+    fn fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        folder.fold_pattern(self)
+    }
+
+    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        Pat { ty: self.ty.fold_with(folder), kind: self.kind.fold_with(folder) }
+    }
+}
+
+impl PatternFoldable for PatKind {
+    fn fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
+        folder.fold_pattern_kind(self)
+    }
+
+    fn super_fold_with<F: PatternFolder>(&self, folder: &mut F) -> Self {
         match self {
-            Constructor::Bool(_) => vec![Constructor::Bool(true), Constructor::Bool(false)],
-            Constructor::Tuple { .. } | Constructor::Struct(_) => vec![*self],
-            Constructor::Enum(e) => cx
-                .db
-                .enum_data(e.parent)
-                .variants
-                .iter()
-                .map(|(local_id, _)| {
-                    Constructor::Enum(EnumVariantId { parent: e.parent, local_id })
-                })
-                .collect(),
-        }
-    }
-}
-
-/// Returns the constructor for the given pattern. Should only return None
-/// in the case of a Wild pattern.
-fn pat_constructor(cx: &MatchCheckCtx, pat: PatIdOrWild) -> MatchCheckResult<Option<Constructor>> {
-    let res = match pat.as_pat(cx) {
-        Pat::Wild => None,
-        Pat::Tuple { .. } => {
-            let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
-            Some(Constructor::Tuple {
-                arity: cx.infer.type_of_pat[pat_id]
-                    .as_tuple()
-                    .ok_or(MatchCheckErr::Unknown)?
-                    .len(&Interner),
-            })
-        }
-        Pat::Lit(lit_expr) => match cx.body.exprs[lit_expr] {
-            Expr::Literal(Literal::Bool(val)) => Some(Constructor::Bool(val)),
-            _ => return Err(MatchCheckErr::NotImplemented),
-        },
-        Pat::TupleStruct { .. } | Pat::Path(_) | Pat::Record { .. } => {
-            let pat_id = pat.as_id().expect("we already know this pattern is not a wild");
-            let variant_id =
-                cx.infer.variant_resolution_for_pat(pat_id).ok_or(MatchCheckErr::Unknown)?;
-            match variant_id {
-                VariantId::EnumVariantId(enum_variant_id) => {
-                    Some(Constructor::Enum(enum_variant_id))
-                }
-                VariantId::StructId(struct_id) => Some(Constructor::Struct(struct_id)),
-                _ => return Err(MatchCheckErr::NotImplemented),
+            PatKind::Wild => PatKind::Wild,
+            PatKind::Binding { subpattern } => {
+                PatKind::Binding { subpattern: subpattern.fold_with(folder) }
             }
-        }
-        _ => return Err(MatchCheckErr::NotImplemented),
-    };
-
-    Ok(res)
-}
-
-fn all_constructors_covered(
-    cx: &MatchCheckCtx,
-    constructor: &Constructor,
-    used_constructors: &[Constructor],
-) -> bool {
-    match constructor {
-        Constructor::Tuple { arity } => {
-            used_constructors.iter().any(|constructor| match constructor {
-                Constructor::Tuple { arity: used_arity } => arity == used_arity,
-                _ => false,
-            })
-        }
-        Constructor::Bool(_) => {
-            if used_constructors.is_empty() {
-                return false;
+            PatKind::Variant { substs, enum_variant, subpatterns } => PatKind::Variant {
+                substs: substs.fold_with(folder),
+                enum_variant: enum_variant.fold_with(folder),
+                subpatterns: subpatterns.fold_with(folder),
+            },
+            PatKind::Leaf { subpatterns } => {
+                PatKind::Leaf { subpatterns: subpatterns.fold_with(folder) }
             }
-
-            let covers_true =
-                used_constructors.iter().any(|c| matches!(c, Constructor::Bool(true)));
-            let covers_false =
-                used_constructors.iter().any(|c| matches!(c, Constructor::Bool(false)));
-
-            covers_true && covers_false
-        }
-        Constructor::Enum(e) => cx.db.enum_data(e.parent).variants.iter().all(|(id, _)| {
-            for constructor in used_constructors {
-                if let Constructor::Enum(e) = constructor {
-                    if id == e.local_id {
-                        return true;
-                    }
-                }
+            PatKind::Deref { subpattern } => {
+                PatKind::Deref { subpattern: subpattern.fold_with(folder) }
             }
-
-            false
-        }),
-        &Constructor::Struct(s) => used_constructors.iter().any(|constructor| match constructor {
-            &Constructor::Struct(sid) => sid == s,
-            _ => false,
-        }),
+            &PatKind::LiteralBool { value } => PatKind::LiteralBool { value },
+            PatKind::Or { pats } => PatKind::Or { pats: pats.fold_with(folder) },
+        }
     }
 }
 
@@ -1514,6 +990,41 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn no_panic_at_unimplemented_subpattern_type() {
+        check_diagnostics(
+            r#"
+struct S { a: char}
+fn main(v: S) {
+    match v { S{ a }      => {} }
+    match v { S{ a: _x }  => {} }
+    match v { S{ a: 'a' } => {} }
+    match v { S{..}       => {} }
+    match v { _           => {} }
+    match v { }
+        //^ Missing match arm
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn binding() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match true {
+        _x @ true => {}
+        false     => {}
+    }
+    match true { _x @ true => {} }
+        //^^^^ Missing match arm
+}
+"#,
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This

@@ -1,8 +1,6 @@
 //! Type inference-based diagnostics.
 mod expr;
-#[allow(unused)] //todo
 mod match_check;
-mod pattern;
 mod unsafe_check;
 mod decl_check;
 

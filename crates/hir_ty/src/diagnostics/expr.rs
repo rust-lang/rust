@@ -4,7 +4,9 @@
 
 use std::{cell::RefCell, sync::Arc};
 
-use hir_def::{expr::Statement, path::path, resolver::HasResolver, AssocItemId, DefWithBodyId};
+use hir_def::{
+    expr::Statement, path::path, resolver::HasResolver, AssocItemId, DefWithBodyId, HasModule,
+};
 use hir_expand::name;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
@@ -12,7 +14,10 @@ use syntax::{ast, AstPtr};
 use crate::{
     db::HirDatabase,
     diagnostics::{
-        match_check::{is_useful, MatchCheckCtx, Matrix, PatStack, Usefulness},
+        match_check::{
+            self,
+            usefulness::{compute_match_usefulness, expand_pattern, MatchCheckCtx, PatternArena},
+        },
         MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
         MissingPatFields, RemoveThisSemicolon,
     },
@@ -26,13 +31,7 @@ pub(crate) use hir_def::{
     LocalFieldId, VariantId,
 };
 
-use super::{
-    pattern::{
-        self,
-        usefulness::{expand_pattern, PatternArena},
-    },
-    ReplaceFilterMapNextWithFindMap,
-};
+use super::ReplaceFilterMapNextWithFindMap;
 
 pub(super) struct ExprValidator<'a, 'b: 'a> {
     owner: DefWithBodyId,
@@ -68,7 +67,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
             match expr {
                 Expr::Match { expr, arms } => {
-                    self.validate_match2(id, *expr, arms, db, self.infer.clone());
+                    self.validate_match(id, *expr, arms, db, self.infer.clone());
                 }
                 Expr::Call { .. } | Expr::MethodCall { .. } => {
                     self.validate_call(db, id, expr);
@@ -283,7 +282,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
-    #[allow(dead_code)]
     fn validate_match(
         &mut self,
         id: ExprId,
@@ -292,90 +290,6 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         db: &dyn HirDatabase,
         infer: Arc<InferenceResult>,
     ) {
-        let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
-            db.body_with_source_map(self.owner);
-
-        let match_expr_ty = if infer.type_of_expr[match_expr].is_unknown() {
-            return;
-        } else {
-            &infer.type_of_expr[match_expr]
-        };
-
-        let cx = MatchCheckCtx { match_expr, body, infer: infer.clone(), db };
-        let pats = arms.iter().map(|arm| arm.pat);
-
-        let mut seen = Matrix::empty();
-        for pat in pats {
-            if let Some(pat_ty) = infer.type_of_pat.get(pat) {
-                // We only include patterns whose type matches the type
-                // of the match expression. If we had a InvalidMatchArmPattern
-                // diagnostic or similar we could raise that in an else
-                // block here.
-                //
-                // When comparing the types, we also have to consider that rustc
-                // will automatically de-reference the match expression type if
-                // necessary.
-                //
-                // FIXME we should use the type checker for this.
-                if (pat_ty == match_expr_ty
-                    || match_expr_ty
-                        .as_reference()
-                        .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
-                        .unwrap_or(false))
-                    && types_of_subpatterns_do_match(pat, &cx.body, &infer)
-                {
-                    // If we had a NotUsefulMatchArm diagnostic, we could
-                    // check the usefulness of each pattern as we added it
-                    // to the matrix here.
-                    let v = PatStack::from_pattern(pat);
-                    seen.push(&cx, v);
-                    continue;
-                }
-            }
-
-            // If we can't resolve the type of a pattern, or the pattern type doesn't
-            // fit the match expression, we skip this diagnostic. Skipping the entire
-            // diagnostic rather than just not including this match arm is preferred
-            // to avoid the chance of false positives.
-            return;
-        }
-
-        match is_useful(&cx, &seen, &PatStack::from_wild()) {
-            Ok(Usefulness::Useful) => (),
-            // if a wildcard pattern is not useful, then all patterns are covered
-            Ok(Usefulness::NotUseful) => return,
-            // this path is for unimplemented checks, so we err on the side of not
-            // reporting any errors
-            _ => return,
-        }
-
-        if let Ok(source_ptr) = source_map.expr_syntax(id) {
-            let root = source_ptr.file_syntax(db.upcast());
-            if let ast::Expr::MatchExpr(match_expr) = &source_ptr.value.to_node(&root) {
-                if let (Some(match_expr), Some(arms)) =
-                    (match_expr.expr(), match_expr.match_arm_list())
-                {
-                    self.sink.push(MissingMatchArms {
-                        file: source_ptr.file_id,
-                        match_expr: AstPtr::new(&match_expr),
-                        arms: AstPtr::new(&arms),
-                    })
-                }
-            }
-        }
-    }
-
-    fn validate_match2(
-        &mut self,
-        id: ExprId,
-        match_expr: ExprId,
-        arms: &[MatchArm],
-        db: &dyn HirDatabase,
-        infer: Arc<InferenceResult>,
-    ) {
-        use crate::diagnostics::pattern::usefulness;
-        use hir_def::HasModule;
-
         let (body, source_map): (Arc<Body>, Arc<BodySourceMap>) =
             db.body_with_source_map(self.owner);
 
@@ -401,16 +315,17 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 // necessary.
                 //
                 // FIXME we should use the type checker for this.
-                if pat_ty == match_expr_ty
+                if (pat_ty == match_expr_ty
                     || match_expr_ty
                         .as_reference()
                         .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
-                        .unwrap_or(false)
+                        .unwrap_or(false))
+                    && types_of_subpatterns_do_match(arm.pat, &body, &infer)
                 {
                     // If we had a NotUsefulMatchArm diagnostic, we could
                     // check the usefulness of each pattern as we added it
                     // to the matrix here.
-                    let m_arm = usefulness::MatchArm {
+                    let m_arm = match_check::MatchArm {
                         pat: self.lower_pattern(
                             arm.pat,
                             &mut pattern_arena.borrow_mut(),
@@ -434,14 +349,14 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             return;
         }
 
-        let cx = usefulness::MatchCheckCtx {
+        let cx = MatchCheckCtx {
             module: self.owner.module(db.upcast()),
             match_expr,
             infer: &infer,
             db,
             pattern_arena: &pattern_arena,
         };
-        let report = usefulness::compute_match_usefulness(&cx, &m_arms);
+        let report = compute_match_usefulness(&cx, &m_arms);
 
         // FIXME Report unreacheble arms
         // https://github.com/rust-lang/rust/blob/25c15cdbe/compiler/rustc_mir_build/src/thir/pattern/check_match.rs#L200-L201
@@ -473,8 +388,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         db: &dyn HirDatabase,
         body: &Body,
         have_errors: &mut bool,
-    ) -> pattern::PatId {
-        let mut patcx = pattern::PatCtxt::new(db, &self.infer, body);
+    ) -> match_check::PatId {
+        let mut patcx = match_check::PatCtxt::new(db, &self.infer, body);
         let pattern = patcx.lower_pattern(pat);
         let pattern = pattern_arena.alloc(expand_pattern(pattern));
         if !patcx.errors.is_empty() {
