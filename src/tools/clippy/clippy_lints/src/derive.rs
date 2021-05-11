@@ -12,7 +12,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{def_id::LOCAL_CRATE, source_map::Span};
+use rustc_span::{source_map::Span};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
@@ -312,7 +312,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &T
         if ty_subs.non_erasable_generics().next().is_some() {
             let has_copy_impl = cx
                 .tcx
-                .all_local_trait_impls(LOCAL_CRATE)
+                .all_local_trait_impls(())
                 .get(&copy_id)
                 .map_or(false, |impls| {
                     impls

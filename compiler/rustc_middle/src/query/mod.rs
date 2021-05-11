@@ -20,7 +20,7 @@ rustc_queries! {
     /// This is because the `hir_crate` query gives you access to all other items.
     /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
     /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
-    query hir_crate(key: CrateNum) -> &'tcx Crate<'tcx> {
+    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         eval_always
         no_hash
         desc { "get the crate HIR" }
@@ -28,7 +28,7 @@ rustc_queries! {
 
     /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
     /// Avoid calling this query directly.
-    query index_hir(_: CrateNum) -> &'tcx crate::hir::IndexedHir<'tcx> {
+    query index_hir(_: ()) -> &'tcx crate::hir::IndexedHir<'tcx> {
         eval_always
         no_hash
         desc { "index HIR" }
@@ -965,7 +965,7 @@ rustc_queries! {
     /// Passing in any other crate will cause an ICE.
     ///
     /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
-    query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
+    query all_local_trait_impls(_: ()) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
 
