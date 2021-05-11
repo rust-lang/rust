@@ -288,6 +288,7 @@ mod mut_reference;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
+mod needless_bitwise_bool;
 mod needless_bool;
 mod needless_borrow;
 mod needless_borrowed_ref;
@@ -833,6 +834,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         mutex_atomic::MUTEX_ATOMIC,
         mutex_atomic::MUTEX_INTEGER,
         needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE,
+        needless_bitwise_bool::NEEDLESS_BITWISE_BOOL,
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
         needless_borrow::NEEDLESS_BORROW,
@@ -1018,6 +1020,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let type_complexity_threshold = conf.type_complexity_threshold;
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold, type_complexity_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
+    store.register_late_pass(|| box needless_bitwise_bool::NeedlessBitwiseBool);
     store.register_late_pass(|| box eq_op::EqOp);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
     store.register_late_pass(|| box float_literal::FloatLiteral);
@@ -1392,6 +1395,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(misc::USED_UNDERSCORE_BINDING),
         LintId::of(misc_early::UNSEPARATED_LITERAL_SUFFIX),
         LintId::of(mut_mut::MUT_MUT),
+        LintId::of(needless_bitwise_bool::NEEDLESS_BITWISE_BOOL),
         LintId::of(needless_continue::NEEDLESS_CONTINUE),
         LintId::of(needless_for_each::NEEDLESS_FOR_EACH),
         LintId::of(needless_pass_by_value::NEEDLESS_PASS_BY_VALUE),
