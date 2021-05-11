@@ -411,7 +411,7 @@ where
     C::Key: Clone + DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    let job = match JobOwner::<'_, CTX::DepKind, C::Key>::try_start(
+    match JobOwner::<'_, CTX::DepKind, C::Key>::try_start(
         &tcx,
         state,
         span,
@@ -419,10 +419,14 @@ where
         lookup,
         query.dep_kind,
     ) {
-        TryGetJob::NotYetStarted(job) => job,
+        TryGetJob::NotYetStarted(job) => {
+            let (result, dep_node_index) = execute_job(tcx, key, dep_node, query, job.id, compute);
+            let result = job.complete(cache, result, dep_node_index);
+            (result, Some(dep_node_index))
+        }
         TryGetJob::Cycle(error) => {
             let result = mk_cycle(tcx, error, query.handle_cycle_error, &cache.cache);
-            return (result, None);
+            (result, None)
         }
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
@@ -440,27 +444,40 @@ where
             }
             query_blocked_prof_timer.finish_with_query_invocation_id(index.into());
 
-            return (v, Some(index));
+            (v, Some(index))
         }
-    };
+    }
+}
 
+fn execute_job<CTX, K, V>(
+    tcx: CTX,
+    key: K,
+    dep_node: Option<DepNode<CTX::DepKind>>,
+    query: &QueryVtable<CTX, K, V>,
+    job_id: QueryJobId<CTX::DepKind>,
+    compute: fn(CTX::DepContext, K) -> V,
+) -> (V, DepNodeIndex)
+where
+    K: Clone + DepNodeParams<CTX::DepContext>,
+    V: Debug,
+    CTX: QueryContext,
+{
     let dep_graph = tcx.dep_context().dep_graph();
 
     // Fast path for when incr. comp. is off.
     if !dep_graph.is_fully_enabled() {
         let prof_timer = tcx.dep_context().profiler().query_provider();
-        let result = tcx.start_query(job.id, None, || compute(*tcx.dep_context(), key));
+        let result = tcx.start_query(job_id, None, || compute(*tcx.dep_context(), key));
         let dep_node_index = dep_graph.next_virtual_depnode_index();
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
-        let result = job.complete(cache, result, dep_node_index);
-        return (result, None);
+        return (result, dep_node_index);
     }
 
-    let (result, dep_node_index) = if query.anon {
+    if query.anon {
         let prof_timer = tcx.dep_context().profiler().query_provider();
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-            tcx.start_query(job.id, diagnostics, || {
+            tcx.start_query(job_id, diagnostics, || {
                 dep_graph.with_anon_task(*tcx.dep_context(), query.dep_kind, || {
                     compute(*tcx.dep_context(), key)
                 })
@@ -479,24 +496,22 @@ where
     } else if query.eval_always {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node = dep_node.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
-        force_query_with_job(tcx, key, job.id, dep_node, query, compute)
+        force_query_with_job(tcx, key, job_id, dep_node, query, compute)
     } else {
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node = dep_node.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
         // The diagnostics for this query will be
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
-        let loaded = tcx.start_query(job.id, None, || {
+        let loaded = tcx.start_query(job_id, None, || {
             try_load_from_disk_and_cache_in_memory(tcx, &key, &dep_node, query, compute)
         });
         if let Some((result, dep_node_index)) = loaded {
             (result, dep_node_index)
         } else {
-            force_query_with_job(tcx, key, job.id, dep_node, query, compute)
+            force_query_with_job(tcx, key, job_id, dep_node, query, compute)
         }
-    };
-    let result = job.complete(cache, result, dep_node_index);
-    (result, Some(dep_node_index))
+    }
 }
 
 fn try_load_from_disk_and_cache_in_memory<CTX, K, V>(
