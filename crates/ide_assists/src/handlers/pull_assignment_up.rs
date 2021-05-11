@@ -60,6 +60,12 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Opti
         return None;
     };
 
+    if let Some(parent) = tgt.syntax().parent() {
+        if matches!(parent.kind(), syntax::SyntaxKind::BIN_EXPR | syntax::SyntaxKind::LET_STMT) {
+            return None;
+        }
+    }
+
     acc.add(
         AssistId("pull_assignment_up", AssistKind::RefactorExtract),
         "Pull assignment up",
@@ -74,7 +80,13 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Opti
             let tgt = edit.make_ast_mut(tgt);
 
             for (stmt, rhs) in assignments {
-                ted::replace(stmt.syntax(), rhs.syntax());
+                let mut stmt = stmt.syntax().clone();
+                if let Some(parent) = stmt.parent() {
+                    if ast::ExprStmt::cast(parent.clone()).is_some() {
+                        stmt = parent.clone();
+                    }
+                }
+                ted::replace(stmt, rhs.syntax());
             }
             let assign_expr = make::expr_assignment(collector.common_lhs, tgt.clone());
             let assign_stmt = make::expr_stmt(assign_expr);
@@ -87,7 +99,7 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Opti
 struct AssignmentsCollector<'a> {
     sema: &'a hir::Semantics<'a, ide_db::RootDatabase>,
     common_lhs: ast::Expr,
-    assignments: Vec<(ast::ExprStmt, ast::Expr)>,
+    assignments: Vec<(ast::BinExpr, ast::Expr)>,
 }
 
 impl<'a> AssignmentsCollector<'a> {
@@ -95,6 +107,7 @@ impl<'a> AssignmentsCollector<'a> {
         for arm in match_expr.match_arm_list()?.arms() {
             match arm.expr()? {
                 ast::Expr::BlockExpr(block) => self.collect_block(&block)?,
+                ast::Expr::BinExpr(expr) => self.collect_expr(&expr)?,
                 _ => return None,
             }
         }
@@ -114,22 +127,28 @@ impl<'a> AssignmentsCollector<'a> {
         }
     }
     fn collect_block(&mut self, block: &ast::BlockExpr) -> Option<()> {
-        if block.tail_expr().is_some() {
-            return None;
-        }
-
-        let last_stmt = block.statements().last()?;
-        if let ast::Stmt::ExprStmt(stmt) = last_stmt {
-            if let ast::Expr::BinExpr(expr) = stmt.expr()? {
-                if expr.op_kind()? == ast::BinOp::Assignment
-                    && is_equivalent(self.sema, &expr.lhs()?, &self.common_lhs)
-                {
-                    self.assignments.push((stmt, expr.rhs()?));
-                    return Some(());
-                }
+        let last_expr = block.tail_expr().or_else(|| {
+            if let ast::Stmt::ExprStmt(stmt) = block.statements().last()? {
+                stmt.expr()
+            } else {
+                None
             }
+        })?;
+
+        if let ast::Expr::BinExpr(expr) = last_expr {
+            return self.collect_expr(&expr);
         }
 
+        None
+    }
+
+    fn collect_expr(&mut self, expr: &ast::BinExpr) -> Option<()> {
+        if expr.op_kind()? == ast::BinOp::Assignment
+            && is_equivalent(self.sema, &expr.lhs()?, &self.common_lhs)
+        {
+            self.assignments.push((expr.clone(), expr.rhs()?));
+            return Some(());
+        }
         None
     }
 }
@@ -241,7 +260,6 @@ fn foo() {
     }
 
     #[test]
-    #[ignore]
     fn test_pull_assignment_up_assignment_expressions() {
         check_assist(
             pull_assignment_up,
