@@ -106,6 +106,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
     ctx.registerCommand('parentModule', commands.parentModule);
     ctx.registerCommand('syntaxTree', commands.syntaxTree);
     ctx.registerCommand('viewHir', commands.viewHir);
+    ctx.registerCommand('viewCrateGraph', commands.viewCrateGraph);
     ctx.registerCommand('expandMacro', commands.expandMacro);
     ctx.registerCommand('run', commands.run);
     ctx.registerCommand('copyRunCommandLine', commands.copyRunCommandLine);

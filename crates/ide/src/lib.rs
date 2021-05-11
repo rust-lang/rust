@@ -49,6 +49,7 @@ mod syntax_tree;
 mod typing;
 mod markdown_remove;
 mod doc_links;
+mod view_crate_graph;
 
 use std::sync::Arc;
 
@@ -285,6 +286,10 @@ impl Analysis {
 
     pub fn view_hir(&self, position: FilePosition) -> Cancelable<String> {
         self.with_db(|db| view_hir::view_hir(&db, position))
+    }
+
+    pub fn view_crate_graph(&self) -> Cancelable<Result<String, String>> {
+        self.with_db(|db| view_crate_graph::view_crate_graph(&db))
     }
 
     pub fn expand_macro(&self, position: FilePosition) -> Cancelable<Option<ExpandedMacro>> {
