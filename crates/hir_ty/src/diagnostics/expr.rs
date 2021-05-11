@@ -346,6 +346,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             // fit the match expression, we skip this diagnostic. Skipping the entire
             // diagnostic rather than just not including this match arm is preferred
             // to avoid the chance of false positives.
+            #[cfg(test)]
+            match_check::tests::report_bail_out(db, self.owner, arm.pat, self.sink);
             return;
         }
 

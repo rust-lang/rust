@@ -339,8 +339,59 @@ impl PatternFoldable for PatKind {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
+    mod report {
+        use std::any::Any;
+
+        use hir_def::{expr::PatId, DefWithBodyId};
+        use hir_expand::{HirFileId, InFile};
+        use syntax::SyntaxNodePtr;
+
+        use crate::{
+            db::HirDatabase,
+            diagnostics_sink::{Diagnostic, DiagnosticCode, DiagnosticSink},
+        };
+
+        /// In tests, match check bails out loudly.
+        /// This helps to catch incorrect tests that pass due to false negatives.
+        pub(crate) fn report_bail_out(
+            db: &dyn HirDatabase,
+            def: DefWithBodyId,
+            pat: PatId,
+            sink: &mut DiagnosticSink,
+        ) {
+            let (_, source_map) = db.body_with_source_map(def);
+            if let Ok(source_ptr) = source_map.pat_syntax(pat) {
+                let pat_syntax_ptr = source_ptr.value.either(Into::into, Into::into);
+                sink.push(BailedOut { file: source_ptr.file_id, pat_syntax_ptr });
+            }
+        }
+
+        #[derive(Debug)]
+        struct BailedOut {
+            file: HirFileId,
+            pat_syntax_ptr: SyntaxNodePtr,
+        }
+
+        impl Diagnostic for BailedOut {
+            fn code(&self) -> DiagnosticCode {
+                DiagnosticCode("internal:match-check-bailed-out")
+            }
+            fn message(&self) -> String {
+                format!("Internal: match check bailed out")
+            }
+            fn display_source(&self) -> InFile<SyntaxNodePtr> {
+                InFile { file_id: self.file, value: self.pat_syntax_ptr.clone() }
+            }
+            fn as_any(&self) -> &(dyn Any + Send + 'static) {
+                self
+            }
+        }
+    }
+
     use crate::diagnostics::tests::check_diagnostics;
+
+    pub(crate) use self::report::report_bail_out;
 
     #[test]
     fn empty_tuple() {
@@ -589,14 +640,18 @@ enum Either2 { C, D }
 fn main() {
     match Either::A {
         Either2::C => (),
+    //  ^^^^^^^^^^ Internal: match check bailed out
         Either2::D => (),
     }
     match (true, false) {
         (true, false, true) => (),
+    //  ^^^^^^^^^^^^^^^^^^^ Internal: match check bailed out
         (true) => (),
     }
     match (true, false) { (true,) => {} }
+    //                    ^^^^^^^ Internal: match check bailed out
     match (0) { () => () }
+            //  ^^ Internal: match check bailed out
     match Unresolved::Bar { Unresolved::Baz => () }
 }
         "#,
@@ -609,7 +664,9 @@ fn main() {
             r#"
 fn main() {
     match false { true | () => {} }
+    //            ^^^^^^^^^ Internal: match check bailed out
     match (false,) { (true | (),) => {} }
+    //               ^^^^^^^^^^^^ Internal: match check bailed out
 }
 "#,
         );
@@ -642,10 +699,12 @@ enum Either { A, B }
 fn main() {
     match loop {} {
         Either::A => (),
+    //  ^^^^^^^^^ Internal: match check bailed out
         Either::B => (),
     }
     match loop {} {
         Either::A => (),
+    //  ^^^^^^^^^ Internal: match check bailed out
     }
     match loop { break Foo::A } {
         //^^^^^^^^^^^^^^^^^^^^^ Missing match arm
@@ -853,6 +912,11 @@ fn main() {
     match Option::<Never>::None {
         None => (),
         Some(never) => match never {},
+    //  ^^^^^^^^^^^ Internal: match check bailed out
+    }
+    match Option::<Never>::None {
+        //^^^^^^^^^^^^^^^^^^^^^ Missing match arm
+        Option::Some(_never) => {},
     }
 }
 "#,
@@ -1000,6 +1064,7 @@ fn main(v: S) {
     match v { S{ a }      => {} }
     match v { S{ a: _x }  => {} }
     match v { S{ a: 'a' } => {} }
+            //^^^^^^^^^^^ Internal: match check bailed out
     match v { S{..}       => {} }
     match v { _           => {} }
     match v { }
@@ -1045,6 +1110,7 @@ fn main() {
 fn main() {
     match 5 {
         10 => (),
+    //  ^^ Internal: match check bailed out
         11..20 => (),
     }
 }
