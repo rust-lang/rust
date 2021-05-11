@@ -594,6 +594,9 @@ fn opts() -> Vec<RustcOptGroup> {
             )
         }),
         unstable("no-run", |o| o.optflag("", "no-run", "Compile doctests without running them")),
+        unstable("show-type-layout", |o| {
+            o.optflag("", "show-type-layout", "Include the memory layout of types in the docs")
+        }),
     ]
 }
 

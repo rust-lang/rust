@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::stability;
+use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -830,11 +831,12 @@ fn item_typedef(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::T
 
     document(w, cx, it, None);
 
+    let def_id = it.def_id.expect_real();
     // Render any items associated directly to this alias, as otherwise they
     // won't be visible anywhere in the docs. It would be nice to also show
     // associated items from the aliased type (see discussion in #32077), but
     // we need #14072 to make sense of the generics.
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
 }
 
 fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Union) {
@@ -846,6 +848,7 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
     });
 
     document(w, cx, it, None);
+
     let mut fields = s
         .fields
         .iter()
@@ -880,7 +883,9 @@ fn item_union(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Uni
             document(w, cx, field, Some(it));
         }
     }
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    let def_id = it.def_id.expect_real();
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
@@ -940,6 +945,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
     });
 
     document(w, cx, it, None);
+
     if !e.variants.is_empty() {
         write!(
             w,
@@ -1014,7 +1020,9 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             render_stability_since(w, variant, it, cx.tcx());
         }
     }
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    let def_id = it.def_id.expect_real();
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_macro(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) {
@@ -1114,6 +1122,7 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
     });
 
     document(w, cx, it, None);
+
     let mut fields = s
         .fields
         .iter()
@@ -1152,7 +1161,9 @@ fn item_struct(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::St
             }
         }
     }
-    render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All)
+    let def_id = it.def_id.expect_real();
+    render_assoc_items(w, cx, it, def_id, AssocItemRender::All);
+    document_type_layout(w, cx, def_id);
 }
 
 fn item_static(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, s: &clean::Static) {
@@ -1521,4 +1532,63 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 
         w.write_str("</div></details>");
     }
+}
+
+fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
+    if !cx.shared.show_type_layout {
+        return;
+    }
+
+    writeln!(w, "<h2 class=\"small-section-header\">Layout</h2>");
+    writeln!(w, "<div class=\"docblock\">");
+
+    let tcx = cx.tcx();
+    let param_env = tcx.param_env(ty_def_id);
+    let ty = tcx.type_of(ty_def_id);
+    match tcx.layout_of(param_env.and(ty)) {
+        Ok(ty_layout) => {
+            writeln!(
+                w,
+                "<div class=\"warning\"><p><strong>Note:</strong> Most layout information is \
+                 completely unstable and may be different between compiler versions and platforms. \
+                 The only exception is types with certain <code>repr(...)</code> attributes. \
+                 Please see the Rust Reference’s \
+                 <a href=\"https://doc.rust-lang.org/reference/type-layout.html\">“Type Layout”</a> \
+                 chapter for details on type layout guarantees.</p></div>"
+            );
+            if ty_layout.layout.abi.is_unsized() {
+                writeln!(w, "<p><strong>Size:</strong> (unsized)</p>");
+            } else {
+                let bytes = ty_layout.layout.size.bytes();
+                writeln!(
+                    w,
+                    "<p><strong>Size:</strong> {size} byte{pl}</p>",
+                    size = bytes,
+                    pl = if bytes == 1 { "" } else { "s" },
+                );
+            }
+        }
+        // This kind of layout error can occur with valid code, e.g. if you try to
+        // get the layout of a generic type such as `Vec<T>`.
+        Err(LayoutError::Unknown(_)) => {
+            writeln!(
+                w,
+                "<p><strong>Note:</strong> Unable to compute type layout, \
+                 possibly due to this type having generic parameters. \
+                 Layout can only be computed for concrete, fully-instantiated types.</p>"
+            );
+        }
+        // This kind of error probably can't happen with valid code, but we don't
+        // want to panic and prevent the docs from building, so we just let the
+        // user know that we couldn't compute the layout.
+        Err(LayoutError::SizeOverflow(_)) => {
+            writeln!(
+                w,
+                "<p><strong>Note:</strong> Encountered an error during type layout; \
+                 the type was too big.</p>"
+            );
+        }
+    }
+
+    writeln!(w, "</div>");
 }
