@@ -371,6 +371,8 @@ nav.sub {
 	border: 1px solid;
 	padding: 13px 8px;
 	text-align: right;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
 }
 
 .rustdoc:not(.source) .example-wrap > pre.rust {
@@ -398,8 +400,6 @@ nav.sub {
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
 }
 .line-numbers span {
 	cursor: pointer;
