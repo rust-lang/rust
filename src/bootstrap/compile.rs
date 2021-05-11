@@ -648,6 +648,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
     if builder.config.rustc_parallel {
         cargo.rustflag("--cfg=parallel_compiler");
+        cargo.rustdocflag("--cfg=parallel_compiler");
     }
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
