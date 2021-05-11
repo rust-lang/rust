@@ -91,6 +91,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Format {
+        paths: Vec<PathBuf>,
         check: bool,
     },
     Doc {
@@ -581,7 +582,7 @@ Arguments:
 
                 Subcommand::Clean { all: matches.opt_present("all") }
             }
-            "fmt" => Subcommand::Format { check: matches.opt_present("check") },
+            "fmt" => Subcommand::Format { check: matches.opt_present("check"), paths },
             "dist" => Subcommand::Dist { paths },
             "install" => Subcommand::Install { paths },
             "run" | "r" => {

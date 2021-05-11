@@ -889,7 +889,7 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
                 );
                 std::process::exit(1);
             }
-            crate::format::format(&builder.build, !builder.config.cmd.bless());
+            crate::format::format(&builder.build, !builder.config.cmd.bless(), &[]);
         }
     }
 
