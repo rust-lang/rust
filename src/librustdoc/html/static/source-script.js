@@ -44,7 +44,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     if (elem.dirs) {
         for (i = 0, len = elem.dirs.length; i < len; ++i) {
             if (createDirEntry(elem.dirs[i], folders, fullPath, currentFile,
-                               hasFoundFile) === true) {
+                               hasFoundFile)) {
                 addClass(name, "expand");
                 hasFoundFile = true;
             }
@@ -59,8 +59,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
             var file = document.createElement("a");
             file.innerText = elem.files[i];
             file.href = window.rootPath + "src/" + fullPath + elem.files[i] + ".html";
-            if (hasFoundFile === false &&
-                    currentFile === fullPath + elem.files[i]) {
+            if (!hasFoundFile && currentFile === fullPath + elem.files[i]) {
                 file.className = "selected";
                 addClass(name, "expand");
                 hasFoundFile = true;
@@ -72,7 +71,7 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     children.appendChild(files);
     parent.appendChild(name);
     parent.appendChild(children);
-    return hasFoundFile === true && currentFile.startsWith(fullPath);
+    return hasFoundFile && currentFile.startsWith(fullPath);
 }
 
 function toggleSidebar() {
@@ -116,7 +115,7 @@ function createSidebarToggle() {
 // This function is called from "source-files.js", generated in `html/render/mod.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSourceSidebar() {
-    if (window.rootPath.endsWith("/") === false) {
+    if (!window.rootPath.endsWith("/")) {
         window.rootPath += "/";
     }
     var main = document.getElementById("main");

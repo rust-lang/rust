@@ -167,7 +167,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
         }
 
         if should_cleanup {
-            simplify_cfg(tcx, body);
+            simplify_cfg(body);
         }
     }
 }

@@ -91,6 +91,8 @@ crate struct SharedContext<'tcx> {
     crate include_sources: bool,
     /// The local file sources we've emitted and their respective url-paths.
     crate local_sources: FxHashMap<PathBuf, String>,
+    /// Show the memory layout of types in the docs.
+    pub(super) show_type_layout: bool,
     /// Whether the collapsed pass ran
     collapsed: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
@@ -373,6 +375,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_search_filter,
             unstable_features,
             generate_redirect_map,
+            show_type_layout,
             ..
         } = options;
 
@@ -446,6 +449,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             all: RefCell::new(AllTypes::new()),
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
+            show_type_layout,
         };
 
         // Add the default themes to the `Vec` of stylepaths

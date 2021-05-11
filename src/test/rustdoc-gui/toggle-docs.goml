@@ -1,7 +1,10 @@
-goto: file://|DOC_PATH|/index.html
+goto: file://|DOC_PATH|/test_docs/index.html
+assert: ("#main > details.top-doc", "open", "")
 click: "#toggle-all-docs"
-wait-for: 5000
-assert: ("#main > div.docblock.hidden-by-usual-hider")
+wait-for: 1000
+// This is now collapsed so there shouldn't be the "open" attribute on details.
+assert-false: ("#main > details.top-doc", "open", "")
 click: "#toggle-all-docs"
-wait-for: 5000
-assert: ("#main > div.docblock.hidden-by-usual-hider", 0)
+wait-for: 1000
+// Not collapsed anymore so the "open" attribute should be back.
+assert: ("#main > details.top-doc", "open", "")
