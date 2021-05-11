@@ -250,6 +250,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// - The returned KV handle is only valid to access the key and value,
     ///   and only valid until the next call to this method or counterpart
     ///   `deallocating_next_back`.
+    #[inline]
     pub unsafe fn deallocating_next(
         self,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
@@ -280,6 +281,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// - The returned KV handle is only valid to access the key and value,
     ///   and only valid until the next call to this method or counterpart
     ///   `deallocating_next`.
+    #[inline]
     unsafe fn deallocating_next_back(
         self,
     ) -> Option<(Self, Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>)>
@@ -316,6 +318,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
+    #[inline]
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
         super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_kv();
@@ -329,6 +332,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
+    #[inline]
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
         super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_back_kv();
@@ -344,6 +348,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
+    #[inline]
     pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
         let kv = super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_kv();
@@ -359,6 +364,7 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     ///
     /// # Safety
     /// There must be another KV in the direction travelled.
+    #[inline]
     pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
         let kv = super::mem::replace(self, |leaf_edge| {
             let kv = leaf_edge.next_back_kv();
@@ -383,6 +389,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// The only safe way to proceed with the updated handle is to compare it, drop it,
     /// or call this method or counterpart `deallocating_next_back_unchecked` again.
+    #[inline]
     pub unsafe fn deallocating_next_unchecked(
         &mut self,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
@@ -403,6 +410,7 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     ///
     /// The only safe way to proceed with the updated handle is to compare it, drop it,
     /// or call this method or counterpart `deallocating_next_unchecked` again.
+    #[inline]
     pub unsafe fn deallocating_next_back_unchecked(
         &mut self,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
