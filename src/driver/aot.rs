@@ -134,7 +134,13 @@ fn module_codegen(
             }
         }
     }
-    crate::main_shim::maybe_create_entry_wrapper(tcx, &mut module, &mut cx.unwind_context, false);
+    crate::main_shim::maybe_create_entry_wrapper(
+        tcx,
+        &mut module,
+        &mut cx.unwind_context,
+        false,
+        cgu.is_primary(),
+    );
 
     let debug_context = cx.debug_context;
     let unwind_context = cx.unwind_context;

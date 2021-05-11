@@ -45,6 +45,7 @@ fn create_jit_module<'tcx>(
         &mut jit_module,
         &mut cx.unwind_context,
         true,
+        true,
     );
 
     (jit_module, cx)
