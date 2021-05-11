@@ -19,11 +19,11 @@
    19|      1|    if true {
    20|      1|        println!("Exiting with error...");
    21|      1|        return Err(1);
-   22|      0|    }
-   23|      0|
-   24|      0|    let _ = Firework { strength: 1000 };
-   25|      0|
-   26|      0|    Ok(())
+   22|       |    }
+   23|       |
+   24|       |    let _ = Firework { strength: 1000 };
+   25|       |
+   26|       |    Ok(())
    27|      1|}
    28|       |
    29|       |// Expected program output:

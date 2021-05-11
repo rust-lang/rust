@@ -12,7 +12,6 @@
    12|      1|    if b {
    13|      1|        println!("non_async_func println in block");
    14|      1|    }
-                   ^0
    15|      1|}
    16|       |
    17|       |
