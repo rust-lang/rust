@@ -30,7 +30,7 @@ fn main() {
     //~^ ERROR an inner attribute is not permitted in this context
 
     let g = match true { #![allow(warnings)] _ => {} };
-    //~^ ERROR an inner attribute is not permitted in this context
+
 
     struct MyStruct { field: u8 }
     let h = MyStruct { #![allow(warnings)] field: 0 };
