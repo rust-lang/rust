@@ -366,6 +366,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
     }
 
+    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) {
+        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
+    }
+
     fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
     }
@@ -1940,6 +1944,7 @@ impl<'a> State<'a> {
                 self.print_expr_as_cond(expr);
                 self.s.space();
                 self.bopen();
+                self.print_inner_attributes_no_trailing_hardbreak(attrs);
                 for arm in arms {
                     self.print_arm(arm);
                 }
