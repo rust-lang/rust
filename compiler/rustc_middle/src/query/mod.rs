@@ -740,18 +740,15 @@ rustc_queries! {
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
-    /// (Defined only for `LOCAL_CRATE`.)
-    query crate_inherent_impls(k: CrateNum)
-        -> CrateInherentImpls {
+    query crate_inherent_impls(k: ()) -> CrateInherentImpls {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
-        desc { "all inherent impls defined in crate `{:?}`", k }
+        desc { "all inherent impls defined in crate" }
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    /// (Defined only for `LOCAL_CRATE`.)
-    query crate_inherent_impls_overlap_check(_: CrateNum)
+    query crate_inherent_impls_overlap_check(_: ())
         -> () {
         eval_always
         desc { "check for overlap between inherent impls defined in this crate" }

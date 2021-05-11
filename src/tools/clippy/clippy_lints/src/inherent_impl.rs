@@ -3,7 +3,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::in_macro;
 use rustc_hir::def_id::DefIdMap;
-use rustc_hir::{def_id, Crate, Impl, Item, ItemKind};
+use rustc_hir::{Crate, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>, krate: &'tcx Crate<'_>) {
         if !krate.items.is_empty() {
             // Retrieve all inherent implementations from the crate, grouped by type
-            for impls in cx.tcx.crate_inherent_impls(def_id::LOCAL_CRATE).inherent_impls.values() {
+            for impls in cx.tcx.crate_inherent_impls(()).inherent_impls.values() {
                 // Filter out implementations that have generic params (type or lifetime)
                 let mut impl_spans = impls.iter().filter_map(|impl_def| self.impls.get(impl_def));
                 if let Some(initial_span) = impl_spans.next() {

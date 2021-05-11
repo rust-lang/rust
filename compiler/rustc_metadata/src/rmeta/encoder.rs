@@ -944,13 +944,12 @@ impl EncodeContext<'a, 'tcx> {
                 record!(self.tables.super_predicates[def_id] <- self.tcx.super_predicates_of(def_id));
             }
         }
-        let inherent_impls = tcx.crate_inherent_impls(LOCAL_CRATE);
+        let inherent_impls = tcx.crate_inherent_impls(());
         for (def_id, implementations) in inherent_impls.inherent_impls.iter() {
-            assert!(def_id.is_local());
             if implementations.is_empty() {
                 continue;
             }
-            record!(self.tables.inherent_impls[def_id] <- implementations.iter().map(|&def_id| {
+            record!(self.tables.inherent_impls[def_id.to_def_id()] <- implementations.iter().map(|&def_id| {
                 assert!(def_id.is_local());
                 def_id.index
             }));
