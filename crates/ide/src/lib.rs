@@ -288,6 +288,7 @@ impl Analysis {
         self.with_db(|db| view_hir::view_hir(&db, position))
     }
 
+    /// Renders the crate graph to GraphViz "dot" syntax.
     pub fn view_crate_graph(&self) -> Cancelable<Result<String, String>> {
         self.with_db(|db| view_crate_graph::view_crate_graph(&db))
     }

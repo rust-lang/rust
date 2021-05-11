@@ -3,8 +3,8 @@
 //! `ide` crate.
 
 use std::{
-    io::Write as _,
-    process::{self, Stdio},
+    io::{Read, Write as _},
+    process::{self, Command, Stdio},
 };
 
 use ide::{
@@ -119,8 +119,20 @@ pub(crate) fn handle_view_hir(
 
 pub(crate) fn handle_view_crate_graph(snap: GlobalStateSnapshot, (): ()) -> Result<String> {
     let _p = profile::span("handle_view_crate_graph");
-    let res = snap.analysis.view_crate_graph()??;
-    Ok(res)
+    let dot = snap.analysis.view_crate_graph()??;
+
+    // We shell out to `dot` to render to SVG, as there does not seem to be a pure-Rust renderer.
+    let child = Command::new("dot")
+        .arg("-Tsvg")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|err| format!("failed to spawn `dot`: {}", err))?;
+    child.stdin.unwrap().write_all(dot.as_bytes())?;
+
+    let mut svg = String::new();
+    child.stdout.unwrap().read_to_string(&mut svg)?;
+    Ok(svg)
 }
 
 pub(crate) fn handle_expand_macro(

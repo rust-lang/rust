@@ -1,9 +1,4 @@
-use std::{
-    error::Error,
-    io::{Read, Write},
-    process::{Command, Stdio},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use dot::{Id, LabelText};
 use ide_db::{
@@ -38,23 +33,7 @@ pub(crate) fn view_crate_graph(db: &RootDatabase) -> Result<String, String> {
 
     let mut dot = Vec::new();
     dot::render(&graph, &mut dot).unwrap();
-
-    render_svg(&dot).map_err(|e| e.to_string())
-}
-
-fn render_svg(dot: &[u8]) -> Result<String, Box<dyn Error>> {
-    // We shell out to `dot` to render to SVG, as there does not seem to be a pure-Rust renderer.
-    let child = Command::new("dot")
-        .arg("-Tsvg")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .map_err(|err| format!("failed to spawn `dot`: {}", err))?;
-    child.stdin.unwrap().write_all(&dot)?;
-
-    let mut svg = String::new();
-    child.stdout.unwrap().read_to_string(&mut svg)?;
-    Ok(svg)
+    Ok(String::from_utf8(dot).unwrap())
 }
 
 struct DotCrateGraph {
