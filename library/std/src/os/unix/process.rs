@@ -198,10 +198,10 @@ impl CommandExt for process::Command {
 /// Unix-specific extensions to [`process::ExitStatus`] and
 /// [`ExitStatusError`](process::ExitStatusError).
 ///
-/// On Unix, `ExitStatus` and `ExitStatusError` **do not necessarily represent an exit status**, as
+/// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as
 /// passed to the `exit` system call or returned by
-/// [`ExitStatus::code()`](crate::process::ExitStatus::code).  They represents **any wait status**
-/// (or any nonzero wait status, respectively), as returned by one of the `wait` family of system
+/// [`ExitStatus::code()`](crate::process::ExitStatus::code).  It represents **any wait status**
+/// as returned by one of the `wait` family of system
 /// calls.
 ///
 /// A Unix wait status (a Rust `ExitStatus`) can represent a Unix exit status, but can also
@@ -227,30 +227,6 @@ pub trait ExitStatusExt: Sealed {
     /// If the process was terminated by a signal, returns that signal.
     ///
     /// In other words, if `WIFSIGNALED`, this returns `WTERMSIG`.
-    ///
-    /// # Examples
-    /// ```
-    /// #![feature(exit_status_error)]
-    /// use std::process::{Command, ExitStatusError};
-    /// use std::os::unix::process::ExitStatusExt;
-    ///
-    /// fn run(script: &str) -> Result<(), ExitStatusError> {
-    ///     Command::new("sh").args(&["-ec",script])
-    ///         .status().expect("failed to fork/exec sh")
-    ///         .exit_ok()
-    ///         .or_else(|bad| {
-    ///             if bad.signal() == Some(13) /*PIPE*/ {
-    ///                 Ok(())
-    ///             } else {
-    ///                 Err(bad)
-    ///             }
-    ///         })
-    /// }
-    ///
-    /// run("exit").unwrap();
-    /// run("kill -PIPE $$").unwrap();
-    /// run("exit 42").unwrap_err();
-    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn signal(&self) -> Option<i32>;
 
