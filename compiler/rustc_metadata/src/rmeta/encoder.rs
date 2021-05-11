@@ -1237,7 +1237,7 @@ impl EncodeContext<'a, 'tcx> {
 
         let mut keys_and_jobs = self
             .tcx
-            .mir_keys(LOCAL_CRATE)
+            .mir_keys(())
             .iter()
             .filter_map(|&def_id| {
                 let (encode_const, encode_opt) = should_encode_mir(self.tcx, def_id);
@@ -2002,7 +2002,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         return;
     }
 
-    par_iter(tcx.mir_keys(LOCAL_CRATE)).for_each(|&def_id| {
+    par_iter(tcx.mir_keys(())).for_each(|&def_id| {
         let (encode_const, encode_opt) = should_encode_mir(tcx, def_id);
 
         if encode_const {

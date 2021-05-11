@@ -265,7 +265,7 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
     let all_def_ids: DefIdSet = tcx
-        .mir_keys(LOCAL_CRATE)
+        .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
             let def_id = local_def_id.to_def_id();
