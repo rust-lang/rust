@@ -555,8 +555,7 @@ rustc_queries! {
     }
 
     /// Maps from thee `DefId` of a type to its (inferred) outlives.
-    query inferred_outlives_crate(_: CrateNum)
-        -> ty::CratePredicatesMap<'tcx> {
+    query inferred_outlives_crate(_: ()) -> ty::CratePredicatesMap<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "computing the inferred outlives predicates for items in this crate" }
     }
