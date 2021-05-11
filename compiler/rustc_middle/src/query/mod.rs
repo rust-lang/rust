@@ -681,7 +681,7 @@ rustc_queries! {
             desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
         }
 
-    query typeck_item_bodies(_: CrateNum) -> () {
+    query typeck_item_bodies(_: ()) -> () {
         desc { "type-checking all item bodies" }
     }
 
