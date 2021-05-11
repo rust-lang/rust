@@ -2816,10 +2816,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     };
     providers.extern_mod_stmt_cnum = |tcx, id| tcx.extern_crate_map.get(&id).cloned();
     providers.all_crate_nums = |tcx, ()| tcx.arena.alloc_slice(&tcx.cstore.crates_untracked());
-    providers.output_filenames = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.output_filenames.clone()
-    };
+    providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

@@ -95,7 +95,7 @@ impl<'tcx> SaveContext<'tcx> {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
         let crate_type = sess.crate_types()[0];
-        let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
+        let outputs = &*self.tcx.output_filenames(());
 
         if outputs.outputs.contains_key(&OutputType::Metadata) {
             filename_for_metadata(sess, crate_name, outputs)

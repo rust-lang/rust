@@ -20,7 +20,6 @@ use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{FatalError, Handler, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SwitchWithOptPath};
@@ -92,13 +91,12 @@ pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm:
 
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut llvm::TargetMachine {
     let split_dwarf_file = if tcx.sess.target_can_use_split_dwarf() {
-        tcx.output_filenames(LOCAL_CRATE)
-            .split_dwarf_path(tcx.sess.split_debuginfo(), Some(mod_name))
+        tcx.output_filenames(()).split_dwarf_path(tcx.sess.split_debuginfo(), Some(mod_name))
     } else {
         None
     };
     let config = TargetMachineFactoryConfig { split_dwarf_file };
-    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE))(config)
+    target_machine_factory(&tcx.sess, tcx.backend_optimization_level(()))(config)
         .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
 }
 

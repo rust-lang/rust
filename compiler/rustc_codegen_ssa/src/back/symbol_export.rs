@@ -230,7 +230,7 @@ fn exported_symbols_provider_local(
         // external linkage is enough for monomorphization to be linked to.
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
-        let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (_, cgus) = tcx.collect_and_partition_mono_items(());
 
         for (mono_item, &(linkage, visibility)) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if linkage != Linkage::External {
@@ -275,10 +275,8 @@ fn exported_symbols_provider_local(
 
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
-    cnum: CrateNum,
+    (): (),
 ) -> DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
-    debug_assert!(cnum == LOCAL_CRATE);
-
     let cnums = tcx.all_crate_nums(());
 
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
@@ -341,7 +339,7 @@ fn upstream_monomorphizations_for_provider(
     def_id: DefId,
 ) -> Option<&FxHashMap<SubstsRef<'_>, CrateNum>> {
     debug_assert!(!def_id.is_local());
-    tcx.upstream_monomorphizations(LOCAL_CRATE).get(&def_id)
+    tcx.upstream_monomorphizations(()).get(&def_id)
 }
 
 fn upstream_drop_glue_for_provider<'tcx>(

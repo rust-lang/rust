@@ -1150,11 +1150,9 @@ rustc_queries! {
     /// added or removed in any upstream crate. Instead use the narrower
     /// `upstream_monomorphizations_for`, `upstream_drop_glue_for`, or, even
     /// better, `Instance::upstream_monomorphization()`.
-    query upstream_monomorphizations(
-        k: CrateNum
-    ) -> DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
+    query upstream_monomorphizations(_: ()) -> DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
         storage(ArenaCacheSelector<'tcx>)
-        desc { "collecting available upstream monomorphizations `{:?}`", k }
+        desc { "collecting available upstream monomorphizations" }
     }
 
     /// Returns the set of upstream monomorphizations available for the
@@ -1434,8 +1432,7 @@ rustc_queries! {
         desc { "exported_symbols" }
     }
 
-    query collect_and_partition_mono_items(_: CrateNum)
-        -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+    query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
         eval_always
         desc { "collect_and_partition_mono_items" }
     }
@@ -1444,8 +1441,7 @@ rustc_queries! {
     }
 
     /// All items participating in code generation together with items inlined into them.
-    query codegened_and_inlined_items(_: CrateNum)
-        -> &'tcx DefIdSet {
+    query codegened_and_inlined_items(_: ()) -> &'tcx DefIdSet {
         eval_always
        desc { "codegened_and_inlined_items" }
     }
@@ -1460,11 +1456,11 @@ rustc_queries! {
                 tcx.def_path_str(key)
         }
     }
-    query backend_optimization_level(_: CrateNum) -> OptLevel {
+    query backend_optimization_level(_: ()) -> OptLevel {
         desc { "optimization level used by backend" }
     }
 
-    query output_filenames(_: CrateNum) -> Arc<OutputFilenames> {
+    query output_filenames(_: ()) -> Arc<OutputFilenames> {
         eval_always
         desc { "output_filenames" }
     }

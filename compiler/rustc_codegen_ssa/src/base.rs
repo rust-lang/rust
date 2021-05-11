@@ -485,7 +485,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
+    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
