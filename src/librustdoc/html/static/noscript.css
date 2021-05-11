@@ -4,31 +4,6 @@ of content is hidden by default (depending on the settings too), we have to over
 rules.
 */
 
-#main > h2 + div, #main > h2 + h3, #main > h3 + div {
-	display: block;
-}
-
-.loading-content {
-	display: none;
-}
-
-#main > h2 + div, #main > h3 + div {
-	display: block;
-}
-
-#main > h2 + h3 {
-	display: flex;
-}
-
-#main .impl-items .hidden {
-	display: block !important;
-}
-
-#main .impl-items h4.hidden {
-	/* Without this rule, the version and the "[src]" span aren't on the same line as the header. */
-	display: flex !important;
-}
-
 #main .attributes {
 	/* Since there is no toggle (the "[-]") when JS is disabled, no need for this margin either. */
 	margin-left: 0 !important;

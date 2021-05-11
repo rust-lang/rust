@@ -1140,26 +1140,6 @@ function hideThemeButtonState() {
         };
     }
 
-    if (main) {
-        onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
-            e.remove();
-        });
-        onEachLazy(main.childNodes, function(e) {
-            // Unhide the actual content once loading is complete. Headers get
-            // flex treatment for their horizontal layout, divs get block treatment
-            // for vertical layout (column-oriented flex layout for divs caused
-            // errors in mobile browsers).
-            if (e.tagName === "H2" || e.tagName === "H3") {
-                var nextTagName = e.nextElementSibling.tagName;
-                if (nextTagName === "H2" || nextTagName === "H3") {
-                    e.nextElementSibling.style.display = "flex";
-                } else if (nextTagName !== "DETAILS") {
-                    e.nextElementSibling.style.display = "block";
-                }
-            }
-        });
-    }
-
     function buildHelperPopup() {
         var popup = document.createElement("aside");
         addClass(popup, "hidden");

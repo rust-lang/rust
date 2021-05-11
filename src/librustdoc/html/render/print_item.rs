@@ -573,10 +573,6 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         )
     }
 
-    fn write_loading_content(w: &mut Buffer, extra_content: &str) {
-        write!(w, "{}<span class=\"loading-content\">Loading content...</span>", extra_content)
-    }
-
     fn trait_item(w: &mut Buffer, cx: &Context<'_>, m: &clean::Item, t: &clean::Item) {
         let name = m.name.as_ref().unwrap();
         info!("Documenting {} on {:?}", name, t.name);
@@ -601,7 +597,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         for t in types {
             trait_item(w, cx, t, it);
         }
-        write_loading_content(w, "</div>");
+        w.write_str("</div>");
     }
 
     if !consts.is_empty() {
@@ -614,7 +610,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         for t in consts {
             trait_item(w, cx, t, it);
         }
-        write_loading_content(w, "</div>");
+        w.write_str("</div>");
     }
 
     // Output the documentation for each function individually
@@ -628,7 +624,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         for m in required {
             trait_item(w, cx, m, it);
         }
-        write_loading_content(w, "</div>");
+        w.write_str("</div>");
     }
     if !provided.is_empty() {
         write_small_section_header(
@@ -640,7 +636,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         for m in provided {
             trait_item(w, cx, m, it);
         }
-        write_loading_content(w, "</div>");
+        w.write_str("</div>");
     }
 
     // If there are methods directly on this trait object, render them here.
@@ -703,7 +699,6 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     &[],
                 );
             }
-            write_loading_content(w, "");
         }
 
         write_small_section_header(
@@ -715,7 +710,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         for implementor in concrete {
             render_implementor(cx, implementor, it, w, &implementor_dups, &[]);
         }
-        write_loading_content(w, "</div>");
+        w.write_str("</div>");
 
         if t.is_auto {
             write_small_section_header(
@@ -734,7 +729,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     &collect_paths_for_type(implementor.inner_impl().for_.clone(), &cx.cache),
                 );
             }
-            write_loading_content(w, "</div>");
+            w.write_str("</div>");
         }
     } else {
         // even without any implementations to write in, we still want the heading and list, so the
@@ -743,18 +738,16 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             w,
             "implementors",
             "Implementors",
-            "<div class=\"item-list\" id=\"implementors-list\">",
+            "<div class=\"item-list\" id=\"implementors-list\"></div>",
         );
-        write_loading_content(w, "</div>");
 
         if t.is_auto {
             write_small_section_header(
                 w,
                 "synthetic-implementors",
                 "Auto implementors",
-                "<div class=\"item-list\" id=\"synthetic-implementors-list\">",
+                "<div class=\"item-list\" id=\"synthetic-implementors-list\"></div>",
             );
-            write_loading_content(w, "</div>");
         }
     }
 
