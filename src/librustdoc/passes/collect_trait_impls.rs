@@ -4,7 +4,7 @@ use crate::core::DocContext;
 use crate::fold::DocFolder;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
@@ -56,7 +56,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     // `tcx.crates()` doesn't include the local crate, and `tcx.all_trait_implementations`
     // doesn't work with it anyway, so pull them from the HIR map instead
     let mut extra_attrs = Vec::new();
-    for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
+    for &trait_did in cx.tcx.all_traits(()).iter() {
         for &impl_did in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = impl_did.to_def_id();
             cx.tcx.sess.prof.generic_activity("build_local_trait_impl").run(|| {

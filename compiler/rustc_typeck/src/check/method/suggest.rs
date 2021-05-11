@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, Res};
-use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::intravisit;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
@@ -1440,11 +1440,11 @@ impl Ord for TraitInfo {
 
 /// Retrieves all traits in this crate and any dependent crates.
 pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
-    tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
+    tcx.all_traits(()).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
 /// Computes all traits in this crate and any dependent crates.
-fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
+fn compute_all_traits(tcx: TyCtxt<'_>, (): ()) -> &[DefId] {
     use hir::itemlikevisit;
 
     let mut traits = vec![];
@@ -1503,14 +1503,11 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
         handle_external_res(tcx, &mut traits, &mut external_mods, Res::Def(DefKind::Mod, def_id));
     }
 
-    traits
+    tcx.arena.alloc_from_iter(traits)
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.all_traits = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        &tcx.arena.alloc(compute_all_traits(tcx))[..]
-    }
+    providers.all_traits = compute_all_traits;
 }
 
 struct UsePlacementFinder<'tcx> {
