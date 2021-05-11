@@ -205,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .insert(*import_id);
         }
 
-        self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span);
+        self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span, None);
 
         let result =
             self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
@@ -445,7 +445,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // them as well. It's ok to use the variant's id as a ctor id since an
                     // error will be reported on any use of such resolution anyway.
                     let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
-                    tcx.check_stability(ctor_def_id, Some(expr_id), span);
+                    tcx.check_stability(ctor_def_id, Some(expr_id), span, Some(method_name.span));
                     return Ok((
                         DefKind::Ctor(CtorOf::Variant, variant_def.ctor_kind),
                         ctor_def_id,
@@ -475,7 +475,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let def_kind = pick.item.kind.as_def_kind();
         debug!("resolve_ufcs: def_kind={:?}, def_id={:?}", def_kind, pick.item.def_id);
-        tcx.check_stability(pick.item.def_id, Some(expr_id), span);
+        tcx.check_stability(pick.item.def_id, Some(expr_id), span, Some(method_name.span));
         Ok((def_kind, pick.item.def_id))
     }
 

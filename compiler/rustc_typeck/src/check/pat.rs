@@ -958,7 +958,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
                 self.check_pat(&subpat, field_ty, def_bm, TopInfo { parent_pat: Some(&pat), ..ti });
 
-                self.tcx.check_stability(variant.fields[i].did, Some(pat.hir_id), subpat.span);
+                self.tcx.check_stability(
+                    variant.fields[i].did,
+                    Some(pat.hir_id),
+                    subpat.span,
+                    None,
+                );
             }
         } else {
             // Pattern has wrong number of fields.
@@ -1192,7 +1197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .get(&ident)
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
-                            self.tcx.check_stability(f.did, Some(pat.hir_id), span);
+                            self.tcx.check_stability(f.did, Some(pat.hir_id), span, None);
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
