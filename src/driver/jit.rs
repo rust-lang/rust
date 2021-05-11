@@ -8,7 +8,6 @@ use std::os::raw::{c_char, c_int};
 use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
-use rustc_session::config::EntryFnType;
 
 use cranelift_jit::{JITBuilder, JITModule};
 
@@ -66,7 +65,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         matches!(backend_config.codegen_mode, CodegenMode::JitLazy),
     );
 
-    let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let (_, cgus) = tcx.collect_and_partition_mono_items(());
     let mono_items = cgus
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
