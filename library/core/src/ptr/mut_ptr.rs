@@ -42,7 +42,7 @@ impl<T: ?Sized> *mut T {
     /// Casts to a pointer of another type.
     #[stable(feature = "ptr_cast", since = "1.38.0")]
     #[rustc_const_stable(feature = "const_ptr_cast", since = "1.38.0")]
-    #[inline]
+    #[inline(always)]
     pub const fn cast<U>(self) -> *mut U {
         self as _
     }
@@ -551,7 +551,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[stable(feature = "ptr_offset_from", since = "1.47.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "41079")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize
     where
         T: Sized,
@@ -859,7 +859,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::read`]: crate::ptr::read()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn read(self) -> T
     where
         T: Sized,
@@ -879,7 +879,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn read_volatile(self) -> T
     where
         T: Sized,
@@ -898,7 +898,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_read", issue = "80377")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn read_unaligned(self) -> T
     where
         T: Sized,
@@ -917,7 +917,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy`]: crate::ptr::copy()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_to(self, dest: *mut T, count: usize)
     where
         T: Sized,
@@ -936,7 +936,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_to_nonoverlapping(self, dest: *mut T, count: usize)
     where
         T: Sized,
@@ -955,7 +955,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy`]: crate::ptr::copy()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_from(self, src: *const T, count: usize)
     where
         T: Sized,
@@ -974,7 +974,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
     #[rustc_const_unstable(feature = "const_intrinsic_copy", issue = "80697")]
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn copy_from_nonoverlapping(self, src: *const T, count: usize)
     where
         T: Sized,
@@ -989,7 +989,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn drop_in_place(self) {
         // SAFETY: the caller must uphold the safety contract for `drop_in_place`.
         unsafe { drop_in_place(self) }
@@ -1003,7 +1003,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write`]: crate::ptr::write()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn write(self, val: T)
     where
         T: Sized,
@@ -1019,7 +1019,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_bytes`]: crate::ptr::write_bytes()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn write_bytes(self, val: u8, count: usize)
     where
         T: Sized,
@@ -1039,7 +1039,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::write_volatile`]: crate::ptr::write_volatile()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn write_volatile(self, val: T)
     where
         T: Sized,
@@ -1058,7 +1058,7 @@ impl<T: ?Sized> *mut T {
     /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
     #[rustc_const_unstable(feature = "const_ptr_write", issue = "none")]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn write_unaligned(self, val: T)
     where
         T: Sized,
@@ -1074,7 +1074,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::replace`]: crate::ptr::replace()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn replace(self, src: T) -> T
     where
         T: Sized,
@@ -1091,7 +1091,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::swap`]: crate::ptr::swap()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn swap(self, with: *mut T)
     where
         T: Sized,
@@ -1170,7 +1170,7 @@ impl<T> *mut [T] {
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.len(), 3);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "slice_ptr_len", issue = "71146")]
     #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
     pub const fn len(self) -> usize {
@@ -1190,7 +1190,7 @@ impl<T> *mut [T] {
     /// let slice: *mut [i8] = ptr::slice_from_raw_parts_mut(ptr::null_mut(), 3);
     /// assert_eq!(slice.as_mut_ptr(), 0 as *mut i8);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
     #[rustc_const_unstable(feature = "slice_ptr_get", issue = "74265")]
     pub const fn as_mut_ptr(self) -> *mut T {
@@ -1217,7 +1217,7 @@ impl<T> *mut [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn get_unchecked_mut<I>(self, index: I) -> *mut I::Output
     where
         I: SliceIndex<[T]>,
@@ -1332,7 +1332,7 @@ impl<T> *mut [T] {
 // Equality for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
-    #[inline]
+    #[inline(always)]
     fn eq(&self, other: &*mut T) -> bool {
         *self == *other
     }
@@ -1357,27 +1357,27 @@ impl<T: ?Sized> Ord for *mut T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *mut T {
-    #[inline]
+    #[inline(always)]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 
-    #[inline]
+    #[inline(always)]
     fn lt(&self, other: &*mut T) -> bool {
         *self < *other
     }
 
-    #[inline]
+    #[inline(always)]
     fn le(&self, other: &*mut T) -> bool {
         *self <= *other
     }
 
-    #[inline]
+    #[inline(always)]
     fn gt(&self, other: &*mut T) -> bool {
         *self > *other
     }
 
-    #[inline]
+    #[inline(always)]
     fn ge(&self, other: &*mut T) -> bool {
         *self >= *other
     }
