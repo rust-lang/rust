@@ -137,8 +137,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
         reachable_non_generics.insert(id, SymbolExportLevel::C);
     }
 
-    if let Some(id) = tcx.plugin_registrar_fn(LOCAL_CRATE) {
-        reachable_non_generics.insert(id, SymbolExportLevel::C);
+    if let Some(id) = tcx.plugin_registrar_fn(()) {
+        reachable_non_generics.insert(id.to_def_id(), SymbolExportLevel::C);
     }
 
     reachable_non_generics

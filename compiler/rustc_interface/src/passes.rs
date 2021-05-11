@@ -822,9 +822,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
             {
                 entry_point = sess.time("looking_for_entry_point", || tcx.entry_fn(()));
 
-                sess.time("looking_for_plugin_registrar", || {
-                    plugin::build::find_plugin_registrar(tcx)
-                });
+                sess.time("looking_for_plugin_registrar", || tcx.ensure().plugin_registrar_fn(()));
 
                 sess.time("looking_for_derive_registrar", || proc_macro_decls::find(tcx));
 
