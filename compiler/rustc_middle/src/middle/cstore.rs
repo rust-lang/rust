@@ -199,7 +199,6 @@ pub trait CrateStore {
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
-    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
 
