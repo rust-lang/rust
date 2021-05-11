@@ -1330,7 +1330,7 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
-    query get_lib_features(_: CrateNum) -> LibFeatures {
+    query get_lib_features(_: ()) -> LibFeatures {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the lib features map" }
@@ -1340,16 +1340,14 @@ rustc_queries! {
         desc { "calculating the lib features defined in a crate" }
     }
     /// Returns the lang items defined in another crate by loading it from metadata.
-    // FIXME: It is illegal to pass a `CrateNum` other than `LOCAL_CRATE` here, just get rid
-    // of that argument?
-    query get_lang_items(_: CrateNum) -> LanguageItems {
+    query get_lang_items(_: ()) -> LanguageItems {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the lang items map" }
     }
 
     /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: CrateNum) -> FxHashMap<Symbol, DefId> {
+    query all_diagnostic_items(_: ()) -> FxHashMap<Symbol, DefId> {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the diagnostic items map" }
@@ -1411,12 +1409,12 @@ rustc_queries! {
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
-    query stability_index(_: CrateNum) -> stability::Index<'tcx> {
+    query stability_index(_: ()) -> stability::Index<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the stability index for the local crate" }
     }
-    query all_crate_nums(_: CrateNum) -> &'tcx [CrateNum] {
+    query all_crate_nums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
@@ -1644,7 +1642,7 @@ rustc_queries! {
         desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
     }
 
-    query features_query(_: CrateNum) -> &'tcx rustc_feature::Features {
+    query features_query(_: ()) -> &'tcx rustc_feature::Features {
         eval_always
         desc { "looking up enabled feature gates" }
     }

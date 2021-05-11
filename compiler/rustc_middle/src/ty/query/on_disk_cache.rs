@@ -579,7 +579,7 @@ impl<'sess> OnDiskCache<'sess> {
     ) -> IndexVec<CrateNum, Option<CrateNum>> {
         tcx.dep_graph.with_ignore(|| {
             let current_cnums = tcx
-                .all_crate_nums(LOCAL_CRATE)
+                .all_crate_nums(())
                 .iter()
                 .map(|&cnum| {
                     let crate_name = tcx.original_crate_name(cnum).to_string();

@@ -279,7 +279,7 @@ fn upstream_monomorphizations_provider(
 ) -> DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
     debug_assert!(cnum == LOCAL_CRATE);
 
-    let cnums = tcx.all_crate_nums(LOCAL_CRATE);
+    let cnums = tcx.all_crate_nums(());
 
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
 
