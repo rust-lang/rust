@@ -48,4 +48,18 @@ fn main() {
 
     // escape-to-raw (shr)
     let _w = _w as *const _;
+
+    array_casts();
+}
+
+/// Casting directly to an array should also go through `&raw` and thus add appropriate retags.
+// EMIT_MIR retag.array_casts.SimplifyCfg-elaborate-drops.after.mir
+fn array_casts() {
+    let mut x: [usize; 2] = [0, 0];
+    let p = &mut x as *mut usize;
+    unsafe { *p.add(1) = 1; }
+
+    let x: [usize; 2] = [0, 1];
+    let p = &x as *const usize;
+    assert_eq!(unsafe { *p.add(1) }, 1);
 }
