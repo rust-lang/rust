@@ -2795,10 +2795,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         tcx.crate_name
     };
     providers.maybe_unused_trait_import = |tcx, id| tcx.maybe_unused_trait_imports.contains(&id);
-    providers.maybe_unused_extern_crates = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        &tcx.maybe_unused_extern_crates[..]
-    };
+    providers.maybe_unused_extern_crates = |tcx, ()| &tcx.maybe_unused_extern_crates[..];
     providers.names_imported_by_glob_use =
         |tcx, id| tcx.arena.alloc(tcx.glob_map.get(&id).cloned().unwrap_or_default());
 

@@ -361,9 +361,9 @@ pub fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
             CStore::from_tcx(tcx).has_global_allocator()
         },
-        postorder_cnums: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            tcx.arena.alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(cnum))
+        postorder_cnums: |tcx, ()| {
+            tcx.arena
+                .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
 
         ..*providers

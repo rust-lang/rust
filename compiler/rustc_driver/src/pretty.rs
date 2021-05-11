@@ -4,7 +4,6 @@ use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
 use rustc_middle::ty::{self, TyCtxt};
@@ -74,7 +73,7 @@ where
             f(&annotation, tcx.hir().krate())
         }
         PpHirMode::Typed => {
-            abort_on_err(tcx.analysis(LOCAL_CRATE), tcx.sess);
+            abort_on_err(tcx.analysis(()), tcx.sess);
 
             let annotation = TypedAnnotation { tcx, maybe_typeck_results: Cell::new(None) };
             tcx.dep_graph.with_ignore(|| f(&annotation, tcx.hir().krate()))
@@ -475,7 +474,7 @@ fn print_with_analysis(
     ppm: PpMode,
     ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
-    tcx.analysis(LOCAL_CRATE)?;
+    tcx.analysis(())?;
 
     let out = match ppm {
         Mir => {

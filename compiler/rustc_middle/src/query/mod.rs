@@ -114,7 +114,7 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
     }
 
-    query analysis(key: CrateNum) -> Result<(), ErrorReported> {
+    query analysis(key: ()) -> Result<(), ErrorReported> {
         eval_always
         desc { "running analysis passes on this crate" }
     }
@@ -1381,7 +1381,7 @@ rustc_queries! {
         eval_always
         desc { "looking at the source for a crate" }
     }
-    query postorder_cnums(_: CrateNum) -> &'tcx [CrateNum] {
+    query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
@@ -1394,8 +1394,7 @@ rustc_queries! {
         eval_always
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
-    query maybe_unused_extern_crates(_: CrateNum)
-        -> &'tcx [(LocalDefId, Span)] {
+    query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
         eval_always
         desc { "looking up all possibly unused extern crates" }
     }

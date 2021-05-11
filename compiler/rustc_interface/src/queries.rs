@@ -285,7 +285,7 @@ impl<'tcx> Queries<'tcx> {
         self.ongoing_codegen.compute(|| {
             let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE).ok();
+                tcx.analysis(()).ok();
 
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
