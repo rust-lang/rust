@@ -13,7 +13,7 @@ pub(crate) fn codegen(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
 ) -> bool {
-    let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
+    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });

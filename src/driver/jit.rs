@@ -179,7 +179,7 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
     let mut dylib_paths = Vec::new();
 
     let crate_info = CrateInfo::new(tcx);
-    let formats = tcx.dependency_formats(LOCAL_CRATE);
+    let formats = tcx.dependency_formats(());
     let data = &formats
         .iter()
         .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
