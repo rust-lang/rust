@@ -7602,6 +7602,26 @@ pub unsafe fn vrsrad_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
     transmute(simd_add(transmute(a), b))
 }
 
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vset_lane_f64<const LANE: i32>(a: f64, b: float64x1_t) -> float64x1_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    simd_insert(b, LANE as u32, a)
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsetq_lane_f64<const LANE: i32>(a: f64, b: float64x2_t) -> float64x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(b, LANE as u32, a)
+}
+
 /// Signed Shift left
 #[inline]
 #[target_feature(enable = "neon")]
@@ -15108,6 +15128,24 @@ mod test {
         let b: u64 = 4;
         let e: u64 = 2;
         let r: u64 = transmute(vrsrad_n_u64::<2>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vset_lane_f64() {
+        let a: f64 = 1.;
+        let b: f64 = 0.;
+        let e: f64 = 1.;
+        let r: f64 = transmute(vset_lane_f64::<0>(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vsetq_lane_f64() {
+        let a: f64 = 1.;
+        let b: f64x2 = f64x2::new(0., 2.);
+        let e: f64x2 = f64x2::new(1., 2.);
+        let r: f64x2 = transmute(vsetq_lane_f64::<0>(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 

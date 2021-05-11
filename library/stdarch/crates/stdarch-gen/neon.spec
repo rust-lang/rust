@@ -4384,6 +4384,82 @@ validate 2
 aarch64 = nop
 generate u64
 
+/// Insert vector element from another vector element
+name = vset_lane
+constn = LANE
+multi_fn = static_assert_imm-in_bits_exp_len-LANE
+multi_fn = simd_insert, b, LANE as u32, a
+a = 1
+b = 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+n = 0
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = nop
+arm = nop
+generate i8:int8x8_t:int8x8_t, i16:int16x4_t:int16x4_t
+generate i32:int32x2_t:int32x2_t, i64:int64x1_t:int64x1_t
+generate u8:uint8x8_t:uint8x8_t, u16:uint16x4_t:uint16x4_t
+generate u32:uint32x2_t:uint32x2_t, u64:uint64x1_t:uint64x1_t
+generate p8:poly8x8_t:poly8x8_t, p16:poly16x4_t:poly16x4_t
+
+target = crypto
+generate p64:poly64x1_t:poly64x1_t
+
+/// Insert vector element from another vector element
+name = vsetq_lane
+no-q
+constn = LANE
+multi_fn = static_assert_imm-in_bits_exp_len-LANE
+multi_fn = simd_insert, b, LANE as u32, a
+a = 1
+b = 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+n = 0
+validate 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+
+aarch64 = nop
+arm = nop
+generate i8:int8x16_t:int8x16_t, i16:int16x8_t:int16x8_t
+generate i32:int32x4_t:int32x4_t, i64:int64x2_t:int64x2_t
+generate u8:uint8x16_t:uint8x16_t, u16:uint16x8_t:uint16x8_t
+generate u32:uint32x4_t:uint32x4_t, u64:uint64x2_t:uint64x2_t
+generate p8:poly8x16_t:poly8x16_t, p16:poly16x8_t:poly16x8_t
+
+target = crypto
+generate p64:poly64x2_t:poly64x2_t
+
+/// Insert vector element from another vector element
+name = vset_lane
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_insert, b, LANE as u32, a
+a = 1.
+b = 0., 2., 3., 4.
+n = 0
+validate 1., 2., 3., 4.
+
+aarch64 = nop
+generate f64:float64x1_t:float64x1_t
+
+arm = nop
+generate f32:float32x2_t:float32x2_t
+
+/// Insert vector element from another vector element
+name = vsetq_lane
+no-q
+constn = LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
+multi_fn = simd_insert, b, LANE as u32, a
+a = 1.
+b = 0., 2., 3., 4.
+n = 0
+validate 1., 2., 3., 4.
+
+aarch64 = nop
+generate f64:float64x2_t:float64x2_t
+
+arm = nop
+generate f32:float32x4_t:float32x4_t
+
 /// Signed Shift left
 name = vshl
 a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
