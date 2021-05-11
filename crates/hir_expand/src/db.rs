@@ -267,7 +267,16 @@ fn parse_macro_expansion(
 
 fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let arg = db.macro_arg_text(id)?;
-    let (tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg));
+    let (mut tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg));
+
+    if let MacroCallId::LazyMacro(id) = id {
+        let loc: MacroCallLoc = db.lookup_intern_macro(id);
+        if loc.def.is_proc_macro() {
+            // proc macros expect their inputs without parentheses, MBEs expect it with them included
+            tt.delimiter = None;
+        }
+    }
+
     Some(Arc::new((tt, tmap)))
 }
 
