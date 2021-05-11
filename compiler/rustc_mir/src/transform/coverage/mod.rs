@@ -32,7 +32,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CharPos, ExpnKind, Pos, SourceFile, Span, Symbol};
+use rustc_span::{CharPos, ExpnData, ExpnKind, Pos, SourceFile, Span, Symbol};
 
 /// A simple error message wrapper for `coverage::Error`s.
 #[derive(Debug)]
@@ -552,24 +552,109 @@ fn get_body_span<'tcx>(
     let mut body_span = hir_body.value.span;
     let def_id = mir_body.source.def_id();
 
-    if tcx.is_closure(def_id) {
+    // If debug is enabled, log expansion span info, if any.
+    debug!("{}", {
+        let mut span = body_span;
+        while span.from_expansion() {
+            let ExpnData { kind, call_site, .. } = span.ctxt().outer_expn_data();
+            debug!(
+                "Body expansion span: {:?}...
+                expanded from {:?}
+                at call_site={:?}",
+                span, kind, call_site
+            );
+            span = call_site;
+        }
+        "-- end of debug message showing body_span expansion --"
+    });
+
+    if body_span.in_derive_expansion() {
+        // Derive macro expansions can be expanded, but they expand to structs
+        // and struct fields, and I think it's less helpful in coverage reports.
+        return body_span;
+    }
+
+    let mut body_is_from_expansion = false;
+    if !tcx.is_closure(def_id) {
+        body_is_from_expansion = body_span.from_expansion();
+    } else {
         // If the MIR function is a closure, and if the closure body span
         // starts from a macro, but it's content is not in that macro, try
         // to find a non-macro callsite, and instrument the spans there
         // instead.
-        loop {
+        while body_span.from_expansion() {
+            body_is_from_expansion = true;
             let expn_data = body_span.ctxt().outer_expn_data();
-            if expn_data.is_root() {
-                break;
-            }
-            if let ExpnKind::Macro { .. } = expn_data.kind {
-                body_span = expn_data.call_site;
-            } else {
-                break;
+            body_span = expn_data.call_site;
+            match expn_data.kind {
+                ExpnKind::Macro { .. } => {}
+                _ => break,
             }
         }
+    };
+
+    if !body_is_from_expansion {
+        // If the body_span (or recomputed body_span, for closures with macros)
+        // is not from an expansion, then there is no need to try to compute
+        // a span from the MIR statements and terminators.
+        return body_span;
     }
 
+    // If the body is from an expansion, then there's no certainty that the
+    // internal statements were also expanded into the same ctxt or elsewhere.
+    // So, search the MIR `Statement` and `Terminator` spans, and if their
+    // spans exist ouside the `body_span` compute a different `body_span`
+    // from the spans of the MIR's `Statement`s and `Terminator`s, so
+    // coverage can be applied to those spans.
+
+    if let Ok(Some(max_span)) = spans::filtered_from_mir(mir_body).try_fold(
+        None,
+        |some_max_span: Option<Span>, mut span| {
+            if span.is_empty() || span == body_span {
+                // A span that matches the body_span doesn't add anything, and both spans that match
+                // the body_span, and empty spans can exist in the given body_span, even if the
+                // statements we want to cover are from a separate and distinct span, so we need
+                // to ignore them. If no other statements exist outside the body_span, then we will
+                // keep the given body_span.
+                return Ok(some_max_span); // continue iterating
+            }
+
+            while span.ctxt() != body_span.ctxt() {
+                if !span.from_expansion() {
+                    return Ok(some_max_span); // continue iterating
+                }
+                span = span.ctxt().outer_expn_data().call_site;
+            }
+
+            if body_span.contains(span) {
+                debug!(
+                    "using body_span={:?}; it contains a statement or terminator with span={:?}",
+                    body_span, span
+                );
+                return Err(()); // break from iterating
+            }
+
+            if let Some(max_span) = some_max_span {
+                Ok(Some(max_span.to(span))) // extend max_span
+            } else {
+                Ok(Some(span)) // initialize max_span to first useful span
+            }
+        },
+    ) {
+        debug!(
+            "max_span = {:?}; overlaps body_span? {}, body_span hi() only touches? {}",
+            max_span,
+            body_span.overlaps(max_span),
+            body_span.hi() == max_span.lo()
+        );
+        if body_span.overlaps(max_span) {
+            // extend the body_span to include the computed max_span
+            body_span = body_span.to(max_span);
+        } else {
+            // use the computed max_span instead of the original body_span
+            body_span = max_span;
+        }
+    }
     body_span
 }
 

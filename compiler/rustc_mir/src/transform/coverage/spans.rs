@@ -1,5 +1,6 @@
 use super::debug::term_type;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
+use super::spans;
 
 use crate::util::spanview::source_range_no_file;
 
@@ -887,6 +888,23 @@ pub(super) fn filtered_terminator_span(terminator: &'a Terminator<'tcx>) -> Opti
             Some(terminator.source_info.span)
         }
     }
+}
+
+/// Returns an iterator over all filtered statement and terminator spans.
+pub(super) fn filtered_from_mir<'a>(
+    mir_body: &'a mir::Body<'a>,
+) -> impl Iterator<Item = Span> + 'a {
+    mir_body.basic_blocks().iter().flat_map(|data| {
+        data.statements
+            .iter()
+            .enumerate()
+            .filter_map(move |(_, statement)| spans::filtered_statement_span(statement))
+            .chain(
+                data.terminator
+                    .iter()
+                    .filter_map(move |term| spans::filtered_terminator_span(term)),
+            )
+    })
 }
 
 /// Returns an extrapolated span (pre-expansion[^1]) corresponding to a range
