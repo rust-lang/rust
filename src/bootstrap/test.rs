@@ -832,7 +832,7 @@ impl Step for RustdocGUI {
             let _ = fs::remove_dir_all(&out_dir);
 
             // We generate docs for the libraries present in the rustdoc-gui's src folder.
-            let libs_dir = Path::new("src/test/rustdoc-gui/src");
+            let libs_dir = builder.build.src.join("src/test/rustdoc-gui/src");
             for entry in libs_dir.read_dir().expect("read_dir call failed") {
                 let entry = entry.expect("invalid entry");
                 let path = entry.path();
@@ -846,11 +846,11 @@ impl Step for RustdocGUI {
             // We now run GUI tests.
             let mut command = Command::new(&nodejs);
             command
-                .arg("src/tools/rustdoc-gui/tester.js")
+                .arg(builder.build.src.join("src/tools/rustdoc-gui/tester.js"))
                 .arg("--doc-folder")
                 .arg(out_dir)
                 .arg("--tests-folder")
-                .arg("src/test/rustdoc-gui");
+                .arg(builder.build.src.join("src/test/rustdoc-gui"));
             builder.run(&mut command);
         } else {
             builder.info("No nodejs found, skipping \"src/test/rustdoc-gui\" tests");
