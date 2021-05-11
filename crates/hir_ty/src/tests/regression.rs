@@ -1050,3 +1050,52 @@ fn test() {
         "#]],
     );
 }
+
+#[test]
+fn cfg_tail() {
+    // https://github.com/rust-analyzer/rust-analyzer/issues/8378
+    check_infer(
+        r#"
+        fn fake_tail(){
+            { "first" }
+            #[cfg(never)] 9
+        }
+        fn multiple_fake(){
+            { "fake" }
+            { "fake" }
+            { "second" }
+            #[cfg(never)] { 11 }
+            #[cfg(never)] 12;
+            #[cfg(never)] 13
+        }
+        fn no_normal_tail(){
+            { "third" }
+            #[cfg(never)] 14;
+            #[cfg(never)] 15;
+        }
+        fn no_actual_tail(){
+            { "fourth" };
+            #[cfg(never)] 14;
+            #[cfg(never)] 15
+        }
+        "#,
+        expect![[r#"
+            14..53 '{     ...)] 9 }': &str
+            20..31 '{ "first" }': &str
+            22..29 '"first"': &str
+            72..190 '{     ...] 13 }': &str
+            78..88 '{ "fake" }': &str
+            80..86 '"fake"': &str
+            93..103 '{ "fake" }': &str
+            95..101 '"fake"': &str
+            108..120 '{ "second" }': &str
+            110..118 '"second"': &str
+            210..273 '{     ... 15; }': &str
+            216..227 '{ "third" }': &str
+            218..225 '"third"': &str
+            293..357 '{     ...] 15 }': ()
+            299..311 '{ "fourth" }': &str
+            301..309 '"fourth"': &str
+        "#]],
+    )
+}

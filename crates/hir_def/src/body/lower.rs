@@ -205,7 +205,7 @@ impl ExprCollector<'_> {
         self.maybe_collect_expr(expr).unwrap_or_else(|| self.missing_expr())
     }
 
-    /// Returns `None` if the expression is `#[cfg]`d out.
+    /// Returns `None` if and only if the expression is `#[cfg]`d out.
     fn maybe_collect_expr(&mut self, expr: ast::Expr) -> Option<ExprId> {
         let syntax_ptr = AstPtr::new(&expr);
         self.check_cfg(&expr)?;
@@ -668,7 +668,7 @@ impl ExprCollector<'_> {
                 if self.check_cfg(&stmt).is_none() {
                     return;
                 }
-
+                let has_semi = stmt.semicolon_token().is_some();
                 // Note that macro could be expended to multiple statements
                 if let Some(ast::Expr::MacroCall(m)) = stmt.expr() {
                     let macro_ptr = AstPtr::new(&m);
@@ -685,18 +685,19 @@ impl ExprCollector<'_> {
                                 statements.statements().for_each(|stmt| this.collect_stmt(stmt));
                                 if let Some(expr) = statements.expr() {
                                     let expr = this.collect_expr(expr);
-                                    this.statements_in_scope.push(Statement::Expr(expr));
+                                    this.statements_in_scope
+                                        .push(Statement::Expr { expr, has_semi });
                                 }
                             }
                             None => {
                                 let expr = this.alloc_expr(Expr::Missing, syntax_ptr.clone());
-                                this.statements_in_scope.push(Statement::Expr(expr));
+                                this.statements_in_scope.push(Statement::Expr { expr, has_semi });
                             }
                         },
                     );
                 } else {
                     let expr = self.collect_expr_opt(stmt.expr());
-                    self.statements_in_scope.push(Statement::Expr(expr));
+                    self.statements_in_scope.push(Statement::Expr { expr, has_semi });
                 }
             }
             ast::Stmt::Item(item) => {
@@ -725,8 +726,17 @@ impl ExprCollector<'_> {
         let prev_statements = std::mem::take(&mut self.statements_in_scope);
 
         block.statements().for_each(|s| self.collect_stmt(s));
+        block.tail_expr().and_then(|e| {
+            let expr = self.maybe_collect_expr(e)?;
+            Some(self.statements_in_scope.push(Statement::Expr { expr, has_semi: false }))
+        });
 
-        let tail = block.tail_expr().map(|e| self.collect_expr(e));
+        let mut tail = None;
+        if let Some(Statement::Expr { expr, has_semi: false }) = self.statements_in_scope.last() {
+            tail = Some(*expr);
+            self.statements_in_scope.pop();
+        }
+        let tail = tail;
         let statements = std::mem::replace(&mut self.statements_in_scope, prev_statements);
         let syntax_node_ptr = AstPtr::new(&block.into());
         let expr_id = self.alloc_expr(
