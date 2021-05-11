@@ -820,8 +820,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     sess.time("misc_checking_1", || {
         parallel!(
             {
-                entry_point = sess
-                    .time("looking_for_entry_point", || rustc_passes::entry::find_entry_point(tcx));
+                entry_point = sess.time("looking_for_entry_point", || tcx.entry_fn(()));
 
                 sess.time("looking_for_plugin_registrar", || {
                     plugin::build::find_plugin_registrar(tcx)

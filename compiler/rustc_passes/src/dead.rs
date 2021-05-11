@@ -472,7 +472,7 @@ fn create_and_seed_worklist<'tcx>(
         )
         .chain(
             // Seed entry point
-            tcx.entry_fn(LOCAL_CRATE).and_then(|(def_id, _)| {
+            tcx.entry_fn(()).and_then(|(def_id, _)| {
                 def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
             }),
         )

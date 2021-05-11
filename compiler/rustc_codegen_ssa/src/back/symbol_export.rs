@@ -174,7 +174,7 @@ fn exported_symbols_provider_local(
         .map(|(&def_id, &level)| (ExportedSymbol::NonGeneric(def_id), level))
         .collect();
 
-    if tcx.entry_fn(LOCAL_CRATE).is_some() {
+    if tcx.entry_fn(()).is_some() {
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
 
         symbols.push((exported_symbol, SymbolExportLevel::C));

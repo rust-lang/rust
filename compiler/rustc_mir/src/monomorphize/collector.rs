@@ -322,7 +322,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
     let mut roots = Vec::new();
 
     {
-        let entry_fn = tcx.entry_fn(LOCAL_CRATE);
+        let entry_fn = tcx.entry_fn(());
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 

@@ -347,7 +347,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
 ) -> Option<Bx::Function> {
-    let main_def_id = cx.tcx().entry_fn(LOCAL_CRATE).map(|(def_id, _)| def_id)?;
+    let (main_def_id, entry_type) = cx.tcx().entry_fn(())?;
     let main_is_local = main_def_id.is_local();
     let instance = Instance::mono(cx.tcx(), main_def_id);
 
@@ -364,10 +364,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    return cx.tcx().entry_fn(LOCAL_CRATE).map(|(_, et)| {
-        let use_start_lang_item = EntryFnType::Start != et;
-        create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item)
-    });
+    let use_start_lang_item = EntryFnType::Start != entry_type;
+    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item);
+    return Some(entry_fn);
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
