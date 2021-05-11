@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use dot::Id;
+use dot::{Id, LabelText};
 use ide_db::{
     base_db::{CrateGraph, CrateId, Dependency, SourceDatabase, SourceDatabaseExt},
     RootDatabase,
@@ -97,7 +97,15 @@ impl<'a> dot::Labeller<'a, CrateId, Edge<'a>> for DotCrateGraph {
     }
 
     fn node_id(&'a self, n: &CrateId) -> Id<'a> {
-        let name = self.graph[*n].display_name.as_ref().map_or("_missing_name_", |name| &*name);
-        Id::new(format!("{}_{}", name, n.0)).unwrap()
+        Id::new(format!("_{}", n.0)).unwrap()
+    }
+
+    fn node_shape(&'a self, _node: &CrateId) -> Option<LabelText<'a>> {
+        Some(LabelText::LabelStr("box".into()))
+    }
+
+    fn node_label(&'a self, n: &CrateId) -> LabelText<'a> {
+        let name = self.graph[*n].display_name.as_ref().map_or("(unnamed crate)", |name| &*name);
+        LabelText::LabelStr(name.into())
     }
 }
