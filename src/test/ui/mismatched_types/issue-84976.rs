@@ -1,3 +1,7 @@
+/* Checks whether primitive type names are formatted correctly in the
+ * error messages about mismatched types (#84976).
+ */
+
 fn foo(length: &u32) -> i32 {
     0
 }

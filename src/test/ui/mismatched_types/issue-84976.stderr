@@ -1,23 +1,23 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-84976.rs:11:16
+  --> $DIR/issue-84976.rs:15:16
    |
 LL |     length = { foo(&length) };
    |                ^^^^^^^^^^^^ expected `u32`, found `i32`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-84976.rs:13:14
+  --> $DIR/issue-84976.rs:17:14
    |
 LL |     length = foo(&length);
    |              ^^^^^^^^^^^^ expected `u32`, found `i32`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-84976.rs:17:22
+  --> $DIR/issue-84976.rs:21:22
    |
 LL |     float_length = { bar(&float_length) };
    |                      ^^^^^^^^^^^^^^^^^^ expected `f32`, found `f64`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-84976.rs:19:20
+  --> $DIR/issue-84976.rs:23:20
    |
 LL |     float_length = bar(&float_length);
    |                    ^^^^^^^^^^^^^^^^^^ expected `f32`, found `f64`
