@@ -184,7 +184,6 @@ a.test-arrow {
 	color: #f5f5f5;
 }
 
-.collapse-toggle,
 details.rustdoc-toggle > summary.hideme > span,
 details.rustdoc-toggle > summary::before,
 details.undocumented > summary::before {
