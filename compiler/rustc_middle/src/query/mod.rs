@@ -1133,7 +1133,7 @@ rustc_queries! {
         desc { "computing whether impls specialize one another" }
     }
     query in_scope_traits_map(_: LocalDefId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, StableVec<TraitCandidate>>> {
+        -> Option<&'tcx FxHashMap<ItemLocalId, Box<[TraitCandidate]>>> {
         desc { "traits in scope at a block" }
     }
 

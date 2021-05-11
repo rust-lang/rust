@@ -44,7 +44,6 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
@@ -506,7 +505,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         for (k, v) in self.resolver.trait_map().into_iter() {
             if let Some(Some(hir_id)) = self.node_id_to_hir_id.get(k) {
                 let map = trait_map.entry(hir_id.owner).or_default();
-                map.insert(hir_id.local_id, StableVec::new(v.to_vec()));
+                map.insert(hir_id.local_id, v.into_boxed_slice());
             }
         }
 
