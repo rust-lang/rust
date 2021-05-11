@@ -964,7 +964,7 @@ fn create_generator_drop_shim<'tcx>(
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
-    simplify::remove_dead_blocks(tcx, &mut body);
+    simplify::remove_dead_blocks(&mut body);
 
     dump_mir(tcx, None, "generator_drop", &0, &body, |_, _| Ok(()));
 
@@ -1137,7 +1137,7 @@ fn create_generator_resume_function<'tcx>(
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
-    simplify::remove_dead_blocks(tcx, body);
+    simplify::remove_dead_blocks(body);
 
     dump_mir(tcx, None, "generator_resume", &0, body, |_, _| Ok(()));
 }
