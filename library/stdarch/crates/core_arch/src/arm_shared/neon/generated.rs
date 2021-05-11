@@ -2449,7 +2449,7 @@ pub unsafe fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2461,7 +2461,7 @@ pub unsafe fn vdup_lane_s8<const N: i32>(a: int8x8_t) -> int8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
     static_assert_imm4!(N);
-    simd_shuffle16(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2473,7 +2473,7 @@ pub unsafe fn vdupq_laneq_s8<const N: i32>(a: int8x16_t) -> int8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2485,7 +2485,7 @@ pub unsafe fn vdup_lane_s16<const N: i32>(a: int16x4_t) -> int16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2497,7 +2497,7 @@ pub unsafe fn vdupq_laneq_s16<const N: i32>(a: int16x8_t) -> int16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2509,7 +2509,7 @@ pub unsafe fn vdup_lane_s32<const N: i32>(a: int32x2_t) -> int32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2521,7 +2521,7 @@ pub unsafe fn vdupq_laneq_s32<const N: i32>(a: int32x4_t) -> int32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
     static_assert_imm4!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2533,7 +2533,7 @@ pub unsafe fn vdup_laneq_s8<const N: i32>(a: int8x16_t) -> int8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
     static_assert_imm3!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2545,7 +2545,7 @@ pub unsafe fn vdup_laneq_s16<const N: i32>(a: int16x8_t) -> int16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
     static_assert_imm2!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2557,7 +2557,7 @@ pub unsafe fn vdup_laneq_s32<const N: i32>(a: int32x4_t) -> int32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
     static_assert_imm3!(N);
-    simd_shuffle16(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2569,7 +2569,7 @@ pub unsafe fn vdupq_lane_s8<const N: i32>(a: int8x8_t) -> int8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
     static_assert_imm2!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2581,7 +2581,7 @@ pub unsafe fn vdupq_lane_s16<const N: i32>(a: int16x4_t) -> int16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
     static_assert_imm1!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2593,7 +2593,7 @@ pub unsafe fn vdupq_lane_s32<const N: i32>(a: int32x2_t) -> int32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2605,7 +2605,7 @@ pub unsafe fn vdup_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
     static_assert_imm4!(N);
-    simd_shuffle16(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2617,7 +2617,7 @@ pub unsafe fn vdupq_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2629,7 +2629,7 @@ pub unsafe fn vdup_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2641,7 +2641,7 @@ pub unsafe fn vdupq_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2653,7 +2653,7 @@ pub unsafe fn vdup_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2665,7 +2665,7 @@ pub unsafe fn vdupq_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
     static_assert_imm4!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2677,7 +2677,7 @@ pub unsafe fn vdup_laneq_u8<const N: i32>(a: uint8x16_t) -> uint8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2689,7 +2689,7 @@ pub unsafe fn vdup_laneq_u16<const N: i32>(a: uint16x8_t) -> uint16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2701,7 +2701,7 @@ pub unsafe fn vdup_laneq_u32<const N: i32>(a: uint32x4_t) -> uint32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
     static_assert_imm3!(N);
-    simd_shuffle16(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2713,7 +2713,7 @@ pub unsafe fn vdupq_lane_u8<const N: i32>(a: uint8x8_t) -> uint8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2725,7 +2725,7 @@ pub unsafe fn vdupq_lane_u16<const N: i32>(a: uint16x4_t) -> uint16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2737,7 +2737,7 @@ pub unsafe fn vdupq_lane_u32<const N: i32>(a: uint32x2_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2749,7 +2749,7 @@ pub unsafe fn vdup_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
     static_assert_imm4!(N);
-    simd_shuffle16(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2761,7 +2761,7 @@ pub unsafe fn vdupq_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2773,7 +2773,7 @@ pub unsafe fn vdup_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
     static_assert_imm3!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2785,7 +2785,7 @@ pub unsafe fn vdupq_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
     static_assert_imm4!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2797,7 +2797,7 @@ pub unsafe fn vdup_laneq_p8<const N: i32>(a: poly8x16_t) -> poly8x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
     static_assert_imm3!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2809,7 +2809,7 @@ pub unsafe fn vdup_laneq_p16<const N: i32>(a: poly16x8_t) -> poly16x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
     static_assert_imm3!(N);
-    simd_shuffle16(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle16!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2821,7 +2821,7 @@ pub unsafe fn vdupq_lane_p8<const N: i32>(a: poly8x8_t) -> poly8x16_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
     static_assert_imm2!(N);
-    simd_shuffle8(a, a, [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle8!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2833,7 +2833,7 @@ pub unsafe fn vdupq_lane_p16<const N: i32>(a: poly16x4_t) -> poly16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2845,7 +2845,7 @@ pub unsafe fn vdupq_laneq_s64<const N: i32>(a: int64x2_t) -> int64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
     static_assert!(N : i32 where N == 0);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2857,7 +2857,7 @@ pub unsafe fn vdupq_lane_s64<const N: i32>(a: int64x1_t) -> int64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2869,7 +2869,7 @@ pub unsafe fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
     static_assert!(N : i32 where N == 0);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2881,7 +2881,7 @@ pub unsafe fn vdupq_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2893,7 +2893,7 @@ pub unsafe fn vdup_lane_f32<const N: i32>(a: float32x2_t) -> float32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
     static_assert_imm2!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2905,7 +2905,7 @@ pub unsafe fn vdupq_laneq_f32<const N: i32>(a: float32x4_t) -> float32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
     static_assert_imm2!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2917,7 +2917,7 @@ pub unsafe fn vdup_laneq_f32<const N: i32>(a: float32x4_t) -> float32x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_f32<const N: i32>(a: float32x2_t) -> float32x4_t {
     static_assert_imm1!(N);
-    simd_shuffle4(a, a, [N as u32, N as u32, N as u32, N as u32])
+    simd_shuffle4!(a, a, <const N: i32> [N as u32, N as u32, N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -2978,14 +2978,14 @@ pub unsafe fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
 pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3000,22 +3000,22 @@ pub unsafe fn vext_s8<const N: i32>(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
     static_assert_imm4!(N);
     match N & 0b1111 {
-        0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        2 => simd_shuffle16(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
-        3 => simd_shuffle16(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
-        4 => simd_shuffle16(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
-        5 => simd_shuffle16(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        6 => simd_shuffle16(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
-        7 => simd_shuffle16(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
-        8 => simd_shuffle16(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
-        9 => simd_shuffle16(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
-        10 => simd_shuffle16(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
-        11 => simd_shuffle16(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
-        12 => simd_shuffle16(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
-        13 => simd_shuffle16(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
-        14 => simd_shuffle16(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
-        15 => simd_shuffle16(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        0 => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle16!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle16!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle16!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle16!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle16!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle16!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle16!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle16!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle16!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle16!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle16!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle16!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle16!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle16!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3030,10 +3030,10 @@ pub unsafe fn vextq_s8<const N: i32>(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3048,14 +3048,14 @@ pub unsafe fn vext_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3070,8 +3070,8 @@ pub unsafe fn vextq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        1 => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [0, 1]),
+        1 => simd_shuffle2!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3086,10 +3086,10 @@ pub unsafe fn vext_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3104,14 +3104,14 @@ pub unsafe fn vextq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3126,22 +3126,22 @@ pub unsafe fn vext_u8<const N: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
     static_assert_imm4!(N);
     match N & 0b1111 {
-        0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        2 => simd_shuffle16(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
-        3 => simd_shuffle16(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
-        4 => simd_shuffle16(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
-        5 => simd_shuffle16(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        6 => simd_shuffle16(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
-        7 => simd_shuffle16(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
-        8 => simd_shuffle16(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
-        9 => simd_shuffle16(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
-        10 => simd_shuffle16(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
-        11 => simd_shuffle16(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
-        12 => simd_shuffle16(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
-        13 => simd_shuffle16(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
-        14 => simd_shuffle16(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
-        15 => simd_shuffle16(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        0 => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle16!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle16!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle16!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle16!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle16!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle16!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle16!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle16!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle16!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle16!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle16!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle16!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle16!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle16!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3156,10 +3156,10 @@ pub unsafe fn vextq_u8<const N: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t
 pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3174,14 +3174,14 @@ pub unsafe fn vext_u16<const N: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t
 pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3196,8 +3196,8 @@ pub unsafe fn vextq_u16<const N: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_
 pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        1 => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [0, 1]),
+        1 => simd_shuffle2!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3212,10 +3212,10 @@ pub unsafe fn vext_u32<const N: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t
 pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3230,14 +3230,14 @@ pub unsafe fn vextq_u32<const N: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_
 pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3252,22 +3252,22 @@ pub unsafe fn vext_p8<const N: i32>(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
     static_assert_imm4!(N);
     match N & 0b1111 {
-        0 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
-        2 => simd_shuffle16(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
-        3 => simd_shuffle16(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
-        4 => simd_shuffle16(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
-        5 => simd_shuffle16(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
-        6 => simd_shuffle16(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
-        7 => simd_shuffle16(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
-        8 => simd_shuffle16(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
-        9 => simd_shuffle16(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
-        10 => simd_shuffle16(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
-        11 => simd_shuffle16(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
-        12 => simd_shuffle16(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
-        13 => simd_shuffle16(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
-        14 => simd_shuffle16(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
-        15 => simd_shuffle16(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
+        0 => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]),
+        2 => simd_shuffle16!(a, b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+        3 => simd_shuffle16!(a, b, [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]),
+        4 => simd_shuffle16!(a, b, [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]),
+        5 => simd_shuffle16!(a, b, [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]),
+        6 => simd_shuffle16!(a, b, [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21]),
+        7 => simd_shuffle16!(a, b, [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]),
+        8 => simd_shuffle16!(a, b, [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]),
+        9 => simd_shuffle16!(a, b, [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]),
+        10 => simd_shuffle16!(a, b, [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]),
+        11 => simd_shuffle16!(a, b, [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]),
+        12 => simd_shuffle16!(a, b, [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]),
+        13 => simd_shuffle16!(a, b, [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]),
+        14 => simd_shuffle16!(a, b, [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]),
+        15 => simd_shuffle16!(a, b, [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3282,10 +3282,10 @@ pub unsafe fn vextq_p8<const N: i32>(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t
 pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3300,14 +3300,14 @@ pub unsafe fn vext_p16<const N: i32>(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t
 pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert_imm3!(N);
     match N & 0b111 {
-        0 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        2 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        3 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        4 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        5 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        6 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        7 => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        2 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        3 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        4 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        5 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        6 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        7 => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3322,8 +3322,8 @@ pub unsafe fn vextq_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_
 pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        1 => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [0, 1]),
+        1 => simd_shuffle2!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3338,8 +3338,8 @@ pub unsafe fn vextq_s64<const N: i32>(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        1 => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [0, 1]),
+        1 => simd_shuffle2!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3354,8 +3354,8 @@ pub unsafe fn vextq_u64<const N: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_
 pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        1 => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [0, 1]),
+        1 => simd_shuffle2!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3370,10 +3370,10 @@ pub unsafe fn vext_f32<const N: i32>(a: float32x2_t, b: float32x2_t) -> float32x
 pub unsafe fn vextq_f32<const N: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_imm2!(N);
     match N & 0b11 {
-        0 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [1, 2, 3, 4]),
-        2 => simd_shuffle4(a, b, [2, 3, 4, 5]),
-        3 => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
+        2 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
+        3 => simd_shuffle4!(a, b, [3, 4, 5, 6]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3627,7 +3627,7 @@ pub unsafe fn vmlaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    vmla_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3639,7 +3639,7 @@ pub unsafe fn vmla_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    vmla_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3651,7 +3651,7 @@ pub unsafe fn vmla_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    vmlaq_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3663,7 +3663,7 @@ pub unsafe fn vmlaq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    vmlaq_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3675,7 +3675,7 @@ pub unsafe fn vmlaq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    vmla_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmla_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3687,7 +3687,7 @@ pub unsafe fn vmla_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    vmla_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmla_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3699,7 +3699,7 @@ pub unsafe fn vmla_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    vmlaq_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3711,7 +3711,7 @@ pub unsafe fn vmlaq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlaq_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3723,7 +3723,7 @@ pub unsafe fn vmlaq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(LANE);
-    vmla_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3735,7 +3735,7 @@ pub unsafe fn vmla_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(LANE);
-    vmla_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmla_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3747,7 +3747,7 @@ pub unsafe fn vmla_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(LANE);
-    vmlaq_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3759,7 +3759,7 @@ pub unsafe fn vmlaq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(LANE);
-    vmlaq_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3771,7 +3771,7 @@ pub unsafe fn vmlaq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(LANE);
-    vmla_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmla_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3783,7 +3783,7 @@ pub unsafe fn vmla_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(LANE);
-    vmla_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmla_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3795,7 +3795,7 @@ pub unsafe fn vmla_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(LANE);
-    vmlaq_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3807,7 +3807,7 @@ pub unsafe fn vmlaq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlaq_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3819,7 +3819,7 @@ pub unsafe fn vmlaq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_imm1!(LANE);
-    vmla_f32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmla_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3831,7 +3831,7 @@ pub unsafe fn vmla_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmla_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_imm2!(LANE);
-    vmla_f32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmla_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3843,7 +3843,7 @@ pub unsafe fn vmla_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_imm1!(LANE);
-    vmlaq_f32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply accumulate with scalar
@@ -3855,7 +3855,7 @@ pub unsafe fn vmlaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_imm2!(LANE);
-    vmlaq_f32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlaq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Signed multiply-add long
@@ -3967,7 +3967,7 @@ pub unsafe fn vmlal_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlal_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -3979,7 +3979,7 @@ pub unsafe fn vmlal_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmlal_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -3991,7 +3991,7 @@ pub unsafe fn vmlal_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmlal_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlal_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -4003,7 +4003,7 @@ pub unsafe fn vmlal_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmlal_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlal_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -4015,7 +4015,7 @@ pub unsafe fn vmlal_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlal_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -4027,7 +4027,7 @@ pub unsafe fn vmlal_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmlal_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -4039,7 +4039,7 @@ pub unsafe fn vmlal_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmlal_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlal_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply accumulate with scalar
@@ -4051,7 +4051,7 @@ pub unsafe fn vmlal_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmlal_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlal_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract from accumulator
@@ -4303,7 +4303,7 @@ pub unsafe fn vmlsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    vmls_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4315,7 +4315,7 @@ pub unsafe fn vmls_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int1
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    vmls_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4327,7 +4327,7 @@ pub unsafe fn vmls_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    vmlsq_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4339,7 +4339,7 @@ pub unsafe fn vmlsq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    vmlsq_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4351,7 +4351,7 @@ pub unsafe fn vmlsq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    vmls_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmls_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4363,7 +4363,7 @@ pub unsafe fn vmls_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int3
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    vmls_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmls_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4375,7 +4375,7 @@ pub unsafe fn vmls_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    vmlsq_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4387,7 +4387,7 @@ pub unsafe fn vmlsq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlsq_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4399,7 +4399,7 @@ pub unsafe fn vmlsq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(LANE);
-    vmls_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4411,7 +4411,7 @@ pub unsafe fn vmls_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: ui
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(LANE);
-    vmls_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmls_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4423,7 +4423,7 @@ pub unsafe fn vmls_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(LANE);
-    vmlsq_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4435,7 +4435,7 @@ pub unsafe fn vmlsq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(LANE);
-    vmlsq_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4447,7 +4447,7 @@ pub unsafe fn vmlsq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(LANE);
-    vmls_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmls_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4459,7 +4459,7 @@ pub unsafe fn vmls_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: ui
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(LANE);
-    vmls_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmls_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4471,7 +4471,7 @@ pub unsafe fn vmls_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(LANE);
-    vmlsq_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4483,7 +4483,7 @@ pub unsafe fn vmlsq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlsq_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4495,7 +4495,7 @@ pub unsafe fn vmlsq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
     static_assert_imm1!(LANE);
-    vmls_f32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmls_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4507,7 +4507,7 @@ pub unsafe fn vmls_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmls_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
     static_assert_imm2!(LANE);
-    vmls_f32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmls_f32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4519,7 +4519,7 @@ pub unsafe fn vmls_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c:
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
     static_assert_imm1!(LANE);
-    vmlsq_f32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector multiply subtract with scalar
@@ -4531,7 +4531,7 @@ pub unsafe fn vmlsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c:
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
     static_assert_imm2!(LANE);
-    vmlsq_f32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsq_f32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Signed multiply-subtract long
@@ -4643,7 +4643,7 @@ pub unsafe fn vmlsl_n_u32(a: uint64x2_t, b: uint32x2_t, c: u32) -> uint64x2_t {
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlsl_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -4655,7 +4655,7 @@ pub unsafe fn vmlsl_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmlsl_s16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_s16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -4667,7 +4667,7 @@ pub unsafe fn vmlsl_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x4_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmlsl_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlsl_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -4679,7 +4679,7 @@ pub unsafe fn vmlsl_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmlsl_s32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlsl_s32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -4691,7 +4691,7 @@ pub unsafe fn vmlsl_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x2_t, c: in
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlsl_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -4703,7 +4703,7 @@ pub unsafe fn vmlsl_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmlsl_u16(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_u16(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -4715,7 +4715,7 @@ pub unsafe fn vmlsl_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x4_t, c: 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmlsl_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlsl_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector widening multiply subtract with scalar
@@ -4727,7 +4727,7 @@ pub unsafe fn vmlsl_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: u
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x2_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmlsl_u32(a, b, simd_shuffle2(c, c, [LANE as u32, LANE as u32]))
+    vmlsl_u32(a, b, simd_shuffle2!(c, c, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Negate
@@ -6115,7 +6115,7 @@ pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6127,7 +6127,7 @@ pub unsafe fn vmul_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int1
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6139,7 +6139,7 @@ pub unsafe fn vmul_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6151,7 +6151,7 @@ pub unsafe fn vmulq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6163,7 +6163,7 @@ pub unsafe fn vmulq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> in
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6175,7 +6175,7 @@ pub unsafe fn vmul_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int3
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6187,7 +6187,7 @@ pub unsafe fn vmul_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6199,7 +6199,7 @@ pub unsafe fn vmulq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6211,7 +6211,7 @@ pub unsafe fn vmulq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> in
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6223,7 +6223,7 @@ pub unsafe fn vmul_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> ui
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint16x4_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6235,7 +6235,7 @@ pub unsafe fn vmul_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uint16x8_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6247,7 +6247,7 @@ pub unsafe fn vmulq_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
     static_assert_imm3!(LANE);
-    simd_mul(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6259,7 +6259,7 @@ pub unsafe fn vmulq_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6271,7 +6271,7 @@ pub unsafe fn vmul_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> ui
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> uint32x2_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6283,7 +6283,7 @@ pub unsafe fn vmul_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uint32x4_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply
@@ -6295,7 +6295,7 @@ pub unsafe fn vmulq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -6307,7 +6307,7 @@ pub unsafe fn vmulq_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -6319,7 +6319,7 @@ pub unsafe fn vmul_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -6331,7 +6331,7 @@ pub unsafe fn vmul_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -6343,7 +6343,7 @@ pub unsafe fn vmulq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_imm2!(LANE);
-    simd_mul(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Signed multiply long
@@ -6507,7 +6507,7 @@ pub unsafe fn vmulls_n_u32(a: uint32x2_t, b: u32) -> uint64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmull_s16(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_s16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -6519,7 +6519,7 @@ pub unsafe fn vmull_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmull_s16(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_s16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -6531,7 +6531,7 @@ pub unsafe fn vmull_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> in
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmull_s32(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmull_s32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -6543,7 +6543,7 @@ pub unsafe fn vmull_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmull_s32(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmull_s32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -6555,7 +6555,7 @@ pub unsafe fn vmull_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> in
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmull_u16(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_u16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -6567,7 +6567,7 @@ pub unsafe fn vmull_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint16x4_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmull_u16(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_u16(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -6579,7 +6579,7 @@ pub unsafe fn vmull_laneq_u16<const LANE: i32>(a: uint16x4_t, b: uint16x8_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmull_u32(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmull_u32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Vector long multiply by scalar
@@ -6591,7 +6591,7 @@ pub unsafe fn vmull_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint32x2_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_laneq_u32<const LANE: i32>(a: uint32x2_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmull_u32(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmull_u32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -6902,7 +6902,7 @@ pub unsafe fn vsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
     let d: int8x8_t = vsubhn_s16(b, c);
-    simd_shuffle16(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Subtract returning high narrow
@@ -6913,7 +6913,7 @@ pub unsafe fn vsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
     let d: int16x4_t = vsubhn_s32(b, c);
-    simd_shuffle8(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Subtract returning high narrow
@@ -6924,7 +6924,7 @@ pub unsafe fn vsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
     let d: int32x2_t = vsubhn_s64(b, c);
-    simd_shuffle4(a, d, [0, 1, 2, 3])
+    simd_shuffle4!(a, d, [0, 1, 2, 3])
 }
 
 /// Subtract returning high narrow
@@ -6935,7 +6935,7 @@ pub unsafe fn vsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t {
     let d: uint8x8_t = vsubhn_u16(b, c);
-    simd_shuffle16(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, d, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Subtract returning high narrow
@@ -6946,7 +6946,7 @@ pub unsafe fn vsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uin
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_t {
     let d: uint16x4_t = vsubhn_u32(b, c);
-    simd_shuffle8(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, d, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Subtract returning high narrow
@@ -6957,7 +6957,7 @@ pub unsafe fn vsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(subhn2))]
 pub unsafe fn vsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4_t {
     let d: uint32x2_t = vsubhn_u64(b, c);
-    simd_shuffle4(a, d, [0, 1, 2, 3])
+    simd_shuffle4!(a, d, [0, 1, 2, 3])
 }
 
 /// Signed halving subtract
@@ -7857,7 +7857,7 @@ pub unsafe fn vqdmull_n_s32(a: int32x2_t, b: i32) -> int64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int32x4_t {
     static_assert_imm2!(N);
-    let b: int16x4_t = simd_shuffle4(b, b, [N as u32, N as u32, N as u32, N as u32]);
+    let b: int16x4_t = simd_shuffle4!(b, b, <const N: i32> [N as u32, N as u32, N as u32, N as u32]);
     vqdmull_s16(a, b)
 }
 
@@ -7870,7 +7870,7 @@ pub unsafe fn vqdmull_lane_s16<const N: i32>(a: int16x4_t, b: int16x4_t) -> int3
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_lane_s32<const N: i32>(a: int32x2_t, b: int32x2_t) -> int64x2_t {
     static_assert_imm1!(N);
-    let b: int32x2_t = simd_shuffle2(b, b, [N as u32, N as u32]);
+    let b: int32x2_t = simd_shuffle2!(b, b, <const N: i32> [N as u32, N as u32]);
     vqdmull_s32(a, b)
 }
 
@@ -8223,7 +8223,7 @@ pub unsafe fn vqrdmulhq_n_s32(a: int32x4_t, b: i32) -> int32x4_t {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> int16x4_t {
     static_assert_imm2!(LANE);
-    let b: int16x4_t = simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulh_s16(a, b)
 }
 
@@ -8236,7 +8236,7 @@ pub unsafe fn vqrdmulh_lane_s16<const LANE: i32>(a: int16x4_t, b: int16x4_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_imm3!(LANE);
-    let b: int16x4_t = simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulh_s16(a, b)
 }
 
@@ -8249,7 +8249,7 @@ pub unsafe fn vqrdmulh_laneq_s16<const LANE: i32>(a: int16x4_t, b: int16x8_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_imm2!(LANE);
-    let b: int16x8_t = simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x8_t = simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s16(a, b)
 }
 
@@ -8262,7 +8262,7 @@ pub unsafe fn vqrdmulhq_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int16x8_t {
     static_assert_imm3!(LANE);
-    let b: int16x8_t = simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int16x8_t = simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s16(a, b)
 }
 
@@ -8275,7 +8275,7 @@ pub unsafe fn vqrdmulhq_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> int32x2_t {
     static_assert_imm1!(LANE);
-    let b: int32x2_t = simd_shuffle2(b, b, [LANE as u32, LANE as u32]);
+    let b: int32x2_t = simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]);
     vqrdmulh_s32(a, b)
 }
 
@@ -8288,7 +8288,7 @@ pub unsafe fn vqrdmulh_lane_s32<const LANE: i32>(a: int32x2_t, b: int32x2_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_imm2!(LANE);
-    let b: int32x2_t = simd_shuffle2(b, b, [LANE as u32, LANE as u32]);
+    let b: int32x2_t = simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]);
     vqrdmulh_s32(a, b)
 }
 
@@ -8301,7 +8301,7 @@ pub unsafe fn vqrdmulh_laneq_s32<const LANE: i32>(a: int32x2_t, b: int32x4_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_imm1!(LANE);
-    let b: int32x4_t = simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int32x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s32(a, b)
 }
 
@@ -8314,7 +8314,7 @@ pub unsafe fn vqrdmulhq_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrdmulhq_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    let b: int32x4_t = simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
+    let b: int32x4_t = simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]);
     vqrdmulhq_s32(a, b)
 }
 

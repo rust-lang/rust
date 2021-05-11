@@ -1595,7 +1595,7 @@ pub unsafe fn vext_f64<const N: i32>(a: float64x1_t, _b: float64x1_t) -> float64
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_s8(low: int8x8_t, high: int8x8_t) -> int8x16_t {
-    simd_shuffle16(
+    simd_shuffle16!(
         low,
         high,
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -1607,7 +1607,7 @@ pub unsafe fn vcombine_s8(low: int8x8_t, high: int8x8_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_s16(low: int16x4_t, high: int16x4_t) -> int16x8_t {
-    simd_shuffle8(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Vector combine
@@ -1615,7 +1615,7 @@ pub unsafe fn vcombine_s16(low: int16x4_t, high: int16x4_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_s32(low: int32x2_t, high: int32x2_t) -> int32x4_t {
-    simd_shuffle4(low, high, [0, 1, 2, 3])
+    simd_shuffle4!(low, high, [0, 1, 2, 3])
 }
 
 /// Vector combine
@@ -1623,7 +1623,7 @@ pub unsafe fn vcombine_s32(low: int32x2_t, high: int32x2_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_s64(low: int64x1_t, high: int64x1_t) -> int64x2_t {
-    simd_shuffle2(low, high, [0, 1])
+    simd_shuffle2!(low, high, [0, 1])
 }
 
 /// Vector combine
@@ -1631,7 +1631,7 @@ pub unsafe fn vcombine_s64(low: int64x1_t, high: int64x1_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_u8(low: uint8x8_t, high: uint8x8_t) -> uint8x16_t {
-    simd_shuffle16(
+    simd_shuffle16!(
         low,
         high,
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -1643,7 +1643,7 @@ pub unsafe fn vcombine_u8(low: uint8x8_t, high: uint8x8_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_u16(low: uint16x4_t, high: uint16x4_t) -> uint16x8_t {
-    simd_shuffle8(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Vector combine
@@ -1651,7 +1651,7 @@ pub unsafe fn vcombine_u16(low: uint16x4_t, high: uint16x4_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_u32(low: uint32x2_t, high: uint32x2_t) -> uint32x4_t {
-    simd_shuffle4(low, high, [0, 1, 2, 3])
+    simd_shuffle4!(low, high, [0, 1, 2, 3])
 }
 
 /// Vector combine
@@ -1659,7 +1659,7 @@ pub unsafe fn vcombine_u32(low: uint32x2_t, high: uint32x2_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_u64(low: uint64x1_t, high: uint64x1_t) -> uint64x2_t {
-    simd_shuffle2(low, high, [0, 1])
+    simd_shuffle2!(low, high, [0, 1])
 }
 
 /// Vector combine
@@ -1667,7 +1667,7 @@ pub unsafe fn vcombine_u64(low: uint64x1_t, high: uint64x1_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_p64(low: poly64x1_t, high: poly64x1_t) -> poly64x2_t {
-    simd_shuffle2(low, high, [0, 1])
+    simd_shuffle2!(low, high, [0, 1])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -1772,7 +1772,7 @@ pub unsafe fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_f16 ( low: float16x4_t,  high: float16x4_t) -> float16x8_t {
-    simd_shuffle8(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 */
 
@@ -1781,7 +1781,7 @@ pub unsafe fn vcombine_f16 ( low: float16x4_t,  high: float16x4_t) -> float16x8_
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_f32(low: float32x2_t, high: float32x2_t) -> float32x4_t {
-    simd_shuffle4(low, high, [0, 1, 2, 3])
+    simd_shuffle4!(low, high, [0, 1, 2, 3])
 }
 
 /// Vector combine
@@ -1789,7 +1789,7 @@ pub unsafe fn vcombine_f32(low: float32x2_t, high: float32x2_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_p8(low: poly8x8_t, high: poly8x8_t) -> poly8x16_t {
-    simd_shuffle16(
+    simd_shuffle16!(
         low,
         high,
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -1801,7 +1801,7 @@ pub unsafe fn vcombine_p8(low: poly8x8_t, high: poly8x8_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_p16(low: poly16x4_t, high: poly16x4_t) -> poly16x8_t {
-    simd_shuffle8(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(low, high, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Vector combine
@@ -1809,7 +1809,7 @@ pub unsafe fn vcombine_p16(low: poly16x4_t, high: poly16x4_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(mov))]
 pub unsafe fn vcombine_f64(low: float64x1_t, high: float64x1_t) -> float64x2_t {
-    simd_shuffle2(low, high, [0, 1])
+    simd_shuffle2!(low, high, [0, 1])
 }
 
 /// Table look-up

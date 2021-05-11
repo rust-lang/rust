@@ -6218,7 +6218,7 @@ pub unsafe fn _mm_mask_blend_epi8(k: __mmask16, a: __m128i, b: __m128i) -> __m12
 #[cfg_attr(test, assert_instr(vpbroadcastw))]
 pub unsafe fn _mm512_broadcastw_epi16(a: __m128i) -> __m512i {
     let a = _mm512_castsi128_si512(a).as_i16x32();
-    let ret: i16x32 = simd_shuffle32(
+    let ret: i16x32 = simd_shuffle32!(
         a,
         a,
         [
@@ -6306,7 +6306,7 @@ pub unsafe fn _mm_maskz_broadcastw_epi16(k: __mmask8, a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vpbroadcastb))]
 pub unsafe fn _mm512_broadcastb_epi8(a: __m128i) -> __m512i {
     let a = _mm512_castsi128_si512(a).as_i8x64();
-    let ret: i8x64 = simd_shuffle64(
+    let ret: i8x64 = simd_shuffle64!(
         a,
         a,
         [
@@ -6397,7 +6397,7 @@ pub unsafe fn _mm512_unpackhi_epi16(a: __m512i, b: __m512i) -> __m512i {
     let a = a.as_i16x32();
     let b = b.as_i16x32();
     #[rustfmt::skip]
-    let r: i16x32 = simd_shuffle32(
+    let r: i16x32 = simd_shuffle32!(
         a,
         b,
         [
@@ -6508,7 +6508,7 @@ pub unsafe fn _mm512_unpackhi_epi8(a: __m512i, b: __m512i) -> __m512i {
     let a = a.as_i8x64();
     let b = b.as_i8x64();
     #[rustfmt::skip]
-    let r: i8x64 = simd_shuffle64(
+    let r: i8x64 = simd_shuffle64!(
         a,
         b,
         [
@@ -6627,7 +6627,7 @@ pub unsafe fn _mm512_unpacklo_epi16(a: __m512i, b: __m512i) -> __m512i {
     let a = a.as_i16x32();
     let b = b.as_i16x32();
     #[rustfmt::skip]
-    let r: i16x32 = simd_shuffle32(
+    let r: i16x32 = simd_shuffle32!(
         a,
         b,
         [
@@ -6738,7 +6738,7 @@ pub unsafe fn _mm512_unpacklo_epi8(a: __m512i, b: __m512i) -> __m512i {
     let a = a.as_i8x64();
     let b = b.as_i8x64();
     #[rustfmt::skip]
-    let r: i8x64 = simd_shuffle64(
+    let r: i8x64 = simd_shuffle64!(
         a,
         b,
         [
@@ -7133,10 +7133,10 @@ pub unsafe fn _mm_maskz_set1_epi8(k: __mmask16, a: i8) -> __m128i {
 pub unsafe fn _mm512_shufflelo_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
     static_assert_imm8!(IMM8);
     let a = a.as_i16x32();
-    let r: i16x32 = simd_shuffle32(
+    let r: i16x32 = simd_shuffle32!(
         a,
         a,
-        [
+        <const IMM8: i32> [
             IMM8 as u32 & 0b11,
             (IMM8 as u32 >> 2) & 0b11,
             (IMM8 as u32 >> 4) & 0b11,
@@ -7277,10 +7277,10 @@ pub unsafe fn _mm_maskz_shufflelo_epi16<const IMM8: i32>(k: __mmask8, a: __m128i
 pub unsafe fn _mm512_shufflehi_epi16<const IMM8: i32>(a: __m512i) -> __m512i {
     static_assert_imm8!(IMM8);
     let a = a.as_i16x32();
-    let r: i16x32 = simd_shuffle32(
+    let r: i16x32 = simd_shuffle32!(
         a,
         a,
-        [
+        <const IMM8: i32> [
             0,
             1,
             2,
@@ -8433,7 +8433,7 @@ pub unsafe fn _mm256_maskz_cvtepi16_epi8(k: __mmask16, a: __m256i) -> __m128i {
 pub unsafe fn _mm_cvtepi16_epi8(a: __m128i) -> __m128i {
     let a = a.as_i16x8();
     let zero = _mm_setzero_si128().as_i16x8();
-    let v256: i16x16 = simd_shuffle16(a, zero, [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8]);
+    let v256: i16x16 = simd_shuffle16!(a, zero, [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8]);
     transmute::<i8x16, _>(simd_cast(v256))
 }
 
@@ -8875,10 +8875,10 @@ pub unsafe fn _mm512_bslli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
     static_assert_imm8!(IMM8);
     let a = a.as_i8x64();
     let zero = _mm512_setzero_si512().as_i8x64();
-    let r: i8x64 = simd_shuffle64(
+    let r: i8x64 = simd_shuffle64!(
         zero,
         a,
-        [
+        <const IMM8: i32> [
             64 - (IMM8 as u32 & 0xff),
             65 - (IMM8 as u32 & 0xff),
             66 - (IMM8 as u32 & 0xff),
@@ -8960,7 +8960,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
     let a = a.as_i8x64();
     let zero = _mm512_setzero_si512().as_i8x64();
     let r: i8x64 = match IMM8 % 16 {
-        0 => simd_shuffle64(
+        0 => simd_shuffle64!(
             a,
             zero,
             [
@@ -8969,7 +8969,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
             ],
         ),
-        1 => simd_shuffle64(
+        1 => simd_shuffle64!(
             a,
             zero,
             [
@@ -8978,7 +8978,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 45, 46, 47, 96, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 112,
             ],
         ),
-        2 => simd_shuffle64(
+        2 => simd_shuffle64!(
             a,
             zero,
             [
@@ -8987,7 +8987,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 46, 47, 96, 97, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 112, 113,
             ],
         ),
-        3 => simd_shuffle64(
+        3 => simd_shuffle64!(
             a,
             zero,
             [
@@ -8997,7 +8997,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 114,
             ],
         ),
-        4 => simd_shuffle64(
+        4 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9007,7 +9007,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 115,
             ],
         ),
-        5 => simd_shuffle64(
+        5 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9017,7 +9017,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 115, 116,
             ],
         ),
-        6 => simd_shuffle64(
+        6 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9027,7 +9027,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 116, 117,
             ],
         ),
-        7 => simd_shuffle64(
+        7 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9037,7 +9037,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 116, 117, 118,
             ],
         ),
-        8 => simd_shuffle64(
+        8 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9047,7 +9047,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 116, 117, 118, 119,
             ],
         ),
-        9 => simd_shuffle64(
+        9 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9057,7 +9057,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 117, 118, 119, 120,
             ],
         ),
-        10 => simd_shuffle64(
+        10 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9067,7 +9067,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 118, 119, 120, 121,
             ],
         ),
-        11 => simd_shuffle64(
+        11 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9077,7 +9077,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 117, 118, 119, 120, 121, 122,
             ],
         ),
-        12 => simd_shuffle64(
+        12 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9087,7 +9087,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 118, 119, 120, 121, 122, 123,
             ],
         ),
-        13 => simd_shuffle64(
+        13 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9097,7 +9097,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 119, 120, 121, 122, 123, 124,
             ],
         ),
-        14 => simd_shuffle64(
+        14 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9107,7 +9107,7 @@ pub unsafe fn _mm512_bsrli_epi128<const IMM8: i32>(a: __m512i) -> __m512i {
                 120, 121, 122, 123, 124, 125,
             ],
         ),
-        15 => simd_shuffle64(
+        15 => simd_shuffle64!(
             a,
             zero,
             [
@@ -9146,7 +9146,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
     let b = b.as_i8x64();
 
     let r: i8x64 = match IMM8 % 16 {
-        0 => simd_shuffle64(
+        0 => simd_shuffle64!(
             b,
             a,
             [
@@ -9155,7 +9155,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
             ],
         ),
-        1 => simd_shuffle64(
+        1 => simd_shuffle64!(
             b,
             a,
             [
@@ -9164,7 +9164,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 45, 46, 47, 96, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 112,
             ],
         ),
-        2 => simd_shuffle64(
+        2 => simd_shuffle64!(
             b,
             a,
             [
@@ -9173,7 +9173,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 46, 47, 96, 97, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 112, 113,
             ],
         ),
-        3 => simd_shuffle64(
+        3 => simd_shuffle64!(
             b,
             a,
             [
@@ -9183,7 +9183,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 114,
             ],
         ),
-        4 => simd_shuffle64(
+        4 => simd_shuffle64!(
             b,
             a,
             [
@@ -9193,7 +9193,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 115,
             ],
         ),
-        5 => simd_shuffle64(
+        5 => simd_shuffle64!(
             b,
             a,
             [
@@ -9203,7 +9203,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 115, 116,
             ],
         ),
-        6 => simd_shuffle64(
+        6 => simd_shuffle64!(
             b,
             a,
             [
@@ -9213,7 +9213,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 116, 117,
             ],
         ),
-        7 => simd_shuffle64(
+        7 => simd_shuffle64!(
             b,
             a,
             [
@@ -9223,7 +9223,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 116, 117, 118,
             ],
         ),
-        8 => simd_shuffle64(
+        8 => simd_shuffle64!(
             b,
             a,
             [
@@ -9233,7 +9233,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 116, 117, 118, 119,
             ],
         ),
-        9 => simd_shuffle64(
+        9 => simd_shuffle64!(
             b,
             a,
             [
@@ -9243,7 +9243,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 117, 118, 119, 120,
             ],
         ),
-        10 => simd_shuffle64(
+        10 => simd_shuffle64!(
             b,
             a,
             [
@@ -9253,7 +9253,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 118, 119, 120, 121,
             ],
         ),
-        11 => simd_shuffle64(
+        11 => simd_shuffle64!(
             b,
             a,
             [
@@ -9263,7 +9263,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 117, 118, 119, 120, 121, 122,
             ],
         ),
-        12 => simd_shuffle64(
+        12 => simd_shuffle64!(
             b,
             a,
             [
@@ -9273,7 +9273,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 118, 119, 120, 121, 122, 123,
             ],
         ),
-        13 => simd_shuffle64(
+        13 => simd_shuffle64!(
             b,
             a,
             [
@@ -9283,7 +9283,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 119, 120, 121, 122, 123, 124,
             ],
         ),
-        14 => simd_shuffle64(
+        14 => simd_shuffle64!(
             b,
             a,
             [
@@ -9293,7 +9293,7 @@ pub unsafe fn _mm512_alignr_epi8<const IMM8: i32>(a: __m512i, b: __m512i) -> __m
                 120, 121, 122, 123, 124, 125,
             ],
         ),
-        15 => simd_shuffle64(
+        15 => simd_shuffle64!(
             b,
             a,
             [

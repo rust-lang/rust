@@ -113,10 +113,10 @@ pub unsafe fn _mm_alignr_epi8<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128
             shift + i
         }
     }
-    let r: i8x16 = simd_shuffle16(
+    let r: i8x16 = simd_shuffle16!(
         b.as_i8x16(),
         a.as_i8x16(),
-        [
+        <const IMM8: i32> [
             mask(IMM8 as u32, 0),
             mask(IMM8 as u32, 1),
             mask(IMM8 as u32, 2),

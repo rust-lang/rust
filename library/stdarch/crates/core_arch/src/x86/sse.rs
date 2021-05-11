@@ -350,7 +350,7 @@ pub unsafe fn _mm_cmple_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(cmpltss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpgt_ss(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, cmpss(b, a, 1), [4, 1, 2, 3])
+    simd_shuffle4!(a, cmpss(b, a, 1), [4, 1, 2, 3])
 }
 
 /// Compares the lowest `f32` of both inputs for greater than or equal. The
@@ -364,7 +364,7 @@ pub unsafe fn _mm_cmpgt_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(cmpless))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpge_ss(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, cmpss(b, a, 2), [4, 1, 2, 3])
+    simd_shuffle4!(a, cmpss(b, a, 2), [4, 1, 2, 3])
 }
 
 /// Compares the lowest `f32` of both inputs for inequality. The lowest 32 bits
@@ -420,7 +420,7 @@ pub unsafe fn _mm_cmpnle_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(cmpnltss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpngt_ss(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, cmpss(b, a, 5), [4, 1, 2, 3])
+    simd_shuffle4!(a, cmpss(b, a, 5), [4, 1, 2, 3])
 }
 
 /// Compares the lowest `f32` of both inputs for not-greater-than-or-equal. The
@@ -434,7 +434,7 @@ pub unsafe fn _mm_cmpngt_ss(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(cmpnless))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnge_ss(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, cmpss(b, a, 6), [4, 1, 2, 3])
+    simd_shuffle4!(a, cmpss(b, a, 6), [4, 1, 2, 3])
 }
 
 /// Checks if the lowest `f32` of both inputs are ordered. The lowest 32 bits of
@@ -1011,10 +1011,10 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_shuffle_ps<const MASK: i32>(a: __m128, b: __m128) -> __m128 {
     static_assert_imm8!(MASK);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         b,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11) + 4,
@@ -1032,7 +1032,7 @@ pub unsafe fn _mm_shuffle_ps<const MASK: i32>(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(unpckhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpackhi_ps(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, b, [2, 6, 3, 7])
+    simd_shuffle4!(a, b, [2, 6, 3, 7])
 }
 
 /// Unpacks and interleave single-precision (32-bit) floating-point elements
@@ -1044,7 +1044,7 @@ pub unsafe fn _mm_unpackhi_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(unpcklps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, b, [0, 4, 1, 5])
+    simd_shuffle4!(a, b, [0, 4, 1, 5])
 }
 
 /// Combine higher half of `a` and `b`. The highwe half of `b` occupies the
@@ -1057,7 +1057,7 @@ pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
     // TODO; figure why this is a different instruction on Windows?
-    simd_shuffle4(a, b, [6, 7, 2, 3])
+    simd_shuffle4!(a, b, [6, 7, 2, 3])
 }
 
 /// Combine lower half of `a` and `b`. The lower half of `b` occupies the
@@ -1069,7 +1069,7 @@ pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 #[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, b, [0, 1, 4, 5])
+    simd_shuffle4!(a, b, [0, 1, 4, 5])
 }
 
 /// Returns a mask of the most significant bit of each element in `a`.
@@ -1201,7 +1201,7 @@ pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
     let a = _mm_load_ps(p);
-    simd_shuffle4(a, a, [3, 2, 1, 0])
+    simd_shuffle4!(a, a, [3, 2, 1, 0])
 }
 
 /// Loads unaligned 64-bits of integer data from memory into new vector.
@@ -1253,7 +1253,7 @@ pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_store1_ps(p: *mut f32, a: __m128) {
-    let b: __m128 = simd_shuffle4(a, a, [0, 0, 0, 0]);
+    let b: __m128 = simd_shuffle4!(a, a, [0, 0, 0, 0]);
     *(p as *mut __m128) = b;
 }
 
@@ -1329,7 +1329,7 @@ pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
-    let b: __m128 = simd_shuffle4(a, a, [3, 2, 1, 0]);
+    let b: __m128 = simd_shuffle4!(a, a, [3, 2, 1, 0]);
     *(p as *mut __m128) = b;
 }
 
@@ -1347,7 +1347,7 @@ pub unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
 #[cfg_attr(test, assert_instr(movss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
-    simd_shuffle4(a, b, [4, 1, 2, 3])
+    simd_shuffle4!(a, b, [4, 1, 2, 3])
 }
 
 /// Performs a serializing operation on all store-to-memory instructions that

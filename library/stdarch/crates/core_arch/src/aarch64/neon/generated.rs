@@ -40,8 +40,8 @@ pub unsafe fn vabdq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uabdl))]
 pub unsafe fn vabdl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
-    let c: uint8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let d: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: uint8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let d: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     simd_cast(vabd_u8(c, d))
 }
 
@@ -50,8 +50,8 @@ pub unsafe fn vabdl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uabdl))]
 pub unsafe fn vabdl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
-    let c: uint16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let d: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let c: uint16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let d: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     simd_cast(vabd_u16(c, d))
 }
 
@@ -60,8 +60,8 @@ pub unsafe fn vabdl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uabdl))]
 pub unsafe fn vabdl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
-    let c: uint32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let d: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let c: uint32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let d: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
     simd_cast(vabd_u32(c, d))
 }
 
@@ -70,8 +70,8 @@ pub unsafe fn vabdl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sabdl))]
 pub unsafe fn vabdl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
-    let c: int8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let d: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: int8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let d: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     let e: uint8x8_t = simd_cast(vabd_s8(c, d));
     simd_cast(e)
 }
@@ -81,8 +81,8 @@ pub unsafe fn vabdl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sabdl))]
 pub unsafe fn vabdl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
-    let c: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let d: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let c: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let d: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     let e: uint16x4_t = simd_cast(vabd_s16(c, d));
     simd_cast(e)
 }
@@ -92,8 +92,8 @@ pub unsafe fn vabdl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sabdl))]
 pub unsafe fn vabdl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
-    let c: int32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let d: int32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let c: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let d: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
     let e: uint32x2_t = simd_cast(vabd_s32(c, d));
     simd_cast(e)
 }
@@ -1171,14 +1171,14 @@ pub unsafe fn vcopy_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: 
     static_assert_imm3!(LANE1);
     static_assert_imm3!(LANE2);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1192,22 +1192,22 @@ pub unsafe fn vcopyq_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, 
     static_assert_imm4!(LANE1);
     static_assert_imm4!(LANE2);
     match LANE1 & 0b1111 {
-        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
-        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
-        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
-        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
-        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
-        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
-        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
-        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
-        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        0 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1221,10 +1221,10 @@ pub unsafe fn vcopy_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b
     static_assert_imm2!(LANE1);
     static_assert_imm2!(LANE2);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1238,14 +1238,14 @@ pub unsafe fn vcopyq_laneq_s16<const LANE1: i32, const LANE2: i32>(a: int16x8_t,
     static_assert_imm3!(LANE1);
     static_assert_imm3!(LANE2);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1259,8 +1259,8 @@ pub unsafe fn vcopy_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b
     static_assert_imm1!(LANE1);
     static_assert_imm1!(LANE2);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1274,10 +1274,10 @@ pub unsafe fn vcopyq_laneq_s32<const LANE1: i32, const LANE2: i32>(a: int32x4_t,
     static_assert_imm2!(LANE1);
     static_assert_imm2!(LANE2);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1291,8 +1291,8 @@ pub unsafe fn vcopyq_laneq_s64<const LANE1: i32, const LANE2: i32>(a: int64x2_t,
     static_assert_imm1!(LANE1);
     static_assert_imm1!(LANE2);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1306,14 +1306,14 @@ pub unsafe fn vcopy_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b:
     static_assert_imm3!(LANE1);
     static_assert_imm3!(LANE2);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1327,22 +1327,22 @@ pub unsafe fn vcopyq_laneq_u8<const LANE1: i32, const LANE2: i32>(a: uint8x16_t,
     static_assert_imm4!(LANE1);
     static_assert_imm4!(LANE2);
     match LANE1 & 0b1111 {
-        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
-        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
-        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
-        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
-        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
-        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
-        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
-        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
-        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        0 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1356,10 +1356,10 @@ pub unsafe fn vcopy_lane_u16<const LANE1: i32, const LANE2: i32>(a: uint16x4_t, 
     static_assert_imm2!(LANE1);
     static_assert_imm2!(LANE2);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1373,14 +1373,14 @@ pub unsafe fn vcopyq_laneq_u16<const LANE1: i32, const LANE2: i32>(a: uint16x8_t
     static_assert_imm3!(LANE1);
     static_assert_imm3!(LANE2);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1394,8 +1394,8 @@ pub unsafe fn vcopy_lane_u32<const LANE1: i32, const LANE2: i32>(a: uint32x2_t, 
     static_assert_imm1!(LANE1);
     static_assert_imm1!(LANE2);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1409,10 +1409,10 @@ pub unsafe fn vcopyq_laneq_u32<const LANE1: i32, const LANE2: i32>(a: uint32x4_t
     static_assert_imm2!(LANE1);
     static_assert_imm2!(LANE2);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1426,8 +1426,8 @@ pub unsafe fn vcopyq_laneq_u64<const LANE1: i32, const LANE2: i32>(a: uint64x2_t
     static_assert_imm1!(LANE1);
     static_assert_imm1!(LANE2);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1441,14 +1441,14 @@ pub unsafe fn vcopy_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b:
     static_assert_imm3!(LANE1);
     static_assert_imm3!(LANE2);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1462,22 +1462,22 @@ pub unsafe fn vcopyq_laneq_p8<const LANE1: i32, const LANE2: i32>(a: poly8x16_t,
     static_assert_imm4!(LANE1);
     static_assert_imm4!(LANE2);
     match LANE1 & 0b1111 {
-        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
-        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
-        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
-        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
-        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
-        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
-        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
-        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
-        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        0 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1491,10 +1491,10 @@ pub unsafe fn vcopy_lane_p16<const LANE1: i32, const LANE2: i32>(a: poly16x4_t, 
     static_assert_imm2!(LANE1);
     static_assert_imm2!(LANE2);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1508,14 +1508,14 @@ pub unsafe fn vcopyq_laneq_p16<const LANE1: i32, const LANE2: i32>(a: poly16x8_t
     static_assert_imm3!(LANE1);
     static_assert_imm3!(LANE2);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1529,8 +1529,8 @@ pub unsafe fn vcopyq_laneq_p64<const LANE1: i32, const LANE2: i32>(a: poly64x2_t
     static_assert_imm1!(LANE1);
     static_assert_imm1!(LANE2);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1544,8 +1544,8 @@ pub unsafe fn vcopy_lane_f32<const LANE1: i32, const LANE2: i32>(a: float32x2_t,
     static_assert_imm1!(LANE1);
     static_assert_imm1!(LANE2);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1559,10 +1559,10 @@ pub unsafe fn vcopyq_laneq_f32<const LANE1: i32, const LANE2: i32>(a: float32x4_
     static_assert_imm2!(LANE1);
     static_assert_imm2!(LANE2);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1576,8 +1576,8 @@ pub unsafe fn vcopyq_laneq_f64<const LANE1: i32, const LANE2: i32>(a: float64x2_
     static_assert_imm1!(LANE1);
     static_assert_imm1!(LANE2);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1590,16 +1590,16 @@ pub unsafe fn vcopyq_laneq_f64<const LANE1: i32, const LANE2: i32>(a: float64x2_
 pub unsafe fn vcopy_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b: int8x16_t) -> int8x8_t {
     static_assert_imm3!(LANE1);
     static_assert_imm4!(LANE2);
-    let a: int8x16_t = simd_shuffle16(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: int8x16_t = simd_shuffle16!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1612,12 +1612,12 @@ pub unsafe fn vcopy_laneq_s8<const LANE1: i32, const LANE2: i32>(a: int8x8_t, b:
 pub unsafe fn vcopy_laneq_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, b: int16x8_t) -> int16x4_t {
     static_assert_imm2!(LANE1);
     static_assert_imm3!(LANE2);
-    let a: int16x8_t = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let a: int16x8_t = simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [8 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 8 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 8 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 8 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1630,10 +1630,10 @@ pub unsafe fn vcopy_laneq_s16<const LANE1: i32, const LANE2: i32>(a: int16x4_t, 
 pub unsafe fn vcopy_laneq_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, b: int32x4_t) -> int32x2_t {
     static_assert_imm1!(LANE1);
     static_assert_imm2!(LANE2);
-    let a: int32x4_t = simd_shuffle4(a, a, [0, 1, 2, 3]);
+    let a: int32x4_t = simd_shuffle4!(a, a, [0, 1, 2, 3]);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [4 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 4 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1646,16 +1646,16 @@ pub unsafe fn vcopy_laneq_s32<const LANE1: i32, const LANE2: i32>(a: int32x2_t, 
 pub unsafe fn vcopy_laneq_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b: uint8x16_t) -> uint8x8_t {
     static_assert_imm3!(LANE1);
     static_assert_imm4!(LANE2);
-    let a: uint8x16_t = simd_shuffle16(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: uint8x16_t = simd_shuffle16!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1668,12 +1668,12 @@ pub unsafe fn vcopy_laneq_u8<const LANE1: i32, const LANE2: i32>(a: uint8x8_t, b
 pub unsafe fn vcopy_laneq_u16<const LANE1: i32, const LANE2: i32>(a: uint16x4_t, b: uint16x8_t) -> uint16x4_t {
     static_assert_imm2!(LANE1);
     static_assert_imm3!(LANE2);
-    let a: uint16x8_t = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let a: uint16x8_t = simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [8 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 8 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 8 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 8 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1686,10 +1686,10 @@ pub unsafe fn vcopy_laneq_u16<const LANE1: i32, const LANE2: i32>(a: uint16x4_t,
 pub unsafe fn vcopy_laneq_u32<const LANE1: i32, const LANE2: i32>(a: uint32x2_t, b: uint32x4_t) -> uint32x2_t {
     static_assert_imm1!(LANE1);
     static_assert_imm2!(LANE2);
-    let a: uint32x4_t = simd_shuffle4(a, a, [0, 1, 2, 3]);
+    let a: uint32x4_t = simd_shuffle4!(a, a, [0, 1, 2, 3]);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [4 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 4 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1702,16 +1702,16 @@ pub unsafe fn vcopy_laneq_u32<const LANE1: i32, const LANE2: i32>(a: uint32x2_t,
 pub unsafe fn vcopy_laneq_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b: poly8x16_t) -> poly8x8_t {
     static_assert_imm3!(LANE1);
     static_assert_imm4!(LANE2);
-    let a: poly8x16_t = simd_shuffle16(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: poly8x16_t = simd_shuffle16!(a, a, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1724,12 +1724,12 @@ pub unsafe fn vcopy_laneq_p8<const LANE1: i32, const LANE2: i32>(a: poly8x8_t, b
 pub unsafe fn vcopy_laneq_p16<const LANE1: i32, const LANE2: i32>(a: poly16x4_t, b: poly16x8_t) -> poly16x4_t {
     static_assert_imm2!(LANE1);
     static_assert_imm3!(LANE2);
-    let a: poly16x8_t = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let a: poly16x8_t = simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [8 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 8 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 8 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 8 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1742,10 +1742,10 @@ pub unsafe fn vcopy_laneq_p16<const LANE1: i32, const LANE2: i32>(a: poly16x4_t,
 pub unsafe fn vcopy_laneq_f32<const LANE1: i32, const LANE2: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_imm1!(LANE1);
     static_assert_imm2!(LANE2);
-    let a: float32x4_t = simd_shuffle4(a, a, [0, 1, 2, 3]);
+    let a: float32x4_t = simd_shuffle4!(a, a, [0, 1, 2, 3]);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [4 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 4 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1758,24 +1758,24 @@ pub unsafe fn vcopy_laneq_f32<const LANE1: i32, const LANE2: i32>(a: float32x2_t
 pub unsafe fn vcopyq_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, b: int8x8_t) -> int8x16_t {
     static_assert_imm4!(LANE1);
     static_assert_imm3!(LANE2);
-    let b: int8x16_t = simd_shuffle16(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: int8x16_t = simd_shuffle16!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     match LANE1 & 0b1111 {
-        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
-        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
-        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
-        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
-        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
-        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
-        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
-        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
-        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        0 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1788,16 +1788,16 @@ pub unsafe fn vcopyq_lane_s8<const LANE1: i32, const LANE2: i32>(a: int8x16_t, b
 pub unsafe fn vcopyq_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x8_t, b: int16x4_t) -> int16x8_t {
     static_assert_imm3!(LANE1);
     static_assert_imm2!(LANE2);
-    let b: int16x8_t = simd_shuffle8(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let b: int16x8_t = simd_shuffle8!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1810,12 +1810,12 @@ pub unsafe fn vcopyq_lane_s16<const LANE1: i32, const LANE2: i32>(a: int16x8_t, 
 pub unsafe fn vcopyq_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x4_t, b: int32x2_t) -> int32x4_t {
     static_assert_imm2!(LANE1);
     static_assert_imm1!(LANE2);
-    let b: int32x4_t = simd_shuffle4(b, b, [0, 1, 2, 3]);
+    let b: int32x4_t = simd_shuffle4!(b, b, [0, 1, 2, 3]);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1828,24 +1828,24 @@ pub unsafe fn vcopyq_lane_s32<const LANE1: i32, const LANE2: i32>(a: int32x4_t, 
 pub unsafe fn vcopyq_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x16_t, b: uint8x8_t) -> uint8x16_t {
     static_assert_imm4!(LANE1);
     static_assert_imm3!(LANE2);
-    let b: uint8x16_t = simd_shuffle16(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: uint8x16_t = simd_shuffle16!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     match LANE1 & 0b1111 {
-        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
-        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
-        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
-        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
-        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
-        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
-        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
-        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
-        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        0 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1858,16 +1858,16 @@ pub unsafe fn vcopyq_lane_u8<const LANE1: i32, const LANE2: i32>(a: uint8x16_t, 
 pub unsafe fn vcopyq_lane_u16<const LANE1: i32, const LANE2: i32>(a: uint16x8_t, b: uint16x4_t) -> uint16x8_t {
     static_assert_imm3!(LANE1);
     static_assert_imm2!(LANE2);
-    let b: uint16x8_t = simd_shuffle8(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let b: uint16x8_t = simd_shuffle8!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1880,12 +1880,12 @@ pub unsafe fn vcopyq_lane_u16<const LANE1: i32, const LANE2: i32>(a: uint16x8_t,
 pub unsafe fn vcopyq_lane_u32<const LANE1: i32, const LANE2: i32>(a: uint32x4_t, b: uint32x2_t) -> uint32x4_t {
     static_assert_imm2!(LANE1);
     static_assert_imm1!(LANE2);
-    let b: uint32x4_t = simd_shuffle4(b, b, [0, 1, 2, 3]);
+    let b: uint32x4_t = simd_shuffle4!(b, b, [0, 1, 2, 3]);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1898,24 +1898,24 @@ pub unsafe fn vcopyq_lane_u32<const LANE1: i32, const LANE2: i32>(a: uint32x4_t,
 pub unsafe fn vcopyq_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x16_t, b: poly8x8_t) -> poly8x16_t {
     static_assert_imm4!(LANE1);
     static_assert_imm3!(LANE2);
-    let b: poly8x16_t = simd_shuffle16(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: poly8x16_t = simd_shuffle16!(b, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
     match LANE1 & 0b1111 {
-        0 => simd_shuffle16(a, b, [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle16(a, b, [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        2 => simd_shuffle16(a, b, [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        3 => simd_shuffle16(a, b, [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        4 => simd_shuffle16(a, b, [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        5 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        6 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-        7 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
-        8 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
-        9 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
-        10 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
-        11 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
-        12 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
-        13 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
-        14 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
-        15 => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
+        0 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [16 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 16 + LANE2 as u32, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        2 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 16 + LANE2 as u32, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        3 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 16 + LANE2 as u32, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        4 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 16 + LANE2 as u32, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        5 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 16 + LANE2 as u32, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        6 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 16 + LANE2 as u32, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
+        7 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 16 + LANE2 as u32, 8, 9, 10, 11, 12, 13, 14, 15]),
+        8 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 16 + LANE2 as u32, 9, 10, 11, 12, 13, 14, 15]),
+        9 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 16 + LANE2 as u32, 10, 11, 12, 13, 14, 15]),
+        10 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 16 + LANE2 as u32, 11, 12, 13, 14, 15]),
+        11 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16 + LANE2 as u32, 12, 13, 14, 15]),
+        12 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16 + LANE2 as u32, 13, 14, 15]),
+        13 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 16 + LANE2 as u32, 14, 15]),
+        14 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 16 + LANE2 as u32, 15]),
+        15 => simd_shuffle16!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1928,16 +1928,16 @@ pub unsafe fn vcopyq_lane_p8<const LANE1: i32, const LANE2: i32>(a: poly8x16_t, 
 pub unsafe fn vcopyq_lane_p16<const LANE1: i32, const LANE2: i32>(a: poly16x8_t, b: poly16x4_t) -> poly16x8_t {
     static_assert_imm3!(LANE1);
     static_assert_imm2!(LANE2);
-    let b: poly16x8_t = simd_shuffle8(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let b: poly16x8_t = simd_shuffle8!(b, b, [0, 1, 2, 3, 4, 5, 6, 7]);
     match LANE1 & 0b111 {
-        0 => simd_shuffle8(a, b, [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
-        1 => simd_shuffle8(a, b, [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
-        2 => simd_shuffle8(a, b, [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
-        3 => simd_shuffle8(a, b, [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
-        4 => simd_shuffle8(a, b, [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
-        5 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
-        6 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
-        7 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
+        0 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [8 + LANE2 as u32, 1, 2, 3, 4, 5, 6, 7]),
+        1 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 8 + LANE2 as u32, 2, 3, 4, 5, 6, 7]),
+        2 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 8 + LANE2 as u32, 3, 4, 5, 6, 7]),
+        3 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 8 + LANE2 as u32, 4, 5, 6, 7]),
+        4 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 8 + LANE2 as u32, 5, 6, 7]),
+        5 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 8 + LANE2 as u32, 6, 7]),
+        6 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 8 + LANE2 as u32, 7]),
+        7 => simd_shuffle8!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 3, 4, 5, 6, 8 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1950,10 +1950,10 @@ pub unsafe fn vcopyq_lane_p16<const LANE1: i32, const LANE2: i32>(a: poly16x8_t,
 pub unsafe fn vcopyq_lane_s64<const LANE1: i32, const LANE2: i32>(a: int64x2_t, b: int64x1_t) -> int64x2_t {
     static_assert_imm1!(LANE1);
     static_assert!(LANE2 : i32 where LANE2 == 0);
-    let b: int64x2_t = simd_shuffle2(b, b, [0, 1]);
+    let b: int64x2_t = simd_shuffle2!(b, b, [0, 1]);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1966,10 +1966,10 @@ pub unsafe fn vcopyq_lane_s64<const LANE1: i32, const LANE2: i32>(a: int64x2_t, 
 pub unsafe fn vcopyq_lane_u64<const LANE1: i32, const LANE2: i32>(a: uint64x2_t, b: uint64x1_t) -> uint64x2_t {
     static_assert_imm1!(LANE1);
     static_assert!(LANE2 : i32 where LANE2 == 0);
-    let b: uint64x2_t = simd_shuffle2(b, b, [0, 1]);
+    let b: uint64x2_t = simd_shuffle2!(b, b, [0, 1]);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1982,10 +1982,10 @@ pub unsafe fn vcopyq_lane_u64<const LANE1: i32, const LANE2: i32>(a: uint64x2_t,
 pub unsafe fn vcopyq_lane_p64<const LANE1: i32, const LANE2: i32>(a: poly64x2_t, b: poly64x1_t) -> poly64x2_t {
     static_assert_imm1!(LANE1);
     static_assert!(LANE2 : i32 where LANE2 == 0);
-    let b: poly64x2_t = simd_shuffle2(b, b, [0, 1]);
+    let b: poly64x2_t = simd_shuffle2!(b, b, [0, 1]);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -1998,12 +1998,12 @@ pub unsafe fn vcopyq_lane_p64<const LANE1: i32, const LANE2: i32>(a: poly64x2_t,
 pub unsafe fn vcopyq_lane_f32<const LANE1: i32, const LANE2: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_imm2!(LANE1);
     static_assert_imm1!(LANE2);
-    let b: float32x4_t = simd_shuffle4(b, b, [0, 1, 2, 3]);
+    let b: float32x4_t = simd_shuffle4!(b, b, [0, 1, 2, 3]);
     match LANE1 & 0b11 {
-        0 => simd_shuffle4(a, b, [4 + LANE2 as u32, 1, 2, 3]),
-        1 => simd_shuffle4(a, b, [0, 4 + LANE2 as u32, 2, 3]),
-        2 => simd_shuffle4(a, b, [0, 1, 4 + LANE2 as u32, 3]),
-        3 => simd_shuffle4(a, b, [0, 1, 2, 4 + LANE2 as u32]),
+        0 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [4 + LANE2 as u32, 1, 2, 3]),
+        1 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 4 + LANE2 as u32, 2, 3]),
+        2 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 4 + LANE2 as u32, 3]),
+        3 => simd_shuffle4!(a, b, <const LANE1: i32, const LANE2: i32> [0, 1, 2, 4 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -2016,10 +2016,10 @@ pub unsafe fn vcopyq_lane_f32<const LANE1: i32, const LANE2: i32>(a: float32x4_t
 pub unsafe fn vcopyq_lane_f64<const LANE1: i32, const LANE2: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert_imm1!(LANE1);
     static_assert!(LANE2 : i32 where LANE2 == 0);
-    let b: float64x2_t = simd_shuffle2(b, b, [0, 1]);
+    let b: float64x2_t = simd_shuffle2!(b, b, [0, 1]);
     match LANE1 & 0b1 {
-        0 => simd_shuffle2(a, b, [2 + LANE2 as u32, 1]),
-        1 => simd_shuffle2(a, b, [0, 2 + LANE2 as u32]),
+        0 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [2 + LANE2 as u32, 1]),
+        1 => simd_shuffle2!(a, b, <const LANE1: i32, const LANE2: i32> [0, 2 + LANE2 as u32]),
         _ => unreachable_unchecked(),
     }
 }
@@ -2077,7 +2077,7 @@ pub unsafe fn vcvt_f64_f32(a: float32x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtl))]
 pub unsafe fn vcvt_high_f64_f32(a: float32x4_t) -> float64x2_t {
-    let b: float32x2_t = simd_shuffle2(a, a, [2, 3]);
+    let b: float32x2_t = simd_shuffle2!(a, a, [2, 3]);
     simd_cast(b)
 }
 
@@ -2094,7 +2094,7 @@ pub unsafe fn vcvt_f32_f64(a: float64x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtn))]
 pub unsafe fn vcvt_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
-    simd_shuffle4(a, simd_cast(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, simd_cast(b), [0, 1, 2, 3])
 }
 
 /// Floating-point convert to lower precision narrow, rounding to odd
@@ -2115,7 +2115,7 @@ pub unsafe fn vcvtx_f32_f64(a: float64x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fcvtxn))]
 pub unsafe fn vcvtx_high_f32_f64(a: float32x2_t, b: float64x2_t) -> float32x4_t {
-    simd_shuffle4(a, vcvtx_f32_f64(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vcvtx_f32_f64(b), [0, 1, 2, 3])
 }
 
 /// Fixed-point convert to floating-point
@@ -3085,7 +3085,7 @@ pub unsafe fn vcvtpd_u64_f64(a: f64) -> u64 {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3095,7 +3095,7 @@ pub unsafe fn vdupq_laneq_p64<const N: i32>(a: poly64x2_t) -> poly64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_p64<const N: i32>(a: poly64x1_t) -> poly64x2_t {
     static_assert!(N : i32 where N == 0);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3105,7 +3105,7 @@ pub unsafe fn vdupq_lane_p64<const N: i32>(a: poly64x1_t) -> poly64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_laneq_f64<const N: i32>(a: float64x2_t) -> float64x2_t {
     static_assert_imm1!(N);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3115,7 +3115,7 @@ pub unsafe fn vdupq_laneq_f64<const N: i32>(a: float64x2_t) -> float64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vdupq_lane_f64<const N: i32>(a: float64x1_t) -> float64x2_t {
     static_assert!(N : i32 where N == 0);
-    simd_shuffle2(a, a, [N as u32, N as u32])
+    simd_shuffle2!(a, a, <const N: i32> [N as u32, N as u32])
 }
 
 /// Set all vector lanes to the same value
@@ -3406,8 +3406,8 @@ pub unsafe fn vdupd_laneq_f64<const N: i32>(a: float64x2_t) -> f64 {
 pub unsafe fn vextq_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        1 => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [0, 1]),
+        1 => simd_shuffle2!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3420,8 +3420,8 @@ pub unsafe fn vextq_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x2_
 pub unsafe fn vextq_f64<const N: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_imm1!(N);
     match N & 0b1 {
-        0 => simd_shuffle2(a, b, [0, 1]),
-        1 => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [0, 1]),
+        1 => simd_shuffle2!(a, b, [1, 2]),
         _ => unreachable_unchecked(),
     }
 }
@@ -3447,8 +3447,8 @@ pub unsafe fn vmlaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smlal2))]
 pub unsafe fn vmlal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
-    let b: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let c: int8x8_t = simd_shuffle8(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: int8x8_t = simd_shuffle8!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmlal_s8(a, b, c)
 }
 
@@ -3457,8 +3457,8 @@ pub unsafe fn vmlal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smlal2))]
 pub unsafe fn vmlal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
-    let b: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
-    let c: int16x4_t = simd_shuffle4(c, c, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
+    let c: int16x4_t = simd_shuffle4!(c, c, [4, 5, 6, 7]);
     vmlal_s16(a, b, c)
 }
 
@@ -3467,8 +3467,8 @@ pub unsafe fn vmlal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smlal2))]
 pub unsafe fn vmlal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
-    let b: int32x2_t = simd_shuffle2(b, b, [2, 3]);
-    let c: int32x2_t = simd_shuffle2(c, c, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
+    let c: int32x2_t = simd_shuffle2!(c, c, [2, 3]);
     vmlal_s32(a, b, c)
 }
 
@@ -3477,8 +3477,8 @@ pub unsafe fn vmlal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umlal2))]
 pub unsafe fn vmlal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t {
-    let b: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let c: uint8x8_t = simd_shuffle8(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: uint8x8_t = simd_shuffle8!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmlal_u8(a, b, c)
 }
 
@@ -3487,8 +3487,8 @@ pub unsafe fn vmlal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umlal2))]
 pub unsafe fn vmlal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
-    let b: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
-    let c: uint16x4_t = simd_shuffle4(c, c, [4, 5, 6, 7]);
+    let b: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
+    let c: uint16x4_t = simd_shuffle4!(c, c, [4, 5, 6, 7]);
     vmlal_u16(a, b, c)
 }
 
@@ -3497,8 +3497,8 @@ pub unsafe fn vmlal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uin
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umlal2))]
 pub unsafe fn vmlal_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
-    let b: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
-    let c: uint32x2_t = simd_shuffle2(c, c, [2, 3]);
+    let b: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
+    let c: uint32x2_t = simd_shuffle2!(c, c, [2, 3]);
     vmlal_u32(a, b, c)
 }
 
@@ -3541,7 +3541,7 @@ pub unsafe fn vmlal_high_n_u32(a: uint64x2_t, b: uint32x4_t, c: u32) -> uint64x2
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlal_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-add long
@@ -3551,7 +3551,7 @@ pub unsafe fn vmlal_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmlal_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-add long
@@ -3561,7 +3561,7 @@ pub unsafe fn vmlal_high_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmlal_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-add long
@@ -3571,7 +3571,7 @@ pub unsafe fn vmlal_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmlal_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-add long
@@ -3581,7 +3581,7 @@ pub unsafe fn vmlal_high_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlal_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-add long
@@ -3591,7 +3591,7 @@ pub unsafe fn vmlal_high_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t,
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmlal_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-add long
@@ -3601,7 +3601,7 @@ pub unsafe fn vmlal_high_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmlal_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-add long
@@ -3611,7 +3611,7 @@ pub unsafe fn vmlal_high_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t,
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlal_high_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmlal_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlal_high_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply-subtract from accumulator
@@ -3635,8 +3635,8 @@ pub unsafe fn vmlsq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smlsl2))]
 pub unsafe fn vmlsl_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
-    let b: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let c: int8x8_t = simd_shuffle8(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: int8x8_t = simd_shuffle8!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmlsl_s8(a, b, c)
 }
 
@@ -3645,8 +3645,8 @@ pub unsafe fn vmlsl_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smlsl2))]
 pub unsafe fn vmlsl_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
-    let b: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
-    let c: int16x4_t = simd_shuffle4(c, c, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
+    let c: int16x4_t = simd_shuffle4!(c, c, [4, 5, 6, 7]);
     vmlsl_s16(a, b, c)
 }
 
@@ -3655,8 +3655,8 @@ pub unsafe fn vmlsl_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smlsl2))]
 pub unsafe fn vmlsl_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
-    let b: int32x2_t = simd_shuffle2(b, b, [2, 3]);
-    let c: int32x2_t = simd_shuffle2(c, c, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
+    let c: int32x2_t = simd_shuffle2!(c, c, [2, 3]);
     vmlsl_s32(a, b, c)
 }
 
@@ -3665,8 +3665,8 @@ pub unsafe fn vmlsl_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umlsl2))]
 pub unsafe fn vmlsl_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t {
-    let b: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let c: uint8x8_t = simd_shuffle8(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: uint8x8_t = simd_shuffle8!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmlsl_u8(a, b, c)
 }
 
@@ -3675,8 +3675,8 @@ pub unsafe fn vmlsl_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umlsl2))]
 pub unsafe fn vmlsl_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
-    let b: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
-    let c: uint16x4_t = simd_shuffle4(c, c, [4, 5, 6, 7]);
+    let b: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
+    let c: uint16x4_t = simd_shuffle4!(c, c, [4, 5, 6, 7]);
     vmlsl_u16(a, b, c)
 }
 
@@ -3685,8 +3685,8 @@ pub unsafe fn vmlsl_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uin
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umlsl2))]
 pub unsafe fn vmlsl_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
-    let b: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
-    let c: uint32x2_t = simd_shuffle2(c, c, [2, 3]);
+    let b: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
+    let c: uint32x2_t = simd_shuffle2!(c, c, [2, 3]);
     vmlsl_u32(a, b, c)
 }
 
@@ -3729,7 +3729,7 @@ pub unsafe fn vmlsl_high_n_u32(a: uint64x2_t, b: uint32x4_t, c: u32) -> uint64x2
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmlsl_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract long
@@ -3739,7 +3739,7 @@ pub unsafe fn vmlsl_high_lane_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmlsl_high_s16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_s16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract long
@@ -3749,7 +3749,7 @@ pub unsafe fn vmlsl_high_laneq_s16<const LANE: i32>(a: int32x4_t, b: int16x8_t, 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmlsl_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract long
@@ -3759,7 +3759,7 @@ pub unsafe fn vmlsl_high_lane_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmlsl_high_s32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_s32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract long
@@ -3769,7 +3769,7 @@ pub unsafe fn vmlsl_high_laneq_s32<const LANE: i32>(a: int64x2_t, b: int32x4_t, 
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmlsl_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract long
@@ -3779,7 +3779,7 @@ pub unsafe fn vmlsl_high_lane_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t,
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmlsl_high_u16(a, b, simd_shuffle8(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_u16(a, b, simd_shuffle8!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract long
@@ -3789,7 +3789,7 @@ pub unsafe fn vmlsl_high_laneq_u16<const LANE: i32>(a: uint32x4_t, b: uint16x8_t
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmlsl_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply-subtract long
@@ -3799,7 +3799,7 @@ pub unsafe fn vmlsl_high_lane_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t,
 #[rustc_legacy_const_generics(3)]
 pub unsafe fn vmlsl_high_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmlsl_high_u32(a, b, simd_shuffle4(c, c, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmlsl_high_u32(a, b, simd_shuffle4!(c, c, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Extract narrow
@@ -3808,7 +3808,7 @@ pub unsafe fn vmlsl_high_laneq_u32<const LANE: i32>(a: uint64x2_t, b: uint32x4_t
 #[cfg_attr(test, assert_instr(xtn2))]
 pub unsafe fn vmovn_high_s16(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     let c: int8x8_t = simd_cast(b);
-    simd_shuffle16(a, c, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, c, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Extract narrow
@@ -3817,7 +3817,7 @@ pub unsafe fn vmovn_high_s16(a: int8x8_t, b: int16x8_t) -> int8x16_t {
 #[cfg_attr(test, assert_instr(xtn2))]
 pub unsafe fn vmovn_high_s32(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     let c: int16x4_t = simd_cast(b);
-    simd_shuffle8(a, c, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, c, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Extract narrow
@@ -3826,7 +3826,7 @@ pub unsafe fn vmovn_high_s32(a: int16x4_t, b: int32x4_t) -> int16x8_t {
 #[cfg_attr(test, assert_instr(xtn2))]
 pub unsafe fn vmovn_high_s64(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     let c: int32x2_t = simd_cast(b);
-    simd_shuffle4(a, c, [0, 1, 2, 3])
+    simd_shuffle4!(a, c, [0, 1, 2, 3])
 }
 
 /// Extract narrow
@@ -3835,7 +3835,7 @@ pub unsafe fn vmovn_high_s64(a: int32x2_t, b: int64x2_t) -> int32x4_t {
 #[cfg_attr(test, assert_instr(xtn2))]
 pub unsafe fn vmovn_high_u16(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     let c: uint8x8_t = simd_cast(b);
-    simd_shuffle16(a, c, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, c, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Extract narrow
@@ -3844,7 +3844,7 @@ pub unsafe fn vmovn_high_u16(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
 #[cfg_attr(test, assert_instr(xtn2))]
 pub unsafe fn vmovn_high_u32(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     let c: uint16x4_t = simd_cast(b);
-    simd_shuffle8(a, c, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, c, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Extract narrow
@@ -3853,7 +3853,7 @@ pub unsafe fn vmovn_high_u32(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
 #[cfg_attr(test, assert_instr(xtn2))]
 pub unsafe fn vmovn_high_u64(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     let c: uint32x2_t = simd_cast(b);
-    simd_shuffle4(a, c, [0, 1, 2, 3])
+    simd_shuffle4!(a, c, [0, 1, 2, 3])
 }
 
 /// Negate
@@ -4529,7 +4529,7 @@ pub unsafe fn vmul_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x2_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE : i32 where LANE == 0);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -4539,7 +4539,7 @@ pub unsafe fn vmulq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_imm1!(LANE);
-    simd_mul(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    simd_mul(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply
@@ -4591,8 +4591,8 @@ pub unsafe fn vmuld_laneq_f64<const LANE: i32>(a: f64, b: float64x2_t) -> f64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smull2))]
 pub unsafe fn vmull_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
-    let a: int8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let b: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: int8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmull_s8(a, b)
 }
 
@@ -4601,8 +4601,8 @@ pub unsafe fn vmull_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smull2))]
 pub unsafe fn vmull_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
-    let a: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let b: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let a: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     vmull_s16(a, b)
 }
 
@@ -4611,8 +4611,8 @@ pub unsafe fn vmull_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(smull2))]
 pub unsafe fn vmull_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
-    let a: int32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let b: int32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let a: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
     vmull_s32(a, b)
 }
 
@@ -4621,8 +4621,8 @@ pub unsafe fn vmull_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umull2))]
 pub unsafe fn vmull_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
-    let a: uint8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let b: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: uint8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmull_u8(a, b)
 }
 
@@ -4631,8 +4631,8 @@ pub unsafe fn vmull_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umull2))]
 pub unsafe fn vmull_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
-    let a: uint16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let b: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let a: uint16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let b: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     vmull_u16(a, b)
 }
 
@@ -4641,8 +4641,8 @@ pub unsafe fn vmull_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(umull2))]
 pub unsafe fn vmull_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
-    let a: uint32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let b: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let a: uint32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let b: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
     vmull_u32(a, b)
 }
 
@@ -4651,8 +4651,8 @@ pub unsafe fn vmull_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(pmull))]
 pub unsafe fn vmull_high_p8(a: poly8x16_t, b: poly8x16_t) -> poly16x8_t {
-    let a: poly8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let b: poly8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: poly8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: poly8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmull_p8(a, b)
 }
 
@@ -4695,7 +4695,7 @@ pub unsafe fn vmull_high_n_u32(a: uint32x4_t, b: u32) -> uint64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -> int32x4_t {
     static_assert_imm2!(LANE);
-    vmull_high_s16(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_s16(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply long
@@ -4705,7 +4705,7 @@ pub unsafe fn vmull_high_lane_s16<const LANE: i32>(a: int16x8_t, b: int16x4_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     static_assert_imm3!(LANE);
-    vmull_high_s16(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_s16(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply long
@@ -4715,7 +4715,7 @@ pub unsafe fn vmull_high_laneq_s16<const LANE: i32>(a: int16x8_t, b: int16x8_t) 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -> int64x2_t {
     static_assert_imm1!(LANE);
-    vmull_high_s32(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_s32(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply long
@@ -4725,7 +4725,7 @@ pub unsafe fn vmull_high_lane_s32<const LANE: i32>(a: int32x4_t, b: int32x2_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     static_assert_imm2!(LANE);
-    vmull_high_s32(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_s32(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply long
@@ -4735,7 +4735,7 @@ pub unsafe fn vmull_high_laneq_s32<const LANE: i32>(a: int32x4_t, b: int32x4_t) 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t) -> uint32x4_t {
     static_assert_imm2!(LANE);
-    vmull_high_u16(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_u16(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply long
@@ -4745,7 +4745,7 @@ pub unsafe fn vmull_high_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint16x4_t)
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
     static_assert_imm3!(LANE);
-    vmull_high_u16(a, simd_shuffle8(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_u16(a, simd_shuffle8!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply long
@@ -4755,7 +4755,7 @@ pub unsafe fn vmull_high_laneq_u16<const LANE: i32>(a: uint16x8_t, b: uint16x8_t
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t) -> uint64x2_t {
     static_assert_imm1!(LANE);
-    vmull_high_u32(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_u32(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Multiply long
@@ -4765,7 +4765,7 @@ pub unsafe fn vmull_high_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint32x2_t)
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmull_high_laneq_u32<const LANE: i32>(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
     static_assert_imm2!(LANE);
-    vmull_high_u32(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmull_high_u32(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply extended
@@ -4847,7 +4847,7 @@ pub unsafe fn vmulx_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x2_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     static_assert_imm1!(LANE);
-    vmulx_f32(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmulx_f32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply extended
@@ -4857,7 +4857,7 @@ pub unsafe fn vmulx_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -> float32x2_t {
     static_assert_imm2!(LANE);
-    vmulx_f32(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmulx_f32(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply extended
@@ -4867,7 +4867,7 @@ pub unsafe fn vmulx_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x4_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -> float32x4_t {
     static_assert_imm1!(LANE);
-    vmulxq_f32(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmulxq_f32(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply extended
@@ -4877,7 +4877,7 @@ pub unsafe fn vmulxq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x2_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     static_assert_imm2!(LANE);
-    vmulxq_f32(a, simd_shuffle4(b, b, [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
+    vmulxq_f32(a, simd_shuffle4!(b, b, <const LANE: i32> [LANE as u32, LANE as u32, LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply extended
@@ -4887,7 +4887,7 @@ pub unsafe fn vmulxq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t) 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulxq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -> float64x2_t {
     static_assert!(LANE : i32 where LANE == 0);
-    vmulxq_f64(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmulxq_f64(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply extended
@@ -4897,7 +4897,7 @@ pub unsafe fn vmulxq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x1_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vmulxq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     static_assert_imm1!(LANE);
-    vmulxq_f64(a, simd_shuffle2(b, b, [LANE as u32, LANE as u32]))
+    vmulxq_f64(a, simd_shuffle2!(b, b, <const LANE: i32> [LANE as u32, LANE as u32]))
 }
 
 /// Floating-point multiply extended
@@ -5167,7 +5167,7 @@ pub unsafe fn vaddlvq_u32(a: uint32x4_t) -> u64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ssubw))]
 pub unsafe fn vsubw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
-    let c: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     simd_sub(a, simd_cast(c))
 }
 
@@ -5176,7 +5176,7 @@ pub unsafe fn vsubw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ssubw))]
 pub unsafe fn vsubw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
-    let c: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let c: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     simd_sub(a, simd_cast(c))
 }
 
@@ -5185,7 +5185,7 @@ pub unsafe fn vsubw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ssubw))]
 pub unsafe fn vsubw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
-    let c: int32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let c: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
     simd_sub(a, simd_cast(c))
 }
 
@@ -5194,7 +5194,7 @@ pub unsafe fn vsubw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(usubw))]
 pub unsafe fn vsubw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
-    let c: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     simd_sub(a, simd_cast(c))
 }
 
@@ -5203,7 +5203,7 @@ pub unsafe fn vsubw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(usubw))]
 pub unsafe fn vsubw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
-    let c: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let c: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     simd_sub(a, simd_cast(c))
 }
 
@@ -5212,7 +5212,7 @@ pub unsafe fn vsubw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(usubw))]
 pub unsafe fn vsubw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
-    let c: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let c: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
     simd_sub(a, simd_cast(c))
 }
 
@@ -5221,9 +5221,9 @@ pub unsafe fn vsubw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ssubl))]
 pub unsafe fn vsubl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
-    let c: int8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: int8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
     let d: int16x8_t = simd_cast(c);
-    let e: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let e: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     let f: int16x8_t = simd_cast(e);
     simd_sub(d, f)
 }
@@ -5233,9 +5233,9 @@ pub unsafe fn vsubl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ssubl))]
 pub unsafe fn vsubl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
-    let c: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
+    let c: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
     let d: int32x4_t = simd_cast(c);
-    let e: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let e: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     let f: int32x4_t = simd_cast(e);
     simd_sub(d, f)
 }
@@ -5245,9 +5245,9 @@ pub unsafe fn vsubl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(ssubl))]
 pub unsafe fn vsubl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
-    let c: int32x2_t = simd_shuffle2(a, a, [2, 3]);
+    let c: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
     let d: int64x2_t = simd_cast(c);
-    let e: int32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let e: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
     let f: int64x2_t = simd_cast(e);
     simd_sub(d, f)
 }
@@ -5257,9 +5257,9 @@ pub unsafe fn vsubl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(usubl))]
 pub unsafe fn vsubl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
-    let c: uint8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let c: uint8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
     let d: uint16x8_t = simd_cast(c);
-    let e: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let e: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     let f: uint16x8_t = simd_cast(e);
     simd_sub(d, f)
 }
@@ -5269,9 +5269,9 @@ pub unsafe fn vsubl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(usubl))]
 pub unsafe fn vsubl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
-    let c: uint16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
+    let c: uint16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
     let d: uint32x4_t = simd_cast(c);
-    let e: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let e: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     let f: uint32x4_t = simd_cast(e);
     simd_sub(d, f)
 }
@@ -5281,9 +5281,9 @@ pub unsafe fn vsubl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(usubl))]
 pub unsafe fn vsubl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
-    let c: uint32x2_t = simd_shuffle2(a, a, [2, 3]);
+    let c: uint32x2_t = simd_shuffle2!(a, a, [2, 3]);
     let d: uint64x2_t = simd_cast(c);
-    let e: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let e: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
     let f: uint64x2_t = simd_cast(e);
     simd_sub(d, f)
 }
@@ -5498,8 +5498,8 @@ pub unsafe fn vqdmulls_s32(a: i32, b: i32) -> i64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sqdmull2))]
 pub unsafe fn vqdmull_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
-    let a: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let b: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let a: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     vqdmull_s16(a, b)
 }
 
@@ -5508,8 +5508,8 @@ pub unsafe fn vqdmull_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sqdmull2))]
 pub unsafe fn vqdmull_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
-    let a: int32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let b: int32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let a: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
     vqdmull_s32(a, b)
 }
 
@@ -5518,7 +5518,7 @@ pub unsafe fn vqdmull_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sqdmull2))]
 pub unsafe fn vqdmull_high_n_s16(a: int16x8_t, b: i16) -> int32x4_t {
-    let a: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
+    let a: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
     let b: int16x4_t = vdup_n_s16(b);
     vqdmull_s16(a, b)
 }
@@ -5528,7 +5528,7 @@ pub unsafe fn vqdmull_high_n_s16(a: int16x8_t, b: i16) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sqdmull2))]
 pub unsafe fn vqdmull_high_n_s32(a: int32x4_t, b: i32) -> int64x2_t {
-    let a: int32x2_t = simd_shuffle2(a, a, [2, 3]);
+    let a: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
     let b: int32x2_t = vdup_n_s32(b);
     vqdmull_s32(a, b)
 }
@@ -5540,7 +5540,7 @@ pub unsafe fn vqdmull_high_n_s32(a: int32x4_t, b: i32) -> int64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_laneq_s16<const N: i32>(a: int16x4_t, b: int16x8_t) -> int32x4_t {
     static_assert_imm3!(N);
-    let b: int16x4_t = simd_shuffle4(b, b, [N as u32, N as u32, N as u32, N as u32]);
+    let b: int16x4_t = simd_shuffle4!(b, b, <const N: i32> [N as u32, N as u32, N as u32, N as u32]);
     vqdmull_s16(a, b)
 }
 
@@ -5551,7 +5551,7 @@ pub unsafe fn vqdmull_laneq_s16<const N: i32>(a: int16x4_t, b: int16x8_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_laneq_s32<const N: i32>(a: int32x2_t, b: int32x4_t) -> int64x2_t {
     static_assert_imm2!(N);
-    let b: int32x2_t = simd_shuffle2(b, b, [N as u32, N as u32]);
+    let b: int32x2_t = simd_shuffle2!(b, b, <const N: i32> [N as u32, N as u32]);
     vqdmull_s32(a, b)
 }
 
@@ -5606,8 +5606,8 @@ pub unsafe fn vqdmulls_laneq_s32<const N: i32>(a: i32, b: int32x4_t) -> i64 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_high_lane_s16<const N: i32>(a: int16x8_t, b: int16x4_t) -> int32x4_t {
     static_assert_imm2!(N);
-    let a: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let b: int16x4_t = simd_shuffle4(b, b, [N as u32, N as u32, N as u32, N as u32]);
+    let a: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, <const N: i32> [N as u32, N as u32, N as u32, N as u32]);
     vqdmull_s16(a, b)
 }
 
@@ -5618,8 +5618,8 @@ pub unsafe fn vqdmull_high_lane_s16<const N: i32>(a: int16x8_t, b: int16x4_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_high_lane_s32<const N: i32>(a: int32x4_t, b: int32x2_t) -> int64x2_t {
     static_assert_imm1!(N);
-    let a: int32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let b: int32x2_t = simd_shuffle2(b, b, [N as u32, N as u32]);
+    let a: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, <const N: i32> [N as u32, N as u32]);
     vqdmull_s32(a, b)
 }
 
@@ -5630,8 +5630,8 @@ pub unsafe fn vqdmull_high_lane_s32<const N: i32>(a: int32x4_t, b: int32x2_t) ->
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_high_laneq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -> int32x4_t {
     static_assert_imm3!(N);
-    let a: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let b: int16x4_t = simd_shuffle4(b, b, [N as u32, N as u32, N as u32, N as u32]);
+    let a: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, <const N: i32> [N as u32, N as u32, N as u32, N as u32]);
     vqdmull_s16(a, b)
 }
 
@@ -5642,8 +5642,8 @@ pub unsafe fn vqdmull_high_laneq_s16<const N: i32>(a: int16x8_t, b: int16x8_t) -
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqdmull_high_laneq_s32<const N: i32>(a: int32x4_t, b: int32x4_t) -> int64x2_t {
     static_assert_imm2!(N);
-    let a: int32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let b: int32x2_t = simd_shuffle2(b, b, [N as u32, N as u32]);
+    let a: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, <const N: i32> [N as u32, N as u32]);
     vqdmull_s32(a, b)
 }
 
@@ -6183,7 +6183,7 @@ pub unsafe fn vqrshrnd_n_s64<const N: i32>(a: i64) -> i32 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vqrshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vqrshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Signed saturating rounded shift right narrow
@@ -6193,7 +6193,7 @@ pub unsafe fn vqrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vqrshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vqrshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Signed saturating rounded shift right narrow
@@ -6203,7 +6203,7 @@ pub unsafe fn vqrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> in
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vqrshrn_n_s64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vqrshrn_n_s64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Unsigned saturating rounded shift right narrow
@@ -6246,7 +6246,7 @@ pub unsafe fn vqrshrnd_n_u64<const N: i32>(a: u64) -> u32 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vqrshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vqrshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Unsigned saturating rounded shift right narrow
@@ -6256,7 +6256,7 @@ pub unsafe fn vqrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vqrshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vqrshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Unsigned saturating rounded shift right narrow
@@ -6266,7 +6266,7 @@ pub unsafe fn vqrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vqrshrn_n_u64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vqrshrn_n_u64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -6309,7 +6309,7 @@ pub unsafe fn vqrshrund_n_s64<const N: i32>(a: i64) -> u32 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> uint8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vqrshrun_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vqrshrun_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -6319,7 +6319,7 @@ pub unsafe fn vqrshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vqrshrun_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vqrshrun_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Signed saturating rounded shift right unsigned narrow
@@ -6329,7 +6329,7 @@ pub unsafe fn vqrshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> 
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqrshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vqrshrun_n_s64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vqrshrun_n_s64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Signed saturating shift left
@@ -6521,7 +6521,7 @@ pub unsafe fn vqshrnd_n_s64<const N: i32>(a: i64) -> i32 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vqshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vqshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Signed saturating shift right narrow
@@ -6531,7 +6531,7 @@ pub unsafe fn vqshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vqshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vqshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Signed saturating shift right narrow
@@ -6541,7 +6541,7 @@ pub unsafe fn vqshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vqshrn_n_s64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vqshrn_n_s64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Unsigned saturating shift right narrow
@@ -6581,7 +6581,7 @@ pub unsafe fn vqshrnd_n_u64<const N: i32>(a: u64) -> u32 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vqshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vqshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Unsigned saturating shift right narrow
@@ -6591,7 +6591,7 @@ pub unsafe fn vqshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> ui
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vqshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vqshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Unsigned saturating shift right narrow
@@ -6601,7 +6601,7 @@ pub unsafe fn vqshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vqshrn_n_u64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vqshrn_n_u64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -6641,7 +6641,7 @@ pub unsafe fn vqshrund_n_s64<const N: i32>(a: i64) -> u32 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> uint8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vqshrun_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vqshrun_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -6651,7 +6651,7 @@ pub unsafe fn vqshrun_high_n_s16<const N: i32>(a: uint8x8_t, b: int16x8_t) -> ui
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vqshrun_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vqshrun_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Signed saturating shift right unsigned narrow
@@ -6661,7 +6661,7 @@ pub unsafe fn vqshrun_high_n_s32<const N: i32>(a: uint16x4_t, b: int32x4_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vqshrun_high_n_s64<const N: i32>(a: uint32x2_t, b: int64x2_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vqshrun_n_s64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vqshrun_n_s64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Calculates the square root of each lane.
@@ -7527,7 +7527,7 @@ pub unsafe fn vrshrd_n_u64<const N: i32>(a: u64) -> u64 {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vrshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vrshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Rounding shift right narrow
@@ -7537,7 +7537,7 @@ pub unsafe fn vrshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vrshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vrshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Rounding shift right narrow
@@ -7547,7 +7547,7 @@ pub unsafe fn vrshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vrshrn_n_s64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vrshrn_n_s64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Rounding shift right narrow
@@ -7557,7 +7557,7 @@ pub unsafe fn vrshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vrshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vrshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Rounding shift right narrow
@@ -7567,7 +7567,7 @@ pub unsafe fn vrshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> ui
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vrshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vrshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Rounding shift right narrow
@@ -7577,7 +7577,7 @@ pub unsafe fn vrshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> u
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vrshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vrshrn_n_u64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vrshrn_n_u64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Signed rounding shift right and accumulate.
@@ -7645,7 +7645,7 @@ pub unsafe fn vshld_u64(a: u64, b: i64) -> u64 {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshll_high_n_s8<const N: i32>(a: int8x16_t) -> int16x8_t {
     static_assert!(N : i32 where N >= 0 && N <= 8);
-    let b: int8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: int8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
     vshll_n_s8::<N>(b)
 }
 
@@ -7656,7 +7656,7 @@ pub unsafe fn vshll_high_n_s8<const N: i32>(a: int8x16_t) -> int16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshll_high_n_s16<const N: i32>(a: int16x8_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 0 && N <= 16);
-    let b: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
     vshll_n_s16::<N>(b)
 }
 
@@ -7667,7 +7667,7 @@ pub unsafe fn vshll_high_n_s16<const N: i32>(a: int16x8_t) -> int32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshll_high_n_s32<const N: i32>(a: int32x4_t) -> int64x2_t {
     static_assert!(N : i32 where N >= 0 && N <= 32);
-    let b: int32x2_t = simd_shuffle2(a, a, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
     vshll_n_s32::<N>(b)
 }
 
@@ -7678,7 +7678,7 @@ pub unsafe fn vshll_high_n_s32<const N: i32>(a: int32x4_t) -> int64x2_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshll_high_n_u8<const N: i32>(a: uint8x16_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 0 && N <= 8);
-    let b: uint8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: uint8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
     vshll_n_u8::<N>(b)
 }
 
@@ -7689,7 +7689,7 @@ pub unsafe fn vshll_high_n_u8<const N: i32>(a: uint8x16_t) -> uint16x8_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshll_high_n_u16<const N: i32>(a: uint16x8_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 0 && N <= 16);
-    let b: uint16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
+    let b: uint16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
     vshll_n_u16::<N>(b)
 }
 
@@ -7700,7 +7700,7 @@ pub unsafe fn vshll_high_n_u16<const N: i32>(a: uint16x8_t) -> uint32x4_t {
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn vshll_high_n_u32<const N: i32>(a: uint32x4_t) -> uint64x2_t {
     static_assert!(N : i32 where N >= 0 && N <= 32);
-    let b: uint32x2_t = simd_shuffle2(a, a, [2, 3]);
+    let b: uint32x2_t = simd_shuffle2!(a, a, [2, 3]);
     vshll_n_u32::<N>(b)
 }
 
@@ -7711,7 +7711,7 @@ pub unsafe fn vshll_high_n_u32<const N: i32>(a: uint32x4_t) -> uint64x2_t {
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vshrn_n_s16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Shift right narrow
@@ -7721,7 +7721,7 @@ pub unsafe fn vshrn_high_n_s16<const N: i32>(a: int8x8_t, b: int16x8_t) -> int8x
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vshrn_n_s32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Shift right narrow
@@ -7731,7 +7731,7 @@ pub unsafe fn vshrn_high_n_s32<const N: i32>(a: int16x4_t, b: int32x4_t) -> int1
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vshrn_n_s64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vshrn_n_s64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Shift right narrow
@@ -7741,7 +7741,7 @@ pub unsafe fn vshrn_high_n_s64<const N: i32>(a: int32x2_t, b: int64x2_t) -> int3
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uint8x16_t {
     static_assert!(N : i32 where N >= 1 && N <= 8);
-    simd_shuffle16(a, vshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(a, vshrn_n_u16::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Shift right narrow
@@ -7751,7 +7751,7 @@ pub unsafe fn vshrn_high_n_u16<const N: i32>(a: uint8x8_t, b: uint16x8_t) -> uin
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> uint16x8_t {
     static_assert!(N : i32 where N >= 1 && N <= 16);
-    simd_shuffle8(a, vshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, vshrn_n_u32::<N>(b), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Shift right narrow
@@ -7761,7 +7761,7 @@ pub unsafe fn vshrn_high_n_u32<const N: i32>(a: uint16x4_t, b: uint32x4_t) -> ui
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> uint32x4_t {
     static_assert!(N : i32 where N >= 1 && N <= 32);
-    simd_shuffle4(a, vshrn_n_u64::<N>(b), [0, 1, 2, 3])
+    simd_shuffle4!(a, vshrn_n_u64::<N>(b), [0, 1, 2, 3])
 }
 
 /// Transpose vectors
@@ -7769,7 +7769,7 @@ pub unsafe fn vshrn_high_n_u64<const N: i32>(a: uint32x2_t, b: uint64x2_t) -> ui
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+    simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
 }
 
 /// Transpose vectors
@@ -7777,7 +7777,7 @@ pub unsafe fn vtrn1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
+    simd_shuffle16!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
 }
 
 /// Transpose vectors
@@ -7785,7 +7785,7 @@ pub unsafe fn vtrn1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, b, [0, 4, 2, 6])
+    simd_shuffle4!(a, b, [0, 4, 2, 6])
 }
 
 /// Transpose vectors
@@ -7793,7 +7793,7 @@ pub unsafe fn vtrn1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+    simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
 }
 
 /// Transpose vectors
@@ -7801,7 +7801,7 @@ pub unsafe fn vtrn1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    simd_shuffle4(a, b, [0, 4, 2, 6])
+    simd_shuffle4!(a, b, [0, 4, 2, 6])
 }
 
 /// Transpose vectors
@@ -7809,7 +7809,7 @@ pub unsafe fn vtrn1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+    simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
 }
 
 /// Transpose vectors
@@ -7817,7 +7817,7 @@ pub unsafe fn vtrn1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
+    simd_shuffle16!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
 }
 
 /// Transpose vectors
@@ -7825,7 +7825,7 @@ pub unsafe fn vtrn1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, b, [0, 4, 2, 6])
+    simd_shuffle4!(a, b, [0, 4, 2, 6])
 }
 
 /// Transpose vectors
@@ -7833,7 +7833,7 @@ pub unsafe fn vtrn1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+    simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
 }
 
 /// Transpose vectors
@@ -7841,7 +7841,7 @@ pub unsafe fn vtrn1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    simd_shuffle4(a, b, [0, 4, 2, 6])
+    simd_shuffle4!(a, b, [0, 4, 2, 6])
 }
 
 /// Transpose vectors
@@ -7849,7 +7849,7 @@ pub unsafe fn vtrn1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+    simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
 }
 
 /// Transpose vectors
@@ -7857,7 +7857,7 @@ pub unsafe fn vtrn1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
+    simd_shuffle16!(a, b, [0, 16, 2, 18, 4, 20, 6, 22, 8, 24, 10, 26, 12, 28, 14, 30])
 }
 
 /// Transpose vectors
@@ -7865,7 +7865,7 @@ pub unsafe fn vtrn1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, b, [0, 4, 2, 6])
+    simd_shuffle4!(a, b, [0, 4, 2, 6])
 }
 
 /// Transpose vectors
@@ -7873,7 +7873,7 @@ pub unsafe fn vtrn1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
+    simd_shuffle8!(a, b, [0, 8, 2, 10, 4, 12, 6, 14])
 }
 
 /// Transpose vectors
@@ -7881,7 +7881,7 @@ pub unsafe fn vtrn1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -7889,7 +7889,7 @@ pub unsafe fn vtrn1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -7897,7 +7897,7 @@ pub unsafe fn vtrn1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -7905,7 +7905,7 @@ pub unsafe fn vtrn1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -7913,7 +7913,7 @@ pub unsafe fn vtrn1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -7921,7 +7921,7 @@ pub unsafe fn vtrn1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn1))]
 pub unsafe fn vtrn1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    simd_shuffle4(a, b, [0, 4, 2, 6])
+    simd_shuffle4!(a, b, [0, 4, 2, 6])
 }
 
 /// Transpose vectors
@@ -7929,7 +7929,7 @@ pub unsafe fn vtrn1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -7937,7 +7937,7 @@ pub unsafe fn vtrn1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vtrn1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Transpose vectors
@@ -7945,7 +7945,7 @@ pub unsafe fn vtrn1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
+    simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 
 /// Transpose vectors
@@ -7953,7 +7953,7 @@ pub unsafe fn vtrn2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
+    simd_shuffle16!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
 }
 
 /// Transpose vectors
@@ -7961,7 +7961,7 @@ pub unsafe fn vtrn2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, b, [1, 5, 3, 7])
+    simd_shuffle4!(a, b, [1, 5, 3, 7])
 }
 
 /// Transpose vectors
@@ -7969,7 +7969,7 @@ pub unsafe fn vtrn2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
+    simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 
 /// Transpose vectors
@@ -7977,7 +7977,7 @@ pub unsafe fn vtrn2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    simd_shuffle4(a, b, [1, 5, 3, 7])
+    simd_shuffle4!(a, b, [1, 5, 3, 7])
 }
 
 /// Transpose vectors
@@ -7985,7 +7985,7 @@ pub unsafe fn vtrn2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
+    simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 
 /// Transpose vectors
@@ -7993,7 +7993,7 @@ pub unsafe fn vtrn2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
+    simd_shuffle16!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
 }
 
 /// Transpose vectors
@@ -8001,7 +8001,7 @@ pub unsafe fn vtrn2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, b, [1, 5, 3, 7])
+    simd_shuffle4!(a, b, [1, 5, 3, 7])
 }
 
 /// Transpose vectors
@@ -8009,7 +8009,7 @@ pub unsafe fn vtrn2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
+    simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 
 /// Transpose vectors
@@ -8017,7 +8017,7 @@ pub unsafe fn vtrn2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    simd_shuffle4(a, b, [1, 5, 3, 7])
+    simd_shuffle4!(a, b, [1, 5, 3, 7])
 }
 
 /// Transpose vectors
@@ -8025,7 +8025,7 @@ pub unsafe fn vtrn2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
+    simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 
 /// Transpose vectors
@@ -8033,7 +8033,7 @@ pub unsafe fn vtrn2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
+    simd_shuffle16!(a, b, [1, 17, 3, 19, 5, 21, 7, 23, 9, 25, 11, 27, 13, 29, 15, 31])
 }
 
 /// Transpose vectors
@@ -8041,7 +8041,7 @@ pub unsafe fn vtrn2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, b, [1, 5, 3, 7])
+    simd_shuffle4!(a, b, [1, 5, 3, 7])
 }
 
 /// Transpose vectors
@@ -8049,7 +8049,7 @@ pub unsafe fn vtrn2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
+    simd_shuffle8!(a, b, [1, 9, 3, 11, 5, 13, 7, 15])
 }
 
 /// Transpose vectors
@@ -8057,7 +8057,7 @@ pub unsafe fn vtrn2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -8065,7 +8065,7 @@ pub unsafe fn vtrn2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -8073,7 +8073,7 @@ pub unsafe fn vtrn2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -8081,7 +8081,7 @@ pub unsafe fn vtrn2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -8089,7 +8089,7 @@ pub unsafe fn vtrn2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -8097,7 +8097,7 @@ pub unsafe fn vtrn2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(trn2))]
 pub unsafe fn vtrn2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    simd_shuffle4(a, b, [1, 5, 3, 7])
+    simd_shuffle4!(a, b, [1, 5, 3, 7])
 }
 
 /// Transpose vectors
@@ -8105,7 +8105,7 @@ pub unsafe fn vtrn2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Transpose vectors
@@ -8113,7 +8113,7 @@ pub unsafe fn vtrn2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vtrn2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Zip vectors
@@ -8121,7 +8121,7 @@ pub unsafe fn vtrn2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+    simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
 }
 
 /// Zip vectors
@@ -8129,7 +8129,7 @@ pub unsafe fn vzip1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
+    simd_shuffle16!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
 }
 
 /// Zip vectors
@@ -8137,7 +8137,7 @@ pub unsafe fn vzip1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, b, [0, 4, 1, 5])
+    simd_shuffle4!(a, b, [0, 4, 1, 5])
 }
 
 /// Zip vectors
@@ -8145,7 +8145,7 @@ pub unsafe fn vzip1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+    simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
 }
 
 /// Zip vectors
@@ -8153,7 +8153,7 @@ pub unsafe fn vzip1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Zip vectors
@@ -8161,7 +8161,7 @@ pub unsafe fn vzip1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    simd_shuffle4(a, b, [0, 4, 1, 5])
+    simd_shuffle4!(a, b, [0, 4, 1, 5])
 }
 
 /// Zip vectors
@@ -8169,7 +8169,7 @@ pub unsafe fn vzip1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Zip vectors
@@ -8177,7 +8177,7 @@ pub unsafe fn vzip1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+    simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
 }
 
 /// Zip vectors
@@ -8185,7 +8185,7 @@ pub unsafe fn vzip1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
+    simd_shuffle16!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
 }
 
 /// Zip vectors
@@ -8193,7 +8193,7 @@ pub unsafe fn vzip1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, b, [0, 4, 1, 5])
+    simd_shuffle4!(a, b, [0, 4, 1, 5])
 }
 
 /// Zip vectors
@@ -8201,7 +8201,7 @@ pub unsafe fn vzip1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+    simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
 }
 
 /// Zip vectors
@@ -8209,7 +8209,7 @@ pub unsafe fn vzip1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Zip vectors
@@ -8217,7 +8217,7 @@ pub unsafe fn vzip1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    simd_shuffle4(a, b, [0, 4, 1, 5])
+    simd_shuffle4!(a, b, [0, 4, 1, 5])
 }
 
 /// Zip vectors
@@ -8225,7 +8225,7 @@ pub unsafe fn vzip1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Zip vectors
@@ -8233,7 +8233,7 @@ pub unsafe fn vzip1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+    simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
 }
 
 /// Zip vectors
@@ -8241,7 +8241,7 @@ pub unsafe fn vzip1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
+    simd_shuffle16!(a, b, [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23])
 }
 
 /// Zip vectors
@@ -8249,7 +8249,7 @@ pub unsafe fn vzip1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, b, [0, 4, 1, 5])
+    simd_shuffle4!(a, b, [0, 4, 1, 5])
 }
 
 /// Zip vectors
@@ -8257,7 +8257,7 @@ pub unsafe fn vzip1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
+    simd_shuffle8!(a, b, [0, 8, 1, 9, 2, 10, 3, 11])
 }
 
 /// Zip vectors
@@ -8265,7 +8265,7 @@ pub unsafe fn vzip1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Zip vectors
@@ -8273,7 +8273,7 @@ pub unsafe fn vzip1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Zip vectors
@@ -8281,7 +8281,7 @@ pub unsafe fn vzip1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    simd_shuffle4(a, b, [0, 4, 1, 5])
+    simd_shuffle4!(a, b, [0, 4, 1, 5])
 }
 
 /// Zip vectors
@@ -8289,7 +8289,7 @@ pub unsafe fn vzip1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vzip1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Zip vectors
@@ -8297,7 +8297,7 @@ pub unsafe fn vzip1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
+    simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
 }
 
 /// Zip vectors
@@ -8305,7 +8305,7 @@ pub unsafe fn vzip2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
+    simd_shuffle16!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
 }
 
 /// Zip vectors
@@ -8313,7 +8313,7 @@ pub unsafe fn vzip2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, b, [2, 6, 3, 7])
+    simd_shuffle4!(a, b, [2, 6, 3, 7])
 }
 
 /// Zip vectors
@@ -8321,7 +8321,7 @@ pub unsafe fn vzip2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
+    simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
 }
 
 /// Zip vectors
@@ -8329,7 +8329,7 @@ pub unsafe fn vzip2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Zip vectors
@@ -8337,7 +8337,7 @@ pub unsafe fn vzip2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    simd_shuffle4(a, b, [2, 6, 3, 7])
+    simd_shuffle4!(a, b, [2, 6, 3, 7])
 }
 
 /// Zip vectors
@@ -8345,7 +8345,7 @@ pub unsafe fn vzip2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Zip vectors
@@ -8353,7 +8353,7 @@ pub unsafe fn vzip2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
+    simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
 }
 
 /// Zip vectors
@@ -8361,7 +8361,7 @@ pub unsafe fn vzip2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
+    simd_shuffle16!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
 }
 
 /// Zip vectors
@@ -8369,7 +8369,7 @@ pub unsafe fn vzip2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, b, [2, 6, 3, 7])
+    simd_shuffle4!(a, b, [2, 6, 3, 7])
 }
 
 /// Zip vectors
@@ -8377,7 +8377,7 @@ pub unsafe fn vzip2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
+    simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
 }
 
 /// Zip vectors
@@ -8385,7 +8385,7 @@ pub unsafe fn vzip2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Zip vectors
@@ -8393,7 +8393,7 @@ pub unsafe fn vzip2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    simd_shuffle4(a, b, [2, 6, 3, 7])
+    simd_shuffle4!(a, b, [2, 6, 3, 7])
 }
 
 /// Zip vectors
@@ -8401,7 +8401,7 @@ pub unsafe fn vzip2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Zip vectors
@@ -8409,7 +8409,7 @@ pub unsafe fn vzip2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
+    simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
 }
 
 /// Zip vectors
@@ -8417,7 +8417,7 @@ pub unsafe fn vzip2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
+    simd_shuffle16!(a, b, [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31])
 }
 
 /// Zip vectors
@@ -8425,7 +8425,7 @@ pub unsafe fn vzip2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, b, [2, 6, 3, 7])
+    simd_shuffle4!(a, b, [2, 6, 3, 7])
 }
 
 /// Zip vectors
@@ -8433,7 +8433,7 @@ pub unsafe fn vzip2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
+    simd_shuffle8!(a, b, [4, 12, 5, 13, 6, 14, 7, 15])
 }
 
 /// Zip vectors
@@ -8441,7 +8441,7 @@ pub unsafe fn vzip2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Zip vectors
@@ -8449,7 +8449,7 @@ pub unsafe fn vzip2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Zip vectors
@@ -8457,7 +8457,7 @@ pub unsafe fn vzip2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    simd_shuffle4(a, b, [2, 6, 3, 7])
+    simd_shuffle4!(a, b, [2, 6, 3, 7])
 }
 
 /// Zip vectors
@@ -8465,7 +8465,7 @@ pub unsafe fn vzip2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vzip2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unzip vectors
@@ -8473,7 +8473,7 @@ pub unsafe fn vzip2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+    simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
 }
 
 /// Unzip vectors
@@ -8481,7 +8481,7 @@ pub unsafe fn vuzp1_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
+    simd_shuffle16!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
 }
 
 /// Unzip vectors
@@ -8489,7 +8489,7 @@ pub unsafe fn vuzp1q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, b, [0, 2, 4, 6])
+    simd_shuffle4!(a, b, [0, 2, 4, 6])
 }
 
 /// Unzip vectors
@@ -8497,7 +8497,7 @@ pub unsafe fn vuzp1_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+    simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
 }
 
 /// Unzip vectors
@@ -8505,7 +8505,7 @@ pub unsafe fn vuzp1q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    simd_shuffle4(a, b, [0, 2, 4, 6])
+    simd_shuffle4!(a, b, [0, 2, 4, 6])
 }
 
 /// Unzip vectors
@@ -8513,7 +8513,7 @@ pub unsafe fn vuzp1q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+    simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
 }
 
 /// Unzip vectors
@@ -8521,7 +8521,7 @@ pub unsafe fn vuzp1_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
+    simd_shuffle16!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
 }
 
 /// Unzip vectors
@@ -8529,7 +8529,7 @@ pub unsafe fn vuzp1q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, b, [0, 2, 4, 6])
+    simd_shuffle4!(a, b, [0, 2, 4, 6])
 }
 
 /// Unzip vectors
@@ -8537,7 +8537,7 @@ pub unsafe fn vuzp1_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+    simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
 }
 
 /// Unzip vectors
@@ -8545,7 +8545,7 @@ pub unsafe fn vuzp1q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    simd_shuffle4(a, b, [0, 2, 4, 6])
+    simd_shuffle4!(a, b, [0, 2, 4, 6])
 }
 
 /// Unzip vectors
@@ -8553,7 +8553,7 @@ pub unsafe fn vuzp1q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+    simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
 }
 
 /// Unzip vectors
@@ -8561,7 +8561,7 @@ pub unsafe fn vuzp1_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
+    simd_shuffle16!(a, b, [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30])
 }
 
 /// Unzip vectors
@@ -8569,7 +8569,7 @@ pub unsafe fn vuzp1q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, b, [0, 2, 4, 6])
+    simd_shuffle4!(a, b, [0, 2, 4, 6])
 }
 
 /// Unzip vectors
@@ -8577,7 +8577,7 @@ pub unsafe fn vuzp1_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
+    simd_shuffle8!(a, b, [0, 2, 4, 6, 8, 10, 12, 14])
 }
 
 /// Unzip vectors
@@ -8585,7 +8585,7 @@ pub unsafe fn vuzp1q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vuzp1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Unzip vectors
@@ -8593,7 +8593,7 @@ pub unsafe fn vuzp1_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vuzp1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Unzip vectors
@@ -8601,7 +8601,7 @@ pub unsafe fn vuzp1q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vuzp1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Unzip vectors
@@ -8609,7 +8609,7 @@ pub unsafe fn vuzp1_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vuzp1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Unzip vectors
@@ -8617,7 +8617,7 @@ pub unsafe fn vuzp1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vuzp1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Unzip vectors
@@ -8625,7 +8625,7 @@ pub unsafe fn vuzp1q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp1))]
 pub unsafe fn vuzp1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    simd_shuffle4(a, b, [0, 2, 4, 6])
+    simd_shuffle4!(a, b, [0, 2, 4, 6])
 }
 
 /// Unzip vectors
@@ -8633,7 +8633,7 @@ pub unsafe fn vuzp1q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vuzp1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Unzip vectors
@@ -8641,7 +8641,7 @@ pub unsafe fn vuzp1_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip1))]
 pub unsafe fn vuzp1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 /// Unzip vectors
@@ -8649,7 +8649,7 @@ pub unsafe fn vuzp1q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+    simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
 }
 
 /// Unzip vectors
@@ -8657,7 +8657,7 @@ pub unsafe fn vuzp2_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
+    simd_shuffle16!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
 }
 
 /// Unzip vectors
@@ -8665,7 +8665,7 @@ pub unsafe fn vuzp2q_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, b, [1, 3, 5, 7])
+    simd_shuffle4!(a, b, [1, 3, 5, 7])
 }
 
 /// Unzip vectors
@@ -8673,7 +8673,7 @@ pub unsafe fn vuzp2_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+    simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
 }
 
 /// Unzip vectors
@@ -8681,7 +8681,7 @@ pub unsafe fn vuzp2q_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
-    simd_shuffle4(a, b, [1, 3, 5, 7])
+    simd_shuffle4!(a, b, [1, 3, 5, 7])
 }
 
 /// Unzip vectors
@@ -8689,7 +8689,7 @@ pub unsafe fn vuzp2q_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+    simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
 }
 
 /// Unzip vectors
@@ -8697,7 +8697,7 @@ pub unsafe fn vuzp2_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
+    simd_shuffle16!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
 }
 
 /// Unzip vectors
@@ -8705,7 +8705,7 @@ pub unsafe fn vuzp2q_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, b, [1, 3, 5, 7])
+    simd_shuffle4!(a, b, [1, 3, 5, 7])
 }
 
 /// Unzip vectors
@@ -8713,7 +8713,7 @@ pub unsafe fn vuzp2_u16(a: uint16x4_t, b: uint16x4_t) -> uint16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+    simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
 }
 
 /// Unzip vectors
@@ -8721,7 +8721,7 @@ pub unsafe fn vuzp2q_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
-    simd_shuffle4(a, b, [1, 3, 5, 7])
+    simd_shuffle4!(a, b, [1, 3, 5, 7])
 }
 
 /// Unzip vectors
@@ -8729,7 +8729,7 @@ pub unsafe fn vuzp2q_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+    simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
 }
 
 /// Unzip vectors
@@ -8737,7 +8737,7 @@ pub unsafe fn vuzp2_p8(a: poly8x8_t, b: poly8x8_t) -> poly8x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
+    simd_shuffle16!(a, b, [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31])
 }
 
 /// Unzip vectors
@@ -8745,7 +8745,7 @@ pub unsafe fn vuzp2q_p8(a: poly8x16_t, b: poly8x16_t) -> poly8x16_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, b, [1, 3, 5, 7])
+    simd_shuffle4!(a, b, [1, 3, 5, 7])
 }
 
 /// Unzip vectors
@@ -8753,7 +8753,7 @@ pub unsafe fn vuzp2_p16(a: poly16x4_t, b: poly16x4_t) -> poly16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
+    simd_shuffle8!(a, b, [1, 3, 5, 7, 9, 11, 13, 15])
 }
 
 /// Unzip vectors
@@ -8761,7 +8761,7 @@ pub unsafe fn vuzp2q_p16(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vuzp2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unzip vectors
@@ -8769,7 +8769,7 @@ pub unsafe fn vuzp2_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vuzp2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unzip vectors
@@ -8777,7 +8777,7 @@ pub unsafe fn vuzp2q_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vuzp2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unzip vectors
@@ -8785,7 +8785,7 @@ pub unsafe fn vuzp2_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vuzp2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unzip vectors
@@ -8793,7 +8793,7 @@ pub unsafe fn vuzp2q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vuzp2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unzip vectors
@@ -8801,7 +8801,7 @@ pub unsafe fn vuzp2q_p64(a: poly64x2_t, b: poly64x2_t) -> poly64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uzp2))]
 pub unsafe fn vuzp2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    simd_shuffle4(a, b, [1, 3, 5, 7])
+    simd_shuffle4!(a, b, [1, 3, 5, 7])
 }
 
 /// Unzip vectors
@@ -8809,7 +8809,7 @@ pub unsafe fn vuzp2q_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vuzp2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unzip vectors
@@ -8817,7 +8817,7 @@ pub unsafe fn vuzp2_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(zip2))]
 pub unsafe fn vuzp2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// Unsigned Absolute difference and Accumulate Long
@@ -8825,8 +8825,8 @@ pub unsafe fn vuzp2q_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uabal))]
 pub unsafe fn vabal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint16x8_t {
-    let d: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let e: uint8x8_t = simd_shuffle8(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let d: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let e: uint8x8_t = simd_shuffle8!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
     let f: uint8x8_t = vabd_u8(d, e);
     simd_add(a, simd_cast(f))
 }
@@ -8836,8 +8836,8 @@ pub unsafe fn vabal_high_u8(a: uint16x8_t, b: uint8x16_t, c: uint8x16_t) -> uint
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uabal))]
 pub unsafe fn vabal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uint32x4_t {
-    let d: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
-    let e: uint16x4_t = simd_shuffle4(c, c, [4, 5, 6, 7]);
+    let d: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
+    let e: uint16x4_t = simd_shuffle4!(c, c, [4, 5, 6, 7]);
     let f: uint16x4_t = vabd_u16(d, e);
     simd_add(a, simd_cast(f))
 }
@@ -8847,8 +8847,8 @@ pub unsafe fn vabal_high_u16(a: uint32x4_t, b: uint16x8_t, c: uint16x8_t) -> uin
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(uabal))]
 pub unsafe fn vabal_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uint64x2_t {
-    let d: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
-    let e: uint32x2_t = simd_shuffle2(c, c, [2, 3]);
+    let d: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
+    let e: uint32x2_t = simd_shuffle2!(c, c, [2, 3]);
     let f: uint32x2_t = vabd_u32(d, e);
     simd_add(a, simd_cast(f))
 }
@@ -8858,8 +8858,8 @@ pub unsafe fn vabal_high_u32(a: uint64x2_t, b: uint32x4_t, c: uint32x4_t) -> uin
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sabal))]
 pub unsafe fn vabal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8_t {
-    let d: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let e: int8x8_t = simd_shuffle8(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let d: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let e: int8x8_t = simd_shuffle8!(c, c, [8, 9, 10, 11, 12, 13, 14, 15]);
     let f: int8x8_t = vabd_s8(d, e);
     let f: uint8x8_t = simd_cast(f);
     simd_add(a, simd_cast(f))
@@ -8870,8 +8870,8 @@ pub unsafe fn vabal_high_s8(a: int16x8_t, b: int8x16_t, c: int8x16_t) -> int16x8
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sabal))]
 pub unsafe fn vabal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x4_t {
-    let d: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
-    let e: int16x4_t = simd_shuffle4(c, c, [4, 5, 6, 7]);
+    let d: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
+    let e: int16x4_t = simd_shuffle4!(c, c, [4, 5, 6, 7]);
     let f: int16x4_t = vabd_s16(d, e);
     let f: uint16x4_t = simd_cast(f);
     simd_add(a, simd_cast(f))
@@ -8882,8 +8882,8 @@ pub unsafe fn vabal_high_s16(a: int32x4_t, b: int16x8_t, c: int16x8_t) -> int32x
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(sabal))]
 pub unsafe fn vabal_high_s32(a: int64x2_t, b: int32x4_t, c: int32x4_t) -> int64x2_t {
-    let d: int32x2_t = simd_shuffle2(b, b, [2, 3]);
-    let e: int32x2_t = simd_shuffle2(c, c, [2, 3]);
+    let d: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
+    let e: int32x2_t = simd_shuffle2!(c, c, [2, 3]);
     let f: int32x2_t = vabd_s32(d, e);
     let f: uint32x2_t = simd_cast(f);
     simd_add(a, simd_cast(f))

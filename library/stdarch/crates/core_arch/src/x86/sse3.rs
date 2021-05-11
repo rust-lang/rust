@@ -106,7 +106,7 @@ pub unsafe fn _mm_lddqu_si128(mem_addr: *const __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(movddup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movedup_pd(a: __m128d) -> __m128d {
-    simd_shuffle2(a, a, [0, 0])
+    simd_shuffle2!(a, a, [0, 0])
 }
 
 /// Loads a double-precision (64-bit) floating-point element from memory
@@ -130,7 +130,7 @@ pub unsafe fn _mm_loaddup_pd(mem_addr: *const f64) -> __m128d {
 #[cfg_attr(test, assert_instr(movshdup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movehdup_ps(a: __m128) -> __m128 {
-    simd_shuffle4(a, a, [1, 1, 3, 3])
+    simd_shuffle4!(a, a, [1, 1, 3, 3])
 }
 
 /// Duplicate even-indexed single-precision (32-bit) floating-point elements
@@ -142,7 +142,7 @@ pub unsafe fn _mm_movehdup_ps(a: __m128) -> __m128 {
 #[cfg_attr(test, assert_instr(movsldup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_moveldup_ps(a: __m128) -> __m128 {
-    simd_shuffle4(a, a, [0, 0, 2, 2])
+    simd_shuffle4!(a, a, [0, 0, 2, 2])
 }
 
 #[allow(improper_ctypes)]

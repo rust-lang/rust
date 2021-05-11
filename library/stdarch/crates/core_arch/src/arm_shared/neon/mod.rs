@@ -580,7 +580,7 @@ pub unsafe fn vld1q_lane_f32<const LANE: i32>(ptr: *const f32, src: float32x4_t)
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_s8(ptr: *const i8) -> int8x8_t {
     let x = vld1_lane_s8::<0>(ptr, transmute(i8x8::splat(0)));
-    simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -591,7 +591,7 @@ pub unsafe fn vld1_dup_s8(ptr: *const i8) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s8(ptr: *const i8) -> int8x16_t {
     let x = vld1q_lane_s8::<0>(ptr, transmute(i8x16::splat(0)));
-    simd_shuffle16(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle16!(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -602,7 +602,7 @@ pub unsafe fn vld1q_dup_s8(ptr: *const i8) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_s16(ptr: *const i16) -> int16x4_t {
     let x = vld1_lane_s16::<0>(ptr, transmute(i16x4::splat(0)));
-    simd_shuffle4(x, x, [0, 0, 0, 0])
+    simd_shuffle4!(x, x, [0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -613,7 +613,7 @@ pub unsafe fn vld1_dup_s16(ptr: *const i16) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s16(ptr: *const i16) -> int16x8_t {
     let x = vld1q_lane_s16::<0>(ptr, transmute(i16x8::splat(0)));
-    simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -624,7 +624,7 @@ pub unsafe fn vld1q_dup_s16(ptr: *const i16) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_s32(ptr: *const i32) -> int32x2_t {
     let x = vld1_lane_s32::<0>(ptr, transmute(i32x2::splat(0)));
-    simd_shuffle2(x, x, [0, 0])
+    simd_shuffle2!(x, x, [0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -635,7 +635,7 @@ pub unsafe fn vld1_dup_s32(ptr: *const i32) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s32(ptr: *const i32) -> int32x4_t {
     let x = vld1q_lane_s32::<0>(ptr, transmute(i32x4::splat(0)));
-    simd_shuffle4(x, x, [0, 0, 0, 0])
+    simd_shuffle4!(x, x, [0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -663,7 +663,7 @@ pub unsafe fn vld1_dup_s64(ptr: *const i64) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_s64(ptr: *const i64) -> int64x2_t {
     let x = vld1q_lane_s64::<0>(ptr, transmute(i64x2::splat(0)));
-    simd_shuffle2(x, x, [0, 0])
+    simd_shuffle2!(x, x, [0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -674,7 +674,7 @@ pub unsafe fn vld1q_dup_s64(ptr: *const i64) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
     let x = vld1_lane_u8::<0>(ptr, transmute(u8x8::splat(0)));
-    simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -685,7 +685,7 @@ pub unsafe fn vld1_dup_u8(ptr: *const u8) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u8(ptr: *const u8) -> uint8x16_t {
     let x = vld1q_lane_u8::<0>(ptr, transmute(u8x16::splat(0)));
-    simd_shuffle16(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle16!(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -696,7 +696,7 @@ pub unsafe fn vld1q_dup_u8(ptr: *const u8) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_u16(ptr: *const u16) -> uint16x4_t {
     let x = vld1_lane_u16::<0>(ptr, transmute(u16x4::splat(0)));
-    simd_shuffle4(x, x, [0, 0, 0, 0])
+    simd_shuffle4!(x, x, [0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -707,7 +707,7 @@ pub unsafe fn vld1_dup_u16(ptr: *const u16) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u16(ptr: *const u16) -> uint16x8_t {
     let x = vld1q_lane_u16::<0>(ptr, transmute(u16x8::splat(0)));
-    simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -718,7 +718,7 @@ pub unsafe fn vld1q_dup_u16(ptr: *const u16) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_u32(ptr: *const u32) -> uint32x2_t {
     let x = vld1_lane_u32::<0>(ptr, transmute(u32x2::splat(0)));
-    simd_shuffle2(x, x, [0, 0])
+    simd_shuffle2!(x, x, [0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -729,7 +729,7 @@ pub unsafe fn vld1_dup_u32(ptr: *const u32) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u32(ptr: *const u32) -> uint32x4_t {
     let x = vld1q_lane_u32::<0>(ptr, transmute(u32x4::splat(0)));
-    simd_shuffle4(x, x, [0, 0, 0, 0])
+    simd_shuffle4!(x, x, [0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -757,7 +757,7 @@ pub unsafe fn vld1_dup_u64(ptr: *const u64) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_u64(ptr: *const u64) -> uint64x2_t {
     let x = vld1q_lane_u64::<0>(ptr, transmute(u64x2::splat(0)));
-    simd_shuffle2(x, x, [0, 0])
+    simd_shuffle2!(x, x, [0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -768,7 +768,7 @@ pub unsafe fn vld1q_dup_u64(ptr: *const u64) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_p8(ptr: *const p8) -> poly8x8_t {
     let x = vld1_lane_p8::<0>(ptr, transmute(u8x8::splat(0)));
-    simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -779,7 +779,7 @@ pub unsafe fn vld1_dup_p8(ptr: *const p8) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_p8(ptr: *const p8) -> poly8x16_t {
     let x = vld1q_lane_p8::<0>(ptr, transmute(u8x16::splat(0)));
-    simd_shuffle16(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle16!(x, x, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -790,7 +790,7 @@ pub unsafe fn vld1q_dup_p8(ptr: *const p8) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_p16(ptr: *const p16) -> poly16x4_t {
     let x = vld1_lane_p16::<0>(ptr, transmute(u16x4::splat(0)));
-    simd_shuffle4(x, x, [0, 0, 0, 0])
+    simd_shuffle4!(x, x, [0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -801,7 +801,7 @@ pub unsafe fn vld1_dup_p16(ptr: *const p16) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
     let x = vld1q_lane_p16::<0>(ptr, transmute(u16x8::splat(0)));
-    simd_shuffle8(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(x, x, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -812,7 +812,7 @@ pub unsafe fn vld1q_dup_p16(ptr: *const p16) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
     let x = vld1_lane_f32::<0>(ptr, transmute(f32x2::splat(0.)));
-    simd_shuffle2(x, x, [0, 0])
+    simd_shuffle2!(x, x, [0, 0])
 }
 
 /// Load one single-element structure and Replicate to all lanes (of one register).
@@ -823,7 +823,7 @@ pub unsafe fn vld1_dup_f32(ptr: *const f32) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ld1r))]
 pub unsafe fn vld1q_dup_f32(ptr: *const f32) -> float32x4_t {
     let x = vld1q_lane_f32::<0>(ptr, transmute(f32x4::splat(0.)));
-    simd_shuffle4(x, x, [0, 0, 0, 0])
+    simd_shuffle4!(x, x, [0, 0, 0, 0])
 }
 
 // signed absolute difference and accumulate (64-bit)
@@ -1284,8 +1284,8 @@ pub unsafe fn vaddl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl2))]
 pub unsafe fn vaddl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
-    let a: int8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let b: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: int8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     let a: int16x8_t = simd_cast(a);
     let b: int16x8_t = simd_cast(b);
     simd_add(a, b)
@@ -1298,8 +1298,8 @@ pub unsafe fn vaddl_high_s8(a: int8x16_t, b: int8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl2))]
 pub unsafe fn vaddl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
-    let a: int16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let b: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let a: int16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     let a: int32x4_t = simd_cast(a);
     let b: int32x4_t = simd_cast(b);
     simd_add(a, b)
@@ -1312,8 +1312,8 @@ pub unsafe fn vaddl_high_s16(a: int16x8_t, b: int16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddl2))]
 pub unsafe fn vaddl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
-    let a: int32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let b: int32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let a: int32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
     let a: int64x2_t = simd_cast(a);
     let b: int64x2_t = simd_cast(b);
     simd_add(a, b)
@@ -1326,8 +1326,8 @@ pub unsafe fn vaddl_high_s32(a: int32x4_t, b: int32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl2))]
 pub unsafe fn vaddl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
-    let a: uint8x8_t = simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
-    let b: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let a: uint8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     let a: uint16x8_t = simd_cast(a);
     let b: uint16x8_t = simd_cast(b);
     simd_add(a, b)
@@ -1340,8 +1340,8 @@ pub unsafe fn vaddl_high_u8(a: uint8x16_t, b: uint8x16_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl2))]
 pub unsafe fn vaddl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
-    let a: uint16x4_t = simd_shuffle4(a, a, [4, 5, 6, 7]);
-    let b: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let a: uint16x4_t = simd_shuffle4!(a, a, [4, 5, 6, 7]);
+    let b: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     let a: uint32x4_t = simd_cast(a);
     let b: uint32x4_t = simd_cast(b);
     simd_add(a, b)
@@ -1354,8 +1354,8 @@ pub unsafe fn vaddl_high_u16(a: uint16x8_t, b: uint16x8_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddl))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddl2))]
 pub unsafe fn vaddl_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
-    let a: uint32x2_t = simd_shuffle2(a, a, [2, 3]);
-    let b: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let a: uint32x2_t = simd_shuffle2!(a, a, [2, 3]);
+    let b: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
     let a: uint64x2_t = simd_cast(a);
     let b: uint64x2_t = simd_cast(b);
     simd_add(a, b)
@@ -1434,7 +1434,7 @@ pub unsafe fn vaddw_u32(a: uint64x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw2))]
 pub unsafe fn vaddw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
-    let b: int8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: int8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     let b: int16x8_t = simd_cast(b);
     simd_add(a, b)
 }
@@ -1446,7 +1446,7 @@ pub unsafe fn vaddw_high_s8(a: int16x8_t, b: int8x16_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw2))]
 pub unsafe fn vaddw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
-    let b: int16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let b: int16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     let b: int32x4_t = simd_cast(b);
     simd_add(a, b)
 }
@@ -1458,7 +1458,7 @@ pub unsafe fn vaddw_high_s16(a: int32x4_t, b: int16x8_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(saddw2))]
 pub unsafe fn vaddw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
-    let b: int32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let b: int32x2_t = simd_shuffle2!(b, b, [2, 3]);
     let b: int64x2_t = simd_cast(b);
     simd_add(a, b)
 }
@@ -1470,7 +1470,7 @@ pub unsafe fn vaddw_high_s32(a: int64x2_t, b: int32x4_t) -> int64x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw2))]
 pub unsafe fn vaddw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
-    let b: uint8x8_t = simd_shuffle8(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
+    let b: uint8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     let b: uint16x8_t = simd_cast(b);
     simd_add(a, b)
 }
@@ -1482,7 +1482,7 @@ pub unsafe fn vaddw_high_u8(a: uint16x8_t, b: uint8x16_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw2))]
 pub unsafe fn vaddw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
-    let b: uint16x4_t = simd_shuffle4(b, b, [4, 5, 6, 7]);
+    let b: uint16x4_t = simd_shuffle4!(b, b, [4, 5, 6, 7]);
     let b: uint32x4_t = simd_cast(b);
     simd_add(a, b)
 }
@@ -1494,7 +1494,7 @@ pub unsafe fn vaddw_high_u16(a: uint32x4_t, b: uint16x8_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vaddw))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uaddw2))]
 pub unsafe fn vaddw_high_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
-    let b: uint32x2_t = simd_shuffle2(b, b, [2, 3]);
+    let b: uint32x2_t = simd_shuffle2!(b, b, [2, 3]);
     let b: uint64x2_t = simd_cast(b);
     simd_add(a, b)
 }
@@ -1567,7 +1567,7 @@ pub unsafe fn vaddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
 pub unsafe fn vaddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x16_t {
     let x = simd_cast(simd_shr(simd_add(a, b), int16x8_t(8, 8, 8, 8, 8, 8, 8, 8)));
-    simd_shuffle16(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Add returning High Narrow (high half).
@@ -1578,7 +1578,7 @@ pub unsafe fn vaddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
 pub unsafe fn vaddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int16x8_t {
     let x = simd_cast(simd_shr(simd_add(a, b), int32x4_t(16, 16, 16, 16)));
-    simd_shuffle8(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Add returning High Narrow (high half).
@@ -1589,7 +1589,7 @@ pub unsafe fn vaddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int16
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
 pub unsafe fn vaddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int32x4_t {
     let x = simd_cast(simd_shr(simd_add(a, b), int64x2_t(32, 32)));
-    simd_shuffle4(r, x, [0, 1, 2, 3])
+    simd_shuffle4!(r, x, [0, 1, 2, 3])
 }
 
 /// Add returning High Narrow (high half).
@@ -1600,7 +1600,7 @@ pub unsafe fn vaddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int32
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
 pub unsafe fn vaddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> uint8x16_t {
     let x = simd_cast(simd_shr(simd_add(a, b), uint16x8_t(8, 8, 8, 8, 8, 8, 8, 8)));
-    simd_shuffle16(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Add returning High Narrow (high half).
@@ -1611,7 +1611,7 @@ pub unsafe fn vaddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> uin
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
 pub unsafe fn vaddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> uint16x8_t {
     let x = simd_cast(simd_shr(simd_add(a, b), uint32x4_t(16, 16, 16, 16)));
-    simd_shuffle8(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Add returning High Narrow (high half).
@@ -1622,7 +1622,7 @@ pub unsafe fn vaddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addhn2))]
 pub unsafe fn vaddhn_high_u64(r: uint32x2_t, a: uint64x2_t, b: uint64x2_t) -> uint32x4_t {
     let x = simd_cast(simd_shr(simd_add(a, b), uint64x2_t(32, 32)));
-    simd_shuffle4(r, x, [0, 1, 2, 3])
+    simd_shuffle4!(r, x, [0, 1, 2, 3])
 }
 
 /// Rounding Add returning High Narrow.
@@ -1693,7 +1693,7 @@ pub unsafe fn vraddhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
 pub unsafe fn vraddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x16_t {
     let x = vraddhn_s16_(a, b);
-    simd_shuffle16(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Rounding Add returning High Narrow (high half).
@@ -1704,7 +1704,7 @@ pub unsafe fn vraddhn_high_s16(r: int8x8_t, a: int16x8_t, b: int16x8_t) -> int8x
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
 pub unsafe fn vraddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int16x8_t {
     let x = vraddhn_s32_(a, b);
-    simd_shuffle8(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Rounding Add returning High Narrow (high half).
@@ -1715,7 +1715,7 @@ pub unsafe fn vraddhn_high_s32(r: int16x4_t, a: int32x4_t, b: int32x4_t) -> int1
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
 pub unsafe fn vraddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int32x4_t {
     let x = vraddhn_s64_(a, b);
-    simd_shuffle4(r, x, [0, 1, 2, 3])
+    simd_shuffle4!(r, x, [0, 1, 2, 3])
 }
 
 /// Rounding Add returning High Narrow (high half).
@@ -1726,7 +1726,7 @@ pub unsafe fn vraddhn_high_s64(r: int32x2_t, a: int64x2_t, b: int64x2_t) -> int3
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
 pub unsafe fn vraddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> uint8x16_t {
     let x: uint8x8_t = transmute(vraddhn_s16_(transmute(a), transmute(b)));
-    simd_shuffle16(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle16!(r, x, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Rounding Add returning High Narrow (high half).
@@ -1737,7 +1737,7 @@ pub unsafe fn vraddhn_high_u16(r: uint8x8_t, a: uint16x8_t, b: uint16x8_t) -> ui
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
 pub unsafe fn vraddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> uint16x8_t {
     let x: uint16x4_t = transmute(vraddhn_s32_(transmute(a), transmute(b)));
-    simd_shuffle8(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(r, x, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Rounding Add returning High Narrow (high half).
@@ -1748,7 +1748,7 @@ pub unsafe fn vraddhn_high_u32(r: uint16x4_t, a: uint32x4_t, b: uint32x4_t) -> u
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(raddhn2))]
 pub unsafe fn vraddhn_high_u64(r: uint32x2_t, a: uint64x2_t, b: uint64x2_t) -> uint32x4_t {
     let x: uint32x2_t = transmute(vraddhn_s64_(transmute(a), transmute(b)));
-    simd_shuffle4(r, x, [0, 1, 2, 3])
+    simd_shuffle4!(r, x, [0, 1, 2, 3])
 }
 
 /// Signed Add Long Pairwise.
@@ -2961,7 +2961,7 @@ pub unsafe fn vget_lane_u8<const IMM5: i32>(v: uint8x8_t) -> u8 {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_s8(a: int8x16_t) -> int8x8_t {
-    simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2971,7 +2971,7 @@ pub unsafe fn vget_high_s8(a: int8x16_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_s16(a: int16x8_t) -> int16x4_t {
-    simd_shuffle4(a, a, [4, 5, 6, 7])
+    simd_shuffle4!(a, a, [4, 5, 6, 7])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -2981,7 +2981,7 @@ pub unsafe fn vget_high_s16(a: int16x8_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_s32(a: int32x4_t) -> int32x2_t {
-    simd_shuffle2(a, a, [2, 3])
+    simd_shuffle2!(a, a, [2, 3])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3001,7 +3001,7 @@ pub unsafe fn vget_high_s64(a: int64x2_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
-    simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3011,7 +3011,7 @@ pub unsafe fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_u16(a: uint16x8_t) -> uint16x4_t {
-    simd_shuffle4(a, a, [4, 5, 6, 7])
+    simd_shuffle4!(a, a, [4, 5, 6, 7])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3021,7 +3021,7 @@ pub unsafe fn vget_high_u16(a: uint16x8_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_u32(a: uint32x4_t) -> uint32x2_t {
-    simd_shuffle2(a, a, [2, 3])
+    simd_shuffle2!(a, a, [2, 3])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3041,7 +3041,7 @@ pub unsafe fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_p8(a: poly8x16_t) -> poly8x8_t {
-    simd_shuffle8(a, a, [8, 9, 10, 11, 12, 13, 14, 15])
+    simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3051,7 +3051,7 @@ pub unsafe fn vget_high_p8(a: poly8x16_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_p16(a: poly16x8_t) -> poly16x4_t {
-    simd_shuffle4(a, a, [4, 5, 6, 7])
+    simd_shuffle4!(a, a, [4, 5, 6, 7])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3061,7 +3061,7 @@ pub unsafe fn vget_high_p16(a: poly16x8_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ext))]
 pub unsafe fn vget_high_f32(a: float32x4_t) -> float32x2_t {
-    simd_shuffle2(a, a, [2, 3])
+    simd_shuffle2!(a, a, [2, 3])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3071,7 +3071,7 @@ pub unsafe fn vget_high_f32(a: float32x4_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_s8(a: int8x16_t) -> int8x8_t {
-    simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3081,7 +3081,7 @@ pub unsafe fn vget_low_s8(a: int8x16_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_s16(a: int16x8_t) -> int16x4_t {
-    simd_shuffle4(a, a, [0, 1, 2, 3])
+    simd_shuffle4!(a, a, [0, 1, 2, 3])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3091,7 +3091,7 @@ pub unsafe fn vget_low_s16(a: int16x8_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_s32(a: int32x4_t) -> int32x2_t {
-    simd_shuffle2(a, a, [0, 1])
+    simd_shuffle2!(a, a, [0, 1])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3111,7 +3111,7 @@ pub unsafe fn vget_low_s64(a: int64x2_t) -> int64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_u8(a: uint8x16_t) -> uint8x8_t {
-    simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3121,7 +3121,7 @@ pub unsafe fn vget_low_u8(a: uint8x16_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_u16(a: uint16x8_t) -> uint16x4_t {
-    simd_shuffle4(a, a, [0, 1, 2, 3])
+    simd_shuffle4!(a, a, [0, 1, 2, 3])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3131,7 +3131,7 @@ pub unsafe fn vget_low_u16(a: uint16x8_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_u32(a: uint32x4_t) -> uint32x2_t {
-    simd_shuffle2(a, a, [0, 1])
+    simd_shuffle2!(a, a, [0, 1])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3151,7 +3151,7 @@ pub unsafe fn vget_low_u64(a: uint64x2_t) -> uint64x1_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_p8(a: poly8x16_t) -> poly8x8_t {
-    simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3161,7 +3161,7 @@ pub unsafe fn vget_low_p8(a: poly8x16_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_p16(a: poly16x8_t) -> poly16x4_t {
-    simd_shuffle4(a, a, [0, 1, 2, 3])
+    simd_shuffle4!(a, a, [0, 1, 2, 3])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3171,7 +3171,7 @@ pub unsafe fn vget_low_p16(a: poly16x8_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("ldr"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(ldr))]
 pub unsafe fn vget_low_f32(a: float32x4_t) -> float32x2_t {
-    simd_shuffle2(a, a, [0, 1])
+    simd_shuffle2!(a, a, [0, 1])
 }
 
 /// Duplicate vector element to vector or scalar
@@ -3713,7 +3713,7 @@ pub unsafe fn vcntq_p8(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
 pub unsafe fn vrev16_s8(a: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+    simd_shuffle8!(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3723,7 +3723,7 @@ pub unsafe fn vrev16_s8(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
 pub unsafe fn vrev16q_s8(a: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
+    simd_shuffle16!(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3733,7 +3733,7 @@ pub unsafe fn vrev16q_s8(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
 pub unsafe fn vrev16_u8(a: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+    simd_shuffle8!(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3743,7 +3743,7 @@ pub unsafe fn vrev16_u8(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
 pub unsafe fn vrev16q_u8(a: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
+    simd_shuffle16!(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3753,7 +3753,7 @@ pub unsafe fn vrev16q_u8(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
 pub unsafe fn vrev16_p8(a: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+    simd_shuffle8!(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3763,7 +3763,7 @@ pub unsafe fn vrev16_p8(a: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev16.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev16))]
 pub unsafe fn vrev16q_p8(a: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
+    simd_shuffle16!(a, a, [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3773,7 +3773,7 @@ pub unsafe fn vrev16q_p8(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32_s8(a: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+    simd_shuffle8!(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3783,7 +3783,7 @@ pub unsafe fn vrev32_s8(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32q_s8(a: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
+    simd_shuffle16!(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3793,7 +3793,7 @@ pub unsafe fn vrev32q_s8(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32_u8(a: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+    simd_shuffle8!(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3803,7 +3803,7 @@ pub unsafe fn vrev32_u8(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32q_u8(a: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
+    simd_shuffle16!(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3813,7 +3813,7 @@ pub unsafe fn vrev32q_u8(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32_s16(a: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, a, [1, 0, 3, 2])
+    simd_shuffle4!(a, a, [1, 0, 3, 2])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3823,7 +3823,7 @@ pub unsafe fn vrev32_s16(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32q_s16(a: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+    simd_shuffle8!(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3833,7 +3833,7 @@ pub unsafe fn vrev32q_s16(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32_p16(a: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, a, [1, 0, 3, 2])
+    simd_shuffle4!(a, a, [1, 0, 3, 2])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3843,7 +3843,7 @@ pub unsafe fn vrev32_p16(a: poly16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32q_p16(a: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+    simd_shuffle8!(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3853,7 +3853,7 @@ pub unsafe fn vrev32q_p16(a: poly16x8_t) -> poly16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32_u16(a: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, a, [1, 0, 3, 2])
+    simd_shuffle4!(a, a, [1, 0, 3, 2])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3863,7 +3863,7 @@ pub unsafe fn vrev32_u16(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32q_u16(a: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
+    simd_shuffle8!(a, a, [1, 0, 3, 2, 5, 4, 7, 6])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3873,7 +3873,7 @@ pub unsafe fn vrev32q_u16(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32_p8(a: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+    simd_shuffle8!(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3883,7 +3883,7 @@ pub unsafe fn vrev32_p8(a: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev32.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev32))]
 pub unsafe fn vrev32q_p8(a: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
+    simd_shuffle16!(a, a, [3, 2, 1, 0, 7, 6, 5, 4, 11, 10, 9, 8, 15, 14, 13, 12])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3893,7 +3893,7 @@ pub unsafe fn vrev32q_p8(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_s8(a: int8x8_t) -> int8x8_t {
-    simd_shuffle8(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
+    simd_shuffle8!(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3903,7 +3903,7 @@ pub unsafe fn vrev64_s8(a: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_s8(a: int8x16_t) -> int8x16_t {
-    simd_shuffle16(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
+    simd_shuffle16!(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3913,7 +3913,7 @@ pub unsafe fn vrev64q_s8(a: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_s16(a: int16x4_t) -> int16x4_t {
-    simd_shuffle4(a, a, [3, 2, 1, 0])
+    simd_shuffle4!(a, a, [3, 2, 1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3923,7 +3923,7 @@ pub unsafe fn vrev64_s16(a: int16x4_t) -> int16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_s16(a: int16x8_t) -> int16x8_t {
-    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+    simd_shuffle8!(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3933,7 +3933,7 @@ pub unsafe fn vrev64q_s16(a: int16x8_t) -> int16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_s32(a: int32x2_t) -> int32x2_t {
-    simd_shuffle2(a, a, [1, 0])
+    simd_shuffle2!(a, a, [1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3943,7 +3943,7 @@ pub unsafe fn vrev64_s32(a: int32x2_t) -> int32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_s32(a: int32x4_t) -> int32x4_t {
-    simd_shuffle4(a, a, [1, 0, 3, 2])
+    simd_shuffle4!(a, a, [1, 0, 3, 2])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3953,7 +3953,7 @@ pub unsafe fn vrev64q_s32(a: int32x4_t) -> int32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_u8(a: uint8x8_t) -> uint8x8_t {
-    simd_shuffle8(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
+    simd_shuffle8!(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3963,7 +3963,7 @@ pub unsafe fn vrev64_u8(a: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_u8(a: uint8x16_t) -> uint8x16_t {
-    simd_shuffle16(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
+    simd_shuffle16!(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3973,7 +3973,7 @@ pub unsafe fn vrev64q_u8(a: uint8x16_t) -> uint8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_u16(a: uint16x4_t) -> uint16x4_t {
-    simd_shuffle4(a, a, [3, 2, 1, 0])
+    simd_shuffle4!(a, a, [3, 2, 1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3983,7 +3983,7 @@ pub unsafe fn vrev64_u16(a: uint16x4_t) -> uint16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_u16(a: uint16x8_t) -> uint16x8_t {
-    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+    simd_shuffle8!(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -3993,7 +3993,7 @@ pub unsafe fn vrev64q_u16(a: uint16x8_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_u32(a: uint32x2_t) -> uint32x2_t {
-    simd_shuffle2(a, a, [1, 0])
+    simd_shuffle2!(a, a, [1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -4003,7 +4003,7 @@ pub unsafe fn vrev64_u32(a: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_u32(a: uint32x4_t) -> uint32x4_t {
-    simd_shuffle4(a, a, [1, 0, 3, 2])
+    simd_shuffle4!(a, a, [1, 0, 3, 2])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -4013,7 +4013,7 @@ pub unsafe fn vrev64q_u32(a: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_f32(a: float32x2_t) -> float32x2_t {
-    simd_shuffle2(a, a, [1, 0])
+    simd_shuffle2!(a, a, [1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -4023,7 +4023,7 @@ pub unsafe fn vrev64_f32(a: float32x2_t) -> float32x2_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.32"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_f32(a: float32x4_t) -> float32x4_t {
-    simd_shuffle4(a, a, [1, 0, 3, 2])
+    simd_shuffle4!(a, a, [1, 0, 3, 2])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -4033,7 +4033,7 @@ pub unsafe fn vrev64q_f32(a: float32x4_t) -> float32x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_p8(a: poly8x8_t) -> poly8x8_t {
-    simd_shuffle8(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
+    simd_shuffle8!(a, a, [7, 6, 5, 4, 3, 2, 1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -4043,7 +4043,7 @@ pub unsafe fn vrev64_p8(a: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.8"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_p8(a: poly8x16_t) -> poly8x16_t {
-    simd_shuffle16(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
+    simd_shuffle16!(a, a, [7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -4053,7 +4053,7 @@ pub unsafe fn vrev64q_p8(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64_p16(a: poly16x4_t) -> poly16x4_t {
-    simd_shuffle4(a, a, [3, 2, 1, 0])
+    simd_shuffle4!(a, a, [3, 2, 1, 0])
 }
 
 /// Reversing vector elements (swap endianness)
@@ -4063,7 +4063,7 @@ pub unsafe fn vrev64_p16(a: poly16x4_t) -> poly16x4_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vrev64.16"))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(rev64))]
 pub unsafe fn vrev64q_p16(a: poly16x8_t) -> poly16x8_t {
-    simd_shuffle8(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
+    simd_shuffle8!(a, a, [3, 2, 1, 0, 7, 6, 5, 4])
 }
 
 /// Signed Add and Accumulate Long Pairwise.

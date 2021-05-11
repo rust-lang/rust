@@ -118,10 +118,10 @@ pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m256d {
     static_assert_imm8!(MASK);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         b,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b1,
             ((MASK as u32 >> 1) & 0b1) + 4,
             ((MASK as u32 >> 2) & 0b1) + 2,
@@ -141,10 +141,10 @@ pub unsafe fn _mm256_shuffle_pd<const MASK: i32>(a: __m256d, b: __m256d) -> __m2
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_shuffle_ps<const MASK: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_imm8!(MASK);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         b,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11) + 8,
@@ -463,10 +463,10 @@ pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blend_pd<const IMM4: i32>(a: __m256d, b: __m256d) -> __m256d {
     static_assert_imm4!(IMM4);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         b,
-        [
+        <const IMM4: i32> [
             ((IMM4 as u32 >> 0) & 1) * 4 + 0,
             ((IMM4 as u32 >> 1) & 1) * 4 + 1,
             ((IMM4 as u32 >> 2) & 1) * 4 + 2,
@@ -486,10 +486,10 @@ pub unsafe fn _mm256_blend_pd<const IMM4: i32>(a: __m256d, b: __m256d) -> __m256
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_blend_ps<const IMM8: i32>(a: __m256, b: __m256) -> __m256 {
     static_assert_imm8!(IMM8);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         b,
-        [
+        <const IMM8: i32> [
             ((IMM8 as u32 >> 0) & 1) * 8 + 0,
             ((IMM8 as u32 >> 1) & 1) * 8 + 1,
             ((IMM8 as u32 >> 2) & 1) * 8 + 2,
@@ -930,10 +930,10 @@ pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
     static_assert_imm1!(IMM1);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         _mm256_undefined_ps(),
-        [[0, 1, 2, 3], [4, 5, 6, 7]][IMM1 as usize],
+        <const IMM1: i32> [[0, 1, 2, 3], [4, 5, 6, 7]][IMM1 as usize],
     )
 }
 
@@ -951,7 +951,7 @@ pub unsafe fn _mm256_extractf128_ps<const IMM1: i32>(a: __m256) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
     static_assert_imm1!(IMM1);
-    simd_shuffle2(a, _mm256_undefined_pd(), [[0, 1], [2, 3]][IMM1 as usize])
+    simd_shuffle2!(a, _mm256_undefined_pd(), <const IMM1: i32> [[0, 1], [2, 3]][IMM1 as usize])
 }
 
 /// Extracts 128 bits (composed of integer data) from `a`, selected with `imm8`.
@@ -967,10 +967,10 @@ pub unsafe fn _mm256_extractf128_pd<const IMM1: i32>(a: __m256d) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_si256<const IMM1: i32>(a: __m256i) -> __m128i {
     static_assert_imm1!(IMM1);
-    let dst: i64x2 = simd_shuffle2(
+    let dst: i64x2 = simd_shuffle2!(
         a.as_i64x4(),
         _mm256_undefined_si256().as_i64x4(),
-        [[0, 1], [2, 3]][IMM1 as usize],
+        <const IMM1: i32> [[0, 1], [2, 3]][IMM1 as usize],
     );
     transmute(dst)
 }
@@ -1033,10 +1033,10 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
     static_assert_imm8!(IMM8);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         _mm256_undefined_ps(),
-        [
+        <const IMM8: i32> [
             (IMM8 as u32 >> 0) & 0b11,
             (IMM8 as u32 >> 2) & 0b11,
             (IMM8 as u32 >> 4) & 0b11,
@@ -1060,10 +1060,10 @@ pub unsafe fn _mm256_permute_ps<const IMM8: i32>(a: __m256) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_ps<const IMM8: i32>(a: __m128) -> __m128 {
     static_assert_imm8!(IMM8);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         _mm_undefined_ps(),
-        [
+        <const IMM8: i32> [
             (IMM8 as u32 >> 0) & 0b11,
             (IMM8 as u32 >> 2) & 0b11,
             (IMM8 as u32 >> 4) & 0b11,
@@ -1107,10 +1107,10 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
     static_assert_imm4!(IMM4);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         _mm256_undefined_pd(),
-        [
+        <const IMM4: i32> [
             ((IMM4 as u32 >> 0) & 1),
             ((IMM4 as u32 >> 1) & 1),
             ((IMM4 as u32 >> 2) & 1) + 2,
@@ -1130,10 +1130,10 @@ pub unsafe fn _mm256_permute_pd<const IMM4: i32>(a: __m256d) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_permute_pd<const IMM2: i32>(a: __m128d) -> __m128d {
     static_assert_imm2!(IMM2);
-    simd_shuffle2(
+    simd_shuffle2!(
         a,
         _mm_undefined_pd(),
-        [(IMM2 as u32) & 1, (IMM2 as u32 >> 1) & 1],
+        <const IMM2: i32> [(IMM2 as u32) & 1, (IMM2 as u32 >> 1) & 1],
     )
 }
 
@@ -1257,10 +1257,10 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m256 {
     static_assert_imm1!(IMM1);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         _mm256_castps128_ps256(b),
-        [[8, 9, 10, 11, 4, 5, 6, 7], [0, 1, 2, 3, 8, 9, 10, 11]][IMM1 as usize],
+        <const IMM1: i32> [[8, 9, 10, 11, 4, 5, 6, 7], [0, 1, 2, 3, 8, 9, 10, 11]][IMM1 as usize],
     )
 }
 
@@ -1279,10 +1279,10 @@ pub unsafe fn _mm256_insertf128_ps<const IMM1: i32>(a: __m256, b: __m128) -> __m
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> __m256d {
     static_assert_imm1!(IMM1);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         _mm256_castpd128_pd256(b),
-        [[4, 5, 2, 3], [0, 1, 4, 5]][IMM1 as usize],
+        <const IMM1: i32> [[4, 5, 2, 3], [0, 1, 4, 5]][IMM1 as usize],
     )
 }
 
@@ -1300,10 +1300,10 @@ pub unsafe fn _mm256_insertf128_pd<const IMM1: i32>(a: __m256d, b: __m128d) -> _
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_si256<const IMM1: i32>(a: __m256i, b: __m128i) -> __m256i {
     static_assert_imm1!(IMM1);
-    let dst: i64x4 = simd_shuffle4(
+    let dst: i64x4 = simd_shuffle4!(
         a.as_i64x4(),
         _mm256_castsi128_si256(b).as_i64x4(),
-        [[4, 5, 2, 3], [0, 1, 4, 5]][IMM1 as usize],
+        <const IMM1: i32> [[4, 5, 2, 3], [0, 1, 4, 5]][IMM1 as usize],
     );
     transmute(dst)
 }
@@ -1639,7 +1639,7 @@ pub unsafe fn _mm_maskstore_ps(mem_addr: *mut f32, mask: __m128i, a: __m128) {
 #[cfg_attr(test, assert_instr(vmovshdup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_movehdup_ps(a: __m256) -> __m256 {
-    simd_shuffle8(a, a, [1, 1, 3, 3, 5, 5, 7, 7])
+    simd_shuffle8!(a, a, [1, 1, 3, 3, 5, 5, 7, 7])
 }
 
 /// Duplicate even-indexed single-precision (32-bit) floating-point elements
@@ -1651,7 +1651,7 @@ pub unsafe fn _mm256_movehdup_ps(a: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vmovsldup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_moveldup_ps(a: __m256) -> __m256 {
-    simd_shuffle8(a, a, [0, 0, 2, 2, 4, 4, 6, 6])
+    simd_shuffle8!(a, a, [0, 0, 2, 2, 4, 4, 6, 6])
 }
 
 /// Duplicate even-indexed double-precision (64-bit) floating-point elements
@@ -1663,7 +1663,7 @@ pub unsafe fn _mm256_moveldup_ps(a: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vmovddup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_movedup_pd(a: __m256d) -> __m256d {
-    simd_shuffle4(a, a, [0, 0, 2, 2])
+    simd_shuffle4!(a, a, [0, 0, 2, 2])
 }
 
 /// Loads 256-bits of integer data from unaligned memory into result.
@@ -1756,7 +1756,7 @@ pub unsafe fn _mm256_rsqrt_ps(a: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vunpckhpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
-    simd_shuffle4(a, b, [1, 5, 3, 7])
+    simd_shuffle4!(a, b, [1, 5, 3, 7])
 }
 
 /// Unpacks and interleave single-precision (32-bit) floating-point elements
@@ -1768,7 +1768,7 @@ pub unsafe fn _mm256_unpackhi_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vunpckhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
-    simd_shuffle8(a, b, [2, 10, 3, 11, 6, 14, 7, 15])
+    simd_shuffle8!(a, b, [2, 10, 3, 11, 6, 14, 7, 15])
 }
 
 /// Unpacks and interleave double-precision (64-bit) floating-point elements
@@ -1780,7 +1780,7 @@ pub unsafe fn _mm256_unpackhi_ps(a: __m256, b: __m256) -> __m256 {
 #[cfg_attr(test, assert_instr(vunpcklpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
-    simd_shuffle4(a, b, [0, 4, 2, 6])
+    simd_shuffle4!(a, b, [0, 4, 2, 6])
 }
 
 /// Unpacks and interleave single-precision (32-bit) floating-point elements
@@ -1792,7 +1792,7 @@ pub unsafe fn _mm256_unpacklo_pd(a: __m256d, b: __m256d) -> __m256d {
 #[cfg_attr(test, assert_instr(vunpcklps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_unpacklo_ps(a: __m256, b: __m256) -> __m256 {
-    simd_shuffle8(a, b, [0, 8, 1, 9, 4, 12, 5, 13])
+    simd_shuffle8!(a, b, [0, 8, 1, 9, 4, 12, 5, 13])
 }
 
 /// Computes the bitwise AND of 256 bits (representing integer data) in `a` and
@@ -2572,7 +2572,7 @@ pub unsafe fn _mm256_castsi256_pd(a: __m256i) -> __m256d {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castps256_ps128(a: __m256) -> __m128 {
-    simd_shuffle4(a, a, [0, 1, 2, 3])
+    simd_shuffle4!(a, a, [0, 1, 2, 3])
 }
 
 /// Casts vector of type __m256d to type __m128d.
@@ -2584,7 +2584,7 @@ pub unsafe fn _mm256_castps256_ps128(a: __m256) -> __m128 {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castpd256_pd128(a: __m256d) -> __m128d {
-    simd_shuffle2(a, a, [0, 1])
+    simd_shuffle2!(a, a, [0, 1])
 }
 
 /// Casts vector of type __m256i to type __m128i.
@@ -2597,7 +2597,7 @@ pub unsafe fn _mm256_castpd256_pd128(a: __m256d) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
     let a = a.as_i64x4();
-    let dst: i64x2 = simd_shuffle2(a, a, [0, 1]);
+    let dst: i64x2 = simd_shuffle2!(a, a, [0, 1]);
     transmute(dst)
 }
 
@@ -2611,8 +2611,8 @@ pub unsafe fn _mm256_castsi256_si128(a: __m256i) -> __m128i {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castps128_ps256(a: __m128) -> __m256 {
-    // FIXME simd_shuffle8(a, a, [0, 1, 2, 3, -1, -1, -1, -1])
-    simd_shuffle8(a, a, [0, 1, 2, 3, 0, 0, 0, 0])
+    // FIXME simd_shuffle8!(a, a, [0, 1, 2, 3, -1, -1, -1, -1])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 0, 0, 0, 0])
 }
 
 /// Casts vector of type __m128d to type __m256d;
@@ -2625,8 +2625,8 @@ pub unsafe fn _mm256_castps128_ps256(a: __m128) -> __m256 {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
-    // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
-    simd_shuffle4(a, a, [0, 1, 0, 0])
+    // FIXME simd_shuffle4!(a, a, [0, 1, -1, -1])
+    simd_shuffle4!(a, a, [0, 1, 0, 0])
 }
 
 /// Casts vector of type __m128i to type __m256i;
@@ -2640,8 +2640,8 @@ pub unsafe fn _mm256_castpd128_pd256(a: __m128d) -> __m256d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
     let a = a.as_i64x2();
-    // FIXME simd_shuffle4(a, a, [0, 1, -1, -1])
-    let dst: i64x4 = simd_shuffle4(a, a, [0, 1, 0, 0]);
+    // FIXME simd_shuffle4!(a, a, [0, 1, -1, -1])
+    let dst: i64x4 = simd_shuffle4!(a, a, [0, 1, 0, 0]);
     transmute(dst)
 }
 
@@ -2656,7 +2656,7 @@ pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
-    simd_shuffle8(a, _mm_setzero_ps(), [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, _mm_setzero_ps(), [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Constructs a 256-bit integer vector from a 128-bit integer vector.
@@ -2671,7 +2671,7 @@ pub unsafe fn _mm256_zextps128_ps256(a: __m128) -> __m256 {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
     let b = _mm_setzero_si128().as_i64x2();
-    let dst: i64x4 = simd_shuffle4(a.as_i64x2(), b, [0, 1, 2, 3]);
+    let dst: i64x4 = simd_shuffle4!(a.as_i64x2(), b, [0, 1, 2, 3]);
     transmute(dst)
 }
 
@@ -2687,7 +2687,7 @@ pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
 // instructions, thus it has zero latency.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
-    simd_shuffle4(a, _mm_setzero_pd(), [0, 1, 2, 3])
+    simd_shuffle4!(a, _mm_setzero_pd(), [0, 1, 2, 3])
 }
 
 /// Returns vector of type `__m256` with undefined elements.
@@ -2732,7 +2732,7 @@ pub unsafe fn _mm256_undefined_si256() -> __m256i {
 #[cfg_attr(test, assert_instr(vinsertf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_set_m128(hi: __m128, lo: __m128) -> __m256 {
-    simd_shuffle8(lo, hi, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(lo, hi, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Sets packed __m256d returned vector with the supplied values.

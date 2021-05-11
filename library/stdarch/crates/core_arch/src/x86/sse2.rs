@@ -432,10 +432,10 @@ unsafe fn _mm_slli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
         }
     }
     let zero = _mm_set1_epi8(0).as_i8x16();
-    transmute(simd_shuffle16::<i8x16, i8x16>(
+    transmute::<i8x16, _>(simd_shuffle16!(
         zero,
         a.as_i8x16(),
-        [
+        <const IMM8: i32> [
             mask(IMM8, 0),
             mask(IMM8, 1),
             mask(IMM8, 2),
@@ -635,10 +635,10 @@ unsafe fn _mm_srli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
         }
     }
     let zero = _mm_set1_epi8(0).as_i8x16();
-    let x: i8x16 = simd_shuffle16(
+    let x: i8x16 = simd_shuffle16!(
         a.as_i8x16(),
         zero,
-        [
+        <const IMM8: i32> [
             mask(IMM8, 0),
             mask(IMM8, 1),
             mask(IMM8, 2),
@@ -895,7 +895,7 @@ pub unsafe fn _mm_cmplt_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtepi32_pd(a: __m128i) -> __m128d {
     let a = a.as_i32x4();
-    simd_cast::<i32x2, __m128d>(simd_shuffle2(a, a, [0, 1]))
+    simd_cast::<i32x2, __m128d>(simd_shuffle2!(a, a, [0, 1]))
 }
 
 /// Returns `a` with its lower element replaced by `b` after converting it to
@@ -1303,7 +1303,7 @@ pub unsafe fn _mm_stream_si32(mem_addr: *mut i32, a: i32) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_move_epi64(a: __m128i) -> __m128i {
     let zero = _mm_setzero_si128();
-    let r: i64x2 = simd_shuffle2(a.as_i64x2(), zero.as_i64x2(), [0, 2]);
+    let r: i64x2 = simd_shuffle2!(a.as_i64x2(), zero.as_i64x2(), [0, 2]);
     transmute(r)
 }
 
@@ -1391,10 +1391,10 @@ pub unsafe fn _mm_movemask_epi8(a: __m128i) -> i32 {
 pub unsafe fn _mm_shuffle_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_imm8!(IMM8);
     let a = a.as_i32x4();
-    let x: i32x4 = simd_shuffle4(
+    let x: i32x4 = simd_shuffle4!(
         a,
         a,
-        [
+        <const IMM8: i32> [
             IMM8 as u32 & 0b11,
             (IMM8 as u32 >> 2) & 0b11,
             (IMM8 as u32 >> 4) & 0b11,
@@ -1419,10 +1419,10 @@ pub unsafe fn _mm_shuffle_epi32<const IMM8: i32>(a: __m128i) -> __m128i {
 pub unsafe fn _mm_shufflehi_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_imm8!(IMM8);
     let a = a.as_i16x8();
-    let x: i16x8 = simd_shuffle8(
+    let x: i16x8 = simd_shuffle8!(
         a,
         a,
-        [
+        <const IMM8: i32> [
             0,
             1,
             2,
@@ -1451,10 +1451,10 @@ pub unsafe fn _mm_shufflehi_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
 pub unsafe fn _mm_shufflelo_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
     static_assert_imm8!(IMM8);
     let a = a.as_i16x8();
-    let x: i16x8 = simd_shuffle8(
+    let x: i16x8 = simd_shuffle8!(
         a,
         a,
-        [
+        <const IMM8: i32> [
             IMM8 as u32 & 0b11,
             (IMM8 as u32 >> 2) & 0b11,
             (IMM8 as u32 >> 4) & 0b11,
@@ -1476,7 +1476,7 @@ pub unsafe fn _mm_shufflelo_epi16<const IMM8: i32>(a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(punpckhbw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpackhi_epi8(a: __m128i, b: __m128i) -> __m128i {
-    transmute::<i8x16, _>(simd_shuffle16(
+    transmute::<i8x16, _>(simd_shuffle16!(
         a.as_i8x16(),
         b.as_i8x16(),
         [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31],
@@ -1491,7 +1491,7 @@ pub unsafe fn _mm_unpackhi_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(punpckhwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpackhi_epi16(a: __m128i, b: __m128i) -> __m128i {
-    let x = simd_shuffle8(a.as_i16x8(), b.as_i16x8(), [4, 12, 5, 13, 6, 14, 7, 15]);
+    let x = simd_shuffle8!(a.as_i16x8(), b.as_i16x8(), [4, 12, 5, 13, 6, 14, 7, 15]);
     transmute::<i16x8, _>(x)
 }
 
@@ -1503,7 +1503,7 @@ pub unsafe fn _mm_unpackhi_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(unpckhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpackhi_epi32(a: __m128i, b: __m128i) -> __m128i {
-    transmute::<i32x4, _>(simd_shuffle4(a.as_i32x4(), b.as_i32x4(), [2, 6, 3, 7]))
+    transmute::<i32x4, _>(simd_shuffle4!(a.as_i32x4(), b.as_i32x4(), [2, 6, 3, 7]))
 }
 
 /// Unpacks and interleave 64-bit integers from the high half of `a` and `b`.
@@ -1514,7 +1514,7 @@ pub unsafe fn _mm_unpackhi_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(unpckhpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpackhi_epi64(a: __m128i, b: __m128i) -> __m128i {
-    transmute::<i64x2, _>(simd_shuffle2(a.as_i64x2(), b.as_i64x2(), [1, 3]))
+    transmute::<i64x2, _>(simd_shuffle2!(a.as_i64x2(), b.as_i64x2(), [1, 3]))
 }
 
 /// Unpacks and interleave 8-bit integers from the low half of `a` and `b`.
@@ -1525,7 +1525,7 @@ pub unsafe fn _mm_unpackhi_epi64(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(punpcklbw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
-    transmute::<i8x16, _>(simd_shuffle16(
+    transmute::<i8x16, _>(simd_shuffle16!(
         a.as_i8x16(),
         b.as_i8x16(),
         [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23],
@@ -1540,7 +1540,7 @@ pub unsafe fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(punpcklwd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_epi16(a: __m128i, b: __m128i) -> __m128i {
-    let x = simd_shuffle8(a.as_i16x8(), b.as_i16x8(), [0, 8, 1, 9, 2, 10, 3, 11]);
+    let x = simd_shuffle8!(a.as_i16x8(), b.as_i16x8(), [0, 8, 1, 9, 2, 10, 3, 11]);
     transmute::<i16x8, _>(x)
 }
 
@@ -1552,7 +1552,7 @@ pub unsafe fn _mm_unpacklo_epi16(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(unpcklps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
-    transmute::<i32x4, _>(simd_shuffle4(a.as_i32x4(), b.as_i32x4(), [0, 4, 1, 5]))
+    transmute::<i32x4, _>(simd_shuffle4!(a.as_i32x4(), b.as_i32x4(), [0, 4, 1, 5]))
 }
 
 /// Unpacks and interleave 64-bit integers from the low half of `a` and `b`.
@@ -1563,7 +1563,7 @@ pub unsafe fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
 #[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_epi64(a: __m128i, b: __m128i) -> __m128i {
-    transmute::<i64x2, _>(simd_shuffle2(a.as_i64x2(), b.as_i64x2(), [0, 2]))
+    transmute::<i64x2, _>(simd_shuffle2!(a.as_i64x2(), b.as_i64x2(), [0, 2]))
 }
 
 /// Returns a new vector with the low element of `a` replaced by the sum of the
@@ -2519,7 +2519,7 @@ pub unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: __m128d) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_store1_pd(mem_addr: *mut f64, a: __m128d) {
-    let b: __m128d = simd_shuffle2(a, a, [0, 0]);
+    let b: __m128d = simd_shuffle2!(a, a, [0, 0]);
     *(mem_addr as *mut __m128d) = b;
 }
 
@@ -2533,7 +2533,7 @@ pub unsafe fn _mm_store1_pd(mem_addr: *mut f64, a: __m128d) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_store_pd1(mem_addr: *mut f64, a: __m128d) {
-    let b: __m128d = simd_shuffle2(a, a, [0, 0]);
+    let b: __m128d = simd_shuffle2!(a, a, [0, 0]);
     *(mem_addr as *mut __m128d) = b;
 }
 
@@ -2548,7 +2548,7 @@ pub unsafe fn _mm_store_pd1(mem_addr: *mut f64, a: __m128d) {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
-    let b: __m128d = simd_shuffle2(a, a, [1, 0]);
+    let b: __m128d = simd_shuffle2!(a, a, [1, 0]);
     *(mem_addr as *mut __m128d) = b;
 }
 
@@ -2612,7 +2612,7 @@ pub unsafe fn _mm_load_pd1(mem_addr: *const f64) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadr_pd(mem_addr: *const f64) -> __m128d {
     let a = _mm_load_pd(mem_addr);
-    simd_shuffle2(a, a, [1, 0])
+    simd_shuffle2!(a, a, [1, 0])
 }
 
 /// Loads 128-bits (composed of 2 packed double-precision (64-bit)
@@ -2653,7 +2653,7 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_shuffle_pd<const MASK: i32>(a: __m128d, b: __m128d) -> __m128d {
     static_assert_imm8!(MASK);
-    simd_shuffle2(a, b, [MASK as u32 & 0b1, ((MASK as u32 >> 1) & 0b1) + 2])
+    simd_shuffle2!(a, b, <const MASK: i32> [MASK as u32 & 0b1, ((MASK as u32 >> 1) & 0b1) + 2])
 }
 
 /// Constructs a 128-bit floating-point vector of `[2 x double]`. The lower
@@ -2777,7 +2777,7 @@ pub unsafe fn _mm_undefined_si128() -> __m128i {
 #[cfg_attr(test, assert_instr(unpckhpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpackhi_pd(a: __m128d, b: __m128d) -> __m128d {
-    simd_shuffle2(a, b, [1, 3])
+    simd_shuffle2!(a, b, [1, 3])
 }
 
 /// The resulting `__m128d` element is composed by the high-order values of
@@ -2792,7 +2792,7 @@ pub unsafe fn _mm_unpackhi_pd(a: __m128d, b: __m128d) -> __m128d {
 #[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_pd(a: __m128d, b: __m128d) -> __m128d {
-    simd_shuffle2(a, b, [0, 2])
+    simd_shuffle2!(a, b, [0, 2])
 }
 
 #[allow(improper_ctypes)]

@@ -988,6 +988,17 @@ fn gen_aarch64(
             );
         }
     };
+    let const_declare = if let Some(constn) = constn {
+        if constn.contains(":") {
+            let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
+            assert_eq!(constns.len(), 2);
+            format!(r#"<const {}: i32, const {}: i32>"#, constns[0], constns[1])
+        } else {
+            format!(r#"<const {}: i32>"#, constn)
+        }
+    } else {
+        String::new()
+    };
     let multi_calls = if !multi_fn.is_empty() {
         let mut calls = String::new();
         for i in 0..multi_fn.len() {
@@ -997,6 +1008,7 @@ fn gen_aarch64(
             calls.push_str(&get_call(
                 &multi_fn[i],
                 current_name,
+                &const_declare,
                 in_t,
                 out_t,
                 fixed,
@@ -1004,17 +1016,6 @@ fn gen_aarch64(
             ));
         }
         calls
-    } else {
-        String::new()
-    };
-    let const_declare = if let Some(constn) = constn {
-        if constn.contains(":") {
-            let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
-            assert_eq!(constns.len(), 2);
-            format!(r#"<const {}: i32, const {}: i32>"#, constns[0], constns[1])
-        } else {
-            format!(r#"<const {}: i32>"#, constn)
-        }
     } else {
         String::new()
     };
@@ -1582,6 +1583,11 @@ fn gen_arm(
             ));
         }
     };
+    let const_declare = if let Some(constn) = constn {
+        format!(r#"<const {}: i32>"#, constn)
+    } else {
+        String::new()
+    };
     let multi_calls = if !multi_fn.is_empty() {
         let mut calls = String::new();
         for i in 0..multi_fn.len() {
@@ -1591,6 +1597,7 @@ fn gen_arm(
             calls.push_str(&get_call(
                 &multi_fn[i],
                 current_name,
+                &const_declare,
                 in_t,
                 out_t,
                 fixed,
@@ -1598,11 +1605,6 @@ fn gen_arm(
             ));
         }
         calls
-    } else {
-        String::new()
-    };
-    let const_declare = if let Some(constn) = constn {
-        format!(r#"<const {}: i32>"#, constn)
     } else {
         String::new()
     };
@@ -2003,6 +2005,7 @@ fn expand_intrinsic(intr: &str, t: &str) -> String {
 fn get_call(
     in_str: &str,
     current_name: &str,
+    const_declare: &str,
     in_t: &[&str; 3],
     out_t: &str,
     fixed: &Vec<String>,
@@ -2041,7 +2044,7 @@ fn get_call(
             "halflen" => type_len(in_t[1]) / 2,
             _ => 0,
         };
-        let mut s = String::from("[");
+        let mut s = format!("{} [", const_declare);
         for i in 0..len {
             if i != 0 {
                 s.push_str(", ");
@@ -2084,7 +2087,7 @@ fn get_call(
             "in0_len" => type_len(in_t[0]),
             _ => 0,
         };
-        let mut s = String::from("[");
+        let mut s = format!("{} [", const_declare);
         for i in 0..len {
             if i != 0 {
                 s.push_str(", ");
@@ -2167,7 +2170,15 @@ fn get_call(
             let sub_match = format!(
                 "        {} => {},\n",
                 i,
-                get_call(&sub_call, current_name, in_t, out_t, fixed, Some(i as i32))
+                get_call(
+                    &sub_call,
+                    current_name,
+                    const_declare,
+                    in_t,
+                    out_t,
+                    fixed,
+                    Some(i as i32)
+                )
             );
             call.push_str(&sub_match);
         }
@@ -2210,6 +2221,7 @@ fn get_call(
             let sub_call = get_call(
                 &sub_fn[1..sub_fn.len() - 1],
                 current_name,
+                const_declare,
                 in_t,
                 out_t,
                 fixed,

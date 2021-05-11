@@ -10529,7 +10529,7 @@ pub unsafe fn _mm512_cvtpd_pslo(v2: __m512d) -> __m512 {
         0b11111111,
         _MM_FROUND_CUR_DIRECTION,
     );
-    simd_shuffle16(
+    simd_shuffle16!(
         r,
         _mm256_setzero_ps().as_f32x8(),
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8],
@@ -10549,7 +10549,7 @@ pub unsafe fn _mm512_mask_cvtpd_pslo(src: __m512, k: __mmask8, v2: __m512d) -> _
         k,
         _MM_FROUND_CUR_DIRECTION,
     );
-    simd_shuffle16(
+    simd_shuffle16!(
         r,
         _mm256_setzero_ps().as_f32x8(),
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8],
@@ -10644,7 +10644,7 @@ pub unsafe fn _mm_maskz_cvtepi8_epi32(k: __mmask8, a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vpmovsxbq))]
 pub unsafe fn _mm512_cvtepi8_epi64(a: __m128i) -> __m512i {
     let a = a.as_i8x16();
-    let v64: i8x8 = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let v64: i8x8 = simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
     transmute::<i64x8, _>(simd_cast(v64))
 }
 
@@ -10805,7 +10805,7 @@ pub unsafe fn _mm_maskz_cvtepu8_epi32(k: __mmask8, a: __m128i) -> __m128i {
 #[cfg_attr(test, assert_instr(vpmovzxbq))]
 pub unsafe fn _mm512_cvtepu8_epi64(a: __m128i) -> __m512i {
     let a = a.as_u8x16();
-    let v64: u8x8 = simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let v64: u8x8 = simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]);
     transmute::<i64x8, _>(simd_cast(v64))
 }
 
@@ -11628,7 +11628,7 @@ pub unsafe fn _mm256_maskz_cvtepu32_pd(k: __mmask8, a: __m128i) -> __m256d {
 #[cfg_attr(test, assert_instr(vcvtudq2pd))]
 pub unsafe fn _mm_cvtepu32_pd(a: __m128i) -> __m128d {
     let a = a.as_u32x4();
-    let u64: u32x2 = simd_shuffle2(a, a, [0, 1]);
+    let u64: u32x2 = simd_shuffle2!(a, a, [0, 1]);
     transmute::<f64x2, _>(simd_cast(u64))
 }
 
@@ -11663,7 +11663,7 @@ pub unsafe fn _mm_maskz_cvtepu32_pd(k: __mmask8, a: __m128i) -> __m128d {
 #[cfg_attr(test, assert_instr(vcvtdq2pd))]
 pub unsafe fn _mm512_cvtepi32lo_pd(v2: __m512i) -> __m512d {
     let v2 = v2.as_i32x16();
-    let v256: i32x8 = simd_shuffle8(v2, v2, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let v256: i32x8 = simd_shuffle8!(v2, v2, [0, 1, 2, 3, 4, 5, 6, 7]);
     transmute::<f64x8, _>(simd_cast(v256))
 }
 
@@ -11686,7 +11686,7 @@ pub unsafe fn _mm512_mask_cvtepi32lo_pd(src: __m512d, k: __mmask8, v2: __m512i) 
 #[cfg_attr(test, assert_instr(vcvtudq2pd))]
 pub unsafe fn _mm512_cvtepu32lo_pd(v2: __m512i) -> __m512d {
     let v2 = v2.as_u32x16();
-    let v256: u32x8 = simd_shuffle8(v2, v2, [0, 1, 2, 3, 4, 5, 6, 7]);
+    let v256: u32x8 = simd_shuffle8!(v2, v2, [0, 1, 2, 3, 4, 5, 6, 7]);
     transmute::<f64x8, _>(simd_cast(v256))
 }
 
@@ -19215,10 +19215,10 @@ pub unsafe fn _mm_maskz_srlv_epi64(k: __mmask8, a: __m128i, count: __m128i) -> _
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permute_ps<const MASK: i32>(a: __m512) -> __m512 {
     static_assert_imm8!(MASK);
-    simd_shuffle16(
+    simd_shuffle16!(
         a,
         a,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11),
@@ -19333,10 +19333,10 @@ pub unsafe fn _mm_maskz_permute_ps<const MASK: i32>(k: __mmask8, a: __m128) -> _
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permute_pd<const MASK: i32>(a: __m512d) -> __m512d {
     static_assert_imm8!(MASK);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         a,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b1,
             ((MASK as u32 >> 1) & 0b1),
             ((MASK as u32 >> 2) & 0b1) + 2,
@@ -19451,10 +19451,10 @@ pub unsafe fn _mm_maskz_permute_pd<const IMM2: i32>(k: __mmask8, a: __m128d) -> 
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permutex_epi64<const MASK: i32>(a: __m512i) -> __m512i {
     static_assert_imm8!(MASK);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         a,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11),
@@ -19507,10 +19507,10 @@ pub unsafe fn _mm512_maskz_permutex_epi64<const MASK: i32>(k: __mmask8, a: __m51
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm256_permutex_epi64<const MASK: i32>(a: __m256i) -> __m256i {
     static_assert_imm8!(MASK);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         a,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11),
@@ -19559,10 +19559,10 @@ pub unsafe fn _mm256_maskz_permutex_epi64<const MASK: i32>(k: __mmask8, a: __m25
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_permutex_pd<const MASK: i32>(a: __m512d) -> __m512d {
     static_assert_imm8!(MASK);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         a,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11),
@@ -19613,10 +19613,10 @@ pub unsafe fn _mm512_maskz_permutex_pd<const MASK: i32>(k: __mmask8, a: __m512d)
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm256_permutex_pd<const MASK: i32>(a: __m256d) -> __m256d {
     static_assert_imm8!(MASK);
-    simd_shuffle4(
+    simd_shuffle4!(
         a,
         a,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11),
@@ -20867,10 +20867,10 @@ pub unsafe fn _mm_mask2_permutex2var_pd(
 #[rustc_legacy_const_generics(1)]
 pub unsafe fn _mm512_shuffle_epi32<const MASK: _MM_PERM_ENUM>(a: __m512i) -> __m512i {
     static_assert_imm8!(MASK);
-    let r: i32x16 = simd_shuffle16(
+    let r: i32x16 = simd_shuffle16!(
         a.as_i32x16(),
         a.as_i32x16(),
-        [
+        <const MASK: _MM_PERM_ENUM> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             (MASK as u32 >> 4) & 0b11,
@@ -21003,10 +21003,10 @@ pub unsafe fn _mm_maskz_shuffle_epi32<const MASK: _MM_PERM_ENUM>(
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shuffle_ps<const MASK: i32>(a: __m512, b: __m512) -> __m512 {
     static_assert_imm8!(MASK);
-    simd_shuffle16(
+    simd_shuffle16!(
         a,
         b,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b11,
             (MASK as u32 >> 2) & 0b11,
             ((MASK as u32 >> 4) & 0b11) + 16,
@@ -21140,10 +21140,10 @@ pub unsafe fn _mm_maskz_shuffle_ps<const MASK: i32>(k: __mmask8, a: __m128, b: _
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn _mm512_shuffle_pd<const MASK: i32>(a: __m512d, b: __m512d) -> __m512d {
     static_assert_imm8!(MASK);
-    simd_shuffle8(
+    simd_shuffle8!(
         a,
         b,
-        [
+        <const MASK: i32> [
             MASK as u32 & 0b1,
             ((MASK as u32 >> 1) & 0b1) + 8,
             ((MASK as u32 >> 2) & 0b1) + 2,
@@ -21275,10 +21275,10 @@ pub unsafe fn _mm512_shuffle_i32x4<const MASK: i32>(a: __m512i, b: __m512i) -> _
     static_assert_imm8!(MASK);
     let a = a.as_i32x16();
     let b = b.as_i32x16();
-    let r: i32x16 = simd_shuffle16(
+    let r: i32x16 = simd_shuffle16!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b11) * 4 + 0,
             (MASK as u32 & 0b11) * 4 + 1,
             (MASK as u32 & 0b11) * 4 + 2,
@@ -21347,10 +21347,10 @@ pub unsafe fn _mm256_shuffle_i32x4<const MASK: i32>(a: __m256i, b: __m256i) -> _
     static_assert_imm8!(MASK);
     let a = a.as_i32x8();
     let b = b.as_i32x8();
-    let r: i32x8 = simd_shuffle8(
+    let r: i32x8 = simd_shuffle8!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b1) * 4 + 0,
             (MASK as u32 & 0b1) * 4 + 1,
             (MASK as u32 & 0b1) * 4 + 2,
@@ -21411,10 +21411,10 @@ pub unsafe fn _mm512_shuffle_i64x2<const MASK: i32>(a: __m512i, b: __m512i) -> _
     static_assert_imm8!(MASK);
     let a = a.as_i64x8();
     let b = b.as_i64x8();
-    let r: i64x8 = simd_shuffle8(
+    let r: i64x8 = simd_shuffle8!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b11) * 2 + 0,
             (MASK as u32 & 0b11) * 2 + 1,
             ((MASK as u32 >> 2) & 0b11) * 2 + 0,
@@ -21475,10 +21475,10 @@ pub unsafe fn _mm256_shuffle_i64x2<const MASK: i32>(a: __m256i, b: __m256i) -> _
     static_assert_imm8!(MASK);
     let a = a.as_i64x4();
     let b = b.as_i64x4();
-    let r: i64x4 = simd_shuffle4(
+    let r: i64x4 = simd_shuffle4!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b1) * 2 + 0,
             (MASK as u32 & 0b1) * 2 + 1,
             ((MASK as u32 >> 1) & 0b1) * 2 + 0 + 4,
@@ -21535,10 +21535,10 @@ pub unsafe fn _mm512_shuffle_f32x4<const MASK: i32>(a: __m512, b: __m512) -> __m
     static_assert_imm8!(MASK);
     let a = a.as_f32x16();
     let b = b.as_f32x16();
-    let r: f32x16 = simd_shuffle16(
+    let r: f32x16 = simd_shuffle16!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b11) * 4 + 0,
             (MASK as u32 & 0b11) * 4 + 1,
             (MASK as u32 & 0b11) * 4 + 2,
@@ -21607,10 +21607,10 @@ pub unsafe fn _mm256_shuffle_f32x4<const MASK: i32>(a: __m256, b: __m256) -> __m
     static_assert_imm8!(MASK);
     let a = a.as_f32x8();
     let b = b.as_f32x8();
-    let r: f32x8 = simd_shuffle8(
+    let r: f32x8 = simd_shuffle8!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b1) * 4 + 0,
             (MASK as u32 & 0b1) * 4 + 1,
             (MASK as u32 & 0b1) * 4 + 2,
@@ -21671,10 +21671,10 @@ pub unsafe fn _mm512_shuffle_f64x2<const MASK: i32>(a: __m512d, b: __m512d) -> _
     static_assert_imm8!(MASK);
     let a = a.as_f64x8();
     let b = b.as_f64x8();
-    let r: f64x8 = simd_shuffle8(
+    let r: f64x8 = simd_shuffle8!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b11) * 2 + 0,
             (MASK as u32 & 0b11) * 2 + 1,
             ((MASK as u32 >> 2) & 0b11) * 2 + 0,
@@ -21735,10 +21735,10 @@ pub unsafe fn _mm256_shuffle_f64x2<const MASK: i32>(a: __m256d, b: __m256d) -> _
     static_assert_imm8!(MASK);
     let a = a.as_f64x4();
     let b = b.as_f64x4();
-    let r: f64x4 = simd_shuffle4(
+    let r: f64x4 = simd_shuffle4!(
         a,
         b,
-        [
+        <const MASK: i32> [
             (MASK as u32 & 0b1) * 2 + 0,
             (MASK as u32 & 0b1) * 2 + 1,
             ((MASK as u32 >> 1) & 0b1) * 2 + 0 + 4,
@@ -21797,10 +21797,10 @@ pub unsafe fn _mm256_maskz_shuffle_f64x2<const MASK: i32>(
 pub unsafe fn _mm512_extractf32x4_ps<const IMM8: i32>(a: __m512) -> __m128 {
     static_assert_imm2!(IMM8);
     match IMM8 & 0x3 {
-        0 => simd_shuffle4(a, _mm512_undefined_ps(), [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, _mm512_undefined_ps(), [4, 5, 6, 7]),
-        2 => simd_shuffle4(a, _mm512_undefined_ps(), [8, 9, 10, 11]),
-        _ => simd_shuffle4(a, _mm512_undefined_ps(), [12, 13, 14, 15]),
+        0 => simd_shuffle4!(a, _mm512_undefined_ps(), [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, _mm512_undefined_ps(), [4, 5, 6, 7]),
+        2 => simd_shuffle4!(a, _mm512_undefined_ps(), [8, 9, 10, 11]),
+        _ => simd_shuffle4!(a, _mm512_undefined_ps(), [12, 13, 14, 15]),
     }
 }
 
@@ -21854,8 +21854,8 @@ pub unsafe fn _mm512_maskz_extractf32x4_ps<const IMM8: i32>(k: __mmask8, a: __m5
 pub unsafe fn _mm256_extractf32x4_ps<const IMM8: i32>(a: __m256) -> __m128 {
     static_assert_imm1!(IMM8);
     match IMM8 & 0x1 {
-        0 => simd_shuffle4(a, _mm256_undefined_ps(), [0, 1, 2, 3]),
-        _ => simd_shuffle4(a, _mm256_undefined_ps(), [4, 5, 6, 7]),
+        0 => simd_shuffle4!(a, _mm256_undefined_ps(), [0, 1, 2, 3]),
+        _ => simd_shuffle4!(a, _mm256_undefined_ps(), [4, 5, 6, 7]),
     }
 }
 
@@ -21909,8 +21909,8 @@ pub unsafe fn _mm256_maskz_extractf32x4_ps<const IMM8: i32>(k: __mmask8, a: __m2
 pub unsafe fn _mm512_extracti64x4_epi64<const IMM1: i32>(a: __m512i) -> __m256i {
     static_assert_imm1!(IMM1);
     match IMM1 {
-        0 => simd_shuffle4(a, _mm512_set1_epi64(0), [0, 1, 2, 3]),
-        _ => simd_shuffle4(a, _mm512_set1_epi64(0), [4, 5, 6, 7]),
+        0 => simd_shuffle4!(a, _mm512_set1_epi64(0), [0, 1, 2, 3]),
+        _ => simd_shuffle4!(a, _mm512_set1_epi64(0), [4, 5, 6, 7]),
     }
 }
 
@@ -21964,8 +21964,8 @@ pub unsafe fn _mm512_maskz_extracti64x4_epi64<const IMM1: i32>(k: __mmask8, a: _
 pub unsafe fn _mm512_extractf64x4_pd<const IMM8: i32>(a: __m512d) -> __m256d {
     static_assert_imm1!(IMM8);
     match IMM8 & 0x1 {
-        0 => simd_shuffle4(a, _mm512_undefined_pd(), [0, 1, 2, 3]),
-        _ => simd_shuffle4(a, _mm512_undefined_pd(), [4, 5, 6, 7]),
+        0 => simd_shuffle4!(a, _mm512_undefined_pd(), [0, 1, 2, 3]),
+        _ => simd_shuffle4!(a, _mm512_undefined_pd(), [4, 5, 6, 7]),
     }
 }
 
@@ -22021,10 +22021,10 @@ pub unsafe fn _mm512_extracti32x4_epi32<const IMM2: i32>(a: __m512i) -> __m128i 
     let a = a.as_i32x16();
     let undefined = _mm512_undefined_epi32().as_i32x16();
     let extract: i32x4 = match IMM2 {
-        0 => simd_shuffle4(a, undefined, [0, 1, 2, 3]),
-        1 => simd_shuffle4(a, undefined, [4, 5, 6, 7]),
-        2 => simd_shuffle4(a, undefined, [8, 9, 10, 11]),
-        _ => simd_shuffle4(a, undefined, [12, 13, 14, 15]),
+        0 => simd_shuffle4!(a, undefined, [0, 1, 2, 3]),
+        1 => simd_shuffle4!(a, undefined, [4, 5, 6, 7]),
+        2 => simd_shuffle4!(a, undefined, [8, 9, 10, 11]),
+        _ => simd_shuffle4!(a, undefined, [12, 13, 14, 15]),
     };
     transmute(extract)
 }
@@ -22081,8 +22081,8 @@ pub unsafe fn _mm256_extracti32x4_epi32<const IMM1: i32>(a: __m256i) -> __m128i 
     let a = a.as_i32x8();
     let undefined = _mm256_undefined_si256().as_i32x8();
     let extract: i32x4 = match IMM1 {
-        0 => simd_shuffle4(a, undefined, [0, 1, 2, 3]),
-        _ => simd_shuffle4(a, undefined, [4, 5, 6, 7]),
+        0 => simd_shuffle4!(a, undefined, [0, 1, 2, 3]),
+        _ => simd_shuffle4!(a, undefined, [4, 5, 6, 7]),
     };
     transmute(extract)
 }
@@ -22131,7 +22131,7 @@ pub unsafe fn _mm256_maskz_extracti32x4_epi32<const IMM1: i32>(k: __mmask8, a: _
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovsldup))]
 pub unsafe fn _mm512_moveldup_ps(a: __m512) -> __m512 {
-    let r: f32x16 = simd_shuffle16(a, a, [0, 0, 2, 2, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14]);
+    let r: f32x16 = simd_shuffle16!(a, a, [0, 0, 2, 2, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14]);
     transmute(r)
 }
 
@@ -22142,7 +22142,7 @@ pub unsafe fn _mm512_moveldup_ps(a: __m512) -> __m512 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovsldup))]
 pub unsafe fn _mm512_mask_moveldup_ps(src: __m512, k: __mmask16, a: __m512) -> __m512 {
-    let mov: f32x16 = simd_shuffle16(a, a, [0, 0, 2, 2, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14]);
+    let mov: f32x16 = simd_shuffle16!(a, a, [0, 0, 2, 2, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14]);
     transmute(simd_select_bitmask(k, mov, src.as_f32x16()))
 }
 
@@ -22153,7 +22153,7 @@ pub unsafe fn _mm512_mask_moveldup_ps(src: __m512, k: __mmask16, a: __m512) -> _
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovsldup))]
 pub unsafe fn _mm512_maskz_moveldup_ps(k: __mmask16, a: __m512) -> __m512 {
-    let mov: f32x16 = simd_shuffle16(a, a, [0, 0, 2, 2, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14]);
+    let mov: f32x16 = simd_shuffle16!(a, a, [0, 0, 2, 2, 4, 4, 6, 6, 8, 8, 10, 10, 12, 12, 14, 14]);
     let zero = _mm512_setzero_ps().as_f32x16();
     transmute(simd_select_bitmask(k, mov, zero))
 }
@@ -22211,7 +22211,7 @@ pub unsafe fn _mm_maskz_moveldup_ps(k: __mmask8, a: __m128) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovshdup))]
 pub unsafe fn _mm512_movehdup_ps(a: __m512) -> __m512 {
-    let r: f32x16 = simd_shuffle16(a, a, [1, 1, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15]);
+    let r: f32x16 = simd_shuffle16!(a, a, [1, 1, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15]);
     transmute(r)
 }
 
@@ -22222,7 +22222,7 @@ pub unsafe fn _mm512_movehdup_ps(a: __m512) -> __m512 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovshdup))]
 pub unsafe fn _mm512_mask_movehdup_ps(src: __m512, k: __mmask16, a: __m512) -> __m512 {
-    let mov: f32x16 = simd_shuffle16(a, a, [1, 1, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15]);
+    let mov: f32x16 = simd_shuffle16!(a, a, [1, 1, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15]);
     transmute(simd_select_bitmask(k, mov, src.as_f32x16()))
 }
 
@@ -22233,7 +22233,7 @@ pub unsafe fn _mm512_mask_movehdup_ps(src: __m512, k: __mmask16, a: __m512) -> _
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovshdup))]
 pub unsafe fn _mm512_maskz_movehdup_ps(k: __mmask16, a: __m512) -> __m512 {
-    let mov: f32x16 = simd_shuffle16(a, a, [1, 1, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15]);
+    let mov: f32x16 = simd_shuffle16!(a, a, [1, 1, 3, 3, 5, 5, 7, 7, 9, 9, 11, 11, 13, 13, 15, 15]);
     let zero = _mm512_setzero_ps().as_f32x16();
     transmute(simd_select_bitmask(k, mov, zero))
 }
@@ -22291,7 +22291,7 @@ pub unsafe fn _mm_maskz_movehdup_ps(k: __mmask8, a: __m128) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovddup))]
 pub unsafe fn _mm512_movedup_pd(a: __m512d) -> __m512d {
-    let r: f64x8 = simd_shuffle8(a, a, [0, 0, 2, 2, 4, 4, 6, 6]);
+    let r: f64x8 = simd_shuffle8!(a, a, [0, 0, 2, 2, 4, 4, 6, 6]);
     transmute(r)
 }
 
@@ -22302,7 +22302,7 @@ pub unsafe fn _mm512_movedup_pd(a: __m512d) -> __m512d {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovddup))]
 pub unsafe fn _mm512_mask_movedup_pd(src: __m512d, k: __mmask8, a: __m512d) -> __m512d {
-    let mov: f64x8 = simd_shuffle8(a, a, [0, 0, 2, 2, 4, 4, 6, 6]);
+    let mov: f64x8 = simd_shuffle8!(a, a, [0, 0, 2, 2, 4, 4, 6, 6]);
     transmute(simd_select_bitmask(k, mov, src.as_f64x8()))
 }
 
@@ -22313,7 +22313,7 @@ pub unsafe fn _mm512_mask_movedup_pd(src: __m512d, k: __mmask8, a: __m512d) -> _
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vmovddup))]
 pub unsafe fn _mm512_maskz_movedup_pd(k: __mmask8, a: __m512d) -> __m512d {
-    let mov: f64x8 = simd_shuffle8(a, a, [0, 0, 2, 2, 4, 4, 6, 6]);
+    let mov: f64x8 = simd_shuffle8!(a, a, [0, 0, 2, 2, 4, 4, 6, 6]);
     let zero = _mm512_setzero_pd().as_f64x8();
     transmute(simd_select_bitmask(k, mov, zero))
 }
@@ -22376,22 +22376,22 @@ pub unsafe fn _mm512_inserti32x4<const IMM8: i32>(a: __m512i, b: __m128i) -> __m
     let a = a.as_i32x16();
     let b = _mm512_castsi128_si512(b).as_i32x16();
     let ret: i32x16 = match IMM8 & 0b11 {
-        0 => simd_shuffle16(
+        0 => simd_shuffle16!(
             a,
             b,
             [16, 17, 18, 19, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         ),
-        1 => simd_shuffle16(
+        1 => simd_shuffle16!(
             a,
             b,
             [0, 1, 2, 3, 16, 17, 18, 19, 8, 9, 10, 11, 12, 13, 14, 15],
         ),
-        2 => simd_shuffle16(
+        2 => simd_shuffle16!(
             a,
             b,
             [0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 12, 13, 14, 15],
         ),
-        _ => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19]),
+        _ => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19]),
     };
     transmute(ret)
 }
@@ -22447,8 +22447,8 @@ pub unsafe fn _mm256_inserti32x4<const IMM8: i32>(a: __m256i, b: __m128i) -> __m
     let a = a.as_i32x8();
     let b = _mm256_castsi128_si256(b).as_i32x8();
     let ret: i32x8 = match IMM8 & 0b1 {
-        0 => simd_shuffle8(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
-        _ => simd_shuffle8(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
+        0 => simd_shuffle8!(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
+        _ => simd_shuffle8!(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
     };
     transmute(ret)
 }
@@ -22506,8 +22506,8 @@ pub unsafe fn _mm512_inserti64x4<const IMM8: i32>(a: __m512i, b: __m256i) -> __m
     static_assert_imm1!(IMM8);
     let b = _mm512_castsi256_si512(b);
     match IMM8 & 0b1 {
-        0 => simd_shuffle8(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
-        _ => simd_shuffle8(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
+        0 => simd_shuffle8!(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
+        _ => simd_shuffle8!(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
     }
 }
 
@@ -22558,22 +22558,22 @@ pub unsafe fn _mm512_insertf32x4<const IMM8: i32>(a: __m512, b: __m128) -> __m51
     static_assert_imm2!(IMM8);
     let b = _mm512_castps128_ps512(b);
     match IMM8 & 0b11 {
-        0 => simd_shuffle16(
+        0 => simd_shuffle16!(
             a,
             b,
             [16, 17, 18, 19, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         ),
-        1 => simd_shuffle16(
+        1 => simd_shuffle16!(
             a,
             b,
             [0, 1, 2, 3, 16, 17, 18, 19, 8, 9, 10, 11, 12, 13, 14, 15],
         ),
-        2 => simd_shuffle16(
+        2 => simd_shuffle16!(
             a,
             b,
             [0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 12, 13, 14, 15],
         ),
-        _ => simd_shuffle16(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19]),
+        _ => simd_shuffle16!(a, b, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19]),
     }
 }
 
@@ -22627,8 +22627,8 @@ pub unsafe fn _mm256_insertf32x4<const IMM8: i32>(a: __m256, b: __m128) -> __m25
     static_assert_imm1!(IMM8);
     let b = _mm256_castps128_ps256(b);
     match IMM8 & 0b1 {
-        0 => simd_shuffle8(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
-        _ => simd_shuffle8(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
+        0 => simd_shuffle8!(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
+        _ => simd_shuffle8!(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
     }
 }
 
@@ -22685,8 +22685,8 @@ pub unsafe fn _mm512_insertf64x4<const IMM8: i32>(a: __m512d, b: __m256d) -> __m
     static_assert_imm1!(IMM8);
     let b = _mm512_castpd256_pd512(b);
     match IMM8 & 0b1 {
-        0 => simd_shuffle8(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
-        _ => simd_shuffle8(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
+        0 => simd_shuffle8!(a, b, [8, 9, 10, 11, 4, 5, 6, 7]),
+        _ => simd_shuffle8!(a, b, [0, 1, 2, 3, 8, 9, 10, 11]),
     }
 }
 
@@ -22736,7 +22736,7 @@ pub unsafe fn _mm512_unpackhi_epi32(a: __m512i, b: __m512i) -> __m512i {
     let a = a.as_i32x16();
     let b = b.as_i32x16();
     #[rustfmt::skip]
-    let r: i32x16 = simd_shuffle16(
+    let r: i32x16 = simd_shuffle16!(
         a, b,
         [ 2, 18, 3, 19,
           2 + 4, 18 + 4, 3 + 4, 19 + 4,
@@ -22837,7 +22837,7 @@ pub unsafe fn _mm_maskz_unpackhi_epi32(k: __mmask8, a: __m128i, b: __m128i) -> _
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vunpckhpd))] //should be vpunpckhqdq
 pub unsafe fn _mm512_unpackhi_epi64(a: __m512i, b: __m512i) -> __m512i {
-    simd_shuffle8(a, b, [1, 9, 1 + 2, 9 + 2, 1 + 4, 9 + 4, 1 + 6, 9 + 6])
+    simd_shuffle8!(a, b, [1, 9, 1 + 2, 9 + 2, 1 + 4, 9 + 4, 1 + 6, 9 + 6])
 }
 
 /// Unpack and interleave 64-bit integers from the high half of each 128-bit lane in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -22932,7 +22932,7 @@ pub unsafe fn _mm_maskz_unpackhi_epi64(k: __mmask8, a: __m128i, b: __m128i) -> _
 #[cfg_attr(test, assert_instr(vunpckhps))]
 pub unsafe fn _mm512_unpackhi_ps(a: __m512, b: __m512) -> __m512 {
     #[rustfmt::skip]
-    simd_shuffle16(
+    simd_shuffle16!(
         a, b,
         [ 2, 18, 3, 19,
           2 + 4, 18 + 4, 3 + 4, 19 + 4,
@@ -23017,7 +23017,7 @@ pub unsafe fn _mm_maskz_unpackhi_ps(k: __mmask8, a: __m128, b: __m128) -> __m128
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vunpckhpd))]
 pub unsafe fn _mm512_unpackhi_pd(a: __m512d, b: __m512d) -> __m512d {
-    simd_shuffle8(a, b, [1, 9, 1 + 2, 9 + 2, 1 + 4, 9 + 4, 1 + 6, 9 + 6])
+    simd_shuffle8!(a, b, [1, 9, 1 + 2, 9 + 2, 1 + 4, 9 + 4, 1 + 6, 9 + 6])
 }
 
 /// Unpack and interleave double-precision (64-bit) floating-point elements from the high half of each 128-bit lane in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -23109,7 +23109,7 @@ pub unsafe fn _mm512_unpacklo_epi32(a: __m512i, b: __m512i) -> __m512i {
     let a = a.as_i32x16();
     let b = b.as_i32x16();
     #[rustfmt::skip]
-    let r: i32x16 = simd_shuffle16(
+    let r: i32x16 = simd_shuffle16!(
         a, b,
         [ 0, 16, 1, 17,
           0 + 4, 16 + 4, 1 + 4, 17 + 4,
@@ -23210,7 +23210,7 @@ pub unsafe fn _mm_maskz_unpacklo_epi32(k: __mmask8, a: __m128i, b: __m128i) -> _
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vunpcklpd))] //should be vpunpcklqdq
 pub unsafe fn _mm512_unpacklo_epi64(a: __m512i, b: __m512i) -> __m512i {
-    simd_shuffle8(a, b, [0, 8, 0 + 2, 8 + 2, 0 + 4, 8 + 4, 0 + 6, 8 + 6])
+    simd_shuffle8!(a, b, [0, 8, 0 + 2, 8 + 2, 0 + 4, 8 + 4, 0 + 6, 8 + 6])
 }
 
 /// Unpack and interleave 64-bit integers from the low half of each 128-bit lane in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -23305,7 +23305,7 @@ pub unsafe fn _mm_maskz_unpacklo_epi64(k: __mmask8, a: __m128i, b: __m128i) -> _
 #[cfg_attr(test, assert_instr(vunpcklps))]
 pub unsafe fn _mm512_unpacklo_ps(a: __m512, b: __m512) -> __m512 {
     #[rustfmt::skip]
-    simd_shuffle16(a, b,
+    simd_shuffle16!(a, b,
                    [ 0, 16, 1, 17,
                      0 + 4, 16 + 4, 1 + 4, 17 + 4,
                      0 + 8, 16 + 8, 1 + 8, 17 + 8,
@@ -23389,7 +23389,7 @@ pub unsafe fn _mm_maskz_unpacklo_ps(k: __mmask8, a: __m128, b: __m128) -> __m128
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vunpcklpd))]
 pub unsafe fn _mm512_unpacklo_pd(a: __m512d, b: __m512d) -> __m512d {
-    simd_shuffle8(a, b, [0, 8, 0 + 2, 8 + 2, 0 + 4, 8 + 4, 0 + 6, 8 + 6])
+    simd_shuffle8!(a, b, [0, 8, 0 + 2, 8 + 2, 0 + 4, 8 + 4, 0 + 6, 8 + 6])
 }
 
 /// Unpack and interleave double-precision (64-bit) floating-point elements from the low half of each 128-bit lane in a and b, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -23477,7 +23477,7 @@ pub unsafe fn _mm_maskz_unpacklo_pd(k: __mmask8, a: __m128d, b: __m128d) -> __m1
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castps128_ps512(a: __m128) -> __m512 {
-    simd_shuffle16(
+    simd_shuffle16!(
         a,
         _mm_set1_ps(-1.),
         [0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
@@ -23490,7 +23490,7 @@ pub unsafe fn _mm512_castps128_ps512(a: __m128) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castps256_ps512(a: __m256) -> __m512 {
-    simd_shuffle16(
+    simd_shuffle16!(
         a,
         _mm256_set1_ps(-1.),
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8],
@@ -23503,7 +23503,7 @@ pub unsafe fn _mm512_castps256_ps512(a: __m256) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_zextps128_ps512(a: __m128) -> __m512 {
-    simd_shuffle16(
+    simd_shuffle16!(
         a,
         _mm_set1_ps(0.),
         [0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
@@ -23516,7 +23516,7 @@ pub unsafe fn _mm512_zextps128_ps512(a: __m128) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_zextps256_ps512(a: __m256) -> __m512 {
-    simd_shuffle16(
+    simd_shuffle16!(
         a,
         _mm256_set1_ps(0.),
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8],
@@ -23529,7 +23529,7 @@ pub unsafe fn _mm512_zextps256_ps512(a: __m256) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castps512_ps128(a: __m512) -> __m128 {
-    simd_shuffle4(a, a, [0, 1, 2, 3])
+    simd_shuffle4!(a, a, [0, 1, 2, 3])
 }
 
 /// Cast vector of type __m512 to type __m256. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23538,7 +23538,7 @@ pub unsafe fn _mm512_castps512_ps128(a: __m512) -> __m128 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castps512_ps256(a: __m512) -> __m256 {
-    simd_shuffle8(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
 }
 
 /// Cast vector of type __m512 to type __m512d. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23565,7 +23565,7 @@ pub unsafe fn _mm512_castps_si512(a: __m512) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castpd128_pd512(a: __m128d) -> __m512d {
-    simd_shuffle8(a, _mm_set1_pd(-1.), [0, 1, 2, 2, 2, 2, 2, 2])
+    simd_shuffle8!(a, _mm_set1_pd(-1.), [0, 1, 2, 2, 2, 2, 2, 2])
 }
 
 /// Cast vector of type __m256d to type __m512d; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23574,7 +23574,7 @@ pub unsafe fn _mm512_castpd128_pd512(a: __m128d) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castpd256_pd512(a: __m256d) -> __m512d {
-    simd_shuffle8(a, _mm256_set1_pd(-1.), [0, 1, 2, 3, 4, 4, 4, 4])
+    simd_shuffle8!(a, _mm256_set1_pd(-1.), [0, 1, 2, 3, 4, 4, 4, 4])
 }
 
 /// Cast vector of type __m128d to type __m512d; the upper 384 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23583,7 +23583,7 @@ pub unsafe fn _mm512_castpd256_pd512(a: __m256d) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_zextpd128_pd512(a: __m128d) -> __m512d {
-    simd_shuffle8(a, _mm_set1_pd(0.), [0, 1, 2, 2, 2, 2, 2, 2])
+    simd_shuffle8!(a, _mm_set1_pd(0.), [0, 1, 2, 2, 2, 2, 2, 2])
 }
 
 /// Cast vector of type __m256d to type __m512d; the upper 256 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23592,7 +23592,7 @@ pub unsafe fn _mm512_zextpd128_pd512(a: __m128d) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_zextpd256_pd512(a: __m256d) -> __m512d {
-    simd_shuffle8(a, _mm256_set1_pd(0.), [0, 1, 2, 3, 4, 4, 4, 4])
+    simd_shuffle8!(a, _mm256_set1_pd(0.), [0, 1, 2, 3, 4, 4, 4, 4])
 }
 
 /// Cast vector of type __m512d to type __m128d. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23601,7 +23601,7 @@ pub unsafe fn _mm512_zextpd256_pd512(a: __m256d) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castpd512_pd128(a: __m512d) -> __m128d {
-    simd_shuffle2(a, a, [0, 1])
+    simd_shuffle2!(a, a, [0, 1])
 }
 
 /// Cast vector of type __m512d to type __m256d. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23610,7 +23610,7 @@ pub unsafe fn _mm512_castpd512_pd128(a: __m512d) -> __m128d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castpd512_pd256(a: __m512d) -> __m256d {
-    simd_shuffle4(a, a, [0, 1, 2, 3])
+    simd_shuffle4!(a, a, [0, 1, 2, 3])
 }
 
 /// Cast vector of type __m512d to type __m512. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23637,7 +23637,7 @@ pub unsafe fn _mm512_castpd_si512(a: __m512d) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castsi128_si512(a: __m128i) -> __m512i {
-    simd_shuffle8(a, _mm_set1_epi64x(-1), [0, 1, 2, 2, 2, 2, 2, 2])
+    simd_shuffle8!(a, _mm_set1_epi64x(-1), [0, 1, 2, 2, 2, 2, 2, 2])
 }
 
 /// Cast vector of type __m256i to type __m512i; the upper 256 bits of the result are undefined. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23646,7 +23646,7 @@ pub unsafe fn _mm512_castsi128_si512(a: __m128i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castsi256_si512(a: __m256i) -> __m512i {
-    simd_shuffle8(a, _mm256_set1_epi64x(-1), [0, 1, 2, 3, 4, 4, 4, 4])
+    simd_shuffle8!(a, _mm256_set1_epi64x(-1), [0, 1, 2, 3, 4, 4, 4, 4])
 }
 
 /// Cast vector of type __m128i to type __m512i; the upper 384 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23655,7 +23655,7 @@ pub unsafe fn _mm512_castsi256_si512(a: __m256i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_zextsi128_si512(a: __m128i) -> __m512i {
-    simd_shuffle8(a, _mm_set1_epi64x(0), [0, 1, 2, 2, 2, 2, 2, 2])
+    simd_shuffle8!(a, _mm_set1_epi64x(0), [0, 1, 2, 2, 2, 2, 2, 2])
 }
 
 /// Cast vector of type __m256i to type __m512i; the upper 256 bits of the result are zeroed. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23664,7 +23664,7 @@ pub unsafe fn _mm512_zextsi128_si512(a: __m128i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_zextsi256_si512(a: __m256i) -> __m512i {
-    simd_shuffle8(a, _mm256_set1_epi64x(0), [0, 1, 2, 3, 4, 4, 4, 4])
+    simd_shuffle8!(a, _mm256_set1_epi64x(0), [0, 1, 2, 3, 4, 4, 4, 4])
 }
 
 /// Cast vector of type __m512i to type __m128i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23673,7 +23673,7 @@ pub unsafe fn _mm512_zextsi256_si512(a: __m256i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castsi512_si128(a: __m512i) -> __m128i {
-    simd_shuffle2(a, a, [0, 1])
+    simd_shuffle2!(a, a, [0, 1])
 }
 
 /// Cast vector of type __m512i to type __m256i. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23682,7 +23682,7 @@ pub unsafe fn _mm512_castsi512_si128(a: __m512i) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 pub unsafe fn _mm512_castsi512_si256(a: __m512i) -> __m256i {
-    simd_shuffle4(a, a, [0, 1, 2, 3])
+    simd_shuffle4!(a, a, [0, 1, 2, 3])
 }
 
 /// Cast vector of type __m512i to type __m512. This intrinsic is only used for compilation and does not generate any instructions, thus it has zero latency.
@@ -23722,7 +23722,7 @@ pub unsafe fn _mm512_cvtsi512_si32(a: __m512i) -> i32 {
 #[cfg_attr(test, assert_instr(vbroadcast))] //should be vpbroadcastd
 pub unsafe fn _mm512_broadcastd_epi32(a: __m128i) -> __m512i {
     let a = _mm512_castsi128_si512(a).as_i32x16();
-    let ret: i32x16 = simd_shuffle16(a, a, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let ret: i32x16 = simd_shuffle16!(a, a, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
     transmute(ret)
 }
 
@@ -23802,7 +23802,7 @@ pub unsafe fn _mm_maskz_broadcastd_epi32(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vbroadcas))] //should be vpbroadcastq
 pub unsafe fn _mm512_broadcastq_epi64(a: __m128i) -> __m512i {
-    simd_shuffle8(a, a, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(a, a, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Broadcast the low packed 64-bit integer from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -23881,7 +23881,7 @@ pub unsafe fn _mm_maskz_broadcastq_epi64(k: __mmask8, a: __m128i) -> __m128i {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 pub unsafe fn _mm512_broadcastss_ps(a: __m128) -> __m512 {
-    simd_shuffle16(a, a, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle16!(a, a, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Broadcast the low single-precision (32-bit) floating-point element from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -23960,7 +23960,7 @@ pub unsafe fn _mm_maskz_broadcastss_ps(k: __mmask8, a: __m128) -> __m128 {
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 pub unsafe fn _mm512_broadcastsd_pd(a: __m128d) -> __m512d {
-    simd_shuffle8(a, a, [0, 0, 0, 0, 0, 0, 0, 0])
+    simd_shuffle8!(a, a, [0, 0, 0, 0, 0, 0, 0, 0])
 }
 
 /// Broadcast the low double-precision (64-bit) floating-point element from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -24016,7 +24016,7 @@ pub unsafe fn _mm256_maskz_broadcastsd_pd(k: __mmask8, a: __m128d) -> __m256d {
 #[target_feature(enable = "avx512f")] //msvc: vbroadcasti32x4, linux: vshuf
 pub unsafe fn _mm512_broadcast_i32x4(a: __m128i) -> __m512i {
     let a = a.as_i32x4();
-    let ret: i32x16 = simd_shuffle16(a, a, [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]);
+    let ret: i32x16 = simd_shuffle16!(a, a, [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3]);
     transmute(ret)
 }
 
@@ -24048,7 +24048,7 @@ pub unsafe fn _mm512_maskz_broadcast_i32x4(k: __mmask16, a: __m128i) -> __m512i 
 #[target_feature(enable = "avx512f,avx512vl")] //msvc: vbroadcasti32x4, linux: vshuf
 pub unsafe fn _mm256_broadcast_i32x4(a: __m128i) -> __m256i {
     let a = a.as_i32x4();
-    let ret: i32x8 = simd_shuffle8(a, a, [0, 1, 2, 3, 0, 1, 2, 3]);
+    let ret: i32x8 = simd_shuffle8!(a, a, [0, 1, 2, 3, 0, 1, 2, 3]);
     transmute(ret)
 }
 
@@ -24079,7 +24079,7 @@ pub unsafe fn _mm256_maskz_broadcast_i32x4(k: __mmask8, a: __m128i) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcasti64x4, linux: vperm
 pub unsafe fn _mm512_broadcast_i64x4(a: __m256i) -> __m512i {
-    simd_shuffle8(a, a, [0, 1, 2, 3, 0, 1, 2, 3])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 0, 1, 2, 3])
 }
 
 /// Broadcast the 4 packed 64-bit integers from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -24109,7 +24109,7 @@ pub unsafe fn _mm512_maskz_broadcast_i64x4(k: __mmask8, a: __m256i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcastf32x4, linux: vshuf
 pub unsafe fn _mm512_broadcast_f32x4(a: __m128) -> __m512 {
-    simd_shuffle16(a, a, [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3])
+    simd_shuffle16!(a, a, [0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3])
 }
 
 /// Broadcast the 4 packed single-precision (32-bit) floating-point elements from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -24139,7 +24139,7 @@ pub unsafe fn _mm512_maskz_broadcast_f32x4(k: __mmask16, a: __m128) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")] //msvc: vbroadcastf32x4, linux: vshuf
 pub unsafe fn _mm256_broadcast_f32x4(a: __m128) -> __m256 {
-    simd_shuffle8(a, a, [0, 1, 2, 3, 0, 1, 2, 3])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 0, 1, 2, 3])
 }
 
 /// Broadcast the 4 packed single-precision (32-bit) floating-point elements from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -24169,7 +24169,7 @@ pub unsafe fn _mm256_maskz_broadcast_f32x4(k: __mmask8, a: __m128) -> __m256 {
 #[inline]
 #[target_feature(enable = "avx512f")] //msvc: vbroadcastf64x4, linux: vperm
 pub unsafe fn _mm512_broadcast_f64x4(a: __m256d) -> __m512d {
-    simd_shuffle8(a, a, [0, 1, 2, 3, 0, 1, 2, 3])
+    simd_shuffle8!(a, a, [0, 1, 2, 3, 0, 1, 2, 3])
 }
 
 /// Broadcast the 4 packed double-precision (64-bit) floating-point elements from a to all elements of dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
@@ -24326,66 +24326,62 @@ pub unsafe fn _mm512_alignr_epi32<const IMM8: i32>(a: __m512i, b: __m512i) -> __
     let b = b.as_i32x16();
     let imm8: i32 = IMM8 % 16;
     let r: i32x16 = match imm8 {
-        0 => simd_shuffle16(
+        0 => simd_shuffle16!(
             a,
             b,
-            [
-                16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-            ],
+            [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,],
         ),
-        1 => simd_shuffle16(
+        1 => simd_shuffle16!(
             a,
             b,
-            [
-                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0,
-            ],
+            [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0,],
         ),
-        2 => simd_shuffle16(
+        2 => simd_shuffle16!(
             a,
             b,
             [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1],
         ),
-        3 => simd_shuffle16(
+        3 => simd_shuffle16!(
             a,
             b,
             [19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2],
         ),
-        4 => simd_shuffle16(
+        4 => simd_shuffle16!(
             a,
             b,
             [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3],
         ),
-        5 => simd_shuffle16(
+        5 => simd_shuffle16!(
             a,
             b,
             [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4],
         ),
-        6 => simd_shuffle16(
+        6 => simd_shuffle16!(
             a,
             b,
             [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5],
         ),
-        7 => simd_shuffle16(
+        7 => simd_shuffle16!(
             a,
             b,
             [23, 24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6],
         ),
-        8 => simd_shuffle16(
+        8 => simd_shuffle16!(
             a,
             b,
             [24, 25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7],
         ),
-        9 => simd_shuffle16(
+        9 => simd_shuffle16!(
             a,
             b,
             [25, 26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8],
         ),
-        10 => simd_shuffle16(a, b, [26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
-        11 => simd_shuffle16(a, b, [27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
-        12 => simd_shuffle16(a, b, [28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
-        13 => simd_shuffle16(a, b, [29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
-        14 => simd_shuffle16(a, b, [30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
-        _ => simd_shuffle16(a, b, [31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
+        10 => simd_shuffle16!(a, b, [26, 27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        11 => simd_shuffle16!(a, b, [27, 28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        12 => simd_shuffle16!(a, b, [28, 29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+        13 => simd_shuffle16!(a, b, [29, 30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]),
+        14 => simd_shuffle16!(a, b, [30, 31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]),
+        _ => simd_shuffle16!(a, b, [31, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
     };
     transmute(r)
 }
@@ -24439,22 +24435,22 @@ pub unsafe fn _mm256_alignr_epi32<const IMM8: i32>(a: __m256i, b: __m256i) -> __
     let b = b.as_i32x8();
     let imm8: i32 = IMM8 % 16;
     let r: i32x8 = match imm8 {
-        0 => simd_shuffle8(a, b, [8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle8(a, b, [9, 10, 11, 12, 13, 14, 15, 0]),
-        2 => simd_shuffle8(a, b, [10, 11, 12, 13, 14, 15, 0, 1]),
-        3 => simd_shuffle8(a, b, [11, 12, 13, 14, 15, 0, 1, 2]),
-        4 => simd_shuffle8(a, b, [12, 13, 14, 15, 0, 1, 2, 3]),
-        5 => simd_shuffle8(a, b, [13, 14, 15, 0, 1, 2, 3, 4]),
-        6 => simd_shuffle8(a, b, [14, 15, 0, 1, 2, 3, 4, 5]),
-        7 => simd_shuffle8(a, b, [15, 0, 1, 2, 3, 4, 5, 6]),
-        8 => simd_shuffle8(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
-        9 => simd_shuffle8(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
-        10 => simd_shuffle8(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
-        11 => simd_shuffle8(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
-        12 => simd_shuffle8(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
-        13 => simd_shuffle8(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
-        14 => simd_shuffle8(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
-        _ => simd_shuffle8(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
+        0 => simd_shuffle8!(a, b, [8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle8!(a, b, [9, 10, 11, 12, 13, 14, 15, 0]),
+        2 => simd_shuffle8!(a, b, [10, 11, 12, 13, 14, 15, 0, 1]),
+        3 => simd_shuffle8!(a, b, [11, 12, 13, 14, 15, 0, 1, 2]),
+        4 => simd_shuffle8!(a, b, [12, 13, 14, 15, 0, 1, 2, 3]),
+        5 => simd_shuffle8!(a, b, [13, 14, 15, 0, 1, 2, 3, 4]),
+        6 => simd_shuffle8!(a, b, [14, 15, 0, 1, 2, 3, 4, 5]),
+        7 => simd_shuffle8!(a, b, [15, 0, 1, 2, 3, 4, 5, 6]),
+        8 => simd_shuffle8!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]),
+        9 => simd_shuffle8!(a, b, [1, 2, 3, 4, 5, 6, 7, 8]),
+        10 => simd_shuffle8!(a, b, [2, 3, 4, 5, 6, 7, 8, 9]),
+        11 => simd_shuffle8!(a, b, [3, 4, 5, 6, 7, 8, 9, 10]),
+        12 => simd_shuffle8!(a, b, [4, 5, 6, 7, 8, 9, 10, 11]),
+        13 => simd_shuffle8!(a, b, [5, 6, 7, 8, 9, 10, 11, 12]),
+        14 => simd_shuffle8!(a, b, [6, 7, 8, 9, 10, 11, 12, 13]),
+        _ => simd_shuffle8!(a, b, [7, 8, 9, 10, 11, 12, 13, 14]),
     };
     transmute(r)
 }
@@ -24508,14 +24504,14 @@ pub unsafe fn _mm_alignr_epi32<const IMM8: i32>(a: __m128i, b: __m128i) -> __m12
     let b = b.as_i32x4();
     let imm8: i32 = IMM8 % 8;
     let r: i32x4 = match imm8 {
-        0 => simd_shuffle4(a, b, [4, 5, 6, 7]),
-        1 => simd_shuffle4(a, b, [5, 6, 7, 0]),
-        2 => simd_shuffle4(a, b, [6, 7, 0, 1]),
-        3 => simd_shuffle4(a, b, [7, 0, 1, 2]),
-        4 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        5 => simd_shuffle4(a, b, [1, 2, 3, 0]),
-        6 => simd_shuffle4(a, b, [2, 3, 0, 1]),
-        _ => simd_shuffle4(a, b, [3, 0, 1, 2]),
+        0 => simd_shuffle4!(a, b, [4, 5, 6, 7]),
+        1 => simd_shuffle4!(a, b, [5, 6, 7, 0]),
+        2 => simd_shuffle4!(a, b, [6, 7, 0, 1]),
+        3 => simd_shuffle4!(a, b, [7, 0, 1, 2]),
+        4 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        5 => simd_shuffle4!(a, b, [1, 2, 3, 0]),
+        6 => simd_shuffle4!(a, b, [2, 3, 0, 1]),
+        _ => simd_shuffle4!(a, b, [3, 0, 1, 2]),
     };
     transmute(r)
 }
@@ -24567,14 +24563,14 @@ pub unsafe fn _mm512_alignr_epi64<const IMM8: i32>(a: __m512i, b: __m512i) -> __
     static_assert_imm8!(IMM8);
     let imm8: i32 = IMM8 % 8;
     let r: i64x8 = match imm8 {
-        0 => simd_shuffle8(a, b, [8, 9, 10, 11, 12, 13, 14, 15]),
-        1 => simd_shuffle8(a, b, [9, 10, 11, 12, 13, 14, 15, 0]),
-        2 => simd_shuffle8(a, b, [10, 11, 12, 13, 14, 15, 0, 1]),
-        3 => simd_shuffle8(a, b, [11, 12, 13, 14, 15, 0, 1, 2]),
-        4 => simd_shuffle8(a, b, [12, 13, 14, 15, 0, 1, 2, 3]),
-        5 => simd_shuffle8(a, b, [13, 14, 15, 0, 1, 2, 3, 4]),
-        6 => simd_shuffle8(a, b, [14, 15, 0, 1, 2, 3, 4, 5]),
-        _ => simd_shuffle8(a, b, [15, 0, 1, 2, 3, 4, 5, 6]),
+        0 => simd_shuffle8!(a, b, [8, 9, 10, 11, 12, 13, 14, 15]),
+        1 => simd_shuffle8!(a, b, [9, 10, 11, 12, 13, 14, 15, 0]),
+        2 => simd_shuffle8!(a, b, [10, 11, 12, 13, 14, 15, 0, 1]),
+        3 => simd_shuffle8!(a, b, [11, 12, 13, 14, 15, 0, 1, 2]),
+        4 => simd_shuffle8!(a, b, [12, 13, 14, 15, 0, 1, 2, 3]),
+        5 => simd_shuffle8!(a, b, [13, 14, 15, 0, 1, 2, 3, 4]),
+        6 => simd_shuffle8!(a, b, [14, 15, 0, 1, 2, 3, 4, 5]),
+        _ => simd_shuffle8!(a, b, [15, 0, 1, 2, 3, 4, 5, 6]),
     };
     transmute(r)
 }
@@ -24626,14 +24622,14 @@ pub unsafe fn _mm256_alignr_epi64<const IMM8: i32>(a: __m256i, b: __m256i) -> __
     static_assert_imm8!(IMM8);
     let imm8: i32 = IMM8 % 8;
     let r: i64x4 = match imm8 {
-        0 => simd_shuffle4(a, b, [4, 5, 6, 7]),
-        1 => simd_shuffle4(a, b, [5, 6, 7, 0]),
-        2 => simd_shuffle4(a, b, [6, 7, 0, 1]),
-        3 => simd_shuffle4(a, b, [7, 0, 1, 2]),
-        4 => simd_shuffle4(a, b, [0, 1, 2, 3]),
-        5 => simd_shuffle4(a, b, [1, 2, 3, 4]),
-        6 => simd_shuffle4(a, b, [2, 3, 4, 5]),
-        _ => simd_shuffle4(a, b, [3, 4, 5, 6]),
+        0 => simd_shuffle4!(a, b, [4, 5, 6, 7]),
+        1 => simd_shuffle4!(a, b, [5, 6, 7, 0]),
+        2 => simd_shuffle4!(a, b, [6, 7, 0, 1]),
+        3 => simd_shuffle4!(a, b, [7, 0, 1, 2]),
+        4 => simd_shuffle4!(a, b, [0, 1, 2, 3]),
+        5 => simd_shuffle4!(a, b, [1, 2, 3, 4]),
+        6 => simd_shuffle4!(a, b, [2, 3, 4, 5]),
+        _ => simd_shuffle4!(a, b, [3, 4, 5, 6]),
     };
     transmute(r)
 }
@@ -24685,10 +24681,10 @@ pub unsafe fn _mm_alignr_epi64<const IMM8: i32>(a: __m128i, b: __m128i) -> __m12
     static_assert_imm8!(IMM8);
     let imm8: i32 = IMM8 % 4;
     let r: i64x2 = match imm8 {
-        0 => simd_shuffle2(a, b, [2, 3]),
-        1 => simd_shuffle2(a, b, [3, 0]),
-        2 => simd_shuffle2(a, b, [0, 1]),
-        _ => simd_shuffle2(a, b, [1, 2]),
+        0 => simd_shuffle2!(a, b, [2, 3]),
+        1 => simd_shuffle2!(a, b, [3, 0]),
+        2 => simd_shuffle2!(a, b, [0, 1]),
+        _ => simd_shuffle2!(a, b, [1, 2]),
     };
     transmute(r)
 }
