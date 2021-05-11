@@ -151,20 +151,37 @@ fn create_struct_def(
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     visibility: Option<ast::Visibility>,
 ) -> ast::Struct {
-    let pub_vis = Some(make::visibility_pub());
+    let pub_vis = make::visibility_pub();
+
+    let insert_pub = |node: &'_ SyntaxNode| {
+        let pub_vis = pub_vis.clone_for_update();
+        ted::insert(ted::Position::before(node), pub_vis.syntax());
+    };
+
+    // for fields without any existing visibility, use pub visibility
     let field_list = match field_list {
         Either::Left(field_list) => {
-            make::record_field_list(field_list.fields().flat_map(|field| {
-                Some(make::record_field(pub_vis.clone(), field.name()?, field.ty()?))
-            }))
-            .into()
-        }
-        Either::Right(field_list) => make::tuple_field_list(
+            let field_list = field_list.clone_for_update();
+
             field_list
                 .fields()
-                .flat_map(|field| Some(make::tuple_field(pub_vis.clone(), field.ty()?))),
-        )
-        .into(),
+                .filter(|field| field.visibility().is_none())
+                .filter_map(|field| field.name())
+                .for_each(|it| insert_pub(it.syntax()));
+
+            field_list.into()
+        }
+        Either::Right(field_list) => {
+            let field_list = field_list.clone_for_update();
+
+            field_list
+                .fields()
+                .filter(|field| field.visibility().is_none())
+                .filter_map(|field| field.ty())
+                .for_each(|it| insert_pub(it.syntax()));
+
+            field_list.into()
+        }
     };
 
     make::struct_(visibility, variant_name, None, field_list).clone_for_update()
@@ -289,6 +306,106 @@ enum A { One(One) }"#,
             extract_struct_from_enum_variant,
             "enum A { $0One { foo: u32 } }",
             r#"struct One{ pub foo: u32 }
+
+enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_comments_and_attrs_one_field_named() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum A {
+    $0One {
+        // leading comment
+        /// doc comment
+        #[an_attr]
+        foo: u32
+        // trailing comment
+    }
+}"#,
+            r#"
+struct One{
+        // leading comment
+        /// doc comment
+        #[an_attr]
+        pub foo: u32
+        // trailing comment
+    }
+
+enum A {
+    One(One)
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_comments_and_attrs_several_fields_named() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum A {
+    $0One {
+        // comment
+        /// doc
+        #[attr]
+        foo: u32,
+        // comment
+        #[attr]
+        /// doc
+        bar: u32
+    }
+}"#,
+            r#"
+struct One{
+        // comment
+        /// doc
+        #[attr]
+        pub foo: u32,
+        // comment
+        #[attr]
+        /// doc
+        pub bar: u32
+    }
+
+enum A {
+    One(One)
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_comments_and_attrs_several_fields_tuple() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            "enum A { $0One(/* comment */ #[attr] u32, /* another */ u32 /* tail */) }",
+            r#"
+struct One(/* comment */ #[attr] pub u32, /* another */ pub u32 /* tail */);
+
+enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_existing_visibility_named() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            "enum A { $0One{ pub a: u32, pub(crate) b: u32, pub(super) c: u32, d: u32 } }",
+            r#"
+struct One{ pub a: u32, pub(crate) b: u32, pub(super) c: u32, pub d: u32 }
+
+enum A { One(One) }"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_struct_keep_existing_visibility_tuple() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            "enum A { $0One(pub u32, pub(crate) u32, pub(super) u32, u32) }",
+            r#"
+struct One(pub u32, pub(crate) u32, pub(super) u32, pub u32);
 
 enum A { One(One) }"#,
         );
