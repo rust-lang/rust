@@ -1412,6 +1412,11 @@ rustc_queries! {
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
+    /// Returns whether or not the crate with CrateNum 'cnum'
+    /// is marked as a private dependency
+    query is_private_dep(c: CrateNum) -> bool {
+        desc { "check whether crate {} is a private dependency", c }
+    }
     query allocator_kind(_: ()) -> Option<AllocatorKind> {
         desc { "allocator kind for the current crate" }
     }

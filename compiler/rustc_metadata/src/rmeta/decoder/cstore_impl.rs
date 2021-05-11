@@ -188,6 +188,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.name }
+    is_private_dep => { cdata.private_dep }
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
@@ -474,10 +475,6 @@ impl CrateStore for CStore {
 
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol {
         self.get_crate_data(cnum).root.name
-    }
-
-    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {
-        self.get_crate_data(cnum).private_dep
     }
 
     fn stable_crate_id_untracked(&self, cnum: CrateNum) -> StableCrateId {

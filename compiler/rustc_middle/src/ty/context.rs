@@ -1233,16 +1233,6 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Returns whether or not the crate with CrateNum 'cnum'
-    /// is marked as a private dependency
-    pub fn is_private_dep(self, cnum: CrateNum) -> bool {
-        if cnum == LOCAL_CRATE {
-            false
-        } else {
-            self.untracked_resolutions.cstore.crate_is_private_dep_untracked(cnum)
-        }
-    }
-
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> rustc_hir::definitions::DefPathHash {
         // Accessing the definitions is ok, since all its contents are tracked by the query system.
@@ -2811,6 +2801,10 @@ pub fn provide(providers: &mut ty::query::Providers) {
         assert_eq!(cnum, LOCAL_CRATE);
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
+    };
+    providers.is_private_dep = |_tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        false
     };
     providers.allocator_kind = |tcx, ()| tcx.resolutions(()).cstore.allocator_kind();
 }
