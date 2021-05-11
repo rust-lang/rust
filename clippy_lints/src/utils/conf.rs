@@ -26,13 +26,13 @@ impl TryConf {
 
 macro_rules! define_Conf {
     ($(
-        #[$doc:meta]
+        #[doc = $doc:literal]
         $(#[conf_deprecated($dep:literal)])?
         ($name:ident: $ty:ty = $default:expr),
     )*) => {
         /// Clippy lint configuration
         pub struct Conf {
-            $(#[$doc] pub $name: $ty,)*
+            $(#[doc = $doc] pub $name: $ty,)*
         }
 
         mod defaults {
@@ -89,6 +89,24 @@ macro_rules! define_Conf {
                 Ok(TryConf { conf, errors })
             }
         }
+
+        #[cfg(feature = "metadata-collector-lint")]
+        pub mod metadata {
+            use crate::utils::internal_lints::metadata_collector::ClippyConfigurationBasicInfo;
+
+            pub(crate) fn get_configuration_metadata() -> Vec<ClippyConfigurationBasicInfo> {
+                vec![
+                    $(
+                        ClippyConfigurationBasicInfo {
+                            name: stringify!($name),
+                            config_type: stringify!($ty),
+                            default: stringify!($default),
+                            doc_comment: $doc,
+                        },
+                    )+
+                ]
+            }
+        }
     };
 }
 
@@ -100,7 +118,7 @@ define_Conf! {
     (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
-    /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
+    /// Lint: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead")]
     (cyclomatic_complexity_threshold: Option<u64> = None),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
