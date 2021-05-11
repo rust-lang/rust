@@ -348,7 +348,7 @@ crate fn run_global_ctxt(
     });
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
-    let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+    let access_levels = tcx.privacy_access_levels(());
     // Convert from a HirId set to a DefId set since we don't always have easy access
     // to the map from defid -> hirid
     let access_levels = AccessLevels {

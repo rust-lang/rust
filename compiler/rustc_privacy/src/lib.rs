@@ -12,7 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, DeepVisitor, NestedVisitorMap, Visitor};
 use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_middle::bug;
@@ -2092,9 +2092,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     intravisit::walk_mod(&mut visitor, module, hir_id);
 }
 
-fn privacy_access_levels(tcx: TyCtxt<'_>, krate: CrateNum) -> &AccessLevels {
-    assert_eq!(krate, LOCAL_CRATE);
-
+fn privacy_access_levels(tcx: TyCtxt<'_>, (): ()) -> &AccessLevels {
     // Build up a set of all exported items in the AST. This is a set of all
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
@@ -2117,10 +2115,8 @@ fn privacy_access_levels(tcx: TyCtxt<'_>, krate: CrateNum) -> &AccessLevels {
     tcx.arena.alloc(visitor.access_levels)
 }
 
-fn check_private_in_public(tcx: TyCtxt<'_>, krate: CrateNum) {
-    assert_eq!(krate, LOCAL_CRATE);
-
-    let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
+    let access_levels = tcx.privacy_access_levels(());
 
     let krate = tcx.hir().krate();
 

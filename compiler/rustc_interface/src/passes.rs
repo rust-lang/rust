@@ -902,11 +902,11 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
     sess.time("misc_checking_3", || {
         parallel!(
             {
-                tcx.ensure().privacy_access_levels(LOCAL_CRATE);
+                tcx.ensure().privacy_access_levels(());
 
                 parallel!(
                     {
-                        tcx.ensure().check_private_in_public(LOCAL_CRATE);
+                        tcx.ensure().check_private_in_public(());
                     },
                     {
                         sess.time("death_checking", || rustc_passes::dead::check_crate(tcx));
