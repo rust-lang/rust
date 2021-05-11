@@ -1439,7 +1439,10 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 impl<K, V> Drop for Dropper<K, V> {
     fn drop(&mut self) {
         // Similar to advancing a non-fusing iterator.
-        fn next_or_end<K, V>(this: &mut Dropper<K, V>) -> Option<(K, V)> {
+        fn next_or_end<K, V>(
+            this: &mut Dropper<K, V>,
+        ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>>
+        {
             if this.remaining_length == 0 {
                 unsafe { ptr::read(&this.front).deallocating_end() }
                 None
@@ -1455,13 +1458,15 @@ impl<K, V> Drop for Dropper<K, V> {
             fn drop(&mut self) {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
-                while let Some(_pair) = next_or_end(&mut self.0) {}
+                while let Some(kv) = next_or_end(&mut self.0) {
+                    kv.drop_key_val();
+                }
             }
         }
 
-        while let Some(pair) = next_or_end(self) {
+        while let Some(kv) = next_or_end(self) {
             let guard = DropGuard(self);
-            drop(pair);
+            kv.drop_key_val();
             mem::forget(guard);
         }
     }
@@ -1485,7 +1490,9 @@ impl<K, V> Iterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.front.as_mut().unwrap().deallocating_next_unchecked() })
+            let front = self.range.front.as_mut().unwrap();
+            let kv = unsafe { front.deallocating_next_unchecked() };
+            Some(kv.into_key_val())
         }
     }
 
@@ -1501,7 +1508,9 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
             None
         } else {
             self.length -= 1;
-            Some(unsafe { self.range.back.as_mut().unwrap().deallocating_next_back_unchecked() })
+            let back = self.range.back.as_mut().unwrap();
+            let kv = unsafe { back.deallocating_next_back_unchecked() };
+            Some(kv.into_key_val())
         }
     }
 }
