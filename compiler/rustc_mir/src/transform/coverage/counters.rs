@@ -56,6 +56,7 @@ impl CoverageCounters {
         let counter = CoverageKind::Counter {
             function_source_hash: self.function_source_hash,
             id: self.next_counter(),
+            is_dead: false,
         };
         if self.debug_counters.is_enabled() {
             self.debug_counters.add_counter(&counter, (debug_block_label_fn)());

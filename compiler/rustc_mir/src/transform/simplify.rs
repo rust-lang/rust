@@ -329,24 +329,22 @@ fn save_unreachable_coverage(
     // report `0` executions for the uncovered code regions.
     let mut dropped_coverage = Vec::new();
     for dead_block in first_dead_block..basic_blocks.len() {
-        for statement in basic_blocks[BasicBlock::new(dead_block)].statements.iter() {
-            if let StatementKind::Coverage(coverage) = &statement.kind {
-                if let Some(code_region) = &coverage.code_region {
-                    dropped_coverage.push((statement.source_info, code_region.clone()));
-                }
+        for statement in basic_blocks[BasicBlock::new(dead_block)].statements.drain(..) {
+            if let StatementKind::Coverage(box coverage) = statement.kind {
+                dropped_coverage.push((statement.source_info, coverage));
             }
         }
     }
-    for (source_info, code_region) in dropped_coverage {
-        basic_blocks[START_BLOCK].statements.push(Statement {
-            source_info,
-            kind: StatementKind::Coverage(box Coverage {
-                kind: CoverageKind::Unreachable,
-                code_region: Some(code_region),
-            }),
-        })
+    for (source_info, mut coverage) in dropped_coverage {
+        if let CoverageKind::Counter { ref mut is_dead, .. } = coverage.kind {
+            *is_dead = true;
+        }
+        basic_blocks[START_BLOCK]
+            .statements
+            .push(Statement { source_info, kind: StatementKind::Coverage(box coverage) })
     }
 }
+
 pub struct SimplifyLocals;
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {

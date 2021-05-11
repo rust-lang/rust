@@ -102,16 +102,25 @@ impl From<InjectedExpressionId> for ExpressionOperandId {
 
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum CoverageKind {
-    Counter {
-        function_source_hash: u64,
-        id: CounterValueReference,
-    },
+    /// A live `Counter` will codegen statements to increment the counter when
+    /// its block is executed at runtime. A dead counter will not codegen
+    /// anything, but will still be added to the coverage map, so it can still
+    /// be referenced by expressions, and its code region will show up as
+    /// uncovered.
+    Counter { function_source_hash: u64, id: CounterValueReference, is_dead: bool },
+
+    /// A counter whose value can be computed when generating a coverage report.
+    /// This statement does not codegen anything, but the expression and code
+    /// region are added to the coverage map.
     Expression {
         id: InjectedExpressionId,
         lhs: ExpressionOperandId,
         op: Op,
         rhs: ExpressionOperandId,
     },
+
+    /// A code region that is never executed, and is never part of an
+    /// expression.
     Unreachable,
 }
 
@@ -134,7 +143,13 @@ impl Debug for CoverageKind {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use CoverageKind::*;
         match self {
-            Counter { id, .. } => write!(fmt, "Counter({:?})", id.index()),
+            Counter { id, is_dead, .. } => {
+                if *is_dead {
+                    write!(fmt, "Counter({:?}/dead)", id.index())
+                } else {
+                    write!(fmt, "Counter({:?})", id.index())
+                }
+            }
             Expression { id, lhs, op, rhs } => write!(
                 fmt,
                 "Expression({:?}) = {} {} {}",
