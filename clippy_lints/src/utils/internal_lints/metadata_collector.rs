@@ -19,6 +19,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
+use std::fmt;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
@@ -40,6 +41,30 @@ const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
 const EXCLUDED_LINT_GROUPS: [&str; 1] = ["clippy::internal"];
 /// Collected deprecated lint will be assigned to this group in the JSON output
 const DEPRECATED_LINT_GROUP_STR: &str = "DEPRECATED";
+
+/// This template will be used to format the configuration section in the lint documentation.
+/// The `configurations` parameter will be replaced with one or multiple formatted
+/// `ClippyConfiguration` instances. See `CONFIGURATION_VALUE_TEMPLATE` for further customizations
+macro_rules! CONFIGURATION_SECTION_TEMPLATE {
+    () => {
+        r#"
+**Configuration**
+This lint has the following configuration variables:
+
+{configurations}
+"#
+    };
+}
+/// This template will be used to format an individual `ClippyConfiguration` instance in the
+/// lint documentation.
+///
+/// The format function will provide strings for the following parameters: `name`, `ty`, `doc` and
+/// `default`
+macro_rules! CONFIGURATION_VALUE_TEMPLATE {
+    () => {
+        "* {name}: {ty}: {doc} (defaults to `{default}`)\n"
+    };
+}
 
 const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
@@ -119,6 +144,14 @@ impl MetadataCollector {
             applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
             config: collect_configs(),
         }
+    }
+
+    fn get_lint_configs(&self, lint_name: &str) -> Option<String> {
+        self.config
+            .iter()
+            .filter_map(|x| x.lints.iter().any(|x| x == lint_name).then(|| format!("{}", x)))
+            .reduce(|acc, x| acc + &x)
+            .map(|configurations| format!(CONFIGURATION_SECTION_TEMPLATE!(), configurations = configurations))
     }
 }
 
@@ -225,6 +258,9 @@ impl Serialize for ApplicabilityInfo {
     }
 }
 
+// ==================================================================
+// Configuration
+// ==================================================================
 #[derive(Debug)]
 pub(crate) struct ClippyConfigurationBasicInfo {
     pub name: &'static str,
@@ -242,9 +278,6 @@ struct ClippyConfiguration {
     default: String,
 }
 
-// ==================================================================
-// Configuration
-// ==================================================================
 fn collect_configs() -> Vec<ClippyConfiguration> {
     let cons = crate::utils::conf::metadata::get_configuration_metadata();
     cons.iter()
@@ -297,6 +330,19 @@ fn to_kebab(config_name: &str) -> String {
     config_name.replace('_', "-")
 }
 
+impl fmt::Display for ClippyConfiguration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            CONFIGURATION_VALUE_TEMPLATE!(),
+            name = self.name,
+            ty = self.config_type,
+            doc = self.doc,
+            default = self.default
+        )
+    }
+}
+
 // ==================================================================
 // Lint pass
 // ==================================================================
@@ -321,8 +367,12 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // metadata extraction
                 if let Some(group) = get_lint_group_or_lint(cx, &lint_name, item);
-                if let Some(docs) = extract_attr_docs_or_lint(cx, item);
+                if let Some(mut docs) = extract_attr_docs_or_lint(cx, item);
                 then {
+                    if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
+                        docs.push_str(&configuration_section);
+                    }
+
                     self.lints.push(LintMetadata::new(
                         lint_name,
                         SerializableSpan::from_item(cx, item),
