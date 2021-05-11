@@ -12,6 +12,7 @@ mod chalk_db;
 mod chalk_ext;
 mod infer;
 mod interner;
+mod consts;
 mod lower;
 mod mapping;
 mod op;
@@ -39,7 +40,7 @@ use chalk_ir::{
 };
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeParamId};
 
-use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
+use crate::{consts::ConstScalar, db::HirDatabase, display::HirDisplay, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
@@ -250,7 +251,9 @@ pub fn dummy_usize_const() -> Const {
     let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner);
     chalk_ir::ConstData {
         ty: usize_ty,
-        value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: () }),
+        value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
+            interned: ConstScalar::Unknown,
+        }),
     }
     .intern(&Interner)
 }

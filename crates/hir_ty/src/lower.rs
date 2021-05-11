@@ -174,6 +174,8 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeRef::Array(inner) => {
                 let inner_ty = self.lower_ty(inner);
+                // FIXME: we don't have length info here because we don't store an expression for
+                // the length
                 TyKind::Array(inner_ty, dummy_usize_const()).intern(&Interner)
             }
             TypeRef::Slice(inner) => {
