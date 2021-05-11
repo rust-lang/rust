@@ -299,7 +299,7 @@ impl<T> [T] {
     /// assert_eq!(None, v.get(0..4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
+    #[inline(always)]
     pub fn get<I>(&self, index: I) -> Option<&I::Output>
     where
         I: SliceIndex<Self>,
@@ -323,7 +323,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[0, 42, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
+    #[inline(always)]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
     where
         I: SliceIndex<Self>,
@@ -354,7 +354,7 @@ impl<T> [T] {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
     where
         I: SliceIndex<Self>,
@@ -390,7 +390,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 13, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
+    #[inline(always)]
     pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
     where
         I: SliceIndex<Self>,
@@ -429,7 +429,7 @@ impl<T> [T] {
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_as_ptr", since = "1.32.0")]
-    #[inline]
+    #[inline(always)]
     pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
     }
@@ -457,7 +457,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
-    #[inline]
+    #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
     }
@@ -702,7 +702,7 @@ impl<T> [T] {
     /// assert_eq!(iterator.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
+    #[inline(always)]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }
@@ -719,7 +719,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
+    #[inline(always)]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut::new(self)
     }
@@ -3544,7 +3544,7 @@ pub trait SlicePattern {
 impl<T> SlicePattern for [T] {
     type Item = T;
 
-    #[inline]
+    #[inline(always)]
     fn as_slice(&self) -> &[Self::Item] {
         self
     }
@@ -3554,7 +3554,7 @@ impl<T> SlicePattern for [T] {
 impl<T, const N: usize> SlicePattern for [T; N] {
     type Item = T;
 
-    #[inline]
+    #[inline(always)]
     fn as_slice(&self) -> &[Self::Item] {
         self
     }

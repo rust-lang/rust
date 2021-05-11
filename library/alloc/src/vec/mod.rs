@@ -775,7 +775,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let vec: Vec<i32> = Vec::with_capacity(10);
     /// assert_eq!(vec.capacity(), 10);
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
         self.buf.capacity()
@@ -1078,7 +1078,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let buffer = vec![1, 2, 3, 5, 8];
     /// io::sink().write(buffer.as_slice()).unwrap();
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_slice(&self) -> &[T] {
         self
@@ -1095,7 +1095,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// let mut buffer = vec![0; 3];
     /// io::repeat(0b101).read_exact(buffer.as_mut_slice()).unwrap();
     /// ```
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self
@@ -1820,7 +1820,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[doc(alias = "length")]
-    #[inline]
+    #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.len
@@ -2422,7 +2422,7 @@ impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
 impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
     type Output = I::Output;
 
-    #[inline]
+    #[inline(always)]
     fn index(&self, index: I) -> &Self::Output {
         Index::index(&**self, index)
     }
@@ -2434,7 +2434,7 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
     label = "vector indices are of type `usize` or ranges of `usize`"
 )]
 impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
-    #[inline]
+    #[inline(always)]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)
     }
@@ -2496,6 +2496,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
+    #[inline(always)]
     fn into_iter(self) -> slice::Iter<'a, T> {
         self.iter()
     }
@@ -2506,6 +2507,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
+    #[inline(always)]
     fn into_iter(self) -> slice::IterMut<'a, T> {
         self.iter_mut()
     }

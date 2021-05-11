@@ -107,6 +107,7 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     ///
     /// * `Step::forward_unchecked(a, n)` is equivalent to `Step::forward(a, n)`
     #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
+    #[inline(always)]
     unsafe fn forward_unchecked(start: Self, count: usize) -> Self {
         Step::forward(start, count)
     }
@@ -179,6 +180,7 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
     ///
     /// * `Step::backward_unchecked(a, n)` is equivalent to `Step::backward(a, n)`
     #[unstable(feature = "step_trait_ext", reason = "recently added", issue = "42168")]
+    #[inline(always)]
     unsafe fn backward_unchecked(start: Self, count: usize) -> Self {
         Step::backward(start, count)
     }
@@ -187,13 +189,13 @@ pub unsafe trait Step: Clone + PartialOrd + Sized {
 // These are still macro-generated because the integer literals resolve to different types.
 macro_rules! step_identical_methods {
     () => {
-        #[inline]
+        #[inline(always)]
         unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
             // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
             unsafe { start.unchecked_add(n as Self) }
         }
 
-        #[inline]
+        #[inline(always)]
         unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
             // SAFETY: the caller has to guarantee that `start - n` doesn't overflow.
             unsafe { start.unchecked_sub(n as Self) }
@@ -345,12 +347,12 @@ macro_rules! step_integer_impls {
                     }
                 }
 
-                #[inline]
+                #[inline(always)]
                 fn forward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_add(n as Self)
                 }
 
-                #[inline]
+                #[inline(always)]
                 fn backward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_sub(n as Self)
                 }
@@ -375,12 +377,12 @@ macro_rules! step_integer_impls {
                     }
                 }
 
-                #[inline]
+                #[inline(always)]
                 fn forward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_add(n as Self)
                 }
 
-                #[inline]
+                #[inline(always)]
                 fn backward_checked(start: Self, n: usize) -> Option<Self> {
                     start.checked_sub(n as Self)
                 }
@@ -551,17 +553,17 @@ impl<A: Step> Iterator for ops::Range<A> {
         None
     }
 
-    #[inline]
+    #[inline(always)]
     fn last(mut self) -> Option<A> {
         self.next_back()
     }
 
-    #[inline]
+    #[inline(always)]
     fn min(mut self) -> Option<A> {
         self.next()
     }
 
-    #[inline]
+    #[inline(always)]
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
@@ -671,7 +673,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
         Some(mem::replace(&mut self.start, n))
     }
 
-    #[inline]
+    #[inline(always)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (usize::MAX, None)
     }
@@ -793,17 +795,17 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         self.try_fold(init, ok(f)).unwrap()
     }
 
-    #[inline]
+    #[inline(always)]
     fn last(mut self) -> Option<A> {
         self.next_back()
     }
 
-    #[inline]
+    #[inline(always)]
     fn min(mut self) -> Option<A> {
         self.next()
     }
 
-    #[inline]
+    #[inline(always)]
     fn max(mut self) -> Option<A> {
         self.next_back()
     }
