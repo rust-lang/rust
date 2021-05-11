@@ -76,6 +76,6 @@ impl<'a> dot::Labeller<'a, CrateId, Edge<'a>> for DotCrateGraph {
 
     fn node_id(&'a self, n: &CrateId) -> Id<'a> {
         let name = self.0[*n].display_name.as_ref().map_or("_missing_name_", |name| &*name);
-        Id::new(name).unwrap()
+        Id::new(format!("{}_{}", name, n.0)).unwrap()
     }
 }
