@@ -485,27 +485,37 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
         mut self,
         predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error> {
-        for predicate in predicates {
-            self = self.in_binder(&predicate, |mut cx, predicate| {
-                match predicate {
-                    ty::ExistentialPredicate::Trait(trait_ref) => {
+        let mut predicate_iter = predicates.iter().peekable();
+        while let Some(predicate) = predicate_iter.next() {
+            match predicate.as_ref().skip_binder() {
+                ty::ExistentialPredicate::Trait(trait_ref) => {
+                    self = self.in_binder(&predicate, |mut cx, _predicate| {
                         // Use a type that can't appear in defaults of type parameters.
                         let dummy_self = cx.tcx.mk_ty_infer(ty::FreshTy(0));
                         let trait_ref = trait_ref.with_self_ty(cx.tcx, dummy_self);
                         cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
-                    }
-                    ty::ExistentialPredicate::Projection(projection) => {
-                        let name = cx.tcx.associated_item(projection.item_def_id).ident;
-                        cx.push("p");
-                        cx.push_ident(&name.as_str());
-                        cx = projection.ty.print(cx)?;
-                    }
-                    ty::ExistentialPredicate::AutoTrait(def_id) => {
-                        cx = cx.print_def_path(*def_id, &[])?;
-                    }
+                        while let Some(projection_pred) = predicate_iter.next_if(|p| {
+                            matches!(p.skip_binder(), ty::ExistentialPredicate::Projection(_))
+                        }) {
+                            let projection = match projection_pred.skip_binder() {
+                                ty::ExistentialPredicate::Projection(projection) => projection,
+                                _ => unreachable!(),
+                            };
+                            let name = cx.tcx.associated_item(projection.item_def_id).ident;
+                            cx.push("p");
+                            cx.push_ident(&name.as_str());
+                            cx = projection.ty.print(cx)?;
+                        }
+                        Ok(cx)
+                    })?;
                 }
-                Ok(cx)
-            })?;
+                ty::ExistentialPredicate::Projection(_) => {
+                    unreachable!("handled in trait predicate arm")
+                }
+                ty::ExistentialPredicate::AutoTrait(def_id) => {
+                    self = self.print_def_path(*def_id, &[])?;
+                }
+            }
         }
         self.push("E");
         Ok(self)
