@@ -1,0 +1,17 @@
+error[E0072]: recursive type `Foo` has infinite size
+  --> $DIR/issue-84611.rs:1:1
+   |
+LL | struct Foo<T> {
+   | ^^^^^^^^^^^^^ recursive type has infinite size
+LL |
+LL |     x: Foo<[T; 1]>,
+   |        ----------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+   |
+LL |     x: Box<Foo<[T; 1]>>,
+   |        ^^^^           ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0072`.

@@ -25,11 +25,26 @@ pub enum Representability {
 pub fn ty_is_representable<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, sp: Span) -> Representability {
     debug!("is_type_representable: {:?}", ty);
     // To avoid a stack overflow when checking an enum variant or struct that
-    // contains a different, structurally recursive type, maintain a stack
-    // of seen types and check recursion for each of them (issues #3008, #3779).
+    // contains a different, structurally recursive type, maintain a stack of
+    // seen types and check recursion for each of them (issues #3008, #3779,
+    // #74224, #84611). `shadow_seen` contains the full stack and `seen` only
+    // the one for the current type (e.g. if we have structs A and B, B contains
+    // a field of type A, and we're currently looking at B, then `seen` will be
+    // cleared when recursing to check A, but `shadow_seen` won't, so that we
+    // can catch cases of mutual recursion where A also contains B).
     let mut seen: Vec<Ty<'_>> = Vec::new();
+    let mut shadow_seen: Vec<&'tcx ty::AdtDef> = Vec::new();
     let mut representable_cache = FxHashMap::default();
-    let r = is_type_structurally_recursive(tcx, sp, &mut seen, &mut representable_cache, ty);
+    let mut force_result = false;
+    let r = is_type_structurally_recursive(
+        tcx,
+        sp,
+        &mut seen,
+        &mut shadow_seen,
+        &mut representable_cache,
+        ty,
+        &mut force_result,
+    );
     debug!("is_type_representable: {:?} is {:?}", ty, r);
     r
 }
@@ -48,21 +63,38 @@ fn are_inner_types_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
+    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
+    force_result: &mut bool,
 ) -> Representability {
+    debug!("are_inner_types_recursive({:?}, {:?}, {:?})", ty, seen, shadow_seen);
     match ty.kind() {
         ty::Tuple(..) => {
             // Find non representable
-            fold_repr(
-                ty.tuple_fields().map(|ty| {
-                    is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
-                }),
-            )
+            fold_repr(ty.tuple_fields().map(|ty| {
+                is_type_structurally_recursive(
+                    tcx,
+                    sp,
+                    seen,
+                    shadow_seen,
+                    representable_cache,
+                    ty,
+                    force_result,
+                )
+            }))
         }
         // Fixed-length vectors.
         // FIXME(#11924) Behavior undecided for zero-length vectors.
-        ty::Array(ty, _) => is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty),
+        ty::Array(ty, _) => is_type_structurally_recursive(
+            tcx,
+            sp,
+            seen,
+            shadow_seen,
+            representable_cache,
+            ty,
+            force_result,
+        ),
         ty::Adt(def, substs) => {
             // Find non representable fields with their spans
             fold_repr(def.all_fields().map(|field| {
@@ -76,12 +108,128 @@ fn are_inner_types_recursive<'tcx>(
                     Some(hir::Node::Field(field)) => field.ty.span,
                     _ => sp,
                 };
-                match is_type_structurally_recursive(tcx, span, seen, representable_cache, ty) {
-                    Representability::SelfRecursive(_) => {
-                        Representability::SelfRecursive(vec![span])
-                    }
-                    x => x,
+
+                let mut result = None;
+
+                // First, we check whether the field type per se is representable.
+                // This catches cases as in #74224 and #84611. There is a special
+                // case related to mutual recursion, though; consider this example:
+                //
+                //   struct A<T> {
+                //       z: T,
+                //       x: B<T>,
+                //   }
+                //
+                //   struct B<T> {
+                //       y: A<T>
+                //   }
+                //
+                // Here, without the following special case, both A and B are
+                // ContainsRecursive, which is a problem because we only report
+                // errors for SelfRecursive. We fix this by detecting this special
+                // case (shadow_seen.first() is the type we are originally
+                // interested in, and if we ever encounter the same AdtDef again,
+                // we know that it must be SelfRecursive) and "forcibly" returning
+                // SelfRecursive (by setting force_result, which tells the calling
+                // invocations of are_inner_types_representable to forward the
+                // result without adjusting).
+                if shadow_seen.len() > seen.len() && shadow_seen.first() == Some(def) {
+                    *force_result = true;
+                    result = Some(Representability::SelfRecursive(vec![span]));
                 }
+
+                if result == None {
+                    result = Some(Representability::Representable);
+
+                    // Now, we check whether the field types per se are representable, e.g.
+                    // for struct Foo { x: Option<Foo> }, we first check whether Option<_>
+                    // by itself is representable (which it is), and the nesting of Foo
+                    // will be detected later. This is necessary for #74224 and #84611.
+
+                    // If we have encountered an ADT definition that we have not seen
+                    // before (no need to check them twice), recurse to see whether that
+                    // definition is SelfRecursive. If so, we must be ContainsRecursive.
+                    if shadow_seen.len() > 1
+                        && !shadow_seen
+                            .iter()
+                            .take(shadow_seen.len() - 1)
+                            .any(|seen_def| seen_def == def)
+                    {
+                        let adt_def_id = def.did;
+                        let raw_adt_ty = tcx.type_of(adt_def_id);
+                        debug!("are_inner_types_recursive: checking nested type: {:?}", raw_adt_ty);
+
+                        // Check independently whether the ADT is SelfRecursive. If so,
+                        // we must be ContainsRecursive (except for the special case
+                        // mentioned above).
+                        let mut nested_seen: Vec<Ty<'_>> = vec![];
+                        result = Some(
+                            match is_type_structurally_recursive(
+                                tcx,
+                                span,
+                                &mut nested_seen,
+                                shadow_seen,
+                                representable_cache,
+                                raw_adt_ty,
+                                force_result,
+                            ) {
+                                Representability::SelfRecursive(_) => {
+                                    if *force_result {
+                                        Representability::SelfRecursive(vec![span])
+                                    } else {
+                                        Representability::ContainsRecursive
+                                    }
+                                }
+                                x => x,
+                            },
+                        );
+                    }
+
+                    // We only enter the following block if the type looks representable
+                    // so far. This is necessary for cases such as this one (#74224):
+                    //
+                    //   struct A<T> {
+                    //       x: T,
+                    //       y: A<A<T>>,
+                    //   }
+                    //
+                    //   struct B {
+                    //       z: A<usize>
+                    //   }
+                    //
+                    // When checking B, we recurse into A and check field y of type
+                    // A<A<usize>>. We haven't seen this exact type before, so we recurse
+                    // into A<A<usize>>, which contains, A<A<A<usize>>>, and so forth,
+                    // ad infinitum. We can prevent this from happening by first checking
+                    // A separately (the code above) and only checking for nested Bs if
+                    // A actually looks representable (which it wouldn't in this example).
+                    if result == Some(Representability::Representable) {
+                        // Now, even if the type is representable (e.g. Option<_>),
+                        // it might still contribute to a recursive type, e.g.:
+                        //   struct Foo { x: Option<Option<Foo>> }
+                        // These cases are handled by passing the full `seen`
+                        // stack to is_type_structurally_recursive (instead of the
+                        // empty `nested_seen` above):
+                        result = Some(
+                            match is_type_structurally_recursive(
+                                tcx,
+                                span,
+                                seen,
+                                shadow_seen,
+                                representable_cache,
+                                ty,
+                                force_result,
+                            ) {
+                                Representability::SelfRecursive(_) => {
+                                    Representability::SelfRecursive(vec![span])
+                                }
+                                x => x,
+                            },
+                        );
+                    }
+                }
+
+                result.unwrap()
             }))
         }
         ty::Closure(..) => {
@@ -106,8 +254,10 @@ fn is_type_structurally_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
+    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
+    force_result: &mut bool,
 ) -> Representability {
     debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
     if let Some(representability) = representable_cache.get(ty) {
@@ -118,8 +268,15 @@ fn is_type_structurally_recursive<'tcx>(
         return representability.clone();
     }
 
-    let representability =
-        is_type_structurally_recursive_inner(tcx, sp, seen, representable_cache, ty);
+    let representability = is_type_structurally_recursive_inner(
+        tcx,
+        sp,
+        seen,
+        shadow_seen,
+        representable_cache,
+        ty,
+        force_result,
+    );
 
     representable_cache.insert(ty, representability.clone());
     representability
@@ -129,12 +286,16 @@ fn is_type_structurally_recursive_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
+    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
+    force_result: &mut bool,
 ) -> Representability {
     match ty.kind() {
         ty::Adt(def, _) => {
             {
+                debug!("is_type_structurally_recursive_inner: adt: {:?}, seen: {:?}", ty, seen);
+
                 // Iterate through stack of previously seen types.
                 let mut iter = seen.iter();
 
@@ -158,8 +319,10 @@ fn is_type_structurally_recursive_inner<'tcx>(
                 // will recurse infinitely for some inputs.
                 //
                 // It is important that we DO take generic parameters into account
-                // here, so that code like this is considered SelfRecursive, not
-                // ContainsRecursive:
+                // here, because nesting e.g. Options is allowed (as long as the
+                // definition of Option doesn't itself include an Option field, which
+                // would be a case of SelfRecursive above). The following, too, counts
+                // as SelfRecursive:
                 //
                 // struct Foo { Option<Option<Foo>> }
 
@@ -174,13 +337,31 @@ fn is_type_structurally_recursive_inner<'tcx>(
             // For structs and enums, track all previously seen types by pushing them
             // onto the 'seen' stack.
             seen.push(ty);
-            let out = are_inner_types_recursive(tcx, sp, seen, representable_cache, ty);
+            shadow_seen.push(def);
+            let out = are_inner_types_recursive(
+                tcx,
+                sp,
+                seen,
+                shadow_seen,
+                representable_cache,
+                ty,
+                force_result,
+            );
+            shadow_seen.pop();
             seen.pop();
             out
         }
         _ => {
             // No need to push in other cases.
-            are_inner_types_recursive(tcx, sp, seen, representable_cache, ty)
+            are_inner_types_recursive(
+                tcx,
+                sp,
+                seen,
+                shadow_seen,
+                representable_cache,
+                ty,
+                force_result,
+            )
         }
     }
 }
