@@ -1303,7 +1303,7 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
         }
     }
 
-    let formats = tcx.dependency_formats(LOCAL_CRATE);
+    let formats = tcx.dependency_formats(());
     let deps = formats.iter().find_map(|(t, list)| (*t == crate_type).then_some(list)).unwrap();
 
     for (index, dep_format) in deps.iter().enumerate() {

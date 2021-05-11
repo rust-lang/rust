@@ -1773,7 +1773,7 @@ impl EncodeContext<'a, 'tcx> {
 
     fn encode_dylib_dependency_formats(&mut self) -> Lazy<[Option<LinkagePreference>]> {
         empty_proc_macro!(self);
-        let formats = self.tcx.dependency_formats(LOCAL_CRATE);
+        let formats = self.tcx.dependency_formats(());
         for (ty, arr) in formats.iter() {
             if *ty != CrateType::Dylib {
                 continue;

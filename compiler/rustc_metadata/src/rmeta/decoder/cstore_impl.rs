@@ -370,10 +370,7 @@ pub fn provide(providers: &mut Providers) {
             visible_parent_map
         },
 
-        dependency_formats: |tcx, cnum| {
-            assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(crate::dependency_format::calculate(tcx))
-        },
+        dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
         has_global_allocator: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             CStore::from_tcx(tcx).has_global_allocator()

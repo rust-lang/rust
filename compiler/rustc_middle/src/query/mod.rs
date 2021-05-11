@@ -1053,9 +1053,7 @@ rustc_queries! {
         desc { "dylib dependency formats of crate" }
     }
 
-    query dependency_formats(_: CrateNum)
-        -> Lrc<crate::middle::dependency_format::Dependencies>
-    {
+    query dependency_formats(_: ()) -> Lrc<crate::middle::dependency_format::Dependencies> {
         desc { "get the linkage format of all dependencies" }
     }
 
