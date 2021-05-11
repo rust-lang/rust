@@ -448,14 +448,14 @@ function hideThemeButtonState() {
     }
 
     function getHelpElement(build) {
-        if (build !== false) {
+        if (build) {
             buildHelperPopup();
         }
         return document.getElementById("help");
     }
 
     function displayHelp(display, ev, help) {
-        if (display === true) {
+        if (display) {
             help = help ? help : getHelpElement(true);
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
@@ -466,7 +466,7 @@ function hideThemeButtonState() {
             // No need to build the help popup if we want to hide it in case it hasn't been
             // built yet...
             help = help ? help : getHelpElement(false);
-            if (help && hasClass(help, "hidden") === false) {
+            if (help && !hasClass(help, "hidden")) {
                 ev.preventDefault();
                 addClass(help, "hidden");
                 removeClass(document.body, "blur");
@@ -477,9 +477,9 @@ function hideThemeButtonState() {
     function handleEscape(ev) {
         var help = getHelpElement(false);
         var search = searchState.outputElement();
-        if (hasClass(help, "hidden") === false) {
+        if (!hasClass(help, "hidden")) {
             displayHelp(false, ev, help);
-        } else if (hasClass(search, "hidden") === false) {
+        } else if (!hasClass(search, "hidden")) {
             searchState.clearInputTimeout();
             ev.preventDefault();
             searchState.hideResults(search);
@@ -491,7 +491,7 @@ function hideThemeButtonState() {
     var disableShortcuts = getSettingValue("disable-shortcuts") === "true";
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
-        if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts === true) {
+        if (ev.ctrlKey || ev.altKey || ev.metaKey || disableShortcuts) {
             return;
         }
 
@@ -908,11 +908,11 @@ function hideThemeButtonState() {
         function implHider(addOrRemove, fullHide) {
             return function(n) {
                 var shouldHide =
-                    fullHide === true ||
-                    hasClass(n, "method") === true ||
-                    hasClass(n, "associatedconstant") === true;
-                if (shouldHide === true || hasClass(n, "type") === true) {
-                    if (shouldHide === true) {
+                    fullHide ||
+                    hasClass(n, "method") ||
+                    hasClass(n, "associatedconstant");
+                if (shouldHide || hasClass(n, "type")) {
+                    if (shouldHide) {
                         if (addOrRemove) {
                             addClass(n, "hidden-by-impl-hider");
                         } else {
@@ -934,7 +934,7 @@ function hideThemeButtonState() {
 
         var relatedDoc;
         var action = mode;
-        if (hasClass(toggle.parentNode, "impl") === false) {
+        if (!hasClass(toggle.parentNode, "impl")) {
             relatedDoc = toggle.parentNode.nextElementSibling;
             if (hasClass(relatedDoc, "item-info")) {
                 relatedDoc = relatedDoc.nextElementSibling;
@@ -964,11 +964,11 @@ function hideThemeButtonState() {
             relatedDoc = parentElem;
             var docblock = relatedDoc.nextElementSibling;
 
-            while (hasClass(relatedDoc, "impl-items") === false) {
+            while (!hasClass(relatedDoc, "impl-items")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
 
-            if (!relatedDoc && hasClass(docblock, "docblock") === false) {
+            if (!relatedDoc && !hasClass(docblock, "docblock")) {
                 return;
             }
 
@@ -987,7 +987,7 @@ function hideThemeButtonState() {
             if (action === "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
                 // Stability/deprecation/portability information is never hidden.
-                if (hasClass(docblock, "item-info") === false) {
+                if (!hasClass(docblock, "item-info")) {
                     removeClass(docblock, "hidden-by-usual-hider");
                 }
                 onEachLazy(toggle.childNodes, adjustToggle(false, dontApplyBlockRule));
@@ -996,7 +996,7 @@ function hideThemeButtonState() {
                 addClass(relatedDoc, "fns-now-collapsed");
                 // Stability/deprecation/portability information should be shown even when detailed
                 // info is hidden.
-                if (hasClass(docblock, "item-info") === false) {
+                if (!hasClass(docblock, "item-info")) {
                     addClass(docblock, "hidden-by-usual-hider");
                 }
                 onEachLazy(toggle.childNodes, adjustToggle(true, dontApplyBlockRule));
@@ -1045,7 +1045,7 @@ function hideThemeButtonState() {
             });
         }
 
-        if (hideMethodDocs === true) {
+        if (hideMethodDocs) {
             onEachLazy(document.getElementsByClassName("method"), function(e) {
                 var toggle = e.parentNode;
                 if (toggle) {
@@ -1132,7 +1132,7 @@ function hideThemeButtonState() {
     if (sidebar_menu) {
         sidebar_menu.onclick = function() {
             var sidebar = document.getElementsByClassName("sidebar")[0];
-            if (hasClass(sidebar, "mobile") === true) {
+            if (hasClass(sidebar, "mobile")) {
                 hideSidebar();
             } else {
                 showSidebar();
