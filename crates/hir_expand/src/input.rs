@@ -1,8 +1,9 @@
 //! Macro input conditioning.
 
+use parser::SyntaxKind;
 use syntax::{
     ast::{self, AttrsOwner},
-    AstNode, SyntaxNode,
+    AstNode, SyntaxElement, SyntaxNode,
 };
 
 use crate::{
@@ -19,7 +20,33 @@ pub(crate) fn process_macro_input(
     let loc: MacroCallLoc = db.lookup_intern_macro(id);
 
     match loc.kind {
-        MacroCallKind::FnLike { .. } => node,
+        MacroCallKind::FnLike { .. } => {
+            if !loc.def.is_proc_macro() {
+                // MBE macros expect the parentheses as part of their input.
+                return node;
+            }
+
+            // The input includes the `(` + `)` delimiter tokens, so remove them before passing this
+            // to the macro.
+            let node = node.clone_for_update();
+            if let Some(SyntaxElement::Token(tkn)) = node.first_child_or_token() {
+                if matches!(
+                    tkn.kind(),
+                    SyntaxKind::L_BRACK | SyntaxKind::L_PAREN | SyntaxKind::L_CURLY
+                ) {
+                    tkn.detach();
+                }
+            }
+            if let Some(SyntaxElement::Token(tkn)) = node.last_child_or_token() {
+                if matches!(
+                    tkn.kind(),
+                    SyntaxKind::R_BRACK | SyntaxKind::R_PAREN | SyntaxKind::R_CURLY
+                ) {
+                    tkn.detach();
+                }
+            }
+            node
+        }
         MacroCallKind::Derive { derive_attr_index, .. } => {
             let item = match ast::Item::cast(node.clone()) {
                 Some(item) => item,

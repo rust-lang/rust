@@ -272,6 +272,10 @@ impl MacroDefId {
         };
         Either::Left(*id)
     }
+
+    pub fn is_proc_macro(&self) -> bool {
+        matches!(self.kind, MacroDefKind::ProcMacro(..))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
