@@ -1,5 +1,3 @@
-#![feature(const_fn)]
-
 fn call() -> i32 {
     fn increment(x: i32) -> i32 {
         x + 1
