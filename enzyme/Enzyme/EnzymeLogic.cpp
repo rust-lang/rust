@@ -275,23 +275,25 @@ struct CacheAnalysis {
             for (auto lim = LS; lim != SE.getCouldNotCompute();) {
               // [start load, L+Size] [S, S+Size]
               for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                bool check = true;
                 if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
                   auto SH = SExpr->getLoop()->getHeader();
                   if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
                     auto LH = LExpr->getLoop()->getHeader();
                     if (SH != LH && !DT.dominates(SH, LH) &&
                         !DT.dominates(LH, SH)) {
-                      continue;
+                      check = false;
                     }
                   }
                 }
 
-                auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
-                // llvm::errs() << " *** " << *lsub << "|" << *slim << "|" <<
-                // *lim << "\n";
-                if (SE.isKnownNonNegative(lsub)) {
-                  return false;
+                if (check) {
+                  auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
+                  if (SE.isKnownNonNegative(lsub)) {
+                    return false;
+                  }
                 }
+
                 if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
                   if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
                     slim = arL->getStart();
@@ -334,23 +336,25 @@ struct CacheAnalysis {
             for (auto lim = LS; lim != SE.getCouldNotCompute();) {
               // [S, S+Size][start load, L+Size]
               for (auto slim = SS; slim != SE.getCouldNotCompute();) {
+                bool check = true;
                 if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
                   auto SH = SExpr->getLoop()->getHeader();
                   if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
                     auto LH = LExpr->getLoop()->getHeader();
                     if (SH != LH && !DT.dominates(SH, LH) &&
                         !DT.dominates(LH, SH)) {
-                      continue;
+                      check = false;
                     }
                   }
                 }
 
-                auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
-                // llvm::errs() << " $$$ " << *lsub << "|" << *slim << "|" <<
-                // *lim << "\n";
-                if (SE.isKnownNonNegative(lsub)) {
-                  return false;
+                if (check) {
+                  auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
+                  if (SE.isKnownNonNegative(lsub)) {
+                    return false;
+                  }
                 }
+
                 if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
                   if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
 #if LLVM_VERSION_MAJOR >= 12
