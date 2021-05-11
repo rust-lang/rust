@@ -544,7 +544,7 @@ rustc_queries! {
     }
 
     /// Gets a map with the variance of every item; use `item_variance` instead.
-    query crate_variances(_: CrateNum) -> ty::CrateVariancesMap<'tcx> {
+    query crate_variances(_: ()) -> ty::CrateVariancesMap<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "computing the variances for items in this crate" }
     }
