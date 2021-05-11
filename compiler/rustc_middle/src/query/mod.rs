@@ -1412,6 +1412,9 @@ rustc_queries! {
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
+    query allocator_kind(_: ()) -> Option<AllocatorKind> {
+        desc { "allocator kind for the current crate" }
+    }
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
