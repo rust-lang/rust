@@ -283,11 +283,10 @@ pub fn provide(providers: &mut Providers) {
         // external item that is visible from at least one local module) to a
         // sufficiently visible parent (considering modules that re-export the
         // external item to be parents).
-        visible_parent_map: |tcx, cnum| {
+        visible_parent_map: |tcx, ()| {
             use std::collections::hash_map::Entry;
             use std::collections::vec_deque::VecDeque;
 
-            assert_eq!(cnum, LOCAL_CRATE);
             let mut visible_parent_map: DefIdMap<DefId> = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
@@ -335,7 +334,7 @@ pub fn provide(providers: &mut Providers) {
                                 Entry::Occupied(mut entry) => {
                                     // If `child` is defined in crate `cnum`, ensure
                                     // that it is mapped to a parent in `cnum`.
-                                    if child.krate == cnum && entry.get().krate != cnum {
+                                    if child.is_local() && entry.get().is_local() {
                                         entry.insert(parent);
                                     }
                                 }

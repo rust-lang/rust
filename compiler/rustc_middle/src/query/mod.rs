@@ -1367,13 +1367,11 @@ rustc_queries! {
     query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
         desc { "calculating the missing lang items in a crate" }
     }
-    query visible_parent_map(_: CrateNum)
-        -> DefIdMap<DefId> {
+    query visible_parent_map(_: ()) -> DefIdMap<DefId> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the visible parent map" }
     }
-    query trimmed_def_paths(_: CrateNum)
-        -> FxHashMap<DefId, Symbol> {
+    query trimmed_def_paths(_: ()) -> FxHashMap<DefId, Symbol> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating trimmed def paths" }
     }
