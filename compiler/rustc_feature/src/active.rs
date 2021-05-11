@@ -274,9 +274,6 @@ declare_features! (
     /// Allows using non lexical lifetimes (RFC 2094).
     (active, nll, "1.0.0", Some(43234), None),
 
-    /// Allows the definition of `const` functions with some advanced features.
-    (active, const_fn, "1.2.0", Some(57563), None),
-
     /// Allows associated type defaults.
     (active, associated_type_defaults, "1.2.0", Some(29661), None),
 
