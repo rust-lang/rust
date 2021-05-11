@@ -31,7 +31,7 @@ use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableVec};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_errors::ErrorReported;
@@ -2651,8 +2651,10 @@ impl<'tcx> TyCtxt<'tcx> {
         struct_lint_level(self.sess, lint, level, src, None, decorate);
     }
 
-    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx StableVec<TraitCandidate>> {
-        self.in_scope_traits_map(id.owner).and_then(|map| map.get(&id.local_id))
+    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
+        let map = self.in_scope_traits_map(id.owner)?;
+        let candidates = map.get(&id.local_id)?;
+        Some(&*candidates)
     }
 
     pub fn named_region(self, id: HirId) -> Option<resolve_lifetime::Region> {
