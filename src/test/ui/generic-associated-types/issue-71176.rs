@@ -3,7 +3,6 @@
 
 trait Provider {
     type A<'a>;
-      //~^ ERROR: missing generics for associated type
 }
 
 impl Provider for () {
@@ -12,6 +11,7 @@ impl Provider for () {
 
 struct Holder<B> {
   inner: Box<dyn Provider<A = B>>,
+  //~^ ERROR: missing generics for associated type
 }
 
 fn main() {

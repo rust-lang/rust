@@ -1,17 +1,17 @@
-error[E0107]: this struct takes at least 2 type arguments but only 1 type argument was supplied
+error[E0107]: this struct takes at least 2 generic arguments but 1 generic argument was supplied
   --> $DIR/generic-impl-less-params-with-defaults.rs:11:5
    |
 LL |     Foo::<isize>::new();
-   |     ^^^   ----- supplied 1 type argument
+   |     ^^^   ----- supplied 1 generic argument
    |     |
-   |     expected at least 2 type arguments
+   |     expected at least 2 generic arguments
    |
-note: struct defined here, with at least 2 type parameters: `A`, `B`
+note: struct defined here, with at least 2 generic parameters: `A`, `B`
   --> $DIR/generic-impl-less-params-with-defaults.rs:3:8
    |
 LL | struct Foo<A, B, C = (A, B)>(
    |        ^^^ -  -
-help: add missing type argument
+help: add missing generic argument
    |
 LL |     Foo::<isize, B>::new();
    |                ^^^

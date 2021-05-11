@@ -1,18 +1,18 @@
 error[E0107]: missing generics for associated type `Monad::Wrapped`
-  --> $DIR/issue-79636-1.rs:6:10
+  --> $DIR/issue-79636-1.rs:16:34
    |
-LL |     type Wrapped<B>;
-   |          ^^^^^^^ expected 1 type argument
+LL |     MInner: Monad<Unwrapped = A, Wrapped = MOuter::Wrapped<A>>,
+   |                                  ^^^^^^^ expected 1 generic argument
    |
-note: associated type defined here, with 1 type parameter: `B`
+note: associated type defined here, with 1 generic parameter: `B`
   --> $DIR/issue-79636-1.rs:6:10
    |
 LL |     type Wrapped<B>;
    |          ^^^^^^^ -
-help: use angle brackets to add missing type argument
+help: add missing generic argument
    |
-LL |     type Wrapped<B><B>;
-   |                 ^^^
+LL |     MInner: Monad<Unwrapped = A, Wrapped<B> = MOuter::Wrapped<A>>,
+   |                                  ^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -120,6 +120,7 @@ pub enum SizedByDefault {
 
 #[derive(Debug)]
 struct ConvertedBinding<'a, 'tcx> {
+    hir_id: hir::HirId,
     item_name: Ident,
     kind: ConvertedBindingKind<'a, 'tcx>,
     gen_args: &'a GenericArgs<'a>,
@@ -590,6 +591,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 };
                 ConvertedBinding {
+                    hir_id: binding.hir_id,
                     item_name: binding.ident,
                     kind,
                     gen_args: binding.gen_args,
@@ -609,6 +611,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_segment: &hir::PathSegment<'_>,
         parent_substs: SubstsRef<'tcx>,
     ) -> SubstsRef<'tcx> {
+        debug!(
+            "create_substs_for_associated_item(span: {:?}, item_def_id: {:?}, item_segment: {:?}",
+            span, item_def_id, item_segment
+        );
         if tcx.generics_of(item_def_id).params.is_empty() {
             self.prohibit_generics(slice::from_ref(item_segment));
 
@@ -1071,9 +1077,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Include substitutions for generic parameters of associated types
         let projection_ty = candidate.map_bound(|trait_ref| {
+            let ident = Ident::new(assoc_ty.ident.name, binding.item_name.span);
             let item_segment = hir::PathSegment {
-                ident: assoc_ty.ident,
-                hir_id: None,
+                ident,
+                hir_id: Some(binding.hir_id),
                 res: None,
                 args: Some(binding.gen_args),
                 infer_args: false,

@@ -49,6 +49,20 @@ pub enum Region {
     Free(DefId, /* lifetime decl */ DefId),
 }
 
+/// This is used in diagnostics to improve suggestions for missing generic arguments.
+/// It gives information on the type of lifetimes that are in scope for a particular `PathSegment`,
+/// so that we can e.g. suggest elided-lifetimes-in-paths of the form <'_, '_> e.g.
+#[derive(Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
+pub enum LifetimeScopeForPath {
+    // Contains all lifetime names that are in scope and could possibly be used in generics
+    // arguments of path.
+    NonElided(Vec<String>),
+
+    // Information that allows us to suggest args of the form `<'_>` in case
+    // no generic arguments were provided for a path.
+    Elided,
+}
+
 /// A set containing, at most, one known element.
 /// If two distinct values are inserted into a set, then it
 /// becomes `Many`, which can be used to detect ambiguities.

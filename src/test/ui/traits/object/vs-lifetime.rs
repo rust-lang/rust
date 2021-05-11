@@ -10,7 +10,7 @@ fn main() {
     //~^ at least one trait is required for an object type
     let _: S<'static, 'static>;
     //~^ ERROR this struct takes 1 lifetime argument but 2 lifetime arguments were supplied
-    //~| ERROR this struct takes 1 type argument but 0 type arguments were supplied
+    //~| ERROR this struct takes 1 generic argument but 0 generic arguments were supplied
     let _: S<dyn 'static +, 'static>;
     //~^ ERROR type provided when a lifetime was expected
     //~| ERROR at least one trait is required for an object type

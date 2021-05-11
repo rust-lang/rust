@@ -1,30 +1,30 @@
-error[E0107]: this function takes 2 const arguments but only 1 const argument was supplied
+error[E0107]: this function takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/incorrect-number-of-const-args.rs:11:5
    |
 LL |     foo::<0>();
-   |     ^^^   - supplied 1 const argument
+   |     ^^^   - supplied 1 generic argument
    |     |
-   |     expected 2 const arguments
+   |     expected 2 generic arguments
    |
-note: function defined here, with 2 const parameters: `X`, `Y`
+note: function defined here, with 2 generic parameters: `X`, `Y`
   --> $DIR/incorrect-number-of-const-args.rs:6:4
    |
 LL | fn foo<const X: usize, const Y: usize>() -> usize {
    |    ^^^       -               -
-help: add missing const argument
+help: add missing generic argument
    |
 LL |     foo::<0, Y>();
    |            ^^^
 
-error[E0107]: this function takes 2 const arguments but 3 const arguments were supplied
+error[E0107]: this function takes 2 generic arguments but 3 generic arguments were supplied
   --> $DIR/incorrect-number-of-const-args.rs:14:5
    |
 LL |     foo::<0, 0, 0>();
-   |     ^^^       --- help: remove this const argument
+   |     ^^^         - help: remove this generic argument
    |     |
-   |     expected 2 const arguments
+   |     expected 2 generic arguments
    |
-note: function defined here, with 2 const parameters: `X`, `Y`
+note: function defined here, with 2 generic parameters: `X`, `Y`
   --> $DIR/incorrect-number-of-const-args.rs:6:4
    |
 LL | fn foo<const X: usize, const Y: usize>() -> usize {

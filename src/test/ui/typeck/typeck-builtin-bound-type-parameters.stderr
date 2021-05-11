@@ -1,40 +1,40 @@
-error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:1:11
    |
 LL | fn foo1<T:Copy<U>, U>(x: T) {}
    |           ^^^^--- help: remove these generics
    |           |
-   |           expected 0 type arguments
+   |           expected 0 generic arguments
    |
-note: trait defined here, with 0 type parameters
+note: trait defined here, with 0 generic parameters
   --> $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
    |           ^^^^
 
-error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:4:14
    |
 LL | trait Trait: Copy<dyn Send> {}
    |              ^^^^---------- help: remove these generics
    |              |
-   |              expected 0 type arguments
+   |              expected 0 generic arguments
    |
-note: trait defined here, with 0 type parameters
+note: trait defined here, with 0 generic parameters
   --> $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
    |           ^^^^
 
-error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:7:21
    |
 LL | struct MyStruct1<T: Copy<T>>;
    |                     ^^^^--- help: remove these generics
    |                     |
-   |                     expected 0 type arguments
+   |                     expected 0 generic arguments
    |
-note: trait defined here, with 0 type parameters
+note: trait defined here, with 0 generic parameters
   --> $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {
@@ -58,7 +58,7 @@ error[E0107]: this trait takes 0 lifetime arguments but 1 lifetime argument was 
   --> $DIR/typeck-builtin-bound-type-parameters.rs:13:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |               ^^^^ ---- help: remove this lifetime argument
+   |               ^^^^ -- help: remove this lifetime argument
    |               |
    |               expected 0 lifetime arguments
    |
@@ -68,15 +68,15 @@ note: trait defined here, with 0 lifetime parameters
 LL | pub trait Copy: Clone {
    |           ^^^^
 
-error[E0107]: this trait takes 0 type arguments but 1 type argument was supplied
+error[E0107]: this trait takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/typeck-builtin-bound-type-parameters.rs:13:15
    |
 LL | fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-   |               ^^^^   --- help: remove this type argument
+   |               ^^^^     - help: remove this generic argument
    |               |
-   |               expected 0 type arguments
+   |               expected 0 generic arguments
    |
-note: trait defined here, with 0 type parameters
+note: trait defined here, with 0 generic parameters
   --> $SRC_DIR/core/src/marker.rs:LL:COL
    |
 LL | pub trait Copy: Clone {

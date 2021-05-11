@@ -1,35 +1,35 @@
-error[E0107]: this enum takes 2 type arguments but only 1 type argument was supplied
+error[E0107]: this enum takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-75883.rs:6:21
    |
 LL |     pub fn run() -> Result<_> {
-   |                     ^^^^^^ - supplied 1 type argument
+   |                     ^^^^^^ - supplied 1 generic argument
    |                     |
-   |                     expected 2 type arguments
+   |                     expected 2 generic arguments
    |
-note: enum defined here, with 2 type parameters: `T`, `E`
+note: enum defined here, with 2 generic parameters: `T`, `E`
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL | pub enum Result<T, E> {
    |          ^^^^^^ -  -
-help: add missing type argument
+help: add missing generic argument
    |
 LL |     pub fn run() -> Result<_, E> {
    |                             ^^^
 
-error[E0107]: this enum takes 2 type arguments but only 1 type argument was supplied
+error[E0107]: this enum takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-75883.rs:15:35
    |
 LL |     pub fn interact(&mut self) -> Result<_> {
-   |                                   ^^^^^^ - supplied 1 type argument
+   |                                   ^^^^^^ - supplied 1 generic argument
    |                                   |
-   |                                   expected 2 type arguments
+   |                                   expected 2 generic arguments
    |
-note: enum defined here, with 2 type parameters: `T`, `E`
+note: enum defined here, with 2 generic parameters: `T`, `E`
   --> $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL | pub enum Result<T, E> {
    |          ^^^^^^ -  -
-help: add missing type argument
+help: add missing generic argument
    |
 LL |     pub fn interact(&mut self) -> Result<_, E> {
    |                                           ^^^

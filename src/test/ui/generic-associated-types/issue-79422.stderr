@@ -1,21 +1,21 @@
 error[E0107]: missing generics for associated type `MapLike::VRefCont`
-  --> $DIR/issue-79422.rs:21:10
+  --> $DIR/issue-79422.rs:43:36
    |
-LL |     type VRefCont<'a>: RefCont<'a, V>;
-   |          ^^^^^^^^ expected 1 lifetime argument
+LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
+   |                                    ^^^^^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-79422.rs:21:10
    |
 LL |     type VRefCont<'a>: RefCont<'a, V>;
    |          ^^^^^^^^ --
-help: use angle brackets to add missing lifetime argument
+help: add missing lifetime argument
    |
-LL |     type VRefCont<'a><'a>: RefCont<'a, V>;
-   |                  ^^^^
+LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
+   |                                    ^^^^^^^^^^^^
 
 error[E0038]: the trait `MapLike` cannot be made into an object
-  --> $DIR/issue-79422.rs:44:12
+  --> $DIR/issue-79422.rs:43:12
    |
 LL |         as Box<dyn MapLike<u8, u8, VRefCont = dyn RefCont<'_, u8>>>;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` cannot be made into an object
@@ -30,7 +30,7 @@ LL |     type VRefCont<'a>: RefCont<'a, V>;
    |          ^^^^^^^^ ...because it contains the generic associated type `VRefCont`
 
 error[E0038]: the trait `MapLike` cannot be made into an object
-  --> $DIR/issue-79422.rs:43:13
+  --> $DIR/issue-79422.rs:42:13
    |
 LL |     let m = Box::new(std::collections::BTreeMap::<u8, u8>::new())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `MapLike` cannot be made into an object

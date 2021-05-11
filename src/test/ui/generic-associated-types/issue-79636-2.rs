@@ -3,7 +3,6 @@
 
 trait SomeTrait {
     type Wrapped<A>: SomeTrait;
-         //~^ ERROR: missing generics for associated type `SomeTrait::Wrapped`
 
     fn f() -> ();
 }
@@ -11,6 +10,7 @@ trait SomeTrait {
 fn program<W>() -> ()
 where
     W: SomeTrait<Wrapped = W>,
+    //~^ ERROR: missing generics for associated type `SomeTrait::Wrapped`
 {
     return W::f();
 }

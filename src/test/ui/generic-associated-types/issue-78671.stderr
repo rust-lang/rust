@@ -1,21 +1,21 @@
 error[E0107]: missing generics for associated type `CollectionFamily::Member`
-  --> $DIR/issue-78671.rs:5:10
+  --> $DIR/issue-78671.rs:8:47
    |
-LL |     type Member<T>;
-   |          ^^^^^^ expected 1 type argument
+LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
+   |                                               ^^^^^^ expected 1 generic argument
    |
-note: associated type defined here, with 1 type parameter: `T`
+note: associated type defined here, with 1 generic parameter: `T`
   --> $DIR/issue-78671.rs:5:10
    |
 LL |     type Member<T>;
    |          ^^^^^^ -
-help: use angle brackets to add missing type argument
+help: add missing generic argument
    |
-LL |     type Member<T><T>;
-   |                ^^^
+LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
+   |                                               ^^^^^^^^^
 
 error[E0038]: the trait `CollectionFamily` cannot be made into an object
-  --> $DIR/issue-78671.rs:9:25
+  --> $DIR/issue-78671.rs:8:25
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member=usize>
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `CollectionFamily` cannot be made into an object

@@ -4,7 +4,7 @@ use crate::astconv::{
     GenericArgCountResult, GenericArgPosition,
 };
 use crate::errors::AssocTypeBindingNotAllowed;
-use crate::structured_errors::{StructuredDiagnostic, WrongNumberOfGenericArgs};
+use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
@@ -438,6 +438,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         has_self: bool,
         infer_args: bool,
     ) -> GenericArgCountResult {
+        debug!(
+            "check_generic_arg_count(span: {:?}, def_id: {:?}, seg: {:?}, gen_params: {:?}, gen_args: {:?})",
+            span, def_id, seg, gen_params, gen_args
+        );
+
         let default_counts = gen_params.own_defaults();
         let param_counts = gen_params.own_counts();
         let named_type_param_count = param_counts.types - has_self as usize;
@@ -453,63 +458,116 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let mut invalid_args = vec![];
 
-        let mut check_generics =
-            |kind, expected_min, expected_max, provided, params_offset, args_offset, silent| {
+        let mut check_lifetime_args = |min_expected_args: usize,
+                                       max_expected_args: usize,
+                                       provided_args: usize,
+                                       late_bounds_ignore: bool|
+         -> bool {
+            if (min_expected_args..=max_expected_args).contains(&provided_args) {
+                return true;
+            }
+
+            if late_bounds_ignore {
+                return true;
+            }
+
+            if provided_args > max_expected_args {
+                invalid_args.extend(
+                    gen_args.args[max_expected_args..provided_args].iter().map(|arg| arg.span()),
+                );
+            };
+
+            let gen_args_info = if provided_args > min_expected_args {
+                invalid_args.extend(
+                    gen_args.args[min_expected_args..provided_args].iter().map(|arg| arg.span()),
+                );
+                let num_redundant_args = provided_args - min_expected_args;
+                GenericArgsInfo::ExcessLifetimes { num_redundant_args }
+            } else {
+                let num_missing_args = min_expected_args - provided_args;
+                GenericArgsInfo::MissingLifetimes { num_missing_args }
+            };
+
+            WrongNumberOfGenericArgs::new(
+                tcx,
+                gen_args_info,
+                seg,
+                gen_params,
+                has_self as usize,
+                gen_args,
+                def_id,
+            )
+            .diagnostic()
+            .emit();
+
+            false
+        };
+
+        let min_expected_lifetime_args = if infer_lifetimes { 0 } else { param_counts.lifetimes };
+        let max_expected_lifetime_args = param_counts.lifetimes;
+        let num_provided_lifetime_args = arg_counts.lifetimes;
+
+        let lifetimes_correct = check_lifetime_args(
+            min_expected_lifetime_args,
+            max_expected_lifetime_args,
+            num_provided_lifetime_args,
+            explicit_late_bound == ExplicitLateBound::Yes,
+        );
+
+        let mut check_types_and_consts =
+            |expected_min, expected_max, provided, params_offset, args_offset| {
+                debug!(
+                    "check_types_and_consts(expected_min: {:?}, expected_max: {:?}, \
+                        provided: {:?}, params_offset: {:?}, args_offset: {:?}",
+                    expected_min, expected_max, provided, params_offset, args_offset
+                );
                 if (expected_min..=expected_max).contains(&provided) {
                     return true;
                 }
 
-                if silent {
-                    return true;
-                }
+                let num_default_params = expected_max - expected_min;
 
-                if provided > expected_max {
+                let gen_args_info = if provided > expected_max {
                     invalid_args.extend(
                         gen_args.args[args_offset + expected_max..args_offset + provided]
                             .iter()
                             .map(|arg| arg.span()),
                     );
+                    let num_redundant_args = provided - expected_max;
+
+                    GenericArgsInfo::ExcessTypesOrConsts {
+                        num_redundant_args,
+                        num_default_params,
+                        args_offset,
+                    }
+                } else {
+                    let num_missing_args = expected_max - provided;
+
+                    GenericArgsInfo::MissingTypesOrConsts {
+                        num_missing_args,
+                        num_default_params,
+                        args_offset,
+                    }
                 };
 
-                WrongNumberOfGenericArgs {
+                debug!("gen_args_info: {:?}", gen_args_info);
+
+                WrongNumberOfGenericArgs::new(
                     tcx,
-                    kind,
-                    expected_min,
-                    expected_max,
-                    provided,
-                    params_offset,
-                    args_offset,
-                    path_segment: seg,
+                    gen_args_info,
+                    seg,
                     gen_params,
+                    params_offset,
                     gen_args,
                     def_id,
-                    span,
-                }
+                )
                 .diagnostic()
                 .emit();
 
                 false
             };
 
-        let lifetimes_correct = check_generics(
-            "lifetime",
-            if infer_lifetimes { 0 } else { param_counts.lifetimes },
-            param_counts.lifetimes,
-            arg_counts.lifetimes,
-            has_self as usize,
-            0,
-            explicit_late_bound == ExplicitLateBound::Yes,
-        );
-
         let args_correct = {
-            let kind = if param_counts.consts + arg_counts.consts == 0 {
-                "type"
-            } else if named_type_param_count + arg_counts.types == 0 {
-                "const"
-            } else {
-                "generic"
-            };
-
             let expected_min = if infer_args {
                 0
             } else {
@@ -517,15 +575,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     - default_counts.types
                     - default_counts.consts
             };
+            debug!("expected_min: {:?}", expected_min);
+            debug!("arg_counts.lifetimes: {:?}", arg_counts.lifetimes);
 
-            check_generics(
-                kind,
+            check_types_and_consts(
                 expected_min,
                 param_counts.consts + named_type_param_count,
                 arg_counts.consts + arg_counts.types,
                 param_counts.lifetimes + has_self as usize,
                 arg_counts.lifetimes,
-                false,
             )
         };
 

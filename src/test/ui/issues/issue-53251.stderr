@@ -1,33 +1,33 @@
-error[E0107]: this associated function takes 0 type arguments but 1 type argument was supplied
+error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-53251.rs:11:20
    |
 LL |                 S::f::<i64>();
    |                    ^------- help: remove these generics
    |                    |
-   |                    expected 0 type arguments
+   |                    expected 0 generic arguments
 ...
 LL | impl_add!(a b);
    | --------------- in this macro invocation
    |
-note: associated function defined here, with 0 type parameters
+note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-53251.rs:4:8
    |
 LL |     fn f() {}
    |        ^
    = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0107]: this associated function takes 0 type arguments but 1 type argument was supplied
+error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-53251.rs:11:20
    |
 LL |                 S::f::<i64>();
    |                    ^------- help: remove these generics
    |                    |
-   |                    expected 0 type arguments
+   |                    expected 0 generic arguments
 ...
 LL | impl_add!(a b);
    | --------------- in this macro invocation
    |
-note: associated function defined here, with 0 type parameters
+note: associated function defined here, with 0 generic parameters
   --> $DIR/issue-53251.rs:4:8
    |
 LL |     fn f() {}
