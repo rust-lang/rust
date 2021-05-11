@@ -2623,7 +2623,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         mut id: hir::HirId,
     ) -> (Level, LintLevelSource) {
-        let sets = self.lint_levels(LOCAL_CRATE);
+        let sets = self.lint_levels(());
         loop {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
                 return pair;

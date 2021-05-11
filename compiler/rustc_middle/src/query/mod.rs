@@ -199,7 +199,7 @@ rustc_queries! {
         desc { "looking up the native libraries of a linked crate" }
     }
 
-    query lint_levels(_: CrateNum) -> LintLevelMap {
+    query lint_levels(_: ()) -> LintLevelMap {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "computing the lint levels for items in this crate" }
