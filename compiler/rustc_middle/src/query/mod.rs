@@ -855,7 +855,7 @@ rustc_queries! {
         desc { "checking for private elements in public interfaces" }
     }
 
-    query reachable_set(_: CrateNum) -> FxHashSet<LocalDefId> {
+    query reachable_set(_: ()) -> FxHashSet<LocalDefId> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "reachability" }
     }
@@ -1141,10 +1141,10 @@ rustc_queries! {
     query is_reachable_non_generic(def_id: DefId) -> bool {
         desc { |tcx| "checking whether `{}` is an exported symbol", tcx.def_path_str(def_id) }
     }
-    query is_unreachable_local_definition(def_id: DefId) -> bool {
+    query is_unreachable_local_definition(def_id: LocalDefId) -> bool {
         desc { |tcx|
             "checking whether `{}` is reachable from outside the crate",
-            tcx.def_path_str(def_id),
+            tcx.def_path_str(def_id.to_def_id()),
         }
     }
 

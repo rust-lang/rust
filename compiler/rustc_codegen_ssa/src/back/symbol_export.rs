@@ -4,7 +4,7 @@ use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -60,7 +60,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
         tcx.is_panic_runtime(LOCAL_CRATE) || tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
-        .reachable_set(LOCAL_CRATE)
+        .reachable_set(())
         .iter()
         .filter_map(|&def_id| {
             // We want to ignore some FFI functions that are not exposed from
@@ -355,12 +355,8 @@ fn upstream_drop_glue_for_provider<'tcx>(
     }
 }
 
-fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(def_id) = def_id.as_local() {
-        !tcx.reachable_set(LOCAL_CRATE).contains(&def_id)
-    } else {
-        bug!("is_unreachable_local_definition called with non-local DefId: {:?}", def_id)
-    }
+fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    !tcx.reachable_set(()).contains(&def_id)
 }
 
 pub fn provide(providers: &mut Providers) {
