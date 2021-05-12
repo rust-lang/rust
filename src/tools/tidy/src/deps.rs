@@ -141,7 +141,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "md-5",
     "measureme",
     "memchr",
-    "memmap",
     "memmap2",
     "memoffset",
     "miniz_oxide",
