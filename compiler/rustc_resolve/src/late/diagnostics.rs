@@ -1821,7 +1821,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     crate fn add_missing_lifetime_specifiers_label(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        spans_with_counts: Vec<(Span, usize)>,
+        mut spans_with_counts: Vec<(Span, usize)>,
         lifetime_names: &FxHashSet<Symbol>,
         lifetime_spans: Vec<Span>,
         params: &[ElisionFailureInfo],
@@ -1831,13 +1831,21 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             .map(|(span, _)| self.tcx.sess.source_map().span_to_snippet(*span).ok())
             .collect();
 
-        for (span, count) in &spans_with_counts {
+        // Empty generics are marked with a span of "<", but since from now on
+        // that information is in the snippets it can be removed from the spans.
+        for ((span, _), snippet) in spans_with_counts.iter_mut().zip(&snippets) {
+            if snippet.as_deref() == Some("<") {
+                *span = span.shrink_to_hi();
+            }
+        }
+
+        for &(span, count) in &spans_with_counts {
             err.span_label(
-                *span,
+                span,
                 format!(
                     "expected {} lifetime parameter{}",
-                    if *count == 1 { "named".to_string() } else { count.to_string() },
-                    pluralize!(*count),
+                    if count == 1 { "named".to_string() } else { count.to_string() },
+                    pluralize!(count),
                 ),
             );
         }
@@ -1982,6 +1990,14 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                                                 .collect::<Vec<_>>()
                                                 .join(", "),
                                         )
+                                    } else if snippet == "<" || snippet == "(" {
+                                        (
+                                            span.shrink_to_hi(),
+                                            std::iter::repeat("'static")
+                                                .take(count)
+                                                .collect::<Vec<_>>()
+                                                .join(", "),
+                                        )
                                     } else {
                                         (
                                             span.shrink_to_hi(),
@@ -1990,7 +2006,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                                                 std::iter::repeat("'static")
                                                     .take(count)
                                                     .collect::<Vec<_>>()
-                                                    .join(", ")
+                                                    .join(", "),
                                             ),
                                         )
                                     }
@@ -2045,6 +2061,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         Some("&") => Some(Box::new(|name| format!("&{} ", name))),
                         Some("'_") => Some(Box::new(|n| n.to_string())),
                         Some("") => Some(Box::new(move |n| format!("{}, ", n).repeat(count))),
+                        Some("<") => Some(Box::new(move |n| {
+                            std::iter::repeat(n).take(count).collect::<Vec<_>>().join(", ")
+                        })),
                         Some(snippet) if !snippet.ends_with('>') => Some(Box::new(move |name| {
                             format!(
                                 "{}<{}>",
@@ -2070,6 +2089,9 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                         Some("'_") => Some("'a".to_string()),
                         Some("") => {
                             Some(std::iter::repeat("'a, ").take(count).collect::<Vec<_>>().join(""))
+                        }
+                        Some("<") => {
+                            Some(std::iter::repeat("'a").take(count).collect::<Vec<_>>().join(", "))
                         }
                         Some(snippet) => Some(format!(
                             "{}<{}>",
