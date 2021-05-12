@@ -156,16 +156,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let fn_sig_span = self.fn_sig_span;
         let body_span = self.body_span;
 
-<<<<<<< HEAD
-        debug!(
-            "instrumenting {:?}, fn sig span: {}, body span: {}",
-            def_id,
-            source_map.span_to_diagnostic_string(fn_sig_span),
-            source_map.span_to_diagnostic_string(body_span)
-        );
-
-=======
->>>>>>> 476104d0f54 (Simplified body_span and filtered span code)
         let mut graphviz_data = debug::GraphvizData::new();
         let mut debug_used_expressions = debug::UsedExpressions::new();
 
@@ -572,7 +562,7 @@ fn get_body_span<'tcx>(
             if expn_data.is_root() {
                 break;
             }
-            if let ExpnKind::Macro{..} = expn_data.kind {
+            if let ExpnKind::Macro { .. } = expn_data.kind {
                 body_span = expn_data.call_site;
             } else {
                 break;

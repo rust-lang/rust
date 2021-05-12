@@ -335,10 +335,9 @@ rustc_queries! {
 
     /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
     /// MIR pass (assuming the -Zinstrument-coverage option is enabled).
-    query coverageinfo(key: DefId) -> mir::CoverageInfo {
-        desc { |tcx| "retrieving coverage info from MIR for `{}`", tcx.def_path_str(key) }
+    query coverageinfo(key: ty::InstanceDef<'tcx>) -> mir::CoverageInfo {
+        desc { |tcx| "retrieving coverage info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         storage(ArenaCacheSelector<'tcx>)
-        cache_on_disk_if { key.is_local() }
     }
 
     /// Returns the name of the file that contains the function body, if instrumented for coverage.
