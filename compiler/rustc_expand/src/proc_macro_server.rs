@@ -638,10 +638,11 @@ impl server::SourceFile for Rustc<'_> {
         match file.name {
             FileName::Real(ref name) => name
                 .local_path()
+                .expect("attempting to get a file path in an imported file in `proc_macro::SourceFile::path`")
                 .to_str()
                 .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
                 .to_string(),
-            _ => file.name.to_string(),
+            _ => file.name.prefer_local().to_string(),
         }
     }
     fn is_real(&mut self, file: &Self::SourceFile) -> bool {
@@ -785,7 +786,7 @@ fn ident_name_compatibility_hack(
         if let ExpnKind::Macro { name: macro_name, .. } = orig_span.ctxt().outer_expn_data().kind {
             let source_map = rustc.sess.source_map();
             let filename = source_map.span_to_filename(orig_span);
-            if let FileName::Real(RealFileName::Named(path)) = filename {
+            if let FileName::Real(RealFileName::LocalPath(path)) = filename {
                 let matches_prefix = |prefix, filename| {
                     // Check for a path that ends with 'prefix*/src/<filename>'
                     let mut iter = path.components().rev();
@@ -848,7 +849,7 @@ fn ident_name_compatibility_hack(
                 if macro_name == sym::tuple_from_req && matches_prefix("actix-web", "extract.rs") {
                     let snippet = source_map.span_to_snippet(orig_span);
                     if snippet.as_deref() == Ok("$T") {
-                        if let FileName::Real(RealFileName::Named(macro_path)) =
+                        if let FileName::Real(RealFileName::LocalPath(macro_path)) =
                             source_map.span_to_filename(rustc.def_site)
                         {
                             if macro_path.to_string_lossy().contains("pin-project-internal-0.") {

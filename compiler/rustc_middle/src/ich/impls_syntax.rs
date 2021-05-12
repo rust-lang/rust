@@ -61,8 +61,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         let SourceFile {
             name: _, // We hash the smaller name_hash instead of this
             name_hash,
-            name_was_remapped,
-            unmapped_path: _,
             cnum,
             // Do not hash the source as it is not encoded
             src: _,
@@ -77,7 +75,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         } = *self;
 
         (name_hash as u64).hash_stable(hcx, hasher);
-        name_was_remapped.hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 

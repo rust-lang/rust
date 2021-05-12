@@ -64,18 +64,17 @@ impl JsonRenderer<'_> {
     fn convert_span(&self, span: clean::Span) -> Option<Span> {
         match span.filename(self.sess()) {
             rustc_span::FileName::Real(name) => {
-                let hi = span.hi(self.sess());
-                let lo = span.lo(self.sess());
-                Some(Span {
-                    filename: match name {
-                        rustc_span::RealFileName::Named(path) => path,
-                        rustc_span::RealFileName::Devirtualized { local_path, virtual_name: _ } => {
-                            local_path
-                        }
-                    },
-                    begin: (lo.line, lo.col.to_usize()),
-                    end: (hi.line, hi.col.to_usize()),
-                })
+                if let Some(local_path) = name.into_local_path() {
+                    let hi = span.hi(self.sess());
+                    let lo = span.lo(self.sess());
+                    Some(Span {
+                        filename: local_path,
+                        begin: (lo.line, lo.col.to_usize()),
+                        end: (hi.line, hi.col.to_usize()),
+                    })
+                } else {
+                    None
+                }
             }
             _ => None,
         }

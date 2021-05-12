@@ -667,7 +667,12 @@ pub trait PrettyPrinter<'tcx>:
                     if let Some(did) = did.as_local() {
                         let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
                         let span = self.tcx().hir().span(hir_id);
-                        p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
+                        p!(write(
+                            "@{}",
+                            // This may end up in stderr diagnostics but it may also be emitted
+                            // into MIR. Hence we use the remapped path if available
+                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                        ));
                     } else {
                         p!(write("@"), print_def_path(did, substs));
                     }
@@ -702,7 +707,12 @@ pub trait PrettyPrinter<'tcx>:
                             p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
                             let span = self.tcx().hir().span(hir_id);
-                            p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
+                            p!(write(
+                                "@{}",
+                                // This may end up in stderr diagnostics but it may also be emitted
+                                // into MIR. Hence we use the remapped path if available
+                                self.tcx().sess.source_map().span_to_embeddable_string(span)
+                            ));
                         }
                     } else {
                         p!(write("@"), print_def_path(did, substs));
@@ -1407,7 +1417,13 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 if !self.empty_path {
                     write!(self, "::")?;
                 }
-                write!(self, "<impl at {}>", self.tcx.sess.source_map().span_to_string(span))?;
+                write!(
+                    self,
+                    "<impl at {}>",
+                    // This may end up in stderr diagnostics but it may also be emitted
+                    // into MIR. Hence we use the remapped path if available
+                    self.tcx.sess.source_map().span_to_embeddable_string(span)
+                )?;
                 self.empty_path = false;
 
                 return Ok(self);

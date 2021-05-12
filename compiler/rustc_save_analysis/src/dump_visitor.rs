@@ -190,7 +190,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         };
 
         let data = CompilationOptions {
-            directory: self.tcx.sess.working_dir.0.clone(),
+            directory: self.tcx.sess.working_dir.remapped_path_if_available().into(),
             program,
             arguments,
             output: self.save_ctxt.compilation_output(crate_name),
@@ -1112,7 +1112,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 name: String::new(),
                 qualname,
                 span,
-                value: filename.to_string(),
+                value: filename.prefer_remapped().to_string(),
                 children,
                 parent: None,
                 decl_id: None,

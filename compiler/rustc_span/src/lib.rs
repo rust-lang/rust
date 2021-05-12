@@ -114,52 +114,112 @@ pub fn with_default_session_globals<R>(f: impl FnOnce() -> R) -> R {
 // deserialization.
 scoped_tls::scoped_thread_local!(pub static SESSION_GLOBALS: SessionGlobals);
 
-// FIXME: Perhaps this should not implement Rustc{Decodable, Encodable}
-//
 // FIXME: We should use this enum or something like it to get rid of the
 // use of magic `/rust/1.x/...` paths across the board.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash)]
-#[derive(HashStable_Generic, Decodable, Encodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd)]
+#[derive(HashStable_Generic, Decodable)]
 pub enum RealFileName {
-    Named(PathBuf),
-    /// For de-virtualized paths (namely paths into libstd that have been mapped
-    /// to the appropriate spot on the local host's file system),
-    Devirtualized {
-        /// `local_path` is the (host-dependent) local path to the file.
-        local_path: PathBuf,
+    LocalPath(PathBuf),
+    /// For remapped paths (namely paths into libstd that have been mapped
+    /// to the appropriate spot on the local host's file system, and local file
+    /// system paths that have been remapped with `FilePathMapping`),
+    Remapped {
+        /// `local_path` is the (host-dependent) local path to the file. This is
+        /// None if the file was imported from another crate
+        local_path: Option<PathBuf>,
         /// `virtual_name` is the stable path rustc will store internally within
         /// build artifacts.
         virtual_name: PathBuf,
     },
 }
 
+impl Hash for RealFileName {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // To prevent #70924 from happening again we should only hash the
+        // remapped (virtualized) path if that exists. This is because
+        // virtualized paths to sysroot crates (/rust/$hash or /rust/$version)
+        // remain stable even if the corresponding local_path changes
+        self.remapped_path_if_available().hash(state)
+    }
+}
+
+// This is functionally identical to #[derive(Encodable)], with the exception of
+// an added assert statement
+impl<S: Encoder> Encodable<S> for RealFileName {
+    fn encode(&self, encoder: &mut S) -> Result<(), S::Error> {
+        encoder.emit_enum("RealFileName", |encoder| match *self {
+            RealFileName::LocalPath(ref local_path) => {
+                encoder.emit_enum_variant("LocalPath", 0, 1, |encoder| {
+                    Ok({
+                        encoder.emit_enum_variant_arg(0, |encoder| local_path.encode(encoder))?;
+                    })
+                })
+            }
+
+            RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
+                .emit_enum_variant("Remapped", 1, 2, |encoder| {
+                    // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
+                    // if they have been remapped by --remap-path-prefix
+                    assert!(local_path.is_none());
+                    Ok({
+                        encoder.emit_enum_variant_arg(0, |encoder| local_path.encode(encoder))?;
+                        encoder.emit_enum_variant_arg(1, |encoder| virtual_name.encode(encoder))?;
+                    })
+                }),
+        })
+    }
+}
+
 impl RealFileName {
-    /// Returns the path suitable for reading from the file system on the local host.
-    /// Avoid embedding this in build artifacts; see `stable_name()` for that.
-    pub fn local_path(&self) -> &Path {
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    pub fn local_path(&self) -> Option<&Path> {
         match self {
-            RealFileName::Named(p)
-            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => &p,
+            RealFileName::LocalPath(p) => Some(p),
+            RealFileName::Remapped { local_path: p, virtual_name: _ } => {
+                p.as_ref().map(PathBuf::as_path)
+            }
         }
     }
 
-    /// Returns the path suitable for reading from the file system on the local host.
-    /// Avoid embedding this in build artifacts; see `stable_name()` for that.
-    pub fn into_local_path(self) -> PathBuf {
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists.
+    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
-            RealFileName::Named(p)
-            | RealFileName::Devirtualized { local_path: p, virtual_name: _ } => p,
+            RealFileName::LocalPath(p) => Some(p),
+            RealFileName::Remapped { local_path: p, virtual_name: _ } => p,
         }
     }
 
-    /// Returns the path suitable for embedding into build artifacts. Note that
-    /// a virtualized path will not correspond to a valid file system path; see
-    /// `local_path()` for something that is more likely to return paths into the
-    /// local host file system.
-    pub fn stable_name(&self) -> &Path {
+    /// Returns the path suitable for embedding into build artifacts. This would still
+    /// be a local path if it has not been remapped. A remapped path will not correspond
+    /// to a valid file system path: see `local_path_if_available()` for something that
+    /// is more likely to return paths into the local host file system.
+    pub fn remapped_path_if_available(&self) -> &Path {
         match self {
-            RealFileName::Named(p)
-            | RealFileName::Devirtualized { local_path: _, virtual_name: p } => &p,
+            RealFileName::LocalPath(p)
+            | RealFileName::Remapped { local_path: _, virtual_name: p } => &p,
+        }
+    }
+
+    /// Returns the path suitable for reading from the file system on the local host,
+    /// if this information exists. Otherwise returns the remapped name.
+    /// Avoid embedding this in build artifacts; see `remapped_path_if_available()` for that.
+    pub fn local_path_if_available(&self) -> &Path {
+        match self {
+            RealFileName::LocalPath(path)
+            | RealFileName::Remapped { local_path: None, virtual_name: path }
+            | RealFileName::Remapped { local_path: Some(path), virtual_name: _ } => path,
+        }
+    }
+
+    pub fn to_string_lossy(&self, prefer_local: bool) -> Cow<'_, str> {
+        if prefer_local {
+            self.local_path_if_available().to_string_lossy()
+        } else {
+            self.remapped_path_if_available().to_string_lossy()
         }
     }
 }
@@ -188,16 +248,24 @@ pub enum FileName {
     InlineAsm(u64),
 }
 
-impl std::fmt::Display for FileName {
+impl From<PathBuf> for FileName {
+    fn from(p: PathBuf) -> Self {
+        assert!(!p.to_string_lossy().ends_with('>'));
+        FileName::Real(RealFileName::LocalPath(p))
+    }
+}
+
+pub struct FileNameDisplay<'a> {
+    inner: &'a FileName,
+    prefer_local: bool,
+}
+
+impl fmt::Display for FileNameDisplay<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
-        match *self {
-            Real(RealFileName::Named(ref path)) => write!(fmt, "{}", path.display()),
-            // FIXME: might be nice to display both components of Devirtualized.
-            // But for now (to backport fix for issue #70924), best to not
-            // perturb diagnostics so its obvious test suite still works.
-            Real(RealFileName::Devirtualized { ref local_path, virtual_name: _ }) => {
-                write!(fmt, "{}", local_path.display())
+        match *self.inner {
+            Real(ref name) => {
+                write!(fmt, "{}", name.to_string_lossy(self.prefer_local))
             }
             QuoteExpansion(_) => write!(fmt, "<quote expansion>"),
             MacroExpansion(_) => write!(fmt, "<macro expansion>"),
@@ -212,10 +280,12 @@ impl std::fmt::Display for FileName {
     }
 }
 
-impl From<PathBuf> for FileName {
-    fn from(p: PathBuf) -> Self {
-        assert!(!p.to_string_lossy().ends_with('>'));
-        FileName::Real(RealFileName::Named(p))
+impl FileNameDisplay<'_> {
+    pub fn to_string_lossy(&self) -> Cow<'_, str> {
+        match self.inner {
+            FileName::Real(ref inner) => inner.to_string_lossy(self.prefer_local),
+            _ => Cow::from(format!("{}", self)),
+        }
     }
 }
 
@@ -234,6 +304,16 @@ impl FileName {
             | DocTest(_, _)
             | InlineAsm(_) => false,
         }
+    }
+
+    pub fn prefer_remapped(&self) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, prefer_local: false }
+    }
+
+    // This may include transient local filesystem information.
+    // Must not be embedded in build outputs.
+    pub fn prefer_local(&self) -> FileNameDisplay<'_> {
+        FileNameDisplay { inner: self, prefer_local: true }
     }
 
     pub fn macro_expansion_source_code(src: &str) -> FileName {
@@ -796,7 +876,7 @@ pub fn debug_with_source_map(
     f: &mut fmt::Formatter<'_>,
     source_map: &SourceMap,
 ) -> fmt::Result {
-    write!(f, "{} ({:?})", source_map.span_to_string(span), span.ctxt())
+    write!(f, "{} ({:?})", source_map.span_to_diagnostic_string(span), span.ctxt())
 }
 
 pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1128,11 +1208,6 @@ pub struct SourceFile {
     /// originate from files has names between angle brackets by convention
     /// (e.g., `<anon>`).
     pub name: FileName,
-    /// `true` if the `name` field above has been modified by `--remap-path-prefix`.
-    pub name_was_remapped: bool,
-    /// The unmapped path of the file that the source came from.
-    /// Set to `None` if the `SourceFile` was imported from an external crate.
-    pub unmapped_path: Option<FileName>,
     /// The complete source code.
     pub src: Option<Lrc<String>>,
     /// The source code's hash.
@@ -1162,7 +1237,6 @@ impl<S: Encoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("SourceFile", 8, |s| {
             s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
-            s.emit_struct_field("name_was_remapped", 1, |s| self.name_was_remapped.encode(s))?;
             s.emit_struct_field("src_hash", 2, |s| self.src_hash.encode(s))?;
             s.emit_struct_field("start_pos", 3, |s| self.start_pos.encode(s))?;
             s.emit_struct_field("end_pos", 4, |s| self.end_pos.encode(s))?;
@@ -1237,8 +1311,6 @@ impl<D: Decoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> Result<SourceFile, D::Error> {
         d.read_struct("SourceFile", 8, |d| {
             let name: FileName = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
-            let name_was_remapped: bool =
-                d.read_struct_field("name_was_remapped", 1, |d| Decodable::decode(d))?;
             let src_hash: SourceFileHash =
                 d.read_struct_field("src_hash", 2, |d| Decodable::decode(d))?;
             let start_pos: BytePos =
@@ -1282,8 +1354,6 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             let cnum: CrateNum = d.read_struct_field("cnum", 10, |d| Decodable::decode(d))?;
             Ok(SourceFile {
                 name,
-                name_was_remapped,
-                unmapped_path: None,
                 start_pos,
                 end_pos,
                 src: None,
@@ -1304,15 +1374,13 @@ impl<D: Decoder> Decodable<D> for SourceFile {
 
 impl fmt::Debug for SourceFile {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(fmt, "SourceFile({})", self.name)
+        write!(fmt, "SourceFile({:?})", self.name)
     }
 }
 
 impl SourceFile {
     pub fn new(
         name: FileName,
-        name_was_remapped: bool,
-        unmapped_path: FileName,
         mut src: String,
         start_pos: BytePos,
         hash_kind: SourceFileHashAlgorithm,
@@ -1334,8 +1402,6 @@ impl SourceFile {
 
         SourceFile {
             name,
-            name_was_remapped,
-            unmapped_path: Some(unmapped_path),
             src: Some(Lrc::new(src)),
             src_hash,
             external_src: Lock::new(ExternalSource::Unneeded),

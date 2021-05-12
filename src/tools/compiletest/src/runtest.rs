@@ -3650,6 +3650,12 @@ impl<'test> TestCx<'test> {
             .join("library");
         normalize_path(&src_dir, "$SRC_DIR");
 
+        if let Some(virtual_rust_source_base_dir) =
+            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
+        {
+            normalize_path(&virtual_rust_source_base_dir.join("library"), "$SRC_DIR");
+        }
+
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
         let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();

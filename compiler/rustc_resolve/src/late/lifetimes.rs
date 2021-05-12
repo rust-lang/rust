@@ -3451,7 +3451,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn insert_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime, def: Region) {
         debug!(
             node = ?self.tcx.hir().node_to_string(lifetime_ref.hir_id),
-            span = ?self.tcx.sess.source_map().span_to_string(lifetime_ref.span)
+            span = ?self.tcx.sess.source_map().span_to_diagnostic_string(lifetime_ref.span)
         );
         self.map.defs.insert(lifetime_ref.hir_id, def);
 

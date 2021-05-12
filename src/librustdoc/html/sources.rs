@@ -56,7 +56,11 @@ impl DocFolder for SourceCollector<'_, '_> {
                 Err(e) => {
                     self.scx.tcx.sess.span_err(
                         item.span(self.scx.tcx).inner(),
-                        &format!("failed to render source code for `{}`: {}", filename, e),
+                        &format!(
+                            "failed to render source code for `{}`: {}",
+                            filename.prefer_local(),
+                            e
+                        ),
                     );
                     false
                 }
@@ -76,7 +80,13 @@ impl SourceCollector<'_, 'tcx> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {
-            FileName::Real(ref file) => file.local_path().to_path_buf(),
+            FileName::Real(ref file) => {
+                if let Some(local_path) = file.local_path() {
+                    local_path.to_path_buf()
+                } else {
+                    unreachable!("only the current crate should have sources emitted");
+                }
+            }
             _ => return Ok(()),
         };
         if self.scx.local_sources.contains_key(&*p) {
@@ -113,7 +123,7 @@ impl SourceCollector<'_, 'tcx> {
         href.push_str(&fname.to_string_lossy());
 
         let title = format!("{} - source", src_fname.to_string_lossy());
-        let desc = format!("Source of the Rust file `{}`.", filename);
+        let desc = format!("Source of the Rust file `{}`.", filename.prefer_remapped());
         let page = layout::Page {
             title: &title,
             css_class: "source",

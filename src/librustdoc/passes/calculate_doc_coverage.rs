@@ -119,7 +119,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
             &self
                 .items
                 .iter()
-                .map(|(k, v)| (k.to_string(), v))
+                .map(|(k, v)| (k.prefer_local().to_string(), v))
                 .collect::<BTreeMap<String, &ItemCount>>(),
         )
         .expect("failed to convert JSON data to string")
@@ -159,7 +159,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
         for (file, &count) in &self.items {
             if let Some(percentage) = count.percentage() {
                 print_table_record(
-                    &limit_filename_len(file.to_string()),
+                    &limit_filename_len(file.prefer_local().to_string_lossy().into()),
                     count,
                     percentage,
                     count.examples_percentage().unwrap_or(0.),
@@ -225,7 +225,7 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
                 // unless the user had an explicit `allow`
                 let should_have_docs =
                     level != lint::Level::Allow || matches!(source, LintLevelSource::Default);
-                debug!("counting {:?} {:?} in {}", i.type_(), i.name, filename);
+                debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
                 self.items.entry(filename).or_default().count_item(
                     has_docs,
                     has_doc_example,

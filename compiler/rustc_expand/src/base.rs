@@ -1084,13 +1084,18 @@ impl<'a> ExtCtxt<'a> {
         // after macro expansion (that is, they are unhygienic).
         if !path.is_absolute() {
             let callsite = span.source_callsite();
-            let mut result = match self.source_map().span_to_unmapped_path(callsite) {
-                FileName::Real(name) => name.into_local_path(),
+            let mut result = match self.source_map().span_to_filename(callsite) {
+                FileName::Real(name) => name
+                    .into_local_path()
+                    .expect("attempting to resolve a file path in an external file"),
                 FileName::DocTest(path, _) => path,
                 other => {
                     return Err(self.struct_span_err(
                         span,
-                        &format!("cannot resolve relative path in non-file source `{}`", other),
+                        &format!(
+                            "cannot resolve relative path in non-file source `{}`",
+                            other.prefer_local()
+                        ),
                     ));
                 }
             };

@@ -169,8 +169,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug!(
             "instrumenting {:?}, fn sig span: {}, body span: {}",
             def_id,
-            source_map.span_to_string(fn_sig_span),
-            source_map.span_to_string(body_span)
+            source_map.span_to_diagnostic_string(fn_sig_span),
+            source_map.span_to_diagnostic_string(body_span)
         );
 
         let mut graphviz_data = debug::GraphvizData::new();
@@ -311,7 +311,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let tcx = self.tcx;
         let source_map = tcx.sess.source_map();
         let body_span = self.body_span;
-        let file_name = Symbol::intern(&self.source_file.name.to_string());
+        let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 
         let mut bcb_counters = IndexVec::from_elem_n(None, self.basic_coverage_blocks.num_nodes());
         for covspan in coverage_spans {
@@ -332,8 +332,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 "Calling make_code_region(file_name={}, source_file={:?}, span={}, body_span={})",
                 file_name,
                 self.source_file,
-                source_map.span_to_string(span),
-                source_map.span_to_string(body_span)
+                source_map.span_to_diagnostic_string(span),
+                source_map.span_to_diagnostic_string(body_span)
             );
 
             inject_statement(
