@@ -2,7 +2,7 @@ use crate::consts::{constant_context, constant_simple};
 use crate::differing_macro_contexts;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
@@ -14,7 +14,7 @@ use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::Symbol;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator
@@ -511,7 +511,7 @@ pub struct SpanlessHash<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
-    s: StableHasher,
+    s: FxHasher,
 }
 
 impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
@@ -519,7 +519,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         Self {
             cx,
             maybe_typeck_results: cx.maybe_typeck_results(),
-            s: StableHasher::new(),
+            s: FxHasher::default(),
         }
     }
 
