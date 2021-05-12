@@ -108,7 +108,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let lo = tcx.sess.source_map().lookup_char_pos(pos);
 
-        let filename = lo.file.name.to_string();
+        let filename = lo.file.name.prefer_remapped().to_string();
         let lineno: u32 = lo.line as u32;
         // `lo.col` is 0-based - add 1 to make it 1-based for the caller.
         let colno: u32 = lo.col.0 as u32 + 1;
