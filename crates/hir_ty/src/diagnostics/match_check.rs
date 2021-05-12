@@ -1126,6 +1126,25 @@ fn main() {
         );
     }
 
+    #[test]
+    fn match_guard() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match true {
+        true if false => {}
+        true          => {}
+        false         => {}
+    }
+    match true {
+        //^^^^ Missing match arm
+        true if false => {}
+        false         => {}
+}
+"#,
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
@@ -1151,6 +1170,38 @@ fn main() {
     }
 }
 "#,
+            );
+        }
+
+        #[test]
+        fn reference_patterns_at_top_level() {
+            check_diagnostics(
+                r#"
+fn main() {
+    match &false {
+        &true => {}
+    //  ^^^^^ Internal: match check bailed out
+    }
+}
+            "#,
+            );
+        }
+
+        #[test]
+        fn reference_patterns_in_fields() {
+            check_diagnostics(
+                r#"
+fn main() {
+    match (&false,) {
+        (true,) => {}
+    //  ^^^^^^^ Internal: match check bailed out
+    }
+    match (&false,) {
+        (&true,) => {}
+    //  ^^^^^^^^ Internal: match check bailed out
+    }
+}
+            "#,
             );
         }
     }
