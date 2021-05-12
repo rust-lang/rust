@@ -695,13 +695,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         };
 
         if remove_entire_generics {
-            let sm = self.tcx.sess.source_map();
-
             let span = self
                 .path_segment
                 .args
                 .unwrap()
-                .span_ext(sm)
+                .span_ext()
                 .unwrap()
                 .with_lo(self.path_segment.ident.span.hi());
 
