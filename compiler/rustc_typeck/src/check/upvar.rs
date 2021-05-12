@@ -42,11 +42,13 @@ use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_infer::infer::UpvarRegion;
 use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection, ProjectionKind};
 use rustc_middle::mir::FakeReadCause;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults, UpvarSubsts};
+use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, TypeckResults, UpvarSubsts};
 use rustc_session::lint;
 use rustc_span::sym;
 use rustc_span::{MultiSpan, Span, Symbol};
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_index::vec::Idx;
 use rustc_target::abi::VariantIdx;
 
@@ -168,7 +170,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.compute_min_captures(closure_def_id, delegate.capture_information);
 
         let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
-        if should_do_migration_analysis(self.tcx, closure_hir_id) {
+
+        if should_do_disjoint_capture_migration_analysis(self.tcx, closure_hir_id) {
             self.perform_2229_migration_anaysis(closure_def_id, body_id, capture_clause, span);
         }
 
@@ -471,7 +474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         capture_clause: hir::CaptureBy,
         span: Span,
     ) {
-        let need_migrations = self.compute_2229_migrations(
+        let (need_migrations, reasons) = self.compute_2229_migrations(
             closure_def_id,
             span,
             capture_clause,
@@ -485,12 +488,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let local_def_id = closure_def_id.expect_local();
             let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
             self.tcx.struct_span_lint_hir(
-                lint::builtin::DISJOINT_CAPTURE_DROP_REORDER,
+                lint::builtin::DISJOINT_CAPTURE_MIGRATION,
                 closure_hir_id,
                 span,
                 |lint| {
                     let mut diagnostics_builder = lint.build(
-                        "drop order affected for closure because of `capture_disjoint_fields`",
+                        format!(
+                            "{} affected for closure because of `capture_disjoint_fields`",
+                            reasons
+                        )
+                        .as_str(),
                     );
                     let closure_body_span = self.tcx.hir().span(body_id.hir_id);
                     let (sugg, app) =
@@ -527,6 +534,169 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Combines all the reasons for 2229 migrations
+    fn compute_2229_migrations_reasons(
+        &self,
+        auto_trait_reasons: FxHashSet<&str>,
+        drop_reason: bool,
+    ) -> String {
+        let mut reasons = String::new();
+
+        if auto_trait_reasons.len() > 0 {
+            reasons = format!(
+                "{} trait implementation",
+                auto_trait_reasons.clone().into_iter().collect::<Vec<&str>>().join(", ")
+            );
+        }
+
+        if auto_trait_reasons.len() > 0 && drop_reason {
+            reasons = format!("{}, and ", reasons);
+        }
+
+        if drop_reason {
+            reasons = format!("{}drop order", reasons);
+        }
+
+        reasons
+    }
+
+    /// Returns true if `ty` may implement `trait_def_id`
+    fn ty_impls_trait(
+        &self,
+        ty: Ty<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        trait_def_id: DefId,
+    ) -> bool {
+        use crate::rustc_middle::ty::ToPredicate;
+        use crate::rustc_middle::ty::WithConstness;
+        use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+        let tcx = self.infcx.tcx;
+
+        let trait_ref = TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(ty, &[]) };
+
+        let obligation = Obligation::new(
+            cause.clone(),
+            self.param_env,
+            trait_ref.without_const().to_predicate(tcx),
+        );
+
+        self.infcx.predicate_may_hold(&obligation)
+    }
+
+    /// Returns true if migration is needed for trait for the provided var_hir_id
+    fn need_2229_migrations_for_trait(
+        &self,
+        min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
+        var_hir_id: hir::HirId,
+        check_trait: Option<DefId>,
+    ) -> bool {
+        let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
+            min_captures.and_then(|m| m.get(&var_hir_id))
+        {
+            root_var_min_capture_list
+        } else {
+            return false;
+        };
+
+        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+
+        let cause = ObligationCause::misc(self.tcx.hir().span(var_hir_id), self.body_id);
+
+        let obligation_should_hold = check_trait
+            .map(|check_trait| self.ty_impls_trait(ty, &cause, check_trait))
+            .unwrap_or(false);
+
+        // Check whether catpured fields also implement the trait
+
+        for capture in root_var_min_capture_list.iter() {
+            let ty = capture.place.ty();
+
+            let obligation_holds_for_capture = check_trait
+                .map(|check_trait| self.ty_impls_trait(ty, &cause, check_trait))
+                .unwrap_or(false);
+
+            if !obligation_holds_for_capture && obligation_should_hold {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Figures out the list of root variables (and their types) that aren't completely
+    /// captured by the closure when `capture_disjoint_fields` is enabled and auto-traits
+    /// differ between the root variable and the captured paths.
+    ///
+    /// The output list would include a root variable if:
+    /// - It would have been captured into the closure when `capture_disjoint_fields` wasn't
+    ///   enabled, **and**
+    /// - It wasn't completely captured by the closure, **and**
+    /// - One of the paths captured does not implement all the auto-traits its root variable
+    ///   implements.
+    fn compute_2229_migrations_for_trait(
+        &self,
+        min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
+        var_hir_id: hir::HirId,
+    ) -> Option<FxHashSet<&str>> {
+        let tcx = self.infcx.tcx;
+
+        // Check whether catpured fields also implement the trait
+        let mut auto_trait_reasons = FxHashSet::default();
+
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().clone_trait(),
+        ) {
+            auto_trait_reasons.insert("`Clone`");
+        }
+
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().sync_trait(),
+        ) {
+            auto_trait_reasons.insert("`Sync`");
+        }
+
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().send_trait(),
+        ) {
+            auto_trait_reasons.insert("`Send`");
+        }
+
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().unpin_trait(),
+        ) {
+            auto_trait_reasons.insert("`Unpin`");
+        }
+
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().unwind_safe_trait(),
+        ) {
+            auto_trait_reasons.insert("`UnwindSafe`");
+        }
+
+        if self.need_2229_migrations_for_trait(
+            min_captures,
+            var_hir_id,
+            tcx.lang_items().ref_unwind_safe_trait(),
+        ) {
+            auto_trait_reasons.insert("`RefUnwindSafe`");
+        }
+
+        if auto_trait_reasons.len() > 0 {
+            return Some(auto_trait_reasons);
+        }
+
+        return None;
+    }
+
     /// Figures out the list of root variables (and their types) that aren't completely
     /// captured by the closure when `capture_disjoint_fields` is enabled and drop order of
     /// some path starting at that root variable **might** be affected.
@@ -536,76 +706,128 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///   enabled, **and**
     /// - It wasn't completely captured by the closure, **and**
     /// - One of the paths starting at this root variable, that is not captured needs Drop.
+    fn compute_2229_migrations_for_drop(
+        &self,
+        closure_def_id: DefId,
+        closure_span: Span,
+        min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
+        closure_clause: hir::CaptureBy,
+        var_hir_id: hir::HirId,
+    ) -> bool {
+        let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
+
+        if !ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
+            return false;
+        }
+
+        let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
+            min_captures.and_then(|m| m.get(&var_hir_id))
+        {
+            root_var_min_capture_list
+        } else {
+            // The upvar is mentioned within the closure but no path starting from it is
+            // used.
+
+            match closure_clause {
+                // Only migrate if closure is a move closure
+                hir::CaptureBy::Value => return true,
+                hir::CaptureBy::Ref => {}
+            }
+
+            return false;
+        };
+
+        let projections_list = root_var_min_capture_list
+            .iter()
+            .filter_map(|captured_place| match captured_place.info.capture_kind {
+                // Only care about captures that are moved into the closure
+                ty::UpvarCapture::ByValue(..) => Some(captured_place.place.projections.as_slice()),
+                ty::UpvarCapture::ByRef(..) => None,
+            })
+            .collect::<Vec<_>>();
+
+        let is_moved = !projections_list.is_empty();
+
+        let is_not_completely_captured =
+            root_var_min_capture_list.iter().any(|capture| capture.place.projections.len() > 0);
+
+        if is_moved
+            && is_not_completely_captured
+            && self.has_significant_drop_outside_of_captures(
+                closure_def_id,
+                closure_span,
+                ty,
+                projections_list,
+            )
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// Figures out the list of root variables (and their types) that aren't completely
+    /// captured by the closure when `capture_disjoint_fields` is enabled and either drop
+    /// order of some path starting at that root variable **might** be affected or auto-traits
+    /// differ between the root variable and the captured paths.
+    ///
+    /// The output list would include a root variable if:
+    /// - It would have been moved into the closure when `capture_disjoint_fields` wasn't
+    ///   enabled, **and**
+    /// - It wasn't completely captured by the closure, **and**
+    /// - One of the paths starting at this root variable, that is not captured needs Drop **or**
+    /// - One of the paths captured does not implement all the auto-traits its root variable
+    ///   implements.
+    ///
+    /// Returns a tuple containing a vector of HirIds as well as a String containing the reason
+    /// why root variables whose HirId is contained in the vector should be fully captured.
     fn compute_2229_migrations(
         &self,
         closure_def_id: DefId,
         closure_span: Span,
         closure_clause: hir::CaptureBy,
         min_captures: Option<&ty::RootVariableMinCaptureList<'tcx>>,
-    ) -> Vec<hir::HirId> {
+    ) -> (Vec<hir::HirId>, String) {
         let upvars = if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
             upvars
         } else {
-            return vec![];
+            return (Vec::new(), format!(""));
         };
 
         let mut need_migrations = Vec::new();
+        let mut auto_trait_reasons = FxHashSet::default();
+        let mut drop_reorder_reason = false;
 
+        // Perform auto-trait analysis
         for (&var_hir_id, _) in upvars.iter() {
-            let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
-
-            if !ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
-                continue;
+            let mut need_migration = false;
+            if let Some(trait_migration_cause) =
+                self.compute_2229_migrations_for_trait(min_captures, var_hir_id)
+            {
+                need_migration = true;
+                auto_trait_reasons.extend(trait_migration_cause);
             }
 
-            let root_var_min_capture_list = if let Some(root_var_min_capture_list) =
-                min_captures.and_then(|m| m.get(&var_hir_id))
-            {
-                root_var_min_capture_list
-            } else {
-                // The upvar is mentioned within the closure but no path starting from it is
-                // used.
+            if self.compute_2229_migrations_for_drop(
+                closure_def_id,
+                closure_span,
+                min_captures,
+                closure_clause,
+                var_hir_id,
+            ) {
+                need_migration = true;
+                drop_reorder_reason = true;
+            }
 
-                match closure_clause {
-                    // Only migrate if closure is a move closure
-                    hir::CaptureBy::Value => need_migrations.push(var_hir_id),
-
-                    hir::CaptureBy::Ref => {}
-                }
-
-                continue;
-            };
-
-            let projections_list = root_var_min_capture_list
-                .iter()
-                .filter_map(|captured_place| match captured_place.info.capture_kind {
-                    // Only care about captures that are moved into the closure
-                    ty::UpvarCapture::ByValue(..) => {
-                        Some(captured_place.place.projections.as_slice())
-                    }
-                    ty::UpvarCapture::ByRef(..) => None,
-                })
-                .collect::<Vec<_>>();
-
-            let is_moved = !projections_list.is_empty();
-
-            let is_not_completely_captured =
-                root_var_min_capture_list.iter().any(|capture| capture.place.projections.len() > 0);
-
-            if is_moved
-                && is_not_completely_captured
-                && self.has_significant_drop_outside_of_captures(
-                    closure_def_id,
-                    closure_span,
-                    ty,
-                    projections_list,
-                )
-            {
+            if need_migration {
                 need_migrations.push(var_hir_id);
             }
         }
 
-        need_migrations
+        (
+            need_migrations,
+            self.compute_2229_migrations_reasons(auto_trait_reasons, drop_reorder_reason),
+        )
     }
 
     /// This is a helper function to `compute_2229_migrations_precise_pass`. Provided the type
@@ -1544,9 +1766,8 @@ fn var_name(tcx: TyCtxt<'_>, var_hir_id: hir::HirId) -> Symbol {
     tcx.hir().name(var_hir_id)
 }
 
-fn should_do_migration_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool {
-    let (level, _) =
-        tcx.lint_level_at_node(lint::builtin::DISJOINT_CAPTURE_DROP_REORDER, closure_id);
+fn should_do_disjoint_capture_migration_analysis(tcx: TyCtxt<'_>, closure_id: hir::HirId) -> bool {
+    let (level, _) = tcx.lint_level_at_node(lint::builtin::DISJOINT_CAPTURE_MIGRATION, closure_id);
 
     !matches!(level, lint::Level::Allow)
 }

@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![deny(disjoint_capture_drop_reorder)]
+#![deny(disjoint_capture_migration)]
 
 #[derive(Debug)]
 struct Foo(i32);
