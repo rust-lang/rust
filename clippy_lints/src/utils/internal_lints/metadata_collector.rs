@@ -290,10 +290,20 @@ fn collect_configs() -> Vec<ClippyConfiguration> {
                 lints,
                 doc,
                 config_type: x.config_type,
-                default: x.default.to_string(),
+                default: clarify_default(x.default),
             }
         })
         .collect()
+}
+
+fn clarify_default(default: &'static str) -> String {
+    if let Some((_start, init))  = default.split_once('[') {
+        if let Some((init, _end)) = init.split_once(']') {
+            return format!("[{}]", init);
+        }
+    }
+    
+    default.to_string()
 }
 
 /// This parses the field documentation of the config struct.
