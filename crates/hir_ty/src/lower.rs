@@ -9,7 +9,9 @@ use std::cell::{Cell, RefCell};
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
-use chalk_ir::{cast::Cast, fold::Shift, interner::HasInterner, Mutability, Safety};
+use chalk_ir::{
+    cast::Cast, fold::Shift, interner::HasInterner, Mutability, Safety, Scalar, UintTy,
+};
 use hir_def::{
     adt::StructKind,
     body::{Expander, LowerCtx},
@@ -30,16 +32,15 @@ use syntax::ast;
 
 use crate::{
     db::HirDatabase,
-    dummy_usize_const,
     mapping::ToChalk,
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::{
         all_super_trait_refs, associated_type_by_name_including_super_traits, generics, Generics,
     },
-    AliasEq, AliasTy, Binders, BoundVar, CallableSig, DebruijnIndex, DynTy, FnPointer, FnSig,
-    FnSubst, ImplTraitId, Interner, OpaqueTy, PolyFnSig, ProjectionTy, QuantifiedWhereClause,
-    QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits, Substitution,
-    TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
+    AliasEq, AliasTy, Binders, BoundVar, CallableSig, ConstData, ConstValue, DebruijnIndex, DynTy,
+    FnPointer, FnSig, FnSubst, ImplTraitId, Interner, OpaqueTy, PolyFnSig, ProjectionTy,
+    QuantifiedWhereClause, QuantifiedWhereClauses, ReturnTypeImplTrait, ReturnTypeImplTraits,
+    Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 #[derive(Debug)]
@@ -172,11 +173,16 @@ impl<'a> TyLoweringContext<'a> {
                 let inner_ty = self.lower_ty(inner);
                 TyKind::Raw(lower_to_chalk_mutability(*mutability), inner_ty).intern(&Interner)
             }
-            TypeRef::Array(inner) => {
+            TypeRef::Array(inner, len) => {
                 let inner_ty = self.lower_ty(inner);
-                // FIXME: we don't have length info here because we don't store an expression for
-                // the length
-                TyKind::Array(inner_ty, dummy_usize_const()).intern(&Interner)
+
+                let const_len = ConstData {
+                    ty: TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
+                    value: ConstValue::Concrete(chalk_ir::ConcreteConst { interned: *len }),
+                }
+                .intern(&Interner);
+
+                TyKind::Array(inner_ty, const_len).intern(&Interner)
             }
             TypeRef::Slice(inner) => {
                 let inner_ty = self.lower_ty(inner);

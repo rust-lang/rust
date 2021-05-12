@@ -8,6 +8,7 @@ use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
+    type_ref::ConstScalar,
     AssocContainerId, FieldId, Lookup,
 };
 use hir_expand::name::{name, Name};
@@ -15,9 +16,7 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef,
-    consts::ConstScalar,
-    dummy_usize_const,
+    autoderef, dummy_usize_const,
     lower::lower_to_chalk_mutability,
     mapping::from_chalk,
     method_resolution, op,
@@ -737,7 +736,8 @@ impl<'a> InferenceContext<'a> {
                                 TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
                             ),
                         );
-                        // FIXME: support length for Repeat array expressions
+                        // FIXME: we don't know the length here because hir Exprs don't actually
+                        // get the value out of the AST, even though it is there.
                         None
                     }
                 };
