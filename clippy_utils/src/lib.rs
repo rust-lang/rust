@@ -63,7 +63,7 @@ use std::hash::BuildHasherDefault;
 
 use if_chain::if_chain;
 use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unhash::UnhashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -1578,8 +1578,8 @@ where
 
     let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
 
-    let mut map: FxHashMap<_, Vec<&_>> =
-        FxHashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
+    let mut map: UnhashMap<u64, Vec<&_>> =
+        UnhashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
 
     for expr in exprs {
         match map.entry(hash(expr)) {
