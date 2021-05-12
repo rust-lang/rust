@@ -70,6 +70,8 @@ This lint **warns by default**. This lint detects when [intra-doc links] from pu
 For example:
 
 ```rust
+#![warn(private_intra_doc_links)]
+
 /// [private]
 pub fn public() {}
 fn private() {}
@@ -302,6 +304,8 @@ This lint is **warn-by-default**. It detects URLs which are not links.
 For example:
 
 ```rust
+#![warn(bare_urls)]
+
 /// http://example.org
 /// [http://example.net]
 pub fn foo() {}
