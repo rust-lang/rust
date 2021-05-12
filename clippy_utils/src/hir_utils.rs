@@ -2,7 +2,7 @@ use crate::consts::{constant_context, constant_simple};
 use crate::differing_macro_contexts;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
@@ -12,7 +12,6 @@ use rustc_hir::{
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
-use rustc_middle::ich::StableHashingContextProvider;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::Symbol;
 use std::hash::Hash;
@@ -571,8 +570,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(r);
             },
             ExprKind::AssignOp(ref o, l, r) => {
-                o.node
-                    .hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&o.node).hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
@@ -580,8 +578,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_block(b);
             },
             ExprKind::Binary(op, l, r) => {
-                op.node
-                    .hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&op.node).hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
@@ -736,7 +733,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_exprs(v);
             },
             ExprKind::Unary(lop, le) => {
-                lop.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
             },
         }
@@ -761,7 +758,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_name(path.ident.name);
             },
             QPath::LangItem(lang_item, ..) => {
-                lang_item.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&lang_item).hash(&mut self.s);
             },
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
@@ -771,7 +768,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
             PatKind::Binding(ann, _, _, pat) => {
-                ann.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&ann).hash(&mut self.s);
                 if let Some(pat) = pat {
                     self.hash_pat(pat);
                 }
@@ -791,11 +788,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 if let Some(e) = e {
                     self.hash_expr(e);
                 }
-                i.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&i).hash(&mut self.s);
             },
-            PatKind::Ref(pat, m) => {
+            PatKind::Ref(pat, mu) => {
                 self.hash_pat(pat);
-                m.hash(&mut self.s);
+                std::mem::discriminant(&mu).hash(&mut self.s);
             },
             PatKind::Slice(l, m, r) => {
                 for pat in l {
