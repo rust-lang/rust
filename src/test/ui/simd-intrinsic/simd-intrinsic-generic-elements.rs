@@ -50,25 +50,28 @@ fn main() {
         simd_extract::<_, f32>(x, 0);
         //~^ ERROR expected return type `i32` (element of input `i32x4`), found `f32`
 
-        simd_shuffle2::<i32, i32>(0, 0, [0; 2]);
+        const IDX2: [u32; 2] = [0; 2];
+        simd_shuffle2::<i32, i32>(0, 0, IDX2);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
-        simd_shuffle4::<i32, i32>(0, 0, [0; 4]);
+        const IDX4: [u32; 4] = [0; 4];
+        simd_shuffle4::<i32, i32>(0, 0, IDX4);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
-        simd_shuffle8::<i32, i32>(0, 0, [0; 8]);
+        const IDX8: [u32; 8] = [0; 8];
+        simd_shuffle8::<i32, i32>(0, 0, IDX8);
         //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
-        simd_shuffle2::<_, f32x2>(x, x, [0; 2]);
+        simd_shuffle2::<_, f32x2>(x, x, IDX2);
 //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x2` with element type `f32`
-        simd_shuffle4::<_, f32x4>(x, x, [0; 4]);
+        simd_shuffle4::<_, f32x4>(x, x, IDX4);
 //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x4` with element type `f32`
-        simd_shuffle8::<_, f32x8>(x, x, [0; 8]);
+        simd_shuffle8::<_, f32x8>(x, x, IDX8);
 //~^ ERROR element type `i32` (element of input `i32x4`), found `f32x8` with element type `f32`
 
-        simd_shuffle2::<_, i32x8>(x, x, [0; 2]);
+        simd_shuffle2::<_, i32x8>(x, x, IDX2);
         //~^ ERROR expected return type of length 2, found `i32x8` with length 8
-        simd_shuffle4::<_, i32x8>(x, x, [0; 4]);
+        simd_shuffle4::<_, i32x8>(x, x, IDX4);
         //~^ ERROR expected return type of length 4, found `i32x8` with length 8
-        simd_shuffle8::<_, i32x2>(x, x, [0; 8]);
+        simd_shuffle8::<_, i32x2>(x, x, IDX8);
         //~^ ERROR expected return type of length 8, found `i32x2` with length 2
     }
 }

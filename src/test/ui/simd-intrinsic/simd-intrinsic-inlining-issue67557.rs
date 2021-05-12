@@ -15,7 +15,8 @@ struct Simd2(u8, u8);
 
 fn main() {
     unsafe {
-        let p_res: Simd2 = simd_shuffle2(Simd2(10, 11), Simd2(12, 13), [0, 1]);
+        const IDX: [u32; 2] = [0, 1];
+        let p_res: Simd2 = simd_shuffle2(Simd2(10, 11), Simd2(12, 13), IDX);
         let a_res: Simd2 = inline_me();
 
         assert_10_11(p_res);
@@ -36,5 +37,6 @@ fn assert_10_13(x: Simd2) {
 
 #[inline(always)]
 unsafe fn inline_me() -> Simd2 {
-    simd_shuffle2(Simd2(10, 11), Simd2(12, 13), [0, 3])
+    const IDX: [u32; 2] = [0, 3];
+    simd_shuffle2(Simd2(10, 11), Simd2(12, 13), IDX)
 }
