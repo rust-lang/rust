@@ -792,7 +792,7 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
-    fn next_virtual_depnode_index(&self) -> DepNodeIndex {
+    pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
         let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
         DepNodeIndex::from_u32(index)
     }

@@ -452,11 +452,15 @@ where
         }
     };
 
-    // Fast path for when incr. comp. is off. `to_dep_node` is
-    // expensive for some `DepKind`s.
-    if !tcx.dep_context().dep_graph().is_fully_enabled() {
-        let null_dep_node = DepNode::new_no_params(DepKind::NULL);
-        return force_query_with_job(tcx, key, job, null_dep_node, query).0;
+    let dep_graph = tcx.dep_context().dep_graph();
+
+    // Fast path for when incr. comp. is off.
+    if !dep_graph.is_fully_enabled() {
+        let prof_timer = tcx.dep_context().profiler().query_provider();
+        let result = tcx.start_query(job.id, None, || query.compute(tcx, key));
+        let dep_node_index = dep_graph.next_virtual_depnode_index();
+        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+        return job.complete(result, dep_node_index);
     }
 
     if query.anon {
@@ -464,17 +468,14 @@ where
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             tcx.start_query(job.id, diagnostics, || {
-                tcx.dep_context().dep_graph().with_anon_task(
-                    *tcx.dep_context(),
-                    query.dep_kind,
-                    || query.compute(tcx, key),
-                )
+                dep_graph
+                    .with_anon_task(*tcx.dep_context(), query.dep_kind, || query.compute(tcx, key))
             })
         });
 
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-        tcx.dep_context().dep_graph().read_index(dep_node_index);
+        dep_graph.read_index(dep_node_index);
 
         if unlikely!(!diagnostics.is_empty()) {
             tcx.store_diagnostics_for_anon_node(dep_node_index, diagnostics);
@@ -490,7 +491,7 @@ where
         // promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         let loaded = tcx.start_query(job.id, None, || {
-            let marked = tcx.dep_context().dep_graph().try_mark_green_and_read(tcx, &dep_node);
+            let marked = dep_graph.try_mark_green_and_read(tcx, &dep_node);
             marked.map(|(prev_dep_node_index, dep_node_index)| {
                 (
                     load_from_disk_and_cache_in_memory(
@@ -511,7 +512,7 @@ where
     }
 
     let (result, dep_node_index) = force_query_with_job(tcx, key, job, dep_node, query);
-    tcx.dep_context().dep_graph().read_index(dep_node_index);
+    dep_graph.read_index(dep_node_index);
     result
 }
 
