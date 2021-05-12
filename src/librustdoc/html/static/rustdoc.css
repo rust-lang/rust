@@ -1289,7 +1289,7 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-#settings-menu, .help-button {
+#settings-menu, #help-button {
 	position: absolute;
 	top: 10px;
 }
@@ -1299,7 +1299,7 @@ h4 > .notable-traits {
 	outline: none;
 }
 
-#theme-picker, #settings-menu, .help-button, #copy-path {
+#theme-picker, #settings-menu, #help-button, #copy-path {
 	padding: 4px;
 	width: 27px;
 	height: 29px;
@@ -1308,7 +1308,7 @@ h4 > .notable-traits {
 	cursor: pointer;
 }
 
-.help-button {
+#help-button {
 	right: 30px;
 	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
@@ -1593,7 +1593,7 @@ h4 > .notable-traits {
 	}
 
 	/* We don't display the help button on mobile devices. */
-	.help-button {
+	#help-button {
 		display: none;
 	}
 	.search-container > div {

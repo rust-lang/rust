@@ -393,7 +393,7 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu, .help-button, #copy-path {
+#theme-picker, #settings-menu, #help-button, #copy-path {
 	border-color: #e0e0e0;
 	background: #f0f0f0;
 	color: #000;
@@ -401,7 +401,7 @@ kbd {
 
 #theme-picker:hover, #theme-picker:focus,
 #settings-menu:hover, #settings-menu:focus,
-.help-button:hover, .help-button:focus,
+#help-button:hover, #help-button:focus,
 #copy-path:hover, #copy-path:focus {
 	border-color: #ffb900;
 }
