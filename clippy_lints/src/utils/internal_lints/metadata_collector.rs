@@ -8,9 +8,6 @@
 //! during any comparison or mapping. (Please take care of this, it's not fun to spend time on such
 //! a simple mistake)
 
-// # NITs
-// - TODO xFrednet 2021-02-13: Collect depreciations and maybe renames
-
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{
@@ -28,7 +25,7 @@ use std::path::Path;
 
 use crate::utils::internal_lints::is_lint_ref_type;
 use clippy_utils::{
-    diagnostics::span_lint, last_path_segment, match_function_call, match_path, paths, ty::match_type,
+    diagnostics::span_lint, last_path_segment, match_def_path, match_function_call, match_path, paths, ty::match_type,
     ty::walk_ptrs_ty_depth,
 };
 
@@ -41,6 +38,8 @@ const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "i
 const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
 /// Lints within this group will be excluded from the collection
 const EXCLUDED_LINT_GROUPS: [&str; 1] = ["clippy::internal"];
+/// Collected deprecated lint will be assigned to this group in the JSON output
+const DEPRECATED_LINT_GROUP_STR: &str = "DEPRECATED";
 
 const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
@@ -66,6 +65,7 @@ const SUGGESTION_FUNCTIONS: [&[&str]; 2] = [
     &["clippy_utils", "diagnostics", "multispan_sugg"],
     &["clippy_utils", "diagnostics", "multispan_sugg_with_applicability"],
 ];
+const DEPRECATED_LINT_TYPE: [&str; 3] = ["clippy_lints", "deprecated_lints", "ClippyDeprecatedLint"];
 
 /// The index of the applicability name of `paths::APPLICABILITY_VALUES`
 const APPLICABILITY_NAME_INDEX: usize = 2;
@@ -225,23 +225,42 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// }
     /// ```
     fn check_item(&mut self, cx: &LateContext<'hir>, item: &'hir Item<'_>) {
-        if_chain! {
-            // item validation
-            if let ItemKind::Static(ref ty, Mutability::Not, _) = item.kind;
-            if is_lint_ref_type(cx, ty);
-            // blacklist check
-            let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
-            if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
-            // metadata extraction
-            if let Some(group) = get_lint_group_or_lint(cx, &lint_name, item);
-            if let Some(docs) = extract_attr_docs_or_lint(cx, item);
-            then {
-                self.lints.push(LintMetadata::new(
-                    lint_name,
-                    SerializableSpan::from_item(cx, item),
-                    group,
-                    docs,
-                ));
+        if let ItemKind::Static(ref ty, Mutability::Not, _) = item.kind {
+            // Normal lint
+            if_chain! {
+                // item validation
+                if is_lint_ref_type(cx, ty);
+                // blacklist check
+                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
+                if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
+                // metadata extraction
+                if let Some(group) = get_lint_group_or_lint(cx, &lint_name, item);
+                if let Some(docs) = extract_attr_docs_or_lint(cx, item);
+                then {
+                    self.lints.push(LintMetadata::new(
+                        lint_name,
+                        SerializableSpan::from_item(cx, item),
+                        group,
+                        docs,
+                    ));
+                }
+            }
+
+            if_chain! {
+                if is_deprecated_lint(cx, ty);
+                // blacklist check
+                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
+                if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
+                // Metadata the little we can get from a deprecated lint
+                if let Some(docs) = extract_attr_docs_or_lint(cx, item);
+                then {
+                    self.lints.push(LintMetadata::new(
+                        lint_name,
+                        SerializableSpan::from_item(cx, item),
+                        DEPRECATED_LINT_GROUP_STR.to_string(),
+                        docs,
+                    ));
+                }
             }
         }
     }
@@ -268,7 +287,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 // - src/misc.rs:734:9
                 // - src/methods/mod.rs:3545:13
                 // - src/methods/mod.rs:3496:13
-                // We are basically unable to resolve the lint name it self.
+                // We are basically unable to resolve the lint name itself.
                 return;
             }
 
@@ -345,6 +364,16 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
     }
 
     None
+}
+
+fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+    if let hir::TyKind::Path(ref path) = ty.kind {
+        if let hir::def::Res::Def(DefKind::Struct, def_id) = cx.qpath_res(path, ty.hir_id) {
+            return match_def_path(cx, def_id, &DEPRECATED_LINT_TYPE);
+        }
+    }
+
+    false
 }
 
 // ==================================================================
