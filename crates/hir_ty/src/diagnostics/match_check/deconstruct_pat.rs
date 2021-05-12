@@ -513,9 +513,7 @@ impl SplitWildcard {
                 if is_secretly_empty || is_declared_nonexhaustive {
                     smallvec![NonExhaustive]
                 } else if cx.feature_exhaustive_patterns() {
-                    // If `exhaustive_patterns` is enabled, we exclude variants known to be
-                    // uninhabited.
-                    unhandled()
+                    unimplemented!() // see MatchCheckCtx.feature_exhaustive_patterns()
                 } else {
                     enum_data
                         .variants
@@ -643,6 +641,7 @@ impl Fields {
         Fields::Vec(pats)
     }
 
+    /// Creates a new list of wildcard fields for a given constructor.
     pub(crate) fn wildcards(pcx: PatCtxt<'_>, constructor: &Constructor) -> Self {
         let ty = pcx.ty;
         let cx = pcx.cx;
@@ -655,14 +654,13 @@ impl Fields {
                     Fields::wildcards_from_tys(cx, tys)
                 }
                 TyKind::Ref(.., rty) => Fields::from_single_pattern(wildcard_from_ty(rty)),
-                TyKind::Adt(AdtId(adt), substs) => {
-                    let adt_is_box = false; // TODO(iDawer): implement this
-                    if adt_is_box {
+                &TyKind::Adt(AdtId(adt), ref substs) => {
+                    if adt_is_box(adt, cx) {
                         // Use T as the sub pattern type of Box<T>.
                         let subst_ty = substs.at(&Interner, 0).assert_ty_ref(&Interner);
                         Fields::from_single_pattern(wildcard_from_ty(subst_ty))
                     } else {
-                        let variant_id = constructor.variant_id_for_adt(*adt);
+                        let variant_id = constructor.variant_id_for_adt(adt);
                         let adt_is_local =
                             variant_id.module(cx.db.upcast()).krate() == cx.module.krate();
                         // Whether we must not match the fields of this variant exhaustively.
@@ -680,7 +678,7 @@ impl Fields {
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys())
                         } else {
-                            //FIXME(iDawer): see MatchCheckCtx::is_uninhabited
+                            //FIXME(iDawer): see MatchCheckCtx::is_uninhabited, has_no_hidden_fields is always true
                             unimplemented!("exhaustive_patterns feature")
                         }
                     }
@@ -891,4 +889,12 @@ fn is_field_list_non_exhaustive(variant_id: VariantId, cx: &MatchCheckCtx<'_>) -
         VariantId::UnionId(id) => id.into(),
     };
     cx.db.attrs(attr_def_id).by_key("non_exhaustive").exists()
+}
+
+fn adt_is_box(adt: hir_def::AdtId, cx: &MatchCheckCtx<'_>) -> bool {
+    use hir_def::lang_item::LangItemTarget;
+    match cx.db.lang_item(cx.module.krate(), "owned_box".into()) {
+        Some(LangItemTarget::StructId(box_id)) => adt == box_id.into(),
+        _ => false,
+    }
 }

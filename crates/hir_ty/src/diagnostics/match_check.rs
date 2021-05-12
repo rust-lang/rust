@@ -1090,6 +1090,42 @@ fn main() {
         );
     }
 
+    #[test]
+    fn enum_non_exhaustive() {
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:lib
+#[non_exhaustive]
+pub enum E { A, B }
+fn _local() {
+    match E::A { _ => {} }
+    match E::A {
+        E::A => {}
+        E::B => {}
+    }
+    match E::A {
+        E::A | E::B => {}
+    }
+}
+
+//- /main.rs crate:main deps:lib
+use lib::E;
+fn main() {
+    match E::A { _ => {} }
+    match E::A {
+        //^^^^ Missing match arm
+        E::A => {}
+        E::B => {}
+    }
+    match E::A {
+        //^^^^ Missing match arm
+        E::A | E::B => {}
+    }
+}
+"#,
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
