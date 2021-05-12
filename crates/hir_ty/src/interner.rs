@@ -1,7 +1,7 @@
 //! Implementation of the Chalk `Interner` trait, which allows customizing the
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
-use crate::{chalk_db, tls, GenericArg};
+use crate::{chalk_db, consts::ConstScalar, tls, GenericArg};
 use base_db::salsa::InternId;
 use chalk_ir::{Goal, GoalData};
 use hir_def::{
@@ -31,6 +31,7 @@ impl_internable!(
     InternedWrapper<chalk_ir::TyData<Interner>>,
     InternedWrapper<chalk_ir::LifetimeData<Interner>>,
     InternedWrapper<chalk_ir::ConstData<Interner>>,
+    InternedWrapper<ConstScalar>,
     InternedWrapper<Vec<chalk_ir::CanonicalVarKind<Interner>>>,
     InternedWrapper<Vec<chalk_ir::ProgramClause<Interner>>>,
     InternedWrapper<Vec<chalk_ir::QuantifiedWhereClause<Interner>>>,
@@ -41,7 +42,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedType = Interned<InternedWrapper<chalk_ir::TyData<Interner>>>;
     type InternedLifetime = Interned<InternedWrapper<chalk_ir::LifetimeData<Self>>>;
     type InternedConst = Interned<InternedWrapper<chalk_ir::ConstData<Self>>>;
-    type InternedConcreteConst = ();
+    type InternedConcreteConst = ConstScalar;
     type InternedGenericArg = chalk_ir::GenericArgData<Self>;
     type InternedGoal = Arc<GoalData<Self>>;
     type InternedGoals = Vec<Goal<Self>>;
@@ -245,10 +246,15 @@ impl chalk_ir::interner::Interner for Interner {
     fn const_eq(
         &self,
         _ty: &Self::InternedType,
-        _c1: &Self::InternedConcreteConst,
-        _c2: &Self::InternedConcreteConst,
+        c1: &Self::InternedConcreteConst,
+        c2: &Self::InternedConcreteConst,
     ) -> bool {
-        true
+        match (c1, c2) {
+            (&ConstScalar::Usize(a), &ConstScalar::Usize(b)) => a == b,
+            // we were previously assuming this to be true, I'm not whether true or false on
+            // unknown values is safer.
+            (_, _) => true,
+        }
     }
 
     fn intern_generic_arg(

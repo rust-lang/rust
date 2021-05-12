@@ -308,7 +308,7 @@ impl HirDisplay for Const {
                 let param_data = &generics.params.consts[id.local_id];
                 write!(f, "{}", param_data.name)
             }
-            ConstValue::Concrete(_) => write!(f, "_"),
+            ConstValue::Concrete(c) => write!(f, "{}", c.interned),
         }
     }
 }
