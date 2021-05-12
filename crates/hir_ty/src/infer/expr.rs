@@ -1,10 +1,14 @@
 //! Type inference for expressions.
 
-use std::iter::{repeat, repeat_with};
+use std::{
+    convert::TryInto,
+    iter::{repeat, repeat_with},
+};
 use std::{mem, sync::Arc};
 
 use chalk_ir::{cast::Cast, fold::Shift, ConstData, Mutability, TyVariableKind};
 use hir_def::{
+    builtin_type::BuiltinUint,
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
@@ -724,7 +728,7 @@ impl<'a> InferenceContext<'a> {
                         for expr in items.iter() {
                             self.infer_expr_coerce(*expr, &Expectation::has_type(elem_ty.clone()));
                         }
-                        Some(items.len())
+                        Some(items.len() as u64)
                     }
                     Array::Repeat { initializer, repeat } => {
                         self.infer_expr_coerce(
@@ -737,9 +741,15 @@ impl<'a> InferenceContext<'a> {
                                 TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
                             ),
                         );
-                        // FIXME: we don't know the length here because hir Exprs don't actually
-                        // get the value out of the AST, even though it is there.
-                        None
+
+                        let repeat_expr = &self.body.exprs[*repeat];
+                        match repeat_expr {
+                            Expr::Literal(Literal::Uint(v, None))
+                            | Expr::Literal(Literal::Uint(v, Some(BuiltinUint::Usize))) => {
+                                (*v).try_into().ok()
+                            }
+                            _ => None,
+                        }
                     }
                 };
 
@@ -747,7 +757,7 @@ impl<'a> InferenceContext<'a> {
                     ty: TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
                     value: ConstValue::Concrete(chalk_ir::ConcreteConst {
                         interned: len
-                            .map(|len| ConstScalar::Usize(len as u64))
+                            .map(|len| ConstScalar::Usize(len))
                             .unwrap_or(ConstScalar::Unknown),
                     }),
                 };

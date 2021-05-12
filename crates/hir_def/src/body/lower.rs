@@ -1006,16 +1006,17 @@ impl From<ast::BinOp> for BinaryOp {
 impl From<ast::LiteralKind> for Literal {
     fn from(ast_lit_kind: ast::LiteralKind) -> Self {
         match ast_lit_kind {
+            // FIXME: these should have actual values filled in, but unsure on perf impact
             LiteralKind::IntNumber(lit) => {
                 if let builtin @ Some(_) = lit.suffix().and_then(BuiltinFloat::from_suffix) {
                     return Literal::Float(Default::default(), builtin);
                 } else if let builtin @ Some(_) =
                     lit.suffix().and_then(|it| BuiltinInt::from_suffix(&it))
                 {
-                    Literal::Int(Default::default(), builtin)
+                    Literal::Int(lit.value().unwrap_or(0) as i128, builtin)
                 } else {
                     let builtin = lit.suffix().and_then(|it| BuiltinUint::from_suffix(&it));
-                    Literal::Uint(Default::default(), builtin)
+                    Literal::Uint(lit.value().unwrap_or(0), builtin)
                 }
             }
             LiteralKind::FloatNumber(lit) => {

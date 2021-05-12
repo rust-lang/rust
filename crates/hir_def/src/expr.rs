@@ -43,8 +43,8 @@ pub enum Literal {
     ByteString(Vec<u8>),
     Char(char),
     Bool(bool),
-    Int(u64, Option<BuiltinInt>),
-    Uint(u64, Option<BuiltinUint>),
+    Int(i128, Option<BuiltinInt>),
+    Uint(u128, Option<BuiltinUint>),
     Float(u64, Option<BuiltinFloat>), // FIXME: f64 is not Eq
 }
 
