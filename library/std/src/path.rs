@@ -569,7 +569,7 @@ pub struct Components<'a> {
     prefix: Option<Prefix<'a>>,
 
     // true if path *physically* has a root separator; for most Windows
-    // prefixes, it may have a "logical" rootseparator for the purposes of
+    // prefixes, it may have a "logical" root separator for the purposes of
     // normalization, e.g.,  \\server\share == \\server\share\.
     has_physical_root: bool,
 
