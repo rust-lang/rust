@@ -144,7 +144,10 @@ impl ExpnId {
             let expn_data = self.expn_data();
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
-                || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
+                || matches!(
+                    expn_data.kind,
+                    ExpnKind::Macro { kind: MacroKind::Bang, name: sym::include, proc_macro: _ }
+                )
             {
                 break;
             }
@@ -839,7 +842,13 @@ pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
     /// Expansion produced by a macro.
-    Macro(MacroKind, Symbol),
+    Macro {
+        kind: MacroKind,
+        name: Symbol,
+        /// If `true`, this macro is a procedural macro. This
+        /// flag is only used for diagnostic purposes
+        proc_macro: bool,
+    },
     /// Transform done by the compiler on the AST.
     AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
@@ -852,7 +861,7 @@ impl ExpnKind {
     pub fn descr(&self) -> String {
         match *self {
             ExpnKind::Root => kw::PathRoot.to_string(),
-            ExpnKind::Macro(macro_kind, name) => match macro_kind {
+            ExpnKind::Macro { kind, name, proc_macro: _ } => match kind {
                 MacroKind::Bang => format!("{}!", name),
                 MacroKind::Attr => format!("#[{}]", name),
                 MacroKind::Derive => format!("#[derive({})]", name),

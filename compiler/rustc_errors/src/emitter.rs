@@ -309,7 +309,9 @@ pub trait Emitter {
                     // are some which do actually involve macros.
                     ExpnKind::Inlined | ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                    ExpnKind::Macro(macro_kind, _) => Some(macro_kind),
+                    ExpnKind::Macro { kind: macro_kind, name: _, proc_macro: _ } => {
+                        Some(macro_kind)
+                    }
                 }
             });
 
@@ -371,10 +373,19 @@ pub trait Emitter {
                     new_labels
                         .push((trace.call_site, "in the inlined copy of this code".to_string()));
                 } else if always_backtrace {
+                    let proc_macro = if let ExpnKind::Macro { kind: _, name: _, proc_macro: true } =
+                        trace.kind
+                    {
+                        "procedural macro "
+                    } else {
+                        ""
+                    };
+
                     new_labels.push((
                         trace.def_site,
                         format!(
-                            "in this expansion of `{}`{}",
+                            "in this expansion of {}`{}`{}",
+                            proc_macro,
                             trace.kind.descr(),
                             if macro_backtrace.len() > 1 {
                                 // if macro_backtrace.len() == 1 it'll be
@@ -400,7 +411,11 @@ pub trait Emitter {
                 // and it needs an "in this macro invocation" label to match that.
                 let redundant_span = trace.call_site.contains(sp);
 
-                if !redundant_span && matches!(trace.kind, ExpnKind::Macro(MacroKind::Bang, _))
+                if !redundant_span
+                    && matches!(
+                        trace.kind,
+                        ExpnKind::Macro { kind: MacroKind::Bang, name: _, proc_macro: _ }
+                    )
                     || always_backtrace
                 {
                     new_labels.push((

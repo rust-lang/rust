@@ -716,30 +716,37 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn load_proc_macro(&self, id: DefIndex, sess: &Session) -> SyntaxExtension {
-        let (name, kind, helper_attrs) = match *self.raw_proc_macro(id) {
+    fn load_proc_macro(&self, def_id: DefId, sess: &Session) -> SyntaxExtension {
+        let (name, kind, helper_attrs) = match *self.raw_proc_macro(def_id.index) {
             ProcMacro::CustomDerive { trait_name, attributes, client } => {
                 let helper_attrs =
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 (
                     trait_name,
-                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive { client })),
+                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive {
+                        client,
+                        krate: def_id.krate,
+                    })),
                     helper_attrs,
                 )
             }
-            ProcMacro::Attr { name, client } => {
-                (name, SyntaxExtensionKind::Attr(Box::new(AttrProcMacro { client })), Vec::new())
-            }
-            ProcMacro::Bang { name, client } => {
-                (name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new())
-            }
+            ProcMacro::Attr { name, client } => (
+                name,
+                SyntaxExtensionKind::Attr(Box::new(AttrProcMacro { client, krate: def_id.krate })),
+                Vec::new(),
+            ),
+            ProcMacro::Bang { name, client } => (
+                name,
+                SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client, krate: def_id.krate })),
+                Vec::new(),
+            ),
         };
 
-        let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
+        let attrs: Vec<_> = self.get_item_attrs(def_id.index, sess).collect();
         SyntaxExtension::new(
             sess,
             kind,
-            self.get_span(id, sess),
+            self.get_span(def_id.index, sess),
             helper_attrs,
             self.root.edition,
             Symbol::intern(name),
@@ -1377,6 +1384,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         } else {
             self.root.native_libraries.decode((self, sess)).collect()
         }
+    }
+
+    fn get_proc_macro_quoted_span(&self, index: usize, sess: &Session) -> Span {
+        self.root
+            .tables
+            .proc_macro_quoted_spans
+            .get(self, index)
+            .unwrap_or_else(|| panic!("Missing proc macro quoted span: {:?}", index))
+            .decode((self, sess))
     }
 
     fn get_foreign_modules(&self, tcx: TyCtxt<'tcx>) -> Lrc<FxHashMap<DefId, ForeignModule>> {

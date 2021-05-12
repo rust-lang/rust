@@ -14,7 +14,7 @@ use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnId, ExpnKind};
 use rustc_span::source_map::SourceMap;
@@ -810,8 +810,16 @@ impl SyntaxExtension {
         descr: Symbol,
         macro_def_id: Option<DefId>,
     ) -> ExpnData {
+        use SyntaxExtensionKind::*;
+        let proc_macro = match self.kind {
+            // User-defined proc macro
+            Bang(..) | Attr(..) | Derive(..) => true,
+            // Consider everthing else to be not a proc
+            // macro for diagnostic purposes
+            LegacyBang(..) | LegacyAttr(..) | NonMacroAttr { .. } | LegacyDerive(..) => false,
+        };
         ExpnData::new(
-            ExpnKind::Macro(self.macro_kind(), descr),
+            ExpnKind::Macro { kind: self.macro_kind(), name: descr, proc_macro },
             parent,
             call_site,
             self.span,
@@ -873,6 +881,10 @@ pub trait ResolverExpand {
     fn take_derive_resolutions(&mut self, expn_id: ExpnId) -> Option<DeriveResolutions>;
     /// Path resolution logic for `#[cfg_accessible(path)]`.
     fn cfg_accessible(&mut self, expn_id: ExpnId, path: &ast::Path) -> Result<bool, Indeterminate>;
+
+    /// Decodes the proc-macro quoted span in the specified crate, with the specified id.
+    /// No caching is performed.
+    fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span;
 }
 
 #[derive(Clone, Default)]

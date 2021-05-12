@@ -69,10 +69,10 @@ fn main /* 0#0 */() { }
 Expansions:
 0: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
 1: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
-2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "outer")
+2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro { kind: Bang, name: "outer", proc_macro: false }
 3: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
-4: parent: ExpnId(2), call_site_ctxt: #4, def_site_ctxt: #4, kind: Macro(Bang, "inner")
-5: parent: ExpnId(4), call_site_ctxt: #6, def_site_ctxt: #0, kind: Macro(Bang, "print_bang")
+4: parent: ExpnId(2), call_site_ctxt: #4, def_site_ctxt: #4, kind: Macro { kind: Bang, name: "inner", proc_macro: false }
+5: parent: ExpnId(4), call_site_ctxt: #6, def_site_ctxt: #0, kind: Macro { kind: Bang, name: "print_bang", proc_macro: true }
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (ExpnId(0), Opaque)

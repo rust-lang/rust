@@ -248,10 +248,11 @@ fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, 
         }
     }
 
-    let macro_symbol = if let hygiene::ExpnKind::Macro(_, symbol) = expn.kind {
-        symbol
-    } else {
-        Symbol::intern("panic")
-    };
+    let macro_symbol =
+        if let hygiene::ExpnKind::Macro { kind: _, name: symbol, proc_macro: _ } = expn.kind {
+            symbol
+        } else {
+            Symbol::intern("panic")
+        };
     (expn.call_site, panic_macro, macro_symbol.as_str())
 }

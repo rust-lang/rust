@@ -45,10 +45,10 @@ fn main /* 0#0 */() { ; }
 Expansions:
 0: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Root
 1: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
-2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro(Bang, "produce_it")
+2: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: Macro { kind: Bang, name: "produce_it", proc_macro: false }
 3: parent: ExpnId(0), call_site_ctxt: #0, def_site_ctxt: #0, kind: AstPass(StdImports)
-4: parent: ExpnId(2), call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro(Bang, "meta_macro::print_def_site")
-5: parent: ExpnId(4), call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro(Bang, "$crate::dummy")
+4: parent: ExpnId(2), call_site_ctxt: #4, def_site_ctxt: #0, kind: Macro { kind: Bang, name: "meta_macro::print_def_site", proc_macro: true }
+5: parent: ExpnId(4), call_site_ctxt: #5, def_site_ctxt: #0, kind: Macro { kind: Bang, name: "$crate::dummy", proc_macro: true }
 
 SyntaxContexts:
 #0: parent: #0, outer_mark: (ExpnId(0), Opaque)

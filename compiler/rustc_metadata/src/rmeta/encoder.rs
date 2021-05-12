@@ -1579,6 +1579,11 @@ impl EncodeContext<'a, 'tcx> {
             let proc_macro_decls_static = tcx.proc_macro_decls_static(LOCAL_CRATE).unwrap().index;
             let stability = tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).copied();
             let macros = self.lazy(hir.krate().proc_macros.iter().map(|p| p.owner.local_def_index));
+            let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
+            for (i, span) in spans.into_iter().enumerate() {
+                let span = self.lazy(span);
+                self.tables.proc_macro_quoted_spans.set(i, span);
+            }
 
             record!(self.tables.def_kind[LOCAL_CRATE.as_def_id()] <- DefKind::Mod);
             record!(self.tables.span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
