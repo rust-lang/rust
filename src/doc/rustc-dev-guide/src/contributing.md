@@ -272,12 +272,16 @@ tests.
 That would mean that, in the default state, you couldn't update the compiler without first
 fixing miri, rls and the other tools that the compiler builds.
 
-Luckily, a feature was [added to Rust's build](https://github.com/rust-lang/rust/issues/45861)
-to make all of this easy to handle. The idea is that we allow these tools to be "broken",
-so that the rust-lang/rust build passes without trying to build them, then land the change
-in the compiler, wait for a nightly, and go update the tools that you broke. Once you're done
-and the tools are working again, you go back in the compiler and update the tools
-so they can be distributed again.
+Luckily, a feature was
+[added to Rust's build](https://github.com/rust-lang/rust/issues/45861) to make
+all of this easy to handle. The idea is that we allow these tools to be
+"broken", so that the rust-lang/rust build passes without trying to build them,
+then land the change in the compiler, and go update the tools that you
+broke. Some tools will require waiting for a nightly release before this can
+happen, while others use the builds uploaded after each bors merge and thus can
+be updated immediately (check the tool's documentation for details). Once you're
+done and the tools are working again, you go back in the compiler and update the
+tools so they can be distributed again.
 
 This should avoid a bunch of synchronization dances and is also much easier on contributors as
 there's no need to block on rls/miri/other tools changes going upstream.
