@@ -119,6 +119,32 @@ pub struct RustAnalyzerPackageMetaData {
 pub struct PackageDependency {
     pub pkg: Package,
     pub name: String,
+    pub kind: DepKind,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum DepKind {
+    /// Available to the library, binary, and dev targets in the package (but not the build script).
+    Normal,
+    /// Available only to test and bench targets (and the library target, when built with `cfg(test)`).
+    Dev,
+    /// Available only to the build script target.
+    Build,
+}
+
+impl DepKind {
+    fn new(list: &[cargo_metadata::DepKindInfo]) -> Self {
+        for info in list {
+            match info.kind {
+                cargo_metadata::DependencyKind::Normal => return Self::Normal,
+                cargo_metadata::DependencyKind::Development => return Self::Dev,
+                cargo_metadata::DependencyKind::Build => return Self::Build,
+                cargo_metadata::DependencyKind::Unknown => continue,
+            }
+        }
+
+        Self::Normal
+    }
 }
 
 /// Information associated with a package's target
@@ -144,6 +170,7 @@ pub enum TargetKind {
     Example,
     Test,
     Bench,
+    BuildScript,
     Other,
 }
 
@@ -155,6 +182,7 @@ impl TargetKind {
                 "test" => TargetKind::Test,
                 "bench" => TargetKind::Bench,
                 "example" => TargetKind::Example,
+                "custom-build" => TargetKind::BuildScript,
                 "proc-macro" => TargetKind::Lib,
                 _ if kind.contains("lib") => TargetKind::Lib,
                 _ => continue,
@@ -301,7 +329,11 @@ impl CargoWorkspace {
                         continue;
                     }
                 };
-                let dep = PackageDependency { name: dep_node.name, pkg };
+                let dep = PackageDependency {
+                    name: dep_node.name,
+                    pkg,
+                    kind: DepKind::new(&dep_node.dep_kinds),
+                };
                 packages[source].dependencies.push(dep);
             }
             packages[source].active_features.extend(node.features);

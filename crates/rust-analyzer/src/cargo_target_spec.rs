@@ -159,7 +159,7 @@ impl CargoTargetSpec {
             TargetKind::Lib => {
                 buf.push("--lib".to_string());
             }
-            TargetKind::Other => (),
+            TargetKind::Other | TargetKind::BuildScript => (),
         }
     }
 }

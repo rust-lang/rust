@@ -6,6 +6,7 @@ use std::{collections::VecDeque, fmt, fs, path::Path, process::Command};
 
 use anyhow::{Context, Result};
 use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
+use cargo_workspace::DepKind;
 use cfg::CfgOptions;
 use paths::{AbsPath, AbsPathBuf};
 use proc_macro_api::ProcMacroClient;
@@ -407,23 +408,25 @@ fn cargo_to_crate_graph(
                     }
                 }
 
-                pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
+                pkg_crates.entry(pkg).or_insert_with(Vec::new).push((crate_id, cargo[tgt].kind));
             }
         }
 
         // Set deps to the core, std and to the lib target of the current package
-        for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+        for (from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
             if let Some((to, name)) = lib_tgt.clone() {
-                if to != from {
+                if to != *from && *kind != TargetKind::BuildScript {
+                    // (build script can not depend on its library target)
+
                     // For root projects with dashes in their name,
                     // cargo metadata does not do any normalization,
                     // so we do it ourselves currently
                     let name = CrateName::normalize_dashes(&name);
-                    add_dep(&mut crate_graph, from, name, to);
+                    add_dep(&mut crate_graph, *from, name, to);
                 }
             }
             for (name, krate) in public_deps.iter() {
-                add_dep(&mut crate_graph, from, name.clone(), *krate);
+                add_dep(&mut crate_graph, *from, name.clone(), *krate);
             }
         }
     }
@@ -434,8 +437,17 @@ fn cargo_to_crate_graph(
         for dep in cargo[pkg].dependencies.iter() {
             let name = CrateName::new(&dep.name).unwrap();
             if let Some(&to) = pkg_to_lib_crate.get(&dep.pkg) {
-                for &from in pkg_crates.get(&pkg).into_iter().flatten() {
-                    add_dep(&mut crate_graph, from, name.clone(), to)
+                for (from, kind) in pkg_crates.get(&pkg).into_iter().flatten() {
+                    if dep.kind == DepKind::Build && *kind != TargetKind::BuildScript {
+                        // Only build scripts may depend on build dependencies.
+                        continue;
+                    }
+                    if dep.kind != DepKind::Build && *kind == TargetKind::BuildScript {
+                        // Build scripts may only depend on build dependencies.
+                        continue;
+                    }
+
+                    add_dep(&mut crate_graph, *from, name.clone(), to)
                 }
             }
         }
@@ -472,7 +484,7 @@ fn handle_rustc_crates(
     pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
     public_deps: &[(CrateName, CrateId)],
     cargo: &CargoWorkspace,
-    pkg_crates: &FxHashMap<la_arena::Idx<crate::PackageData>, Vec<CrateId>>,
+    pkg_crates: &FxHashMap<la_arena::Idx<crate::PackageData>, Vec<(CrateId, TargetKind)>>,
 ) {
     let mut rustc_pkg_crates = FxHashMap::default();
     // The root package of the rustc-dev component is rustc_driver, so we match that
@@ -541,13 +553,13 @@ fn handle_rustc_crates(
                 if !package.metadata.rustc_private {
                     continue;
                 }
-                for &from in pkg_crates.get(&pkg).into_iter().flatten() {
+                for (from, _) in pkg_crates.get(&pkg).into_iter().flatten() {
                     // Avoid creating duplicate dependencies
                     // This avoids the situation where `from` depends on e.g. `arrayvec`, but
                     // `rust_analyzer` thinks that it should use the one from the `rustcSource`
                     // instead of the one from `crates.io`
-                    if !crate_graph[from].dependencies.iter().any(|d| d.name == name) {
-                        add_dep(crate_graph, from, name.clone(), to);
+                    if !crate_graph[*from].dependencies.iter().any(|d| d.name == name) {
+                        add_dep(crate_graph, *from, name.clone(), to);
                     }
                 }
             }
