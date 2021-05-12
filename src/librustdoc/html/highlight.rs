@@ -313,6 +313,7 @@ impl<'a> Classifier<'a> {
                 .unwrap_or(false)
             {
                 let tokens = self.get_full_ident_path();
+                // We need this variable because `tokens` is consumed in the loop.
                 let skip = !tokens.is_empty();
                 for (token, start, end) in tokens {
                     let text = &self.src[start..end];
@@ -549,51 +550,51 @@ fn string<T: Display>(
         None => return write!(out, "{}", text),
         Some(klass) => klass,
     };
-    if let Some(def_span) = klass.get_span() {
-        let mut text = text.to_string();
-        if text.contains("::") {
-            text = text.split("::").intersperse("::").fold(String::new(), |mut path, t| {
-                match t {
-                    "self" | "Self" => write!(
-                        &mut path,
-                        "<span class=\"{}\">{}</span>",
-                        Class::Self_(LightSpan::empty()).as_html(),
-                        t
-                    ),
-                    "crate" | "super" => write!(
-                        &mut path,
-                        "<span class=\"{}\">{}</span>",
-                        Class::KeyWord.as_html(),
-                        t
-                    ),
-                    t => write!(&mut path, "{}", t),
-                }
-                .expect("Failed to build source HTML path");
-                path
-            });
+    let def_span = match klass.get_span() {
+        Some(d) => d,
+        None => {
+            write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text);
+            return;
         }
-        if let Some(context_info) = context_info {
-            if let Some(href) =
-                context_info.context.shared.span_correspondance_map.get(&def_span).and_then(
-                    |href| {
-                        let context = context_info.context;
-                        match href {
-                            LinkFromSrc::Local(span) => context
-                                .href_from_span(*span)
-                                .map(|s| format!("{}{}", context_info.root_path, s)),
-                            LinkFromSrc::External(def_id) => {
-                                format::href(*def_id, context).map(|(url, _, _)| url)
-                            }
-                        }
-                    },
-                )
-            {
-                write!(out, "<a class=\"{}\" href=\"{}\">{}</a>", klass.as_html(), href, text);
-                return;
+    };
+    let mut text_s = text.to_string();
+    if text_s.contains("::") {
+        text_s = text_s.split("::").intersperse("::").fold(String::new(), |mut path, t| {
+            match t {
+                "self" | "Self" => write!(
+                    &mut path,
+                    "<span class=\"{}\">{}</span>",
+                    Class::Self_(LightSpan::empty()).as_html(),
+                    t
+                ),
+                "crate" | "super" => {
+                    write!(&mut path, "<span class=\"{}\">{}</span>", Class::KeyWord.as_html(), t)
+                }
+                t => write!(&mut path, "{}", t),
             }
+            .expect("Failed to build source HTML path");
+            path
+        });
+    }
+    if let Some(context_info) = context_info {
+        if let Some(href) =
+            context_info.context.shared.span_correspondance_map.get(&def_span).and_then(|href| {
+                let context = context_info.context;
+                match href {
+                    LinkFromSrc::Local(span) => context
+                        .href_from_span(*span)
+                        .map(|s| format!("{}{}", context_info.root_path, s)),
+                    LinkFromSrc::External(def_id) => {
+                        format::href(*def_id, context).map(|(url, _, _)| url)
+                    }
+                }
+            })
+        {
+            write!(out, "<a class=\"{}\" href=\"{}\">{}</a>", klass.as_html(), href, text_s);
+            return;
         }
     }
-    write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text);
+    write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text_s);
 }
 
 #[cfg(test)]
