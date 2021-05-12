@@ -16,7 +16,7 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef, dummy_usize_const,
+    autoderef,
     lower::lower_to_chalk_mutability,
     mapping::from_chalk,
     method_resolution, op,
@@ -24,8 +24,9 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
     utils::{generics, Generics},
-    AdtId, Binders, CallableDefId, ConstValue, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
-    ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    AdtId, Binders, CallableDefId, ConcreteConst, ConstValue, FnPointer, FnSig, FnSubst,
+    InEnvironment, Interner, ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty,
+    TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -758,11 +759,18 @@ impl<'a> InferenceContext<'a> {
                     TyKind::Ref(Mutability::Not, static_lifetime(), TyKind::Str.intern(&Interner))
                         .intern(&Interner)
                 }
-                Literal::ByteString(..) => {
+                Literal::ByteString(bs) => {
                     let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(&Interner);
 
-                    let array_type =
-                        TyKind::Array(byte_type, dummy_usize_const()).intern(&Interner);
+                    let len = ConstData {
+                        ty: TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
+                        value: ConstValue::Concrete(ConcreteConst {
+                            interned: ConstScalar::Usize(bs.len() as u64),
+                        }),
+                    }
+                    .intern(&Interner);
+
+                    let array_type = TyKind::Array(byte_type, len).intern(&Interner);
                     TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(&Interner)
                 }
                 Literal::Char(..) => TyKind::Scalar(Scalar::Char).intern(&Interner),

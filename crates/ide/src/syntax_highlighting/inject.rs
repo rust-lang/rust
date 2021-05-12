@@ -6,7 +6,7 @@ use either::Either;
 use hir::{InFile, Semantics};
 use ide_db::{call_info::ActiveParameter, helpers::rust_doc::is_rust_fence, SymbolKind};
 use syntax::{
-    ast::{self, AstNode},
+    ast::{self, AstNode, IsString},
     AstToken, NodeOrToken, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
 

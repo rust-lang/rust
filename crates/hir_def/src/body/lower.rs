@@ -1022,7 +1022,10 @@ impl From<ast::LiteralKind> for Literal {
                 let ty = lit.suffix().and_then(|it| BuiltinFloat::from_suffix(&it));
                 Literal::Float(Default::default(), ty)
             }
-            LiteralKind::ByteString(_) => Literal::ByteString(Default::default()),
+            LiteralKind::ByteString(bs) => {
+                let text = bs.value().map(Vec::from).unwrap_or_else(Default::default);
+                Literal::ByteString(text)
+            }
             LiteralKind::String(_) => Literal::String(Default::default()),
             LiteralKind::Byte => Literal::Uint(Default::default(), Some(BuiltinUint::U8)),
             LiteralKind::Bool(val) => Literal::Bool(val),

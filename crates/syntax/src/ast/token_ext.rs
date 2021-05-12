@@ -143,6 +143,30 @@ impl QuoteOffsets {
     }
 }
 
+pub trait IsString: AstToken {
+    fn quote_offsets(&self) -> Option<QuoteOffsets> {
+        let text = self.text();
+        let offsets = QuoteOffsets::new(text)?;
+        let o = self.syntax().text_range().start();
+        let offsets = QuoteOffsets {
+            quotes: (offsets.quotes.0 + o, offsets.quotes.1 + o),
+            contents: offsets.contents + o,
+        };
+        Some(offsets)
+    }
+    fn text_range_between_quotes(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.contents)
+    }
+    fn open_quote_text_range(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.quotes.0)
+    }
+    fn close_quote_text_range(&self) -> Option<TextRange> {
+        self.quote_offsets().map(|it| it.quotes.1)
+    }
+}
+
+impl IsString for ast::String {}
+
 impl ast::String {
     pub fn is_raw(&self) -> bool {
         self.text().starts_with('r')
@@ -187,31 +211,48 @@ impl ast::String {
             (false, false) => Some(Cow::Owned(buf)),
         }
     }
-
-    pub fn quote_offsets(&self) -> Option<QuoteOffsets> {
-        let text = self.text();
-        let offsets = QuoteOffsets::new(text)?;
-        let o = self.syntax().text_range().start();
-        let offsets = QuoteOffsets {
-            quotes: (offsets.quotes.0 + o, offsets.quotes.1 + o),
-            contents: offsets.contents + o,
-        };
-        Some(offsets)
-    }
-    pub fn text_range_between_quotes(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.contents)
-    }
-    pub fn open_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes.0)
-    }
-    pub fn close_quote_text_range(&self) -> Option<TextRange> {
-        self.quote_offsets().map(|it| it.quotes.1)
-    }
 }
+
+impl IsString for ast::ByteString {}
 
 impl ast::ByteString {
     pub fn is_raw(&self) -> bool {
         self.text().starts_with("br")
+    }
+
+    pub fn value(&self) -> Option<Cow<'_, [u8]>> {
+        if self.is_raw() {
+            let text = self.text();
+            let text =
+                &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+            return Some(Cow::Borrowed(text.as_bytes()));
+        }
+
+        let text = self.text();
+        let text = &text[self.text_range_between_quotes()? - self.syntax().text_range().start()];
+
+        let mut buf: Vec<u8> = Vec::new();
+        let mut text_iter = text.chars();
+        let mut has_error = false;
+        unescape_literal(text, Mode::ByteStr, &mut |char_range, unescaped_char| match (
+            unescaped_char,
+            buf.capacity() == 0,
+        ) {
+            (Ok(c), false) => buf.push(c as u8),
+            (Ok(c), true) if char_range.len() == 1 && Some(c) == text_iter.next() => (),
+            (Ok(c), true) => {
+                buf.reserve_exact(text.len());
+                buf.extend_from_slice(&text[..char_range.start].as_bytes());
+                buf.push(c as u8);
+            }
+            (Err(_), _) => has_error = true,
+        });
+
+        match (has_error, buf.capacity() == 0) {
+            (true, _) => None,
+            (false, true) => Some(Cow::Borrowed(text.as_bytes())),
+            (false, false) => Some(Cow::Owned(buf)),
+        }
     }
 }
 
