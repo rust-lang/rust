@@ -1206,7 +1206,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                    << " potentiallyActiveLoad=" << potentiallyActiveLoad
                    << " potentialStore=" << potentialStore << "\n";
     if (potentiallyActiveLoad && potentialStore) {
-      activeLoadAndStore:;
+    activeLoadAndStore:;
       insertAllFrom(TR, *Hypothesis, Val);
       // TODO have insertall dependence on this
       if (TmpOrig != Val)

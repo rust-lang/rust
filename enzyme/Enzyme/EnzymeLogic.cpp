@@ -191,10 +191,10 @@ struct CacheAnalysis {
         }
       } else if (isa<AllocaInst>(obj)) {
         // No change to modref if alloca
-      } else if (isa<GlobalVariable>(obj)) {
+      } else if (auto GV = dyn_cast<GlobalVariable>(obj)) {
         // In the absense of more fine-grained global info, assume object is
         // written to in a subseqent call unless this is "topLevel";
-        if (!topLevel) {
+        if (!topLevel && !GV->isConstant()) {
           mustcache = true;
         }
       } else if (auto sli = dyn_cast<LoadInst>(obj)) {
