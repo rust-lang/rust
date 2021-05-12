@@ -19,7 +19,6 @@ use crate::dep_graph::{DepNode, DepNodeIndex, HasDepContext, SerializedDepNodeIn
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
 
 /// Description of a frame in the query stack.
@@ -64,9 +63,6 @@ impl QueryStackFrame {
 }
 
 pub trait QueryContext: HasDepContext {
-    /// Get string representation from DefPath.
-    fn def_path_str(&self, def_id: DefId) -> String;
-
     /// Get the query information from the TLS context.
     fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
 
