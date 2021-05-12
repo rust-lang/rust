@@ -354,6 +354,8 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
         return false;
       if (II->getIntrinsicID() == Intrinsic::stackrestore)
         return false;
+      if (II->getIntrinsicID() == Intrinsic::trap)
+        return false;
 #if LLVM_VERSION_MAJOR >= 13
       if (II->getIntrinsicID() == Intrinsic::experimental_noalias_scope_decl)
         return false;
@@ -394,6 +396,8 @@ static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
       if (II->getIntrinsicID() == Intrinsic::stacksave)
         return false;
       if (II->getIntrinsicID() == Intrinsic::stackrestore)
+        return false;
+      if (II->getIntrinsicID() == Intrinsic::trap)
         return false;
 #if LLVM_VERSION_MAJOR >= 13
       if (II->getIntrinsicID() == Intrinsic::experimental_noalias_scope_decl)

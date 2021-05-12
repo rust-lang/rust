@@ -1062,6 +1062,8 @@ bool legalCombinedForwardReverse(
     // (unless this is the original function)
     if (usetree.count(I))
       return;
+    if (!TR.isBlockAnalyzed(I->getParent()))
+      return;
     if (auto ri = dyn_cast<ReturnInst>(I)) {
       auto find = replacedReturns.find(ri);
       if (find != replacedReturns.end()) {

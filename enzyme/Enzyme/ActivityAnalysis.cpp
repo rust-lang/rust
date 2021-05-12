@@ -1003,12 +1003,12 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
     // for potential loads / stores of this value
     for (BasicBlock &BB : *TR.info.Function) {
       if (potentialStore && potentiallyActiveLoad)
-        break;
+        goto activeLoadAndStore;
       if (!TR.isBlockAnalyzed(&BB))
         continue;
       for (Instruction &I : BB) {
         if (potentialStore && potentiallyActiveLoad)
-          break;
+          goto activeLoadAndStore;
 
         // If this is a malloc or free, this doesn't impact the activity
         if (auto CI = dyn_cast<CallInst>(&I)) {
@@ -1206,6 +1206,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
                    << " potentiallyActiveLoad=" << potentiallyActiveLoad
                    << " potentialStore=" << potentialStore << "\n";
     if (potentiallyActiveLoad && potentialStore) {
+      activeLoadAndStore:;
       insertAllFrom(TR, *Hypothesis, Val);
       // TODO have insertall dependence on this
       if (TmpOrig != Val)
