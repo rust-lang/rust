@@ -370,11 +370,13 @@ pub fn provide(providers: &mut Providers) {
     providers.upstream_monomorphizations = upstream_monomorphizations_provider;
     providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
+    providers.wasm_import_module_map = wasm_import_module_map;
 }
 
 pub fn provide_extern(providers: &mut Providers) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
+    providers.wasm_import_module_map = wasm_import_module_map;
 }
 
 fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel {
@@ -441,4 +443,31 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
         ),
         ExportedSymbol::NoDefId(symbol_name) => symbol_name.to_string(),
     }
+}
+
+fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, String> {
+    // Build up a map from DefId to a `NativeLib` structure, where
+    // `NativeLib` internally contains information about
+    // `#[link(wasm_import_module = "...")]` for example.
+    let native_libs = tcx.native_libraries(cnum);
+
+    let def_id_to_native_lib = native_libs
+        .iter()
+        .filter_map(|lib| lib.foreign_module.map(|id| (id, lib)))
+        .collect::<FxHashMap<_, _>>();
+
+    let mut ret = FxHashMap::default();
+    for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
+        let module = def_id_to_native_lib.get(&def_id).and_then(|s| s.wasm_import_module);
+        let module = match module {
+            Some(s) => s,
+            None => continue,
+        };
+        ret.extend(lib.foreign_items.iter().map(|id| {
+            assert_eq!(id.krate, cnum);
+            (*id, module.to_string())
+        }));
+    }
+
+    ret
 }

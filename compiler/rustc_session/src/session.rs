@@ -1528,7 +1528,7 @@ pub enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
+pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1540,6 +1540,10 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_fatal(msg).emit();
+}
+
+pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
+    early_error_no_abort(output, msg);
     rustc_errors::FatalError.raise();
 }
 

@@ -35,7 +35,7 @@ use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, Tr
 use rustc_session::getopts;
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, DiagnosticOutput, Session};
-use rustc_session::{early_error, early_warn};
+use rustc_session::{early_error, early_error_no_abort, early_warn};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 
@@ -133,6 +133,7 @@ pub fn diagnostics_registry() -> Registry {
     Registry::new(&rustc_error_codes::DIAGNOSTICS)
 }
 
+/// This is the primary entry point for rustc.
 pub struct RunCompiler<'a, 'b> {
     at_args: &'a [String],
     callbacks: &'b mut (dyn Callbacks + Send),
@@ -146,6 +147,9 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
     pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
         Self { at_args, callbacks, file_loader: None, emitter: None, make_codegen_backend: None }
     }
+
+    /// Set a custom codegen backend.
+    ///
     /// Used by cg_clif.
     pub fn set_make_codegen_backend(
         &mut self,
@@ -156,11 +160,17 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self.make_codegen_backend = make_codegen_backend;
         self
     }
+
+    /// Emit diagnostics to the specified location.
+    ///
     /// Used by RLS.
     pub fn set_emitter(&mut self, emitter: Option<Box<dyn Write + Send>>) -> &mut Self {
         self.emitter = emitter;
         self
     }
+
+    /// Load files from sources other than the file system.
+    ///
     /// Used by RLS.
     pub fn set_file_loader(
         &mut self,
@@ -169,6 +179,8 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self.file_loader = file_loader;
         self
     }
+
+    /// Parse args and run the compiler.
     pub fn run(self) -> interface::Result<()> {
         run_compiler(
             self.at_args,
@@ -179,8 +191,6 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         )
     }
 }
-// Parse args and run the compiler. This is the primary entry point for rustc.
-// The FileLoader provides a way to load files from sources other than the file system.
 fn run_compiler(
     at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),
@@ -199,46 +209,43 @@ fn run_compiler(
     };
 
     let sopts = config::build_session_options(&matches);
-    let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
-
-    // We wrap `make_codegen_backend` in another `Option` such that `dummy_config` can take
-    // ownership of it when necessary, while also allowing the non-dummy config to take ownership
-    // when `dummy_config` is not used.
-    let mut make_codegen_backend = Some(make_codegen_backend);
-
-    let mut dummy_config = |sopts, cfg, diagnostic_output| {
-        let mut config = interface::Config {
-            opts: sopts,
-            crate_cfg: cfg,
-            input: Input::File(PathBuf::new()),
-            input_path: None,
-            output_file: None,
-            output_dir: None,
-            file_loader: None,
-            diagnostic_output,
-            stderr: None,
-            lint_caps: Default::default(),
-            parse_sess_created: None,
-            register_lints: None,
-            override_queries: None,
-            make_codegen_backend: make_codegen_backend.take().unwrap(),
-            registry: diagnostics_registry(),
-        };
-        callbacks.config(&mut config);
-        config
-    };
 
     if let Some(ref code) = matches.opt_str("explain") {
         handle_explain(diagnostics_registry(), code, sopts.error_format);
         return Ok(());
     }
 
+    let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
     let (odir, ofile) = make_output(&matches);
-    let (input, input_file_path, input_err) = match make_input(&matches.free) {
-        Some(v) => v,
-        None => match matches.free.len() {
+    let mut config = interface::Config {
+        opts: sopts,
+        crate_cfg: cfg,
+        input: Input::File(PathBuf::new()),
+        input_path: None,
+        output_file: ofile,
+        output_dir: odir,
+        file_loader,
+        diagnostic_output,
+        stderr: None,
+        lint_caps: Default::default(),
+        parse_sess_created: None,
+        register_lints: None,
+        override_queries: None,
+        make_codegen_backend,
+        registry: diagnostics_registry(),
+    };
+
+    match make_input(config.opts.error_format, &matches.free) {
+        Err(ErrorReported) => return Err(ErrorReported),
+        Ok(Some((input, input_file_path))) => {
+            config.input = input;
+            config.input_path = input_file_path;
+
+            callbacks.config(&mut config);
+        }
+        Ok(None) => match matches.free.len() {
             0 => {
-                let config = dummy_config(sopts, cfg, diagnostic_output);
+                callbacks.config(&mut config);
                 interface::run_compiler(config, |compiler| {
                     let sopts = &compiler.session().opts;
                     if sopts.describe_lints {
@@ -260,8 +267,8 @@ fn run_compiler(
                         &***compiler.codegen_backend(),
                         compiler.session(),
                         None,
-                        &odir,
-                        &ofile,
+                        &compiler.output_dir(),
+                        &compiler.output_file(),
                     );
 
                     if should_stop == Compilation::Stop {
@@ -273,7 +280,7 @@ fn run_compiler(
             }
             1 => panic!("make_input should have provided valid inputs"),
             _ => early_error(
-                sopts.error_format,
+                config.opts.error_format,
                 &format!(
                     "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                     matches.free[0], matches.free[1],
@@ -281,35 +288,6 @@ fn run_compiler(
             ),
         },
     };
-
-    if let Some(err) = input_err {
-        // Immediately stop compilation if there was an issue reading
-        // the input (for example if the input stream is not UTF-8).
-        interface::run_compiler(dummy_config(sopts, cfg, diagnostic_output), |compiler| {
-            compiler.session().err(&err.to_string());
-        });
-        return Err(ErrorReported);
-    }
-
-    let mut config = interface::Config {
-        opts: sopts,
-        crate_cfg: cfg,
-        input,
-        input_path: input_file_path,
-        output_file: ofile,
-        output_dir: odir,
-        file_loader,
-        diagnostic_output,
-        stderr: None,
-        lint_caps: Default::default(),
-        parse_sess_created: None,
-        register_lints: None,
-        override_queries: None,
-        make_codegen_backend: make_codegen_backend.unwrap(),
-        registry: diagnostics_registry(),
-    };
-
-    callbacks.config(&mut config);
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
@@ -324,7 +302,6 @@ fn run_compiler(
             RustcDefaultCalls::list_metadata(
                 sess,
                 &*compiler.codegen_backend().metadata_loader(),
-                &matches,
                 compiler.input(),
             )
         })
@@ -411,11 +388,10 @@ fn run_compiler(
                 return early_exit();
             }
 
-            if sess.opts.debugging_opts.save_analysis {
-                let crate_name = queries.crate_name()?.peek().clone();
-                queries.global_ctxt()?.peek_mut().enter(|tcx| {
-                    let result = tcx.analysis(LOCAL_CRATE);
-
+            queries.global_ctxt()?.peek_mut().enter(|tcx| {
+                let result = tcx.analysis(LOCAL_CRATE);
+                if sess.opts.debugging_opts.save_analysis {
+                    let crate_name = queries.crate_name()?.peek().clone();
                     sess.time("save_analysis", || {
                         save::process_crate(
                             tcx,
@@ -428,12 +404,9 @@ fn run_compiler(
                             ),
                         )
                     });
-
-                    result
-                })?;
-            }
-
-            queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
+                }
+                result
+            })?;
 
             if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
                 return early_exit();
@@ -490,19 +463,23 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 }
 
 // Extract input (string or file and optional path) from matches.
-fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option<io::Error>)> {
+fn make_input(
+    error_format: ErrorOutputType,
+    free_matches: &[String],
+) -> Result<Option<(Input, Option<PathBuf>)>, ErrorReported> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0];
         if ifile == "-" {
             let mut src = String::new();
-            let err = if io::stdin().read_to_string(&mut src).is_err() {
-                Some(io::Error::new(
-                    io::ErrorKind::InvalidData,
+            if io::stdin().read_to_string(&mut src).is_err() {
+                // Immediately stop compilation if there was an issue reading
+                // the input (for example if the input stream is not UTF-8).
+                early_error_no_abort(
+                    error_format,
                     "couldn't read from stdin, as it did not contain valid UTF-8",
-                ))
-            } else {
-                None
-            };
+                );
+                return Err(ErrorReported);
+            }
             if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
                 let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
                     "when UNSTABLE_RUSTDOC_TEST_PATH is set \
@@ -511,14 +488,15 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option
                 let line = isize::from_str_radix(&line, 10)
                     .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be an number");
                 let file_name = FileName::doc_test_source_code(PathBuf::from(path), line);
-                return Some((Input::Str { name: file_name, input: src }, None, err));
+                Ok(Some((Input::Str { name: file_name, input: src }, None)))
+            } else {
+                Ok(Some((Input::Str { name: FileName::anon_source_code(&src), input: src }, None)))
             }
-            Some((Input::Str { name: FileName::anon_source_code(&src), input: src }, None, err))
         } else {
-            Some((Input::File(PathBuf::from(ifile)), Some(PathBuf::from(ifile)), None))
+            Ok(Some((Input::File(PathBuf::from(ifile)), Some(PathBuf::from(ifile)))))
         }
     } else {
-        None
+        Ok(None)
     }
 }
 
@@ -619,28 +597,24 @@ fn show_content_with_pager(content: &str) {
 }
 
 impl RustcDefaultCalls {
-    fn process_rlink(sess: &Session, compiler: &interface::Compiler) -> Result<(), ErrorReported> {
-        if let Input::File(file) = compiler.input() {
-            // FIXME: #![crate_type] and #![crate_name] support not implemented yet
-            let attrs = vec![];
-            sess.init_crate_types(collect_crate_types(sess, &attrs));
-            let outputs = compiler.build_output_filenames(&sess, &attrs);
-            let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
-                sess.fatal(&format!("failed to read rlink file: {}", err));
-            });
-            let codegen_results: CodegenResults = json::decode(&rlink_data).unwrap_or_else(|err| {
-                sess.fatal(&format!("failed to decode rlink: {}", err));
-            });
-            compiler.codegen_backend().link(&sess, codegen_results, &outputs)
-        } else {
-            sess.fatal("rlink must be a file")
-        }
-    }
-
     pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
         if sess.opts.debugging_opts.link_only {
-            let result = RustcDefaultCalls::process_rlink(sess, compiler);
-            abort_on_err(result, sess);
+            if let Input::File(file) = compiler.input() {
+                // FIXME: #![crate_type] and #![crate_name] support not implemented yet
+                sess.init_crate_types(collect_crate_types(sess, &[]));
+                let outputs = compiler.build_output_filenames(&sess, &[]);
+                let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
+                    sess.fatal(&format!("failed to read rlink file: {}", err));
+                });
+                let codegen_results: CodegenResults =
+                    json::decode(&rlink_data).unwrap_or_else(|err| {
+                        sess.fatal(&format!("failed to decode rlink: {}", err));
+                    });
+                let result = compiler.codegen_backend().link(&sess, codegen_results, &outputs);
+                abort_on_err(result, sess);
+            } else {
+                sess.fatal("rlink must be a file")
+            }
             Compilation::Stop
         } else {
             Compilation::Continue
@@ -650,11 +624,9 @@ impl RustcDefaultCalls {
     pub fn list_metadata(
         sess: &Session,
         metadata_loader: &dyn MetadataLoader,
-        matches: &getopts::Matches,
         input: &Input,
     ) -> Compilation {
-        let r = matches.opt_strs("Z");
-        if r.iter().any(|s| *s == "ls") {
+        if sess.opts.debugging_opts.ls {
             match *input {
                 Input::File(ref ifile) => {
                     let path = &(*ifile);

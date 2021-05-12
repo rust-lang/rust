@@ -13,7 +13,6 @@ use rustc_data_structures::{box_region_allow_access, declare_box_region_type, pa
 use rustc_errors::{ErrorReported, PResult};
 use rustc_expand::base::ExtCtxt;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_hir::definitions::Definitions;
 use rustc_hir::Crate;
 use rustc_lint::LintStore;
 use rustc_metadata::creader::CStore;
@@ -51,7 +50,7 @@ use std::io::{self, BufWriter, Write};
 use std::lazy::SyncLazy;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::{env, fs, iter, mem};
+use std::{env, fs, iter};
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     let krate = sess.time("parse_crate", || match input {
@@ -761,7 +760,7 @@ pub fn create_global_ctxt<'tcx>(
     lint_store: Lrc<LintStore>,
     krate: &'tcx Crate<'tcx>,
     dep_graph: DepGraph,
-    mut resolver_outputs: ResolverOutputs,
+    resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
@@ -769,12 +768,10 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
-    let defs: &'tcx Definitions = arena.alloc(mem::replace(
-        &mut resolver_outputs.definitions,
-        Definitions::new(crate_name, sess.local_crate_disambiguator()),
-    ));
 
-    let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess, defs);
+    let def_path_table = resolver_outputs.definitions.def_path_table();
+    let query_result_on_disk_cache =
+        rustc_incremental::load_query_result_cache(sess, def_path_table);
 
     let codegen_backend = compiler.codegen_backend();
     let mut local_providers = *DEFAULT_QUERY_PROVIDERS;
@@ -798,7 +795,6 @@ pub fn create_global_ctxt<'tcx>(
                 arena,
                 resolver_outputs,
                 krate,
-                defs,
                 dep_graph,
                 query_result_on_disk_cache,
                 queries.as_dyn(),

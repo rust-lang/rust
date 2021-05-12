@@ -467,12 +467,13 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'tcx>,
+    target_cpu: String,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, metadata, 1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, 1);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -498,7 +499,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, metadata, codegen_units.len());
+    let ongoing_codegen =
+        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, codegen_units.len());
     let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.

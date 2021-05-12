@@ -1,7 +1,7 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::DefPathTable;
 use rustc_middle::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::query::OnDiskCache;
 use rustc_serialize::opaque::Decoder;
@@ -198,7 +198,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 /// creating an empty cache if it could not be loaded.
 pub fn load_query_result_cache<'a>(
     sess: &'a Session,
-    definitions: &Definitions,
+    def_path_table: &DefPathTable,
 ) -> Option<OnDiskCache<'a>> {
     if sess.opts.incremental.is_none() {
         return None;
@@ -212,7 +212,7 @@ pub fn load_query_result_cache<'a>(
         sess.is_nightly_build(),
     ) {
         LoadResult::Ok { data: (bytes, start_pos) } => {
-            Some(OnDiskCache::new(sess, bytes, start_pos, definitions))
+            Some(OnDiskCache::new(sess, bytes, start_pos, def_path_table))
         }
         _ => Some(OnDiskCache::new_empty(sess.source_map())),
     }

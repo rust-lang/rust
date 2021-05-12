@@ -419,6 +419,7 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 pub fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
+    target_cpu: String,
     metadata: EncodedMetadata,
     total_cgus: usize,
 ) -> OngoingCodegen<B> {
@@ -441,7 +442,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         subsystem.to_string()
     });
 
-    let linker_info = LinkerInfo::new(tcx);
+    let linker_info = LinkerInfo::new(tcx, target_cpu);
     let crate_info = CrateInfo::new(tcx);
 
     let regular_config =

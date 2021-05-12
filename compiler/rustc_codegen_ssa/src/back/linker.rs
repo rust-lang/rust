@@ -37,12 +37,14 @@ pub fn disable_localization(linker: &mut Command) {
 /// need out of the shared crate context before we get rid of it.
 #[derive(Encodable, Decodable)]
 pub struct LinkerInfo {
+    target_cpu: String,
     exports: FxHashMap<CrateType, Vec<String>>,
 }
 
 impl LinkerInfo {
-    pub fn new(tcx: TyCtxt<'_>) -> LinkerInfo {
+    pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> LinkerInfo {
         LinkerInfo {
+            target_cpu,
             exports: tcx
                 .sess
                 .crate_types()
@@ -57,38 +59,31 @@ impl LinkerInfo {
         cmd: Command,
         sess: &'a Session,
         flavor: LinkerFlavor,
-        target_cpu: &'a str,
     ) -> Box<dyn Linker + 'a> {
         match flavor {
             LinkerFlavor::Lld(LldFlavor::Link) | LinkerFlavor::Msvc => {
                 Box::new(MsvcLinker { cmd, sess, info: self }) as Box<dyn Linker>
             }
             LinkerFlavor::Em => Box::new(EmLinker { cmd, sess, info: self }) as Box<dyn Linker>,
-            LinkerFlavor::Gcc => Box::new(GccLinker {
-                cmd,
-                sess,
-                info: self,
-                hinted_static: false,
-                is_ld: false,
-                target_cpu,
-            }) as Box<dyn Linker>,
+            LinkerFlavor::Gcc => {
+                Box::new(GccLinker { cmd, sess, info: self, hinted_static: false, is_ld: false })
+                    as Box<dyn Linker>
+            }
 
             LinkerFlavor::Lld(LldFlavor::Ld)
             | LinkerFlavor::Lld(LldFlavor::Ld64)
-            | LinkerFlavor::Ld => Box::new(GccLinker {
-                cmd,
-                sess,
-                info: self,
-                hinted_static: false,
-                is_ld: true,
-                target_cpu,
-            }) as Box<dyn Linker>,
+            | LinkerFlavor::Ld => {
+                Box::new(GccLinker { cmd, sess, info: self, hinted_static: false, is_ld: true })
+                    as Box<dyn Linker>
+            }
 
             LinkerFlavor::Lld(LldFlavor::Wasm) => {
                 Box::new(WasmLd::new(cmd, sess, self)) as Box<dyn Linker>
             }
 
-            LinkerFlavor::PtxLinker => Box::new(PtxLinker { cmd, sess }) as Box<dyn Linker>,
+            LinkerFlavor::PtxLinker => {
+                Box::new(PtxLinker { cmd, sess, info: self }) as Box<dyn Linker>
+            }
         }
     }
 }
@@ -157,7 +152,6 @@ pub struct GccLinker<'a> {
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
-    target_cpu: &'a str,
 }
 
 impl<'a> GccLinker<'a> {
@@ -229,8 +223,7 @@ impl<'a> GccLinker<'a> {
         };
 
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
-        let target_cpu = self.target_cpu;
-        self.linker_arg(&format!("-plugin-opt=mcpu={}", target_cpu));
+        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.info.target_cpu));
     }
 
     fn build_dylib(&mut self, out_filename: &Path) {
@@ -1336,6 +1329,7 @@ fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
 pub struct PtxLinker<'a> {
     cmd: Command,
     sess: &'a Session,
+    info: &'a LinkerInfo,
 }
 
 impl<'a> Linker for PtxLinker<'a> {
@@ -1381,10 +1375,7 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn finalize(&mut self) {
         // Provide the linker with fallback to internal `target-cpu`.
-        self.cmd.arg("--fallback-arch").arg(match self.sess.opts.cg.target_cpu {
-            Some(ref s) => s,
-            None => &self.sess.target.cpu,
-        });
+        self.cmd.arg("--fallback-arch").arg(&self.info.target_cpu);
     }
 
     fn link_dylib(&mut self, _lib: Symbol, _verbatim: bool, _as_needed: bool) {
