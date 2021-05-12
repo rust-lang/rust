@@ -406,17 +406,17 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Span, String> {
+        let ctxt = SyntaxContext::decode(decoder)?;
         let tag = u8::decode(decoder)?;
 
-        if tag == TAG_INVALID_SPAN {
-            return Ok(DUMMY_SP);
+        if tag == TAG_PARTIAL_SPAN {
+            return Ok(DUMMY_SP.with_ctxt(ctxt));
         }
 
         debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
 
         let lo = BytePos::decode(decoder)?;
         let len = BytePos::decode(decoder)?;
-        let ctxt = SyntaxContext::decode(decoder)?;
         let hi = lo + len;
 
         let sess = if let Some(sess) = decoder.sess {
