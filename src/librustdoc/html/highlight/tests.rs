@@ -40,3 +40,17 @@ fn test_dos_backline() {
         expect_file!["fixtures/dos_line.html"].assert_eq(&html.into_inner());
     });
 }
+
+#[test]
+fn test_keyword_highlight() {
+    create_default_session_globals_then(|| {
+        let src = "use crate::a::foo;
+use self::whatever;
+let x = super::b::foo;
+let y = Self::whatever;";
+
+        let mut html = Buffer::new();
+        write_code(&mut html, src, Edition::Edition2018, None);
+        expect_file!["fixtures/highlight.html"].assert_eq(&html.into_inner());
+    });
+}
