@@ -55,7 +55,7 @@ dependencies = [
  "markup5ever_rcdom",
  "matches",
  "tendril",
- "url 2.1.1",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -305,7 +305,7 @@ dependencies = [
  "toml",
  "unicode-width",
  "unicode-xid",
- "url 2.1.1",
+ "url 2.2.2",
  "walkdir",
  "winapi 0.3.9",
 ]
@@ -378,7 +378,7 @@ dependencies = [
  "serde_json",
  "tar",
  "toml",
- "url 2.1.1",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -600,7 +600,7 @@ dependencies = [
  "serde_json",
  "toml",
  "unicode-normalization",
- "url 2.1.1",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -750,7 +750,7 @@ dependencies = [
  "percent-encoding 2.1.0",
  "serde",
  "serde_json",
- "url 2.1.1",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -1188,6 +1188,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
+name = "form_urlencoded"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fc25a87fa4fd2094bffb06925852034d90a17f0d1e05197d4956d3555752191"
+dependencies = [
+ "matches",
+ "percent-encoding 2.1.0",
+]
+
+[[package]]
 name = "fortanix-sgx-abi"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1441,7 +1451,7 @@ dependencies = [
  "log",
  "openssl-probe",
  "openssl-sys",
- "url 2.1.1",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -1453,7 +1463,7 @@ dependencies = [
  "curl",
  "git2",
  "log",
- "url 2.1.1",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -2003,7 +2013,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
- "url 2.1.1",
+ "url 2.2.2",
 ]
 
 [[package]]
@@ -3098,7 +3108,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "toml",
- "url 2.1.1",
+ "url 2.2.2",
  "walkdir",
 ]
 
@@ -3530,7 +3540,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "syn",
- "url 2.1.1",
+ "url 2.2.2",
  "winapi 0.3.9",
 ]
 
@@ -5515,10 +5525,11 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.1.1"
+version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "829d4a8476c35c9bf0bbce5a3b23f4106f79728039b726d292bb93bc106787cb"
+checksum = "a507c383b2d33b5fc35d1861e77e6b383d158b2da5e14fe51b83dfedf6fd578c"
 dependencies = [
+ "form_urlencoded",
  "idna 0.2.0",
  "matches",
  "percent-encoding 2.1.0",
