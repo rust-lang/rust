@@ -227,6 +227,8 @@ This lint **warns by default**. It detects code block attributes in
 documentation examples that have potentially mis-typed values. For example:
 
 ```rust
+#![warn(rustdoc::invalid_codeblock_attributes)]
+
 /// Example.
 ///
 /// ```should-panic
