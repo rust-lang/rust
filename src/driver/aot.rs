@@ -298,7 +298,7 @@ pub(crate) fn run_aot(
             metadata_module,
             metadata,
             windows_subsystem,
-            linker_info: LinkerInfo::new(tcx),
+            linker_info: LinkerInfo::new(tcx, crate::target_triple(tcx.sess).to_string()),
             crate_info: CrateInfo::new(tcx),
         },
         work_products,
