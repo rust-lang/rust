@@ -49,7 +49,7 @@ error[E0107]: this associated type takes 0 generic arguments but 1 generic argum
   --> $DIR/gat-trait-path-parenthesised-args.rs:8:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                           ^-------------- help: remove these generics
+   |                           ^---- help: remove these generics
    |                           |
    |                           expected 0 generic arguments
    |
