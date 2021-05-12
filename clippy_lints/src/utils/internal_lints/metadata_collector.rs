@@ -267,6 +267,7 @@ pub(crate) struct ClippyConfigurationBasicInfo {
     pub config_type: &'static str,
     pub default: &'static str,
     pub doc_comment: &'static str,
+    pub deprecation_reason: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -276,6 +277,7 @@ struct ClippyConfiguration {
     doc: String,
     config_type: &'static str,
     default: String,
+    deprecation_reason: Option<&'static str>,
 }
 
 fn collect_configs() -> Vec<ClippyConfiguration> {
@@ -291,18 +293,19 @@ fn collect_configs() -> Vec<ClippyConfiguration> {
                 doc,
                 config_type: x.config_type,
                 default: clarify_default(x.default),
+                deprecation_reason: x.deprecation_reason,
             }
         })
         .collect()
 }
 
 fn clarify_default(default: &'static str) -> String {
-    if let Some((_start, init))  = default.split_once('[') {
+    if let Some((_start, init)) = default.split_once('[') {
         if let Some((init, _end)) = init.split_once(']') {
             return format!("[{}]", init);
         }
     }
-    
+
     default.to_string()
 }
 

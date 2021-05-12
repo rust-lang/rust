@@ -97,11 +97,20 @@ macro_rules! define_Conf {
             pub(crate) fn get_configuration_metadata() -> Vec<ClippyConfigurationBasicInfo> {
                 vec![
                     $(
-                        ClippyConfigurationBasicInfo {
-                            name: stringify!($name),
-                            config_type: stringify!($ty),
-                            default: stringify!($default),
-                            doc_comment: $doc,
+                        {
+                            #[allow(unused_mut, unused_assignments)]
+                            let mut deprecation_reason = None;
+
+                            // only set if a deprecation reason was set
+                            $(deprecation_reason = Some(stringify!($dep));)?
+
+                            ClippyConfigurationBasicInfo {
+                                name: stringify!($name),
+                                config_type: stringify!($ty),
+                                default: stringify!($default),
+                                doc_comment: $doc,
+                                deprecation_reason,
+                            }
                         },
                     )+
                 ]
@@ -118,7 +127,7 @@ define_Conf! {
     (blacklisted_names: Vec<String> = ["foo", "baz", "quux"].iter().map(ToString::to_string).collect()),
     /// Lint: COGNITIVE_COMPLEXITY. The maximum cognitive complexity a function can have
     (cognitive_complexity_threshold: u64 = 25),
-    /// Lint: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
+    /// DEPRECATED LINT: CYCLOMATIC_COMPLEXITY. Use the Cognitive Complexity lint instead.
     #[conf_deprecated("Please use `cognitive-complexity-threshold` instead")]
     (cyclomatic_complexity_threshold: Option<u64> = None),
     /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
