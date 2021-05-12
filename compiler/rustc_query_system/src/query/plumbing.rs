@@ -528,7 +528,8 @@ where
     debug_assert!(tcx.dep_context().dep_graph().is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
-    let result = if query.cache_on_disk(tcx, key, None) {
+    // Some things are never cached on disk.
+    if query.cache_on_disk(tcx, key, None) {
         let prof_timer = tcx.dep_context().profiler().incr_cache_loading();
         let result = query.try_load_from_disk(tcx, prev_dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -540,44 +541,38 @@ where
             "missing on-disk cache entry for {:?}",
             dep_node
         );
-        result
-    } else {
-        // Some things are never cached on disk.
-        None
-    };
 
-    let result = if let Some(result) = result {
-        // If `-Zincremental-verify-ich` is specified, re-hash results from
-        // the cache and make sure that they have the expected fingerprint.
-        if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
-            incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
+        if let Some(result) = result {
+            // If `-Zincremental-verify-ich` is specified, re-hash results from
+            // the cache and make sure that they have the expected fingerprint.
+            if unlikely!(tcx.dep_context().sess().opts.debugging_opts.incremental_verify_ich) {
+                incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
+            }
+
+            return Some((result, dep_node_index));
         }
+    }
 
-        result
-    } else {
-        // We could not load a result from the on-disk cache, so
-        // recompute.
-        let prof_timer = tcx.dep_context().profiler().query_provider();
+    // We could not load a result from the on-disk cache, so
+    // recompute.
+    let prof_timer = tcx.dep_context().profiler().query_provider();
 
-        // The dep-graph for this computation is already in-place.
-        let result =
-            tcx.dep_context().dep_graph().with_ignore(|| compute(*tcx.dep_context(), key.clone()));
+    // The dep-graph for this computation is already in-place.
+    let result =
+        tcx.dep_context().dep_graph().with_ignore(|| compute(*tcx.dep_context(), key.clone()));
 
-        prof_timer.finish_with_query_invocation_id(dep_node_index.into());
+    prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
-        // Verify that re-running the query produced a result with the expected hash
-        // This catches bugs in query implementations, turning them into ICEs.
-        // For example, a query might sort its result by `DefId` - since `DefId`s are
-        // not stable across compilation sessions, the result could get up getting sorted
-        // in a different order when the query is re-run, even though all of the inputs
-        // (e.g. `DefPathHash` values) were green.
-        //
-        // See issue #82920 for an example of a miscompilation that would get turned into
-        // an ICE by this check
-        incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
-
-        result
-    };
+    // Verify that re-running the query produced a result with the expected hash
+    // This catches bugs in query implementations, turning them into ICEs.
+    // For example, a query might sort its result by `DefId` - since `DefId`s are
+    // not stable across compilation sessions, the result could get up getting sorted
+    // in a different order when the query is re-run, even though all of the inputs
+    // (e.g. `DefPathHash` values) were green.
+    //
+    // See issue #82920 for an example of a miscompilation that would get turned into
+    // an ICE by this check
+    incremental_verify_ich(*tcx.dep_context(), &result, dep_node, query);
 
     Some((result, dep_node_index))
 }
