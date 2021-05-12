@@ -50,7 +50,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
     }
 
     fn create(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, is_used: bool) -> Self {
-        let coverageinfo = tcx.coverageinfo(instance.def_id());
+        let coverageinfo = tcx.coverageinfo(instance.def);
         debug!(
             "FunctionCoverage::create(instance={:?}) has coverageinfo={:?}. is_used={}",
             instance, coverageinfo, is_used

@@ -39,7 +39,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     if !is_dead {
-                        let coverageinfo = bx.tcx().coverageinfo(instance.def_id());
+                        let coverageinfo = bx.tcx().coverageinfo(instance.def);
 
                         let fn_name = bx.get_pgo_func_name_var(instance);
                         let hash = bx.const_u64(function_source_hash);
