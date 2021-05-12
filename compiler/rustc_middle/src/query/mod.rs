@@ -260,7 +260,6 @@ rustc_queries! {
             if key.const_param_did.is_some() { "the const argument " } else { "" },
             tcx.def_path_str(key.did.to_def_id()),
         }
-        no_hash
     }
 
     /// Try to build an abstract representation of the given constant.
@@ -295,7 +294,6 @@ rustc_queries! {
     query mir_drops_elaborated_and_const_checked(
         key: ty::WithOptConstParam<LocalDefId>
     ) -> &'tcx Steal<mir::Body<'tcx>> {
-        no_hash
         desc { |tcx| "elaborating drops for `{}`", tcx.def_path_str(key.did.to_def_id()) }
     }
 
@@ -318,7 +316,6 @@ rustc_queries! {
             &'tcx Steal<mir::Body<'tcx>>,
             &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
         ) {
-        no_hash
         desc {
             |tcx| "processing {}`{}`",
             if key.const_param_did.is_some() { "the const argument " } else { "" },
