@@ -491,13 +491,7 @@ where
         // `to_dep_node` is expensive for some `DepKind`s.
         let dep_node = dep_node_opt.unwrap_or_else(|| query.to_dep_node(*tcx.dep_context(), &key));
 
-        tcx.dep_context().dep_graph().with_task(
-            dep_node,
-            *tcx.dep_context(),
-            key,
-            compute,
-            query.hash_result,
-        )
+        dep_graph.with_task(dep_node, *tcx.dep_context(), key, compute, query.hash_result)
     });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -531,10 +525,10 @@ where
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let (prev_dep_node_index, dep_node_index) =
-        tcx.dep_context().dep_graph().try_mark_green(tcx, &dep_node)?;
+    let dep_graph = tcx.dep_context().dep_graph();
+    let (prev_dep_node_index, dep_node_index) = dep_graph.try_mark_green(tcx, &dep_node)?;
 
-    debug_assert!(tcx.dep_context().dep_graph().is_green(dep_node));
+    debug_assert!(dep_graph.is_green(dep_node));
 
     // First we try to load the result from the on-disk cache.
     // Some things are never cached on disk.
@@ -567,8 +561,7 @@ where
     let prof_timer = tcx.dep_context().profiler().query_provider();
 
     // The dep-graph for this computation is already in-place.
-    let result =
-        tcx.dep_context().dep_graph().with_ignore(|| compute(*tcx.dep_context(), key.clone()));
+    let result = dep_graph.with_ignore(|| compute(*tcx.dep_context(), key.clone()));
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
