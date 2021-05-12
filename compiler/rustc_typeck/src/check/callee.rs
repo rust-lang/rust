@@ -6,8 +6,14 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{Namespace, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::{infer, traits};
+use rustc_infer::{
+    infer,
+    traits::{self, Obligation},
+};
+use rustc_infer::{
+    infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind},
+    traits::ObligationCause,
+};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
@@ -17,6 +23,7 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use rustc_trait_selection::autoderef::Autoderef;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use std::iter;
 
 /// Checks that it is legal to call methods of the trait corresponding
@@ -294,7 +301,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
-            ty::FnDef(def_id, _) => (callee_ty.fn_sig(self.tcx), Some(def_id)),
+            ty::FnDef(def_id, subst) => {
+                // Unit testing: function items annotated with
+                // `#[rustc_evaluate_where_clauses]` trigger special output
+                // to let us test the trait evaluation system.
+                if self.tcx.has_attr(def_id, sym::rustc_evaluate_where_clauses) {
+                    let predicates = self.tcx.predicates_of(def_id);
+                    let predicates = predicates.instantiate(self.tcx, subst);
+                    for (predicate, predicate_span) in
+                        predicates.predicates.iter().zip(&predicates.spans)
+                    {
+                        let obligation = Obligation::new(
+                            ObligationCause::dummy_with_span(callee_expr.span),
+                            self.param_env,
+                            predicate.clone(),
+                        );
+                        let result = self.infcx.evaluate_obligation(&obligation);
+                        self.tcx
+                            .sess
+                            .struct_span_err(
+                                callee_expr.span,
+                                &format!("evaluate({:?}) = {:?}", predicate, result),
+                            )
+                            .span_label(*predicate_span, "predicate")
+                            .emit();
+                    }
+                }
+                (callee_ty.fn_sig(self.tcx), Some(def_id))
+            }
             ty::FnPtr(sig) => (sig, None),
             ref t => {
                 let mut unit_variant = None;
