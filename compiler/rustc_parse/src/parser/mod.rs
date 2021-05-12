@@ -189,7 +189,10 @@ impl<'a> Drop for Parser<'a> {
 #[derive(Clone)]
 struct TokenCursor {
     frame: TokenCursorFrame,
+    /*
     stack: Vec<TokenCursorFrame>,
+    */
+    stack: TokenCursorFrameVec,
     desugar_doc_comments: bool,
     // Counts the number of calls to `next` or `next_desugared`,
     // depending on whether `desugar_doc_comments` is set.
@@ -218,13 +221,138 @@ struct TokenCursor {
     break_last_token: bool,
 }
 
+/*
+impl Clone for TokenCursor {
+    #[inline]
+    fn clone(&self) -> Self {
+        Self {
+            frame: self.frame.clone(),
+            stack: self.stack.clone(),
+            desugar_doc_comments: self.desugar_doc_comments,
+            num_next_calls: self.num_next_calls,
+            break_last_token: self.break_last_token,
+        }
+    }
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.frame.clone_from(&source.frame);
+        self.stack.clone_from(&source.stack);
+        self.desugar_doc_comments = source.desugar_doc_comments;
+        self.num_next_calls = source.num_next_calls;
+        self.break_last_token = source.break_last_token;
+    }
+}
+*/
+
+use bitflags::bitflags;
+bitflags! {
+    struct DelimFlags: u8 {
+        const OPEN_DELIM = 0b01;
+        const CLOSE_DELIM = 0b10;
+    }
+}
+
 #[derive(Clone)]
 struct TokenCursorFrame {
     delim: token::DelimToken,
     span: DelimSpan,
-    open_delim: bool,
     tree_cursor: tokenstream::Cursor,
-    close_delim: bool,
+    delim_flags: DelimFlags,
+}
+
+macro_rules! packed_vec {
+  ( ($($qual: tt)?) struct $name: ident: ($repr: ty [$bits_used: expr]-> $raw_ty: ty),
+    $pack: expr,
+    $unpack: expr
+  ) => {
+    #[derive(Default, Clone)]
+    $($qual)? struct $name {
+      data: Vec<$repr>,
+      len: usize,
+      _marker: std::marker::PhantomData<$raw_ty>,
+    }
+    impl $name {
+      const MASK: $repr = (1 << $bits_used) - 1;
+      const BITS: usize = <$repr>::BITS as usize;
+      $($qual)? fn push(&mut self, raw: $raw_ty) {
+        let v = Self::MASK & $pack(raw);
+        let bit_idx = $bits_used * self.len;
+        let vec_idx = bit_idx / Self::BITS;
+        let vec_offset = bit_idx % Self::BITS;
+        if self.data.len() <= vec_idx {
+          self.data.resize(vec_idx + 1, 0);
+        }
+        self.data[vec_idx] &= !(Self::MASK << vec_offset);
+        self.data[vec_idx] |= v << vec_offset;
+        self.len += 1;
+      }
+      $($qual)? fn pop(&mut self) -> Option<$raw_ty> {
+        if self.len == 0 {
+          return None;
+        }
+        self.len -= 1;
+        let bit_idx = $bits_used * self.len;
+        let vec_idx = bit_idx / Self::BITS;
+        let vec_offset = bit_idx % Self::BITS;
+        let raw = (self.data[vec_idx as usize] >> vec_offset) & Self::MASK;
+        Some($unpack(raw))
+      }
+    }
+  };
+}
+
+packed_vec! (
+  () struct PackedDelimTokenVec: (u32[2] -> DelimToken),
+  |delim: DelimToken| match delim {
+    DelimToken::Paren => 0b00,
+    DelimToken::Bracket => 0b01,
+    DelimToken::Brace => 0b10,
+    DelimToken::NoDelim => 0b11,
+  },
+  |raw: u32| match raw {
+    0 => DelimToken::Paren,
+    1 => DelimToken::Bracket,
+    2 => DelimToken::Brace,
+    3 => DelimToken::NoDelim,
+    _ => unreachable!(),
+  }
+);
+
+packed_vec! (
+  () struct PackedDelimFlags: (u8[2] -> DelimFlags),
+  |delim: DelimFlags| delim.bits(),
+  |raw: u8| DelimFlags::from_bits_truncate(raw)
+);
+
+#[derive(Clone, Default)]
+/// Vector-like struct for efficiently packing token cursor frames together.
+struct TokenCursorFrameVec {
+    // FIXME(jknodt) these should each be a RawVec and only one value needs to track the lens.
+    delims: PackedDelimTokenVec,
+    tree_cursors: Vec<tokenstream::Cursor>,
+    spans: Vec<DelimSpan>,
+    delim_flags: PackedDelimFlags,
+}
+
+impl TokenCursorFrameVec {
+    fn push(&mut self, tcf: TokenCursorFrame) {
+        let TokenCursorFrame { delim, span, tree_cursor, delim_flags } = tcf;
+        self.delims.push(delim);
+        self.tree_cursors.push(tree_cursor);
+        self.spans.push(span);
+        self.delim_flags.push(delim_flags);
+    }
+    fn pop(&mut self) -> Option<TokenCursorFrame> {
+        let span = self.spans.pop()?;
+        let delim = self.delims.pop().unwrap();
+        let tree_cursor = self.tree_cursors.pop().unwrap();
+        let delim_flags = self.delim_flags.pop().unwrap();
+        let tcf = TokenCursorFrame { delim, span, tree_cursor, delim_flags };
+        Some(tcf)
+    }
+    fn len(&self) -> usize {
+        self.spans.len()
+    }
 }
 
 impl TokenCursorFrame {
@@ -232,9 +360,8 @@ impl TokenCursorFrame {
         TokenCursorFrame {
             delim,
             span,
-            open_delim: false,
             tree_cursor: tts.into_trees(),
-            close_delim: false,
+            delim_flags: DelimFlags::empty(),
         }
     }
 }
@@ -242,13 +369,13 @@ impl TokenCursorFrame {
 impl TokenCursor {
     fn next(&mut self) -> (Token, Spacing) {
         loop {
-            let (tree, spacing) = if !self.frame.open_delim {
-                self.frame.open_delim = true;
+            let (tree, spacing) = if !self.frame.delim_flags.contains(DelimFlags::OPEN_DELIM) {
+                self.frame.delim_flags.insert(DelimFlags::OPEN_DELIM);
                 TokenTree::open_tt(self.frame.span, self.frame.delim).into()
             } else if let Some(tree) = self.frame.tree_cursor.next_with_spacing() {
                 tree
-            } else if !self.frame.close_delim {
-                self.frame.close_delim = true;
+            } else if !self.frame.delim_flags.contains(DelimFlags::CLOSE_DELIM) {
+                self.frame.delim_flags.insert(DelimFlags::CLOSE_DELIM);
                 TokenTree::close_tt(self.frame.span, self.frame.delim).into()
             } else if let Some(frame) = self.stack.pop() {
                 self.frame = frame;
@@ -409,8 +536,7 @@ impl<'a> Parser<'a> {
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut start_frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens);
-        start_frame.open_delim = true;
-        start_frame.close_delim = true;
+        start_frame.delim_flags = DelimFlags::all();
 
         let mut parser = Parser {
             sess,
@@ -422,7 +548,7 @@ impl<'a> Parser<'a> {
             expected_tokens: Vec::new(),
             token_cursor: TokenCursor {
                 frame: start_frame,
-                stack: Vec::new(),
+                stack: Default::default(),
                 num_next_calls: 0,
                 desugar_doc_comments,
                 break_last_token: false,

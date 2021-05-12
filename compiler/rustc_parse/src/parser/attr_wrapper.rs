@@ -95,8 +95,10 @@ struct LazyTokenStreamImpl {
     replace_ranges: Box<[ReplaceRange]>,
 }
 
+/*
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 144);
+*/
 
 impl CreateTokenStream for LazyTokenStreamImpl {
     fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
