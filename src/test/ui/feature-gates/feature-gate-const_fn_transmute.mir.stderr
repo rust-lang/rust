@@ -1,5 +1,5 @@
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:8:43
+  --> $DIR/feature-gate-const_fn_transmute.rs:11:43
    |
 LL | const fn transmute_fn() -> u32 { unsafe { mem::transmute(Foo(3)) } }
    |                                           ^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | const fn transmute_fn() -> u32 { unsafe { mem::transmute(Foo(3)) } }
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:11:53
+  --> $DIR/feature-gate-const_fn_transmute.rs:14:53
    |
 LL | const fn transmute_fn_intrinsic() -> u32 { unsafe { std::intrinsics::transmute(Foo(3)) } }
    |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | const fn transmute_fn_intrinsic() -> u32 { unsafe { std::intrinsics::transm
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:14:58
+  --> $DIR/feature-gate-const_fn_transmute.rs:17:58
    |
 LL | const fn transmute_fn_core_intrinsic() -> u32 { unsafe { core::intrinsics::transmute(Foo(3)) } }
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL | const fn transmute_fn_core_intrinsic() -> u32 { unsafe { core::intrinsics::
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:17:48
+  --> $DIR/feature-gate-const_fn_transmute.rs:20:48
    |
 LL | const unsafe fn unsafe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    |                                                ^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL | const unsafe fn unsafe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:20:58
+  --> $DIR/feature-gate-const_fn_transmute.rs:23:58
    |
 LL | const unsafe fn unsafe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(Foo(3)) }
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL | const unsafe fn unsafe_transmute_fn_intrinsic() -> u32 { std::intrinsics::t
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:23:63
+  --> $DIR/feature-gate-const_fn_transmute.rs:26:63
    |
 LL | const unsafe fn unsafe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::transmute(Foo(3)) }
    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL | const unsafe fn unsafe_transmute_fn_core_intrinsic() -> u32 { core::intrins
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:26:39
+  --> $DIR/feature-gate-const_fn_transmute.rs:29:39
    |
 LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    |                                       ^^^^^^^^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:30:49
+  --> $DIR/feature-gate-const_fn_transmute.rs:33:49
    |
 LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(Foo(3)) }
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0658]: `transmute` is not allowed in constant functions
-  --> $DIR/feature-gate-const_fn_transmute.rs:34:54
+  --> $DIR/feature-gate-const_fn_transmute.rs:37:54
    |
 LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::transmute(Foo(3)) }
    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::tran
    = note: `transmute` is only allowed in constants and statics for now
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-const_fn_transmute.rs:26:39
+  --> $DIR/feature-gate-const_fn_transmute.rs:29:39
    |
 LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    |                                       ^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
@@ -97,7 +97,7 @@ LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-const_fn_transmute.rs:30:49
+  --> $DIR/feature-gate-const_fn_transmute.rs:33:49
    |
 LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(Foo(3)) }
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
@@ -105,7 +105,7 @@ LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-const_fn_transmute.rs:34:54
+  --> $DIR/feature-gate-const_fn_transmute.rs:37:54
    |
 LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::transmute(Foo(3)) }
    |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function

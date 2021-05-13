@@ -1,16 +1,16 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/const-extern-fn-requires-unsafe.rs:8:5
+  --> $DIR/issue-43733.rs:17:5
    |
-LL |     foo();
-   |     ^^^^^ call to unsafe function
+LL |     __KEY.get(Default::default)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/const-extern-fn-requires-unsafe.rs:6:17
+  --> $DIR/issue-43733.rs:20:42
    |
-LL |     let a: [u8; foo()];
-   |                 ^^^^^ call to unsafe function
+LL | static FOO: std::thread::LocalKey<Foo> = std::thread::LocalKey::new(__getit);
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 

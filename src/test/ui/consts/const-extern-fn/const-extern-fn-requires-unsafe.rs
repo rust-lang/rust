@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 #![feature(const_extern_fn)]
 
 const unsafe extern "C" fn foo() -> usize { 5 }

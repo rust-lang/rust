@@ -1254,6 +1254,8 @@ options! {
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
+    thir_unsafeck: bool = (false, parse_bool, [TRACKED],
+        "use the work-in-progress THIR unsafety checker. NOTE: this is unsound (default: no)"),
     /// We default to 1 here since we want to behave like
     /// a sequential compiler for now. This'll likely be adjusted
     /// in the future. Note that -Zthreads=0 is the way to get

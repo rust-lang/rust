@@ -876,7 +876,11 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
 
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.body_owners() {
-            mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+            if tcx.sess.opts.debugging_opts.thir_unsafeck {
+                tcx.ensure().thir_check_unsafety(def_id);
+            } else {
+                mir::transform::check_unsafety::check_unsafety(tcx, def_id);
+            }
 
             if tcx.hir().body_const_context(def_id).is_some() {
                 tcx.ensure()

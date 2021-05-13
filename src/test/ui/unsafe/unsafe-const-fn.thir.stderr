@@ -1,8 +1,8 @@
 error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/coerce-unsafe-closure-to-unsafe-fn-ptr.rs:2:31
+  --> $DIR/unsafe-const-fn.rs:10:18
    |
-LL |     let _: unsafe fn() = || { ::std::pin::Pin::new_unchecked(&0_u8); };
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+LL | const VAL: u32 = dummy(0xFFFF);
+   |                  ^^^^^^^^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 

@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 // This note is annotated because the purpose of the test
 // is to ensure that certain other notes are not generated.
 #![deny(unused_unsafe)] //~ NOTE
