@@ -42,3 +42,26 @@ mod issue7032 {
         }
     }
 }
+
+mod issue7179 {
+    pub struct S(i32);
+
+    impl S {
+        // don't trigger (`s` is not `self`)
+        pub fn from_be(s: Self) -> Self {
+            S(i32::from_be(s.0))
+        }
+
+        // lint
+        pub fn from_be_self(self) -> Self {
+            S(i32::from_be(self.0))
+        }
+    }
+
+    trait T {
+        // don't trigger (`s` is not `self`)
+        fn from_be(s: Self) -> Self;
+        // lint
+        fn from_be_self(self) -> Self;
+    }
+}
