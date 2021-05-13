@@ -1011,6 +1011,7 @@ symbols! {
         rustc_dump_program_clauses,
         rustc_dump_user_substs,
         rustc_error,
+        rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
         rustc_if_this_changed,
         rustc_inherit_overflow_checks,

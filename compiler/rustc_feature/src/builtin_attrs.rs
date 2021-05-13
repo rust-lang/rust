@@ -564,6 +564,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: "delay_span_bug_from_inside_query")
     ),
     rustc_attr!(TEST, rustc_dump_user_substs, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_evaluate_where_clauses, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_if_this_changed, AssumedUsed, template!(Word, List: "DepNode")),
     rustc_attr!(TEST, rustc_then_this_would_need, AssumedUsed, template!(List: "DepNode")),
     rustc_attr!(
