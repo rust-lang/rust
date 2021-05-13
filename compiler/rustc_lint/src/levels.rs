@@ -84,7 +84,7 @@ impl<'s> LintLevelsBuilder<'s> {
     }
 
     fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
-        let mut specs = FxHashMap::default();
+        self.sets.list.push(LintSet::CommandLine { specs: FxHashMap::default() });
         self.sets.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
         for &(ref lint_name, level) in &sess.opts.lint_opts {
@@ -105,7 +105,17 @@ impl<'s> LintLevelsBuilder<'s> {
             for id in ids {
                 self.check_gated_lint(id, DUMMY_SP);
                 let src = LintLevelSource::CommandLine(lint_flag_val, orig_level);
-                specs.insert(id, (level, src));
+                let specs = match self.sets.list.last().unwrap() {
+                    LintSet::CommandLine { ref specs } => specs,
+                    _ => unreachable!(),
+                };
+                if self.check_before_insert_spec(specs, id, (level, src)) {
+                    let specs = match self.sets.list.last_mut().unwrap() {
+                        LintSet::CommandLine { ref mut specs } => specs,
+                        _ => unreachable!(),
+                    };
+                    specs.insert(id, (level, src));
+                }
             }
         }
 
@@ -122,15 +132,12 @@ impl<'s> LintLevelsBuilder<'s> {
         self.sets.list.push(LintSet::CommandLine { specs });
     }
 
-    /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
-    /// (e.g. if a forbid was already inserted on the same scope), then emits a
-    /// diagnostic with no change to `specs`.
-    fn insert_spec(
-        &mut self,
-        specs: &mut FxHashMap<LintId, LevelAndSource>,
+    fn check_before_insert_spec(
+        &self,
+        specs: &FxHashMap<LintId, LevelAndSource>,
         id: LintId,
         (level, src): LevelAndSource,
-    ) {
+    ) -> bool {
         // Setting to a non-forbid level is an error if the lint previously had
         // a forbid level. Note that this is not necessarily true even with a
         // `#[forbid(..)]` attribute present, as that is overriden by `--cap-lints`.
@@ -212,11 +219,25 @@ impl<'s> LintLevelsBuilder<'s> {
                 // issuing a FCW. In the FCW case, we want to
                 // respect the new setting.
                 if !fcw_warning {
-                    return;
+                    return false;
                 }
             }
         }
-        specs.insert(id, (level, src));
+        true
+    }
+
+    /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
+    /// (e.g. if a forbid was already inserted on the same scope), then emits a
+    /// diagnostic with no change to `specs`.
+    fn insert_spec(
+        &mut self,
+        specs: &mut FxHashMap<LintId, LevelAndSource>,
+        id: LintId,
+        (level, src): LevelAndSource,
+    ) {
+        if self.check_before_insert_spec(specs, id, (level, src)) {
+            specs.insert(id, (level, src));
+        }
     }
 
     /// Pushes a list of AST lint attributes onto this context.
