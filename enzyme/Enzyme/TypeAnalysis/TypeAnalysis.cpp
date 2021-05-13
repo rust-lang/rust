@@ -3870,6 +3870,9 @@ FnTypeInfo TypeAnalyzer::getCallInfo(CallInst &call, Function &fn) {
 }
 
 void TypeAnalyzer::visitIPOCall(CallInst &call, Function &fn) {
+  if (call.getNumArgOperands() != fn.getFunctionType()->getNumParams())
+    return;
+
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 
