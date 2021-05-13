@@ -148,10 +148,8 @@ fn issue1121() {
 }
 
 fn issue2965() {
-    // This should not cause an ICE and suggest:
-    //
-    // for _ in values.iter() {}
-    //
+    // This should not cause an ICE
+
     use std::collections::HashSet;
     let mut values = HashSet::new();
     values.insert(1);
