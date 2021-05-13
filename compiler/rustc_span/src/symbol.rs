@@ -948,6 +948,7 @@ symbols! {
         reg64,
         reg_abcd,
         reg_byte,
+        reg_nonzero,
         reg_thumb,
         register_attr,
         register_tool,
