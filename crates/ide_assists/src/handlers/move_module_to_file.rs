@@ -1,4 +1,4 @@
-use ast::{edit::IndentLevel, VisibilityOwner};
+use ast::edit::IndentLevel;
 use ide_db::base_db::AnchoredPathBuf;
 use stdx::format_to;
 use syntax::{
@@ -60,12 +60,18 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext) -> Opt
             };
 
             let mut buf = String::new();
-            if let Some(v) = module_ast.visibility() {
-                format_to!(buf, "{} ", v);
-            }
             format_to!(buf, "mod {};", module_name);
 
-            builder.replace(module_ast.syntax().text_range(), buf);
+            let replacement_start = if let Some(mod_token) = module_ast.mod_token() {
+                mod_token.text_range().start()
+            } else {
+                module_ast.syntax().text_range().start()
+            };
+
+            builder.replace(
+                TextRange::new(replacement_start, module_ast.syntax().text_range().end()),
+                buf,
+            );
 
             let dst = AnchoredPathBuf { anchor: ctx.frange.file_id, path };
             builder.create_file(dst, contents);
@@ -183,5 +189,27 @@ pub(crate) mod tests;
     fn available_before_curly() {
         cov_mark::check!(available_before_curly);
         check_assist_not_applicable(move_module_to_file, r#"mod m { $0 }"#);
+    }
+
+    #[test]
+    fn keep_outer_comments_and_attributes() {
+        check_assist(
+            move_module_to_file,
+            r#"
+/// doc comment
+#[attribute]
+mod $0tests {
+    #[test] fn t() {}
+}
+"#,
+            r#"
+//- /main.rs
+/// doc comment
+#[attribute]
+mod tests;
+//- /tests.rs
+#[test] fn t() {}
+"#,
+        );
     }
 }
