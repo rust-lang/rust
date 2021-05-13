@@ -10,7 +10,7 @@ error[E0472]: inline assembly is unsupported on this target
 LL | global_asm!("");
    | ^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `global_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
