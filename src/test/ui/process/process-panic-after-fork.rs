@@ -78,7 +78,7 @@ unsafe impl<A:GlobalAlloc> GlobalAlloc for PidChecking<A> {
 fn expect_aborted(status: ExitStatus) {
     dbg!(status);
     let signal = status.signal().expect("expected child process to die of signal");
-    assert!(signal == libc::SIGABRT || signal == libc::SIGILL);
+    assert!(signal == libc::SIGABRT || signal == libc::SIGILL || signal == libc::SIGTRAP);
 }
 
 fn main() {
