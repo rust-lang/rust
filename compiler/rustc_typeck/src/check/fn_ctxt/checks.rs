@@ -18,7 +18,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::Session;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::Ident;
 use rustc_span::{self, MultiSpan, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, StatementAsExpression};
 
@@ -718,34 +718,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.ps.set(prev);
         ty
-    }
-
-    pub(in super::super) fn check_rustc_args_require_const(
-        &self,
-        def_id: DefId,
-        hir_id: hir::HirId,
-        span: Span,
-    ) {
-        // We're only interested in functions tagged with
-        // #[rustc_args_required_const], so ignore anything that's not.
-        if !self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
-            return;
-        }
-
-        // If our calling expression is indeed the function itself, we're good!
-        // If not, generate an error that this can only be called directly.
-        if let Node::Expr(expr) = self.tcx.hir().get(self.tcx.hir().get_parent_node(hir_id)) {
-            if let ExprKind::Call(ref callee, ..) = expr.kind {
-                if callee.hir_id == hir_id {
-                    return;
-                }
-            }
-        }
-
-        self.tcx.sess.span_err(
-            span,
-            "this function can only be invoked directly, not through a function pointer",
-        );
     }
 
     /// A common error is to add an extra semicolon:

@@ -14,7 +14,6 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
 use rustc_span::source_map::{Span, DUMMY_SP};
-use rustc_span::symbol::sym;
 use rustc_target::abi::{Abi, Int, LayoutOf, Variants};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -187,9 +186,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         match *operand.layout.ty.kind() {
                             ty::FnDef(def_id, substs) => {
-                                if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
-                                    bug!("reifying a fn ptr that requires const arguments");
-                                }
                                 let instance = ty::Instance::resolve_for_fn_ptr(
                                     bx.tcx(),
                                     ty::ParamEnv::reveal_all(),

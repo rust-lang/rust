@@ -13,9 +13,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc_hir::{
-    self, FnSig, ForeignItem, ForeignItemKind, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID,
-};
+use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_hir::{MethodKind, Target};
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
@@ -81,9 +79,6 @@ impl CheckAttrVisitor<'tcx> {
                 sym::doc => self.check_doc_attrs(attr, hir_id, target, &mut specified_inline),
                 sym::no_link => self.check_no_link(hir_id, &attr, span, target),
                 sym::export_name => self.check_export_name(hir_id, &attr, span, target),
-                sym::rustc_args_required_const => {
-                    self.check_rustc_args_required_const(&attr, span, target, item)
-                }
                 sym::rustc_layout_scalar_valid_range_start
                 | sym::rustc_layout_scalar_valid_range_end => {
                     self.check_rustc_layout_scalar_valid_range(&attr, span, target)
@@ -945,79 +940,6 @@ impl CheckAttrVisitor<'tcx> {
                     .emit();
                 false
             }
-        }
-    }
-
-    /// Checks if `#[rustc_args_required_const]` is applied to a function and has a valid argument.
-    fn check_rustc_args_required_const(
-        &self,
-        attr: &Attribute,
-        span: &Span,
-        target: Target,
-        item: Option<ItemLike<'_>>,
-    ) -> bool {
-        let is_function = matches!(target, Target::Fn | Target::Method(..) | Target::ForeignFn);
-        if !is_function {
-            self.tcx
-                .sess
-                .struct_span_err(attr.span, "attribute should be applied to a function")
-                .span_label(*span, "not a function")
-                .emit();
-            return false;
-        }
-
-        let list = match attr.meta_item_list() {
-            // The attribute form is validated on AST.
-            None => return false,
-            Some(it) => it,
-        };
-
-        let mut invalid_args = vec![];
-        for meta in list {
-            if let Some(LitKind::Int(val, _)) = meta.literal().map(|lit| &lit.kind) {
-                if let Some(ItemLike::Item(Item {
-                    kind: ItemKind::Fn(FnSig { decl, .. }, ..),
-                    ..
-                }))
-                | Some(ItemLike::ForeignItem(ForeignItem {
-                    kind: ForeignItemKind::Fn(decl, ..),
-                    ..
-                })) = item
-                {
-                    let arg_count = decl.inputs.len() as u128;
-                    if *val >= arg_count {
-                        let span = meta.span();
-                        self.tcx
-                            .sess
-                            .struct_span_err(span, "index exceeds number of arguments")
-                            .span_label(
-                                span,
-                                format!(
-                                    "there {} only {} argument{}",
-                                    if arg_count != 1 { "are" } else { "is" },
-                                    arg_count,
-                                    pluralize!(arg_count)
-                                ),
-                            )
-                            .emit();
-                        return false;
-                    }
-                } else {
-                    bug!("should be a function item");
-                }
-            } else {
-                invalid_args.push(meta.span());
-            }
-        }
-
-        if !invalid_args.is_empty() {
-            self.tcx
-                .sess
-                .struct_span_err(invalid_args, "arguments should be non-negative integers")
-                .emit();
-            false
-        } else {
-            true
         }
     }
 
