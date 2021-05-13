@@ -64,4 +64,8 @@ mod issue7179 {
         // lint
         fn from_be_self(self) -> Self;
     }
+
+    trait Foo: Sized {
+        fn as_byte_slice(slice: &[Self]) -> &[u8];
+    }
 }
