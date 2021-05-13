@@ -46,7 +46,7 @@ impl<A> PidChecking<A> {
             let actual_pid = process::id();
             if require_pid != actual_pid {
                 unsafe {
-                    libc::raise(libc::SIGTRAP);
+                    libc::raise(libc::SIGUSR1);
                 }
             }
         }
@@ -146,5 +146,5 @@ fn main() {
 
     let status = run(&|| panic!("allocating to display... {}", DisplayWithHeap));
     dbg!(status);
-    assert_eq!(status.signal(), Some(libc::SIGTRAP));
+    assert_eq!(status.signal(), Some(libc::SIGUSR1));
 }
