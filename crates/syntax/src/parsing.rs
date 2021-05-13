@@ -6,14 +6,13 @@ mod text_token_source;
 mod text_tree_sink;
 mod reparsing;
 
-use crate::{syntax_node::GreenNode, AstNode, SyntaxError, SyntaxNode};
+use parser::SyntaxKind;
 use text_token_source::TextTokenSource;
 use text_tree_sink::TextTreeSink;
 
-pub(crate) use lexer::*;
+use crate::{syntax_node::GreenNode, AstNode, SyntaxError, SyntaxNode};
 
-pub(crate) use self::reparsing::incremental_reparse;
-use parser::SyntaxKind;
+pub(crate) use crate::parsing::{lexer::*, reparsing::incremental_reparse};
 
 pub(crate) fn parse_text(text: &str) -> (GreenNode, Vec<SyntaxError>) {
     let (tokens, lexer_errors) = tokenize(&text);

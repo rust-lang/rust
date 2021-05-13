@@ -21,8 +21,6 @@ use profile::Count;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 
-pub use lower::LowerCtx;
-
 use crate::{
     attr::{Attrs, RawAttrs},
     db::DefDatabase,
@@ -34,6 +32,8 @@ use crate::{
     AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
     UnresolvedMacro,
 };
+
+pub use lower::LowerCtx;
 
 /// A subset of Expander that only deals with cfg attributes. We only need it to
 /// avoid cyclic queries in crate def map during enum processing.

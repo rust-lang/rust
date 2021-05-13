@@ -636,6 +636,10 @@ use crate::{}
 
 // Finally, parent and child modules, but prefer `use crate::`.
 use super::{}
+
+// Re-exports are treated as item definitions rather than imports, so they go
+// after imports and modules. Use them sparingly.
+pub use crate::x::Z;
 ```
 
 **Rationale:** consistency.
@@ -693,6 +697,9 @@ Avoid local `use MyEnum::*` imports.
 
 Prefer `use crate::foo::bar` to `use super::bar` or `use self::bar::baz`.
 **Rationale:** consistency, this is the style which works in all cases.
+
+By default, avoid re-exports.
+**Rationale:** for non-library code, re-exports introduce two ways to use something and allow for inconsistency.
 
 ## Order of Items
 
