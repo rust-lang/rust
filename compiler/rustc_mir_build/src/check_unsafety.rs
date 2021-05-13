@@ -153,6 +153,9 @@ impl<'thir, 'tcx> Visitor<'thir, 'tcx> for UnsafetyVisitor<'tcx> {
                     self.requires_unsafe(expr.span, CallToUnsafeFunction);
                 }
             }
+            ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
+                self.requires_unsafe(expr.span, UseOfInlineAssembly);
+            }
             _ => {}
         }
 
@@ -194,7 +197,6 @@ impl BodyUnsafety {
 #[derive(Clone, Copy, PartialEq)]
 enum UnsafeOpKind {
     CallToUnsafeFunction,
-    #[allow(dead_code)] // FIXME
     UseOfInlineAssembly,
     #[allow(dead_code)] // FIXME
     InitializingTypeWith,
