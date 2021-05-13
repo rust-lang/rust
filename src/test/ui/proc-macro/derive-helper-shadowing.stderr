@@ -16,7 +16,7 @@ error: cannot find attribute `empty_helper` in this scope
 LL |             #[derive(GenHelperUse)]
    |                      ^^^^^^^^^^^^
    |
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `GenHelperUse` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot find attribute `empty_helper` in this scope
   --> $DIR/derive-helper-shadowing.rs:14:11
@@ -27,7 +27,7 @@ LL |         #[empty_helper]
 LL |             gen_helper_use!();
    |             ------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `gen_helper_use` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0659]: `empty_helper` is ambiguous (name vs any other name during import resolution)
   --> $DIR/derive-helper-shadowing.rs:26:13

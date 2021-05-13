@@ -7,7 +7,7 @@ LL |     () => (fake)
 LL |     1 + call_nested_expr!();
    |         ------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `nested_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `fake` in this scope
   --> $DIR/macro-backtrace-nested.rs:5:12
@@ -18,7 +18,7 @@ LL |     () => (fake)
 LL |     call_nested_expr_sum!();
    |     ------------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `nested_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

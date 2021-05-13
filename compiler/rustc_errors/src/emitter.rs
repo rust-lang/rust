@@ -309,8 +309,8 @@ pub trait Emitter {
                     // are some which do actually involve macros.
                     ExpnKind::Inlined | ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                    ExpnKind::Macro { kind: macro_kind, name: _, proc_macro: _ } => {
-                        Some(macro_kind)
+                    ExpnKind::Macro { kind: macro_kind, name, proc_macro: _ } => {
+                        Some((macro_kind, name))
                     }
                 }
             });
@@ -322,13 +322,12 @@ pub trait Emitter {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if let Some(macro_kind) = has_macro_spans {
+            if let Some((macro_kind, name)) = has_macro_spans {
+                let descr = macro_kind.descr();
+
                 let msg = format!(
-                    "this {} originates in {} {} \
+                    "this {level} originates in the {descr} `{name}` \
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
-                    level,
-                    macro_kind.article(),
-                    macro_kind.descr(),
                 );
 
                 children.push(SubDiagnostic {

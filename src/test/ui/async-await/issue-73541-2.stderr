@@ -11,7 +11,7 @@ LL |                 b!();
    |                 ----- in this macro invocation
    |
    = note: labels are unreachable through functions, closures, async blocks and modules
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

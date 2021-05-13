@@ -4,7 +4,7 @@ error: macro requires a cfg-pattern as an argument
 LL |     cfg!();
    |     ^^^^^^^ cfg-pattern required
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `cfg` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected identifier, found `123`
   --> $DIR/cfg.rs:3:10

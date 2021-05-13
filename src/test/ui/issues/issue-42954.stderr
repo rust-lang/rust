@@ -10,7 +10,7 @@ LL |         $i as u32 < 0
 LL |     is_plainly_printable!(c);
    |     ------------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `is_plainly_printable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

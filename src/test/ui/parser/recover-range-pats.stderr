@@ -167,7 +167,7 @@ LL |             let ...$e;
 LL |     mac!(0);
    |     -------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:154:19
@@ -179,7 +179,7 @@ LL |     mac!(0);
    |     -------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0586]: inclusive range with no end
   --> $DIR/recover-range-pats.rs:155:19
@@ -191,7 +191,7 @@ LL |     mac!(0);
    |     -------- in this macro invocation
    |
    = note: inclusive ranges must be bounded at the end (`..=b` or `a..=b`)
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `...` range patterns are deprecated
   --> $DIR/recover-range-pats.rs:42:13
@@ -281,7 +281,7 @@ LL |     mac2!(0, 1);
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2021 edition!
    = note: for more information, see issue #80165 <https://github.com/rust-lang/rust/issues/80165>
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mac2` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0029]: only `char` and numeric types are allowed in range patterns
   --> $DIR/recover-range-pats.rs:20:12

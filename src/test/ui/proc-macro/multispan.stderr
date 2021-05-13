@@ -9,7 +9,7 @@ note: found these 'hi's
    |
 LL |     hello!(hi);
    |            ^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
   --> $DIR/multispan.rs:15:5
@@ -22,7 +22,7 @@ note: found these 'hi's
    |
 LL |     hello!(hi hi);
    |            ^^ ^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
   --> $DIR/multispan.rs:18:5
@@ -35,7 +35,7 @@ note: found these 'hi's
    |
 LL |     hello!(hi hi hi);
    |            ^^ ^^ ^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
   --> $DIR/multispan.rs:21:5
@@ -48,7 +48,7 @@ note: found these 'hi's
    |
 LL |     hello!(hi hey hi yo hi beep beep hi hi);
    |            ^^     ^^    ^^           ^^ ^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
   --> $DIR/multispan.rs:22:5
@@ -61,7 +61,7 @@ note: found these 'hi's
    |
 LL |     hello!(hi there, hi how are you? hi... hi.);
    |            ^^        ^^              ^^    ^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
   --> $DIR/multispan.rs:23:5
@@ -74,7 +74,7 @@ note: found these 'hi's
    |
 LL |     hello!(whoah. hi di hi di ho);
    |                   ^^    ^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: hello to you, too!
   --> $DIR/multispan.rs:24:5
@@ -87,7 +87,7 @@ note: found these 'hi's
    |
 LL |     hello!(hi good hi and good bye);
    |            ^^      ^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `hello` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 

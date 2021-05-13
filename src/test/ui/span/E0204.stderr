@@ -16,7 +16,7 @@ LL | struct Foo2<'a> {
 LL |     ty: &'a mut bool,
    |     ---------------- this field does not implement `Copy`
    |
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `Copy` may not be implemented for this type
   --> $DIR/E0204.rs:17:6
@@ -36,7 +36,7 @@ LL | enum EFoo2<'a> {
 LL |     Bar(&'a mut bool),
    |         ------------ this field does not implement `Copy`
    |
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

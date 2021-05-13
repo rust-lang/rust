@@ -9,7 +9,7 @@ LL | #[derive(Clone)]
 LL | pub struct AssertParamIsCopy<T: Copy + ?Sized> {
    |                                 ---- required by this bound in `AssertParamIsCopy`
    |
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: the method `clone` exists for union `U5<CloneNoCopy>`, but its trait bounds were not satisfied
   --> $DIR/union-derive-clone.rs:35:15

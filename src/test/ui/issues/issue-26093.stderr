@@ -10,7 +10,7 @@ LL |     not_a_place!(99);
    |     |            cannot assign to this expression
    |     in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `not_a_place` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0067]: invalid left-hand side of assignment
   --> $DIR/issue-26093.rs:5:16
@@ -24,7 +24,7 @@ LL |     not_a_place!(99);
    |     |            cannot assign to this expression
    |     in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `not_a_place` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -121,7 +121,7 @@ help: consider refactoring into `(Ok(x), Some(_)) | (Ok(_), Some(x))`
    |
 LL |         (Ok(x), Some(_)) => println!("ok {}", x),
    |         ^^^^^^^^^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms2.rs:117:18
@@ -139,7 +139,7 @@ help: consider refactoring into `Ok(3) | Ok(_)`
    |
 LL |         Ok(3) => println!("ok"),
    |         ^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
   --> $DIR/match_same_arms2.rs:144:14

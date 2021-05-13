@@ -11,7 +11,7 @@ LL |     underscore!();
    |
    = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
    = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `underscore` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: in expressions, `_` can only be used on the left-hand side of an assignment
   --> $DIR/underscore.rs:8:9
@@ -24,7 +24,7 @@ LL |         _
 LL |     underscore!();
    |     -------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `underscore` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

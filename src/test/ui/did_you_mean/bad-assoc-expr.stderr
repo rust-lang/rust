@@ -55,7 +55,7 @@ LL |     ($ty: ty) => ($ty::clone(&0))
 LL |     expr!(u8);
    |     ---------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `expr` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 9 previous errors
 

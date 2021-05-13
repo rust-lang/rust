@@ -177,7 +177,7 @@ help: skipping check that does not even have a feature gate
    |
 LL |     unsafe { match static_cross_crate::OPT_ZERO { Some(ref u) => u, None => panic!() } }
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 10 previous errors; 3 warnings emitted
 

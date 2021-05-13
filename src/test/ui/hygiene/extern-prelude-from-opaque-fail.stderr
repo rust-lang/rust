@@ -16,7 +16,7 @@ LL |         use my_core;
 LL | a!();
    | ----- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
   --> $DIR/extern-prelude-from-opaque-fail.rs:11:18
@@ -27,7 +27,7 @@ LL |         fn f() { my_core::mem::drop(0); }
 LL | a!();
    | ----- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
   --> $DIR/extern-prelude-from-opaque-fail.rs:24:14

@@ -7,7 +7,7 @@ LL |     () => { syntax error };
 LL |     pong!();
    |     -------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:10:20
@@ -18,7 +18,7 @@ LL |     () => { syntax error };
 LL |     ping!();
    |     -------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
   --> $DIR/main.rs:10:20
@@ -29,7 +29,7 @@ LL |     () => { syntax error };
 LL |     deep!();
    |     -------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `pong` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

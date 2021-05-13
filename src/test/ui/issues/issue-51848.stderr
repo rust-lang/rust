@@ -10,7 +10,7 @@ LL |     macro_with_error!();
    |     -------------------- in this macro invocation
    |
    = note: if you intended to print `{`, you can escape it using `{{`
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `macro_with_error` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
   --> $DIR/issue-51848.rs:18:15

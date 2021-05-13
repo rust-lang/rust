@@ -4,7 +4,7 @@ error[E0665]: `Default` cannot be derived for enums, only structs
 LL | #[derive(Default)]
    |          ^^^^^^^
    |
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 

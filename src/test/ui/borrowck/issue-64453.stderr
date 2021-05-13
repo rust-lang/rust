@@ -10,7 +10,7 @@ error[E0015]: calls in statics are limited to constant functions, tuple structs 
 LL | static settings_dir: String = format!("");
    |                               ^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::__export::format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
   --> $DIR/issue-64453.rs:4:31
@@ -18,7 +18,7 @@ error[E0015]: calls in statics are limited to constant functions, tuple structs 
 LL | static settings_dir: String = format!("");
    |                               ^^^^^^^^^^^
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `format` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

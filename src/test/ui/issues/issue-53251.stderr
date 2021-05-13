@@ -14,7 +14,7 @@ note: associated function defined here, with 0 generic parameters
    |
 LL |     fn f() {}
    |        ^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
   --> $DIR/issue-53251.rs:11:20
@@ -32,7 +32,7 @@ note: associated function defined here, with 0 generic parameters
    |
 LL |     fn f() {}
    |        ^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `impl_add` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

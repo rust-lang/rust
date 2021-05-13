@@ -19,7 +19,7 @@ LL |         fn w<$lt>(w: &mut $lt i32) {}
 LL | mac!('a);
    | --------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0423]: expected value, found trait `Send`
   --> $DIR/issue-73568-lifetime-after-mut.rs:19:28

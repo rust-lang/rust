@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |   f(|x| lib::d!(x));
    |         ^^^^^^^^^^ expected `()`, found `i32`
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `lib::d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/issue-81943.rs:8:28
@@ -36,7 +36,7 @@ LL |   }
 LL |   f(|x| d!(x));
    |         ----- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a semicolon here
    |
 LL |     ($e:expr) => { match $e { x => { g(x); } } }

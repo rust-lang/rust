@@ -7,7 +7,7 @@ LL |         $( let x = $e1 )*;
 LL | fn main() { m!(0, 0; 0, 0); }
    |             --------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
