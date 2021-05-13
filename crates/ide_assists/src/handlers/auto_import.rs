@@ -969,4 +969,30 @@ mod bar {
 "#,
         );
     }
+
+    #[test]
+    fn uses_abs_path_with_extern_crate_clash() {
+        check_assist(
+            auto_import,
+            r#"
+//- /main.rs crate:main deps:foo
+mod foo {}
+
+const _: () = {
+    Foo$0
+};
+//- /foo.rs crate:foo
+pub struct Foo
+"#,
+            r#"
+use ::foo::Foo;
+
+mod foo {}
+
+const _: () = {
+    Foo
+};
+"#,
+        );
+    }
 }
