@@ -527,7 +527,8 @@ impl<'tcx> TerminatorKind<'tcx> {
                         InlineAsmOperand::InOut { reg, late, in_value, out_place: None } => {
                             write!(fmt, "in{}out({}) {:?} => _", print_late(late), reg, in_value)?;
                         }
-                        InlineAsmOperand::Const { value } => {
+                        InlineAsmOperand::Const { value, .. } => {
+                            // FIXME consider span?
                             write!(fmt, "const {:?}", value)?;
                         }
                         InlineAsmOperand::SymFn { value } => {

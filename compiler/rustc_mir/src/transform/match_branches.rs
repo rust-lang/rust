@@ -91,8 +91,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
 
                     // If two statements are const bool assignments to the same place, we can optimize.
                     (
-                        StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(f_c)))),
-                        StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(s_c)))),
+                        StatementKind::Assign(box (lhs_f, Rvalue::Use(Operand::Constant(box (_, f_c))))),
+                        StatementKind::Assign(box (lhs_s, Rvalue::Use(Operand::Constant(box (_, s_c))))),
                     ) if lhs_f == lhs_s
                         && f_c.literal.ty().is_bool()
                         && s_c.literal.ty().is_bool()
@@ -119,8 +119,8 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     (f_s, s_s) if f_s == s_s => (*f).clone(),
 
                     (
-                        StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(f_c)))),
-                        StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(s_c)))),
+                        StatementKind::Assign(box (lhs, Rvalue::Use(Operand::Constant(box (_, f_c))))),
+                        StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(box (_, s_c))))),
                     ) => {
                         // From earlier loop we know that we are dealing with bool constants only:
                         let f_b = f_c.literal.try_eval_bool(tcx, param_env).unwrap();

@@ -27,7 +27,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
                 TerminatorKind::SwitchInt {
-                    discr: Operand::Constant(ref c),
+                    discr: Operand::Constant(box (_, ref c)),
                     switch_ty,
                     ref targets,
                     ..
@@ -48,7 +48,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
                     }
                 }
                 TerminatorKind::Assert {
-                    target, cond: Operand::Constant(ref c), expected, ..
+                    target, cond: Operand::Constant(box (_, ref c)), expected, ..
                 } => match c.literal.try_eval_bool(tcx, param_env) {
                     Some(v) if v == expected => TerminatorKind::Goto { target },
                     _ => continue,

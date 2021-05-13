@@ -217,7 +217,7 @@ pub struct Body<'tcx> {
 
     /// Constants that are required to evaluate successfully for this MIR to be well-formed.
     /// We hold in this field all the constants we are not able to evaluate yet.
-    pub required_consts: Vec<Constant<'tcx>>,
+    pub required_consts: Vec<(Span, Constant<'tcx>)>,
 
     /// Does this body use generic parameters. This is used for the `ConstEvaluatable` check.
     ///
@@ -1222,6 +1222,7 @@ pub enum InlineAsmOperand<'tcx> {
         out_place: Option<Place<'tcx>>,
     },
     Const {
+        span: Span,
         value: Box<Constant<'tcx>>,
     },
     SymFn {
@@ -2029,7 +2030,7 @@ pub enum Operand<'tcx> {
     Move(Place<'tcx>),
 
     /// Synthesizes a constant value.
-    Constant(Box<Constant<'tcx>>),
+    Constant(Box<(Span, Constant<'tcx>)>),
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -2057,11 +2058,10 @@ impl<'tcx> Operand<'tcx> {
         span: Span,
     ) -> Self {
         let ty = tcx.type_of(def_id).subst(tcx, substs);
-        Operand::Constant(box Constant {
-            span,
+        Operand::Constant(box (span, Constant {
             user_ty: None,
             literal: ConstantKind::Ty(ty::Const::zero_sized(tcx, ty)),
-        })
+        }))
     }
 
     pub fn is_move(&self) -> bool {
@@ -2088,11 +2088,10 @@ impl<'tcx> Operand<'tcx> {
             };
             scalar_size == type_size
         });
-        Operand::Constant(box Constant {
-            span,
+        Operand::Constant(box (span, Constant {
             user_ty: None,
             literal: ConstantKind::Val(val.into(), ty),
-        })
+        }))
     }
 
     pub fn to_copy(&self) -> Self {
@@ -2113,9 +2112,9 @@ impl<'tcx> Operand<'tcx> {
 
     /// Returns the `Constant` that is the target of this `Operand`, or `None` if this `Operand` is a
     /// place.
-    pub fn constant(&self) -> Option<&Constant<'tcx>> {
+    pub fn constant(&self) -> Option<(&Span, &Constant<'tcx>)> {
         match self {
-            Operand::Constant(x) => Some(&**x),
+            Operand::Constant(box(span, c)) => Some((span, c)),
             Operand::Copy(_) | Operand::Move(_) => None,
         }
     }
@@ -2426,8 +2425,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct Constant<'tcx> {
-    pub span: Span,
-
     /// Optional user-given type: for something like
     /// `collect::<Vec<_>>`, this would be present and would
     /// indicate that `Vec<_>` was explicitly specified.

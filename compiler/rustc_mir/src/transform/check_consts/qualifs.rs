@@ -237,7 +237,7 @@ where
     Q: Qualif,
     F: FnMut(Local) -> bool,
 {
-    let constant = match operand {
+    let box (span, constant) = match operand {
         Operand::Copy(place) | Operand::Move(place) => {
             return in_place::<Q, _>(cx, in_local, place.as_ref());
         }
@@ -252,9 +252,9 @@ where
             // Don't peek inside trait associated constants.
             if cx.tcx.trait_of_item(def.did).is_none() {
                 let qualifs = if let Some((did, param_did)) = def.as_const_arg() {
-                    cx.tcx.at(constant.span).mir_const_qualif_const_arg((did, param_did))
+                    cx.tcx.at(*span).mir_const_qualif_const_arg((did, param_did))
                 } else {
-                    cx.tcx.at(constant.span).mir_const_qualif(def.did)
+                    cx.tcx.at(*span).mir_const_qualif(def.did)
                 };
 
                 if !Q::in_qualifs(&qualifs) {

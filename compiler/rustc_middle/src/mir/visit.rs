@@ -291,8 +291,9 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(&$($mutability)? body.span);
 
-                for const_ in &$($mutability)? body.required_consts {
+                for (span, const_) in &$($mutability)? body.required_consts {
                     let location = START_BLOCK.start_location();
+                    self.visit_span(span);
                     self.visit_constant(const_, location);
                 }
             }
@@ -606,8 +607,11 @@ macro_rules! make_mir_visitor {
                                         );
                                     }
                                 }
-                                InlineAsmOperand::Const { value }
-                                | InlineAsmOperand::SymFn { value } => {
+                                InlineAsmOperand::Const { value, span } => {
+                                    self.visit_span(span);
+                                    self.visit_constant(value, location);
+                                }
+                                InlineAsmOperand::SymFn { value } => {
                                     self.visit_constant(value, location);
                                 }
                                 InlineAsmOperand::SymStatic { def_id: _ } => {}
@@ -775,7 +779,8 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    Operand::Constant(constant) => {
+                    Operand::Constant(box(span, constant)) => {
+                        self.visit_span(span);
                         self.visit_constant(constant, location);
                     }
                 }
@@ -864,12 +869,10 @@ macro_rules! make_mir_visitor {
                               constant: & $($mutability)? Constant<'tcx>,
                               location: Location) {
                 let Constant {
-                    span,
                     user_ty,
                     literal,
                 } = constant;
 
-                self.visit_span(span);
                 drop(user_ty); // no visit method for this
                 match literal {
                     ConstantKind::Ty(ct) => self.visit_const(ct, location),

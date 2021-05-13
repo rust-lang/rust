@@ -13,15 +13,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant_to_operand(
         &self,
         bx: &mut Bx,
+        span: Span,
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
-        let val = self.eval_mir_constant(constant)?;
+        let val = self.eval_mir_constant(span, constant)?;
         let ty = self.monomorphize(constant.ty());
         Ok(OperandRef::from_const(bx, val, ty))
     }
 
     pub fn eval_mir_constant(
         &self,
+        span: Span,
         constant: &mir::Constant<'tcx>,
     ) -> Result<ConstValue<'tcx>, ErrorHandled> {
         let ct = self.monomorphize(constant.literal);
@@ -35,12 +37,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 .tcx()
                 .const_eval_resolve(ty::ParamEnv::reveal_all(), ct, None)
                 .map_err(|err| {
-                    self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
+                    self.cx.tcx().sess.span_err(span, "erroneous constant encountered");
                     err
                 }),
             ty::ConstKind::Value(value) => Ok(value),
             err => span_bug!(
-                constant.span,
+                span,
                 "encountered bad ConstKind after monomorphizing: {:?}",
                 err
             ),

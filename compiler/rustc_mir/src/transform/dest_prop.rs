@@ -714,7 +714,7 @@ impl Conflicts<'a> {
                                         }
                                     }
                                     InlineAsmOperand::Out { reg: _, late: _, place: None }
-                                    | InlineAsmOperand::Const { value: _ }
+                                    | InlineAsmOperand::Const { span: _, value: _ }
                                     | InlineAsmOperand::SymFn { value: _ }
                                     | InlineAsmOperand::SymStatic { def_id: _ } => {}
                                 }
@@ -728,7 +728,7 @@ impl Conflicts<'a> {
                         }
                         | InlineAsmOperand::In { reg: _, value: _ }
                         | InlineAsmOperand::Out { reg: _, late: _, place: None }
-                        | InlineAsmOperand::Const { value: _ }
+                        | InlineAsmOperand::Const { span: _, value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }

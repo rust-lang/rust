@@ -405,7 +405,7 @@ impl Inliner<'tcx> {
                     threshold = 0;
                 }
 
-                TerminatorKind::Call { func: Operand::Constant(ref f), cleanup, .. } => {
+                TerminatorKind::Call { func: Operand::Constant(box (_, ref f)), cleanup, .. } => {
                     if let ty::FnDef(def_id, substs) =
                         *callsite.callee.subst_mir(self.tcx, &f.literal.ty()).kind()
                     {
@@ -628,7 +628,7 @@ impl Inliner<'tcx> {
                 // `required_consts`, here we may not only have `ConstKind::Unevaluated`
                 // because we are calling `subst_and_normalize_erasing_regions`.
                 caller_body.required_consts.extend(
-                    callee_body.required_consts.iter().copied().filter(|&ct| {
+                    callee_body.required_consts.iter().copied().filter(|(_, ct)| {
                         match ct.literal.const_for_ty() {
                             Some(ct) => matches!(ct.val, ConstKind::Unevaluated(_)),
                             None => true,

@@ -167,7 +167,7 @@ impl<'a, 'tcx> FunctionItemRefChecker<'a, 'tcx> {
             Operand::Copy(place) | Operand::Move(place) => {
                 self.body.local_decls[place.local].source_info.span
             }
-            Operand::Constant(constant) => constant.span,
+            Operand::Constant(box (span, _)) => *span,
         }
     }
 

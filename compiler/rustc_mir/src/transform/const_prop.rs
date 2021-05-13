@@ -465,7 +465,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, span: Span, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.needs_subst() {
             return None;
@@ -474,8 +474,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         match self.ecx.mir_const_to_op(&c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
-                let tcx = self.ecx.tcx.at(c.span);
-                let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
+                let tcx = self.ecx.tcx.at(span);
+                let err = ConstEvalErr::new(&self.ecx, error, Some(span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
                         ConstantKind::Ty(ct) => match ct.val {
@@ -494,7 +494,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     if lint_only {
                         // Out of backwards compatibility we cannot report hard errors in unused
                         // generic functions using associated constants of the generic parameters.
-                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(c.span));
+                        err.report_as_lint(tcx, "erroneous constant used", lint_root, Some(span));
                     } else {
                         err.report_as_error(tcx, "erroneous constant used");
                     }
@@ -516,7 +516,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// or `eval_place`, depending on the variant of `Operand` used.
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c, source_info),
+            Operand::Constant(box (span, ref c)) => self.eval_constant(span, c, source_info),
             Operand::Move(place) | Operand::Copy(place) => self.eval_place(place),
         }
     }
@@ -796,11 +796,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Creates a new `Operand::Constant` from a `Scalar` value
     fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
-        Operand::Constant(Box::new(Constant {
-            span,
+        Operand::Constant(Box::new((span, Constant {
             user_ty: None,
             literal: ty::Const::from_scalar(self.tcx, scalar, ty).into(),
-        }))
+        })))
     }
 
     fn replace_with_const(
@@ -809,7 +808,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         value: &OpTy<'tcx>,
         source_info: SourceInfo,
     ) {
-        if let Rvalue::Use(Operand::Constant(c)) = rval {
+        if let Rvalue::Use(Operand::Constant(box(_, c))) = rval {
             match c.literal {
                 ConstantKind::Ty(c) if matches!(c.val, ConstKind::Unevaluated(..)) => {}
                 _ => {
@@ -879,8 +878,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             if let Some(Some(alloc)) = alloc {
                                 // Assign entire constant in a single statement.
                                 // We can't use aggregates, as we run after the aggregate-lowering `MirPhase`.
-                                *rval = Rvalue::Use(Operand::Constant(Box::new(Constant {
-                                    span: source_info.span,
+                                *rval = Rvalue::Use(Operand::Constant(Box::new((source_info.span, Constant {
                                     user_ty: None,
                                     literal: self
                                         .ecx
@@ -893,7 +891,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                             }),
                                         })
                                         .into(),
-                                })));
+                                }))));
                             }
                         }
                     }
@@ -1085,7 +1083,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant, self.source_info.unwrap());
+        let source_info = self.source_info.unwrap();
+        self.eval_constant(source_info.span, constant, source_info);
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {

@@ -3,6 +3,7 @@
 use crate::build::CFG;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::Span;
 
 impl<'tcx> CFG<'tcx> {
     crate fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
@@ -49,9 +50,10 @@ impl<'tcx> CFG<'tcx> {
         block: BasicBlock,
         source_info: SourceInfo,
         temp: Place<'tcx>,
+        span: Span,
         constant: Constant<'tcx>,
     ) {
-        self.push_assign(block, source_info, temp, Rvalue::Use(Operand::Constant(box constant)));
+        self.push_assign(block, source_info, temp, Rvalue::Use(Operand::Constant(box (span, constant))));
     }
 
     crate fn push_assign_unit(
@@ -65,11 +67,10 @@ impl<'tcx> CFG<'tcx> {
             block,
             source_info,
             place,
-            Rvalue::Use(Operand::Constant(box Constant {
-                span: source_info.span,
+            Rvalue::Use(Operand::Constant(box(source_info.span, Constant {
                 user_ty: None,
                 literal: ty::Const::zero_sized(tcx, tcx.types.unit).into(),
-            })),
+            }))),
         );
     }
 

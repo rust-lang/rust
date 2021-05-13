@@ -76,7 +76,7 @@ fn find_optimization_oportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Consta
                 continue;
             }
 
-            if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(box c)))) =
+            if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(box (_, c))))) =
                 &bb.statements[location.statement_index].kind
             {
                 if let Some(local) = p.as_local() {

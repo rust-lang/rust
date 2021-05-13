@@ -78,7 +78,7 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
     }
 
     fn try_eval_bool(&self, a: &Operand<'_>) -> Option<bool> {
-        let a = a.constant()?;
+        let (_, a) = a.constant()?;
         if a.literal.ty().is_bool() { a.literal.try_to_bool() } else { None }
     }
 
@@ -116,8 +116,8 @@ impl<'tcx, 'a> InstCombineContext<'tcx, 'a> {
                 }
 
                 let constant =
-                    Constant { span: source_info.span, literal: len.into(), user_ty: None };
-                *rvalue = Rvalue::Use(Operand::Constant(box constant));
+                    Constant { literal: len.into(), user_ty: None };
+                *rvalue = Rvalue::Use(Operand::Constant(box (source_info.span, constant)));
             }
         }
     }

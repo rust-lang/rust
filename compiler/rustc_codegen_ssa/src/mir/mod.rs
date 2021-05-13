@@ -188,14 +188,14 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Evaluate all required consts; codegen later assumes that CTFE will never fail.
     let mut all_consts_ok = true;
-    for const_ in &mir.required_consts {
-        if let Err(err) = fx.eval_mir_constant(const_) {
+    for (span, const_) in &mir.required_consts {
+        if let Err(err) = fx.eval_mir_constant(*span, const_) {
             all_consts_ok = false;
             match err {
                 // errored or at least linted
                 ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {}
                 ErrorHandled::TooGeneric => {
-                    span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
+                    span_bug!(*span, "codgen encountered polymorphic constant: {:?}", err)
                 }
             }
         }

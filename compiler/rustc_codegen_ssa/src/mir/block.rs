@@ -633,10 +633,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // checked by const-qualification, which also
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic.as_str().starts_with("simd_shuffle") {
-                            if let mir::Operand::Constant(constant) = arg {
-                                let c = self.eval_mir_constant(constant);
+                            if let mir::Operand::Constant(box(span, constant)) = arg {
+                                let c = self.eval_mir_constant(*span, constant);
                                 let (llval, ty) =
-                                    self.simd_shuffle_indices(&bx, constant.span, constant.ty(), c);
+                                    self.simd_shuffle_indices(&bx, *span, constant.ty(), c);
                                 return OperandRef {
                                     val: Immediate(llval),
                                     layout: bx.layout_of(ty),
@@ -821,9 +821,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         out_place.map(|out_place| self.codegen_place(&mut bx, out_place.as_ref()));
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
                 }
-                mir::InlineAsmOperand::Const { ref value } => {
+                mir::InlineAsmOperand::Const { span, ref value } => {
                     let const_value = self
-                        .eval_mir_constant(value)
+                        .eval_mir_constant(span, value)
                         .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
                     let ty = value.ty();
                     let size = bx.layout_of(ty).size;

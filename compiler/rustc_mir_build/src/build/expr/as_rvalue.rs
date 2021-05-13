@@ -248,11 +248,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr, None));
-                block.and(Rvalue::Use(Operand::Constant(box Constant {
-                    span: expr_span,
+                block.and(Rvalue::Use(Operand::Constant(box(expr_span, Constant {
                     user_ty: None,
                     literal: ty::Const::zero_sized(this.tcx, this.tcx.types.unit).into(),
-                })))
+                }))))
             }
             ExprKind::Yield { .. }
             | ExprKind::Literal { .. }

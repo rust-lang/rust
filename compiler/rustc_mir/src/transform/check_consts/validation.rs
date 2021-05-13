@@ -709,7 +709,7 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
 
     fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         self.super_operand(op, location);
-        if let Operand::Constant(c) = op {
+        if let Operand::Constant(box (_, c)) = op {
             if let Some(def_id) = c.check_static_ptr(self.tcx) {
                 self.check_static(def_id, self.span);
             }

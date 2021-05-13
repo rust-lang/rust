@@ -218,7 +218,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                                 self.mutate_place(location, out_place, Shallow(None), JustWrite);
                             }
                         }
-                        InlineAsmOperand::Const { value: _ }
+                        InlineAsmOperand::Const { span: _, value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }

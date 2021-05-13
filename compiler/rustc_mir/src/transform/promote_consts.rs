@@ -418,7 +418,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                     kind:
                                         StatementKind::Assign(box (
                                             _,
-                                            Rvalue::Use(Operand::Constant(c)),
+                                            Rvalue::Use(Operand::Constant(box (_, c))),
                                         )),
                                     ..
                                 }) = def_stmt
@@ -460,7 +460,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                     match &statement.kind {
                                         StatementKind::Assign(box (
                                             _,
-                                            Rvalue::Use(Operand::Constant(c)),
+                                            Rvalue::Use(Operand::Constant(box (_, c))),
                                         )) => c.literal.try_eval_usize(self.tcx, self.param_env),
                                         _ => None,
                                     }
@@ -517,7 +517,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
             // The qualifs for a constant (e.g. `HasMutInterior`) are checked in
             // `validate_rvalue` upon access.
-            Operand::Constant(c) => {
+            Operand::Constant(box (_, c)) => {
                 if let Some(def_id) = c.check_static_ptr(self.tcx) {
                     // Only allow statics (not consts) to refer to other statics.
                     // FIXME(eddyb) does this matter at all for promotion?
@@ -639,7 +639,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if !self.explicit && lhs_ty.is_integral() {
                             // Integer division: the RHS must be a non-zero const.
                             let const_val = match rhs {
-                                Operand::Constant(c) => {
+                                Operand::Constant(box (_, c)) => {
                                     c.literal.try_eval_bits(self.tcx, self.param_env, lhs_ty)
                                 }
                                 _ => None,
@@ -888,11 +888,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     if self.keep_original {
                         rhs.clone()
                     } else {
-                        let unit = Rvalue::Use(Operand::Constant(box Constant {
-                            span: statement.source_info.span,
+                        let unit = Rvalue::Use(Operand::Constant(box (statement.source_info.span, Constant {
                             user_ty: None,
                             literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
-                        }));
+                        })));
                         mem::replace(rhs, unit)
                     },
                     statement.source_info,
@@ -965,8 +964,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
 
-                Operand::Constant(Box::new(Constant {
-                    span,
+                Operand::Constant(Box::new((span, Constant {
                     user_ty: None,
                     literal: tcx
                         .mk_const(ty::Const {
@@ -984,7 +982,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             }),
                         })
                         .into(),
-                }))
+                })))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
@@ -1204,7 +1202,7 @@ crate fn is_const_fn_in_array_repeat_expression<'tcx>(
         if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
             &block.terminator
         {
-            if let Operand::Constant(box Constant { literal, .. }) = func {
+            if let Operand::Constant(box (_, Constant { literal, .. })) = func {
                 if let ty::FnDef(def_id, _) = *literal.ty().kind() {
                     if let Some((destination_place, _)) = destination {
                         if destination_place == place {

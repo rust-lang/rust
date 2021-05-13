@@ -429,9 +429,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             TerminatorKind::Call {
-                func: Operand::Constant(box Constant {
-                    span: source_info.span,
-
+                func: Operand::Constant(box (source_info.span, Constant {
                     // FIXME(#54571): This constant comes from user input (a
                     // constant in a pattern).  Are there forms where users can add
                     // type annotations here?  For example, an associated constant?
@@ -439,7 +437,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty: None,
 
                     literal: method.into(),
-                }),
+                })),
                 args: vec![val, expect],
                 destination: Some((eq_result, eq_block)),
                 cleanup: None,

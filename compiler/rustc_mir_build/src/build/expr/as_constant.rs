@@ -4,11 +4,12 @@ use crate::build::Builder;
 use crate::thir::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
-    crate fn as_constant(&mut self, expr: &Expr<'_, 'tcx>) -> Constant<'tcx> {
+    crate fn as_constant(&mut self, expr: &Expr<'_, 'tcx>) -> (Span, Constant<'tcx>) {
         let this = self;
         let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
         match *kind {
@@ -22,13 +23,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 });
                 assert_eq!(literal.ty, ty);
-                Constant { span, user_ty, literal: literal.into() }
+                (span, Constant { user_ty, literal: literal.into() })
             }
             ExprKind::StaticRef { literal, .. } => {
-                Constant { span, user_ty: None, literal: literal.into() }
+                (span, Constant { user_ty: None, literal: literal.into() })
             }
             ExprKind::ConstBlock { value } => {
-                Constant { span: span, user_ty: None, literal: value.into() }
+                (span, Constant { user_ty: None, literal: value.into() })
             }
             _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
         }

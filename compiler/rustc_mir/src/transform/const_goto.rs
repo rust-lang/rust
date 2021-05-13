@@ -60,7 +60,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'a, 'tcx> {
             // We only apply this optimization if the last statement is a const assignment
             let last_statement = self.body.basic_blocks()[location.block].statements.last()?;
 
-            if let (place, Rvalue::Use(Operand::Constant(_const))) =
+            if let (place, Rvalue::Use(Operand::Constant(box (_, _const)))) =
                 last_statement.kind.as_assign()?
             {
                 // We found a constant being assigned to `place`.

@@ -418,11 +418,10 @@ impl CloneShimBuilder<'tcx> {
 
         // `func == Clone::clone(&ty) -> ty`
         let func_ty = tcx.mk_fn_def(self.def_id, substs);
-        let func = Operand::Constant(box Constant {
-            span: self.span,
+        let func = Operand::Constant(box (self.span, Constant {
             user_ty: None,
             literal: ty::Const::zero_sized(tcx, func_ty).into(),
-        });
+        }));
 
         let ref_loc = self.make_place(
             Mutability::Not,
@@ -474,12 +473,11 @@ impl CloneShimBuilder<'tcx> {
         );
     }
 
-    fn make_usize(&self, value: u64) -> Box<Constant<'tcx>> {
-        box Constant {
-            span: self.span,
+    fn make_usize(&self, value: u64) -> Box<(Span, Constant<'tcx>)> {
+        box (self.span, Constant {
             user_ty: None,
             literal: ty::Const::from_usize(self.tcx, value).into(),
-        }
+        })
     }
 
     fn array_shim(
@@ -506,11 +504,10 @@ impl CloneShimBuilder<'tcx> {
             ))),
             self.make_statement(StatementKind::Assign(box (
                 end,
-                Rvalue::Use(Operand::Constant(box Constant {
-                    span: self.span,
+                Rvalue::Use(Operand::Constant(box (self.span, Constant {
                     user_ty: None,
                     literal: len.into(),
-                })),
+                }))),
             ))),
         ];
         self.block(inits, TerminatorKind::Goto { target: BasicBlock::new(1) }, false);
@@ -765,11 +762,10 @@ fn build_call_shim<'tcx>(
         CallKind::Direct(def_id) => {
             let ty = tcx.type_of(def_id);
             (
-                Operand::Constant(box Constant {
-                    span,
+                Operand::Constant(box (span, Constant {
                     user_ty: None,
                     literal: ty::Const::zero_sized(tcx, ty).into(),
-                }),
+                })),
                 rcvr.into_iter().collect::<Vec<_>>(),
             )
         }

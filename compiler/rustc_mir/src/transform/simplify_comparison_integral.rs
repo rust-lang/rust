@@ -203,8 +203,8 @@ fn find_branch_value_info<'tcx>(
     // if any are, we can use the other to switch on, and the constant as a value in a switch
     use Operand::*;
     match (left, right) {
-        (Constant(branch_value), Copy(to_switch_on) | Move(to_switch_on))
-        | (Copy(to_switch_on) | Move(to_switch_on), Constant(branch_value)) => {
+        (Constant(box (_, branch_value)), Copy(to_switch_on) | Move(to_switch_on))
+        | (Copy(to_switch_on) | Move(to_switch_on), Constant(box (_, branch_value))) => {
             let branch_value_ty = branch_value.literal.ty();
             // we only want to apply this optimization if we are matching on integrals (and chars), as it is not possible to switch on floats
             if !branch_value_ty.is_integral() && !branch_value_ty.is_char() {

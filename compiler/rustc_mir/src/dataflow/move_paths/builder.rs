@@ -441,7 +441,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                                 self.gather_init(out_place.as_ref(), InitKind::Deep);
                             }
                         }
-                        InlineAsmOperand::Const { value: _ }
+                        InlineAsmOperand::Const { span: _, value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }

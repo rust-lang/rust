@@ -987,11 +987,10 @@ fn insert_panic_block<'tcx>(
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks().len());
     let term = TerminatorKind::Assert {
-        cond: Operand::Constant(box Constant {
-            span: body.span,
+        cond: Operand::Constant(box (body.span, Constant {
             user_ty: None,
             literal: ty::Const::from_bool(tcx, false).into(),
-        }),
+        })),
         expected: true,
         msg: message,
         target: assert_block,

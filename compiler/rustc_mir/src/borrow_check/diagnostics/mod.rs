@@ -81,7 +81,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func: Operand::Constant(box Constant { literal, .. }),
+            func: Operand::Constant(box (_, Constant { literal, .. })),
             args,
             ..
         } = &terminator.kind

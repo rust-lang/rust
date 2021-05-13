@@ -336,7 +336,6 @@ impl<'tcx, R: Idx, C: Idx> TypeFoldable<'tcx> for BitMatrix<R, C> {
 impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
         Constant {
-            span: self.span,
             user_ty: self.user_ty.fold_with(folder),
             literal: self.literal.fold_with(folder),
         }

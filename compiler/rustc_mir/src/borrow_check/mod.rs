@@ -756,7 +756,7 @@ impl<'cx, 'tcx> dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tc
                                 );
                             }
                         }
-                        InlineAsmOperand::Const { value: _ }
+                        InlineAsmOperand::Const { span: _, value: _ }
                         | InlineAsmOperand::SymFn { value: _ }
                         | InlineAsmOperand::SymStatic { def_id: _ } => {}
                     }

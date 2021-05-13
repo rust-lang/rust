@@ -109,8 +109,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("as_operand: category={:?} for={:?}", category, expr.kind);
         match category {
             Category::Constant => {
-                let constant = this.as_constant(expr);
-                block.and(Operand::Constant(box constant))
+                let span_and_constant = this.as_constant(expr);
+                block.and(Operand::Constant(box span_and_constant))
             }
             Category::Place | Category::Rvalue(..) => {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));

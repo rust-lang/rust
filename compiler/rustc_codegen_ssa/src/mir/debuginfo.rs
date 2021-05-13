@@ -420,7 +420,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             None => continue,
                         };
 
-                        if let Ok(operand) = self.eval_mir_constant_to_operand(bx, &c) {
+                        if let Ok(operand) = self.eval_mir_constant_to_operand(bx, var.source_info.span, &c) {
                             let base = Self::spill_operand_to_stack(
                                 &operand,
                                 Some(var.name.to_string()),

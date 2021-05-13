@@ -139,8 +139,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     shortcircuit_block,
                     source_info,
                     destination,
+                    expr_span,
                     Constant {
-                        span: expr_span,
                         user_ty: None,
                         literal: match op {
                             LogicalOp::And => ty::Const::from_bool(this.tcx, false).into(),
@@ -357,11 +357,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                         thir::InlineAsmOperand::Const { value, span } => {
                             mir::InlineAsmOperand::Const {
-                                value: box Constant { span, user_ty: None, literal: value.into() },
+                                span,
+                                value: box Constant { user_ty: None, literal: value.into() },
                             }
                         }
                         thir::InlineAsmOperand::SymFn { expr } => {
-                            mir::InlineAsmOperand::SymFn { value: box this.as_constant(expr) }
+                            let (_, constant) = this.as_constant(expr);
+                            mir::InlineAsmOperand::SymFn { value: box constant }
                         }
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }

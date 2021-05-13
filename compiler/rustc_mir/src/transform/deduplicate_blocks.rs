@@ -150,7 +150,7 @@ fn rvalue_hash<H: Hasher>(hasher: &mut H, rvalue: &Rvalue<'tcx>) {
 
 fn operand_hash<H: Hasher>(hasher: &mut H, operand: &Operand<'tcx>) {
     match operand {
-        Operand::Constant(box Constant { user_ty: _, literal, span: _ }) => literal.hash(hasher),
+        Operand::Constant(box (_, Constant { user_ty: _, literal })) => literal.hash(hasher),
         x => x.hash(hasher),
     };
 }
@@ -179,8 +179,8 @@ fn rvalue_eq(lhs: &Rvalue<'tcx>, rhs: &Rvalue<'tcx>) -> bool {
 fn operand_eq(lhs: &Operand<'tcx>, rhs: &Operand<'tcx>) -> bool {
     let res = match (lhs, rhs) {
         (
-            Operand::Constant(box Constant { user_ty: _, literal, span: _ }),
-            Operand::Constant(box Constant { user_ty: _, literal: literal2, span: _ }),
+            Operand::Constant(box (_, Constant { user_ty: _, literal })),
+            Operand::Constant(box (_, Constant { user_ty: _, literal: literal2 })),
         ) => literal == literal2,
         (x, y) => x == y,
     };

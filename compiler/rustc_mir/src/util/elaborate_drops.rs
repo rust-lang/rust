@@ -1032,11 +1032,10 @@ where
     }
 
     fn constant_usize(&self, val: u16) -> Operand<'tcx> {
-        Operand::Constant(box Constant {
-            span: self.source_info.span,
+        Operand::Constant(box (self.source_info.span, Constant {
             user_ty: None,
             literal: ty::Const::from_usize(self.tcx(), val.into()).into(),
-        })
+        }))
     }
 
     fn assign(&self, lhs: Place<'tcx>, rhs: Rvalue<'tcx>) -> Statement<'tcx> {

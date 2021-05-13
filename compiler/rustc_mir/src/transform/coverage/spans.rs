@@ -865,9 +865,9 @@ pub(super) fn filtered_terminator_span(
         // Call `func` operand can have a more specific span when part of a chain of calls
         | TerminatorKind::Call { ref func, .. } => {
             let mut span = terminator.source_info.span;
-            if let mir::Operand::Constant(box constant) = func {
-                if constant.span.lo() > span.lo() {
-                    span = span.with_lo(constant.span.lo());
+            if let mir::Operand::Constant(box (c_span, _)) = func {
+                if c_span.lo() > span.lo() {
+                    span = span.with_lo(c_span.lo());
                 }
             }
             Some(function_source_span(span, body_span))
