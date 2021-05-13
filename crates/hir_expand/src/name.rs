@@ -212,6 +212,7 @@ pub mod known {
         std_panic,
         stringify,
         concat,
+        concat_idents,
         include,
         include_bytes,
         include_str,
