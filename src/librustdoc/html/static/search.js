@@ -1505,7 +1505,7 @@ window.initSearch = function(rawSearchIndex) {
 };
 
 if (window.searchIndex !== undefined) {
-  initSearch(window.searchIndex);
+    initSearch(window.searchIndex);
 }
 
 })();

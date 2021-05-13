@@ -156,152 +156,154 @@ function hideThemeButtonState() {
     "use strict";
 
     window.searchState = {
-      loadingText: "Loading search results...",
-      input: document.getElementsByClassName("search-input")[0],
-      outputElement: function() {
-        return document.getElementById("search");
-      },
-      title: null,
-      titleBeforeSearch: document.title,
-      timeout: null,
-      // On the search screen, so you remain on the last tab you opened.
-      //
-      // 0 for "In Names"
-      // 1 for "In Parameters"
-      // 2 for "In Return Types"
-      currentTab: 0,
-      mouseMovedAfterSearch: true,
-      clearInputTimeout: function() {
-        if (searchState.timeout !== null) {
-            clearTimeout(searchState.timeout);
-            searchState.timeout = null;
-        }
-      },
-      // Sets the focus on the search bar at the top of the page
-      focus: function() {
-          searchState.input.focus();
-      },
-      // Removes the focus from the search bar.
-      defocus: function() {
-          searchState.input.blur();
-      },
-      showResults: function(search) {
-        if (search === null || typeof search === 'undefined') {
-            search = searchState.outputElement();
-        }
-        addClass(main, "hidden");
-        removeClass(search, "hidden");
-        searchState.mouseMovedAfterSearch = false;
-        document.title = searchState.title;
-      },
-      hideResults: function(search) {
-        if (search === null || typeof search === 'undefined') {
-            search = searchState.outputElement();
-        }
-        addClass(search, "hidden");
-        removeClass(main, "hidden");
-        document.title = searchState.titleBeforeSearch;
-        // We also remove the query parameter from the URL.
-        if (searchState.browserSupportsHistoryApi()) {
-            history.replaceState("", window.currentCrate + " - Rust",
-                getNakedUrl() + window.location.hash);
-        }
-      },
-      getQueryStringParams: function() {
-        var params = {};
-        window.location.search.substring(1).split("&").
-            map(function(s) {
-                var pair = s.split("=");
-                params[decodeURIComponent(pair[0])] =
-                    typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
-            });
-        return params;
-      },
-      putBackSearch: function(search_input) {
-        var search = searchState.outputElement();
-        if (search_input.value !== "" && hasClass(search, "hidden")) {
-            searchState.showResults(search);
-            if (searchState.browserSupportsHistoryApi()) {
-                var extra = "?search=" + encodeURIComponent(search_input.value);
-                history.replaceState(search_input.value, "",
-                    getNakedUrl() + extra + window.location.hash);
+        loadingText: "Loading search results...",
+        input: document.getElementsByClassName("search-input")[0],
+        outputElement: function() {
+            return document.getElementById("search");
+        },
+        title: null,
+        titleBeforeSearch: document.title,
+        timeout: null,
+        // On the search screen, so you remain on the last tab you opened.
+        //
+        // 0 for "In Names"
+        // 1 for "In Parameters"
+        // 2 for "In Return Types"
+        currentTab: 0,
+        mouseMovedAfterSearch: true,
+        clearInputTimeout: function() {
+            if (searchState.timeout !== null) {
+                clearTimeout(searchState.timeout);
+                searchState.timeout = null;
             }
+        },
+        // Sets the focus on the search bar at the top of the page
+        focus: function() {
+            searchState.input.focus();
+        },
+        // Removes the focus from the search bar.
+        defocus: function() {
+            searchState.input.blur();
+        },
+        showResults: function(search) {
+            if (search === null || typeof search === 'undefined') {
+                search = searchState.outputElement();
+            }
+            addClass(main, "hidden");
+            removeClass(search, "hidden");
+            searchState.mouseMovedAfterSearch = false;
             document.title = searchState.title;
-        }
-      },
-      browserSupportsHistoryApi: function() {
-          return window.history && typeof window.history.pushState === "function";
-      },
-      setup: function() {
-        var search_input = searchState.input;
-        if (!searchState.input) {
-            return;
-        }
-        function loadScript(url) {
-            var script = document.createElement('script');
-            script.src = url;
-            document.head.append(script);
-        }
-
-        var searchLoaded = false;
-        function loadSearch() {
-            if (!searchLoaded) {
-                searchLoaded = true;
-                loadScript(window.searchJS);
-                loadScript(window.searchIndexJS);
+        },
+        hideResults: function(search) {
+            if (search === null || typeof search === 'undefined') {
+                search = searchState.outputElement();
             }
-        }
-
-        search_input.addEventListener("focus", function() {
-            searchState.putBackSearch(this);
-            search_input.origPlaceholder = searchState.input.placeholder;
-            search_input.placeholder = "Type your search here.";
-            loadSearch();
-        });
-        search_input.addEventListener("blur", function() {
-            search_input.placeholder = searchState.input.origPlaceholder;
-        });
-
-        document.addEventListener("mousemove", function() {
-          searchState.mouseMovedAfterSearch = true;
-        });
-
-        search_input.removeAttribute('disabled');
-
-        // `crates{version}.js` should always be loaded before this script, so we can use it safely.
-        searchState.addCrateDropdown(window.ALL_CRATES);
-        var params = searchState.getQueryStringParams();
-        if (params.search !== undefined) {
+            addClass(search, "hidden");
+            removeClass(main, "hidden");
+            document.title = searchState.titleBeforeSearch;
+            // We also remove the query parameter from the URL.
+            if (searchState.browserSupportsHistoryApi()) {
+                history.replaceState("", window.currentCrate + " - Rust",
+                    getNakedUrl() + window.location.hash);
+            }
+        },
+        getQueryStringParams: function() {
+            var params = {};
+            window.location.search.substring(1).split("&").
+                map(function(s) {
+                    var pair = s.split("=");
+                    params[decodeURIComponent(pair[0])] =
+                        typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
+                });
+            return params;
+        },
+        putBackSearch: function(search_input) {
             var search = searchState.outputElement();
-            search.innerHTML = "<h3 style=\"text-align: center;\">" +
-               searchState.loadingText + "</h3>";
-            searchState.showResults(search);
-            loadSearch();
-        }
-      },
-      addCrateDropdown: function(crates) {
-        var elem = document.getElementById("crate-search");
-
-        if (!elem) {
-            return;
-        }
-        var savedCrate = getSettingValue("saved-filter-crate");
-        for (var i = 0, len = crates.length; i < len; ++i) {
-            var option = document.createElement("option");
-            option.value = crates[i];
-            option.innerText = crates[i];
-            elem.appendChild(option);
-            // Set the crate filter from saved storage, if the current page has the saved crate
-            // filter.
-            //
-            // If not, ignore the crate filter -- we want to support filtering for crates on sites
-            // like doc.rust-lang.org where the crates may differ from page to page while on the
-            // same domain.
-            if (crates[i] === savedCrate) {
-                elem.value = savedCrate;
+            if (search_input.value !== "" && hasClass(search, "hidden")) {
+                searchState.showResults(search);
+                if (searchState.browserSupportsHistoryApi()) {
+                    var extra = "?search=" + encodeURIComponent(search_input.value);
+                    history.replaceState(search_input.value, "",
+                        getNakedUrl() + extra + window.location.hash);
+                }
+                document.title = searchState.title;
             }
-        }
-      },
+        },
+        browserSupportsHistoryApi: function() {
+            return window.history && typeof window.history.pushState === "function";
+        },
+        setup: function() {
+            var search_input = searchState.input;
+            if (!searchState.input) {
+                return;
+            }
+            function loadScript(url) {
+                var script = document.createElement('script');
+                script.src = url;
+                document.head.append(script);
+            }
+
+            var searchLoaded = false;
+            function loadSearch() {
+                if (!searchLoaded) {
+                    searchLoaded = true;
+                    loadScript(window.searchJS);
+                    loadScript(window.searchIndexJS);
+                }
+            }
+
+            search_input.addEventListener("focus", function() {
+                searchState.putBackSearch(this);
+                search_input.origPlaceholder = searchState.input.placeholder;
+                search_input.placeholder = "Type your search here.";
+                loadSearch();
+            });
+            search_input.addEventListener("blur", function() {
+                search_input.placeholder = searchState.input.origPlaceholder;
+            });
+
+            document.addEventListener("mousemove", function() {
+                searchState.mouseMovedAfterSearch = true;
+            });
+
+            search_input.removeAttribute('disabled');
+
+            // `crates{version}.js` should always be loaded before this script, so we can use it
+            // safely.
+            searchState.addCrateDropdown(window.ALL_CRATES);
+            var params = searchState.getQueryStringParams();
+            if (params.search !== undefined) {
+                var search = searchState.outputElement();
+                search.innerHTML = "<h3 style=\"text-align: center;\">" +
+                   searchState.loadingText + "</h3>";
+                searchState.showResults(search);
+                loadSearch();
+            }
+        },
+        addCrateDropdown: function(crates) {
+            var elem = document.getElementById("crate-search");
+
+            if (!elem) {
+                return;
+            }
+            var savedCrate = getSettingValue("saved-filter-crate");
+            for (var i = 0, len = crates.length; i < len; ++i) {
+                var option = document.createElement("option");
+                option.value = crates[i];
+                option.innerText = crates[i];
+                elem.appendChild(option);
+                // Set the crate filter from saved storage, if the current page has the saved crate
+                // filter.
+                //
+                // If not, ignore the crate filter -- we want to support filtering for crates on
+                // sites like doc.rust-lang.org where the crates may differ from page to page while
+                // on the
+                // same domain.
+                if (crates[i] === savedCrate) {
+                    elem.value = savedCrate;
+                }
+            }
+        },
     };
 
     function getPageId() {
@@ -1043,26 +1045,6 @@ function hideThemeButtonState() {
                 showSidebar();
             }
         };
-    }
-
-    if (main) {
-        onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
-            e.remove();
-        });
-        onEachLazy(main.childNodes, function(e) {
-            // Unhide the actual content once loading is complete. Headers get
-            // flex treatment for their horizontal layout, divs get block treatment
-            // for vertical layout (column-oriented flex layout for divs caused
-            // errors in mobile browsers).
-            if (e.tagName === "H2" || e.tagName === "H3") {
-                var nextTagName = e.nextElementSibling.tagName;
-                if (nextTagName === "H2" || nextTagName === "H3") {
-                    e.nextElementSibling.style.display = "flex";
-                } else if (nextTagName !== "DETAILS") {
-                    e.nextElementSibling.style.display = "block";
-                }
-            }
-        });
     }
 
     function buildHelperPopup() {

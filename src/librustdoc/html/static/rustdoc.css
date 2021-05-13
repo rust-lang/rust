@@ -145,7 +145,7 @@ h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-im
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table td:first-child > a,
-.collapse-toggle, div.item-list .out-of-band,
+div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
 details.undocumented > summary::before,
@@ -431,11 +431,6 @@ nav.sub {
 #main > .docblock h2 { font-size: 1.15em; }
 #main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
 
-#main > h2 + div, #main > h2 + h3, #main > h3 + div {
-	display: none; /* Changed to flex or block via js once the page is loaded */
-	flex-wrap: wrap;
-}
-
 .docblock h1 { font-size: 1em; }
 .docblock h2 { font-size: 0.95em; }
 .docblock h3, .docblock h4, .docblock h5 { font-size: 0.9em; }
@@ -564,9 +559,6 @@ h4 > code, h3 > code, .invisible > code {
 }
 .content .docblock >.impl-items table td {
 	padding: 0;
-}
-.toggle-wrapper.marg-left > .collapse-toggle {
-	left: -24px;
 }
 .content .docblock > .impl-items .table-display, .impl-items table td {
 	border: none;
@@ -974,45 +966,6 @@ a.test-arrow:hover{
 	font-weight: 300;
 }
 
-.collapse-toggle {
-	font-weight: 300;
-	position: absolute;
-	left: -23px;
-	top: 0;
-}
-
-h3 > .collapse-toggle, h4 > .collapse-toggle {
-	font-size: 0.8em;
-	top: 5px;
-}
-
-.toggle-wrapper > .collapse-toggle {
-	left: -24px;
-	margin-top: 0px;
-}
-
-.toggle-wrapper {
-	position: relative;
-	margin-top: 0;
-}
-
-.toggle-wrapper.collapsed {
-	height: 25px;
-	transition: height .2s;
-	margin-bottom: .6em;
-}
-
-.collapse-toggle > .inner {
-	display: inline-block;
-	width: 1.2ch;
-	text-align: center;
-}
-
-.collapse-toggle.hidden-default {
-	position: relative;
-	margin-left: 20px;
-}
-
 .since + .srclink {
 	display: table-cell;
 	padding-left: 10px;
@@ -1027,14 +980,6 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	position: initial;
 	font-size: 20px;
 	margin-right: 5px;
-}
-
-.toggle-wrapper > .collapse-toggle {
-	left: 0;
-}
-
-.variant + .toggle-wrapper + .docblock > p {
-	margin-top: 5px;
 }
 
 .sub-variant, .sub-variant > h3 {
@@ -1457,14 +1402,6 @@ h4 > .notable-traits {
 		position: inherit;
 	}
 
-	.toggle-wrapper > .collapse-toggle {
-		left: 0px;
-	}
-
-	.toggle-wrapper {
-		height: 1.5em;
-	}
-
 	#search {
 		margin-left: 0;
 	}
@@ -1555,14 +1492,6 @@ h4 > .notable-traits {
 		border-bottom: 1px solid;
 	}
 
-	.collapse-toggle {
-		left: -20px;
-	}
-
-	.impl > .collapse-toggle {
-		left: -10px;
-	}
-
 	.item-list > details.rustdoc-toggle > summary:not(.hideme)::before {
 		left: -10px;
 	}
@@ -1602,7 +1531,7 @@ h4 > .notable-traits {
 }
 
 @media print {
-	nav.sub, .content .out-of-band, .collapse-toggle {
+	nav.sub, .content .out-of-band {
 		display: none;
 	}
 }

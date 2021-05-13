@@ -27,7 +27,7 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::ty::codec::TyDecoder;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Visibility};
 use rustc_serialize::{opaque, Decodable, Decoder};
 use rustc_session::Session;
 use rustc_span::hygiene::ExpnDataDecodeMode;
@@ -1309,6 +1309,17 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .unwrap_or_else(Lazy::empty)
             .decode(self)
             .map(|index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
+            .collect()
+    }
+
+    fn get_struct_field_visibilities(&self, id: DefIndex) -> Vec<Visibility> {
+        self.root
+            .tables
+            .children
+            .get(self, id)
+            .unwrap_or_else(Lazy::empty)
+            .decode(self)
+            .map(|field_index| self.get_visibility(field_index))
             .collect()
     }
 
