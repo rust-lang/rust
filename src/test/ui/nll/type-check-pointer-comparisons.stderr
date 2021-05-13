@@ -9,6 +9,9 @@ LL |     x == y;
    |     ^ requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable reference to &i32
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-comparisons.rs:6:10
@@ -21,6 +24,9 @@ LL |     x == y;
    |          ^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to &i32
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other
 
@@ -35,6 +41,9 @@ LL |     x == y;
    |     ^ requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable pointer to &i32
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-comparisons.rs:12:10
@@ -47,6 +56,9 @@ LL |     x == y;
    |          ^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable pointer to &i32
+   = note: mutable pointers are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other
 
@@ -61,6 +73,9 @@ LL |     f == g;
    |     ^ requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of a mutable reference to &i32
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-comparisons.rs:18:10
@@ -73,6 +88,9 @@ LL |     f == g;
    |          ^ requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of a mutable reference to &i32
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other
 

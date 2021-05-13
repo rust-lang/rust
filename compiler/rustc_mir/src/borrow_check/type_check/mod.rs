@@ -226,7 +226,7 @@ fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
         let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
         let location_table = cx.location_table;
         facts.outlives.extend(cx.constraints.outlives_constraints.outlives().iter().flat_map(
-            |constraint: &OutlivesConstraint| {
+            |constraint: &OutlivesConstraint<'_>| {
                 if let Some(from_location) = constraint.locations.from_location() {
                     Either::Left(iter::once((
                         constraint.sup,
@@ -572,7 +572,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let locations = location.to_locations();
         for constraint in constraints.outlives().iter() {
-            let mut constraint = *constraint;
+            let mut constraint = constraint.clone();
             constraint.locations = locations;
             if let ConstraintCategory::Return(_)
             | ConstraintCategory::UseAsConst
@@ -862,7 +862,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
     /// hence it must report on their liveness constraints.
     crate liveness_constraints: LivenessValues<RegionVid>,
 
-    crate outlives_constraints: OutlivesConstraintSet,
+    crate outlives_constraints: OutlivesConstraintSet<'tcx>,
 
     crate member_constraints: MemberConstraintSet<'tcx, RegionVid>,
 
@@ -2535,6 +2535,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 sub: borrow_region.to_region_vid(),
                                 locations: location.to_locations(),
                                 category,
+                                variance_info: ty::VarianceDiagInfo::default(),
                             });
 
                             match mutbl {

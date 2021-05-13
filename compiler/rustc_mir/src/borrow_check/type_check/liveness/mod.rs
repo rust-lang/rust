@@ -107,7 +107,7 @@ fn compute_live_locals(
 fn regions_that_outlive_free_regions(
     num_region_vars: usize,
     universal_regions: &UniversalRegions<'tcx>,
-    constraint_set: &OutlivesConstraintSet,
+    constraint_set: &OutlivesConstraintSet<'tcx>,
 ) -> FxHashSet<RegionVid> {
     // Build a graph of the outlives constraints thus far. This is
     // a reverse graph, so for each constraint `R1: R2` we have an

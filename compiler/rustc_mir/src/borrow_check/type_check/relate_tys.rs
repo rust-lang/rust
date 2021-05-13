@@ -94,7 +94,12 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
         )
     }
 
-    fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>) {
+    fn push_outlives(
+        &mut self,
+        sup: ty::Region<'tcx>,
+        sub: ty::Region<'tcx>,
+        info: ty::VarianceDiagInfo<'tcx>,
+    ) {
         if let Some(borrowck_context) = &mut self.borrowck_context {
             let sub = borrowck_context.universal_regions.to_region_vid(sub);
             let sup = borrowck_context.universal_regions.to_region_vid(sup);
@@ -103,6 +108,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
                 sub,
                 locations: self.locations,
                 category: self.category,
+                variance_info: info,
             });
         }
     }
