@@ -186,7 +186,7 @@ macro_rules! eprintln {
 ///
 /// Note that the macro is intended as a debugging tool and therefore you
 /// should avoid having uses of it in version control for long periods
-/// (other than in tests etc.)
+/// (other than in tests and similar).
 /// Debug output from production code is better done with other facilities
 /// such as the [`debug!`] macro from the [`log`] crate.
 ///
