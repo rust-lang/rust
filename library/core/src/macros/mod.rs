@@ -141,7 +141,7 @@ macro_rules! assert_ne {
 #[allow_internal_unstable(core_panic)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
-    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -153,7 +153,7 @@ pub macro assert_matches {
             }
         }
     }),
-    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -321,7 +321,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
 macro_rules! matches {
-    ($expression:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+    ($expression:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $expression {
             $( $pattern )|+ $( if $guard )? => true,
             _ => false
