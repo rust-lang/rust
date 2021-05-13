@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{eager_or_lazy, get_enclosing_block, in_macro, is_lang_ctor};
+use clippy_utils::{eager_or_lazy, get_enclosing_block, in_macro, is_else_clause, is_lang_ctor};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionSome;
@@ -161,6 +161,7 @@ fn detect_option_if_let_else<'tcx>(
     if_chain! {
         if !in_macro(expr.span); // Don't lint macros, because it behaves weirdly
         if let ExprKind::Match(cond_expr, arms, MatchSource::IfLetDesugar{contains_else_clause: true}) = &expr.kind;
+        if !is_else_clause(cx.tcx, expr);
         if arms.len() == 2;
         if !is_result_ok(cx, cond_expr); // Don't lint on Result::ok because a different lint does it already
         if let PatKind::TupleStruct(struct_qpath, &[inner_pat], _) = &arms[0].pat.kind;
@@ -168,6 +169,7 @@ fn detect_option_if_let_else<'tcx>(
         if let PatKind::Binding(bind_annotation, _, id, _) = &inner_pat.kind;
         if !contains_return_break_continue_macro(arms[0].body);
         if !contains_return_break_continue_macro(arms[1].body);
+
         then {
             let capture_mut = if bind_annotation == &BindingAnnotation::Mutable { "mut " } else { "" };
             let some_body = extract_body_from_arm(&arms[0])?;
