@@ -1,6 +1,6 @@
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_trait_method, path_to_local_id};
@@ -28,46 +28,45 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         if let Some(ty) = cx.typeck_results().node_type_opt(ty.hir_id);
         then {
-            let is_empty_sugg = Some("next().is_none()".to_string());
+            let mut applicability = Applicability::MachineApplicable;
+            let is_empty_sugg = "next().is_none()".to_string();
             let method_name = &*method.ident.name.as_str();
             let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                         is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
                         is_type_diagnostic_item(cx, ty, sym::LinkedList) ||
                         is_type_diagnostic_item(cx, ty, sym::BinaryHeap) {
                 match method_name {
-                    "len" => Some("count()".to_string()),
+                    "len" => "count()".to_string(),
                     "is_empty" => is_empty_sugg,
                     "contains" => {
-                        let contains_arg = snippet(cx, args[1].span, "??");
+                        let contains_arg = snippet_with_applicability(cx, args[1].span, "??", &mut applicability);
                         let (arg, pred) = contains_arg
                             .strip_prefix('&')
                             .map_or(("&x", &*contains_arg), |s| ("x", s));
-                        Some(format!("any(|{}| x == {})", arg, pred))
+                        format!("any(|{}| x == {})", arg, pred)
                     }
-                    _ => None,
+                    _ => return,
                 }
             }
             else if is_type_diagnostic_item(cx, ty, sym::BTreeMap) ||
                 is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
                 match method_name {
                     "is_empty" => is_empty_sugg,
-                    _ => None,
+                    _ => return,
                 }
             }
             else {
-                None
+                return;
             };
-            if let Some(sugg) = sugg {
-                span_lint_and_sugg(
-                    cx,
-                    NEEDLESS_COLLECT,
-                    method0_span.with_hi(expr.span.hi()),
-                    NEEDLESS_COLLECT_MSG,
-                    "replace with",
-                    sugg,
-                    Applicability::MachineApplicable,
-                );
-            }
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_COLLECT,
+                method0_span.with_hi(expr.span.hi()),
+                NEEDLESS_COLLECT_MSG,
+                "replace with",
+                sugg,
+                applicability,
+            );
         }
     }
 }
