@@ -493,14 +493,11 @@ mod c {
         // sets of flags to the same source file.
         let src_dir = root.join("lib/builtins");
         if target_arch == "aarch64" {
-            let atomics_libs = build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg);
-            if !atomics_libs.is_empty() {
-                for library in atomics_libs {
-                    cfg.object(library);
-                }
-                // Some run-time CPU feature detection is necessary, as well.
-                sources.extend(&[("__aarch64_have_lse_atomics", "cpu_model.c")]);
-            }
+            // See below for why we're building these as separate libraries.
+            build_aarch64_out_of_line_atomics_libraries(&src_dir, cfg);
+
+            // Some run-time CPU feature detection is necessary, as well.
+            sources.extend(&[("__aarch64_have_lse_atomics", "cpu_model.c")]);
         }
 
         for (sym, src) in sources.map.iter() {
@@ -513,10 +510,7 @@ mod c {
         cfg.compile("libcompiler-rt.a");
     }
 
-    fn build_aarch64_out_of_line_atomics_libraries(
-        builtins_dir: &Path,
-        cfg: &cc::Build,
-    ) -> Vec<PathBuf> {
+    fn build_aarch64_out_of_line_atomics_libraries(builtins_dir: &Path, cfg: &cc::Build) {
         // NOTE: because we're recompiling the same source file in N different ways, building
         // serially is necessary. If we want to lift this restriction, we can either:
         // - create symlinks to lse.S and build those_(though we'd still need to pass special
@@ -528,11 +522,8 @@ mod c {
         let outlined_atomics_file = builtins_dir.join("aarch64/lse.S");
         println!("cargo:rerun-if-changed={}", outlined_atomics_file.display());
 
-        let out_dir: PathBuf = env::var("OUT_DIR").unwrap().into();
-
         // Ideally, this would be a Vec of object files, but cc doesn't make it *entirely*
         // trivial to build an individual object.
-        let mut atomics_libraries = Vec::new();
         for instruction_type in &["cas", "swp", "ldadd", "ldclr", "ldeor", "ldset"] {
             for size in &[1, 2, 4, 8, 16] {
                 if *size == 16 && *instruction_type != "cas" {
@@ -556,11 +547,9 @@ mod c {
                         .file(&outlined_atomics_file);
                     cfg.compile(&library_name);
 
-                    atomics_libraries.push(out_dir.join(library_name));
                     println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
                 }
             }
         }
-        atomics_libraries
     }
 }
