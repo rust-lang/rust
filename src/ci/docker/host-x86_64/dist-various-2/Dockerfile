@@ -72,7 +72,7 @@ COPY host-x86_64/dist-various-2/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
 COPY host-x86_64/dist-various-2/build-solaris-toolchain.sh /tmp/
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386  pc
-# Build now deprecated Solaris target as well
+# Build deprecated target 'x86_64-sun-solaris2.10' until removed
 RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386  sun
 RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc sun
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
