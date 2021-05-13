@@ -1,6 +1,5 @@
 // run-pass
 #![feature(const_generics_defaults)]
-#![allow(incomplete_features)]
 struct Foo<const N: usize, const M: usize = N>([u8; N], [u8; M]);
 
 fn foo<const N: usize>() -> Foo<N> {
