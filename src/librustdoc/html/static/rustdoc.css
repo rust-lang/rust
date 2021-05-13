@@ -547,7 +547,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.notable-traits) {
+.content .methods > div:not(.notable-traits):not(.methods) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
