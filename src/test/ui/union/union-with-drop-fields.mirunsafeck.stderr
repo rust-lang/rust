@@ -1,35 +1,35 @@
 error[E0740]: unions may not contain fields that need dropping
-  --> $DIR/union-with-drop-fields.rs:9:5
+  --> $DIR/union-with-drop-fields.rs:11:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/union-with-drop-fields.rs:9:5
+  --> $DIR/union-with-drop-fields.rs:11:5
    |
 LL |     a: String,
    |     ^^^^^^^^^
 
 error[E0740]: unions may not contain fields that need dropping
-  --> $DIR/union-with-drop-fields.rs:17:5
+  --> $DIR/union-with-drop-fields.rs:19:5
    |
 LL |     a: S,
    |     ^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/union-with-drop-fields.rs:17:5
+  --> $DIR/union-with-drop-fields.rs:19:5
    |
 LL |     a: S,
    |     ^^^^
 
 error[E0740]: unions may not contain fields that need dropping
-  --> $DIR/union-with-drop-fields.rs:22:5
+  --> $DIR/union-with-drop-fields.rs:24:5
    |
 LL |     a: T,
    |     ^^^^
    |
 note: `std::mem::ManuallyDrop` can be used to wrap the type
-  --> $DIR/union-with-drop-fields.rs:22:5
+  --> $DIR/union-with-drop-fields.rs:24:5
    |
 LL |     a: T,
    |     ^^^^

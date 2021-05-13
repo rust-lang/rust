@@ -1,4 +1,7 @@
 // run-pass
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
+
 #![allow(dead_code)]
 
 // Tests that unions aren't subject to unsafe non-zero/niche-filling optimizations.

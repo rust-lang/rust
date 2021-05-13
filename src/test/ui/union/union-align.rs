@@ -1,4 +1,7 @@
 // run-pass
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
+
 #![allow(dead_code)]
 
 use std::mem::{size_of, size_of_val, align_of, align_of_val};

@@ -1,3 +1,6 @@
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
+
 union U {
     principal: u8,
 }

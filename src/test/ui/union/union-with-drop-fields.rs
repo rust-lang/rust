@@ -1,4 +1,6 @@
-#![feature(untagged_unions)]
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
+
 #![allow(dead_code)]
 
 union U {

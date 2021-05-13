@@ -1,4 +1,6 @@
 // run-pass
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
 
 type Field1 = (i32, u32);
 type Field2 = f32;
