@@ -295,7 +295,6 @@ impl<'a> InferenceTable<'a> {
             |ty, _| match ty.kind(&Interner) {
                 &TyKind::InferenceVar(tv, kind) => {
                     if tv_stack.contains(&tv) {
-                        cov_mark::hit!(type_var_cycles_resolve_as_possible);
                         // recursive type
                         return self.type_variable_table.fallback_value(tv, kind);
                     }
@@ -366,7 +365,6 @@ mod resolve {
         ) -> Fallible<Ty> {
             let var = self.var_unification_table.inference_var_root(var);
             if self.var_stack.contains(&var) {
-                cov_mark::hit!(type_var_cycles_resolve_as_possible);
                 // recursive type
                 let default = self.type_variable_table.fallback_value(var, kind).cast(&Interner);
                 return Ok((self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
@@ -403,7 +401,6 @@ mod resolve {
             .intern(&Interner)
             .cast(&Interner);
             if self.var_stack.contains(&var) {
-                cov_mark::hit!(type_var_cycles_resolve_as_possible);
                 // recursive
                 return Ok((self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
                     .assert_const_ref(&Interner)
