@@ -2,7 +2,7 @@
 
 #![allow(unused, clippy::suspicious_map, clippy::iter_count)]
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList};
 
 #[warn(clippy::needless_collect)]
 #[allow(unused_variables, clippy::iter_cloned_collect, clippy::iter_next_slice)]
@@ -13,9 +13,24 @@ fn main() {
         // Empty
     }
     sample.iter().cloned().any(|x| x == 1);
-    sample.iter().map(|x| (x, x)).count();
+    // #7164 HashMap's and BTreeMap's `len` usage should not be linted
+    sample.iter().map(|x| (x, x)).collect::<HashMap<_, _>>().len();
+    sample.iter().map(|x| (x, x)).collect::<BTreeMap<_, _>>().len();
+
+    sample.iter().map(|x| (x, x)).next().is_none();
+    sample.iter().map(|x| (x, x)).next().is_none();
+
     // Notice the `HashSet`--this should not be linted
     sample.iter().collect::<HashSet<_>>().len();
     // Neither should this
     sample.iter().collect::<BTreeSet<_>>().len();
+
+    sample.iter().count();
+    sample.iter().next().is_none();
+    sample.iter().cloned().any(|x| x == 1);
+    sample.iter().any(|x| x == &1);
+
+    // `BinaryHeap` doesn't have `contains` method
+    sample.iter().count();
+    sample.iter().next().is_none();
 }
