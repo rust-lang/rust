@@ -39,6 +39,9 @@ will be allocated. Dropping this arena will result in the THIR being destroyed,
 which is useful to keep peak memory in check. Having a THIR representation of
 all bodies of a crate in memory at the same time would be very heavy.
 
+You can get a debug representation of the THIR by passing the `-Zunpretty=thir-tree` flag
+to `rustc`.
+
 [thir-docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/index.html
 [`thir::Expr`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/struct.Expr.html
 [`build_thir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_build/thir/fn.build_thir.html
