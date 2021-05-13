@@ -5,10 +5,10 @@ use std::iter;
 use hir_expand::name::{known, AsName, Name};
 use rustc_hash::FxHashSet;
 
-use crate::nameres::DefMap;
 use crate::{
     db::DefDatabase,
     item_scope::ItemInNs,
+    nameres::DefMap,
     path::{ModPath, PathKind},
     visibility::Visibility,
     ModuleDefId, ModuleId,
@@ -134,7 +134,16 @@ fn find_path_inner(
     for (name, def_id) in root_def_map.extern_prelude() {
         if item == ItemInNs::Types(*def_id) {
             let name = scope_name.unwrap_or_else(|| name.clone());
-            return Some(ModPath::from_segments(PathKind::Plain, vec![name]));
+
+            let name_already_occupied_in_type_ns = def_map
+                .with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
+                    def_map[local_id].scope.get(&name).take_types().filter(|&id| id != *def_id)
+                })
+                .is_some();
+            return Some(ModPath::from_segments(
+                if name_already_occupied_in_type_ns { PathKind::Abs } else { PathKind::Plain },
+                vec![name],
+            ));
         }
     }
 
