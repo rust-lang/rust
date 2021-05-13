@@ -29,7 +29,8 @@ pub(crate) type DocumentationLink = String;
 /// Rewrite documentation links in markdown to point to an online host (e.g. docs.rs)
 pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Definition) -> String {
     let mut cb = broken_link_clone_cb;
-    let doc = Parser::new_with_broken_link_callback(markdown, Options::empty(), Some(&mut cb));
+    let doc =
+        Parser::new_with_broken_link_callback(markdown, Options::ENABLE_TASKLISTS, Some(&mut cb));
 
     let doc = map_links(doc, |target, title: &str| {
         // This check is imperfect, there's some overlap between valid intra-doc links
@@ -64,8 +65,7 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: &Defi
 pub(crate) fn remove_links(markdown: &str) -> String {
     let mut drop_link = false;
 
-    let mut opts = Options::empty();
-    opts.insert(Options::ENABLE_FOOTNOTES);
+    let opts = Options::ENABLE_TASKLISTS | Options::ENABLE_FOOTNOTES;
 
     let mut cb = |_: BrokenLink| {
         let empty = InlineStr::try_from("").unwrap();
@@ -123,7 +123,7 @@ pub(crate) fn extract_definitions_from_markdown(
 ) -> Vec<(TextRange, String, Option<hir::Namespace>)> {
     Parser::new_with_broken_link_callback(
         markdown,
-        Options::empty(),
+        Options::ENABLE_TASKLISTS,
         Some(&mut broken_link_clone_cb),
     )
     .into_offset_iter()
