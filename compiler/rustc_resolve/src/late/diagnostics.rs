@@ -6,7 +6,10 @@ use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
 use rustc_ast::visit::FnKind;
-use rustc_ast::{self as ast, Expr, ExprKind, Item, ItemKind, NodeId, Path, Ty, TyKind};
+use rustc_ast::{
+    self as ast, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind, NodeId, Path, Ty,
+    TyKind,
+};
 use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, SuggestionStyle};
@@ -1600,8 +1603,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if !self.diagnostic_metadata.currently_processing_generics && !single_uppercase_char {
             return None;
         }
-        match (self.diagnostic_metadata.current_item, single_uppercase_char) {
-            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _) if ident.name == sym::main => {
+        match (self.diagnostic_metadata.current_item, single_uppercase_char, self.diagnostic_metadata.currently_processing_generics) {
+            (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _, _) if ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
             (
@@ -1613,9 +1616,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         | kind @ ItemKind::Union(..),
                     ..
                 }),
-                true,
+                true, _
             )
-            | (Some(Item { kind, .. }), false) => {
+            // Without the 2nd `true`, we'd suggest `impl <T>` for `impl T` when a type `T` isn't found
+            | (Some(Item { kind: kind @ ItemKind::Impl(..), .. }), true, true)
+            | (Some(Item { kind, .. }), false, _) => {
                 // Likely missing type parameter.
                 if let Some(generics) = kind.generics() {
                     if span.overlaps(generics.span) {
@@ -1633,6 +1638,10 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     let (span, sugg) = if let [.., param] = &generics.params[..] {
                         let span = if let [.., bound] = &param.bounds[..] {
                             bound.span()
+                        } else if let GenericParam {
+                            kind: GenericParamKind::Const { ty, kw_span: _, default  }, ..
+                        } = param {
+                            default.as_ref().map(|def| def.value.span).unwrap_or(ty.span)
                         } else {
                             param.ident.span
                         };
