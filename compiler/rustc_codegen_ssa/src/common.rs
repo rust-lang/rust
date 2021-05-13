@@ -4,7 +4,8 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::mir::interpret::ConstValue;
+use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -193,4 +194,33 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 pub fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
     struct_span_err!(a, b, E0511, "{}", c).emit();
+}
+
+pub fn asm_const_to_str<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sp: Span,
+    const_value: ConstValue<'tcx>,
+    ty_and_layout: TyAndLayout<'tcx>,
+) -> String {
+    let scalar = match const_value {
+        ConstValue::Scalar(s) => s,
+        _ => {
+            span_bug!(sp, "expected Scalar for promoted asm const, but got {:#?}", const_value)
+        }
+    };
+    let value = scalar.assert_bits(ty_and_layout.size);
+    match ty_and_layout.ty.kind() {
+        ty::Uint(_) => value.to_string(),
+        ty::Int(int_ty) => match int_ty.normalize(tcx.sess.target.pointer_width) {
+            ty::IntTy::I8 => (value as i8).to_string(),
+            ty::IntTy::I16 => (value as i16).to_string(),
+            ty::IntTy::I32 => (value as i32).to_string(),
+            ty::IntTy::I64 => (value as i64).to_string(),
+            ty::IntTy::I128 => (value as i128).to_string(),
+            ty::IntTy::Isize => unreachable!(),
+        },
+        ty::Float(ty::FloatTy::F32) => f32::from_bits(value as u32).to_string(),
+        ty::Float(ty::FloatTy::F64) => f64::from_bits(value as u64).to_string(),
+        _ => span_bug!(sp, "asm const has bad type {}", ty_and_layout.ty),
+    }
 }

@@ -3,6 +3,7 @@
 
 use std::path::PathBuf;
 
+use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule, CrateInfo, ModuleKind};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -125,9 +126,19 @@ fn module_codegen(
             MonoItem::Static(def_id) => crate::constant::codegen_static(tcx, &mut module, def_id),
             MonoItem::GlobalAsm(item_id) => {
                 let item = cx.tcx.hir().item(item_id);
-                if let rustc_hir::ItemKind::GlobalAsm(rustc_hir::GlobalAsm { asm }) = item.kind {
-                    cx.global_asm.push_str(&*asm.as_str());
-                    cx.global_asm.push_str("\n\n");
+                if let rustc_hir::ItemKind::GlobalAsm(asm) = item.kind {
+                    if !asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
+                        cx.global_asm.push_str("\n.intel_syntax noprefix\n");
+                    } else {
+                        cx.global_asm.push_str("\n.att_syntax\n");
+                    }
+                    for piece in asm.template {
+                        match *piece {
+                            InlineAsmTemplatePiece::String(ref s) => cx.global_asm.push_str(s),
+                            InlineAsmTemplatePiece::Placeholder { .. } => todo!(),
+                        }
+                    }
+                    cx.global_asm.push_str("\n.att_syntax\n\n");
                 } else {
                     bug!("Expected GlobalAsm found {:?}", item);
                 }

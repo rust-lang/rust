@@ -16,6 +16,10 @@
 macro_rules! asm {
     () => {};
 }
+#[rustc_builtin_macro]
+macro_rules! global_asm {
+    () => {};
+}
 
 #[lang = "sized"]
 trait Sized {}
@@ -47,3 +51,7 @@ pub fn main() {
         //[arm]~^^^^ ERROR unknown directive
     }
 }
+
+global_asm!(".intel_syntax noprefix", "nop");
+//[x86_64]~^ WARN avoid using `.intel_syntax`
+// Assembler errors don't have line numbers, so no error on ARM

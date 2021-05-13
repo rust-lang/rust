@@ -1,8 +1,16 @@
-error[E0472]: asm! is unsupported on this target
-  --> $DIR/bad-arch.rs:16:9
+error[E0472]: inline assembly is unsupported on this target
+  --> $DIR/bad-arch.rs:20:9
    |
 LL |         asm!("");
    |         ^^^^^^^^^
 
-error: aborting due to previous error
+error[E0472]: inline assembly is unsupported on this target
+  --> $DIR/bad-arch.rs:25:1
+   |
+LL | global_asm!("");
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `global_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
 

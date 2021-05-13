@@ -390,8 +390,24 @@ fn collect_items_rec<'tcx>(
                 collect_neighbours(tcx, instance, &mut neighbors);
             });
         }
-        MonoItem::GlobalAsm(..) => {
+        MonoItem::GlobalAsm(item_id) => {
             recursion_depth_reset = None;
+
+            let item = tcx.hir().item(item_id);
+            if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+                for (op, op_sp) in asm.operands {
+                    match op {
+                        hir::InlineAsmOperand::Const { .. } => {
+                            // Only constants which resolve to a plain integer
+                            // are supported. Therefore the value should not
+                            // depend on any other items.
+                        }
+                        _ => span_bug!(*op_sp, "invalid operand type for global_asm!"),
+                    }
+                }
+            } else {
+                span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
+            }
         }
     }
 

@@ -15,7 +15,7 @@ pub mod tls;
 pub mod usercalls;
 
 #[cfg(not(test))]
-global_asm!(include_str!("entry.S"));
+global_asm!(include_str!("entry.S"), options(att_syntax));
 
 #[repr(C)]
 struct EntryReturn(u64, u64);

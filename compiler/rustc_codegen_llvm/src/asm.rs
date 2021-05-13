@@ -356,10 +356,49 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 impl AsmMethods for CodegenCx<'ll, 'tcx> {
-    fn codegen_global_asm(&self, ga: &hir::GlobalAsm) {
-        let asm = ga.asm.as_str();
+    fn codegen_global_asm(
+        &self,
+        template: &[InlineAsmTemplatePiece],
+        operands: &[GlobalAsmOperandRef],
+        options: InlineAsmOptions,
+        _line_spans: &[Span],
+    ) {
+        let asm_arch = self.tcx.sess.asm_arch.unwrap();
+
+        // Default to Intel syntax on x86
+        let intel_syntax = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
+            && !options.contains(InlineAsmOptions::ATT_SYNTAX);
+
+        // Build the template string
+        let mut template_str = String::new();
+        if intel_syntax {
+            template_str.push_str(".intel_syntax\n");
+        }
+        for piece in template {
+            match *piece {
+                InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
+                    match operands[operand_idx] {
+                        GlobalAsmOperandRef::Const { ref string } => {
+                            // Const operands get injected directly into the
+                            // template. Note that we don't need to escape $
+                            // here unlike normal inline assembly.
+                            template_str.push_str(string);
+                        }
+                    }
+                }
+            }
+        }
+        if intel_syntax {
+            template_str.push_str("\n.att_syntax\n");
+        }
+
         unsafe {
-            llvm::LLVMRustAppendModuleInlineAsm(self.llmod, asm.as_ptr().cast(), asm.len());
+            llvm::LLVMRustAppendModuleInlineAsm(
+                self.llmod,
+                template_str.as_ptr().cast(),
+                template_str.len(),
+            );
         }
     }
 }
