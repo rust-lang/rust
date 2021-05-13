@@ -10,11 +10,6 @@ note: existing binding defined here
    |
 LL |     let apple: i32;
    |         ^^^^^
-help: separate the discriminating character by an underscore like: `b_pple`
-  --> $DIR/similar_names.rs:15:9
-   |
-LL |     let bpple: i32;
-   |         ^^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/similar_names.rs:17:9
@@ -27,11 +22,6 @@ note: existing binding defined here
    |
 LL |     let apple: i32;
    |         ^^^^^
-help: separate the discriminating character by an underscore like: `c_pple`
-  --> $DIR/similar_names.rs:17:9
-   |
-LL |     let cpple: i32;
-   |         ^^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/similar_names.rs:41:9
@@ -43,11 +33,6 @@ note: existing binding defined here
   --> $DIR/similar_names.rs:40:9
    |
 LL |     let blubx: i32;
-   |         ^^^^^
-help: separate the discriminating character by an underscore like: `blub_y`
-  --> $DIR/similar_names.rs:41:9
-   |
-LL |     let bluby: i32;
    |         ^^^^^
 
 error: binding's name is too similar to existing binding
@@ -84,11 +69,6 @@ note: existing binding defined here
   --> $DIR/similar_names.rs:65:9
    |
 LL |     let parser: i32;
-   |         ^^^^^^
-help: separate the discriminating character by an underscore like: `parse_e`
-  --> $DIR/similar_names.rs:67:9
-   |
-LL |     let parsee: i32;
    |         ^^^^^^
 
 error: binding's name is too similar to existing binding
