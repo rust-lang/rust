@@ -118,6 +118,7 @@ register_builtin! {
     EAGER:
     (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
+    (concat_idents, ConcatIdents) => concat_idents_expand,
     (include, Include) => include_expand,
     (include_bytes, IncludeBytes) => include_bytes_expand,
     (include_str, IncludeStr) => include_str_expand,
@@ -371,6 +372,28 @@ fn concat_expand(
         }
     }
     ExpandResult { value: Some(ExpandedEager::new(quote!(#text), FragmentKind::Expr)), err }
+}
+
+fn concat_idents_expand(
+    _db: &dyn AstDatabase,
+    _arg_id: EagerMacroId,
+    tt: &tt::Subtree,
+) -> ExpandResult<Option<ExpandedEager>> {
+    let mut err = None;
+    let mut ident = String::new();
+    for (i, t) in tt.token_trees.iter().enumerate() {
+        match t {
+            tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => {
+                ident.push_str(id.text.as_str());
+            }
+            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
+            _ => {
+                err.get_or_insert(mbe::ExpandError::UnexpectedToken);
+            }
+        }
+    }
+    let ident = tt::Ident { text: ident.into(), id: tt::TokenId::unspecified() };
+    ExpandResult { value: Some(ExpandedEager::new(quote!(#ident), FragmentKind::Expr)), err }
 }
 
 fn relative_file(
@@ -792,6 +815,18 @@ mod tests {
             concat!("foo", "r", 0, r#"bar"#, "\n", false);
             "##,
             expect![[r#""foor0bar\nfalse""#]],
+        );
+    }
+
+    #[test]
+    fn test_concat_idents_expand() {
+        check_expansion(
+            r##"
+            #[rustc_builtin_macro]
+            macro_rules! concat_idents {}
+            concat_idents!(foo, bar);
+            "##,
+            expect![[r#"foobar"#]],
         );
     }
 }
