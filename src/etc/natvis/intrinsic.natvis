@@ -187,4 +187,18 @@
       <ExpandedItem Condition="tag() == 15" Optional="true">Variant15</ExpandedItem>
     </Expand>
   </Type>
+
+  <!-- $T1 is the name of the enum, $T2 is the low value of the dataful variant tag, $T3 is the high value of the dataful variant tag, $T4 is the name of the dataful variant -->
+  <Type Name="_enum&lt;*, *, *, *&gt;">
+    <Intrinsic Name="tag" Expression="discriminant$.discriminant" />
+    <Intrinsic Name="is_dataful" Expression="tag() &gt;= $T2 &amp;&amp; tag() &lt;= $T3" />
+    <DisplayString Condition="is_dataful()">{"$T4",sb}({dataful_variant})</DisplayString>
+    <DisplayString Condition="!is_dataful()">{discriminant$.discriminant,en}</DisplayString>
+    <Expand>
+      <ExpandedItem Condition="is_dataful()">dataful_variant</ExpandedItem>
+      <Synthetic Condition="is_dataful()" Name="[variant]">
+        <DisplayString>{"$T4",sb}</DisplayString>
+      </Synthetic>
+    </Expand>
+  </Type>
 </AutoVisualizer>
