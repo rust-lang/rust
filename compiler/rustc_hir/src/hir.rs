@@ -12,7 +12,7 @@ pub use rustc_ast::{CaptureBy, Movability, Mutability};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_macros::HashStable_Generic;
-use rustc_span::source_map::{SourceMap, Spanned};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{def_id::LocalDefId, BytePos};
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
@@ -314,11 +314,18 @@ pub struct GenericArgs<'hir> {
     /// This is required mostly for pretty-printing and diagnostics,
     /// but also for changing lifetime elision rules to be "function-like".
     pub parenthesized: bool,
+    /// The span encompassing arguments and the surrounding brackets `<>` or `()`
+    ///       Foo<A, B, AssocTy = D>           Fn(T, U, V) -> W
+    ///          ^^^^^^^^^^^^^^^^^^^             ^^^^^^^^^
+    /// Note that this may be:
+    /// - empty, if there are no generic brackets (but there may be hidden lifetimes)
+    /// - dummy, if this was generated while desugaring
+    pub span_ext: Span,
 }
 
 impl GenericArgs<'_> {
     pub const fn none() -> Self {
-        Self { args: &[], bindings: &[], parenthesized: false }
+        Self { args: &[], bindings: &[], parenthesized: false, span_ext: DUMMY_SP }
     }
 
     pub fn inputs(&self) -> &[Ty<'_>] {
@@ -356,33 +363,17 @@ impl GenericArgs<'_> {
         own_counts
     }
 
+    /// The span encompassing the text inside the surrounding brackets.
+    /// It will also include bindings if they aren't in the form `-> Ret`
+    /// Returns `None` if the span is empty (e.g. no brackets) or dummy
     pub fn span(&self) -> Option<Span> {
-        self.args
-            .iter()
-            .filter(|arg| !arg.is_synthetic())
-            .map(|arg| arg.span())
-            .reduce(|span1, span2| span1.to(span2))
+        let span_ext = self.span_ext()?;
+        Some(span_ext.with_lo(span_ext.lo() + BytePos(1)).with_hi(span_ext.hi() - BytePos(1)))
     }
 
     /// Returns span encompassing arguments and their surrounding `<>` or `()`
-    pub fn span_ext(&self, sm: &SourceMap) -> Option<Span> {
-        let mut span = self.span()?;
-
-        let (o, c) = if self.parenthesized { ('(', ')') } else { ('<', '>') };
-
-        if let Ok(snippet) = sm.span_to_snippet(span) {
-            let snippet = snippet.as_bytes();
-
-            if snippet[0] != (o as u8) || snippet[snippet.len() - 1] != (c as u8) {
-                span = sm.span_extend_to_prev_char(span, o, true);
-                span = span.with_lo(span.lo() - BytePos(1));
-
-                span = sm.span_extend_to_next_char(span, c, true);
-                span = span.with_hi(span.hi() + BytePos(1));
-            }
-        }
-
-        Some(span)
+    pub fn span_ext(&self) -> Option<Span> {
+        Some(self.span_ext).filter(|span| !span.is_empty())
     }
 
     pub fn is_empty(&self) -> bool {

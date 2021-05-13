@@ -278,7 +278,7 @@ impl ParenthesizedArgs {
             .cloned()
             .map(|input| AngleBracketedArg::Arg(GenericArg::Type(input)))
             .collect();
-        AngleBracketedArgs { span: self.span, args }
+        AngleBracketedArgs { span: self.inputs_span, args }
     }
 }
 

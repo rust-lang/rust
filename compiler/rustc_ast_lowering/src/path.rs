@@ -10,7 +10,7 @@ use rustc_hir::GenericArg;
 use rustc_session::lint::builtin::ELIDED_LIFETIMES_IN_PATHS;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use smallvec::smallvec;
 use tracing::debug;
@@ -267,23 +267,34 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 },
             }
         } else {
-            self.lower_angle_bracketed_parameter_data(&Default::default(), param_mode, itctx)
+            (
+                GenericArgsCtor {
+                    args: Default::default(),
+                    bindings: &[],
+                    parenthesized: false,
+                    span: path_span.shrink_to_hi(),
+                },
+                param_mode == ParamMode::Optional,
+            )
         };
 
         let has_lifetimes =
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));
-        let first_generic_span = generic_args
-            .args
-            .iter()
-            .map(|a| a.span())
-            .chain(generic_args.bindings.iter().map(|b| b.span))
-            .next();
         if !generic_args.parenthesized && !has_lifetimes {
+            // Note: these spans are used for diagnostics when they can't be inferred.
+            // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
+            let elided_lifetime_span = if generic_args.span.is_empty() {
+                // If there are no brackets, use the identifier span.
+                segment.ident.span
+            } else if generic_args.is_empty() {
+                // If there are brackets, but not generic arguments, then use the opening bracket
+                generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
+            } else {
+                // Else use an empty span right after the opening bracket.
+                generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo()
+            };
             generic_args.args = self
-                .elided_path_lifetimes(
-                    first_generic_span.map_or(segment.ident.span, |s| s.shrink_to_lo()),
-                    expected_lifetimes,
-                )
+                .elided_path_lifetimes(elided_lifetime_span, expected_lifetimes)
                 .map(GenericArg::Lifetime)
                 .chain(generic_args.args.into_iter())
                 .collect();
@@ -292,15 +303,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let no_non_lt_args = generic_args.args.len() == expected_lifetimes;
                 let no_bindings = generic_args.bindings.is_empty();
                 let (incl_angl_brckt, insertion_sp, suggestion) = if no_non_lt_args && no_bindings {
-                    // If there are no (non-implicit) generic args or associated type
-                    // bindings, our suggestion includes the angle brackets.
+                    // If there are no generic args, our suggestion can include the angle brackets.
                     (true, path_span.shrink_to_hi(), format!("<{}>", anon_lt_suggestion))
                 } else {
-                    // Otherwise (sorry, this is kind of gross) we need to infer the
-                    // place to splice in the `'_, ` from the generics that do exist.
-                    let first_generic_span = first_generic_span
-                        .expect("already checked that non-lifetime args or bindings exist");
-                    (false, first_generic_span.shrink_to_lo(), format!("{}, ", anon_lt_suggestion))
+                    // Otherwise we'll insert a `'_, ` right after the opening bracket.
+                    let span = generic_args
+                        .span
+                        .with_lo(generic_args.span.lo() + BytePos(1))
+                        .shrink_to_lo();
+                    (false, span, format!("{}, ", anon_lt_suggestion))
                 };
                 match self.anonymous_lifetime_mode {
                     // In create-parameter mode we error here because we don't want to support
@@ -362,7 +373,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir_id: Some(id),
             res: Some(self.lower_res(res)),
             infer_args,
-            args: if generic_args.is_empty() {
+            args: if generic_args.is_empty() && generic_args.span.is_empty() {
                 None
             } else {
                 Some(self.arena.alloc(generic_args.into_generic_args(self.arena)))
@@ -395,7 +406,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AngleBracketedArg::Arg(_) => None,
         }));
-        let ctor = GenericArgsCtor { args, bindings, parenthesized: false };
+        let ctor = GenericArgsCtor { args, bindings, parenthesized: false, span: data.span };
         (ctor, !has_non_lt_args && param_mode == ParamMode::Optional)
     }
 
@@ -420,7 +431,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let args = smallvec![GenericArg::Type(this.ty_tup(*inputs_span, inputs))];
             let binding = this.output_ty_binding(output_ty.span, output_ty);
             (
-                GenericArgsCtor { args, bindings: arena_vec![this; binding], parenthesized: true },
+                GenericArgsCtor {
+                    args,
+                    bindings: arena_vec![this; binding],
+                    parenthesized: true,
+                    span: data.inputs_span,
+                },
                 false,
             )
         })
@@ -436,7 +452,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = hir::TypeBindingKind::Equality { ty };
         let args = arena_vec![self;];
         let bindings = arena_vec![self;];
-        let gen_args = self.arena.alloc(hir::GenericArgs { args, bindings, parenthesized: false });
+        let gen_args = self.arena.alloc(hir::GenericArgs {
+            args,
+            bindings,
+            parenthesized: false,
+            span_ext: DUMMY_SP,
+        });
         hir::TypeBinding { hir_id: self.next_id(), gen_args, span, ident, kind }
     }
 }

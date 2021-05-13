@@ -94,14 +94,10 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         gen_args: &'a hir::GenericArgs<'a>,
         def_id: DefId,
     ) -> Self {
-        let angle_brackets = if gen_args.is_empty() {
-            AngleBrackets::Missing
+        let angle_brackets = if gen_args.span_ext().is_none() {
+            if gen_args.is_empty() { AngleBrackets::Missing } else { AngleBrackets::Implied }
         } else {
-            if gen_args.span().is_none() {
-                AngleBrackets::Implied
-            } else {
-                AngleBrackets::Available
-            }
+            AngleBrackets::Available
         };
 
         Self {
@@ -337,7 +333,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             ),
         };
 
-        if self.gen_args.span().is_some() {
+        if self.gen_args.span_ext().is_some() {
             format!(
                 "this {} takes {}{} {} argument{} but {} {} supplied",
                 def_kind,
@@ -579,27 +575,32 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 err.span_suggestion_verbose(span, &msg, sugg, Applicability::HasPlaceholders);
             }
             AngleBrackets::Available => {
-                // angle brackets exist, so we just insert missing arguments after the existing
-                // type or const args
+                let gen_args_span = self.gen_args.span().unwrap();
+                let sugg_offset =
+                    self.get_lifetime_args_offset() + self.num_provided_type_or_const_args();
 
-                let index_last_provided_arg =
-                    self.get_lifetime_args_offset() + self.num_provided_type_or_const_args() - 1;
-                if index_last_provided_arg < self.gen_args.args.len() {
-                    let first_arg_span =
-                        self.gen_args.args[index_last_provided_arg].span().shrink_to_hi();
-                    let source_map = self.tcx.sess.source_map();
-                    if let Ok(first_gen_arg) = source_map.span_to_snippet(first_arg_span) {
-                        let sugg = format!("{}, {}", first_gen_arg, suggested_args);
-                        debug!("sugg: {:?}", sugg);
+                let (sugg_span, is_first) = if sugg_offset == 0 {
+                    (gen_args_span.shrink_to_lo(), true)
+                } else {
+                    let arg_span = self.gen_args.args[sugg_offset - 1].span();
+                    // If we came here then inferred lifetimes's spans can only point
+                    // to either the opening bracket or to the space right after.
+                    // Both of these spans have an `hi` lower than or equal to the span
+                    // of the generics excluding the brackets.
+                    // This allows us to check if `arg_span` is the artificial span of
+                    // an inferred lifetime, in which case the generic we're suggesting to
+                    // add will be the first visible, even if it isn't the actual first generic.
+                    (arg_span.shrink_to_hi(), arg_span.hi() <= gen_args_span.lo())
+                };
 
-                        err.span_suggestion_verbose(
-                            first_arg_span,
-                            &msg,
-                            sugg,
-                            Applicability::HasPlaceholders,
-                        );
-                    }
-                }
+                let sugg_prefix = if is_first { "" } else { ", " };
+                let sugg_suffix =
+                    if is_first && !self.gen_args.bindings.is_empty() { ", " } else { "" };
+
+                let sugg = format!("{}{}{}", sugg_prefix, suggested_args, sugg_suffix);
+                debug!("sugg: {:?}", sugg);
+
+                err.span_suggestion_verbose(sugg_span, &msg, sugg, Applicability::HasPlaceholders);
             }
         }
     }
@@ -695,13 +696,11 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         };
 
         if remove_entire_generics {
-            let sm = self.tcx.sess.source_map();
-
             let span = self
                 .path_segment
                 .args
                 .unwrap()
-                .span_ext(sm)
+                .span_ext()
                 .unwrap()
                 .with_lo(self.path_segment.ident.span.hi());
 
