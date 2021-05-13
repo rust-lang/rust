@@ -17,7 +17,7 @@ use ide_db::ty_filter::TryEnum;
 
 // Assist: replace_unwrap_with_match
 //
-// Replaces `unwrap` a `match` expression. Works for Result and Option.
+// Replaces `unwrap` with a `match` expression. Works for Result and Option.
 //
 // ```
 // enum Result<T, E> { Ok(T), Err(E) }
