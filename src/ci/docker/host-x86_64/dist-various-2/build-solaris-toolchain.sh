@@ -6,21 +6,11 @@ source shared.sh
 ARCH=$1
 LIB_ARCH=$2
 APT_ARCH=$3
+MANUFACTURER=$4
 BINUTILS=2.28.1
 GCC=6.5.0
 
-# Choose correct target based on the $ARCH
-case "$ARCH" in
-x86_64)
-  TARGET=x86_64-pc-solaris2.10
-  ;;
-sparcv9)
-  TARGET=sparcv9-sun-solaris2.10
-  ;;
-*)
-  printf 'ERROR: unknown architecture: %s\n' "$ARCH"
-  exit 1
-esac
+TARGET=${ARCH}-${MANUFACTURER}-solaris2.10
 
 # First up, build binutils
 mkdir binutils
