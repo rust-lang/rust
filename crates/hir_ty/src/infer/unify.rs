@@ -118,16 +118,13 @@ pub(crate) fn unify(
             chalk_ir::GenericArgData::Const(c) => c.inference_var(&Interner),
         } == Some(iv))
     };
-    let fallback = |iv, kind, default| match kind {
-        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv).map_or(default, |i| {
-            BoundVar::new(DebruijnIndex::INNERMOST, i).to_ty(&Interner).cast(&Interner)
-        }),
-        chalk_ir::VariableKind::Lifetime => find_var(iv).map_or(default, |i| {
-            BoundVar::new(DebruijnIndex::INNERMOST, i).to_lifetime(&Interner).cast(&Interner)
-        }),
-        chalk_ir::VariableKind::Const(ty) => find_var(iv).map_or(default, |i| {
-            BoundVar::new(DebruijnIndex::INNERMOST, i).to_const(&Interner, ty).cast(&Interner)
-        }),
+    let fallback = |iv, kind, default, binder| match kind {
+        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_ty(&Interner).cast(&Interner)),
+        chalk_ir::VariableKind::Lifetime => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_lifetime(&Interner).cast(&Interner)),
+        chalk_ir::VariableKind::Const(ty) => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_const(&Interner, ty).cast(&Interner)),
     };
     Some(Substitution::from_iter(
         &Interner,
@@ -212,7 +209,7 @@ impl<'a> InferenceTable<'a> {
     pub(crate) fn resolve_with_fallback<T>(
         &mut self,
         t: T,
-        fallback: impl Fn(InferenceVar, VariableKind, GenericArg) -> GenericArg,
+        fallback: impl Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     ) -> T::Result
     where
         T: HasInterner<Interner = Interner> + Fold<Interner>,
@@ -224,50 +221,25 @@ impl<'a> InferenceTable<'a> {
         &mut self,
         var_stack: &mut Vec<InferenceVar>,
         t: T,
-        fallback: &impl Fn(InferenceVar, VariableKind, GenericArg) -> GenericArg,
+        fallback: &impl Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg,
     ) -> T::Result
     where
         T: HasInterner<Interner = Interner> + Fold<Interner>,
     {
-        fold_tys(
-            t,
-            |ty, _| match ty.kind(&Interner) {
-                &TyKind::InferenceVar(tv, kind) => {
-                    if var_stack.contains(&tv) {
-                        cov_mark::hit!(type_var_cycles_resolve_as_possible);
-                        // recursive type
-                        let default =
-                            self.type_variable_table.fallback_value(tv, kind).cast(&Interner);
-                        return fallback(tv, VariableKind::Ty(kind), default)
-                            .assert_ty_ref(&Interner)
-                            .clone();
-                    }
-                    if let Some(known_ty) = self.var_unification_table.probe_var(tv) {
-                        // known_ty may contain other variables that are known by now
-                        var_stack.push(tv);
-                        let result = self.resolve_with_fallback_inner(
-                            var_stack,
-                            known_ty.assert_ty_ref(&Interner).clone(),
-                            fallback,
-                        );
-                        var_stack.pop();
-                        result
-                    } else {
-                        let default =
-                            self.type_variable_table.fallback_value(tv, kind).cast(&Interner);
-                        fallback(tv, VariableKind::Ty(kind), default)
-                            .assert_ty_ref(&Interner)
-                            .clone()
-                    }
-                }
-                _ => ty,
+        t.fold_with(
+            &mut resolve::Resolver {
+                type_variable_table: &self.type_variable_table,
+                var_unification_table: &mut self.var_unification_table,
+                var_stack,
+                fallback,
             },
             DebruijnIndex::INNERMOST,
         )
+        .expect("fold failed unexpectedly")
     }
 
     pub(crate) fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
-        self.resolve_with_fallback(ty, |_, _, d| d)
+        self.resolve_with_fallback(ty, |_, _, d, _| d)
     }
 
     // FIXME get rid of this, instead resolve shallowly where necessary
@@ -316,9 +288,7 @@ impl<'a> InferenceTable<'a> {
     }
 
     /// Resolves the type as far as currently possible, replacing type variables
-    /// by their known types. All types returned by the infer_* functions should
-    /// be resolved as far as possible, i.e. contain no type variables with
-    /// known type.
+    /// by their known types.
     fn resolve_ty_as_possible_inner(&mut self, tv_stack: &mut Vec<InferenceVar>, ty: Ty) -> Ty {
         fold_tys(
             ty,
@@ -354,5 +324,104 @@ impl<'a> fmt::Debug for InferenceTable<'a> {
         f.debug_struct("InferenceTable")
             .field("num_vars", &self.type_variable_table.inner.len())
             .finish()
+    }
+}
+
+mod resolve {
+    use super::{ChalkInferenceTable, TypeVariableTable};
+    use crate::{
+        ConcreteConst, Const, ConstData, ConstValue, DebruijnIndex, GenericArg, InferenceVar,
+        Interner, Ty, TyVariableKind, VariableKind,
+    };
+    use chalk_ir::{
+        cast::Cast,
+        fold::{Fold, Folder},
+        Fallible,
+    };
+    use hir_def::type_ref::ConstScalar;
+
+    pub(super) struct Resolver<'a, F> {
+        pub type_variable_table: &'a TypeVariableTable,
+        pub var_unification_table: &'a mut ChalkInferenceTable,
+        pub var_stack: &'a mut Vec<InferenceVar>,
+        pub fallback: F,
+    }
+    impl<'a, 'i, F> Folder<'i, Interner> for Resolver<'a, F>
+    where
+        F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg + 'i,
+    {
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+            self
+        }
+
+        fn interner(&self) -> &'i Interner {
+            &Interner
+        }
+
+        fn fold_inference_ty(
+            &mut self,
+            var: InferenceVar,
+            kind: TyVariableKind,
+            outer_binder: DebruijnIndex,
+        ) -> Fallible<Ty> {
+            let var = self.var_unification_table.inference_var_root(var);
+            if self.var_stack.contains(&var) {
+                cov_mark::hit!(type_var_cycles_resolve_as_possible);
+                // recursive type
+                let default = self.type_variable_table.fallback_value(var, kind).cast(&Interner);
+                return Ok((self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                    .assert_ty_ref(&Interner)
+                    .clone());
+            }
+            let result = if let Some(known_ty) = self.var_unification_table.probe_var(var) {
+                // known_ty may contain other variables that are known by now
+                self.var_stack.push(var);
+                let result =
+                    known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
+                self.var_stack.pop();
+                result.assert_ty_ref(&Interner).clone()
+            } else {
+                let default = self.type_variable_table.fallback_value(var, kind).cast(&Interner);
+                (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
+                    .assert_ty_ref(&Interner)
+                    .clone()
+            };
+            Ok(result)
+        }
+
+        fn fold_inference_const(
+            &mut self,
+            ty: Ty,
+            var: InferenceVar,
+            outer_binder: DebruijnIndex,
+        ) -> Fallible<Const> {
+            let var = self.var_unification_table.inference_var_root(var);
+            let default = ConstData {
+                ty: ty.clone(),
+                value: ConstValue::Concrete(ConcreteConst { interned: ConstScalar::Unknown }),
+            }
+            .intern(&Interner)
+            .cast(&Interner);
+            if self.var_stack.contains(&var) {
+                cov_mark::hit!(type_var_cycles_resolve_as_possible);
+                // recursive
+                return Ok((self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
+                    .assert_const_ref(&Interner)
+                    .clone());
+            }
+            let result = if let Some(known_ty) = self.var_unification_table.probe_var(var) {
+                // known_ty may contain other variables that are known by now
+                self.var_stack.push(var);
+                let result =
+                    known_ty.fold_with(self, outer_binder).expect("fold failed unexpectedly");
+                self.var_stack.pop();
+                result.assert_const_ref(&Interner).clone()
+            } else {
+                (self.fallback)(var, VariableKind::Const(ty), default, outer_binder)
+                    .assert_const_ref(&Interner)
+                    .clone()
+            };
+            Ok(result)
+        }
     }
 }
