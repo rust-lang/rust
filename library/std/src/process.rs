@@ -1908,6 +1908,10 @@ pub fn exit(code: i32) -> ! {
 /// this function at a known point where there are no more destructors left
 /// to run.
 ///
+/// The process's termination will be similar to that from the C `abort()`
+/// function.  On Unix, the process will die with signal `SIGABRT`, which
+/// typically means that the shell prints "Aborted".
+///
 /// # Examples
 ///
 /// ```no_run
