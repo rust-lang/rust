@@ -322,3 +322,27 @@ pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     }
     inner(ty, 0)
 }
+
+/// Returns `true` if types `a` and `b` are same types having same `Const` generic args,
+/// otherwise returns `false`
+pub fn same_type_and_consts(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    match (&a.kind(), &b.kind()) {
+        (&ty::Adt(did_a, substs_a), &ty::Adt(did_b, substs_b)) => {
+            if did_a != did_b {
+                return false;
+            }
+
+            substs_a
+                .iter()
+                .zip(substs_b.iter())
+                .all(|(arg_a, arg_b)| match (arg_a.unpack(), arg_b.unpack()) {
+                    (GenericArgKind::Const(inner_a), GenericArgKind::Const(inner_b)) => inner_a == inner_b,
+                    (GenericArgKind::Type(type_a), GenericArgKind::Type(type_b)) => {
+                        same_type_and_consts(type_a, type_b)
+                    },
+                    _ => true,
+                })
+        },
+        _ => a == b,
+    }
+}
