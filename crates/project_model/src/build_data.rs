@@ -143,6 +143,7 @@ impl WorkspaceBuildData {
             cmd.env("RA_RUSTC_WRAPPER", "1");
         }
 
+        cmd.current_dir(cargo_toml.parent().unwrap());
         cmd.args(&["check", "--quiet", "--workspace", "--message-format=json", "--manifest-path"])
             .arg(cargo_toml.as_ref());
 
