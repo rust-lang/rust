@@ -137,7 +137,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                         self.loc,
                         InteriorOfSliceOrArray {
                             ty: place_ty,
-                            is_index: matches!(elem, ProjectionElem::Index(..))
+                            is_index: matches!(elem, ProjectionElem::Index(..)),
                         },
                     ));
                 }
