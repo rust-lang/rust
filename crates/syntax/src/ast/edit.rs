@@ -80,81 +80,6 @@ where
     }
 }
 
-impl ast::Impl {
-    #[must_use]
-    pub fn with_assoc_item_list(&self, items: ast::AssocItemList) -> ast::Impl {
-        let mut to_insert: ArrayVec<SyntaxElement, 2> = ArrayVec::new();
-        if let Some(old_items) = self.assoc_item_list() {
-            let to_replace: SyntaxElement = old_items.syntax().clone().into();
-            to_insert.push(items.syntax().clone().into());
-            self.replace_children(single_node(to_replace), to_insert)
-        } else {
-            to_insert.push(make::tokens::single_space().into());
-            to_insert.push(items.syntax().clone().into());
-            self.insert_children(InsertPosition::Last, to_insert)
-        }
-    }
-}
-
-impl ast::AssocItemList {
-    #[must_use]
-    pub fn append_items(
-        &self,
-        items: impl IntoIterator<Item = ast::AssocItem>,
-    ) -> ast::AssocItemList {
-        let mut res = self.clone();
-        if !self.syntax().text().contains_char('\n') {
-            res = make_multiline(res);
-        }
-        items.into_iter().for_each(|it| res = res.append_item(it));
-        res.fixup_trailing_whitespace().unwrap_or(res)
-    }
-
-    #[must_use]
-    pub fn append_item(&self, item: ast::AssocItem) -> ast::AssocItemList {
-        let (indent, position, whitespace) = match self.assoc_items().last() {
-            Some(it) => (
-                leading_indent(it.syntax()).unwrap_or_default().to_string(),
-                InsertPosition::After(it.syntax().clone().into()),
-                "\n\n",
-            ),
-            None => match self.l_curly_token() {
-                Some(it) => (
-                    "    ".to_string() + &leading_indent(self.syntax()).unwrap_or_default(),
-                    InsertPosition::After(it.into()),
-                    "\n",
-                ),
-                None => return self.clone(),
-            },
-        };
-        let ws = tokens::WsBuilder::new(&format!("{}{}", whitespace, indent));
-        let to_insert: ArrayVec<SyntaxElement, 2> =
-            [ws.ws().into(), item.syntax().clone().into()].into();
-        self.insert_children(position, to_insert)
-    }
-
-    /// Remove extra whitespace between last item and closing curly brace.
-    fn fixup_trailing_whitespace(&self) -> Option<ast::AssocItemList> {
-        let first_token_after_items =
-            self.assoc_items().last()?.syntax().next_sibling_or_token()?;
-        let last_token_before_curly = self.r_curly_token()?.prev_sibling_or_token()?;
-        if last_token_before_curly != first_token_after_items {
-            // there is something more between last item and
-            // right curly than just whitespace - bail out
-            return None;
-        }
-        let whitespace =
-            last_token_before_curly.clone().into_token().and_then(ast::Whitespace::cast)?;
-        let text = whitespace.syntax().text();
-        let newline = text.rfind('\n')?;
-        let keep = tokens::WsBuilder::new(&text[newline..]);
-        Some(self.replace_children(
-            first_token_after_items..=last_token_before_curly,
-            std::iter::once(keep.ws().into()),
-        ))
-    }
-}
-
 impl ast::RecordExprFieldList {
     #[must_use]
     pub fn append_field(&self, field: &ast::RecordExprField) -> ast::RecordExprFieldList {
@@ -234,21 +159,6 @@ impl ast::RecordExprFieldList {
 impl ast::TypeAlias {
     #[must_use]
     pub fn remove_bounds(&self) -> ast::TypeAlias {
-        let colon = match self.colon_token() {
-            Some(it) => it,
-            None => return self.clone(),
-        };
-        let end = match self.type_bound_list() {
-            Some(it) => it.syntax().clone().into(),
-            None => colon.clone().into(),
-        };
-        self.replace_children(colon.into()..=end, iter::empty())
-    }
-}
-
-impl ast::TypeParam {
-    #[must_use]
-    pub fn remove_bounds(&self) -> ast::TypeParam {
         let colon = match self.colon_token() {
             Some(it) => it,
             None => return self.clone(),
@@ -411,61 +321,6 @@ impl ast::MatchArmList {
     }
 }
 
-impl ast::GenericParamList {
-    #[must_use]
-    pub fn append_params(
-        &self,
-        params: impl IntoIterator<Item = ast::GenericParam>,
-    ) -> ast::GenericParamList {
-        let mut res = self.clone();
-        params.into_iter().for_each(|it| res = res.append_param(it));
-        res
-    }
-
-    #[must_use]
-    pub fn append_param(&self, item: ast::GenericParam) -> ast::GenericParamList {
-        let space = tokens::single_space();
-
-        let mut to_insert: ArrayVec<SyntaxElement, 4> = ArrayVec::new();
-        if self.generic_params().next().is_some() {
-            to_insert.push(space.into());
-        }
-        to_insert.push(item.syntax().clone().into());
-
-        macro_rules! after_l_angle {
-            () => {{
-                let anchor = match self.l_angle_token() {
-                    Some(it) => it.into(),
-                    None => return self.clone(),
-                };
-                InsertPosition::After(anchor)
-            }};
-        }
-
-        macro_rules! after_field {
-            ($anchor:expr) => {
-                if let Some(comma) = $anchor
-                    .syntax()
-                    .siblings_with_tokens(Direction::Next)
-                    .find(|it| it.kind() == T![,])
-                {
-                    InsertPosition::After(comma)
-                } else {
-                    to_insert.insert(0, make::token(T![,]).into());
-                    InsertPosition::After($anchor.syntax().clone().into())
-                }
-            };
-        }
-
-        let position = match self.generic_params().last() {
-            Some(it) => after_field!(it),
-            None => after_l_angle!(),
-        };
-
-        self.insert_children(position, to_insert)
-    }
-}
-
 #[must_use]
 pub fn remove_attrs_and_docs<N: ast::AttrsOwner>(node: &N) -> N {
     N::cast(remove_attrs_and_docs_inner(node.syntax().clone())).unwrap()
@@ -516,6 +371,12 @@ impl ops::Add<u8> for IndentLevel {
 }
 
 impl IndentLevel {
+    pub fn single() -> IndentLevel {
+        IndentLevel(0)
+    }
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
     pub fn from_element(element: &SyntaxElement) -> IndentLevel {
         match element {
             rowan::NodeOrToken::Node(it) => IndentLevel::from_node(it),

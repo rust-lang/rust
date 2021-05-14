@@ -2,11 +2,16 @@
 
 use std::iter::empty;
 
-use parser::T;
+use parser::{SyntaxKind, T};
+use rowan::SyntaxElement;
 
 use crate::{
     algo::neighbor,
-    ast::{self, edit::AstNodeEdit, make, GenericParamsOwner, WhereClause},
+    ast::{
+        self,
+        edit::{AstNodeEdit, IndentLevel},
+        make, GenericParamsOwner,
+    },
     ted::{self, Position},
     AstNode, AstToken, Direction,
 };
@@ -37,7 +42,7 @@ impl GenericParamsOwnerEdit for ast::Fn {
         }
     }
 
-    fn get_or_create_where_clause(&self) -> WhereClause {
+    fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(ty) = self.ret_type() {
                 Position::after(ty.syntax())
@@ -67,7 +72,7 @@ impl GenericParamsOwnerEdit for ast::Impl {
         }
     }
 
-    fn get_or_create_where_clause(&self) -> WhereClause {
+    fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(items) = self.assoc_item_list() {
                 Position::before(items.syntax())
@@ -97,7 +102,7 @@ impl GenericParamsOwnerEdit for ast::Trait {
         }
     }
 
-    fn get_or_create_where_clause(&self) -> WhereClause {
+    fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(items) = self.assoc_item_list() {
                 Position::before(items.syntax())
@@ -127,7 +132,7 @@ impl GenericParamsOwnerEdit for ast::Struct {
         }
     }
 
-    fn get_or_create_where_clause(&self) -> WhereClause {
+    fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let tfl = self.field_list().and_then(|fl| match fl {
                 ast::FieldList::RecordFieldList(_) => None,
@@ -165,7 +170,7 @@ impl GenericParamsOwnerEdit for ast::Enum {
         }
     }
 
-    fn get_or_create_where_clause(&self) -> WhereClause {
+    fn get_or_create_where_clause(&self) -> ast::WhereClause {
         if self.where_clause().is_none() {
             let position = if let Some(gpl) = self.generic_param_list() {
                 Position::after(gpl.syntax())
@@ -269,6 +274,59 @@ impl ast::Use {
             }
         }
         ted::remove(self.syntax())
+    }
+}
+
+impl ast::Impl {
+    pub fn get_or_create_assoc_item_list(&self) -> ast::AssocItemList {
+        if self.assoc_item_list().is_none() {
+            let assoc_item_list = make::assoc_item_list().clone_for_update();
+            ted::append_child(self.syntax(), assoc_item_list.syntax());
+        }
+        self.assoc_item_list().unwrap()
+    }
+}
+
+impl ast::AssocItemList {
+    pub fn add_item(&self, item: ast::AssocItem) {
+        let (indent, position, whitespace) = match self.assoc_items().last() {
+            Some(last_item) => (
+                IndentLevel::from_node(last_item.syntax()),
+                Position::after(last_item.syntax()),
+                "\n\n",
+            ),
+            None => match self.l_curly_token() {
+                Some(l_curly) => {
+                    self.normalize_ws_between_braces();
+                    (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
+                }
+                None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
+            },
+        };
+        let elements: Vec<SyntaxElement<_>> = vec![
+            make::tokens::whitespace(&format!("{}{}", whitespace, indent)).into(),
+            item.syntax().clone().into(),
+        ];
+        ted::insert_all(position, elements);
+    }
+
+    fn normalize_ws_between_braces(&self) -> Option<()> {
+        let l = self.l_curly_token()?;
+        let r = self.r_curly_token()?;
+        let indent = IndentLevel::from_node(self.syntax());
+
+        match l.next_sibling_or_token() {
+            Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
+                if ws.next_sibling_or_token()?.into_token()? == r {
+                    ted::replace(ws, make::tokens::whitespace(&format!("\n{}", indent)));
+                }
+            }
+            Some(ws) if ws.kind() == T!['}'] => {
+                ted::insert(Position::after(l), make::tokens::whitespace(&format!("\n{}", indent)));
+            }
+            _ => (),
+        }
+        Some(())
     }
 }
 

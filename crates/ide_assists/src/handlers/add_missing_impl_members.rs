@@ -64,7 +64,6 @@ pub(crate) fn add_missing_impl_members(acc: &mut Assists, ctx: &AssistContext) -
 // impl Trait for () {
 //     type X = ();
 //     fn foo(&self) {}$0
-//
 // }
 // ```
 // ->
@@ -195,6 +194,7 @@ impl Foo for S {
     fn baz(&self) {
         todo!()
     }
+
 }"#,
         );
     }
@@ -231,6 +231,7 @@ impl Foo for S {
     fn foo(&self) {
         ${0:todo!()}
     }
+
 }"#,
         );
     }

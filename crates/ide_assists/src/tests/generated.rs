@@ -50,7 +50,6 @@ trait Trait {
 impl Trait for () {
     type X = ();
     fn foo(&self) {}$0
-
 }
 "#####,
         r#####"
