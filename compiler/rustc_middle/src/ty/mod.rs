@@ -1788,6 +1788,7 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             ty::InstanceDef::VtableShim(..)
             | ty::InstanceDef::ReifyShim(..)
+            | ty::InstanceDef::ErasedShim(..)
             | ty::InstanceDef::Intrinsic(..)
             | ty::InstanceDef::FnPtrShim(..)
             | ty::InstanceDef::Virtual(..)

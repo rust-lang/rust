@@ -347,6 +347,7 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::Intrinsic(_def_id) |
                         ty::InstanceDef::VtableShim(_def_id) |
                         ty::InstanceDef::ReifyShim(_def_id) |
+                        ty::InstanceDef::ErasedShim(_def_id) |
                         ty::InstanceDef::Virtual(_def_id, _) |
                         ty::InstanceDef::ClosureOnceShim { call_once: _def_id } |
                         ty::InstanceDef::DropGlue(_def_id, None) => {}
@@ -535,7 +536,8 @@ macro_rules! make_mir_visitor {
                         destination,
                         cleanup: _,
                         from_hir_call: _,
-                        fn_span: _
+                        fn_span: _,
+                        erased: _
                     } => {
                         self.visit_operand(func, location);
                         for arg in args {

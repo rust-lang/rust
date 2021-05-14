@@ -193,6 +193,7 @@ impl Inliner<'tcx> {
             // inlining a second time.
             InstanceDef::VtableShim(_)
             | InstanceDef::ReifyShim(_)
+            | InstanceDef::ErasedShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::ClosureOnceShim { .. }
             | InstanceDef::DropGlue(..)

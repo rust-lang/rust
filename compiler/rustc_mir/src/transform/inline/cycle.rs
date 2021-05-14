@@ -80,6 +80,7 @@ crate fn mir_callgraph_reachable(
                 // a cycle that way
                 InstanceDef::VtableShim(_)
                 | InstanceDef::ReifyShim(_)
+                | InstanceDef::ErasedShim(..)
                 | InstanceDef::FnPtrShim(..)
                 | InstanceDef::ClosureOnceShim { .. }
                 | InstanceDef::CloneShim(..) => {}

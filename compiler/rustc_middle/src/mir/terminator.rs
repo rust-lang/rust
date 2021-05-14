@@ -190,6 +190,7 @@ pub enum TerminatorKind<'tcx> {
         /// This `Span` is the span of the function, without the dot and receiver
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`
         fn_span: Span,
+        erased: bool,
     },
 
     /// Jump to the target if the condition has the expected value,
@@ -470,11 +471,11 @@ impl<'tcx> TerminatorKind<'tcx> {
             DropAndReplace { place, value, .. } => {
                 write!(fmt, "replace({:?} <- {:?})", place, value)
             }
-            Call { func, args, destination, .. } => {
+            Call { func, args, destination, erased, .. } => {
                 if let Some((destination, _)) = destination {
                     write!(fmt, "{:?} = ", destination)?;
                 }
-                write!(fmt, "{:?}(", func)?;
+                write!(fmt, "{:?}{}(", func, if *erased { "[erased]" } else { "" })?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
