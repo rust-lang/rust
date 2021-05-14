@@ -5,6 +5,7 @@
 // ignore-sgx no libc
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-android: FIXME(#85261)
 
 #![feature(bench_black_box)]
 #![feature(rustc_private)]
