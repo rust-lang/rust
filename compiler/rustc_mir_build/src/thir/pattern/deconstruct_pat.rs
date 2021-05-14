@@ -52,7 +52,6 @@ use super::{FieldPat, Pat, PatKind, PatRange};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
-use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, RangeEnd};
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::Field;
@@ -590,7 +589,7 @@ pub(super) enum Constructor<'tcx> {
     /// and fixed-length arrays.
     Single,
     /// Enum variants.
-    Variant(DefId),
+    Variant(VariantIdx),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -634,7 +633,7 @@ impl<'tcx> Constructor<'tcx> {
 
     fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match *self {
-            Variant(id) => adt.variant_index_with_id(id),
+            Variant(idx) => idx,
             Single => {
                 assert!(!adt.is_enum());
                 VariantIdx::new(0)
@@ -649,9 +648,7 @@ impl<'tcx> Constructor<'tcx> {
             PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
             PatKind::Binding { .. } | PatKind::Wild => Wildcard,
             PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
-            &PatKind::Variant { adt_def, variant_index, .. } => {
-                Variant(adt_def.variants[variant_index].def_id)
-            }
+            &PatKind::Variant { variant_index, .. } => Variant(variant_index),
             PatKind::Constant { value } => {
                 if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value) {
                     IntRange(int_range)
@@ -928,15 +925,15 @@ impl<'tcx> SplitWildcard<'tcx> {
                     // If `exhaustive_patterns` is enabled, we exclude variants known to be
                     // uninhabited.
                     def.variants
-                        .iter()
-                        .filter(|v| {
+                        .iter_enumerated()
+                        .filter(|(_, v)| {
                             !v.uninhabited_from(cx.tcx, substs, def.adt_kind(), cx.param_env)
                                 .contains(cx.tcx, cx.module)
                         })
-                        .map(|v| Variant(v.def_id))
+                        .map(|(idx, _)| Variant(idx))
                         .collect()
                 } else {
-                    def.variants.iter().map(|v| Variant(v.def_id)).collect()
+                    def.variants.indices().map(|idx| Variant(idx)).collect()
                 }
             }
             ty::Char => {
