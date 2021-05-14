@@ -330,6 +330,22 @@ impl ast::AssocItemList {
     }
 }
 
+impl ast::Fn {
+    pub fn get_or_create_body(&self) -> ast::BlockExpr {
+        if self.body().is_none() {
+            let body = make::ext::empty_block_expr().clone_for_update();
+            match self.semicolon_token() {
+                Some(semi) => {
+                    ted::replace(semi, body.syntax());
+                    ted::insert(Position::before(body.syntax), make::tokens::single_space());
+                }
+                None => ted::append_child(self.syntax(), body.syntax()),
+            }
+        }
+        self.body().unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fmt;
