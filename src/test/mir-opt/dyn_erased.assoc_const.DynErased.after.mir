@@ -1,0 +1,24 @@
+// MIR for `assoc_const` after DynErased
+
+fn assoc_const(_1: &T) -> usize {
+    let mut _0: usize;                   // return place in scope 0 at $DIR/dyn_erased.rs:54:34: 54:39
+    let _2: usize;                       // in scope 0 at $DIR/dyn_erased.rs:55:5: 55:9
+    let mut _3: usize;                   // in scope 0 at $DIR/dyn_erased.rs:54:34: 54:39
+
+    bb0: {
+        _2 = const <T as Foo>::C;        // scope 0 at $DIR/dyn_erased.rs:54:1: 56:2
+        _3 = assoc_const::<T>[erased](move _1, move _2) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/dyn_erased.rs:54:1: 56:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:1:1: 1:1
+                                         // + literal: Const { ty: for<'r> fn(&'r T) -> usize {assoc_const::<T>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        _0 = move _3;                    // scope 0 at $DIR/dyn_erased.rs:54:1: 56:2
+        return;                          // scope 0 at $DIR/dyn_erased.rs:54:1: 56:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at $DIR/dyn_erased.rs:54:1: 56:2
+    }
+}

@@ -1,0 +1,33 @@
+// MIR for `good_niche` after DynErasedBody
+
+fn good_niche(_1: Option<&u8>) -> &u8 {
+    debug f => _1;                       // in scope 0 at $DIR/dyn_erased.rs:39:18: 39:19
+    let mut _0: &u8;                     // return place in scope 0 at $DIR/dyn_erased.rs:40:17: 40:18
+    let mut _2: isize;                   // in scope 0 at $DIR/dyn_erased.rs:40:12: 40:19
+    scope 1 {
+        debug f => _0;                   // in scope 1 at $DIR/dyn_erased.rs:40:17: 40:18
+    }
+
+    bb0: {
+        _2 = discriminant(_1);           // scope 0 at $DIR/dyn_erased.rs:40:12: 40:19
+        switchInt(move _2) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/dyn_erased.rs:40:12: 40:19
+    }
+
+    bb1: {
+        begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/std/src/panic.rs:LL:COL
+                                         // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
+                                         // ty::Const
+                                         // + ty: &str
+                                         // + val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, size: Size { raw: 14 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 })
+                                         // mir::Constant
+                                         // + span: $SRC_DIR/std/src/panic.rs:LL:COL
+                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, size: Size { raw: 14 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 }) }
+    }
+
+    bb2: {
+        _0 = ((_1 as Some).0: &u8);      // scope 0 at $DIR/dyn_erased.rs:40:17: 40:18
+        return;                          // scope 0 at $DIR/dyn_erased.rs:41:2: 41:2
+    }
+}

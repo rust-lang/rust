@@ -1,0 +1,32 @@
+// MIR for `coreturn` after DynErasedBody
+
+fn coreturn(_1: &u8, _2: for<'r> fn(&'r u8) {generic::<u8>}) -> &u8 {
+    debug f => _1;                       // in scope 0 at $DIR/dyn_erased.rs:30:25: 30:26
+    let mut _0: &u8;                     // return place in scope 0 at $DIR/dyn_erased.rs:30:35: 30:37
+    let _3: ();                          // in scope 0 at $DIR/dyn_erased.rs:31:5: 31:15
+    let mut _4: &u8;                     // in scope 0 at $DIR/dyn_erased.rs:31:13: 31:14
+    let _5: ();                          // in scope 0 at $DIR/dyn_erased.rs:32:5: 32:19
+
+    bb0: {
+        StorageLive(_3);                 // scope 0 at $DIR/dyn_erased.rs:31:5: 31:15
+        StorageLive(_4);                 // scope 0 at $DIR/dyn_erased.rs:31:13: 31:14
+        _4 = _1;                         // scope 0 at $DIR/dyn_erased.rs:31:13: 31:14
+        _3 = move _2(move _4) -> bb1;    // scope 0 at $DIR/dyn_erased.rs:31:5: 31:15
+    }
+
+    bb1: {
+        StorageDead(_4);                 // scope 0 at $DIR/dyn_erased.rs:31:14: 31:15
+        StorageDead(_3);                 // scope 0 at $DIR/dyn_erased.rs:31:15: 31:16
+        StorageLive(_5);                 // scope 0 at $DIR/dyn_erased.rs:32:5: 32:19
+        _5 = non_generic(const 5_u32) -> bb2; // scope 0 at $DIR/dyn_erased.rs:32:5: 32:19
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:32:5: 32:16
+                                         // + literal: Const { ty: fn(u32) {non_generic}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb2: {
+        StorageDead(_5);                 // scope 0 at $DIR/dyn_erased.rs:32:19: 32:20
+        _0 = _1;                         // scope 0 at $DIR/dyn_erased.rs:33:5: 33:6
+        return;                          // scope 0 at $DIR/dyn_erased.rs:34:2: 34:2
+    }
+}

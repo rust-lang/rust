@@ -1,0 +1,20 @@
+error: rustc_dyn: unhandled intrinsic unsafe extern "rust-intrinsic" fn(*const T, isize) -> *const T {std::intrinsics::offset::<T>}
+  --> $DIR/dyn_erased.rs:10:1
+   |
+LL | fn intrinsic<T>(f: *mut T) -> *const T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dyn: unknown layout for T: Unknown(T)
+  --> $DIR/dyn_erased.rs:17:1
+   |
+LL | fn bad_niche<T>(f: &Option<T>) -> &T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: rustc_dyn: unknown layout for &T: Unknown(T)
+  --> $DIR/dyn_erased.rs:23:1
+   |
+LL | fn fat_ptr<T: ?Sized>(f: &T) -> &T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,29 @@
+// MIR for `dropping` after DynErased
+
+fn dropping(_1: &T) -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/dyn_erased.rs:70:31: 70:33
+    let _2: unsafe fn(*mut Droppy<T>);   // in scope 0 at $DIR/dyn_erased.rs:71:43: 71:44
+    let mut _3: ();                      // in scope 0 at $DIR/dyn_erased.rs:70:31: 70:33
+    scope 1 {
+    }
+
+    bb0: {
+        _2 = std::ptr::drop_in_place::<Droppy<T>> as unsafe fn(*mut Droppy<T>) (Pointer(ReifyFnPointer)); // scope 0 at $DIR/dyn_erased.rs:70:1: 72:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:71:43: 71:44
+                                         // + literal: Const { ty: unsafe fn(*mut Droppy<T>) {std::ptr::drop_in_place::<Droppy<T>>}, val: Value(Scalar(<ZST>)) }
+        _3 = dropping::<T>[erased](move _1, move _2) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/dyn_erased.rs:70:1: 72:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:1:1: 1:1
+                                         // + literal: Const { ty: for<'r> fn(&'r T) {dropping::<T>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        _0 = move _3;                    // scope 0 at $DIR/dyn_erased.rs:70:1: 72:2
+        return;                          // scope 0 at $DIR/dyn_erased.rs:70:1: 72:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at $DIR/dyn_erased.rs:70:1: 72:2
+    }
+}

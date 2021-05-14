@@ -1,0 +1,32 @@
+// MIR for `good_niche` after DynErased
+
+fn good_niche(_1: Option<&T>) -> &T {
+    debug f => _1;                       // in scope 0 at $DIR/dyn_erased.rs:39:18: 39:19
+    let mut _0: &T;                      // return place in scope 0 at $DIR/dyn_erased.rs:40:17: 40:18
+    let mut _2: &u8;                     // in scope 0 at $DIR/dyn_erased.rs:40:17: 40:18
+    scope 1 {
+        debug f => _0;                   // in scope 1 at $DIR/dyn_erased.rs:40:17: 40:18
+    }
+
+    bb0: {
+        _2 = good_niche::<T>[erased](move _1) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/dyn_erased.rs:39:1: 41:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:1:1: 1:1
+                                         // + literal: Const { ty: for<'r> fn(std::option::Option<&'r T>) -> &'r T {good_niche::<T>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        _0 = transmute::<&T, &u8>(move _2) -> [return: bb3, unwind: bb2]; // scope 0 at $DIR/dyn_erased.rs:39:1: 41:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:1:1: 1:1
+                                         // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&T) -> &u8 {std::intrinsics::transmute::<&T, &u8>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at $DIR/dyn_erased.rs:39:1: 41:2
+    }
+
+    bb3: {
+        return;                          // scope 0 at $DIR/dyn_erased.rs:39:1: 41:2
+    }
+}

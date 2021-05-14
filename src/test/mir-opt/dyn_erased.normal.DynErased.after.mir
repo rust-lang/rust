@@ -1,0 +1,36 @@
+// MIR for `normal` after DynErased
+
+fn normal(_1: &T) -> () {
+    debug f => _1;                       // in scope 0 at $DIR/dyn_erased.rs:21:23: 21:24
+    let mut _0: ();                      // return place in scope 0 at $DIR/dyn_erased.rs:21:30: 21:30
+    let _2: for<'r> fn(&'r T);           // in scope 0 at $DIR/dyn_erased.rs:22:5: 22:12
+    let _3: &&str;                       // in scope 0 at $DIR/dyn_erased.rs:23:13: 23:19
+    let mut _4: ();                      // in scope 0 at $DIR/dyn_erased.rs:21:30: 21:30
+
+    bb0: {
+        _2 = generic::<T> as for<'r> fn(&'r T) (Pointer(ReifyFnPointer)); // scope 0 at $DIR/dyn_erased.rs:21:1: 25:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:22:5: 22:12
+                                         // + literal: Const { ty: for<'r> fn(&'r T) {generic::<T>}, val: Value(Scalar(<ZST>)) }
+        _3 = const normal::<T>::promoted[0]; // scope 0 at $DIR/dyn_erased.rs:21:1: 25:2
+                                         // ty::Const
+                                         // + ty: &&str
+                                         // + val: Unevaluated(normal, [T], Some(promoted[0]))
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:23:13: 23:19
+                                         // + literal: Const { ty: &&str, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:12 ~ dyn_erased[317d]::normal), const_param_did: None }, substs: [T], promoted: Some(promoted[0]) }) }
+        _4 = normal::<T>[erased](move _1, move _2, move _3) -> [return: bb1, unwind: bb2]; // scope 0 at $DIR/dyn_erased.rs:21:1: 25:2
+                                         // mir::Constant
+                                         // + span: $DIR/dyn_erased.rs:1:1: 1:1
+                                         // + literal: Const { ty: for<'r> fn(&'r T) {normal::<T>}, val: Value(Scalar(<ZST>)) }
+    }
+
+    bb1: {
+        _0 = move _4;                    // scope 0 at $DIR/dyn_erased.rs:21:1: 25:2
+        return;                          // scope 0 at $DIR/dyn_erased.rs:21:1: 25:2
+    }
+
+    bb2 (cleanup): {
+        resume;                          // scope 0 at $DIR/dyn_erased.rs:21:1: 25:2
+    }
+}
