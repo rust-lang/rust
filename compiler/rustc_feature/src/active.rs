@@ -281,9 +281,6 @@ declare_features! (
     // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
-    /// Allows using `#[plugin_registrar]` on functions.
-    (active, plugin_registrar, "1.0.0", Some(29597), None),
-
     /// Allows using `#![plugin(myplugin)]`.
     (active, plugin, "1.0.0", Some(29597), None),
 

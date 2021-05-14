@@ -792,12 +792,6 @@ impl Session {
             )
     }
 
-    /// Returns the symbol name for the registrar function,
-    /// given the crate `Svh` and the function `DefIndex`.
-    pub fn generate_plugin_registrar_symbol(&self, stable_crate_id: StableCrateId) -> String {
-        format!("__rustc_plugin_registrar_{:08x}__", stable_crate_id.to_u64())
-    }
-
     pub fn generate_proc_macro_decls_symbol(&self, stable_crate_id: StableCrateId) -> String {
         format!("__rustc_proc_macro_decls_{:08x}__", stable_crate_id.to_u64())
     }

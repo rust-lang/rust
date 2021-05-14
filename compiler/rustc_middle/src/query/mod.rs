@@ -1252,9 +1252,6 @@ rustc_queries! {
     query entry_fn(_: ()) -> Option<(DefId, EntryFnType)> {
         desc { "looking up the entry function of a crate" }
     }
-    query plugin_registrar_fn(_: ()) -> Option<LocalDefId> {
-        desc { "looking up the plugin registrar for a crate" }
-    }
     query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the derive registrar for a crate" }
     }

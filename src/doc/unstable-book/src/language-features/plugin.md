@@ -6,9 +6,7 @@ The tracking issue for this feature is: [#29597]
 
 
 This feature is part of "compiler plugins." It will often be used with the
-[`plugin_registrar`] and `rustc_private` features.
-
-[`plugin_registrar`]: plugin-registrar.md
+`rustc_private` feature.
 
 ------------------------
 
@@ -39,7 +37,6 @@ additional checks for code style, safety, etc. Now let's write a plugin
 that warns about any item named `lintme`.
 
 ```rust,ignore (requires-stage-2)
-#![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
 extern crate rustc_ast;
@@ -68,8 +65,8 @@ impl EarlyLintPass for Pass {
     }
 }
 
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
+#[no_mangle]
+fn __rustc_plugin_registrar(reg: &mut Registry) {
     reg.lint_store.register_lints(&[&TEST_LINT]);
     reg.lint_store.register_early_pass(|| box Pass);
 }

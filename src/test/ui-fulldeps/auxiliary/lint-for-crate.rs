@@ -1,6 +1,6 @@
 // force-host
 
-#![feature(plugin_registrar, rustc_private)]
+#![feature(rustc_private)]
 #![feature(box_syntax)]
 
 extern crate rustc_driver;
@@ -38,8 +38,8 @@ impl<'tcx> LateLintPass<'tcx> for Pass {
     }
 }
 
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
+#[no_mangle]
+fn __rustc_plugin_registrar(reg: &mut Registry) {
     reg.lint_store.register_lints(&[&CRATE_NOT_OKAY]);
     reg.lint_store.register_late_pass(|| box Pass);
 }
