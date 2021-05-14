@@ -33,10 +33,16 @@ impl PowerPCInlineAsmRegClass {
 
     pub fn supported_types(
         self,
-        _arch: InlineAsmArch,
+        arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<&'static str>)] {
         match self {
-            Self::reg | Self::reg_nonzero => types! { _: I8, I16, I32; },
+            Self::reg | Self::reg_nonzero => {
+                if arch == InlineAsmArch::PowerPC {
+                    types! { _: I8, I16, I32; }
+                } else {
+                    types! { _: I8, I16, I32, I64; }
+                }
+            }
             Self::freg => types! { _: F32, F64; },
         }
     }
