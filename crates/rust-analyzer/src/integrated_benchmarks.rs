@@ -123,7 +123,7 @@ fn integrated_completion_benchmark() {
     };
 
     {
-        let _it = stdx::timeit("unqualified path completion");
+        let _p = profile::span("unqualified path completion");
         let _span = profile::cpu_span();
         let analysis = host.analysis();
         let config = CompletionConfig {
@@ -156,7 +156,7 @@ fn integrated_completion_benchmark() {
     };
 
     {
-        let _it = stdx::timeit("dot completion");
+        let _p = profile::span("dot completion");
         let _span = profile::cpu_span();
         let analysis = host.analysis();
         let config = CompletionConfig {
