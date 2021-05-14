@@ -52,6 +52,14 @@ pub enum NonHaltingDiagnostic {
     CreatedCallId(CallId),
     CreatedAlloc(AllocId),
     FreedAlloc(AllocId),
+    RejectedIsolatedOp(String),
+}
+
+/// Level of Miri specific diagnostics
+enum DiagLevel {
+    Error,
+    Warning,
+    Note,
 }
 
 /// Emit a custom diagnostic without going through the miri-engine machinery
@@ -76,7 +84,7 @@ pub fn report_error<'tcx, 'mir>(
             #[rustfmt::skip]
             let helps = match info {
                 UnsupportedInIsolation(_) =>
-                    vec![(None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation"))],
+                    vec![(None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation; or pass `-Zmiri-isolation-error=warn to configure Miri to return an error code from isolated operations and continue with a warning"))],
                 ExperimentalUb { url, .. } =>
                     vec![
                         (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental")),
@@ -137,7 +145,7 @@ pub fn report_error<'tcx, 'mir>(
     let msg = e.to_string();
     report_msg(
         *ecx.tcx,
-        /*error*/ true,
+        DiagLevel::Error,
         &if let Some(title) = title { format!("{}: {}", title, msg) } else { msg.clone() },
         msg,
         helps,
@@ -174,18 +182,19 @@ pub fn report_error<'tcx, 'mir>(
 /// Also emits a full stacktrace of the interpreter stack.
 fn report_msg<'tcx>(
     tcx: TyCtxt<'tcx>,
-    error: bool,
+    diag_level: DiagLevel,
     title: &str,
     span_msg: String,
     mut helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
-    let mut err = if error {
-        tcx.sess.struct_span_err(span, title)
-    } else {
-        tcx.sess.diagnostic().span_note_diag(span, title)
+    let mut err = match diag_level {
+        DiagLevel::Error => tcx.sess.struct_span_err(span, title),
+        DiagLevel::Warning => tcx.sess.struct_span_warn(span, title),
+        DiagLevel::Note => tcx.sess.diagnostic().span_note_diag(span, title),
     };
+
     // Show main message.
     if span != DUMMY_SP {
         err.span_label(span, span_msg);
@@ -303,15 +312,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     CreatedCallId(id) => format!("function call with id {}", id),
                     CreatedAlloc(AllocId(id)) => format!("created allocation with id {}", id),
                     FreedAlloc(AllocId(id)) => format!("freed allocation with id {}", id),
+                    RejectedIsolatedOp(ref op) =>
+                        format!("`{}` was made to return an error due to isolation", op),
                 };
-                report_msg(
-                    *this.tcx,
-                    /*error*/ false,
-                    "tracking was triggered",
-                    msg,
-                    vec![],
-                    &stacktrace,
-                );
+
+                let (title, diag_level) = match e {
+                    RejectedIsolatedOp(_) =>
+                        ("operation rejected by isolation", DiagLevel::Warning),
+                    _ => ("tracking was triggered", DiagLevel::Note),
+                };
+
+                report_msg(*this.tcx, diag_level, title, msg, vec![], &stacktrace);
             }
         });
     }

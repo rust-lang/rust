@@ -140,7 +140,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let mut data = vec![0; usize::try_from(len).unwrap()];
 
-        if this.machine.communicate {
+        if this.machine.communicate() {
             // Fill the buffer using the host's rng.
             getrandom::getrandom(&mut data)
                 .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
@@ -391,10 +391,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// disabled. It returns an error using the `name` of the foreign function if this is not the
     /// case.
     fn check_no_isolation(&self, name: &str) -> InterpResult<'tcx> {
-        if !self.eval_context_ref().machine.communicate {
-            isolation_error(name)?;
+        if !self.eval_context_ref().machine.communicate() {
+            self.reject_in_isolation(name, RejectOpWith::Abort)?;
         }
         Ok(())
+    }
+
+    /// Helper function used inside the shims of foreign functions which reject the op
+    /// when isolation is enabled. It is used to print a warning/backtrace about the rejection.
+    fn reject_in_isolation(&self, op_name: &str, reject_with: RejectOpWith) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        match reject_with {
+            RejectOpWith::Abort => isolation_abort_error(op_name),
+            RejectOpWith::WarningWithoutBacktrace => {
+                this.tcx
+                    .sess
+                    .warn(&format!("`{}` was made to return an error due to isolation", op_name));
+                Ok(())
+            }
+            RejectOpWith::Warning => {
+                register_diagnostic(NonHaltingDiagnostic::RejectedIsolatedOp(op_name.to_string()));
+                Ok(())
+            }
+            RejectOpWith::NoWarning => Ok(()), // no warning
+        }
     }
 
     /// Helper function used inside the shims of foreign functions to assert that the target OS
@@ -651,7 +671,7 @@ where
     throw_ub_format!("incorrect number of arguments: got {}, expected {}", args.len(), N)
 }
 
-pub fn isolation_error(name: &str) -> InterpResult<'static> {
+pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
     throw_machine_stop!(TerminationInfo::UnsupportedInIsolation(format!(
         "{} not available when isolation is enabled",
         name,

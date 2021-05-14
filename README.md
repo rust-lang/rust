@@ -219,6 +219,13 @@ environment variable:
 * `-Zmiri-disable-isolation` disables host isolation.  As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
+* `-Zmiri-isolation-error=<action>` configures Miri's response to operations
+  requiring host access while isolation is enabled. `abort`, `hide`, `warn`,
+  and `warn-nobacktrace` are the supported actions. Default action is `abort`
+  which halts the machine. Rest of the actions configure it to return an error
+  code for the op and continue executing. `warn` prints backtrace that could
+  be used to trace the call. `warn-nobacktrace` is less verbose without
+  backtrace. `hide` hides the warning.
 * `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from
   the host so that it cannot be accessed by the program.  Can be used multiple
   times to exclude several variables.  On Windows, the `TERM` environment

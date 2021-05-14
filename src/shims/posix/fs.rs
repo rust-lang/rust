@@ -127,7 +127,7 @@ impl FileDescriptor for io::Stdin {
     ) -> InterpResult<'tcx, io::Result<usize>> {
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
-            helpers::isolation_error("`read` from stdin")?;
+            helpers::isolation_abort_error("`read` from stdin")?;
         }
         Ok(Read::read(self, bytes))
     }
@@ -662,7 +662,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.remove(&fd) {
-            let result = file_descriptor.close(this.machine.communicate)?;
+            let result = file_descriptor.close(this.machine.communicate())?;
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -687,6 +687,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // We cap the number of read bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count.min(this.machine_isize_max() as u64).min(isize::MAX as u64);
+        let communicate = this.machine.communicate();
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
             trace!("read: FD mapped to {:?}", file_descriptor);
@@ -696,9 +697,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let mut bytes = vec![0; count as usize];
             // `File::read` never returns a value larger than `count`,
             // so this cannot fail.
-            let result = file_descriptor
-                .read(this.machine.communicate, &mut bytes)?
-                .map(|c| i64::try_from(c).unwrap());
+            let result =
+                file_descriptor.read(communicate, &mut bytes)?.map(|c| i64::try_from(c).unwrap());
 
             match result {
                 Ok(read_bytes) => {
@@ -733,12 +733,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // We cap the number of written bytes to the largest value that we are able to fit in both the
         // host's and target's `isize`. This saves us from having to handle overflows later.
         let count = count.min(this.machine_isize_max() as u64).min(isize::MAX as u64);
+        let communicate = this.machine.communicate();
 
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
-            let result = file_descriptor
-                .write(this.machine.communicate, &bytes)?
-                .map(|c| i64::try_from(c).unwrap());
+            let result =
+                file_descriptor.write(communicate, &bytes)?.map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
         } else {
             this.handle_not_found()
@@ -771,9 +771,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         };
 
+        let communicate = this.machine.communicate();
         if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
             let result = file_descriptor
-                .seek(this.machine.communicate, seek_from)?
+                .seek(communicate, seek_from)?
                 .map(|offset| i64::try_from(offset).unwrap());
             this.try_unwrap_io_result(result)
         } else {

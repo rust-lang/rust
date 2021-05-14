@@ -1,6 +1,7 @@
 use std::convert::TryFrom;
 use std::env;
 use std::ffi::{OsStr, OsString};
+use std::io::{Error, ErrorKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::interpret::Pointer;
@@ -45,7 +46,7 @@ impl<'tcx> EnvVars<'tcx> {
             excluded_env_vars.push("TERM".to_owned());
         }
 
-        if ecx.machine.communicate {
+        if ecx.machine.communicate() {
             for (name, value) in env::vars() {
                 if !excluded_env_vars.contains(&name) {
                     let var_ptr = match target_os {
@@ -321,7 +322,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`getcwd` is only available for the UNIX target family"
         );
 
-        this.check_no_isolation("`getcwd`")?;
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("getcwd", reject_with)?;
+            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
+            this.set_last_error_from_io_error(err)?;
+            return Ok(Scalar::null_ptr(&*this.tcx));
+        }
 
         let buf = this.read_scalar(&buf_op)?.check_init()?;
         let size = this.read_scalar(&size_op)?.to_machine_usize(&*this.tcx)?;
@@ -336,6 +342,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             Err(e) => this.set_last_error_from_io_error(e)?,
         }
+
         Ok(Scalar::null_ptr(&*this.tcx))
     }
 
@@ -348,7 +355,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "GetCurrentDirectoryW");
 
-        this.check_no_isolation("`GetCurrentDirectoryW`")?;
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("GetCurrentDirectoryW", reject_with)?;
+            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
+            this.set_last_error_from_io_error(err)?;
+            return Ok(0);
+        }
 
         let size = u64::from(this.read_scalar(size_op)?.to_u32()?);
         let buf = this.read_scalar(buf_op)?.check_init()?;
@@ -370,7 +382,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "`getcwd` is only available for the UNIX target family"
         );
 
-        this.check_no_isolation("`chdir`")?;
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("chdir", reject_with)?;
+            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
+            this.set_last_error_from_io_error(err)?;
+
+            return Ok(-1);
+        }
 
         let path = this.read_path_from_c_str(this.read_scalar(path_op)?.check_init()?)?;
 
@@ -393,7 +411,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("windows", "SetCurrentDirectoryW");
 
-        this.check_no_isolation("`SetCurrentDirectoryW`")?;
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("SetCurrentDirectoryW", reject_with)?;
+            let err = Error::new(ErrorKind::NotFound, "rejected due to isolation");
+            this.set_last_error_from_io_error(err)?;
+
+            return Ok(0);
+        }
 
         let path = this.read_path_from_wide_str(this.read_scalar(path_op)?.check_init()?)?;
 

@@ -263,6 +263,9 @@ fn main() {
     let mut miri_config = miri::MiriConfig::default();
     let mut rustc_args = vec![];
     let mut after_dashdash = false;
+
+    // If user has explicitly enabled/disabled isolation
+    let mut isolation_enabled: Option<bool> = None;
     for arg in env::args() {
         if rustc_args.is_empty() {
             // Very first arg: binary name.
@@ -291,7 +294,37 @@ fn main() {
                     miri_config.check_abi = false;
                 }
                 "-Zmiri-disable-isolation" => {
-                    miri_config.communicate = true;
+                    if matches!(isolation_enabled, Some(true)) {
+                        panic!(
+                            "-Zmiri-disable-isolation cannot be used along with -Zmiri-isolation-error"
+                        );
+                    } else {
+                        isolation_enabled = Some(false);
+                    }
+                    miri_config.isolated_op = miri::IsolatedOp::Allow;
+                }
+                arg if arg.starts_with("-Zmiri-isolation-error=") => {
+                    if matches!(isolation_enabled, Some(false)) {
+                        panic!(
+                            "-Zmiri-isolation-error cannot be used along with -Zmiri-disable-isolation"
+                        );
+                    } else {
+                        isolation_enabled = Some(true);
+                    }
+
+                    miri_config.isolated_op = match arg
+                        .strip_prefix("-Zmiri-isolation-error=")
+                        .unwrap()
+                    {
+                        "abort" => miri::IsolatedOp::Reject(miri::RejectOpWith::Abort),
+                        "hide" => miri::IsolatedOp::Reject(miri::RejectOpWith::NoWarning),
+                        "warn" => miri::IsolatedOp::Reject(miri::RejectOpWith::Warning),
+                        "warn-nobacktrace" =>
+                            miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
+                        _ => panic!(
+                            "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
+                        ),
+                    };
                 }
                 "-Zmiri-ignore-leaks" => {
                     miri_config.ignore_leaks = true;
