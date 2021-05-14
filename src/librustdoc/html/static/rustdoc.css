@@ -1586,6 +1586,10 @@ h4 > .notable-traits {
 	.docblock {
 		margin-left: 12px;
 	}
+
+	details.rustdoc-toggle > summary.hideme::before {
+		left: -11px;
+	}
 }
 
 h3.notable {
@@ -1697,6 +1701,9 @@ details.rustdoc-toggle > summary.hideme {
 	cursor: pointer;
 }
 
+details.rustdoc-toggle > summary, details.undocumented > summary {
+	list-style: none;
+}
 details.rustdoc-toggle > summary::-webkit-details-marker,
 details.rustdoc-toggle > summary::marker,
 details.undocumented > summary::-webkit-details-marker,
@@ -1763,7 +1770,7 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 }
 
 details.rustdoc-toggle[open] > summary::before {
-	content: "[−]";
+	content: "[-]";
 	display: inline;
 }
 
