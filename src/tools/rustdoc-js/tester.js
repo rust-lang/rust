@@ -267,9 +267,10 @@ function loadSearchJsAndIndex(searchJs, searchIndex, storageJs, crate) {
                            "handleAliases", "getQuery", "buildIndex", "execQuery", "execSearch",
                            "removeEmptyStringsFromArray"];
 
+    const functions = ["hasOwnPropertyRustdoc", "onEach"];
     ALIASES = {};
     finalJS += 'window = { "currentCrate": "' + crate + '", rootPath: "../" };\n';
-    finalJS += loadThings(["hasOwnProperty", "onEach"], 'function', extractFunction, storageJs);
+    finalJS += loadThings(functions, 'function', extractFunction, storageJs);
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, searchJs);
     finalJS += loadThings(variablesToLoad, 'variable', extractVariable, searchJs);
     finalJS += loadThings(functionsToLoad, 'function', extractFunction, searchJs);
