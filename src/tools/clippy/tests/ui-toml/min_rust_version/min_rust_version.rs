@@ -31,10 +31,7 @@ fn option_as_ref_deref() {
 }
 
 fn match_like_matches() {
-    let _y = match Some(5) {
-        Some(0) => true,
-        _ => false,
-    };
+    let _y = matches!(Some(5), Some(0));
 }
 
 fn match_same_arms() {
