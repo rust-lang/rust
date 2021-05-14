@@ -2,18 +2,18 @@
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
 use std::{
-    array, fmt, iter,
+    fmt, iter,
     ops::{self, RangeInclusive},
 };
 
 use arrayvec::ArrayVec;
 
 use crate::{
-    algo::{self, SyntaxRewriter},
+    algo,
     ast::{
         self,
         make::{self, tokens},
-        AstNode, GenericParamsOwner, NameOwner, TypeBoundsOwner,
+        AstNode, TypeBoundsOwner,
     },
     ted, AstToken, Direction, InsertPosition, NodeOrToken, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
@@ -45,18 +45,6 @@ impl ast::Fn {
         };
         to_insert.push(body.syntax().clone().into());
         self.replace_children(single_node(old_body_or_semi), to_insert)
-    }
-
-    #[must_use]
-    pub fn with_generic_param_list(&self, generic_args: ast::GenericParamList) -> ast::Fn {
-        if let Some(old) = self.generic_param_list() {
-            return self.replace_descendant(old, generic_args);
-        }
-
-        let anchor = self.name().expect("The function must have a name").syntax().clone();
-
-        let to_insert = [generic_args.syntax().clone().into()];
-        self.insert_children(InsertPosition::After(anchor.into()), array::IntoIter::new(to_insert))
     }
 }
 
@@ -313,33 +301,7 @@ impl ast::PathSegment {
     }
 }
 
-impl ast::Use {
-    #[must_use]
-    pub fn with_use_tree(&self, use_tree: ast::UseTree) -> ast::Use {
-        if let Some(old) = self.use_tree() {
-            return self.replace_descendant(old, use_tree);
-        }
-        self.clone()
-    }
-}
-
 impl ast::UseTree {
-    #[must_use]
-    pub fn with_path(&self, path: ast::Path) -> ast::UseTree {
-        if let Some(old) = self.path() {
-            return self.replace_descendant(old, path);
-        }
-        self.clone()
-    }
-
-    #[must_use]
-    pub fn with_use_tree_list(&self, use_tree_list: ast::UseTreeList) -> ast::UseTree {
-        if let Some(old) = self.use_tree_list() {
-            return self.replace_descendant(old, use_tree_list);
-        }
-        self.clone()
-    }
-
     /// Splits off the given prefix, making it the path component of the use tree, appending the rest of the path to all UseTreeList items.
     #[must_use]
     pub fn split_prefix(&self, prefix: &ast::Path) -> ast::UseTree {
@@ -663,13 +625,6 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
     ) -> Self {
         let new_syntax = algo::replace_children(self.syntax(), to_replace, to_insert);
         Self::cast(new_syntax).unwrap()
-    }
-
-    #[must_use]
-    fn replace_descendant<D: AstNode>(&self, old: D, new: D) -> Self {
-        let mut rewriter = SyntaxRewriter::default();
-        rewriter.replace(old.syntax(), new.syntax());
-        rewriter.rewrite_ast(self)
     }
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())

@@ -42,10 +42,12 @@ pub fn try_merge_imports(
         return None;
     }
 
+    let lhs = lhs.clone_subtree().clone_for_update();
     let lhs_tree = lhs.use_tree()?;
     let rhs_tree = rhs.use_tree()?;
     let merged = try_merge_trees(&lhs_tree, &rhs_tree, merge_behavior)?;
-    Some(lhs.with_use_tree(merged).clone_for_update())
+    ted::replace(lhs_tree.syntax(), merged.syntax());
+    Some(lhs)
 }
 
 pub fn try_merge_trees(

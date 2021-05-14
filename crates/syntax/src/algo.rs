@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use std::{fmt, hash::BuildHasherDefault, ops::RangeInclusive};
+use std::{hash::BuildHasherDefault, ops::RangeInclusive};
 
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -328,110 +328,6 @@ fn _replace_children(
         .chain(old_children.skip(end + 1 - start))
         .collect::<Vec<_>>();
     with_children(parent, new_children)
-}
-
-#[derive(Debug, PartialEq, Eq, Hash)]
-enum InsertPos {
-    FirstChildOf(SyntaxNode),
-    After(SyntaxElement),
-}
-
-#[derive(Default)]
-pub(crate) struct SyntaxRewriter<'a> {
-    //FIXME: add debug_assertions that all elements are in fact from the same file.
-    replacements: FxHashMap<SyntaxElement, Replacement>,
-    insertions: IndexMap<InsertPos, Vec<SyntaxElement>>,
-    _pd: std::marker::PhantomData<&'a ()>,
-}
-
-impl fmt::Debug for SyntaxRewriter<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SyntaxRewriter")
-            .field("replacements", &self.replacements)
-            .field("insertions", &self.insertions)
-            .finish()
-    }
-}
-
-impl SyntaxRewriter<'_> {
-    pub(crate) fn replace<T: Clone + Into<SyntaxElement>>(&mut self, what: &T, with: &T) {
-        let what = what.clone().into();
-        let replacement = Replacement::Single(with.clone().into());
-        self.replacements.insert(what, replacement);
-    }
-
-    pub(crate) fn rewrite(&self, node: &SyntaxNode) -> SyntaxNode {
-        let _p = profile::span("rewrite");
-
-        if self.replacements.is_empty() && self.insertions.is_empty() {
-            return node.clone();
-        }
-        let green = self.rewrite_children(node);
-        with_green(node, green)
-    }
-
-    pub(crate) fn rewrite_ast<N: AstNode>(self, node: &N) -> N {
-        N::cast(self.rewrite(node.syntax())).unwrap()
-    }
-
-    fn replacement(&self, element: &SyntaxElement) -> Option<Replacement> {
-        self.replacements.get(element).cloned()
-    }
-
-    fn insertions(&self, pos: &InsertPos) -> Option<impl Iterator<Item = SyntaxElement> + '_> {
-        self.insertions.get(pos).map(|insertions| insertions.iter().cloned())
-    }
-
-    fn rewrite_children(&self, node: &SyntaxNode) -> rowan::GreenNode {
-        let _p = profile::span("rewrite_children");
-
-        //  FIXME: this could be made much faster.
-        let mut new_children = Vec::new();
-        if let Some(elements) = self.insertions(&InsertPos::FirstChildOf(node.clone())) {
-            new_children.extend(elements.map(element_to_green));
-        }
-        for child in node.children_with_tokens() {
-            self.rewrite_self(&mut new_children, &child);
-        }
-
-        rowan::GreenNode::new(rowan::SyntaxKind(node.kind() as u16), new_children)
-    }
-
-    fn rewrite_self(
-        &self,
-        acc: &mut Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
-        element: &SyntaxElement,
-    ) {
-        let _p = profile::span("rewrite_self");
-
-        if let Some(replacement) = self.replacement(&element) {
-            match replacement {
-                Replacement::Single(element) => acc.push(element_to_green(element)),
-            };
-        } else {
-            match element {
-                NodeOrToken::Token(it) => acc.push(NodeOrToken::Token(it.green().to_owned())),
-                NodeOrToken::Node(it) => {
-                    acc.push(NodeOrToken::Node(self.rewrite_children(it)));
-                }
-            }
-        }
-        if let Some(elements) = self.insertions(&InsertPos::After(element.clone())) {
-            acc.extend(elements.map(element_to_green));
-        }
-    }
-}
-
-fn element_to_green(element: SyntaxElement) -> NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
-    match element {
-        NodeOrToken::Node(it) => NodeOrToken::Node(it.green().into_owned()),
-        NodeOrToken::Token(it) => NodeOrToken::Token(it.green().to_owned()),
-    }
-}
-
-#[derive(Clone, Debug)]
-enum Replacement {
-    Single(SyntaxElement),
 }
 
 fn with_children(
