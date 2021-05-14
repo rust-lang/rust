@@ -1046,7 +1046,9 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
 
     /// Returns an iterator over occupied buckets that could match a given hash.
     ///
-    /// In rare cases, the iterator may return a bucket with a different hash.
+    /// `RawTable` only stores 7 bits of the hash value, so this iterator may
+    /// return items that have a hash value different than the one provided. You
+    /// should always validate the returned values before using them.
     ///
     /// It is up to the caller to ensure that the `RawTable` outlives the
     /// `RawIterHash`. Because we cannot make the `next` method unsafe on the
@@ -2151,7 +2153,9 @@ impl<T, A: Allocator + Clone> FusedIterator for RawDrain<'_, T, A> {}
 
 /// Iterator over occupied buckets that could match a given hash.
 ///
-/// In rare cases, the iterator may return a bucket with a different hash.
+/// `RawTable` only stores 7 bits of the hash value, so this iterator may return
+/// items that have a hash value different than the one provided. You should
+/// always validate the returned values before using them.
 pub struct RawIterHash<'a, T, A: Allocator + Clone = Global> {
     inner: RawIterHashInner<'a, A>,
     _marker: PhantomData<T>,
