@@ -126,11 +126,12 @@ impl<'a> InferenceContext<'a> {
                     _ => &[],
                 };
 
-                let (pre, post) = match ellipsis {
-                    Some(idx) => args.split_at(idx),
-                    None => (&args[..], &[][..]),
+                let ((pre, post), n_uncovered_patterns) = match ellipsis {
+                    Some(idx) => {
+                        (args.split_at(idx), expectations.len().saturating_sub(args.len()))
+                    }
+                    None => ((&args[..], &[][..]), 0),
                 };
-                let n_uncovered_patterns = expectations.len().saturating_sub(args.len());
                 let err_ty = self.err_ty();
                 let mut expectations_iter =
                     expectations.iter().map(|a| a.assert_ty_ref(&Interner)).chain(repeat(&err_ty));
