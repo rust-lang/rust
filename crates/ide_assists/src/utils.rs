@@ -17,7 +17,7 @@ use syntax::{
     ast::AttrsOwner,
     ast::NameOwner,
     ast::{self, edit, make, ArgListOwner, GenericParamsOwner},
-    AstNode, Direction, SmolStr,
+    ted, AstNode, Direction, SmolStr,
     SyntaxKind::*,
     SyntaxNode, TextSize, T,
 };
@@ -139,34 +139,32 @@ pub fn add_trait_assoc_items_to_impl(
         .into_iter()
         .map(|it| it.clone_for_update())
         .inspect(|it| ast_transform::apply(&*ast_transform, it))
-        .map(|it| match it {
-            ast::AssocItem::Fn(def) => ast::AssocItem::Fn(add_body(def)),
-            ast::AssocItem::TypeAlias(def) => ast::AssocItem::TypeAlias(def.remove_bounds()),
-            _ => it,
-        })
         .map(|it| edit::remove_attrs_and_docs(&it).clone_subtree().clone_for_update());
 
     let res = impl_.clone_for_update();
+
     let assoc_item_list = res.get_or_create_assoc_item_list();
     let mut first_item = None;
     for item in items {
-        if first_item.is_none() {
-            first_item = Some(item.clone())
-        }
-        assoc_item_list.add_item(item)
-    }
-    return (res, first_item.unwrap());
-
-    fn add_body(fn_def: ast::Fn) -> ast::Fn {
-        match fn_def.body() {
-            Some(_) => fn_def,
-            None => {
+        first_item.get_or_insert_with(|| item.clone());
+        match &item {
+            ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
                 let body = make::block_expr(None, Some(make::ext::expr_todo()))
                     .indent(edit::IndentLevel(1));
-                fn_def.with_body(body)
+                ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
             }
+            ast::AssocItem::TypeAlias(type_alias) => {
+                if let Some(type_bound_list) = type_alias.type_bound_list() {
+                    type_bound_list.remove()
+                }
+            }
+            _ => {}
         }
+
+        assoc_item_list.add_item(item)
     }
+
+    (res, first_item.unwrap())
 }
 
 #[derive(Clone, Copy, Debug)]

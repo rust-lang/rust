@@ -13,7 +13,7 @@ use crate::{
     ast::{
         self,
         make::{self, tokens},
-        AstNode, TypeBoundsOwner,
+        AstNode,
     },
     ted, AstToken, Direction, InsertPosition, NodeOrToken, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
@@ -26,25 +26,6 @@ impl ast::BinExpr {
         let op_node: SyntaxElement = self.op_details()?.0.into();
         let to_insert: Option<SyntaxElement> = Some(make::token(op).into());
         Some(self.replace_children(single_node(op_node), to_insert))
-    }
-}
-
-impl ast::Fn {
-    #[must_use]
-    pub fn with_body(&self, body: ast::BlockExpr) -> ast::Fn {
-        let mut to_insert: ArrayVec<SyntaxElement, 2> = ArrayVec::new();
-        let old_body_or_semi: SyntaxElement = if let Some(old_body) = self.body() {
-            old_body.syntax().clone().into()
-        } else if let Some(semi) = self.semicolon_token() {
-            to_insert.push(make::tokens::single_space().into());
-            semi.into()
-        } else {
-            to_insert.push(make::tokens::single_space().into());
-            to_insert.push(body.syntax().clone().into());
-            return self.insert_children(InsertPosition::Last, to_insert);
-        };
-        to_insert.push(body.syntax().clone().into());
-        self.replace_children(single_node(old_body_or_semi), to_insert)
     }
 }
 
@@ -153,21 +134,6 @@ impl ast::RecordExprFieldList {
         };
 
         self.insert_children(position, to_insert)
-    }
-}
-
-impl ast::TypeAlias {
-    #[must_use]
-    pub fn remove_bounds(&self) -> ast::TypeAlias {
-        let colon = match self.colon_token() {
-            Some(it) => it,
-            None => return self.clone(),
-        };
-        let end = match self.type_bound_list() {
-            Some(it) => it.syntax().clone().into(),
-            None => colon.clone().into(),
-        };
-        self.replace_children(colon.into()..=end, iter::empty())
     }
 }
 
