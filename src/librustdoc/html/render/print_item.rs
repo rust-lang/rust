@@ -578,12 +578,13 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         info!("Documenting {} on {:?}", name, t.name);
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
+        write!(w, "<details class=\"rustdoc-toggle\" open><summary>");
         write!(w, "<h3 id=\"{id}\" class=\"method\"><code>", id = id,);
         render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)), ItemType::Impl, cx);
         w.write_str("</code>");
         render_stability_since(w, m, t, cx.tcx());
         write_srclink(cx, m, w);
-        w.write_str("</h3>");
+        w.write_str("</h3></summary>");
         document(w, cx, m, Some(t));
     }
 

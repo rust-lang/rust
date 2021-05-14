@@ -509,7 +509,11 @@ fn document(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, parent: Option
         info!("Documenting {}", name);
     }
     document_item_info(w, cx, item, parent);
-    document_full_collapsible(w, item, cx);
+    if parent.is_none() {
+        document_full_collapsible(w, item, cx);
+    } else {
+        document_full(w, item, cx);
+    }
 }
 
 /// Render md_text as markdown.
