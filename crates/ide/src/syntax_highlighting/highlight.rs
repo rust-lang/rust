@@ -227,8 +227,8 @@ pub(super) fn element(
         k if k.is_keyword() => {
             let h = Highlight::new(HlTag::Keyword);
             match k {
-                T![await]
-                | T![break]
+                T![await] => h | HlMod::Async | HlMod::ControlFlow,
+                T![break]
                 | T![continue]
                 | T![else]
                 | T![if]
@@ -255,7 +255,7 @@ pub(super) fn element(
                     })
                     .map(|modifier| h | modifier)
                     .unwrap_or(h),
-                T![async] | T![await] => h | HlMod::Async,
+                T![async] => h | HlMod::Async,
                 _ => h,
             }
         }

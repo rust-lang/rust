@@ -208,6 +208,17 @@ impl<T> Option<T> {
         }
     }
 }
+
+async fn learn_and_sing() {
+    let song = learn_song().await;
+    sing_song(song).await;
+}
+
+async fn async_main() {
+    let f1 = learn_and_sing();
+    let f2 = dance();
+    futures::join!(f1, f2);
+}
 "#
         .trim(),
         expect_file!["./test_data/highlighting.html"],

@@ -234,4 +234,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
             <span class="variable declaration">Nope</span> <span class="operator">=&gt;</span> <span class="variable">Nope</span><span class="comma">,</span>
         <span class="brace">}</span>
     <span class="brace">}</span>
+<span class="brace">}</span>
+
+<span class="keyword async">async</span> <span class="keyword">fn</span> <span class="function declaration async">learn_and_sing</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">song</span> <span class="operator">=</span> <span class="unresolved_reference">learn_song</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword control async">await</span><span class="semicolon">;</span>
+    <span class="unresolved_reference">sing_song</span><span class="parenthesis">(</span><span class="variable consuming">song</span><span class="parenthesis">)</span><span class="operator">.</span><span class="keyword control async">await</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+
+<span class="keyword async">async</span> <span class="keyword">fn</span> <span class="function declaration async">async_main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">f1</span> <span class="operator">=</span> <span class="function async">learn_and_sing</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="keyword">let</span> <span class="variable declaration">f2</span> <span class="operator">=</span> <span class="unresolved_reference">dance</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    futures::<span class="macro">join!</span><span class="parenthesis">(</span>f1<span class="comma">,</span> f2<span class="parenthesis">)</span><span class="semicolon">;</span>
 <span class="brace">}</span></code></pre>
