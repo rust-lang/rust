@@ -128,15 +128,12 @@ pub fn add_trait_assoc_items_to_impl(
     sema: &hir::Semantics<ide_db::RootDatabase>,
     items: Vec<ast::AssocItem>,
     trait_: hir::Trait,
-    impl_def: ast::Impl,
+    impl_: ast::Impl,
     target_scope: hir::SemanticsScope,
 ) -> (ast::Impl, ast::AssocItem) {
-    let impl_item_list = impl_def.assoc_item_list().unwrap_or_else(make::assoc_item_list);
-
-    let n_existing_items = impl_item_list.assoc_items().count();
     let source_scope = sema.scope_for_def(trait_);
     let ast_transform = QualifyPaths::new(&target_scope, &source_scope)
-        .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_def.clone()));
+        .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_.clone()));
 
     let items = items
         .into_iter()
@@ -147,13 +144,18 @@ pub fn add_trait_assoc_items_to_impl(
             ast::AssocItem::TypeAlias(def) => ast::AssocItem::TypeAlias(def.remove_bounds()),
             _ => it,
         })
-        .map(|it| edit::remove_attrs_and_docs(&it));
+        .map(|it| edit::remove_attrs_and_docs(&it).clone_subtree().clone_for_update());
 
-    let new_impl_item_list = impl_item_list.append_items(items);
-    let new_impl_def = impl_def.with_assoc_item_list(new_impl_item_list);
-    let first_new_item =
-        new_impl_def.assoc_item_list().unwrap().assoc_items().nth(n_existing_items).unwrap();
-    return (new_impl_def, first_new_item);
+    let res = impl_.clone_for_update();
+    let assoc_item_list = res.get_or_create_assoc_item_list();
+    let mut first_item = None;
+    for item in items {
+        if first_item.is_none() {
+            first_item = Some(item.clone())
+        }
+        assoc_item_list.add_item(item)
+    }
+    return (res, first_item.unwrap());
 
     fn add_body(fn_def: ast::Fn) -> ast::Fn {
         match fn_def.body() {

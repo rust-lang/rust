@@ -99,7 +99,7 @@ fn ty_from_text(text: &str) -> ast::Type {
 }
 
 pub fn assoc_item_list() -> ast::AssocItemList {
-    ast_from_text("impl C for D {};")
+    ast_from_text("impl C for D {}")
 }
 
 pub fn impl_trait(trait_: ast::Path, ty: ast::Path) -> ast::Impl {
