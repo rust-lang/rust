@@ -3351,6 +3351,86 @@ validate 1
 aarch64 = sqdmulh
 generate i32:int32x2_t:i32, i32:int32x4_t:i32
 
+/// Signed saturating extract narrow
+name = vqmovn
+no-q
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+validate  MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+
+aarch64 = sqxtn
+link-aarch64 = sqxtn._EXT2_
+arm = vqmovn
+link-arm = vqmovns._EXT2_
+generate int16x8_t:int8x8_t, int32x4_t:int16x4_t, int64x2_t:int32x2_t
+
+/// Unsigned saturating extract narrow
+name = vqmovn
+no-q
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+validate  MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+
+aarch64 = uqxtn
+link-aarch64 = uqxtn._EXT2_
+arm = vqmovn
+link-arm = vqmovnu._EXT2_
+generate uint16x8_t:uint8x8_t, uint32x4_t:uint16x4_t, uint64x2_t:uint32x2_t
+
+/// Saturating extract narrow
+name = vqmovn
+multi_fn = simd_extract, {vqmovn-in_ntt-noext, {vdupq_n-in_ntt-noext, a}}, 0
+a = 1
+validate 1
+
+aarch64 = sqxtn
+generate i16:i8, i32:i16, i64:i32
+aarch64 = uqxtn
+generate u16:u8, u32:u16, u64:u32
+
+/// Signed saturating extract narrow
+name = vqmovn_high
+no-q
+multi_fn = simd_shuffle-out_len-!, a, {vqmovn-noqself-noext, b}, {asc-0-out_len}
+a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+validate MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
+
+aarch64 = sqxtn2
+generate int8x8_t:int16x8_t:int8x16_t, int16x4_t:int32x4_t:int16x8_t, int32x2_t:int64x2_t:int32x4_t
+aarch64 = uqxtn2
+generate uint8x8_t:uint16x8_t:uint8x16_t, uint16x4_t:uint32x4_t:uint16x8_t, uint32x2_t:uint64x2_t:uint32x4_t
+
+/// Signed saturating extract unsigned narrow
+name = vqmovun
+no-q
+a = -1, -1, -1, -1, -1, -1, -1, -1
+validate 0, 0, 0, 0, 0, 0, 0, 0
+
+aarch64 = sqxtun
+link-aarch64 = sqxtun._EXT2_
+arm = vqmovun
+link-arm = vqmovnsu._EXT2_
+generate int16x8_t:uint8x8_t, int32x4_t:uint16x4_t, int64x2_t:uint32x2_t
+
+/// Signed saturating extract unsigned narrow
+name = vqmovun
+multi_fn = simd_extract, {vqmovun-in_ntt-noext, {vdupq_n-in_ntt-noext, a}}, 0
+a = 1
+validate 1
+
+aarch64 = sqxtun
+generate i16:u8, i32:u16, i64:u32
+
+/// Signed saturating extract unsigned narrow
+name = vqmovun_high
+no-q
+multi_fn = simd_shuffle-out_len-!, a, {vqmovun-noqself-noext, b}, {asc-0-out_len}
+a = 0, 0, 0, 0, 0, 0, 0, 0
+b = -1, -1, -1, -1, -1, -1, -1, -1
+validate 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+aarch64 = sqxtun2
+generate uint8x8_t:int16x8_t:uint8x16_t, uint16x4_t:int32x4_t:uint16x8_t, uint32x2_t:int64x2_t:uint32x4_t
+
 /// Signed saturating rounding doubling multiply returning high half
 name = vqrdmulh
 a = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX

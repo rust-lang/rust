@@ -135,11 +135,6 @@ extern "C" {
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.abs.v4i32")]
     fn vabsq_s32_(a: int32x4_t) -> int32x4_t;
 
-    //uint32x2_t vqmovn_u64 (uint64x2_t a)
-    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vqmovnu.v2i32")]
-    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.uqxtn.v2i32")]
-    fn vqmovn_u64_(a: uint64x2_t) -> uint32x2_t;
-
     #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vpmins.v8i8")]
     #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.sminp.v8i8")]
     fn vpmins_v8i8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
@@ -1033,16 +1028,6 @@ pub unsafe fn vpadd_u32(a: uint32x2_t, b: uint32x2_t) -> uint32x2_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(addp))]
 pub unsafe fn vpadd_u8(a: uint8x8_t, b: uint8x8_t) -> uint8x8_t {
     transmute(vpadd_s8_(transmute(a), transmute(b)))
-}
-
-/// Unsigned saturating extract narrow.
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vqmovn.u64))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(uqxtn))]
-pub unsafe fn vqmovn_u64(a: uint64x2_t) -> uint32x2_t {
-    vqmovn_u64_(a)
 }
 
 /// Vector add.
@@ -4712,14 +4697,6 @@ mod tests {
         let b: u64x1 = u64x1::new(1);
         let e: u64x1 = u64x1::new(0);
         let r: u64x1 = transmute(vext_u64::<0>(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-    }
-
-    #[simd_test(enable = "neon")]
-    unsafe fn test_vqmovn_u64() {
-        let a = u64x2::new(1, 2);
-        let e = u32x2::new(1, 2);
-        let r: u32x2 = transmute(vqmovn_u64(transmute(a)));
         assert_eq!(r, e);
     }
 
