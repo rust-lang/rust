@@ -15,9 +15,21 @@ trait Sized {}
 #[lang="copy"]
 trait Copy {}
 
+#[lang="sync"]
+trait Sync {}
+
+#[lang = "drop_in_place"]
+fn drop_in_place<T>(_: *mut T) {}
+
 impl Copy for u8 {}
+impl Sync for u8 {}
+
+#[no_mangle]
+pub static PIERIS: u8 = 42;
 
 extern "C" {
+    static EXOCHORDA: *mut u8;
+
     fn chaenomeles();
 }
 
@@ -41,4 +53,25 @@ pub fn peach() -> u8 {
     unsafe {
         *(banana as *mut u8)
     }
+}
+
+// CHECK-LABEL: mango:
+// x64:      movq    EXOCHORDA{{(\(%[a-z0-9]+\))?}}, %[[REG:[a-z0-9]+]]
+// x64-NEXT: movb    (%[[REG]]), %{{[a-z0-9]+}}
+// A64:      adrp    [[REG2:[a-z0-9]+]], EXOCHORDA
+// A64-NEXT: ldr     {{[a-z0-9]+}}, {{\[}}[[REG2]], :lo12:EXOCHORDA]
+#[no_mangle]
+pub fn mango() -> u8 {
+    unsafe {
+        *EXOCHORDA
+    }
+}
+
+// CHECK-LABEL: orange:
+// x64: mov{{l|absq}}    $PIERIS, %{{[a-z0-9]+}}
+// A64:      adrp    [[REG2:[a-z0-9]+]], PIERIS
+// A64-NEXT: add     {{[a-z0-9]+}}, [[REG2]], :lo12:PIERIS
+#[no_mangle]
+pub fn orange() -> &'static u8 {
+    &PIERIS
 }
