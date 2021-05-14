@@ -10,6 +10,7 @@ mod autoderef;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
+pub mod consteval;
 mod infer;
 mod interner;
 mod lower;

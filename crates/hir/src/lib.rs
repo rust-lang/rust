@@ -52,7 +52,9 @@ use hir_def::{
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
-    autoderef, could_unify,
+    autoderef,
+    consteval::ConstExtension,
+    could_unify,
     method_resolution::{self, def_crates, TyFingerprint},
     primitive::UintTy,
     subst_prefix,
@@ -1910,6 +1912,7 @@ impl Type {
                     substs.iter(&Interner).filter_map(|a| a.ty(&Interner)).any(go)
                 }
 
+                TyKind::Array(_ty, len) if len.is_unknown() => true,
                 TyKind::Array(ty, _)
                 | TyKind::Slice(ty)
                 | TyKind::Raw(_, ty)

@@ -80,6 +80,8 @@ pub enum TypeRef {
     Path(Path),
     RawPtr(Box<TypeRef>, Mutability),
     Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
+    // FIXME: for full const generics, the latter element (length) here is going to have to be an
+    // expression that is further lowered later in hir_ty.
     Array(Box<TypeRef>, ConstScalar),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
@@ -141,6 +143,10 @@ impl TypeRef {
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
             ast::Type::ArrayType(inner) => {
+                // FIXME: This is a hack. We should probably reuse the machinery of
+                // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
+                // `hir_ty` level, which would allow knowing the type of:
+                // let v: [u8; 2 + 2] = [0u8; 4];
                 let len = inner
                     .expr()
                     .map(ConstScalar::usize_from_literal_expr)
@@ -313,6 +319,10 @@ pub enum ConstScalar {
     Usize(u64),
 
     /// Case of an unknown value that rustc might know but we don't
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    // https://github.com/rust-analyzer/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
     Unknown,
 }
 
@@ -326,6 +336,8 @@ impl std::fmt::Display for ConstScalar {
 }
 
 impl ConstScalar {
+    // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
+    // parse stage.
     fn usize_from_literal_expr(expr: ast::Expr) -> ConstScalar {
         match expr {
             ast::Expr::Literal(lit) => {

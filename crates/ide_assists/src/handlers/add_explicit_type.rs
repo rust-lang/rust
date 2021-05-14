@@ -198,6 +198,34 @@ fn main() {
         )
     }
 
+    /// https://github.com/rust-analyzer/rust-analyzer/issues/2922
+    #[test]
+    fn regression_issue_2922() {
+        check_assist(
+            add_explicit_type,
+            r#"
+fn main() {
+    let $0v = [0.0; 2];
+}
+"#,
+            r#"
+fn main() {
+    let v: [f64; 2] = [0.0; 2];
+}
+"#,
+        );
+        // note: this may break later if we add more consteval. it just needs to be something that our
+        // consteval engine doesn't understand
+        check_assist_not_applicable(
+            add_explicit_type,
+            r#"
+fn main() {
+    let $0l = [0.0; 2+2];
+}
+"#,
+        );
+    }
+
     #[test]
     fn default_generics_should_not_be_added() {
         check_assist(
