@@ -9,22 +9,21 @@ use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKin
 pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionContext) {
     // complete keyword "crate" in use stmt
     let source_range = ctx.source_range();
+    let kw_completion = move |text: &str| {
+        let mut item = CompletionItem::new(CompletionKind::Keyword, source_range, text);
+        item.kind(CompletionItemKind::Keyword).insert_text(text);
+        item
+    };
 
     if ctx.use_item_syntax.is_some() {
         if ctx.path_qual.is_none() {
-            let mut item = CompletionItem::new(CompletionKind::Keyword, source_range, "crate::");
-            item.kind(CompletionItemKind::Keyword).insert_text("crate::");
-            item.add_to(acc);
+            kw_completion("crate::").add_to(acc);
         }
-        let mut item = CompletionItem::new(CompletionKind::Keyword, source_range, "self");
-        item.kind(CompletionItemKind::Keyword);
-        item.add_to(acc);
+        kw_completion("self").add_to(acc);
         if iter::successors(ctx.path_qual.clone(), |p| p.qualifier())
             .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
         {
-            let mut item = CompletionItem::new(CompletionKind::Keyword, source_range, "super::");
-            item.kind(CompletionItemKind::Keyword).insert_text("super::");
-            item.add_to(acc);
+            kw_completion("super::").add_to(acc);
         }
     }
 
@@ -32,9 +31,8 @@ pub(crate) fn complete_use_tree_keyword(acc: &mut Completions, ctx: &CompletionC
     if let Some(receiver) = &ctx.dot_receiver {
         if let Some(ty) = ctx.sema.type_of_expr(receiver) {
             if ty.impls_future(ctx.db) {
-                let mut item =
-                    CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await");
-                item.kind(CompletionItemKind::Keyword).detail("expr.await").insert_text("await");
+                let mut item = kw_completion("await");
+                item.detail("expr.await");
                 item.add_to(acc);
             }
         };
