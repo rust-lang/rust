@@ -25,7 +25,7 @@ pub(super) const DEFAULT_INNER_ATTR_FORBIDDEN: InnerAttrPolicy<'_> = InnerAttrPo
     prev_attr_sp: None,
 };
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Parses attributes that appear before an item.
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();

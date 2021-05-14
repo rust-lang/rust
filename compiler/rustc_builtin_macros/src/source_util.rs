@@ -120,12 +120,12 @@ pub fn expand_include<'cx>(
     cx.current_expansion.module = Rc::new(cx.current_expansion.module.with_dir_path(dir_path));
     cx.current_expansion.dir_ownership = DirOwnership::Owned { relative: None };
 
-    struct ExpandResult<'a> {
-        p: Parser<'a>,
+    struct ExpandResult<'a, const DSDC: bool> {
+        p: Parser<'a, DSDC>,
         node_id: ast::NodeId,
     }
-    impl<'a> base::MacResult for ExpandResult<'a> {
-        fn make_expr(mut self: Box<ExpandResult<'a>>) -> Option<P<ast::Expr>> {
+    impl<'a, const DSDC: bool> base::MacResult for ExpandResult<'a, DSDC> {
+        fn make_expr(mut self: Box<Self>) -> Option<P<ast::Expr>> {
             let r = base::parse_expr(&mut self.p)?;
             if self.p.token != token::Eof {
                 self.p.sess.buffer_lint(
@@ -138,7 +138,7 @@ pub fn expand_include<'cx>(
             Some(r)
         }
 
-        fn make_items(mut self: Box<ExpandResult<'a>>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
+        fn make_items(mut self: Box<Self>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
             let mut ret = SmallVec::new();
             while self.p.token != token::Eof {
                 match self.p.parse_item(ForceCollect::No) {

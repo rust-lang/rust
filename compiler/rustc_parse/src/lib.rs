@@ -1,6 +1,7 @@
 //! The main parser interface.
 
 #![feature(array_windows)]
+#![feature(test, bench_black_box)]
 #![feature(crate_visibility_modifier)]
 #![feature(bindings_after_at)]
 #![feature(iter_order_by)]
@@ -32,6 +33,9 @@ pub mod parser;
 use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
 pub mod lexer;
 pub mod validate_attr;
+
+#[cfg(test)]
+mod tests;
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
@@ -97,7 +101,11 @@ pub fn parse_stream_from_source_str(
 }
 
 /// Creates a new parser from a source string.
-pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
+pub fn new_parser_from_source_str(
+    sess: &ParseSess,
+    name: FileName,
+    source: String,
+) -> Parser<'_, false> {
     panictry_buffer!(&sess.span_diagnostic, maybe_new_parser_from_source_str(sess, name, source))
 }
 
@@ -107,18 +115,22 @@ pub fn maybe_new_parser_from_source_str(
     sess: &ParseSess,
     name: FileName,
     source: String,
-) -> Result<Parser<'_>, Vec<Diagnostic>> {
+) -> Result<Parser<'_, false>, Vec<Diagnostic>> {
     maybe_source_file_to_parser(sess, sess.source_map().new_source_file(name, source))
 }
 
 /// Creates a new parser, handling errors as appropriate if the file doesn't exist.
 /// If a span is given, that is used on an error as the source of the problem.
-pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Span>) -> Parser<'a> {
+pub fn new_parser_from_file<'a>(
+    sess: &'a ParseSess,
+    path: &Path,
+    sp: Option<Span>,
+) -> Parser<'a, false> {
     source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
 
 /// Given a `source_file` and config, returns a parser.
-fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
+fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_, false> {
     panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
 }
 
@@ -127,7 +139,7 @@ fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Pars
 fn maybe_source_file_to_parser(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
-) -> Result<Parser<'_>, Vec<Diagnostic>> {
+) -> Result<Parser<'_, false>, Vec<Diagnostic>> {
     let end_pos = source_file.end_pos;
     let (stream, unclosed_delims) = maybe_file_to_stream(sess, source_file, None)?;
     let mut parser = stream_to_parser(sess, stream, None);
@@ -218,8 +230,8 @@ pub fn stream_to_parser<'a>(
     sess: &'a ParseSess,
     stream: TokenStream,
     subparser_name: Option<&'static str>,
-) -> Parser<'a> {
-    Parser::new(sess, stream, false, subparser_name)
+) -> Parser<'a, false> {
+    Parser::new(sess, stream, subparser_name)
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
@@ -227,9 +239,9 @@ pub fn parse_in<'a, T>(
     sess: &'a ParseSess,
     tts: TokenStream,
     name: &'static str,
-    mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    mut f: impl FnMut(&mut Parser<'a, false>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(sess, tts, false, Some(name));
+    let mut parser = Parser::<false>::new(sess, tts, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;

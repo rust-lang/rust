@@ -90,7 +90,7 @@ fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
     t == &token::ModSep || t == &token::Lt || t == &token::BinOp(token::Shl)
 }
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(

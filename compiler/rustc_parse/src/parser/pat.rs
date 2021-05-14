@@ -36,7 +36,7 @@ enum EatOrResult {
     None,
 }
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Parses a pattern.
     ///
     /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns

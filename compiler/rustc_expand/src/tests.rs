@@ -18,13 +18,13 @@ use std::str;
 use std::sync::{Arc, Mutex};
 
 /// Map string to parser (via tts).
-fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
+fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_, false> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 
 crate fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T
 where
-    F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
+    F: FnOnce(&mut Parser<'a, false>) -> PResult<'a, T>,
 {
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p).unwrap();

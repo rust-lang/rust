@@ -22,7 +22,7 @@ use std::convert::TryFrom;
 use std::mem;
 use tracing::debug;
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
         let (attrs, items, span) = self.parse_mod(&token::Eof)?;
@@ -77,7 +77,7 @@ impl<'a> Parser<'a> {
 
 pub(super) type ItemInfo = (Ident, ItemKind);
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     pub fn parse_item(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<P<Item>>> {
         self.parse_item_(|_| true, force_collect).map(|i| i.map(P))
     }
@@ -580,7 +580,7 @@ impl<'a> Parser<'a> {
     fn parse_item_list<T>(
         &mut self,
         attrs: &mut Vec<Attribute>,
-        mut parse_item: impl FnMut(&mut Parser<'a>) -> PResult<'a, Option<Option<T>>>,
+        mut parse_item: impl FnMut(&mut Self) -> PResult<'a, Option<Option<T>>>,
     ) -> PResult<'a, Vec<T>> {
         let open_brace_span = self.token.span;
         self.expect(&token::OpenDelim(token::Brace))?;
@@ -1647,7 +1647,7 @@ impl<'a> Parser<'a> {
 type ReqName = fn(Edition) -> bool;
 
 /// Parsing of functions and methods.
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Parse a function starting from the front matter (`const ...`) to the body `{ ... }` or `;`.
     fn parse_fn(
         &mut self,

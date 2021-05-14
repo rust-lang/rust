@@ -66,7 +66,7 @@ pub fn expand_llvm_asm<'cx>(
     }))
 }
 
-fn parse_asm_str<'a>(p: &mut Parser<'a>) -> PResult<'a, Symbol> {
+fn parse_asm_str<'a, const DSDC: bool>(p: &mut Parser<'a, DSDC>) -> PResult<'a, Symbol> {
     match p.parse_str_lit() {
         Ok(str_lit) => Ok(str_lit.symbol_unescaped),
         Err(opt_lit) => {

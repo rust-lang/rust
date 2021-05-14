@@ -572,7 +572,7 @@ fn inner_parse_loop<'root, 'tt>(
                     //
                     // We use the span of the metavariable declaration to determine any
                     // edition-specific matching behavior for non-terminals.
-                    if Parser::nonterminal_may_begin_with(kind, token) {
+                    if Parser::<true>::nonterminal_may_begin_with(kind, token) {
                         bb_items.push(item);
                     }
                 }
@@ -615,7 +615,10 @@ fn inner_parse_loop<'root, 'tt>(
 
 /// Use the given sequence of token trees (`ms`) as a matcher. Match the token
 /// stream from the given `parser` against it and return the match.
-pub(super) fn parse_tt(parser: &mut Cow<'_, Parser<'_>>, ms: &[TokenTree]) -> NamedParseResult {
+pub(super) fn parse_tt(
+    parser: &mut Cow<'_, Parser<'_, true>>,
+    ms: &[TokenTree],
+) -> NamedParseResult {
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
     // processes all of these possible matcher positions and produces possible next positions into

@@ -292,7 +292,11 @@ fn parse_args<'a>(
 ///
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the suggestion will be incorrect.
-fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
+fn err_duplicate_option<'a, const DSDC: bool>(
+    p: &mut Parser<'a, DSDC>,
+    symbol: Symbol,
+    span: Span,
+) {
     let mut err = p
         .sess
         .span_diagnostic
@@ -319,8 +323,8 @@ fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
 ///
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the error will not point to the correct spot.
-fn try_set_option<'a>(
-    p: &mut Parser<'a>,
+fn try_set_option<'a, const DSDC: bool>(
+    p: &mut Parser<'a, DSDC>,
     args: &mut AsmArgs,
     symbol: Symbol,
     option: ast::InlineAsmOptions,
@@ -332,8 +336,8 @@ fn try_set_option<'a>(
     }
 }
 
-fn parse_options<'a>(
-    p: &mut Parser<'a>,
+fn parse_options<'a, const DSDC: bool>(
+    p: &mut Parser<'a, DSDC>,
     args: &mut AsmArgs,
     is_global_asm: bool,
 ) -> Result<(), DiagnosticBuilder<'a>> {
@@ -373,8 +377,8 @@ fn parse_options<'a>(
     Ok(())
 }
 
-fn parse_reg<'a>(
-    p: &mut Parser<'a>,
+fn parse_reg<'a, const DSDC: bool>(
+    p: &mut Parser<'a, DSDC>,
     explicit_reg: &mut bool,
 ) -> Result<ast::InlineAsmRegOrRegClass, DiagnosticBuilder<'a>> {
     p.expect(&token::OpenDelim(token::DelimToken::Paren))?;

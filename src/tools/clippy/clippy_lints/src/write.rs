@@ -489,7 +489,7 @@ impl Write {
     /// ```
     #[allow(clippy::too_many_lines)]
     fn check_tts<'a>(&self, cx: &EarlyContext<'a>, tts: TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
-        let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, false, None);
+        let mut parser = parser::Parser::<false>::new(&cx.sess.parse_sess, tts, None);
         let expr = if is_write {
             match parser
                 .parse_expr()

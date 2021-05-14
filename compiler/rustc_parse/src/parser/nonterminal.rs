@@ -7,7 +7,7 @@ use rustc_span::symbol::{kw, Ident};
 use crate::parser::pat::RecoverComma;
 use crate::parser::{FollowedByType, ForceCollect, Parser, PathStyle};
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Checks whether a non-terminal may begin with a particular token.
     ///
     /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that

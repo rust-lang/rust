@@ -7,7 +7,7 @@ use rustc_ast::{
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, sym};
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
     ///
     /// ```text

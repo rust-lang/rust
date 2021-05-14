@@ -137,8 +137,9 @@ macro_rules! ast_fragments {
             }
         }
 
-        impl<'a> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a>>)
+        impl<'a, const DSDC: bool> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a,
+        DSDC > {
+            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a, DSDC>>)
                            -> Option<$AstTy> {
                 Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*
@@ -905,8 +906,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 }
 
-pub fn parse_ast_fragment<'a>(
-    this: &mut Parser<'a>,
+pub fn parse_ast_fragment<'a, const DSDC: bool>(
+    this: &mut Parser<'a, DSDC>,
     kind: AstFragmentKind,
 ) -> PResult<'a, AstFragment> {
     Ok(match kind {
@@ -970,8 +971,8 @@ pub fn parse_ast_fragment<'a>(
     })
 }
 
-pub fn ensure_complete_parse<'a>(
-    this: &mut Parser<'a>,
+pub fn ensure_complete_parse<'a, const DSDC: bool>(
+    this: &mut Parser<'a, DSDC>,
     macro_path: &Path,
     kind_name: &str,
     span: Span,

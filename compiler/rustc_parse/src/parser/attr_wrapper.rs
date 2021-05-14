@@ -87,20 +87,18 @@ fn has_cfg_or_cfg_attr(attrs: &[Attribute]) -> bool {
 // This also makes `Parser` very cheap to clone, since
 // there is no intermediate collection buffer to clone.
 #[derive(Clone)]
-struct LazyTokenStreamImpl {
+struct LazyTokenStreamImpl<const DESUGAR_DOC_COMMENTS: bool> {
     start_token: (Token, Spacing),
-    cursor_snapshot: TokenCursor,
+    cursor_snapshot: TokenCursor<DESUGAR_DOC_COMMENTS>,
     num_calls: usize,
     break_last_token: bool,
     replace_ranges: Box<[ReplaceRange]>,
 }
 
-/*
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 144);
-*/
+rustc_data_structures::static_assert_size!(LazyTokenStreamImpl<true>, 144);
 
-impl CreateTokenStream for LazyTokenStreamImpl {
+impl<const DSDC: bool> CreateTokenStream for LazyTokenStreamImpl<DSDC> {
     fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
         // The token produced by the final call to `next` or `next_desugared`
         // was not actually consumed by the callback. The combination
@@ -111,7 +109,7 @@ impl CreateTokenStream for LazyTokenStreamImpl {
         let tokens =
             std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))
                 .chain((0..self.num_calls).map(|_| {
-                    let token = if cursor_snapshot.desugar_doc_comments {
+                    let token = if DSDC {
                         cursor_snapshot.next_desugared()
                     } else {
                         cursor_snapshot.next()
@@ -181,7 +179,7 @@ impl CreateTokenStream for LazyTokenStreamImpl {
     }
 }
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Records all tokens consumed by the provided callback,
     /// including the current token. These tokens are collected
     /// into a `LazyTokenStream`, and returned along with the result

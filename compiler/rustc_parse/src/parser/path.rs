@@ -37,7 +37,7 @@ pub enum PathStyle {
     Mod,
 }
 
-impl<'a> Parser<'a> {
+impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     /// Parses a qualified path.
     /// Assumes that the leading `<` has been parsed already.
     ///

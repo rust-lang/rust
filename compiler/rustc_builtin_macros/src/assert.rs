@@ -150,7 +150,7 @@ fn parse_assert<'a>(
     Ok(Assert { cond_expr, custom_message })
 }
 
-fn parse_custom_message(parser: &mut Parser<'_>) -> Option<TokenStream> {
+fn parse_custom_message<const DSDC: bool>(parser: &mut Parser<'_, DSDC>) -> Option<TokenStream> {
     let ts = parser.parse_tokens();
     if !ts.is_empty() { Some(ts) } else { None }
 }

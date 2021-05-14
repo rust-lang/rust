@@ -33,8 +33,8 @@ use std::collections::hash_map::Entry;
 use std::{mem, slice};
 use tracing::debug;
 
-crate struct ParserAnyMacro<'a> {
-    parser: Parser<'a>,
+crate struct ParserAnyMacro<'a, const DSDC: bool> {
+    parser: Parser<'a, DSDC>,
 
     /// Span of the expansion site of the macro this parser is for
     site_span: Span,
@@ -60,10 +60,10 @@ crate fn annotate_err_with_kind(
     };
 }
 
-fn emit_frag_parse_err(
+fn emit_frag_parse_err<const DSDC: bool>(
     mut e: DiagnosticBuilder<'_>,
-    parser: &Parser<'_>,
-    orig_parser: &mut Parser<'_>,
+    parser: &Parser<'_, DSDC>,
+    orig_parser: &mut Parser<'_, DSDC>,
     site_span: Span,
     arm_span: Span,
     kind: AstFragmentKind,
@@ -112,8 +112,8 @@ fn emit_frag_parse_err(
     e.emit();
 }
 
-impl<'a> ParserAnyMacro<'a> {
-    crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
+impl<'a, const DSDC: bool> ParserAnyMacro<'a, DSDC> {
+    crate fn make(mut self: Box<Self>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, lint_node_id, arm_span } =
             *self;
         let snapshot = &mut parser.clone();
@@ -285,7 +285,7 @@ fn generic_extension<'cx>(
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
-                let mut p = Parser::new(sess, tts, false, None);
+                let mut p = Parser::<false>::new(sess, tts, None);
                 p.last_type_ascription = cx.current_expansion.prior_type_ascription;
                 let lint_node_id = cx.resolver.lint_node_id(cx.current_expansion.id);
 
@@ -431,7 +431,7 @@ pub fn compile_declarative_macro(
         ),
     ];
 
-    let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
+    let parser = Parser::<true>::new(&sess.parse_sess, body, rustc_parse::MACRO_ARGUMENTS);
     let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
@@ -1207,8 +1207,8 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-fn parser_from_cx(sess: &ParseSess, tts: TokenStream) -> Parser<'_> {
-    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS)
+fn parser_from_cx(sess: &ParseSess, tts: TokenStream) -> Parser<'_, true> {
+    Parser::new(sess, tts, rustc_parse::MACRO_ARGUMENTS)
 }
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For

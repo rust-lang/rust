@@ -108,7 +108,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
 }
 
 #[derive(Clone)]
-pub struct Parser<'a> {
+pub struct Parser<'a, const DESUGAR_DOC_COMMENTS: bool> {
     pub sess: &'a ParseSess,
     /// The current token.
     pub token: Token,
@@ -121,8 +121,7 @@ pub struct Parser<'a> {
     expected_tokens: Vec<TokenType>,
     // Important: This must only be advanced from `next_tok`
     // to ensure that `token_cursor.num_next_calls` is updated properly
-    token_cursor: TokenCursor,
-    desugar_doc_comments: bool,
+    token_cursor: TokenCursor<DESUGAR_DOC_COMMENTS>,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
     /// required in order to detect extra leading left angle brackets (`<` characters) and error
     /// appropriately.
@@ -180,19 +179,18 @@ struct CaptureState {
     inner_attr_ranges: FxHashMap<AttrId, ReplaceRange>,
 }
 
-impl<'a> Drop for Parser<'a> {
+impl<'a, const DSDC: bool> Drop for Parser<'a, DSDC> {
     fn drop(&mut self) {
         emit_unclosed_delims(&mut self.unclosed_delims, &self.sess);
     }
 }
 
-struct TokenCursor {
-    frame: TokenCursorFrame,
-    stack: Box<smallvec::SmallVec<[TokenCursorFrame; 4]>>,
-    desugar_doc_comments: bool,
+pub(crate) struct TokenCursor<const DESUGAR_DOC_COMMENTS: bool> {
+    pub(crate) frame: TokenCursorFrame,
+    pub(crate) stack: Vec<TokenCursorFrame>,
     // Counts the number of calls to `next` or `next_desugared`,
     // depending on whether `desugar_doc_comments` is set.
-    num_next_calls: usize,
+    pub(crate) num_next_calls: usize,
     // During parsing, we may sometimes need to 'unglue' a
     // glued token into two component tokens
     // (e.g. '>>' into '>' and '>), so that the parser
@@ -214,16 +212,15 @@ struct TokenCursor {
     // field is used to track this token - it gets
     // appended to the captured stream when
     // we evaluate a `LazyTokenStream`
-    break_last_token: bool,
+    pub(crate) break_last_token: bool,
 }
 
-impl Clone for TokenCursor {
+impl<const DSDC: bool> Clone for TokenCursor<DSDC> {
     #[inline]
     fn clone(&self) -> Self {
         Self {
             frame: self.frame.clone(),
             stack: self.stack.clone(),
-            desugar_doc_comments: self.desugar_doc_comments,
             num_next_calls: self.num_next_calls,
             break_last_token: self.break_last_token,
         }
@@ -232,7 +229,6 @@ impl Clone for TokenCursor {
     fn clone_from(&mut self, source: &Self) {
         self.frame.clone_from(&source.frame);
         self.stack.clone_from(&source.stack);
-        self.desugar_doc_comments = source.desugar_doc_comments;
         self.num_next_calls = source.num_next_calls;
         self.break_last_token = source.break_last_token;
     }
@@ -240,14 +236,14 @@ impl Clone for TokenCursor {
 
 use bitflags::bitflags;
 bitflags! {
-    struct DelimFlags: u8 {
+    pub(crate) struct DelimFlags: u8 {
         const OPEN_DELIM = 0b01;
         const CLOSE_DELIM = 0b10;
     }
 }
 
 #[derive(Clone)]
-struct TokenCursorFrame {
+pub(crate) struct TokenCursorFrame {
     delim: token::DelimToken,
     span: DelimSpan,
     tree_cursor: tokenstream::Cursor,
@@ -255,7 +251,7 @@ struct TokenCursorFrame {
 }
 
 impl TokenCursorFrame {
-    fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream) -> Self {
+    pub(crate) fn new(span: DelimSpan, delim: DelimToken, tts: TokenStream) -> Self {
         TokenCursorFrame {
             delim,
             span,
@@ -265,7 +261,7 @@ impl TokenCursorFrame {
     }
 }
 
-impl TokenCursor {
+impl<const DSDC: bool> TokenCursor<DSDC> {
     fn next(&mut self) -> (Token, Spacing) {
         loop {
             let (tree, spacing) = if !self.frame.delim_flags.contains(DelimFlags::OPEN_DELIM) {
@@ -427,11 +423,10 @@ pub(super) fn token_descr(token: &Token) -> String {
     }
 }
 
-impl<'a> Parser<'a> {
+impl<'a, const DESUGAR_DOC_COMMENTS: bool> Parser<'a, DESUGAR_DOC_COMMENTS> {
     pub fn new(
         sess: &'a ParseSess,
         tokens: TokenStream,
-        desugar_doc_comments: bool,
         subparser_name: Option<&'static str>,
     ) -> Self {
         let mut start_frame = TokenCursorFrame::new(DelimSpan::dummy(), token::NoDelim, tokens);
@@ -449,10 +444,8 @@ impl<'a> Parser<'a> {
                 frame: start_frame,
                 stack: Default::default(),
                 num_next_calls: 0,
-                desugar_doc_comments,
                 break_last_token: false,
             },
-            desugar_doc_comments,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
             unclosed_delims: Vec::new(),
@@ -474,7 +467,7 @@ impl<'a> Parser<'a> {
 
     fn next_tok(&mut self, fallback_span: Span) -> (Token, Spacing) {
         loop {
-            let (mut next, spacing) = if self.desugar_doc_comments {
+            let (mut next, spacing) = if DESUGAR_DOC_COMMENTS {
                 self.token_cursor.next_desugared()
             } else {
                 self.token_cursor.next()
@@ -768,7 +761,7 @@ impl<'a> Parser<'a> {
         kets: &[&TokenKind],
         sep: SeqSep,
         expect: TokenExpectType,
-        mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+        mut f: impl FnMut(&mut Self) -> PResult<'a, T>,
     ) -> PResult<'a, (Vec<T>, bool /* trailing */, bool /* recovered */)> {
         let mut first = true;
         let mut recovered = false;
@@ -870,7 +863,7 @@ impl<'a> Parser<'a> {
         &mut self,
         ket: &TokenKind,
         sep: SeqSep,
-        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+        f: impl FnMut(&mut Self) -> PResult<'a, T>,
     ) -> PResult<'a, (Vec<T>, bool, bool)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
@@ -882,7 +875,7 @@ impl<'a> Parser<'a> {
         &mut self,
         ket: &TokenKind,
         sep: SeqSep,
-        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+        f: impl FnMut(&mut Self) -> PResult<'a, T>,
     ) -> PResult<'a, (Vec<T>, bool /* trailing */)> {
         let (val, trailing, recovered) = self.parse_seq_to_before_end(ket, sep, f)?;
         if !recovered {
@@ -899,7 +892,7 @@ impl<'a> Parser<'a> {
         bra: &TokenKind,
         ket: &TokenKind,
         sep: SeqSep,
-        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+        f: impl FnMut(&mut Self) -> PResult<'a, T>,
     ) -> PResult<'a, (Vec<T>, bool)> {
         self.expect(bra)?;
         self.parse_seq_to_end(ket, sep, f)
@@ -908,7 +901,7 @@ impl<'a> Parser<'a> {
     fn parse_delim_comma_seq<T>(
         &mut self,
         delim: DelimToken,
-        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+        f: impl FnMut(&mut Self) -> PResult<'a, T>,
     ) -> PResult<'a, (Vec<T>, bool)> {
         self.parse_unspanned_seq(
             &token::OpenDelim(delim),
@@ -920,7 +913,7 @@ impl<'a> Parser<'a> {
 
     fn parse_paren_comma_seq<T>(
         &mut self,
-        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+        f: impl FnMut(&mut Self) -> PResult<'a, T>,
     ) -> PResult<'a, (Vec<T>, bool)> {
         self.parse_delim_comma_seq(token::Paren, f)
     }
