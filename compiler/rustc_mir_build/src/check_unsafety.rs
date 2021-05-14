@@ -7,6 +7,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 struct UnsafetyVisitor<'a, 'tcx> {
@@ -19,6 +20,9 @@ struct UnsafetyVisitor<'a, 'tcx> {
     /// `unsafe` block, and whether it has been used.
     safety_context: SafetyContext,
     body_unsafety: BodyUnsafety,
+    /// The `#[target_feature]` attributes of the body. Used for checking
+    /// calls to functions with `#[target_feature]` (RFC 2396).
+    body_target_features: &'tcx Vec<Symbol>,
 }
 
 impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
@@ -148,6 +152,18 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
                 if self.thir[fun].ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
                     self.requires_unsafe(expr.span, CallToUnsafeFunction);
+                } else if let &ty::FnDef(func_did, _) = self.thir[fun].ty.kind() {
+                    // If the called function has target features the calling function hasn't,
+                    // the call requires `unsafe`.
+                    if !self
+                        .tcx
+                        .codegen_fn_attrs(func_did)
+                        .target_features
+                        .iter()
+                        .all(|feature| self.body_target_features.contains(feature))
+                    {
+                        self.requires_unsafe(expr.span, CallToFunctionWith);
+                    }
                 }
             }
             ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
@@ -217,7 +233,6 @@ enum UnsafeOpKind {
     MutationOfLayoutConstrainedField,
     #[allow(dead_code)] // FIXME
     BorrowOfLayoutConstrainedField,
-    #[allow(dead_code)] // FIXME
     CallToFunctionWith,
 }
 
@@ -291,6 +306,7 @@ pub fn check_unsafety<'tcx>(
     tcx: TyCtxt<'tcx>,
     thir: &Thir<'tcx>,
     expr: ExprId,
+    def_id: LocalDefId,
     hir_id: hir::HirId,
 ) {
     let body_unsafety = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(BodyUnsafety::Safe, |fn_sig| {
@@ -300,10 +316,17 @@ pub fn check_unsafety<'tcx>(
             BodyUnsafety::Safe
         }
     });
+    let body_target_features = &tcx.codegen_fn_attrs(def_id).target_features;
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
-    let mut visitor =
-        UnsafetyVisitor { tcx, thir, safety_context, hir_context: hir_id, body_unsafety };
+    let mut visitor = UnsafetyVisitor {
+        tcx,
+        thir,
+        safety_context,
+        hir_context: hir_id,
+        body_unsafety,
+        body_target_features,
+    };
     visitor.visit_expr(&thir[expr]);
 }
 
@@ -315,7 +338,7 @@ crate fn thir_check_unsafety_inner<'tcx>(
     let body_id = tcx.hir().body_owned_by(hir_id);
     let body = tcx.hir().body(body_id);
     let (thir, expr) = cx::build_thir(tcx, def, &body.value);
-    check_unsafety(tcx, &thir, expr, hir_id);
+    check_unsafety(tcx, &thir, expr, def.did, hir_id);
 }
 
 crate fn thir_check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
