@@ -593,7 +593,14 @@ impl Step for Cargo {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(builder.config.extended)
+        run.path("src/tools/cargo").default_condition(
+            builder.config.extended
+                && builder.config.tools.as_ref().map_or(
+                    true,
+                    // If `tools` is set, search list for this tool.
+                    |tools| tools.iter().any(|tool| tool == "cargo"),
+                ),
+        )
     }
 
     fn make_run(run: RunConfig<'_>) {
