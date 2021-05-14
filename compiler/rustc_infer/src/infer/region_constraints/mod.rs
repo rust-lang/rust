@@ -3,7 +3,6 @@
 use self::CombineMapType::*;
 use self::UndoLog::*;
 
-use super::unify_key;
 use super::{
     InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
 };
@@ -408,7 +407,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         if *any_unifications {
             *any_unifications = false;
             self.unification_table()
-                .reset_unifications(|vid| unify_key::RegionVidKey { min_vid: vid });
+                .reset_unifications(|_| ());
         }
 
         data
@@ -435,7 +434,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self.unification_table().new_key(unify_key::RegionVidKey { min_vid: vid });
+        let u_vid = self.unification_table().new_key(());
         assert_eq!(vid, u_vid);
         self.undo_log.push(AddVar(vid));
         debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
@@ -618,7 +617,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     pub fn opportunistic_resolve_var(&mut self, rid: RegionVid) -> ty::RegionVid {
-        self.unification_table().probe_value(rid).min_vid
+        self.unification_table().find(rid)
     }
 
     fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {

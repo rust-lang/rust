@@ -38,7 +38,7 @@ impl UnifyValue for RegionVidKey {
 }
 
 impl UnifyKey for ty::RegionVid {
-    type Value = RegionVidKey;
+    type Value = ();
     fn index(&self) -> u32 {
         u32::from(*self)
     }
