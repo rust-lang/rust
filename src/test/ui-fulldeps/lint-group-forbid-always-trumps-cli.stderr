@@ -1,10 +1,15 @@
-error: unused variable: `x`
-  --> $DIR/lint-group-forbid-always-trumps-cli.rs:5:9
+error: allow(unused) incompatible with previous forbid
    |
-LL |     let x = 1;
-   |         ^ help: if this is intentional, prefix it with an underscore: `_x`
-   |
-   = note: `-F unused-variables` implied by `-F unused`
+   = note: requested on the command line with `-D forbidden-lint-groups`
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: `forbid` lint level was set on command line
 
-error: aborting due to previous error
+error: allow(unused) incompatible with previous forbid
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #81670 <https://github.com/rust-lang/rust/issues/81670>
+   = note: `forbid` lint level was set on command line
+
+error: aborting due to 2 previous errors
 
