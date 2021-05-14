@@ -1249,7 +1249,7 @@ impl CStr {
         unsafe { &*(bytes as *const [u8] as *const CStr) }
     }
 
-    /// Returns the inner pointer to this C string.
+    /// Returns a raw pointer to the start of the string.
     ///
     /// The returned pointer will be valid for as long as `self` is, and points
     /// to a contiguous region of memory terminated with a 0 byte to represent
@@ -1268,7 +1268,12 @@ impl CStr {
     /// # #![allow(unused_must_use)] #![allow(temporary_cstring_as_ptr)]
     /// use std::ffi::CString;
     ///
-    /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
+    /// let ptr = {
+    ///     let cstring = CString::new("Hello").expect("CString::new failed");
+    ///     let cstr = cstring.as_c_str();
+    ///     cstr.as_ptr()
+    /// }; // `cstring` dropped here
+    ///
     /// unsafe {
     ///     // `ptr` is dangling
     ///     *ptr;
@@ -1276,24 +1281,25 @@ impl CStr {
     /// ```
     ///
     /// This happens because the pointer returned by `as_ptr` does not carry any
-    /// lifetime information and the [`CString`] is deallocated immediately after
-    /// the `CString::new("Hello").expect("CString::new failed").as_ptr()`
-    /// expression is evaluated.
-    /// To fix the problem, bind the `CString` to a local variable:
+    /// lifetime information and the underlying bytes are deallocated when `bytes`
+    /// goes out of scope.
+    /// To fix the problem, keep the bytes in scope:
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::CString;
+    /// use std::ffi::CStr;
     ///
-    /// let hello = CString::new("Hello").expect("CString::new failed");
+    /// let bytes = *b"Hello\0";
+    /// let hello = CStr::from_bytes_with_nul(&bytes)
+    ///     .expect("CStr::from_bytes_with_nul failed");
     /// let ptr = hello.as_ptr();
     /// unsafe {
-    ///     // `ptr` is valid because `hello` is in scope
+    ///     // `ptr` is valid because `bytes` is in scope
     ///     *ptr;
     /// }
     /// ```
     ///
-    /// This way, the lifetime of the [`CString`] in `hello` encompasses
+    /// This way, the lifetime of the [`CStr`] in `hello` encompasses
     /// the lifetime of `ptr` and the `unsafe` block.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
