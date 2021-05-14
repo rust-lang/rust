@@ -873,6 +873,10 @@ impl Function {
         db.function_data(self.id).is_unsafe()
     }
 
+    pub fn is_async(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).is_async()
+    }
+
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         let krate = self.module(db).id.krate();
         hir_def::diagnostics::validate_body(db.upcast(), self.id.into(), sink);

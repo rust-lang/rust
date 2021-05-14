@@ -91,6 +91,7 @@ define_semantic_token_modifiers![
     (INJECTED, "injected"),
     (MUTABLE, "mutable"),
     (CONSUMING, "consuming"),
+    (ASYNC, "async"),
     (UNSAFE, "unsafe"),
     (ATTRIBUTE_MODIFIER, "attribute"),
     (TRAIT_MODIFIER, "trait"),

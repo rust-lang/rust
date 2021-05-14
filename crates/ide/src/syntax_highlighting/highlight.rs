@@ -255,6 +255,7 @@ pub(super) fn element(
                     })
                     .map(|modifier| h | modifier)
                     .unwrap_or(h),
+                T![async] | T![await] => h | HlMod::Async,
                 _ => h,
             }
         }
@@ -309,6 +310,9 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
 
                 if func.is_unsafe(db) {
                     h |= HlMod::Unsafe;
+                }
+                if func.is_async(db) {
+                    h |= HlMod::Async;
                 }
                 return h;
             }
@@ -408,6 +412,9 @@ fn highlight_method_call(
     h |= HlMod::Associated;
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HlMod::Unsafe;
+    }
+    if func.is_async(sema.db) {
+        h |= HlMod::Async;
     }
     if func.as_assoc_item(sema.db).and_then(|it| it.containing_trait(sema.db)).is_some() {
         h |= HlMod::Trait
