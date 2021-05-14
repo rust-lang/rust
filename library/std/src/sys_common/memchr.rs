@@ -1,6 +1,8 @@
 // Original implementation taken from rust-memchr.
 // Copyright 2015 Andrew Gallant, bluss and Nicolas Koch
 
+use crate::sys::memchr as sys;
+
 #[cfg(test)]
 mod tests;
 
@@ -25,7 +27,7 @@ mod tests;
 /// ```
 #[inline]
 pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
-    crate::sys::memchr::memchr(needle, haystack)
+    sys::memchr(needle, haystack)
 }
 
 /// A safe interface to `memrchr`.
@@ -45,5 +47,5 @@ pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 /// ```
 #[inline]
 pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
-    crate::sys::memchr::memrchr(needle, haystack)
+    sys::memrchr(needle, haystack)
 }

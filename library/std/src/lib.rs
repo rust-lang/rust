@@ -530,7 +530,6 @@ mod sys;
 pub mod alloc;
 
 // Private support modules
-mod memchr;
 mod panicking;
 
 // The runtime entry point and a few unstable public functions used by the
