@@ -69,7 +69,6 @@ pub mod llvm {
 }
 
 mod llvm_util;
-mod metadata;
 mod mono_item;
 mod type_;
 mod type_of;
@@ -251,7 +250,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
-        Box::new(metadata::LlvmMetadataLoader)
+        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
     }
 
     fn provide(&self, _providers: &mut ty::query::Providers) {}

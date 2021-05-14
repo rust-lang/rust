@@ -3695,6 +3695,7 @@ dependencies = [
  "itertools 0.9.0",
  "jobserver",
  "libc",
+ "object",
  "pathdiff",
  "rustc_apfloat",
  "rustc_ast",

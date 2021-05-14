@@ -18,7 +18,6 @@ use crate::builder::Builder;
 use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
-use crate::metadata;
 use crate::value::Value;
 
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
@@ -47,6 +46,22 @@ pub fn write_compressed_metadata<'tcx>(
     use snap::write::FrameEncoder;
     use std::io::Write;
 
+    // Historical note:
+    //
+    // When using link.exe it was seen that the section name `.note.rustc`
+    // was getting shortened to `.note.ru`, and according to the PE and COFF
+    // specification:
+    //
+    // > Executable images do not use a string table and do not support
+    // > section names longer than 8 characters
+    //
+    // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
+    //
+    // As a result, we choose a slightly shorter name! As to why
+    // `.note.rustc` works on MinGW, see
+    // https://github.com/llvm/llvm-project/blob/llvmorg-12.0.0/lld/COFF/Writer.cpp#L1190-L1197
+    let section_name = if tcx.sess.target.is_like_osx { "__DATA,.rustc" } else { ".rustc" };
+
     let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
     let mut compressed = tcx.metadata_encoding_version();
     FrameEncoder::new(&mut compressed).write_all(&metadata.raw_data).unwrap();
@@ -59,7 +74,6 @@ pub fn write_compressed_metadata<'tcx>(
         unsafe { llvm::LLVMAddGlobal(metadata_llmod, common::val_ty(llconst), buf.as_ptr()) };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
-        let section_name = metadata::metadata_section_name(&tcx.sess.target);
         let name = SmallCStr::new(section_name);
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 

@@ -28,23 +28,11 @@ use rustc_target::spec::Target;
 use std::any::Any;
 use std::path::Path;
 
-pub struct NoLlvmMetadataLoader;
-
-impl MetadataLoader for NoLlvmMetadataLoader {
-    fn get_rlib_metadata(&self, _: &Target, filename: &Path) -> Result<MetadataRef, String> {
-        unreachable!("some_crate.rs shouldn't depend on any external crates");
-    }
-
-    fn get_dylib_metadata(&self, target: &Target, filename: &Path) -> Result<MetadataRef, String> {
-        unreachable!("some_crate.rs shouldn't depend on any external crates");
-    }
-}
-
 struct TheBackend;
 
 impl CodegenBackend for TheBackend {
     fn metadata_loader(&self) -> Box<MetadataLoaderDyn> {
-        Box::new(NoLlvmMetadataLoader)
+        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
     }
 
     fn provide(&self, providers: &mut Providers) {}
