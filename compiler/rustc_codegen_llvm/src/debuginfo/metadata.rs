@@ -1687,7 +1687,13 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         source_info: None,
                     }];
 
-                    set_members_of_composite_type(cx, self.enum_type, variant_metadata, members, None);
+                    set_members_of_composite_type(
+                        cx,
+                        self.enum_type,
+                        variant_metadata,
+                        members,
+                        None,
+                    );
 
                     let variant_info = variant_info_for(dataful_variant);
                     let (variant_type_metadata, member_desc_factory) = describe_enum_variant(
@@ -1932,9 +1938,9 @@ fn describe_enum_variant(
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
                 let offset = enum_layout.fields.offset(tag_field.as_usize());
-                let tag_name = if cx.tcx.sess.target.is_like_msvc { "variant$" } else { "RUST$ENUM$DISR" };
-                let args =
-                    (tag_name.to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
+                let tag_name =
+                    if cx.tcx.sess.target.is_like_msvc { "variant$" } else { "RUST$ENUM$DISR" };
+                let args = (tag_name.to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
                 (Some(offset), Some(args))
             }
             _ => (None, None),

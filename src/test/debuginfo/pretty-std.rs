@@ -1,6 +1,7 @@
 // ignore-freebsd: gdb package too new
 // only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
+// ignore-tidy-linelength
 // compile-flags:-g
 // min-gdb-version: 7.7
 // min-lldb-version: 310
@@ -115,7 +116,7 @@
 // cdb-command: dx none
 // cdb-check:none             : None [Type: _enum<core::option::Option<i64>>]
 // cdb-command: dx some_string
-// cdb-check:some_string      [Type: _enum<core::option::Option<alloc::string::String>, 1, 18446744073709551615, Some>]
+// cdb-check:some_string      [Type: _enum<core::option::Option<alloc::string::String>, 1, [...], Some>]
 
 #![allow(unused_variables)]
 use std::ffi::OsString;
