@@ -1687,8 +1687,9 @@ details.undocumented[open] > summary::before {
 		border-bottom: 1px solid;
 	}
 
-	.item-list > details.rustdoc-toggle > summary:not(.hideme)::before {
-		left: -10px;
+	#main > details.rustdoc-toggle > summary::before,
+	#main > div > details.rustdoc-toggle > summary::before {
+		left: -11px;
 	}
 
 	#all-types {
@@ -1780,9 +1781,5 @@ details.undocumented[open] > summary::before {
 
 	.docblock {
 		margin-left: 12px;
-	}
-
-	details.rustdoc-toggle > summary.hideme::before {
-		left: -11px;
 	}
 }
