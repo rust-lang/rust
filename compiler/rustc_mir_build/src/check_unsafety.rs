@@ -153,6 +153,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
                 self.requires_unsafe(expr.span, UseOfInlineAssembly);
             }
+            ExprKind::Deref { arg } => {
+                if self.thir[arg].ty.is_unsafe_ptr() {
+                    self.requires_unsafe(expr.span, DerefOfRawPointer);
+                }
+            }
             _ => {}
         }
 
@@ -203,7 +208,6 @@ enum UnsafeOpKind {
     UseOfMutableStatic,
     #[allow(dead_code)] // FIXME
     UseOfExternStatic,
-    #[allow(dead_code)] // FIXME
     DerefOfRawPointer,
     #[allow(dead_code)] // FIXME
     AssignToDroppingUnionField,
