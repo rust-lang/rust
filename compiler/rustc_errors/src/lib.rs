@@ -553,11 +553,7 @@ impl Handler {
 
     /// Construct a builder at the `Warning` level with the `msg`.
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
-        let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        if !self.flags.can_emit_warnings {
-            result.cancel();
-        }
-        result
+        DiagnosticBuilder::new(self, Level::Warning, msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
@@ -752,6 +748,14 @@ impl Handler {
         self.inner.borrow_mut().force_print_diagnostic(db)
     }
 
+    pub fn emit_diagnostic_with_ignore(
+        &self,
+        diagnostic: &Diagnostic,
+        ignore_can_emit_warnings: bool,
+    ) {
+        self.inner.borrow_mut().emit_diagnostic_with_ignore(diagnostic, ignore_can_emit_warnings)
+    }
+
     pub fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
         self.inner.borrow_mut().emit_diagnostic(diagnostic)
     }
@@ -794,6 +798,14 @@ impl HandlerInner {
     }
 
     fn emit_diagnostic(&mut self, diagnostic: &Diagnostic) {
+        self.emit_diagnostic_with_ignore(diagnostic, false);
+    }
+
+    fn emit_diagnostic_with_ignore(
+        &mut self,
+        diagnostic: &Diagnostic,
+        ignore_can_emit_warnings: bool,
+    ) {
         if diagnostic.cancelled() {
             return;
         }
@@ -802,7 +814,8 @@ impl HandlerInner {
             self.future_breakage_diagnostics.push(diagnostic.clone());
         }
 
-        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
+        if diagnostic.level == Warning && !self.flags.can_emit_warnings && !ignore_can_emit_warnings
+        {
             if diagnostic.has_future_breakage() {
                 (*TRACK_DIAGNOSTICS)(diagnostic);
             }

@@ -28,6 +28,7 @@ struct DiagnosticBuilderInner<'a> {
     handler: &'a Handler,
     diagnostic: Diagnostic,
     allow_suggestions: bool,
+    is_lint: bool,
 }
 
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
@@ -100,7 +101,7 @@ impl<'a> DerefMut for DiagnosticBuilder<'a> {
 impl<'a> DiagnosticBuilder<'a> {
     /// Emit the diagnostic.
     pub fn emit(&mut self) {
-        self.0.handler.emit_diagnostic(&self);
+        self.0.handler.emit_diagnostic_with_ignore(&self, self.0.is_lint);
         self.cancel();
     }
 
@@ -373,6 +374,16 @@ impl<'a> DiagnosticBuilder<'a> {
         self
     }
 
+    /// Set by LintDiagnosticBuilder to distinguish lint warnings from other
+    /// warnings. Necessary because `-A warnings` on the command line turns
+    /// off all regular warnings, but lint warnings can be turned on again
+    /// with #[warn(...)].
+    pub fn is_lint(&mut self, value: bool) -> &mut Self {
+        debug!("is_lint({:?})", value);
+        self.0.is_lint = value;
+        self
+    }
+
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
     crate fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
@@ -399,6 +410,7 @@ impl<'a> DiagnosticBuilder<'a> {
             handler,
             diagnostic,
             allow_suggestions: true,
+            is_lint: false,
         }))
     }
 }

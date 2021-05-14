@@ -22,12 +22,18 @@ pub enum LintLevelSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(Symbol, Span, Option<Symbol> /* RFC 2383 reason */),
+    Node(
+        Symbol,
+        Span,
+        Option<Symbol>, /* RFC 2383 reason */
+        u32,            /* depth */
+        u32,            /* position */
+    ),
 
     /// Lint level was set by a command-line flag.
     /// The provided `Level` is the level specified on the command line.
     /// (The actual level may be lower due to `--cap-lints`.)
-    CommandLine(Symbol, Level),
+    CommandLine(Symbol, Level, u32 /* position */),
 
     /// Lint is being forced to warn no matter what.
     ForceWarn(Symbol),
@@ -37,8 +43,8 @@ impl LintLevelSource {
     pub fn name(&self) -> Symbol {
         match *self {
             LintLevelSource::Default => symbol::kw::Default,
-            LintLevelSource::Node(name, _, _) => name,
-            LintLevelSource::CommandLine(name, _) => name,
+            LintLevelSource::Node(name, ..) => name,
+            LintLevelSource::CommandLine(name, ..) => name,
             LintLevelSource::ForceWarn(name) => name,
         }
     }
@@ -46,9 +52,30 @@ impl LintLevelSource {
     pub fn span(&self) -> Span {
         match *self {
             LintLevelSource::Default => DUMMY_SP,
-            LintLevelSource::Node(_, span, _) => span,
-            LintLevelSource::CommandLine(_, _) => DUMMY_SP,
+            LintLevelSource::Node(_, span, ..) => span,
+            LintLevelSource::CommandLine(..) => DUMMY_SP,
             LintLevelSource::ForceWarn(_) => DUMMY_SP,
+        }
+    }
+
+    /// Whether a lint level specified at `a` can be overridden by one at `b`.
+    pub fn can_override(a: &Self, b: &Self) -> bool {
+        match (a, b) {
+            (LintLevelSource::Default, LintLevelSource::Default) => false,
+            (LintLevelSource::ForceWarn(_), LintLevelSource::ForceWarn(_)) => false,
+            (_, LintLevelSource::ForceWarn(_)) => true,
+            (LintLevelSource::ForceWarn(_), _) => false,
+            (LintLevelSource::Default, _) => true,
+            (_, LintLevelSource::Default) => false,
+            (LintLevelSource::CommandLine(.., pos_a), LintLevelSource::CommandLine(.., pos_b)) => {
+                pos_a < pos_b
+            }
+            (LintLevelSource::CommandLine(..), LintLevelSource::Node(..)) => true,
+            (LintLevelSource::Node(..), LintLevelSource::CommandLine(..)) => false,
+            (
+                LintLevelSource::Node(.., depth_a, pos_a),
+                LintLevelSource::Node(.., depth_b, pos_b),
+            ) => (depth_a < depth_b) || (depth_a == depth_b && pos_a < pos_b),
         }
     }
 }
@@ -116,9 +143,11 @@ impl LintLevelSets {
             let (warnings_level, warnings_src) =
                 self.get_lint_id_level(LintId::of(builtin::WARNINGS), idx, aux);
             if let Some(configured_warning_level) = warnings_level {
-                if configured_warning_level != Level::Warn {
-                    level = configured_warning_level;
-                    src = warnings_src;
+                if LintLevelSource::can_override(&src, &warnings_src) {
+                    if configured_warning_level != Level::Warn {
+                        level = configured_warning_level;
+                        src = warnings_src;
+                    }
                 }
             }
         }
@@ -227,6 +256,7 @@ impl<'a> LintDiagnosticBuilder<'a> {
     /// Return the inner DiagnosticBuilder, first setting the primary message to `msg`.
     pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a> {
         self.0.set_primary_message(msg);
+        self.0.is_lint(true);
         self.0
     }
 
@@ -310,7 +340,7 @@ pub fn struct_lint_level<'s, 'd>(
                     &format!("`#[{}({})]` on by default", level.as_str(), name),
                 );
             }
-            LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
+            LintLevelSource::CommandLine(lint_flag_val, orig_level, _) => {
                 let flag = match orig_level {
                     Level::Warn => "-W",
                     Level::Deny => "-D",
@@ -339,7 +369,7 @@ pub fn struct_lint_level<'s, 'd>(
                     );
                 }
             }
-            LintLevelSource::Node(lint_attr_name, src, reason) => {
+            LintLevelSource::Node(lint_attr_name, src, reason, _, _) => {
                 if let Some(rationale) = reason {
                     err.note(&rationale.as_str());
                 }

@@ -1,0 +1,13 @@
+warning: unused variable: `a`
+  --> $DIR/issue-75668.rs:8:9
+   |
+LL |     let a = 5;
+   |         ^ help: if this is intentional, prefix it with an underscore: `_a`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-75668.rs:5:9
+   |
+LL | #![warn(unused)]
+   |         ^^^^^^
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
