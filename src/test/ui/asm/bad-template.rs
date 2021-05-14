@@ -1,4 +1,6 @@
 // only-x86_64
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
 
 #![feature(asm, global_asm)]
 
