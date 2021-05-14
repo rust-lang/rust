@@ -65,6 +65,8 @@ pub enum HlMod {
     Static,
     /// Used for items in traits and trait impls.
     Trait,
+    /// Used with keywords like `async` and `await`.
+    Async,
     // Keep this last!
     /// Used for unsafe functions, mutable statics, union accesses and unsafe operations.
     Unsafe,
@@ -186,6 +188,7 @@ impl HlMod {
         HlMod::Mutable,
         HlMod::Static,
         HlMod::Trait,
+        HlMod::Async,
         HlMod::Unsafe,
     ];
 
@@ -203,6 +206,7 @@ impl HlMod {
             HlMod::Mutable => "mutable",
             HlMod::Static => "static",
             HlMod::Trait => "trait",
+            HlMod::Async => "async",
             HlMod::Unsafe => "unsafe",
         }
     }
