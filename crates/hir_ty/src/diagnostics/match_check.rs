@@ -1119,6 +1119,7 @@ fn main() {
         (true, false, true) => (),
         (true) => (),
     }
+    match (true, false) { (true,) => {} }
     match (0) { () => () }
     match Unresolved::Bar { Unresolved::Baz => () }
 }
