@@ -360,6 +360,7 @@ mod unnamed_address;
 mod unnecessary_self_imports;
 mod unnecessary_sort_by;
 mod unnecessary_wraps;
+mod unnecessary_async;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
 mod unused_io_amount;
@@ -954,6 +955,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         unit_types::UNIT_CMP,
         unnamed_address::FN_ADDRESS_COMPARISONS,
         unnamed_address::VTABLE_ADDRESS_COMPARISONS,
+        unnecessary_async::UNNECESSARY_ASYNC,
         unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS,
         unnecessary_sort_by::UNNECESSARY_SORT_BY,
         unnecessary_wraps::UNNECESSARY_WRAPS,
@@ -1271,6 +1273,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_map::ManualMap);
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
     store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
+    store.register_late_pass(|| box unnecessary_async::UnnecessaryAsync);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(arithmetic::FLOAT_ARITHMETIC),
@@ -1412,6 +1415,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(unicode::NON_ASCII_LITERAL),
         LintId::of(unicode::UNICODE_NOT_NFC),
         LintId::of(unit_types::LET_UNIT_VALUE),
+        LintId::of(unnecessary_async::UNNECESSARY_ASYNC),
         LintId::of(unnecessary_wraps::UNNECESSARY_WRAPS),
         LintId::of(unnested_or_patterns::UNNESTED_OR_PATTERNS),
         LintId::of(unused_self::UNUSED_SELF),
