@@ -496,12 +496,21 @@ fn non_exhaustive_match<'p, 'tcx>(
         err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
     };
 
+    let is_variant_list_non_exhaustive = match scrut_ty.kind() {
+        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did.is_local() => true,
+        _ => false,
+    };
+
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
               possibly by adding wildcards or more match arms",
     );
-    err.note(&format!("the matched value is of type `{}`", scrut_ty));
+    err.note(&format!(
+        "the matched value is of type `{}`{}",
+        scrut_ty,
+        if is_variant_list_non_exhaustive { ", which is marked as non-exhaustive" } else { "" }
+    ));
     if (scrut_ty == cx.tcx.types.usize || scrut_ty == cx.tcx.types.isize)
         && !is_empty_match
         && witnesses.len() == 1

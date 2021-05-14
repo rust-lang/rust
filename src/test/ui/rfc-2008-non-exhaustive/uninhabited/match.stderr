@@ -5,7 +5,7 @@ LL |     match x {}
    |           ^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `UninhabitedEnum`
+   = note: the matched value is of type `UninhabitedEnum`, which is marked as non-exhaustive
 
 error[E0004]: non-exhaustive patterns: type `UninhabitedStruct` is non-empty
   --> $DIR/match.rs:23:11
