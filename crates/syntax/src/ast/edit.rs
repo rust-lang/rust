@@ -15,7 +15,7 @@ use crate::{
         make::{self, tokens},
         AstNode, GenericParamsOwner, NameOwner, TypeBoundsOwner,
     },
-    AstToken, Direction, InsertPosition, SmolStr, SyntaxElement, SyntaxKind,
+    ted, AstToken, Direction, InsertPosition, NodeOrToken, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken, T,
 };
@@ -588,37 +588,39 @@ impl IndentLevel {
     /// ```
     /// if you indent the block, the `{` token would stay put.
     fn increase_indent(self, node: SyntaxNode) -> SyntaxNode {
-        let mut rewriter = SyntaxRewriter::default();
-        node.descendants_with_tokens()
-            .filter_map(|el| el.into_token())
-            .filter_map(ast::Whitespace::cast)
-            .filter(|ws| {
-                let text = ws.syntax().text();
-                text.contains('\n')
-            })
-            .for_each(|ws| {
-                let new_ws = make::tokens::whitespace(&format!("{}{}", ws.syntax(), self,));
-                rewriter.replace(ws.syntax(), &new_ws)
-            });
-        rewriter.rewrite(&node)
+        let res = node.clone_subtree().clone_for_update();
+        let tokens = res.preorder_with_tokens().filter_map(|event| match event {
+            rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+            _ => None,
+        });
+        for token in tokens {
+            if let Some(ws) = ast::Whitespace::cast(token) {
+                if ws.text().contains('\n') {
+                    let new_ws = make::tokens::whitespace(&format!("{}{}", ws.syntax(), self));
+                    ted::replace(ws.syntax(), &new_ws)
+                }
+            }
+        }
+        res.clone_subtree()
     }
 
     fn decrease_indent(self, node: SyntaxNode) -> SyntaxNode {
-        let mut rewriter = SyntaxRewriter::default();
-        node.descendants_with_tokens()
-            .filter_map(|el| el.into_token())
-            .filter_map(ast::Whitespace::cast)
-            .filter(|ws| {
-                let text = ws.syntax().text();
-                text.contains('\n')
-            })
-            .for_each(|ws| {
-                let new_ws = make::tokens::whitespace(
-                    &ws.syntax().text().replace(&format!("\n{}", self), "\n"),
-                );
-                rewriter.replace(ws.syntax(), &new_ws)
-            });
-        rewriter.rewrite(&node)
+        let res = node.clone_subtree().clone_for_update();
+        let tokens = res.preorder_with_tokens().filter_map(|event| match event {
+            rowan::WalkEvent::Leave(NodeOrToken::Token(it)) => Some(it),
+            _ => None,
+        });
+        for token in tokens {
+            if let Some(ws) = ast::Whitespace::cast(token) {
+                if ws.text().contains('\n') {
+                    let new_ws = make::tokens::whitespace(
+                        &ws.syntax().text().replace(&format!("\n{}", self), "\n"),
+                    );
+                    ted::replace(ws.syntax(), &new_ws)
+                }
+            }
+        }
+        res.clone_subtree()
     }
 }
 
