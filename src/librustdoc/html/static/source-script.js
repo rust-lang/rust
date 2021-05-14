@@ -2,7 +2,8 @@
 /* global search, sourcesIndex */
 
 // Local js definitions:
-/* global addClass, getCurrentValue, hasClass, removeClass, updateLocalStorage */
+/* global addClass, getCurrentValue, hasClass, onEachLazy, removeClass, searchState */
+/* global updateLocalStorage */
 (function() {
 
 function getCurrentFilePath() {
@@ -153,7 +154,7 @@ function createSourceSidebar() {
 
 var lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
 
-function highlightSourceLines(match, ev) {
+function highlightSourceLines(scrollTo, match) {
     if (typeof match === "undefined") {
         match = window.location.hash.match(lineNumbersRegex);
     }
@@ -174,7 +175,7 @@ function highlightSourceLines(match, ev) {
     if (!elem) {
         return;
     }
-    if (!ev) {
+    if (scrollTo) {
         var x = document.getElementById(from);
         if (x) {
             x.scrollIntoView();
@@ -202,7 +203,7 @@ var handleSourceHighlight = (function() {
             y = window.scrollY;
         if (searchState.browserSupportsHistoryApi()) {
             history.replaceState(null, null, "#" + name);
-            highlightSourceLines();
+            highlightSourceLines(true);
         } else {
             location.replace("#" + name);
         }
@@ -234,7 +235,7 @@ var handleSourceHighlight = (function() {
 window.addEventListener("hashchange", function() {
     var match = window.location.hash.match(lineNumbersRegex);
     if (match) {
-        return highlightSourceLines(match, ev);
+        return highlightSourceLines(false, match);
     }
 });
 
@@ -242,7 +243,7 @@ onEachLazy(document.getElementsByClassName("line-numbers"), function(el) {
     el.addEventListener("click", handleSourceHighlight);
 });
 
-highlightSourceLines();
+highlightSourceLines(true);
 
 window.createSourceSidebar = createSourceSidebar;
 })();
