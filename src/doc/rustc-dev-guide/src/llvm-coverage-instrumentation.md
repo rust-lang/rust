@@ -28,11 +28,12 @@ them), and generate various reports for analysis, for example:
 <br/>
 
 Detailed instructions and examples are documented in the
-[Rust Unstable Book (under _source-based-code-coverage_)][unstable-book-sbcc].
+[Rust Unstable Book (under
+_compiler-flags/instrument-coverage_)][unstable-book-instrument-coverage].
 
 [llvm-instrprof-increment]: https://llvm.org/docs/LangRef.html#llvm-instrprof-increment-intrinsic
-[Coverage Map]: https://llvm.org/docs/CoverageMappingFormat.html
-[unstable-book-sbcc]: https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/source-based-code-coverage.html
+[coverage map]: https://llvm.org/docs/CoverageMappingFormat.html
+[unstable-book-instrument-coverage]: https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/instrument-coverage.html
 
 ## Rust symbol mangling
 
@@ -82,7 +83,7 @@ a span of code ([`CodeRegion`][code-region]). It counts the number of times a
 branch is executed, and also specifies the exact location of that code span in
 the Rust source code.
 
-Note that many of these `Coverage` statements will *not* be converted into
+Note that many of these `Coverage` statements will _not_ be converted into
 physical counters (or any other executable instructions) in the final binary.
 Some of them will be (see `CoverageKind::`[`Counter`][counter-coverage-kind]),
 but other counters can be computed on the fly, when generating a coverage
@@ -111,7 +112,7 @@ fn some_func(flag: bool) {
 In this example, four contiguous code regions are counted while only
 incrementing two counters.
 
-CFG analysis is used to not only determine *where* the branches are, for
+CFG analysis is used to not only determine _where_ the branches are, for
 conditional expressions like `if`, `else`, `match`, and `loop`, but also to
 determine where expressions can be used in place of physical counters.
 
@@ -150,40 +151,41 @@ MIR `Statement` into some backend-specific action or instruction.
         match statement.kind {
             ...
             mir::StatementKind::Coverage(box ref coverage) => {
-                self.codegen_coverage(&mut bx, coverage.clone());
+                self.codegen_coverage(&mut bx, coverage.clone(), statement.source_info.scope);
                 bx
             }
 ```
 
-
 `codegen_coverage()` handles each `CoverageKind` as follows:
 
-* For all `CoverageKind`s, Coverage data (counter ID, expression equation
+- For all `CoverageKind`s, Coverage data (counter ID, expression equation
   and ID, and code regions) are passed to the backend's `Builder`, to
   populate data structures that will be used to generate the crate's
   "Coverage Map". (See the [`FunctionCoverage`][function-coverage] `struct`.)
-* For `CoverageKind::Counter`s, an instruction is injected in the backend
+- For `CoverageKind::Counter`s, an instruction is injected in the backend
   IR to increment the physical counter, by calling the `BuilderMethod`
   [`instrprof_increment()`][instrprof-increment].
 
 ```rust
-    pub fn codegen_coverage(&self, bx: &mut Bx, coverage: Coverage) {
+    pub fn codegen_coverage(&self, bx: &mut Bx, coverage: Coverage, scope: SourceScope) {
+        ...
+        let instance = ... // the scoped instance (current or inlined function)
         let Coverage { kind, code_region } = coverage;
         match kind {
             CoverageKind::Counter { function_source_hash, id } => {
-                if let Some(code_region) = code_region {
-                    bx.add_coverage_counter(self.instance, id, code_region);
-                }
+                ...
+                bx.add_coverage_counter(instance, id, code_region);
                 ...
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
             CoverageKind::Expression { id, lhs, op, rhs } => {
-                bx.add_coverage_counter_expression(self.instance, id, lhs, op, rhs, code_region);
+                bx.add_coverage_counter_expression(instance, id, lhs, op, rhs, code_region);
             }
             CoverageKind::Unreachable => {
-                ...
+                bx.add_coverage_unreachable(
+                    instance,
+                    code_region.expect(...
 ```
-_code snippet trimmed for brevity_
 
 > The function name `instrprof_increment()` is taken from the LLVM intrinsic
 call of the same name ([`llvm.instrprof.increment`][llvm-instrprof-increment]),
@@ -221,7 +223,7 @@ properly-configured variables in LLVM IR, according to very specific
 details of the [_LLVM Coverage Mapping Format_][coverage-mapping-format]
 (Version 4).[^llvm-and-covmap-versions]
 
-[^llvm-and-covmap-versions]: The Rust compiler (as of <!-- date: 2021-01 -->
+[^llvm-and-covmap-versions]: The Rust compiler (as of
 January 2021) supports _LLVM Coverage Mapping Format_ Version 4 (the most
 up-to-date version of the format, at the time of this writing) for improved
 compatibility with other LLVM-based compilers (like _Clang_), and to take
@@ -233,13 +235,16 @@ instrument-coverage` will generate an error message.
 
 ```rust
 pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+    ...
+    if !tcx.sess.instrument_coverage_except_unused_functions() {
+        add_unused_functions(cx);
+    }
+
     let mut function_coverage_map = match cx.coverage_context() {
         Some(ctx) => ctx.take_function_coverage_map(),
         None => return,
     };
     ...
-    add_unreachable_coverage(tcx, &mut function_coverage_map);
-
     let mut mapgen = CoverageMapGenerator::new();
 
     for (instance, function_coverage) in function_coverage_map {
@@ -250,56 +255,51 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 ```
 _code snippet trimmed for brevity_
 
-One notable step, performed by `mapgen::finalize()` before processing the
-`Instance`s and their `FunctionCoverage`s, is the call to
-[`add_unreachable_functions()`][add-unreachable-coverage].
+One notable first step performed by `mapgen::finalize()` is the call to
+[`add_unused_functions()`][add-unused-functions]:
 
-When finalizing the coverage map, `FunctionCoverage` only has the `CodeRegion`s and counters for
-the functions that went through codegen; such as public functions and "used" functions
-(functions referenced by other "used" or public items). Any other functions (considered unused
-or "Unreachable") were still parsed and processed through the MIR stage.
+When finalizing the coverage map, `FunctionCoverage` only has the `CodeRegion`s
+and counters for the functions that went through codegen; such as public
+functions and "used" functions (functions referenced by other "used" or public
+items). Any other functions (considered unused) were still parsed and processed
+through the MIR stage.
 
-The set of unreachable functions is computed via the set difference of all MIR
-`DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s
-(`tcx` query `collect_and_partition_mono_items`). `add_unreachable_functions()`
-computes the set of unreachable functions, queries the `tcx` for the
-previously-computed `CodeRegions`, for each unreachable MIR, and adds those code
-regions to one of the non-generic codegenned functions (non-generic avoids
-potentially injecting the unreachable coverage multiple times for multiple
-instantiations).
+The set of unused functions is computed via the set difference of all MIR
+`DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
+`codegened_and_inlined_items`). `add_unused_functions()` computes the set of
+unused functions, queries the `tcx` for the previously-computed `CodeRegions`,
+for each unused MIR, synthesizes an LLVM function (with no internal statements,
+since it will not be called), and adds a new `FunctionCoverage`, with
+`Unreachable` code regions.
 
 [compile-codegen-unit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/base/fn.compile_codegen_unit.html
 [coverageinfo-finalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/context/struct.CodegenCx.html#method.coverageinfo_finalize
 [mapgen-finalize]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/coverageinfo/mapgen/fn.finalize.html
 [coverage-mapping-format]: https://llvm.org/docs/CoverageMappingFormat.html
-[add-unreachable-coverage]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/coverageinfo/mapgen/fn.add_unreachable_coverage.html
+[add-unused-functions]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/coverageinfo/mapgen/fn.add_unused_functions.html
 
 ## Testing LLVM Coverage
 
 Coverage instrumentation in the MIR is validated by a `mir-opt` test:
 [`instrument-coverage`][mir-opt-test].
 
-More complete testing of end-to-end coverage instrumentation and reports are done
-in the `run-make-fulldeps` tests, with sample Rust programs (to be instrumented)
-in the [`coverage`][coverage-test-samples] directory, and the actual tests and expected
-results in [`coverage-reports`].
+More complete testing of end-to-end coverage instrumentation and reports are
+done in the `run-make-fulldeps` tests, with sample Rust programs (to be
+instrumented) in the [`coverage`][coverage-test-samples] directory, and the
+actual tests and expected results in [`coverage-reports`].
 
-In addition to testing the final result, two intermediate results are also validated
-to catch potential regression errors early: Minimum `CoverageSpan`s computed during
-the `InstrumentCoverage` MIR pass are saved in `mir_dump` [Spanview][spanview-debugging]
-files and compared to expected results in [`coverage-spanview`].
-
-Finally, the [`coverage-llvmir`] test compares compiles a simple Rust program with
-`-Z instrument-coverage` and compares the compiled program's LLVM IR to expected
-LLVM IR instructions and structured data for a coverage-enabled program, including
-various checks for Coverage Map-related metadata and the LLVM intrinsic calls to
-increment the runtime counters.
+Finally, the [`coverage-llvmir`] test compares compiles a simple Rust program
+with `-Z instrument-coverage` and compares the compiled program's LLVM IR to
+expected LLVM IR instructions and structured data for a coverage-enabled
+program, including various checks for Coverage Map-related metadata and the LLVM
+intrinsic calls to increment the runtime counters.
 
 Expected results for both the `mir-opt` tests and the `coverage*` tests under
 `run-make-fulldeps` can be refreshed by running:
 
 ```shell
-$ ./x.py test src/test/<test-type> --blessed
+$ ./x.py test mir-opt --blessed
+$ ./x.py test src/test/run-make-fulldeps/coverage --blessed
 ```
 
 [mir-opt-test]: https://github.com/rust-lang/rust/blob/master/src/test/mir-opt/instrument_coverage.rs
@@ -396,16 +396,18 @@ contrast with the [`SimplifyCfg`][simplify-cfg] MIR pass, this step does
 not alter the MIR itself, because the `CoverageGraph` aggressively simplifies
 the CFG, and ignores nodes that are not relevant to coverage. For example:
 
-  * The BCB CFG ignores (excludes) branches considered not relevant
+  - The BCB CFG ignores (excludes) branches considered not relevant
     to the current coverage solution. It excludes unwind-related code[^78544]
     that is injected by the Rust compiler but has no physical source
     code to count, which allows a `Call`-terminated BasicBlock
     to be merged with its successor, within a single BCB.
-  * A `Goto`-terminated `BasicBlock` can be merged with its successor
-    ***as long as*** it has the only incoming edge to the successor `BasicBlock`.
-  * Some BasicBlock terminators support Rust-specific concerns--like borrow-checking--that are
-    not relevant to coverage analysis. `FalseUnwind`, for example, can be treated the same as
-    a `Goto` (potentially merged with its successor into the same BCB).
+  - A `Goto`-terminated `BasicBlock` can be merged with its successor
+    **_as long as_** it has the only incoming edge to the successor
+    `BasicBlock`.
+  - Some BasicBlock terminators support Rust-specific concerns--like
+    borrow-checking--that are not relevant to coverage analysis. `FalseUnwind`,
+    for example, can be treated the same as a `Goto` (potentially merged with
+    its successor into the same BCB).
 
 [^78544]: (Note, however, that Issue [#78544][rust-lang/rust#78544] considers
 providing future support for coverage of programs that intentionally
@@ -448,24 +450,24 @@ directional edges (the arrows) leading from each node to its `successors()`.
 The nodes contain information in sections:
 
 1. The gray header has a label showing the BCB ID (or _index_ for looking up
-its `BasicCoverageBlockData`).
+   its `BasicCoverageBlockData`).
 2. The first content section shows the assigned `Counter` or `Expression` for
-each contiguous section of code. (There may be more than one `Expression`
-incremented by the same `Counter` for discontiguous sections of code representing
-the same sequential actions.) Note the code is represented by the line and
-column ranges (for example: `52:28-52:33`, representing the original source
-line 52, for columns 28-33). These are followed by the MIR `Statement` or
-`Terminator` represented by that source range. (How these coverage regions
-are determined is discussed in the following section.)
+   each contiguous section of code. (There may be more than one `Expression`
+   incremented by the same `Counter` for discontiguous sections of code
+   representing the same sequential actions.) Note the code is represented by
+   the line and column ranges (for example: `52:28-52:33`, representing the
+   original source line 52, for columns 28-33). These are followed by the MIR
+   `Statement` or `Terminator` represented by that source range. (How these
+   coverage regions are determined is discussed in the following section.)
 3. The final section(s) show the MIR `BasicBlock`s (by ID/index and its
-`TerminatorKind`) contained in this BCB. The last BCB is separated out because
-its `successors()` determine the edges leading out of the BCB, and into
-the `leading_bb()` (first `BasicBlock`) of each successor BCB.
+   `TerminatorKind`) contained in this BCB. The last BCB is separated out
+   because its `successors()` determine the edges leading out of the BCB, and
+   into the `leading_bb()` (first `BasicBlock`) of each successor BCB.
 
 Note, to find the `BasicCoverageBlock` from a final BCB `Terminator`'s
 successor `BasicBlock`, there is an index and helper
-function--[`bcb_from_bb()`][bcb-from-bb]--to look up a `BasicCoverageBlock` from _any_
-contained `BasicBlock`.
+function--[`bcb_from_bb()`][bcb-from-bb]--to look up a `BasicCoverageBlock` from
+*any* contained `BasicBlock`.
 
 [directed-graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/trait.DirectedGraph.html
 [graph-traits]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/graph/index.html#traits
@@ -572,7 +574,7 @@ incoming edges. Given the following graph, for example, the count for
 
 In this situation, BCB node `B` may require an edge counter for its
 "edge from A", and that edge might be computed from an `Expression`,
-`Counter(A) - Counter(C)`. But an expression for the BCB _node_  `B`
+`Counter(A) - Counter(C)`. But an expression for the BCB _node_ `B`
 would be the sum of all incoming edges:
 
 ```text
