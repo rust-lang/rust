@@ -1,0 +1,22 @@
+error: unexpected `const` parameter declaration
+  --> $DIR/const-param-decl-on-type-instead-of-impl.rs:2:18
+   |
+LL | impl NInts<const N: usize> {}
+   |                  ^ expected a `const` expression, not a parameter declaration
+   |
+help: `const` parameters must be declared for the `impl`
+   |
+LL | impl<const N: usize> NInts<N> {}
+   |     ++++++++++++++++       ~
+
+error[E0308]: mismatched types
+  --> $DIR/const-param-decl-on-type-instead-of-impl.rs:5:17
+   |
+LL |     let _: () = 42;
+   |            --   ^^ expected `()`, found integer
+   |            |
+   |            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

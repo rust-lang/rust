@@ -405,6 +405,21 @@ pub struct GenericParam {
     pub kind: GenericParamKind,
 }
 
+impl GenericParam {
+    pub fn span(&self) -> Span {
+        match &self.kind {
+            GenericParamKind::Lifetime | GenericParamKind::Type { default: None } => {
+                self.ident.span
+            }
+            GenericParamKind::Type { default: Some(ty) } => self.ident.span.to(ty.span),
+            GenericParamKind::Const { kw_span, default: Some(default), .. } => {
+                kw_span.to(default.value.span)
+            }
+            GenericParamKind::Const { kw_span, default: None, ty } => kw_span.to(ty.span),
+        }
+    }
+}
+
 /// Represents lifetime, type and const parameters attached to a declaration of
 /// a function, enum, trait, etc.
 #[derive(Clone, Encodable, Decodable, Debug)]

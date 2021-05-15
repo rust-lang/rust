@@ -48,7 +48,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_const_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, GenericParam> {
+    crate fn parse_const_param(
+        &mut self,
+        preceding_attrs: Vec<Attribute>,
+    ) -> PResult<'a, GenericParam> {
         let const_span = self.token.span;
 
         self.expect_keyword(kw::Const)?;
