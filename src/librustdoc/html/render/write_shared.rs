@@ -465,8 +465,6 @@ pub(super) fn write_shared(
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
     for (&did, imps) in &cx.cache.implementors {
-        let did = did.expect_real();
-
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some
         // rare cases we could find an implementation for an item which wasn't

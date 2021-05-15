@@ -14,9 +14,8 @@ use rustc_span::Pos;
 
 use rustdoc_json_types::*;
 
-use crate::clean;
 use crate::clean::utils::print_const_expr;
-use crate::clean::FakeDefId;
+use crate::clean::{self, FakeDefId};
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 use std::collections::HashSet;
@@ -31,7 +30,7 @@ impl JsonRenderer<'_> {
             .into_iter()
             .flatten()
             .filter_map(|clean::ItemLink { link, did, .. }| {
-                did.map(|did| (link.clone(), from_def_id(did)))
+                did.map(|did| (link.clone(), from_def_id(did.into())))
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();
