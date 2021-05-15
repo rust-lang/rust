@@ -289,7 +289,7 @@ declare_features! (
     (accepted, member_constraints, "1.54.0", Some(61997), None),
     /// Allows bindings in the subpattern of a binding pattern.
     /// For example, you can write `x @ Some(y)`.
-    (active, bindings_after_at, "1.54.0", Some(65490), None),
+    (accepted, bindings_after_at, "1.54.0", Some(65490), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
