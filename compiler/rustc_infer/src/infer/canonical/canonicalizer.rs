@@ -304,6 +304,15 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let tcx = self.tcx();
+        let r = self
+            .infcx
+            .unwrap()
+            .inner
+            .borrow_mut()
+            .unwrap_region_constraints()
+            .opportunistic_resolve_region(tcx, r);
+
         match *r {
             ty::ReLateBound(index, ..) => {
                 if index >= self.binder_index {
@@ -313,22 +322,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                 }
             }
 
-            ty::ReVar(vid) => {
-                let resolved_vid = self
-                    .infcx
-                    .unwrap()
-                    .inner
-                    .borrow_mut()
-                    .unwrap_region_constraints()
-                    .opportunistic_resolve_var(vid);
-                debug!(
-                    "canonical: region var found with vid {:?}, \
-                     opportunistically resolved to {:?}",
-                    vid, r
-                );
-                let r = self.tcx.reuse_or_mk_region(r, ty::ReVar(resolved_vid));
-                self.canonicalize_region_mode.canonicalize_free_region(self, r)
-            }
+            ty::ReVar(_) => self.canonicalize_region_mode.canonicalize_free_region(self, r),
 
             ty::ReStatic
             | ty::ReEarlyBound(..)

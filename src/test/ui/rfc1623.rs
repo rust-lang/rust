@@ -23,6 +23,10 @@ static SOME_STRUCT: &SomeStruct = &SomeStruct {
     bar: &Bar { bools: &[true, true] },
     f: &id,
     //~^ ERROR implementation of `FnOnce` is not general enough
+    //~^^ mismatched types
+    //~^^^ mismatched types
+    //~^^^^ mismatched types
+    //~^^^^^ mismatched types
 };
 
 // very simple test for a 'static static with default lifetime
