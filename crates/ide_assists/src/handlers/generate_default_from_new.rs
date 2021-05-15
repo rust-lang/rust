@@ -3,11 +3,12 @@ use crate::{
     AssistId,
 };
 use ide_db::helpers::FamousDefs;
+use itertools::Itertools;
+use stdx::format_to;
 use syntax::{
-    ast::{self, Impl, NameOwner},
+    ast::{self, AttrsOwner, GenericParamsOwner, Impl, NameOwner, TypeBoundsOwner},
     AstNode,
 };
-use crate::utils::generate_trait_impl_text;
 
 // Assist: generate_default_from_new
 //
@@ -60,37 +61,66 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
     }
 
     let insert_location = impl_.syntax().text_range();
-    let code = match ast::Struct::cast(impl_.self_ty().unwrap().syntax().clone()){
-        None => {
-            default_fn_node_for_new(impl_)
-        }
-        Some(strukt) => {
-            generate_trait_impl_text(&ast::Adt::Struct(strukt),"core:default:Default","    fn default() -> Self {{
-        Self::new()
-    }}")
-        }
-    };
+
     acc.add(
         AssistId("generate_default_from_new", crate::AssistKind::Generate),
         "Generate a Default impl from a new fn",
         insert_location,
         move |builder| {
+            let default_code = "    fn default() -> Self {
+        Self::new()
+    }";
+            let code = generate_trait_impl_text_from_impl(&impl_, "Default", default_code);
             builder.insert(insert_location.end(), code);
         },
     )
 }
 
-fn default_fn_node_for_new(impl_: Impl) -> String {
-    format!(
-        "
+fn generate_trait_impl_text_from_impl(impl_: &ast::Impl, trait_text: &str, code: &str) -> String {
+    let generic_params = impl_.generic_param_list();
+    let mut buf = String::with_capacity(code.len());
+    buf.push_str("\n\n");
+    impl_
+        .attrs()
+        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false))
+        .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
+    buf.push_str("impl");
 
-impl Default for {} {{
-    fn default() -> Self {{
-        Self::new()
-    }}
-}}",
-        impl_.self_ty().unwrap().syntax().text()
-    )
+    if let Some(generic_params) = &generic_params {
+        let lifetimes = generic_params.lifetime_params().map(|lt| format!("{}", lt.syntax()));
+        let type_params = generic_params.type_params().map(|type_param| {
+            let mut buf = String::new();
+            if let Some(it) = type_param.name() {
+                format_to!(buf, "{}", it.syntax());
+            }
+            if let Some(it) = type_param.colon_token() {
+                format_to!(buf, "{} ", it);
+            }
+            if let Some(it) = type_param.type_bound_list() {
+                format_to!(buf, "{}", it.syntax());
+            }
+            buf
+        });
+        let const_params = generic_params.const_params().map(|t| t.syntax().to_string());
+        let generics = lifetimes.chain(type_params).chain(const_params).format(", ");
+        format_to!(buf, "<{}>", generics);
+    }
+
+    buf.push(' ');
+    buf.push_str(trait_text);
+    buf.push_str(" for ");
+    buf.push_str(&impl_.self_ty().unwrap().syntax().text().to_string());
+
+    match impl_.where_clause() {
+        Some(where_clause) => {
+            format_to!(buf, "\n{}\n{{\n{}\n}}", where_clause, code);
+        }
+        None => {
+            format_to!(buf, " {{\n{}\n}}", code);
+        }
+    }
+
+    buf
 }
 
 fn is_default_implemented(ctx: &AssistContext, impl_: &Impl) -> bool {
@@ -185,7 +215,7 @@ impl Default for Test {
     }
 
     #[test]
-    fn generate_default3() {
+    fn new_function_with_generic() {
         check_pass(
             r#"
 pub struct Foo<T> {
@@ -194,7 +224,7 @@ pub struct Foo<T> {
 
 impl<T> Foo<T> {
     pub fn ne$0w() -> Self {
-        todo!()
+        unimplemented!()
     }
 }
 "#,
@@ -205,11 +235,205 @@ pub struct Foo<T> {
 
 impl<T> Foo<T> {
     pub fn new() -> Self {
-        todo!()
+        unimplemented!()
     }
 }
 
 impl<T> Default for Foo<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn new_function_with_generics() {
+        check_pass(
+            r#"
+pub struct Foo<T, B> {
+    _tars: *mut T,
+    _bar: *mut B,
+}
+
+impl<T, B> Foo<T, B> {
+    pub fn ne$0w() -> Self {
+        unimplemented!()
+    }
+}
+"#,
+            r#"
+pub struct Foo<T, B> {
+    _tars: *mut T,
+    _bar: *mut B,
+}
+
+impl<T, B> Foo<T, B> {
+    pub fn new() -> Self {
+        unimplemented!()
+    }
+}
+
+impl<T, B> Default for Foo<T, B> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn new_function_with_generic_and_bound() {
+        check_pass(
+            r#"
+pub struct Foo<T> {
+    t: T,
+}
+
+impl<T: From<i32>> Foo<T> {
+    pub fn ne$0w() -> Self {
+        Foo { t: 0.into() }
+    }
+}
+"#,
+            r#"
+pub struct Foo<T> {
+    t: T,
+}
+
+impl<T: From<i32>> Foo<T> {
+    pub fn new() -> Self {
+        Foo { t: 0.into() }
+    }
+}
+
+impl<T: From<i32>> Default for Foo<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn new_function_with_generics_and_bounds() {
+        check_pass(
+            r#"
+pub struct Foo<T, B> {
+    _tars: T,
+    _bar: B,
+}
+
+impl<T: From<i32>, B: From<i64>> Foo<T, B> {
+    pub fn ne$0w() -> Self {
+        unimplemented!()
+    }
+}
+"#,
+            r#"
+pub struct Foo<T, B> {
+    _tars: T,
+    _bar: B,
+}
+
+impl<T: From<i32>, B: From<i64>> Foo<T, B> {
+    pub fn new() -> Self {
+        unimplemented!()
+    }
+}
+
+impl<T: From<i32>, B: From<i64>> Default for Foo<T, B> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn new_function_with_generic_and_where() {
+        check_pass(
+            r#"
+pub struct Foo<T> {
+    t: T,
+}
+
+impl<T: From<i32>> Foo<T>
+where
+    Option<T>: Debug
+{
+    pub fn ne$0w() -> Self {
+        Foo { t: 0.into() }
+    }
+}
+"#,
+            r#"
+pub struct Foo<T> {
+    t: T,
+}
+
+impl<T: From<i32>> Foo<T>
+where
+    Option<T>: Debug
+{
+    pub fn new() -> Self {
+        Foo { t: 0.into() }
+    }
+}
+
+impl<T: From<i32>> Default for Foo<T>
+where
+    Option<T>: Debug
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn new_function_with_generics_and_wheres() {
+        check_pass(
+            r#"
+pub struct Foo<T, B> {
+    _tars: T,
+    _bar: B,
+}
+
+impl<T: From<i32>, B: From<i64>> Foo<T, B>
+where
+    Option<T>: Debug, Option<B>: Debug,
+{
+    pub fn ne$0w() -> Self {
+        unimplemented!()
+    }
+}
+"#,
+            r#"
+pub struct Foo<T, B> {
+    _tars: T,
+    _bar: B,
+}
+
+impl<T: From<i32>, B: From<i64>> Foo<T, B>
+where
+    Option<T>: Debug, Option<B>: Debug,
+{
+    pub fn new() -> Self {
+        unimplemented!()
+    }
+}
+
+impl<T: From<i32>, B: From<i64>> Default for Foo<T, B>
+where
+    Option<T>: Debug, Option<B>: Debug,
+{
     fn default() -> Self {
         Self::new()
     }
