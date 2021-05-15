@@ -119,7 +119,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .clean(self.cx),
                         negative_polarity: false,
                         synthetic: false,
-                        blanket_impl: Some(trait_ref.self_ty().clean(self.cx)),
+                        blanket_impl: Some(box trait_ref.self_ty().clean(self.cx)),
                     }),
                     cfg: None,
                 });
