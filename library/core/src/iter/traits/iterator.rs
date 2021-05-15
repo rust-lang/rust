@@ -1849,6 +1849,8 @@ pub trait Iterator {
     ///
     /// The relative order of partitioned items is not maintained.
     ///
+    /// Time Complexity: *O*(*N*)
+    ///
     /// See also [`is_partitioned()`] and [`partition()`].
     ///
     /// [`is_partitioned()`]: Iterator::is_partitioned
