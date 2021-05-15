@@ -127,9 +127,9 @@ SOURCE_FILE@0..764
       WHITESPACE@537..538 "\n"
       R_CURLY@538..539 "}"
   WHITESPACE@539..541 "\n\n"
-  COMMENT@541..601 "// https://github.com ..."
-  WHITESPACE@601..602 "\n"
-  IMPL@602..763
+  IMPL@541..763
+    COMMENT@541..601 "// https://github.com ..."
+    WHITESPACE@601..602 "\n"
     IMPL_KW@602..606 "impl"
     WHITESPACE@606..607 " "
     PATH_TYPE@607..615
