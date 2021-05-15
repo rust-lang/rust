@@ -1094,6 +1094,18 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
     }
 }
 
+// regression test for issue #85322. Peekable previously implemented InPlaceIterable,
+// but due to an interaction with IntoIter's current Clone implementation it failed to uphold
+// the contract.
+#[test]
+fn test_collect_after_iterator_clone() {
+    let v = vec![0; 5];
+    let mut i = v.into_iter().peekable();
+    i.peek();
+    let v = i.clone().collect::<Vec<_>>();
+    assert!(v.len() <= v.capacity());
+}
+
 #[test]
 fn test_cow_from() {
     let borrowed: &[_] = &["borrowed", "(slice)"];
