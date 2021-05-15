@@ -87,7 +87,7 @@ crate struct IndexItem {
     crate name: String,
     crate path: String,
     crate desc: String,
-    crate parent: Option<FakeDefId>,
+    crate parent: Option<DefId>,
     crate parent_idx: Option<usize>,
     crate search_type: Option<IndexItemFunctionType>,
     crate aliases: Box<[String]>,
@@ -96,7 +96,7 @@ crate struct IndexItem {
 /// A type used for the search index.
 #[derive(Debug)]
 crate struct RenderType {
-    ty: Option<FakeDefId>,
+    ty: Option<DefId>,
     idx: Option<usize>,
     name: Option<String>,
     generics: Option<Vec<Generic>>,
@@ -128,7 +128,7 @@ impl Serialize for RenderType {
 #[derive(Debug)]
 crate struct Generic {
     name: String,
-    defid: Option<FakeDefId>,
+    defid: Option<DefId>,
     idx: Option<usize>,
 }
 
@@ -2137,7 +2137,7 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
         "</div>",
     );
 
-    if let Some(implementors) = cx.cache.implementors.get(&it.def_id) {
+    if let Some(implementors) = cx.cache.implementors.get(&it.def_id.expect_real()) {
         let cache = cx.cache();
         let mut res = implementors
             .iter()

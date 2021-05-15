@@ -73,10 +73,6 @@ impl FakeDefId {
         Self::Fake(DefIndex::from(id), krate)
     }
 
-    crate fn new_real(id: DefId) -> Self {
-        Self::Real(id)
-    }
-
     #[inline]
     crate fn is_local(self) -> bool {
         match self {
@@ -470,7 +466,7 @@ impl Item {
             .filter_map(|ItemLink { link: s, link_text, did, ref fragment }| {
                 match did {
                     Some(did) => {
-                        if let Some((mut href, ..)) = href(did.expect_real(), cx) {
+                        if let Some((mut href, ..)) = href(did.clone(), cx) {
                             if let Some(ref fragment) = *fragment {
                                 href.push('#');
                                 href.push_str(fragment);
@@ -972,7 +968,7 @@ crate struct ItemLink {
     /// This may not be the same as `link` if there was a disambiguator
     /// in an intra-doc link (e.g. \[`fn@f`\])
     pub(crate) link_text: String,
-    pub(crate) did: Option<FakeDefId>,
+    pub(crate) did: Option<DefId>,
     /// The url fragment to append to the link
     pub(crate) fragment: Option<String>,
 }

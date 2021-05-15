@@ -30,9 +30,7 @@ use std::convert::{TryFrom, TryInto};
 use std::mem;
 use std::ops::Range;
 
-use crate::clean::{
-    self, utils::find_nearest_parent_module, Crate, FakeDefId, Item, ItemLink, PrimitiveType,
-};
+use crate::clean::{self, utils::find_nearest_parent_module, Crate, Item, ItemLink, PrimitiveType};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
 use crate::html::markdown::{markdown_links, MarkdownLink};
@@ -248,7 +246,7 @@ enum AnchorFailure {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 struct ResolutionInfo {
-    module_id: FakeDefId,
+    module_id: DefId,
     dis: Option<Disambiguator>,
     path_str: String,
     extra_fragment: Option<String>,
@@ -274,7 +272,7 @@ struct LinkCollector<'a, 'tcx> {
     ///
     /// The last module will be used if the parent scope of the current item is
     /// unknown.
-    mod_ids: Vec<FakeDefId>,
+    mod_ids: Vec<DefId>,
     /// This is used to store the kind of associated items,
     /// because `clean` and the disambiguator code expect them to be different.
     /// See the code for associated items on inherent impls for details.
@@ -861,7 +859,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         let inner_docs = item.inner_docs(self.cx.tcx);
 
         if item.is_mod() && inner_docs {
-            self.mod_ids.push(item.def_id);
+            self.mod_ids.push(item.def_id.expect_real());
         }
 
         // We want to resolve in the lexical scope of the documentation.
@@ -888,7 +886,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
         Some(if item.is_mod() {
             if !inner_docs {
-                self.mod_ids.push(item.def_id);
+                self.mod_ids.push(item.def_id.expect_real());
             }
 
             let ret = self.fold_item_recur(item);
@@ -1070,11 +1068,8 @@ impl LinkCollector<'_, '_> {
         // we've already pushed this node onto the resolution stack but
         // for outer comments we explicitly try and resolve against the
         // parent_node first.
-        let base_node = if item.is_mod() && inner_docs {
-            self.mod_ids.last().copied()
-        } else {
-            parent_node.map(|id| FakeDefId::new_real(id))
-        };
+        let base_node =
+            if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
 
         let mut module_id = if let Some(id) = base_node {
             id
@@ -1119,7 +1114,7 @@ impl LinkCollector<'_, '_> {
                 resolved_self = format!("self::{}", &path_str["crate::".len()..]);
                 path_str = &resolved_self;
             }
-            module_id = FakeDefId::new_real(DefId { krate, index: CRATE_DEF_INDEX });
+            module_id = DefId { krate, index: CRATE_DEF_INDEX };
         }
 
         let (mut res, mut fragment) = self.resolve_with_disambiguator_cached(
@@ -1180,8 +1175,8 @@ impl LinkCollector<'_, '_> {
             report_diagnostic(self.cx.tcx, BROKEN_INTRA_DOC_LINKS, &msg, &diag_info, callback);
         };
 
-        let verify = |kind: DefKind, id: FakeDefId| {
-            let (kind, id) = self.kind_side_channel.take().unwrap_or((kind, id.expect_real()));
+        let verify = |kind: DefKind, id: DefId| {
+            let (kind, id) = self.kind_side_channel.take().unwrap_or((kind, id));
             debug!("intra-doc link to {} resolved to {:?} (id: {:?})", path_str, res, id);
 
             // Disallow e.g. linking to enums with `struct@`
@@ -1345,7 +1340,7 @@ impl LinkCollector<'_, '_> {
 
         match disambiguator.map(Disambiguator::ns) {
             Some(expected_ns @ (ValueNS | TypeNS)) => {
-                match self.resolve(path_str, expected_ns, base_node.expect_real(), extra_fragment) {
+                match self.resolve(path_str, expected_ns, base_node, extra_fragment) {
                     Ok(res) => Some(res),
                     Err(ErrorKind::Resolve(box mut kind)) => {
                         // We only looked in one namespace. Try to give a better error if possible.
@@ -1354,12 +1349,9 @@ impl LinkCollector<'_, '_> {
                             // FIXME: really it should be `resolution_failure` that does this, not `resolve_with_disambiguator`
                             // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach
                             for &new_ns in &[other_ns, MacroNS] {
-                                if let Some(res) = self.check_full_res(
-                                    new_ns,
-                                    path_str,
-                                    base_node.expect_real(),
-                                    extra_fragment,
-                                ) {
+                                if let Some(res) =
+                                    self.check_full_res(new_ns, path_str, base_node, extra_fragment)
+                                {
                                     kind = ResolutionFailure::WrongNamespace { res, expected_ns };
                                     break;
                                 }
@@ -1381,14 +1373,9 @@ impl LinkCollector<'_, '_> {
                 // Try everything!
                 let mut candidates = PerNS {
                     macro_ns: self
-                        .resolve_macro(path_str, base_node.expect_real())
+                        .resolve_macro(path_str, base_node)
                         .map(|res| (res, extra_fragment.clone())),
-                    type_ns: match self.resolve(
-                        path_str,
-                        TypeNS,
-                        base_node.expect_real(),
-                        extra_fragment,
-                    ) {
+                    type_ns: match self.resolve(path_str, TypeNS, base_node, extra_fragment) {
                         Ok(res) => {
                             debug!("got res in TypeNS: {:?}", res);
                             Ok(res)
@@ -1399,12 +1386,7 @@ impl LinkCollector<'_, '_> {
                         }
                         Err(ErrorKind::Resolve(box kind)) => Err(kind),
                     },
-                    value_ns: match self.resolve(
-                        path_str,
-                        ValueNS,
-                        base_node.expect_real(),
-                        extra_fragment,
-                    ) {
+                    value_ns: match self.resolve(path_str, ValueNS, base_node, extra_fragment) {
                         Ok(res) => Ok(res),
                         Err(ErrorKind::AnchorFailure(msg)) => {
                             anchor_failure(self.cx, diag, msg);
@@ -1460,17 +1442,14 @@ impl LinkCollector<'_, '_> {
                 }
             }
             Some(MacroNS) => {
-                match self.resolve_macro(path_str, base_node.expect_real()) {
+                match self.resolve_macro(path_str, base_node) {
                     Ok(res) => Some((res, extra_fragment.clone())),
                     Err(mut kind) => {
                         // `resolve_macro` only looks in the macro namespace. Try to give a better error if possible.
                         for &ns in &[TypeNS, ValueNS] {
-                            if let Some(res) = self.check_full_res(
-                                ns,
-                                path_str,
-                                base_node.expect_real(),
-                                extra_fragment,
-                            ) {
+                            if let Some(res) =
+                                self.check_full_res(ns, path_str, base_node, extra_fragment)
+                            {
                                 kind =
                                     ResolutionFailure::WrongNamespace { res, expected_ns: MacroNS };
                                 break;

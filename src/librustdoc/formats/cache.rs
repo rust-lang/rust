@@ -67,7 +67,7 @@ crate struct Cache {
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
     /// of trait ids to the list of known implementors of the trait
-    crate implementors: FxHashMap<FakeDefId, Vec<Impl>>,
+    crate implementors: FxHashMap<DefId, Vec<Impl>>,
 
     /// Cache of where external crate documentation can be found.
     crate extern_locations: FxHashMap<CrateNum, ExternalLocation>,
@@ -299,7 +299,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                             desc: item
                                 .doc_value()
                                 .map_or_else(String::new, |x| short_markdown_summary(&x.as_str())),
-                            parent: parent.map(FakeDefId::new_real),
+                            parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item, &self.empty_cache, self.tcx),
                             aliases: item.attrs.get_doc_aliases(),
