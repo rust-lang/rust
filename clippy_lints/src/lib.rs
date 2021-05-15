@@ -360,9 +360,9 @@ mod unnamed_address;
 mod unnecessary_self_imports;
 mod unnecessary_sort_by;
 mod unnecessary_wraps;
-mod unused_async;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
+mod unused_async;
 mod unused_io_amount;
 mod unused_self;
 mod unused_unit;
@@ -955,12 +955,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         unit_types::UNIT_CMP,
         unnamed_address::FN_ADDRESS_COMPARISONS,
         unnamed_address::VTABLE_ADDRESS_COMPARISONS,
-        unused_async::UNUSED_ASYNC,
         unnecessary_self_imports::UNNECESSARY_SELF_IMPORTS,
         unnecessary_sort_by::UNNECESSARY_SORT_BY,
         unnecessary_wraps::UNNECESSARY_WRAPS,
         unnested_or_patterns::UNNESTED_OR_PATTERNS,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
+        unused_async::UNUSED_ASYNC,
         unused_io_amount::UNUSED_IO_AMOUNT,
         unused_self::UNUSED_SELF,
         unused_unit::UNUSED_UNIT,
@@ -1415,9 +1415,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(unicode::NON_ASCII_LITERAL),
         LintId::of(unicode::UNICODE_NOT_NFC),
         LintId::of(unit_types::LET_UNIT_VALUE),
-        LintId::of(unused_async::UNUSED_ASYNC),
         LintId::of(unnecessary_wraps::UNNECESSARY_WRAPS),
         LintId::of(unnested_or_patterns::UNNESTED_OR_PATTERNS),
+        LintId::of(unused_async::UNUSED_ASYNC),
         LintId::of(unused_self::UNUSED_SELF),
         LintId::of(wildcard_imports::ENUM_GLOB_USE),
         LintId::of(wildcard_imports::WILDCARD_IMPORTS),
