@@ -102,8 +102,6 @@ pub fn call_tuple_two() {
     tuple_two::<Tuple>();
     //~^ ERROR implementation of `TheTrait` is not general enough
     //~| ERROR implementation of `TheTrait` is not general enough
-    //~| ERROR mismatched types
-    //~| ERROR mismatched types
 }
 
 pub fn call_tuple_three() {

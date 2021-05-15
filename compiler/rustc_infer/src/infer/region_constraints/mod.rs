@@ -623,6 +623,10 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
+    pub fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
+        self.unification_table().find(rid).vid
+    }
+
     pub fn opportunistic_resolve_region(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -692,8 +696,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         &self,
         value_count: usize,
     ) -> (Range<RegionVid>, Vec<RegionVariableOrigin>) {
-        let range = RegionVid::from(value_count as u32)
-            ..RegionVid::from(self.unification_table.len() as u32);
+        let range = RegionVid::from(value_count)..RegionVid::from(self.unification_table.len());
         (
             range.clone(),
             (range.start.index()..range.end.index())

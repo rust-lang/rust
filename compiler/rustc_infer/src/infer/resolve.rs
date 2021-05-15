@@ -84,12 +84,18 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let tcx = self.tcx();
-        self.infcx
-            .inner
-            .borrow_mut()
-            .unwrap_region_constraints()
-            .opportunistic_resolve_region(tcx, r)
+        match *r {
+            ty::ReVar(rid) => {
+                let resolved = self
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
+                    .opportunistic_resolve_var(rid);
+                self.tcx().reuse_or_mk_region(r, ty::ReVar(resolved))
+            }
+            _ => r,
+        }
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {

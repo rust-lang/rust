@@ -9,7 +9,7 @@ trait Bug {
 impl Bug for &() {
     type Item = impl Bug; //~ ERROR `impl Trait` in type aliases is unstable
     //~^ ERROR the trait bound `(): Bug` is not satisfied
-    //~^^ ERROR the trait bound
+    //~^^ ERROR could not find defining uses
 
     const FUN: fn() -> Self::Item = || ();
     //~^ ERROR type alias impl trait is not permitted here
