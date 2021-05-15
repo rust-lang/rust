@@ -1,5 +1,5 @@
 // edition:2018
-#![warn(clippy::unnecessary_async)]
+#![warn(clippy::unused_async)]
 
 async fn foo() -> i32 {
     4

@@ -30,12 +30,12 @@ declare_clippy_lint! {
     /// }
     /// let number_future = async { get_random_number_improved() };
     /// ```
-    pub UNNECESSARY_ASYNC,
+    pub UNUSED_ASYNC,
     pedantic,
     "finds async functions with no await statements"
 }
 
-declare_lint_pass!(UnnecessaryAsync => [UNNECESSARY_ASYNC]);
+declare_lint_pass!(UnusedAsync => [UNUSED_ASYNC]);
 
 struct AsyncFnVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
@@ -57,7 +57,7 @@ impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for UnnecessaryAsync {
+impl<'tcx> LateLintPass<'tcx> for UnusedAsync {
     fn check_item(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         if let ItemKind::Trait(..) = item.kind {
             return;
@@ -79,9 +79,9 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryAsync {
                 if !visitor.found_await {
                     span_lint_and_help(
                         cx,
-                        UNNECESSARY_ASYNC,
+                        UNUSED_ASYNC,
                         span,
-                        "unnecessary `async` for function with no await statements",
+                        "unused `async` for function with no await statements",
                         None,
                         "consider removing the `async` from this function",
                     );
