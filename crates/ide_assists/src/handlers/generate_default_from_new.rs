@@ -6,7 +6,7 @@ use ide_db::helpers::FamousDefs;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    ast::{self, AttrsOwner, GenericParamsOwner, Impl, NameOwner, TypeBoundsOwner},
+    ast::{self, GenericParamsOwner, Impl, NameOwner, TypeBoundsOwner},
     AstNode,
 };
 
@@ -80,10 +80,6 @@ fn generate_trait_impl_text_from_impl(impl_: &ast::Impl, trait_text: &str, code:
     let generic_params = impl_.generic_param_list();
     let mut buf = String::with_capacity(code.len());
     buf.push_str("\n\n");
-    impl_
-        .attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false))
-        .for_each(|attr| buf.push_str(format!("{}\n", attr.to_string()).as_str()));
     buf.push_str("impl");
 
     if let Some(generic_params) = &generic_params {
