@@ -448,6 +448,10 @@ fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T)
         lint_callback!(cx, check_crate, krate);
 
         hir_visit::walk_crate(cx, krate);
+        for attr in krate.non_exported_macro_attrs {
+            // This HIR ID is a lie, since the macro ID isn't available.
+            cx.visit_attribute(hir::CRATE_HIR_ID, attr);
+        }
 
         lint_callback!(cx, check_crate_post, krate);
     })
