@@ -149,7 +149,8 @@ impl MetadataCollector {
     fn get_lint_configs(&self, lint_name: &str) -> Option<String> {
         self.config
             .iter()
-            .filter_map(|x| x.lints.iter().any(|x| x == lint_name).then(|| format!("{}", x)))
+            .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
+            .map(ToString::to_string)
             .reduce(|acc, x| acc + &x)
             .map(|configurations| format!(CONFIGURATION_SECTION_TEMPLATE!(), configurations = configurations))
     }
@@ -261,52 +262,40 @@ impl Serialize for ApplicabilityInfo {
 // ==================================================================
 // Configuration
 // ==================================================================
-#[derive(Debug)]
-pub(crate) struct ClippyConfigurationBasicInfo {
-    pub name: &'static str,
-    pub config_type: &'static str,
-    pub default: &'static str,
-    pub doc_comment: &'static str,
-    pub deprecation_reason: Option<&'static str>,
-}
-
 #[derive(Debug, Clone, Default)]
-struct ClippyConfiguration {
+pub struct ClippyConfiguration {
     name: String,
-    lints: Vec<String>,
-    doc: String,
     config_type: &'static str,
     default: String,
+    lints: Vec<String>,
+    doc: String,
     deprecation_reason: Option<&'static str>,
 }
 
-fn collect_configs() -> Vec<ClippyConfiguration> {
-    let cons = crate::utils::conf::metadata::get_configuration_metadata();
-    cons.iter()
-        .map(move |x| {
-            let (lints, doc) = parse_config_field_doc(x.doc_comment)
-                .unwrap_or_else(|| (vec![], "[ERROR] MALFORMED DOC COMMENT".to_string()));
+impl ClippyConfiguration {
+    pub fn new(
+        name: &'static str,
+        config_type: &'static str,
+        default: String,
+        doc_comment: &'static str,
+        deprecation_reason: Option<&'static str>,
+    ) -> Self {
+        let (lints, doc) = parse_config_field_doc(doc_comment)
+            .unwrap_or_else(|| (vec![], "[ERROR] MALFORMED DOC COMMENT".to_string()));
 
-            ClippyConfiguration {
-                name: to_kebab(x.name),
-                lints,
-                doc,
-                config_type: x.config_type,
-                default: clarify_default(x.default),
-                deprecation_reason: x.deprecation_reason,
-            }
-        })
-        .collect()
-}
-
-fn clarify_default(default: &'static str) -> String {
-    if let Some((_start, init)) = default.split_once('[') {
-        if let Some((init, _end)) = init.split_once(']') {
-            return format!("[{}]", init);
+        Self {
+            name: to_kebab(name),
+            lints,
+            doc,
+            config_type,
+            default,
+            deprecation_reason,
         }
     }
+}
 
-    default.to_string()
+fn collect_configs() -> Vec<ClippyConfiguration> {
+    crate::utils::conf::metadata::get_configuration_metadata()
 }
 
 /// This parses the field documentation of the config struct.
