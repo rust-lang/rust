@@ -795,6 +795,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lhs_ty, op, opname, trait_did
         );
 
+        // Catches cases like #83893, where a lang item is declared with the
+        // wrong number of generic arguments. Should have yielded an error
+        // elsewhere by now, but we have to catch it here so that we do not
+        // index `other_tys` out of bounds (if the lang item has too many
+        // generic arguments, `other_tys` is too short).
+        if let Some(trait_did) = trait_did {
+            let generics = self.tcx.generics_of(trait_did);
+            let expected_num = match op {
+                // Binary ops have a generic right-hand side, unary ops don't
+                Op::Binary(..) => 1,
+                Op::Unary(..) => 0,
+            } + if generics.has_self { 1 } else { 0 };
+            let num_generics = generics.count();
+            if num_generics != expected_num {
+                return Err(());
+            }
+        }
+
         let method = trait_did.and_then(|trait_did| {
             let opname = Ident::with_dummy_span(opname);
             self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))

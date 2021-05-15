@@ -13,12 +13,13 @@ use crate::weak_lang_items;
 use rustc_middle::middle::cstore::ExternCrate;
 use rustc_middle::ty::TyCtxt;
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{extract, ITEM_REFS};
 use rustc_hir::{HirId, LangItem, LanguageItems, Target};
+use rustc_span::Span;
 
 use rustc_middle::ty::query::Providers;
 
@@ -61,8 +62,7 @@ impl LanguageItemCollector<'tcx> {
             match ITEM_REFS.get(&value).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
-                    let def_id = self.tcx.hir().local_def_id(hir_id);
-                    self.collect_item(item_index, def_id.to_def_id());
+                    self.collect_item_extended(item_index, hir_id, span);
                 }
                 // Known lang item with attribute on incorrect target.
                 Some((_, expected_target)) => {
@@ -100,11 +100,12 @@ impl LanguageItemCollector<'tcx> {
     }
 
     fn collect_item(&mut self, item_index: usize, item_def_id: DefId) {
+        let lang_item = LangItem::from_u32(item_index as u32).unwrap();
+        let name = lang_item.name();
+
         // Check for duplicates.
         if let Some(original_def_id) = self.items.items[item_index] {
             if original_def_id != item_def_id {
-                let lang_item = LangItem::from_u32(item_index as u32).unwrap();
-                let name = lang_item.name();
                 let mut err = match self.tcx.hir().span_if_local(item_def_id) {
                     Some(span) => struct_span_err!(
                         self.tcx.sess,
@@ -178,6 +179,83 @@ impl LanguageItemCollector<'tcx> {
         self.items.items[item_index] = Some(item_def_id);
         if let Some(group) = LangItem::from_u32(item_index as u32).unwrap().group() {
             self.items.groups[group as usize].push(item_def_id);
+        }
+    }
+
+    fn collect_item_extended(&mut self, item_index: usize, hir_id: HirId, span: Span) {
+        let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
+        let lang_item = LangItem::from_u32(item_index as u32).unwrap();
+        let name = lang_item.name();
+
+        self.collect_item(item_index, item_def_id);
+
+        // Now check whether the lang_item has the expected number of generic
+        // arguments. Binary and indexing operations have one (for the RHS/index),
+        // unary operations have no generic arguments.
+
+        let expected_num = match lang_item {
+            LangItem::Add
+            | LangItem::Sub
+            | LangItem::Mul
+            | LangItem::Div
+            | LangItem::Rem
+            | LangItem::BitXor
+            | LangItem::BitAnd
+            | LangItem::BitOr
+            | LangItem::Shl
+            | LangItem::Shr
+            | LangItem::AddAssign
+            | LangItem::SubAssign
+            | LangItem::MulAssign
+            | LangItem::DivAssign
+            | LangItem::RemAssign
+            | LangItem::BitXorAssign
+            | LangItem::BitAndAssign
+            | LangItem::BitOrAssign
+            | LangItem::ShlAssign
+            | LangItem::ShrAssign
+            | LangItem::Index
+            | LangItem::IndexMut => Some(1),
+
+            LangItem::Neg | LangItem::Not | LangItem::Deref | LangItem::DerefMut => Some(0),
+
+            // FIXME: add more cases?
+            _ => None,
+        };
+
+        if let Some(expected_num) = expected_num {
+            let (actual_num, generics_span) = match self.tcx.hir().get(hir_id) {
+                hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Trait(_, _, generics, ..),
+                    ..
+                }) => (generics.params.len(), generics.span),
+                _ => bug!("op/index/deref lang item target is not a trait: {:?}", lang_item),
+            };
+
+            if expected_num != actual_num {
+                // We are issuing E0718 "incorrect target" here, because while the
+                // item kind of the target is correct, the target is still wrong
+                // because of the wrong number of generic arguments.
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0718,
+                    "`{}` language item must be applied to a trait with {} generic argument{}",
+                    name,
+                    expected_num,
+                    pluralize!(expected_num)
+                )
+                .span_label(
+                    generics_span,
+                    format!(
+                        "this trait has {} generic argument{}, not {}",
+                        actual_num,
+                        pluralize!(actual_num),
+                        expected_num
+                    ),
+                )
+                .emit();
+            }
         }
     }
 }

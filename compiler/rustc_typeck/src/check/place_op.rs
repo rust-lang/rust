@@ -153,6 +153,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PlaceOp::Deref => (self.tcx.lang_items().deref_trait(), sym::deref),
             PlaceOp::Index => (self.tcx.lang_items().index_trait(), sym::index),
         };
+
+        // If the lang item was declared incorrectly, stop here so that we don't
+        // run into an ICE (#83893). The error is reported where the lang item is
+        // declared.
+        if let Some(trait_did) = imm_tr {
+            let generics = self.tcx.generics_of(trait_did);
+            let expected_num = match op {
+                PlaceOp::Deref => 0,
+                PlaceOp::Index => 1,
+            } + if generics.has_self { 1 } else { 0 };
+            let num_generics = generics.count();
+            if num_generics != expected_num {
+                return None;
+            }
+        }
+
         imm_tr.and_then(|trait_did| {
             self.lookup_method_in_trait(
                 span,
@@ -177,6 +193,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PlaceOp::Deref => (self.tcx.lang_items().deref_mut_trait(), sym::deref_mut),
             PlaceOp::Index => (self.tcx.lang_items().index_mut_trait(), sym::index_mut),
         };
+
+        // If the lang item was declared incorrectly, stop here so that we don't
+        // run into an ICE (#83893). The error is reported where the lang item is
+        // declared.
+        if let Some(trait_did) = mut_tr {
+            let generics = self.tcx.generics_of(trait_did);
+            let expected_num = match op {
+                PlaceOp::Deref => 0,
+                PlaceOp::Index => 1,
+            } + if generics.has_self { 1 } else { 0 };
+            let num_generics = generics.count();
+            if num_generics != expected_num {
+                return None;
+            }
+        }
+
         mut_tr.and_then(|trait_did| {
             self.lookup_method_in_trait(
                 span,
