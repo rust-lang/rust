@@ -706,6 +706,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///   enabled, **and**
     /// - It wasn't completely captured by the closure, **and**
     /// - One of the paths starting at this root variable, that is not captured needs Drop.
+    ///
+    /// This function only returns true for significant drops. A type is considerent to have a
+    /// significant drop if it's Drop implementation is not annotated by `rustc_insignificant_dtor`.
     fn compute_2229_migrations_for_drop(
         &self,
         closure_def_id: DefId,
@@ -716,7 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let ty = self.infcx.resolve_vars_if_possible(self.node_ty(var_hir_id));
 
-        if !ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
+        if !ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local())) {
             return false;
         }
 
@@ -835,11 +838,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// using list of `Projection` slices), it returns true if there is a path that is not
     /// captured starting at this root variable that implements Drop.
     ///
-    /// FIXME(project-rfc-2229#35): This should return true only for significant drops.
-    ///                             A drop is significant if it's implemented by the user or does
-    ///                             anything that will have any observable behavior (other than
-    ///                             freeing up memory).
-    ///
     /// The way this function works is at a given call it looks at type `base_path_ty` of some base
     /// path say P and then list of projection slices which represent the different captures moved
     /// into the closure starting off of P.
@@ -895,7 +893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///     (Ty((w.p).x), [ &[] ])     (Ty((w.p).y), []) // IMP 2
     ///          |                             |
     ///          v                             v
-    ///        false                     NeedsDrop(Ty(w.p.y))
+    ///        false              NeedsSignificantDrop(Ty(w.p.y))
     ///                                        |
     ///                                        v
     ///                                      true
@@ -939,7 +937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         captured_by_move_projs: Vec<&[Projection<'tcx>]>,
     ) -> bool {
         let needs_drop = |ty: Ty<'tcx>| {
-            ty.needs_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
+            ty.has_significant_drop(self.tcx, self.tcx.param_env(closure_def_id.expect_local()))
         };
 
         let is_drop_defined_for_ty = |ty: Ty<'tcx>| {
