@@ -2,8 +2,6 @@
 // It checks that you cannot use an AND-pattern (`binding @ pat`)
 // where one side is by-ref and the other is by-move.
 
-#![feature(bindings_after_at)]
-
 struct X {
     x: (),
 }

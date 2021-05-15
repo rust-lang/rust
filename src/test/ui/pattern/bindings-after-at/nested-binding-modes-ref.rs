@@ -1,5 +1,3 @@
-#![feature(bindings_after_at)]
-
 fn main() {
     let ref is_ref @ is_val = 42;
     *is_ref;

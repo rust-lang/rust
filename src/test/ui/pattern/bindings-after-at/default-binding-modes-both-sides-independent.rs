@@ -7,7 +7,6 @@
 // If `binding` is allowed to influence `subpat`,
 // this would create problems for the generalization aforementioned.
 
-#![feature(bindings_after_at)]
 
 fn main() {
     struct NotCopy;

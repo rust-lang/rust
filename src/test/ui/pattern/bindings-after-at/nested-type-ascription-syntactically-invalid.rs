@@ -1,7 +1,6 @@
 // Here we check that type ascription is syntactically invalid when
 // not in the top position of a ascribing a let binding or function parameter.
 
-#![feature(bindings_after_at)]
 
 // This has no effect.
 // We include it to demonstrate that this is the case:

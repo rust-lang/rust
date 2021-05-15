@@ -2,7 +2,6 @@
 
 // run-pass
 
-#![feature(bindings_after_at)]
 #![feature(box_patterns)]
 
 #[derive(Debug, PartialEq)]

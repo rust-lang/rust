@@ -1,7 +1,6 @@
 // Test that `binding @ subpat` acts as a product context with respect to duplicate binding names.
 // The code that is tested here lives in resolve (see `resolve_pattern_inner`).
 
-#![feature(bindings_after_at)]
 
 fn main() {
     fn f(a @ a @ a: ()) {}
