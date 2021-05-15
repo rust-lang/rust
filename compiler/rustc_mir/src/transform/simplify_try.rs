@@ -628,10 +628,7 @@ impl<'a, 'tcx> SimplifyBranchSameOptimizationFinder<'a, 'tcx> {
                     // But `asm!(...)` could abort the program,
                     // so we cannot assume that the `unreachable` terminator itself is reachable.
                     // FIXME(Centril): use a normalization pass instead of a check.
-                    || bb.statements.iter().any(|stmt| match stmt.kind {
-                        StatementKind::LlvmInlineAsm(..) => true,
-                        _ => false,
-                    })
+                    || bb.statements.iter().any(|stmt| matches!(stmt.kind, StatementKind::LlvmInlineAsm(..)))
                     })
                     .peekable();
 

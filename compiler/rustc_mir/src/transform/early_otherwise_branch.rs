@@ -170,10 +170,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 }
 
 fn is_switch<'tcx>(terminator: &Terminator<'tcx>) -> bool {
-    match terminator.kind {
-        TerminatorKind::SwitchInt { .. } => true,
-        _ => false,
-    }
+    matches!(terminator.kind, TerminatorKind::SwitchInt { .. })
 }
 
 struct Helper<'a, 'tcx> {
