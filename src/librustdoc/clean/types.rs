@@ -2235,7 +2235,7 @@ crate struct Impl {
     crate items: Vec<Item>,
     crate negative_polarity: bool,
     crate synthetic: bool,
-    crate blanket_impl: Option<Type>,
+    crate blanket_impl: Option<Box<Type>>,
 }
 
 impl Impl {

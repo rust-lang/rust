@@ -482,7 +482,7 @@ impl FromWithTcx<clean::Impl> for Impl {
             items: ids(items),
             negative: negative_polarity,
             synthetic,
-            blanket_impl: blanket_impl.map(|x| x.into_tcx(tcx)),
+            blanket_impl: blanket_impl.map(|x| (*x).into_tcx(tcx)),
         }
     }
 }
