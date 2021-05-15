@@ -120,8 +120,8 @@ impl CoverageVisitor {
     }
 }
 
-fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> CoverageInfo {
-    let mir_body = mir_body(tcx, def_id);
+fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) -> CoverageInfo {
+    let mir_body = tcx.instance_mir(instance_def);
 
     let mut coverage_visitor = CoverageVisitor {
         // num_counters always has at least the `ZERO` counter.

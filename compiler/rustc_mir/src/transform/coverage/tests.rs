@@ -683,12 +683,10 @@ fn test_make_bcb_counters() {
         let mut basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
         let mut coverage_spans = Vec::new();
         for (bcb, data) in basic_coverage_blocks.iter_enumerated() {
-            if let Some((span, expn_span)) =
-                spans::filtered_terminator_span(data.terminator(&mir_body), body_span)
-            {
+            if let Some(span) = spans::filtered_terminator_span(data.terminator(&mir_body)) {
                 coverage_spans.push(spans::CoverageSpan::for_terminator(
+                    spans::function_source_span(span, body_span),
                     span,
-                    expn_span,
                     bcb,
                     data.last_bb(),
                 ));

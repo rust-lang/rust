@@ -530,17 +530,25 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                     .iter()
                     .enumerate()
                     .filter_map(move |(index, statement)| {
-                        filtered_statement_span(statement, self.body_span).map(
-                            |(span, expn_span)| {
-                                CoverageSpan::for_statement(
-                                    statement, span, expn_span, bcb, bb, index,
-                                )
-                            },
-                        )
+                        filtered_statement_span(statement).map(|span| {
+                            CoverageSpan::for_statement(
+                                statement,
+                                function_source_span(span, self.body_span),
+                                span,
+                                bcb,
+                                bb,
+                                index,
+                            )
+                        })
                     })
-                    .chain(filtered_terminator_span(data.terminator(), self.body_span).map(
-                        |(span, expn_span)| CoverageSpan::for_terminator(span, expn_span, bcb, bb),
-                    ))
+                    .chain(filtered_terminator_span(data.terminator()).map(|span| {
+                        CoverageSpan::for_terminator(
+                            function_source_span(span, self.body_span),
+                            span,
+                            bcb,
+                            bb,
+                        )
+                    }))
             })
             .collect()
     }
@@ -795,13 +803,9 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     }
 }
 
-/// See `function_source_span()` for a description of the two returned spans.
-/// If the MIR `Statement` is not contributive to computing coverage spans,
-/// returns `None`.
-pub(super) fn filtered_statement_span(
-    statement: &'a Statement<'tcx>,
-    body_span: Span,
-) -> Option<(Span, Span)> {
+/// If the MIR `Statement` has a span contributive to computing coverage spans,
+/// return it; otherwise return `None`.
+pub(super) fn filtered_statement_span(statement: &'a Statement<'tcx>) -> Option<Span> {
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
@@ -838,18 +842,14 @@ pub(super) fn filtered_statement_span(
         | StatementKind::LlvmInlineAsm(_)
         | StatementKind::Retag(_, _)
         | StatementKind::AscribeUserType(_, _) => {
-            Some(function_source_span(statement.source_info.span, body_span))
+            Some(statement.source_info.span)
         }
     }
 }
 
-/// See `function_source_span()` for a description of the two returned spans.
-/// If the MIR `Terminator` is not contributive to computing coverage spans,
-/// returns `None`.
-pub(super) fn filtered_terminator_span(
-    terminator: &'a Terminator<'tcx>,
-    body_span: Span,
-) -> Option<(Span, Span)> {
+/// If the MIR `Terminator` has a span contributive to computing coverage spans,
+/// return it; otherwise return `None`.
+pub(super) fn filtered_terminator_span(terminator: &'a Terminator<'tcx>) -> Option<Span> {
     match terminator.kind {
         // These terminators have spans that don't positively contribute to computing a reasonable
         // span of actually executed source code. (For example, SwitchInt terminators extracted from
@@ -873,7 +873,7 @@ pub(super) fn filtered_terminator_span(
                     span = span.with_lo(constant.span.lo());
                 }
             }
-            Some(function_source_span(span, body_span))
+            Some(span)
         }
 
         // Retain spans from all other terminators
@@ -884,28 +884,20 @@ pub(super) fn filtered_terminator_span(
         | TerminatorKind::GeneratorDrop
         | TerminatorKind::FalseUnwind { .. }
         | TerminatorKind::InlineAsm { .. } => {
-            Some(function_source_span(terminator.source_info.span, body_span))
+            Some(terminator.source_info.span)
         }
     }
 }
 
-/// Returns two spans from the given span (the span associated with a
-/// `Statement` or `Terminator`):
+/// Returns an extrapolated span (pre-expansion[^1]) corresponding to a range
+/// within the function's body source. This span is guaranteed to be contained
+/// within, or equal to, the `body_span`. If the extrapolated span is not
+/// contained within the `body_span`, the `body_span` is returned.
 ///
-///   1. An extrapolated span (pre-expansion[^1]) corresponding to a range within
-///      the function's body source. This span is guaranteed to be contained
-///      within, or equal to, the `body_span`. If the extrapolated span is not
-///      contained within the `body_span`, the `body_span` is returned.
-///   2. The actual `span` value from the `Statement`, before expansion.
-///
-/// Only the first span is used when computing coverage code regions. The second
-/// span is useful if additional expansion data is needed (such as to look up
-/// the macro name for a composed span within that macro).)
-///
-/// [^1]Expansions result from Rust syntax including macros, syntactic
-/// sugar, etc.).
+/// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
+/// etc.).
 #[inline]
-fn function_source_span(span: Span, body_span: Span) -> (Span, Span) {
+pub(super) fn function_source_span(span: Span, body_span: Span) -> Span {
     let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
-    (if body_span.contains(original_span) { original_span } else { body_span }, span)
+    if body_span.contains(original_span) { original_span } else { body_span }
 }
