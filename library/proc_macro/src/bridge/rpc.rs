@@ -114,7 +114,7 @@ impl<S> DecodeMut<'_, '_, S> for () {
 
 impl<S> Encode<S> for u8 {
     fn encode(self, w: &mut Writer, _: &mut S) {
-        w.write_all(&[self]).unwrap();
+        w.push(self);
     }
 }
 

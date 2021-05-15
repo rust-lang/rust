@@ -91,6 +91,21 @@ impl<T: Copy> Buffer<T> {
         let b = self.take();
         *self = (b.extend_from_slice)(b, Slice::from(xs));
     }
+
+    pub(super) fn push(&mut self, v: T) {
+        // Fast path to avoid going through an FFI call.
+        if let Some(final_len) = self.len.checked_add(1) {
+            if final_len <= self.capacity {
+                unsafe {
+                    *self.data.add(self.len) = v;
+                }
+                self.len = final_len;
+                return;
+            }
+        }
+        let b = self.take();
+        *self = (b.extend_from_slice)(b, Slice::from(std::slice::from_ref(&v)));
+    }
 }
 
 impl Write for Buffer<u8> {
