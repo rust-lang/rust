@@ -5,7 +5,7 @@
 pub(crate) struct ValidateConstImm<const IMM: i32, const MIN: i32, const MAX: i32>;
 impl<const IMM: i32, const MIN: i32, const MAX: i32> ValidateConstImm<IMM, MIN, MAX> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
+        assert!(IMM >= MIN && IMM <= MAX, "IMM value not in expected range");
     };
 }
 
@@ -71,7 +71,7 @@ macro_rules! static_assert {
         struct Validate<const $imm: $ty>();
         impl<const $imm: $ty> Validate<$imm> {
             const VALID: () = {
-                let _ = 1 / ($e as usize);
+                assert!($e, concat!("Assertion failed: ", stringify!($e)));
             };
         }
         let _ = Validate::<$imm>::VALID;

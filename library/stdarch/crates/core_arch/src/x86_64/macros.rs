@@ -5,7 +5,7 @@
 pub(crate) struct ValidateConstRound<const IMM: i32>;
 impl<const IMM: i32> ValidateConstRound<IMM> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11) as usize);
+        assert!(IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11, "Invalid IMM value");
     };
 }
 
@@ -21,7 +21,7 @@ macro_rules! static_assert_rounding {
 pub(crate) struct ValidateConstSae<const IMM: i32>;
 impl<const IMM: i32> ValidateConstSae<IMM> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM == 4 || IMM == 8) as usize);
+        assert!(IMM == 4 || IMM == 8, "Invalid IMM value");
     };
 }
 

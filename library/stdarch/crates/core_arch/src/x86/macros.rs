@@ -5,7 +5,7 @@
 pub(crate) struct ValidateConstRound<const IMM: i32>;
 impl<const IMM: i32> ValidateConstRound<IMM> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11) as usize);
+        assert!(IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11, "Invalid IMM value");
     };
 }
 
@@ -21,7 +21,7 @@ macro_rules! static_assert_rounding {
 pub(crate) struct ValidateConstSae<const IMM: i32>;
 impl<const IMM: i32> ValidateConstSae<IMM> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM == 4 || IMM == 8) as usize);
+        assert!(IMM == 4 || IMM == 8, "Invalid IMM value");
     };
 }
 
@@ -37,7 +37,7 @@ macro_rules! static_assert_sae {
 pub(crate) struct ValidateConstMantissasSae<const IMM: i32>;
 impl<const IMM: i32> ValidateConstMantissasSae<IMM> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM == 4 || IMM == 8 || IMM == 12) as usize);
+        assert!(IMM == 4 || IMM == 8 || IMM == 12, "Invalid IMM value");
     };
 }
 
@@ -53,7 +53,7 @@ macro_rules! static_assert_mantissas_sae {
 pub(crate) struct ValidateConstImmU32<const IMM: u32, const MIN: u32, const MAX: u32>;
 impl<const IMM: u32, const MIN: u32, const MAX: u32> ValidateConstImmU32<IMM, MIN, MAX> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
+        assert!(IMM >= MIN && IMM <= MAX, "IMM value not in expected range");
     };
 }
 
@@ -70,7 +70,7 @@ macro_rules! static_assert_imm_u8 {
 pub(crate) struct ValidateConstGatherScale<const SCALE: i32>;
 impl<const SCALE: i32> ValidateConstGatherScale<SCALE> {
     pub(crate) const VALID: () = {
-        let _ = 1 / ((SCALE == 1 || SCALE == 2 || SCALE == 4 || SCALE == 8) as usize);
+        assert!(SCALE == 1 || SCALE == 2 || SCALE == 4 || SCALE == 8, "Invalid SCALE value");
     };
 }
 

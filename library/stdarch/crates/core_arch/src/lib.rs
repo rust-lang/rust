@@ -7,6 +7,7 @@
     asm,
     const_fn_union,
     const_fn_transmute,
+    const_panic,
     custom_inner_attributes,
     link_llvm_intrinsics,
     platform_intrinsics,
