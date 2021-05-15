@@ -1,7 +1,7 @@
 //! Implementation of Chalk debug helper functions using TLS.
-use std::fmt;
+use std::fmt::{self, Debug};
 
-use chalk_ir::{AliasTy, GenericArg, Goal, Goals, Lifetime, ProgramClauseImplication};
+use chalk_ir::AliasTy;
 use itertools::Itertools;
 
 use crate::{
@@ -53,14 +53,6 @@ impl DebugContext<'_> {
         write!(fmt, "{}::{}", trait_data.name, type_alias_data.name)
     }
 
-    pub(crate) fn debug_opaque_ty_id(
-        &self,
-        opaque_ty_id: chalk_ir::OpaqueTyId<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        fmt.debug_struct("OpaqueTyId").field("index", &opaque_ty_id.0).finish()
-    }
-
     pub(crate) fn debug_alias(
         &self,
         alias_ty: &AliasTy<Interner>,
@@ -68,7 +60,7 @@ impl DebugContext<'_> {
     ) -> Result<(), fmt::Error> {
         match alias_ty {
             AliasTy::Projection(projection_ty) => self.debug_projection_ty(projection_ty, fmt),
-            AliasTy::Opaque(opaque_ty) => self.debug_opaque_ty(opaque_ty, fmt),
+            AliasTy::Opaque(opaque_ty) => opaque_ty.fmt(fmt),
         }
     }
 
@@ -96,79 +88,6 @@ impl DebugContext<'_> {
         write!(fmt, ">::{}", type_alias_data.name)
     }
 
-    pub(crate) fn debug_opaque_ty(
-        &self,
-        opaque_ty: &chalk_ir::OpaqueTy<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", opaque_ty.opaque_ty_id)
-    }
-
-    pub(crate) fn debug_ty(
-        &self,
-        ty: &chalk_ir::Ty<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", ty.data(&Interner))
-    }
-
-    pub(crate) fn debug_lifetime(
-        &self,
-        lifetime: &Lifetime<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", lifetime.data(&Interner))
-    }
-
-    pub(crate) fn debug_generic_arg(
-        &self,
-        parameter: &GenericArg<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", parameter.data(&Interner).inner_debug())
-    }
-
-    pub(crate) fn debug_goal(
-        &self,
-        goal: &Goal<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        let goal_data = goal.data(&Interner);
-        write!(fmt, "{:?}", goal_data)
-    }
-
-    pub(crate) fn debug_goals(
-        &self,
-        goals: &Goals<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", goals.debug(&Interner))
-    }
-
-    pub(crate) fn debug_program_clause_implication(
-        &self,
-        pci: &ProgramClauseImplication<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", pci.debug(&Interner))
-    }
-
-    pub(crate) fn debug_substitution(
-        &self,
-        substitution: &chalk_ir::Substitution<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", substitution.debug(&Interner))
-    }
-
-    pub(crate) fn debug_separator_trait_ref(
-        &self,
-        separator_trait_ref: &chalk_ir::SeparatorTraitRef<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> Result<(), fmt::Error> {
-        write!(fmt, "{:?}", separator_trait_ref.debug(&Interner))
-    }
-
     pub(crate) fn debug_fn_def_id(
         &self,
         fn_def_id: chalk_ir::FnDefId<Interner>,
@@ -189,57 +108,6 @@ impl DebugContext<'_> {
                 write!(fmt, "{{ctor {}}}", name)
             }
         }
-    }
-
-    pub(crate) fn debug_const(
-        &self,
-        _constant: &chalk_ir::Const<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(fmt, "const")
-    }
-
-    pub(crate) fn debug_variable_kinds(
-        &self,
-        variable_kinds: &chalk_ir::VariableKinds<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(fmt, "{:?}", variable_kinds.as_slice(&Interner))
-    }
-    pub(crate) fn debug_variable_kinds_with_angles(
-        &self,
-        variable_kinds: &chalk_ir::VariableKinds<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(fmt, "{:?}", variable_kinds.inner_debug(&Interner))
-    }
-    pub(crate) fn debug_canonical_var_kinds(
-        &self,
-        canonical_var_kinds: &chalk_ir::CanonicalVarKinds<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(fmt, "{:?}", canonical_var_kinds.as_slice(&Interner))
-    }
-    pub(crate) fn debug_program_clause(
-        &self,
-        clause: &chalk_ir::ProgramClause<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(fmt, "{:?}", clause.data(&Interner))
-    }
-    pub(crate) fn debug_program_clauses(
-        &self,
-        clauses: &chalk_ir::ProgramClauses<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(fmt, "{:?}", clauses.as_slice(&Interner))
-    }
-    pub(crate) fn debug_quantified_where_clauses(
-        &self,
-        clauses: &chalk_ir::QuantifiedWhereClauses<Interner>,
-        fmt: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(fmt, "{:?}", clauses.as_slice(&Interner))
     }
 }
 
