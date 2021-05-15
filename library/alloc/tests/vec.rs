@@ -1002,7 +1002,6 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .zip(std::iter::repeat(1usize))
         .map(|(a, b)| a + b)
         .map_while(Option::Some)
-        .peekable()
         .skip(1)
         .map(|e| if e != usize::MAX { Ok(std::num::NonZeroUsize::new(e)) } else { Err(()) });
     assert_in_place_trait(&iter);
