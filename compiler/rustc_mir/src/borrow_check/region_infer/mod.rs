@@ -1241,7 +1241,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// it. However, it works pretty well in practice. In particular,
     /// this is needed to deal with projection outlives bounds like
     ///
-    /// ```ignore (internal compiler representation so lifetime syntax is invalid)
+    /// ```text
     /// <T as Foo<'0>>::Item: '1
     /// ```
     ///
