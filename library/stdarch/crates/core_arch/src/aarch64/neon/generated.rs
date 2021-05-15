@@ -4648,12 +4648,33 @@ pub unsafe fn vmull_high_u32(a: uint32x4_t, b: uint32x4_t) -> uint64x2_t {
 
 /// Polynomial multiply long
 #[inline]
+#[target_feature(enable = "neon,crypto")]
+#[cfg_attr(test, assert_instr(pmull))]
+pub unsafe fn vmull_p64(a: p64, b: p64) -> p128 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.pmull64")]
+        fn vmull_p64_(a: p64, b: p64) -> int8x16_t;
+    }
+    transmute(vmull_p64_(a, b))
+}
+
+/// Polynomial multiply long
+#[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(pmull))]
 pub unsafe fn vmull_high_p8(a: poly8x16_t, b: poly8x16_t) -> poly16x8_t {
     let a: poly8x8_t = simd_shuffle8!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]);
     let b: poly8x8_t = simd_shuffle8!(b, b, [8, 9, 10, 11, 12, 13, 14, 15]);
     vmull_p8(a, b)
+}
+
+/// Polynomial multiply long
+#[inline]
+#[target_feature(enable = "neon,crypto")]
+#[cfg_attr(test, assert_instr(pmull))]
+pub unsafe fn vmull_high_p64(a: poly64x2_t, b: poly64x2_t) -> p128 {
+    vmull_p64(simd_extract(a, 1), simd_extract(b, 1))
 }
 
 /// Multiply long
@@ -12613,11 +12634,29 @@ mod test {
     }
 
     #[simd_test(enable = "neon")]
+    unsafe fn test_vmull_p64() {
+        let a: p64 = 15;
+        let b: p64 = 3;
+        let e: p128 = 17;
+        let r: p128 = transmute(vmull_p64(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
     unsafe fn test_vmull_high_p8() {
         let a: i8x16 = i8x16::new(1, 2, 9, 10, 9, 10, 11, 12, 9, 10, 11, 12, 13, 14, 15, 16);
         let b: i8x16 = i8x16::new(1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 1, 3);
         let e: i16x8 = i16x8::new(9, 30, 11, 20, 13, 18, 15, 48);
         let r: i16x8 = transmute(vmull_high_p8(transmute(a), transmute(b)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vmull_high_p64() {
+        let a: i64x2 = i64x2::new(1, 15);
+        let b: i64x2 = i64x2::new(1, 3);
+        let e: p128 = 17;
+        let r: p128 = transmute(vmull_high_p64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
