@@ -284,6 +284,9 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_all(mut self) -> InferenceResult {
         // FIXME resolve obligations as well (use Guidance if necessary)
+
+        // make sure diverging type variables are marked as such
+        self.table.propagate_diverging_flag();
         let mut result = std::mem::take(&mut self.result);
         for ty in result.type_of_expr.values_mut() {
             let resolved = self.table.resolve_ty_completely(ty.clone());

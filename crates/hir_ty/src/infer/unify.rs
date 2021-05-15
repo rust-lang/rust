@@ -179,8 +179,28 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
+    /// Chalk doesn't know about the `diverging` flag, so when it unifies two
+    /// type variables of which one is diverging, the chosen root might not be
+    /// diverging and we have no way of marking it as such at that time. This
+    /// function goes through all type variables and make sure their root is
+    /// marked as diverging if necessary, so that resolving them gives the right
+    /// result.
+    pub(super) fn propagate_diverging_flag(&mut self) {
+        for i in 0..self.type_variable_table.inner.len() {
+            if !self.type_variable_table.inner[i].diverging {
+                continue;
+            }
+            let v = InferenceVar::from(i as u32);
+            let root = self.var_unification_table.inference_var_root(v);
+            if let Some(data) = self.type_variable_table.inner.get_mut(root.index() as usize) {
+                data.diverging = true;
+            }
+        }
+    }
+
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
         let var = self.var_unification_table.new_variable(UniverseIndex::ROOT);
+        // Chalk might have created some type variables for its own purposes that we don't know about...
         self.type_variable_table.inner.extend(
             (0..1 + var.index() as usize - self.type_variable_table.inner.len())
                 .map(|_| TypeVariableData { diverging: false }),
