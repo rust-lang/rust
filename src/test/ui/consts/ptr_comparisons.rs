@@ -59,26 +59,18 @@ check!(!eq, unsafe { (FOO as *const usize as *const u8).offset(3) }, 0);
 // at runtime it would be zero and at compile-time it would not be zero.
 
 const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
-//~^ NOTE
 
 const _: *const u8 =
-//~^ NOTE
     unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
 //~^ ERROR any use of this value will cause an error
-//~| NOTE
 //~| WARN this was previously accepted by the compiler but is being phased out
-//~| NOTE
 
 const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
 //~^ ERROR any use of this value will cause an error
-//~| NOTE cannot cast pointer to integer
-//~| NOTE
+//~| cannot cast pointer to integer
 //~| WARN this was previously accepted by the compiler but is being phased out
-//~| NOTE
 
 const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
 //~^ ERROR any use of this value will cause an error
-//~| NOTE cannot cast pointer to integer
-//~| NOTE
+//~| cannot cast pointer to integer
 //~| WARN this was previously accepted by the compiler but is being phased out
-//~| NOTE
