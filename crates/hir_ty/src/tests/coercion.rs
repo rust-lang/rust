@@ -873,3 +873,42 @@ fn foo(c: i32) {
         "#,
     )
 }
+
+#[test]
+fn infer_match_diverging_branch_1() {
+    check_types(
+        r#"
+enum Result<T> { Ok(T), Err }
+fn parse<T>() -> T { loop {} }
+
+fn test() -> i32 {
+    let a = match parse() {
+        Ok(val) => val,
+        Err => return 0,
+    };
+    a
+  //^ i32
+}
+        "#,
+    )
+}
+
+#[test]
+fn infer_match_diverging_branch_2() {
+    // same as 1 except for order of branches
+    check_types(
+        r#"
+enum Result<T> { Ok(T), Err }
+fn parse<T>() -> T { loop {} }
+
+fn test() -> i32 {
+    let a = match parse() {
+        Err => return 0,
+        Ok(val) => val,
+    };
+    a
+  //^ i32
+}
+        "#,
+    )
+}
