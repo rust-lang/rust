@@ -524,6 +524,11 @@ fn main() {
 fn test_highlight_doc_comment() {
     check_highlighting(
         r#"
+//! This is a module to test doc injection.
+//! ```
+//! fn test() {}
+//! ```
+
 /// ```
 /// let _ = "early doctests should not go boom";
 /// ```
@@ -531,6 +536,13 @@ struct Foo {
     bar: bool,
 }
 
+/// This is an impl with a code block.
+///
+/// ```
+/// fn foo() {
+///
+/// }
+/// ```
 impl Foo {
     /// ```
     /// let _ = "Call me

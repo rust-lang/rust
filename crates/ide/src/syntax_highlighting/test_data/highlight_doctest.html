@@ -37,13 +37,25 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="comment documentation">/// ```</span>
+<pre><code><span class="comment documentation">//! This is a module to test doc injection.</span>
+<span class="comment documentation">//! ```</span>
+<span class="comment documentation">//! </span><span class="keyword injected">fn</span><span class="none injected"> </span><span class="function declaration injected">test</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="none injected"> </span><span class="brace injected">{</span><span class="brace injected">}</span>
+<span class="comment documentation">//! ```</span>
+
+<span class="comment documentation">/// ```</span>
 <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"early doctests should not go boom"</span><span class="semicolon injected">;</span>
 <span class="comment documentation">/// ```</span>
 <span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="brace">{</span>
     <span class="field declaration">bar</span><span class="colon">:</span> <span class="builtin_type">bool</span><span class="comma">,</span>
 <span class="brace">}</span>
 
+<span class="comment documentation">/// This is an impl with a code block.</span>
+<span class="comment documentation">///</span>
+<span class="comment documentation">/// ```</span>
+<span class="comment documentation">/// </span><span class="keyword injected">fn</span><span class="none injected"> </span><span class="function declaration injected">foo</span><span class="parenthesis injected">(</span><span class="parenthesis injected">)</span><span class="none injected"> </span><span class="brace injected">{</span>
+<span class="comment documentation">///</span>
+<span class="comment documentation">/// </span><span class="brace injected">}</span>
+<span class="comment documentation">/// ```</span>
 <span class="keyword">impl</span> <span class="struct">Foo</span> <span class="brace">{</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">/// </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="punctuation injected">_</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="string_literal injected">"Call me</span>

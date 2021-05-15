@@ -19,14 +19,10 @@ use syntax::{
 pub(crate) fn matching_brace(file: &SourceFile, offset: TextSize) -> Option<TextSize> {
     const BRACES: &[SyntaxKind] =
         &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>], T![|], T![|]];
-    let (brace_token, brace_idx) = file
-        .syntax()
-        .token_at_offset(offset)
-        .filter_map(|node| {
-            let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
-            Some((node, idx))
-        })
-        .next()?;
+    let (brace_token, brace_idx) = file.syntax().token_at_offset(offset).find_map(|node| {
+        let idx = BRACES.iter().position(|&brace| brace == node.kind())?;
+        Some((node, idx))
+    })?;
     let parent = brace_token.parent()?;
     if brace_token.kind() == T![|] && !ast::ParamList::can_cast(parent.kind()) {
         cov_mark::hit!(pipes_not_braces);

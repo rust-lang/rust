@@ -1,6 +1,8 @@
 use hir::Semantics;
-use ide_db::base_db::{CrateId, FileId, FilePosition};
-use ide_db::RootDatabase;
+use ide_db::{
+    base_db::{CrateId, FileId, FilePosition},
+    RootDatabase,
+};
 use itertools::Itertools;
 use syntax::{
     algo::find_node_at_offset,
