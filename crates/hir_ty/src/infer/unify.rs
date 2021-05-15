@@ -86,8 +86,12 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     }
 }
 
-pub fn could_unify(db: &dyn HirDatabase, env: Arc<TraitEnvironment>, t1: &Ty, t2: &Ty) -> bool {
-    InferenceTable::new(db, env).unify(t1, t2)
+pub fn could_unify(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    tys: &Canonical<(Ty, Ty)>,
+) -> bool {
+    unify(db, env, tys).is_some()
 }
 
 pub(crate) fn unify(
