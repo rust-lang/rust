@@ -101,6 +101,12 @@ const LABELS_FN_IN_TRAIT: &[&[&str]] =
 const LABELS_HIR_ONLY: &[&[&str]] = &[BASE_HIR];
 
 /// Impl `DepNode`s.
+const LABELS_TRAIT: &[&[&str]] = &[
+    BASE_HIR,
+    &[label_strs::associated_item_def_ids, label_strs::predicates_of, label_strs::generics_of],
+];
+
+/// Impl `DepNode`s.
 const LABELS_IMPL: &[&[&str]] = &[BASE_HIR, BASE_IMPL];
 
 /// Abstract data type (struct, enum, union) `DepNode`s.
@@ -259,20 +265,7 @@ impl DirtyCleanVisitor<'tcx> {
                     HirItem::Union(..) => ("ItemUnion", LABELS_ADT),
 
                     // Represents a Trait Declaration
-                    // FIXME(michaelwoerister): trait declaration is buggy because sometimes some of
-                    // the depnodes don't exist (because they legitimately didn't need to be
-                    // calculated)
-                    //
-                    // michaelwoerister and vitiral came up with a possible solution,
-                    // to just do this before every query
-                    // ```
-                    // ::rustc_middle::ty::query::plumbing::force_from_dep_node(tcx, dep_node)
-                    // ```
-                    //
-                    // However, this did not seem to work effectively and more bugs were hit.
-                    // Nebie @vitiral gave up :)
-                    //
-                    //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
+                    HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),

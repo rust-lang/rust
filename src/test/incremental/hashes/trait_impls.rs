@@ -30,7 +30,7 @@ impl ChangeMethodNameTrait for Foo {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 pub trait ChangeMethodNameTrait {
     #[rustc_clean(cfg="cfail3")]
@@ -38,7 +38,7 @@ pub trait ChangeMethodNameTrait {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeMethodNameTrait for Foo {
     #[rustc_clean(cfg="cfail3")]
@@ -62,7 +62,7 @@ impl ChangeMethodBodyTrait for Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeMethodBodyTrait for Foo {
-    #[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner_nodes,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     fn method_name() {
         ()
@@ -87,7 +87,7 @@ impl ChangeMethodBodyTraitInlined for Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeMethodBodyTraitInlined for Foo {
-    #[rustc_clean(except="hir_owner_nodes", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner_nodes,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     #[inline]
     fn method_name() {
@@ -116,7 +116,10 @@ pub trait ChangeMethodSelfnessTrait {
 #[rustc_clean(except="hir_owner", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeMethodSelfnessTrait for Foo {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(
+        except="hir_owner,hir_owner_nodes,associated_item,generics_of,fn_sig,typeck,optimized_mir",
+        cfg="cfail2",
+    )]
     #[rustc_clean(cfg="cfail3")]
     fn method_name(&self) {
         ()
@@ -144,7 +147,10 @@ pub trait RemoveMethodSelfnessTrait {
 #[rustc_clean(except="hir_owner", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl RemoveMethodSelfnessTrait for Foo {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(
+        except="hir_owner,hir_owner_nodes,associated_item,generics_of,fn_sig,typeck,optimized_mir",
+        cfg="cfail2",
+    )]
     #[rustc_clean(cfg="cfail3")]
     fn method_name() {}
 }
@@ -170,7 +176,7 @@ pub trait ChangeMethodSelfmutnessTrait {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeMethodSelfmutnessTrait for Foo {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     fn method_name(&mut self) {}
 }
@@ -193,7 +199,7 @@ pub trait ChangeItemKindTrait {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeItemKindTrait for Foo {
     type name = ();
@@ -219,7 +225,7 @@ pub trait RemoveItemTrait {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl RemoveItemTrait for Foo {
     type TypeName = ();
@@ -244,7 +250,7 @@ pub trait AddItemTrait {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl AddItemTrait for Foo {
     type TypeName = ();
@@ -267,7 +273,7 @@ impl ChangeHasValueTrait for Foo {
 #[rustc_clean(except="hir_owner", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 pub trait ChangeHasValueTrait {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,associated_item", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     fn method_name() { }
 }
@@ -294,7 +300,7 @@ impl AddDefaultTrait for Foo {
 #[rustc_clean(except="hir_owner", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl AddDefaultTrait for Foo {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     default fn method_name() { }
 }
@@ -320,7 +326,7 @@ pub trait AddArgumentTrait {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl AddArgumentTrait for Foo {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     fn method_name(&self, _x: u32) { }
 }
@@ -346,7 +352,7 @@ pub trait ChangeArgumentTypeTrait {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeArgumentTypeTrait for Foo {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     fn method_name(&self, _x: char) { }
 }
@@ -366,10 +372,13 @@ impl AddTypeParameterToImpl<u32> for Bar<u32> {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,generics_of,impl_trait_ref", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl<T> AddTypeParameterToImpl<T> for Bar<T> {
-    #[rustc_clean(except="hir_owner", cfg="cfail2")]
+    #[rustc_clean(
+        except="hir_owner,hir_owner_nodes,generics_of,fn_sig,type_of,typeck,optimized_mir",
+        cfg="cfail2",
+    )]
     #[rustc_clean(cfg="cfail3")]
     fn id(t: T) -> T { t }
 }
@@ -387,10 +396,10 @@ impl ChangeSelfTypeOfImpl for u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,impl_trait_ref", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl ChangeSelfTypeOfImpl for u64 {
-    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(except="fn_sig,typeck,optimized_mir", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
     fn id(self) -> Self { self }
 }
@@ -408,7 +417,7 @@ impl<T> AddLifetimeBoundToImplParameter for T {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl<T: 'static> AddLifetimeBoundToImplParameter for T {
     #[rustc_clean(cfg="cfail2")]
@@ -429,7 +438,7 @@ impl<T> AddTraitBoundToImplParameter for T {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(except="hir_owner", cfg="cfail2")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl<T: Clone> AddTraitBoundToImplParameter for T {
     #[rustc_clean(cfg="cfail2")]
