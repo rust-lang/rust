@@ -7,6 +7,7 @@ use syntax::{
     ast::{self, Impl, NameOwner},
     AstNode,
 };
+use crate::utils::generate_trait_impl_text;
 
 // Assist: generate_default_from_new
 //
@@ -59,13 +60,21 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext) 
     }
 
     let insert_location = impl_.syntax().text_range();
-
+    let code = match ast::Struct::cast(impl_.self_ty().unwrap().syntax().clone()){
+        None => {
+            default_fn_node_for_new(impl_)
+        }
+        Some(strukt) => {
+            generate_trait_impl_text(&ast::Adt::Struct(strukt),"core:default:Default","    fn default() -> Self {{
+        Self::new()
+    }}")
+        }
+    };
     acc.add(
         AssistId("generate_default_from_new", crate::AssistKind::Generate),
         "Generate a Default impl from a new fn",
         insert_location,
         move |builder| {
-            let code = default_fn_node_for_new(impl_);
             builder.insert(insert_location.end(), code);
         },
     )
@@ -167,6 +176,40 @@ impl Test {
 }
 
 impl Default for Test {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn generate_default3() {
+        check_pass(
+            r#"
+pub struct Foo<T> {
+    _bar: *mut T,
+}
+
+impl<T> Foo<T> {
+    pub fn ne$0w() -> Self {
+        todo!()
+    }
+}
+"#,
+            r#"
+pub struct Foo<T> {
+    _bar: *mut T,
+}
+
+impl<T> Foo<T> {
+    pub fn new() -> Self {
+        todo!()
+    }
+}
+
+impl<T> Default for Foo<T> {
     fn default() -> Self {
         Self::new()
     }
