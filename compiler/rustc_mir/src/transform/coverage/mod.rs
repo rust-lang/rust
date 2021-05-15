@@ -95,7 +95,7 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 
         trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
         Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
-        trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage done for {:?}", mir_source.def_id());
     }
 }
 
@@ -116,25 +116,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let def_id = mir_body.source.def_id();
         let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
 
-        let mut body_span = hir_body.value.span;
-
-        if tcx.is_closure(def_id) {
-            // If the MIR function is a closure, and if the closure body span
-            // starts from a macro, but it's content is not in that macro, try
-            // to find a non-macro callsite, and instrument the spans there
-            // instead.
-            loop {
-                let expn_data = body_span.ctxt().outer_expn_data();
-                if expn_data.is_root() {
-                    break;
-                }
-                if let ExpnKind::Macro { .. } = expn_data.kind {
-                    body_span = expn_data.call_site;
-                } else {
-                    break;
-                }
-            }
-        }
+        let body_span = get_body_span(tcx, hir_body, mir_body);
 
         let source_file = source_map.lookup_source_file(body_span.lo());
         let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
@@ -144,6 +126,15 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
             None => body_span.shrink_to_lo(),
         };
+
+        debug!(
+            "instrumenting {}: {:?}, fn sig span: {:?}, body span: {:?}",
+            if tcx.is_closure(def_id) { "closure" } else { "function" },
+            def_id,
+            fn_sig_span,
+            body_span
+        );
+
         let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
         Self {
@@ -160,18 +151,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
 
     fn inject_counters(&'a mut self) {
         let tcx = self.tcx;
-        let source_map = tcx.sess.source_map();
         let mir_source = self.mir_body.source;
         let def_id = mir_source.def_id();
         let fn_sig_span = self.fn_sig_span;
         let body_span = self.body_span;
-
-        debug!(
-            "instrumenting {:?}, fn sig span: {}, body span: {}",
-            def_id,
-            source_map.span_to_diagnostic_string(fn_sig_span),
-            source_map.span_to_diagnostic_string(body_span)
-        );
 
         let mut graphviz_data = debug::GraphvizData::new();
         let mut debug_used_expressions = debug::UsedExpressions::new();
@@ -204,6 +187,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
                 self.mir_body,
                 &self.basic_coverage_blocks,
                 self.pass_name,
+                body_span,
                 &coverage_spans,
             );
         }
@@ -558,6 +542,35 @@ fn fn_sig_and_body<'tcx>(
     let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
     let fn_body_id = hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     (hir::map::fn_sig(hir_node), tcx.hir().body(fn_body_id))
+}
+
+fn get_body_span<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hir_body: &rustc_hir::Body<'tcx>,
+    mir_body: &mut mir::Body<'tcx>,
+) -> Span {
+    let mut body_span = hir_body.value.span;
+    let def_id = mir_body.source.def_id();
+
+    if tcx.is_closure(def_id) {
+        // If the MIR function is a closure, and if the closure body span
+        // starts from a macro, but it's content is not in that macro, try
+        // to find a non-macro callsite, and instrument the spans there
+        // instead.
+        loop {
+            let expn_data = body_span.ctxt().outer_expn_data();
+            if expn_data.is_root() {
+                break;
+            }
+            if let ExpnKind::Macro { .. } = expn_data.kind {
+                body_span = expn_data.call_site;
+            } else {
+                break;
+            }
+        }
+    }
+
+    body_span
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
