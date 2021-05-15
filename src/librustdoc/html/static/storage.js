@@ -84,7 +84,7 @@ function onEachLazy(lazyArray, func, reversed) {
 }
 
 // eslint-disable-next-line no-unused-vars
-function hasOwnProperty(obj, property) {
+function hasOwnPropertyRustdoc(obj, property) {
     return Object.prototype.hasOwnProperty.call(obj, property);
 }
 
