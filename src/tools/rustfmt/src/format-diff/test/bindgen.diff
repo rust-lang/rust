@@ -1,0 +1,67 @@
+diff --git a/src/ir/item.rs b/src/ir/item.rs
+index 7f3afefb..90d15e96 100644
+--- a/src/ir/item.rs
++++ b/src/ir/item.rs
+@@ -148,7 +148,11 @@ impl<'a, 'b> Iterator for ItemAncestorsIter<'a, 'b>
+ impl AsTemplateParam for ItemId {
+     type Extra = ();
+ 
+-    fn as_template_param(&self, ctx: &BindgenContext, _: &()) -> Option<ItemId> {
++    fn as_template_param(
++        &self,
++        ctx: &BindgenContext,
++        _: &(),
++    ) -> Option<ItemId> {
+         ctx.resolve_item(*self).as_template_param(ctx, &())
+     }
+ }
+@@ -156,7 +160,11 @@ impl AsTemplateParam for ItemId {
+ impl AsTemplateParam for Item {
+     type Extra = ();
+ 
+-    fn as_template_param(&self, ctx: &BindgenContext, _: &()) -> Option<ItemId> {
++    fn as_template_param(
++        &self,
++        ctx: &BindgenContext,
++        _: &(),
++    ) -> Option<ItemId> {
+         self.kind.as_template_param(ctx, self)
+     }
+ }
+diff --git a/src/ir/traversal.rs b/src/ir/traversal.rs
+index 762a3e2d..b9c9dd4e 100644
+--- a/src/ir/traversal.rs
++++ b/src/ir/traversal.rs
+@@ -9,6 +9,8 @@ use std::collections::{BTreeMap, VecDeque};
+ ///
+ ///   from --> to
+ ///
++/// Random content to generate a diff.
++///
+ /// The `from` is left implicit: it is the concrete `Trace` implementer which
+ /// yielded this outgoing edge.
+ #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+@@ -33,7 +35,9 @@ impl Into<ItemId> for Edge {
+     }
+ }
+ 
+-/// The kind of edge reference. This is useful when we wish to only consider
++/// The kind of edge reference.
++///
++/// This is useful when we wish to only consider
+ /// certain kinds of edges for a particular traversal or analysis.
+ #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+ pub enum EdgeKind {
+diff --git a/tests/headers/anon_enum.hpp b/tests/headers/anon_enum.hpp
+index 1961fe6c..34759df3 100644
+--- a/tests/headers/anon_enum.hpp
++++ b/tests/headers/anon_enum.hpp
+@@ -1,7 +1,7 @@
+ struct Test {
+   int foo;
+   float bar;
+-  enum { T_NONE };
++  enum { T_NONE, T_SOME };
+ };
+ 
+ typedef enum {

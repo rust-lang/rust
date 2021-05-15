@@ -319,15 +319,9 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let build_result = builder.ensure(tool::Rustfmt {
-            compiler,
-            target: self.host,
-            extra_features: Vec::new(),
-        });
-        if build_result.is_none() {
-            eprintln!("failed to test rustfmt: could not build");
-            return;
-        }
+        builder
+            .ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() })
+            .expect("in-tree tool");
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -346,9 +340,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder, compiler);
 
-        if try_run(builder, &mut cargo.into()) {
-            builder.save_toolstate("rustfmt", ToolState::TestPass);
-        }
+        builder.run(&mut cargo.into());
     }
 }
 

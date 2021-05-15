@@ -1,0 +1,39 @@
+name: mac
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  test:
+    # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/virtual-environments-for-github-hosted-runners#supported-runners-and-hardware-resources
+    # macOS Catalina 10.15
+    runs-on: macos-latest
+    name: (${{ matrix.target }}, nightly)
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [
+          x86_64-apple-darwin,
+        ]
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+      # Run build
+    - name: install rustup
+      run: |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
+        sh rustup-init.sh -y --default-toolchain none
+        rustup target add ${{ matrix.target }}
+
+    - name: build
+      run: |
+        rustc -Vv
+        cargo -V
+        cargo build
+
+    - name: test
+      run: cargo test

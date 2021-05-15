@@ -1,0 +1,67 @@
+[package]
+
+name = "rustfmt-nightly"
+version = "1.4.37"
+authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
+description = "Tool to find and fix Rust formatting issues"
+repository = "https://github.com/rust-lang/rustfmt"
+readme = "README.md"
+license = "Apache-2.0/MIT"
+build = "build.rs"
+categories = ["development-tools"]
+edition = "2018"
+
+[[bin]]
+name = "rustfmt"
+path = "src/bin/main.rs"
+
+[[bin]]
+name = "cargo-fmt"
+path = "src/cargo-fmt/main.rs"
+
+[[bin]]
+name = "rustfmt-format-diff"
+path = "src/format-diff/main.rs"
+
+[[bin]]
+name = "git-rustfmt"
+path = "src/git-rustfmt/main.rs"
+
+[features]
+default = ["cargo-fmt", "rustfmt-format-diff"]
+cargo-fmt = []
+rustfmt-format-diff = []
+generic-simd = ["bytecount/generic-simd"]
+
+[dependencies]
+itertools = "0.8"
+toml = "0.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+unicode-segmentation = "1.0.0"
+regex = "1.0"
+term = "0.6"
+diff = "0.1"
+log = "0.4.14"
+env_logger = "0.6"
+getopts = "0.2"
+derive-new = "0.5"
+cargo_metadata = "0.8"
+bytecount = "0.6"
+unicode-width = "0.1.5"
+unicode_categories = "0.1.1"
+dirs = "2.0.1"
+ignore = "0.4.11"
+annotate-snippets = { version = "0.8", features = ["color"] }
+structopt = "0.3"
+rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
+lazy_static = "1.0.0"
+anyhow = "1.0"
+thiserror = "1.0"
+
+# A noop dependency that changes in the Rust repository, it's a bit of a hack.
+# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
+# for more information.
+rustc-workspace-hack = "1.0.0"
+
+# Rustc dependencies are loaded from the sysroot, Cargo doesn't know about them.
