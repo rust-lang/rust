@@ -14,22 +14,6 @@ LL |     f();
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
 
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/async-unsafe-fn-call-in-safe.rs:19:5
-   |
-LL |     S::f();
-   |     ^^^^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/async-unsafe-fn-call-in-safe.rs:20:5
-   |
-LL |     f();
-   |     ^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0133`.
