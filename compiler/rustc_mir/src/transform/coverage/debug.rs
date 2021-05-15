@@ -120,6 +120,7 @@ use rustc_index::vec::Idx;
 use rustc_middle::mir::coverage::*;
 use rustc_middle::mir::{self, BasicBlock, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
+use rustc_span::Span;
 
 use std::iter;
 use std::lazy::SyncOnceCell;
@@ -636,6 +637,7 @@ pub(super) fn dump_coverage_spanview(
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
     pass_name: &str,
+    body_span: Span,
     coverage_spans: &Vec<CoverageSpan>,
 ) {
     let mir_source = mir_body.source;
@@ -647,7 +649,7 @@ pub(super) fn dump_coverage_spanview(
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
     let title = format!("{}.{} - Coverage Spans", crate_name, item_name);
-    spanview::write_document(tcx, def_id, span_viewables, &title, &mut file)
+    spanview::write_document(tcx, body_span, span_viewables, &title, &mut file)
         .expect("Unexpected IO error dumping coverage spans as HTML");
 }
 

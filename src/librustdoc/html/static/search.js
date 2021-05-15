@@ -1,3 +1,6 @@
+/* global addClass, getNakedUrl, getSettingValue, hasOwnPropertyRustdoc, initSearch, onEach */
+/* global onEachLazy, removeClass, searchState, updateLocalStorage */
+
 (function() {
 // This mapping table should match the discriminants of
 // `rustdoc::html::item_type::ItemType` type in Rust.
@@ -170,7 +173,7 @@ window.initSearch = function(rawSearchIndex) {
         function sortResults(results, isType) {
             var ar = [];
             for (var entry in results) {
-                if (hasOwnProperty(results, entry)) {
+                if (hasOwnPropertyRustdoc(results, entry)) {
                     ar.push(results[entry]);
                 }
             }
@@ -254,7 +257,7 @@ window.initSearch = function(rawSearchIndex) {
             });
 
             for (i = 0, len = results.length; i < len; ++i) {
-                var result = results[i];
+                result = results[i];
 
                 // this validation does not make sense when searching by types
                 if (result.dontValidate) {
@@ -301,7 +304,7 @@ window.initSearch = function(rawSearchIndex) {
                 if (obj.length > GENERICS_DATA &&
                       obj[GENERICS_DATA].length >= val.generics.length) {
                     var elems = Object.create(null);
-                    var elength = object[GENERICS_DATA].length;
+                    var elength = obj[GENERICS_DATA].length;
                     for (var x = 0; x < elength; ++x) {
                         elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
                     }
@@ -717,7 +720,7 @@ window.initSearch = function(rawSearchIndex) {
             query.output = val;
             query.search = val;
             // gather matching search results up to a certain maximum
-            val = val.replace(/\_/g, "");
+            val = val.replace(/_/g, "");
 
             var valGenerics = extractGenerics(val);
 
@@ -1242,7 +1245,9 @@ window.initSearch = function(rawSearchIndex) {
     function getFilterCrates() {
         var elem = document.getElementById("crate-search");
 
-        if (elem && elem.value !== "All crates" && hasOwnProperty(rawSearchIndex, elem.value)) {
+        if (elem && elem.value !== "All crates" &&
+            hasOwnPropertyRustdoc(rawSearchIndex, elem.value))
+        {
             return elem.value;
         }
         return undefined;
@@ -1293,14 +1298,13 @@ window.initSearch = function(rawSearchIndex) {
         var id = 0;
 
         for (var crate in rawSearchIndex) {
-            if (!hasOwnProperty(rawSearchIndex, crate)) { continue; }
+            if (!hasOwnPropertyRustdoc(rawSearchIndex, crate)) {
+                continue;
+            }
 
             var crateSize = 0;
 
             searchWords.push(crate);
-            var normalizedName = crate.indexOf("_") === -1
-                ? crate
-                : crate.replace(/_/g, "");
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
@@ -1313,7 +1317,7 @@ window.initSearch = function(rawSearchIndex) {
                 parent: undefined,
                 type: null,
                 id: id,
-                normalizedName: normalizedName,
+                normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
             };
             id += 1;
             searchIndex.push(crateRow);
@@ -1363,9 +1367,6 @@ window.initSearch = function(rawSearchIndex) {
                     word = "";
                     searchWords.push("");
                 }
-                var normalizedName = word.indexOf("_") === -1
-                    ? word
-                    : word.replace(/_/g, "");
                 var row = {
                     crate: crate,
                     ty: itemTypes[i],
@@ -1375,7 +1376,7 @@ window.initSearch = function(rawSearchIndex) {
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type: itemFunctionSearchTypes[i],
                     id: id,
-                    normalizedName: normalizedName,
+                    normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
                 };
                 id += 1;
                 searchIndex.push(row);
@@ -1387,9 +1388,11 @@ window.initSearch = function(rawSearchIndex) {
                 ALIASES[crate] = {};
                 var j, local_aliases;
                 for (var alias_name in aliases) {
-                    if (!aliases.hasOwnProperty(alias_name)) { continue; }
+                    if (!hasOwnPropertyRustdoc(aliases, alias_name)) {
+                        continue;
+                    }
 
-                    if (!ALIASES[crate].hasOwnProperty(alias_name)) {
+                    if (!hasOwnPropertyRustdoc(ALIASES[crate], alias_name)) {
                         ALIASES[crate][alias_name] = [];
                     }
                     local_aliases = aliases[alias_name];

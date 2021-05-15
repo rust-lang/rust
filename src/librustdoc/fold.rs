@@ -1,17 +1,10 @@
 use crate::clean::*;
 
-crate struct StripItem(pub Item);
-
-impl StripItem {
-    crate fn strip(self) -> Item {
-        match self.0 {
-            Item { kind: box StrippedItem(..), .. } => self.0,
-            mut i => {
-                i.kind = box StrippedItem(i.kind);
-                i
-            }
-        }
+crate fn strip_item(mut item: Item) -> Item {
+    if !matches!(*item.kind, StrippedItem(..)) {
+        item.kind = box StrippedItem(item.kind);
     }
+    item
 }
 
 crate trait DocFolder: Sized {

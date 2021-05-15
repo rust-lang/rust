@@ -642,7 +642,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
     // If there are methods directly on this trait object, render them here.
     render_assoc_items(w, cx, it, it.def_id.expect_real(), AssocItemRender::All);
 
-    if let Some(implementors) = cx.cache.implementors.get(&it.def_id) {
+    if let Some(implementors) = cx.cache.implementors.get(&it.def_id.expect_real()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();

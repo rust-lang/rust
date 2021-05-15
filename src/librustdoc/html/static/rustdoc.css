@@ -542,7 +542,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.notable-traits) {
+.content .methods > div:not(.notable-traits):not(.methods) {
 	margin-left: 40px;
 	margin-bottom: 15px;
 }
@@ -1293,6 +1293,201 @@ h4 > .notable-traits {
 	border-top: 1px solid;
 }
 
+
+
+h3.notable {
+	margin: 0;
+	margin-bottom: 13px;
+	font-size: 19px;
+}
+
+kbd {
+	display: inline-block;
+	padding: 3px 5px;
+	font: 15px monospace;
+	line-height: 10px;
+	vertical-align: middle;
+	border: solid 1px;
+	border-radius: 3px;
+	box-shadow: inset 0 -1px 0;
+	cursor: default;
+}
+
+.hidden-by-impl-hider,
+.hidden-by-usual-hider {
+	/* important because of conflicting rule for small screens */
+	display: none !important;
+}
+
+#implementations-list > h3 > span.in-band {
+	width: 100%;
+}
+
+.table-display {
+	width: 100%;
+	border: 0;
+	border-collapse: collapse;
+	border-spacing: 0;
+	font-size: 16px;
+}
+
+.table-display tr td:first-child {
+	padding-right: 0;
+}
+
+.table-display tr td:last-child {
+	float: right;
+}
+.table-display .out-of-band {
+	position: relative;
+	font-size: 19px;
+	display: block;
+}
+#implementors-list > .impl-items .table-display .out-of-band {
+	font-size: 17px;
+}
+
+.table-display td:hover .anchor {
+	display: block;
+	top: 2px;
+	left: -5px;
+}
+
+#main > ul {
+	padding-left: 10px;
+}
+#main > ul > li {
+	list-style: none;
+}
+
+.non-exhaustive {
+	margin-bottom: 1em;
+}
+
+div.children {
+	padding-left: 27px;
+	display: none;
+}
+div.name {
+	cursor: pointer;
+	position: relative;
+	margin-left: 16px;
+}
+div.files > a {
+	display: block;
+	padding: 0 3px;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #a14b4b;
+}
+div.name.expand + .children {
+	display: block;
+}
+div.name::before {
+	content: "\25B6";
+	padding-left: 4px;
+	font-size: 0.7em;
+	position: absolute;
+	left: -16px;
+	top: 4px;
+}
+div.name.expand::before {
+	transform: rotate(90deg);
+	left: -15px;
+	top: 2px;
+}
+
+/* The hideme class is used on summary tags that contain a span with
+	placeholder text shown only when the toggle is closed. For instance,
+	"Expand description" or "Show methods". */
+details.rustdoc-toggle > summary.hideme {
+	cursor: pointer;
+}
+
+details.rustdoc-toggle > summary, details.undocumented > summary {
+	list-style: none;
+}
+details.rustdoc-toggle > summary::-webkit-details-marker,
+details.rustdoc-toggle > summary::marker,
+details.undocumented > summary::-webkit-details-marker,
+details.undocumented > summary::marker {
+	display: none;
+}
+
+details.rustdoc-toggle > summary.hideme > span {
+	margin-left: 9px;
+}
+
+details.rustdoc-toggle > summary::before {
+	content: "[+]";
+	font-weight: 300;
+	font-size: 0.8em;
+	letter-spacing: 1px;
+	cursor: pointer;
+}
+
+details.rustdoc-toggle.top-doc > summary,
+details.rustdoc-toggle.top-doc > summary::before,
+details.rustdoc-toggle.non-exhaustive > summary,
+details.rustdoc-toggle.non-exhaustive > summary::before {
+	font-family: 'Fira Sans';
+	font-size: 16px;
+}
+
+details.non-exhaustive {
+	margin-bottom: 8px;
+}
+
+details.rustdoc-toggle > summary.hideme::before {
+	position: relative;
+}
+
+details.rustdoc-toggle > summary:not(.hideme)::before {
+	position: absolute;
+	left: -23px;
+	top: initial;
+}
+
+.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
+.undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
+	position: absolute;
+	top: 3px;
+	left: -2px;
+}
+
+/* When a "hideme" summary is open and the "Expand description" or "Show
+	methods" text is hidden, we want the [-] toggle that remains to not
+	affect the layout of the items to its right. To do that, we use
+	absolute positioning. Note that we also set position: relative
+	on the parent <details> to make this work properly. */
+details.rustdoc-toggle[open] > summary.hideme {
+	position: absolute;
+}
+
+details.rustdoc-toggle, details.undocumented {
+	position: relative;
+}
+
+details.rustdoc-toggle[open] > summary.hideme > span {
+	display: none;
+}
+
+details.rustdoc-toggle[open] > summary::before {
+	content: "[−]";
+	display: inline;
+}
+
+details.undocumented > summary::before {
+	content: "[+] Show hidden undocumented items";
+	cursor: pointer;
+	font-size: 16px;
+	font-weight: 300;
+}
+
+details.undocumented[open] > summary::before {
+	content: "[−] Hide undocumented items";
+}
+
 /* Media Queries */
 
 @media (min-width: 701px) {
@@ -1492,8 +1687,9 @@ h4 > .notable-traits {
 		border-bottom: 1px solid;
 	}
 
-	.item-list > details.rustdoc-toggle > summary:not(.hideme)::before {
-		left: -10px;
+	#main > details.rustdoc-toggle > summary::before,
+	#main > div > details.rustdoc-toggle > summary::before {
+		left: -11px;
 	}
 
 	#all-types {
@@ -1586,194 +1782,4 @@ h4 > .notable-traits {
 	.docblock {
 		margin-left: 12px;
 	}
-}
-
-h3.notable {
-	margin: 0;
-	margin-bottom: 13px;
-	font-size: 19px;
-}
-
-kbd {
-	display: inline-block;
-	padding: 3px 5px;
-	font: 15px monospace;
-	line-height: 10px;
-	vertical-align: middle;
-	border: solid 1px;
-	border-radius: 3px;
-	box-shadow: inset 0 -1px 0;
-	cursor: default;
-}
-
-.hidden-by-impl-hider,
-.hidden-by-usual-hider {
-	/* important because of conflicting rule for small screens */
-	display: none !important;
-}
-
-#implementations-list > h3 > span.in-band {
-	width: 100%;
-}
-
-.table-display {
-	width: 100%;
-	border: 0;
-	border-collapse: collapse;
-	border-spacing: 0;
-	font-size: 16px;
-}
-
-.table-display tr td:first-child {
-	padding-right: 0;
-}
-
-.table-display tr td:last-child {
-	float: right;
-}
-.table-display .out-of-band {
-	position: relative;
-	font-size: 19px;
-	display: block;
-}
-#implementors-list > .impl-items .table-display .out-of-band {
-	font-size: 17px;
-}
-
-.table-display td:hover .anchor {
-	display: block;
-	top: 2px;
-	left: -5px;
-}
-
-#main > ul {
-	padding-left: 10px;
-}
-#main > ul > li {
-	list-style: none;
-}
-
-.non-exhaustive {
-	margin-bottom: 1em;
-}
-
-div.children {
-	padding-left: 27px;
-	display: none;
-}
-div.name {
-	cursor: pointer;
-	position: relative;
-	margin-left: 16px;
-}
-div.files > a {
-	display: block;
-	padding: 0 3px;
-}
-div.files > a:hover, div.name:hover {
-	background-color: #a14b4b;
-}
-div.name.expand + .children {
-	display: block;
-}
-div.name::before {
-	content: "\25B6";
-	padding-left: 4px;
-	font-size: 0.7em;
-	position: absolute;
-	left: -16px;
-	top: 4px;
-}
-div.name.expand::before {
-	transform: rotate(90deg);
-	left: -15px;
-	top: 2px;
-}
-
-/* The hideme class is used on summary tags that contain a span with
-	placeholder text shown only when the toggle is closed. For instance,
-	"Expand description" or "Show methods". */
-details.rustdoc-toggle > summary.hideme {
-	cursor: pointer;
-}
-
-details.rustdoc-toggle > summary::-webkit-details-marker,
-details.rustdoc-toggle > summary::marker,
-details.undocumented > summary::-webkit-details-marker,
-details.undocumented > summary::marker {
-	display: none;
-}
-
-details.rustdoc-toggle > summary.hideme > span {
-	margin-left: 9px;
-}
-
-details.rustdoc-toggle > summary::before {
-	content: "[+]";
-	font-weight: 300;
-	font-size: 0.8em;
-	letter-spacing: 1px;
-	cursor: pointer;
-}
-
-details.rustdoc-toggle.top-doc > summary,
-details.rustdoc-toggle.top-doc > summary::before,
-details.rustdoc-toggle.non-exhaustive > summary,
-details.rustdoc-toggle.non-exhaustive > summary::before {
-	font-family: 'Fira Sans';
-	font-size: 16px;
-}
-
-details.non-exhaustive {
-	margin-bottom: 8px;
-}
-
-details.rustdoc-toggle > summary.hideme::before {
-	position: relative;
-}
-
-details.rustdoc-toggle > summary:not(.hideme)::before {
-	position: absolute;
-	left: -23px;
-	top: initial;
-}
-
-.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
-.undocumented > details.rustdoc-toggle > summary:not(.hideme)::before {
-	position: absolute;
-	top: 3px;
-	left: -2px;
-}
-
-/* When a "hideme" summary is open and the "Expand description" or "Show
-	methods" text is hidden, we want the [-] toggle that remains to not
-	affect the layout of the items to its right. To do that, we use
-	absolute positioning. Note that we also set position: relative
-	on the parent <details> to make this work properly. */
-details.rustdoc-toggle[open] > summary.hideme {
-	position: absolute;
-}
-
-details.rustdoc-toggle, details.undocumented {
-	position: relative;
-}
-
-details.rustdoc-toggle[open] > summary.hideme > span {
-	display: none;
-}
-
-details.rustdoc-toggle[open] > summary::before {
-	content: "[−]";
-	display: inline;
-}
-
-details.undocumented > summary::before {
-	content: "[+] Show hidden undocumented items";
-	cursor: pointer;
-	font-size: 16px;
-	font-weight: 300;
-}
-
-details.undocumented[open] > summary::before {
-	content: "[-] Hide undocumented items";
 }

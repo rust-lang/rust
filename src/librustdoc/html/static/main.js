@@ -1,6 +1,6 @@
 // Local js definitions:
-/* global addClass, getSettingValue, hasClass */
-/* global onEach, onEachLazy, hasOwnProperty, removeClass, updateLocalStorage */
+/* global addClass, getSettingValue, hasClass, searchState */
+/* global onEach, onEachLazy, removeClass */
 /* global switchTheme, useSystemTheme */
 
 if (!String.prototype.startsWith) {
@@ -347,10 +347,6 @@ function hideThemeButtonState() {
         document.getElementsByTagName("body")[0].style.marginTop = "";
     }
 
-    function isHidden(elem) {
-        return elem.offsetHeight === 0;
-    }
-
     var toggleAllDocsId = "toggle-all-docs";
     var main = document.getElementById("main");
     var savedHash = "";
@@ -553,7 +549,7 @@ function hideThemeButtonState() {
                     len = window.rootPath.match(/\.\.\//g).length + 1;
 
                 for (i = 0; i < len; ++i) {
-                    match = url.match(/\/[^\/]*$/);
+                    match = url.match(/\/[^/]*$/);
                     if (i < len - 1) {
                         stripped = match[0] + stripped;
                     }
@@ -952,13 +948,11 @@ function hideThemeButtonState() {
         });
 
         var currentType = document.getElementsByClassName("type-decl")[0];
-        var className = null;
         if (currentType) {
             currentType = currentType.getElementsByClassName("rust")[0];
             if (currentType) {
                 onEachLazy(currentType.classList, function(item) {
                     if (item !== "main") {
-                        className = item;
                         return true;
                     }
                 });
@@ -1047,7 +1041,7 @@ function hideThemeButtonState() {
         };
     }
 
-    function buildHelperPopup() {
+    var buildHelperPopup = function() {
         var popup = document.createElement("aside");
         addClass(popup, "hidden");
         popup.id = "help";
@@ -1114,7 +1108,7 @@ function hideThemeButtonState() {
         insertAfter(popup, searchState.outputElement());
         // So that it's only built once and then it'll do nothing when called!
         buildHelperPopup = function() {};
-    }
+    };
 
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);

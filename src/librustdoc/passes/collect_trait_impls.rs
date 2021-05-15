@@ -126,7 +126,7 @@ crate fn collect_trait_impls(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
         // Since only the `DefId` portion of the `Type` instances is known to be same for both the
         // `Deref` target type and the impl for type positions, this map of types is keyed by
         // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
-        if cleaner.keep_impl_with_def_id(&FakeDefId::new_real(*type_did)) {
+        if cleaner.keep_impl_with_def_id(FakeDefId::Real(*type_did)) {
             add_deref_target(&type_did_to_deref_target, &mut cleaner, type_did);
         }
     }
@@ -206,13 +206,13 @@ impl BadImplStripper {
         } else if let Some(prim) = ty.primitive_type() {
             self.prims.contains(&prim)
         } else if let Some(did) = ty.def_id() {
-            self.keep_impl_with_def_id(&did.into())
+            self.keep_impl_with_def_id(did.into())
         } else {
             false
         }
     }
 
-    fn keep_impl_with_def_id(&self, did: &FakeDefId) -> bool {
-        self.items.contains(did)
+    fn keep_impl_with_def_id(&self, did: FakeDefId) -> bool {
+        self.items.contains(&did)
     }
 }
