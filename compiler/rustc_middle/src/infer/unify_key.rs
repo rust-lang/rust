@@ -48,6 +48,9 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
         Ok(match (value1.0, value2.0) {
+            // Here we can just pick one value, because the full constraints graph
+            // will be handled later. Ideally, we might want a `MultipleValues`
+            // variant or something. For now though, this is fine.
             (Some(_), Some(_)) => *value1,
 
             (Some(_), _) => *value1,
