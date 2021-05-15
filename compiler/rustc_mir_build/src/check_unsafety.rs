@@ -9,6 +9,8 @@ use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
+use std::ops::Bound;
+
 struct UnsafetyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     thir: &'a Thir<'tcx>,
@@ -153,6 +155,17 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
                 self.requires_unsafe(expr.span, UseOfInlineAssembly);
             }
+            ExprKind::Adt {
+                adt_def,
+                variant_index: _,
+                substs: _,
+                user_ty: _,
+                fields: _,
+                base: _,
+            } => match self.tcx.layout_scalar_valid_range(adt_def.did) {
+                (Bound::Unbounded, Bound::Unbounded) => {}
+                _ => self.requires_unsafe(expr.span, InitializingTypeWith),
+            },
             _ => {}
         }
 
@@ -195,7 +208,6 @@ impl BodyUnsafety {
 enum UnsafeOpKind {
     CallToUnsafeFunction,
     UseOfInlineAssembly,
-    #[allow(dead_code)] // FIXME
     InitializingTypeWith,
     #[allow(dead_code)] // FIXME
     CastOfPointerToInt,
