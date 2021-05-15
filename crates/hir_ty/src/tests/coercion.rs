@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_infer_with_mismatches};
+use super::{check_infer, check_infer_with_mismatches, check_types};
 
 #[test]
 fn infer_block_expr_type_mismatch() {
@@ -857,4 +857,19 @@ fn coerce_unsize_generic() {
         expect![[r"
         "]],
     );
+}
+
+#[test]
+fn infer_two_closures_lub() {
+    check_types(
+        r#"
+fn foo(c: i32) {
+    let add = |a: i32, b: i32| a + b;
+    let sub = |a, b| a - b;
+            //^ |i32, i32| -> i32
+    if c > 42 { add } else { sub };
+  //^ fn(i32, i32) -> i32
+}
+        "#,
+    )
 }

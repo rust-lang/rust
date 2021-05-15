@@ -167,6 +167,7 @@ pub fn make_canonical<T: HasInterner<Interner = Interner>>(
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
 
+// FIXME: get rid of this, just replace it by FnPointer
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]

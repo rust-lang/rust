@@ -40,32 +40,45 @@ impl<'a> InferenceContext<'a> {
     /// Merge two types from different branches, with possible coercion.
     ///
     /// Mostly this means trying to coerce one to the other, but
-    ///  - if we have two function types for different functions, we need to
+    ///  - if we have two function types for different functions or closures, we need to
     ///    coerce both to function pointers;
     ///  - if we were concerned with lifetime subtyping, we'd need to look for a
     ///    least upper bound.
     pub(super) fn coerce_merge_branch(&mut self, ty1: &Ty, ty2: &Ty) -> Ty {
+        // Special case: two function types. Try to coerce both to
+        // pointers to have a chance at getting a match. See
+        // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
+        let sig = match (ty1.kind(&Interner), ty2.kind(&Interner)) {
+            (TyKind::FnDef(..), TyKind::FnDef(..))
+            | (TyKind::Closure(..), TyKind::FnDef(..))
+            | (TyKind::FnDef(..), TyKind::Closure(..))
+            | (TyKind::Closure(..), TyKind::Closure(..)) => {
+                // FIXME: we're ignoring safety here. To be more correct, if we have one FnDef and one Closure,
+                // we should be coercing the closure to a fn pointer of the safety of the FnDef
+                cov_mark::hit!(coerce_fn_reification);
+                let sig = ty1.callable_sig(self.db).expect("FnDef without callable sig");
+                Some(sig)
+            }
+            _ => None,
+        };
+        if let Some(sig) = sig {
+            let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(&Interner);
+            let result1 = self.coerce_inner(ty1.clone(), &target_ty);
+            let result2 = self.coerce_inner(ty2.clone(), &target_ty);
+            if let (Ok(_result1), Ok(_result2)) = (result1, result2) {
+                // TODO deal with the goals
+                return target_ty;
+            }
+        }
+
         if self.coerce(ty1, ty2) {
             ty2.clone()
         } else if self.coerce(ty2, ty1) {
             ty1.clone()
         } else {
-            if let (TyKind::FnDef(..), TyKind::FnDef(..)) =
-                (ty1.kind(&Interner), ty2.kind(&Interner))
-            {
-                cov_mark::hit!(coerce_fn_reification);
-                // Special case: two function types. Try to coerce both to
-                // pointers to have a chance at getting a match. See
-                // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
-                let sig1 = ty1.callable_sig(self.db).expect("FnDef without callable sig");
-                let sig2 = ty2.callable_sig(self.db).expect("FnDef without callable sig");
-                let ptr_ty1 = TyBuilder::fn_ptr(sig1);
-                let ptr_ty2 = TyBuilder::fn_ptr(sig2);
-                self.coerce_merge_branch(&ptr_ty1, &ptr_ty2)
-            } else {
-                cov_mark::hit!(coerce_merge_fail_fallback);
-                ty1.clone()
-            }
+            // FIXME record a type mismatch
+            cov_mark::hit!(coerce_merge_fail_fallback);
+            ty1.clone()
         }
     }
 
@@ -236,8 +249,7 @@ impl<'a> InferenceContext<'a> {
         Ok(result)
     }
 
-    /// Attempts to coerce from the type of a Rust function item into a closure
-    /// or a function pointer.
+    /// Attempts to coerce from the type of a Rust function item into a function pointer.
     fn coerce_from_fn_item(&mut self, from_ty: Ty, to_ty: &Ty) -> InferResult {
         match to_ty.kind(&Interner) {
             TyKind::Function(_) => {
