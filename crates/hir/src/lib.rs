@@ -2223,8 +2223,8 @@ impl Type {
         walk_type(db, self, &mut cb);
     }
 
-    pub fn could_unify_with(&self, other: &Type) -> bool {
-        could_unify(&self.ty, &other.ty)
+    pub fn could_unify_with(&self, db: &dyn HirDatabase, other: &Type) -> bool {
+        could_unify(db, self.env.clone(), &self.ty, &other.ty)
     }
 }
 
