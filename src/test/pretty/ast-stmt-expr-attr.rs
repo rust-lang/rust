@@ -114,11 +114,11 @@ fn syntax() {
     let _ = #[attr] continue ;
     let _ = #[attr] return;
     let _ = #[attr] foo!();
-    let _ = #[attr] foo!(# ! [attr]);
+    let _ = #[attr] foo!(#! [attr]);
     let _ = #[attr] foo![];
-    let _ = #[attr] foo![# ! [attr]];
+    let _ = #[attr] foo![#! [attr]];
     let _ = #[attr] foo! { };
-    let _ = #[attr] foo! { # ! [attr] };
+    let _ = #[attr] foo! { #! [attr] };
     let _ = #[attr] Foo{bar: baz,};
     let _ = #[attr] Foo{..foo};
     let _ = #[attr] Foo{bar: baz, ..foo};

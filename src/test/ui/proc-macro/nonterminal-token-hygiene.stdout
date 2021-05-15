@@ -52,13 +52,13 @@ macro_rules! outer
     */ {
     ($ item : item) =>
     {
-        macro inner() { print_bang ! { $ item } } inner ! () ;
+        macro inner() { print_bang! { $ item } } inner! () ;
 
     } ;
 }
 
 struct S /* 0#0 */;
-macro inner /* 0#4 */ { () => { print_bang ! { struct S; } } }
+macro inner /* 0#4 */ { () => { print_bang! { struct S; } } }
 
 struct S /* 0#5 */;
 // OK, not a duplicate definition of `S`

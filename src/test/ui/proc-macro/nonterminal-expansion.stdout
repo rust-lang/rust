@@ -1,5 +1,5 @@
 PRINT-ATTR_ARGS INPUT (DISPLAY): a, line!(), b
-PRINT-ATTR_ARGS RE-COLLECTED (DISPLAY): a, line ! (), b
+PRINT-ATTR_ARGS RE-COLLECTED (DISPLAY): a, line! (), b
 PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
     Ident {
         ident: "a",

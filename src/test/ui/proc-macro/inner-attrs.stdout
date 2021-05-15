@@ -6,7 +6,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): #[print_target_and_args(second)] fn foo()
-{ # ! [print_target_and_args(third)] # ! [print_target_and_args(fourth)] }
+{ #! [print_target_and_args(third)] #! [print_target_and_args(fourth)] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -121,7 +121,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): fn foo()
-{ # ! [print_target_and_args(third)] # ! [print_target_and_args(fourth)] }
+{ #! [print_target_and_args(third)] #! [print_target_and_args(fourth)] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",
@@ -210,7 +210,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:19:30: 19:35 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): fn foo() { # ! [print_target_and_args(fourth)] }
+PRINT-ATTR INPUT (DISPLAY): fn foo() { #! [print_target_and_args(fourth)] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "fn",
@@ -299,7 +299,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
 ]
 PRINT-ATTR INPUT (DISPLAY): #[print_target_and_args(mod_second)] mod inline_mod
 {
-    # ! [print_target_and_args(mod_third)] # !
+    #! [print_target_and_args(mod_third)] #!
     [print_target_and_args(mod_fourth)]
 }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
@@ -412,7 +412,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
 ]
 PRINT-ATTR INPUT (DISPLAY): mod inline_mod
 {
-    # ! [print_target_and_args(mod_third)] # !
+    #! [print_target_and_args(mod_third)] #!
     [print_target_and_args(mod_fourth)]
 }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
@@ -498,7 +498,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:26:30: 26:39 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): mod inline_mod { # ! [print_target_and_args(mod_fourth)] }
+PRINT-ATTR INPUT (DISPLAY): mod inline_mod { #! [print_target_and_args(mod_fourth)] }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "mod",
@@ -571,7 +571,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
 PRINT-DERIVE INPUT (DISPLAY): struct MyDerivePrint
 {
     field :
-    [u8 ; { match true { _ => { # ! [rustc_dummy(third)] true } } ; 0 }]
+    [u8 ; { match true { _ => { #! [rustc_dummy(third)] true } } ; 0 }]
 }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
@@ -705,7 +705,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:48:29: 48:40 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): (3, 4, { # ! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
+PRINT-ATTR INPUT (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Parenthesis,
@@ -819,7 +819,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/inner-attrs.rs:55:29: 55:40 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): (3, 4, { # ! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
+PRINT-ATTR INPUT (DISPLAY): (3, 4, { #! [cfg_attr(not(FALSE), rustc_dummy(innermost))] 5 }) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Group {
         delimiter: Parenthesis,

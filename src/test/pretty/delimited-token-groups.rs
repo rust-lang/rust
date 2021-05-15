@@ -9,7 +9,7 @@ mac! {
     {
         fn clone() -> S
         {
-            panic ! () ;
+            panic! () ;
 
         }
     }
