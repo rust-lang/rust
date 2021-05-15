@@ -44,6 +44,7 @@ struct MarkSymbolVisitor<'tcx> {
     repr_has_repr_c: bool,
     in_pat: bool,
     inherited_pub_visibility: bool,
+    pub_visibility: bool,
     ignore_variant_stack: Vec<DefId>,
     // maps from tuple struct constructors to tuple struct items
     struct_constructors: FxHashMap<hir::HirId, hir::HirId>,
@@ -188,27 +189,33 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn visit_node(&mut self, node: Node<'tcx>) {
         let had_repr_c = self.repr_has_repr_c;
-        self.repr_has_repr_c = false;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
+        let had_pub_visibility = self.pub_visibility;
+        self.repr_has_repr_c = false;
         self.inherited_pub_visibility = false;
+        self.pub_visibility = false;
         match node {
-            Node::Item(item) => match item.kind {
-                hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
-                    let def = self.tcx.adt_def(item.def_id);
-                    self.repr_has_repr_c = def.repr.c();
+            Node::Item(item) => {
+                self.pub_visibility = item.vis.node.is_pub();
 
-                    intravisit::walk_item(self, &item);
-                }
-                hir::ItemKind::Enum(..) => {
-                    self.inherited_pub_visibility = item.vis.node.is_pub();
+                match item.kind {
+                    hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
+                        let def = self.tcx.adt_def(item.def_id);
+                        self.repr_has_repr_c = def.repr.c();
 
-                    intravisit::walk_item(self, &item);
+                        intravisit::walk_item(self, &item);
+                    }
+                    hir::ItemKind::Enum(..) => {
+                        self.inherited_pub_visibility = self.pub_visibility;
+
+                        intravisit::walk_item(self, &item);
+                    }
+                    hir::ItemKind::ForeignMod { .. } => {}
+                    _ => {
+                        intravisit::walk_item(self, &item);
+                    }
                 }
-                hir::ItemKind::ForeignMod { .. } => {}
-                _ => {
-                    intravisit::walk_item(self, &item);
-                }
-            },
+            }
             Node::TraitItem(trait_item) => {
                 intravisit::walk_trait_item(self, trait_item);
             }
@@ -220,8 +227,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             }
             _ => {}
         }
-        self.repr_has_repr_c = had_repr_c;
+        self.pub_visibility = had_pub_visibility;
         self.inherited_pub_visibility = had_inherited_pub_visibility;
+        self.repr_has_repr_c = had_repr_c;
     }
 
     fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &[hir::ExprField<'_>]) {
@@ -259,10 +267,10 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     ) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
-        let live_fields = def
-            .fields()
-            .iter()
-            .filter(|f| has_repr_c || inherited_pub_visibility || f.vis.node.is_pub());
+        let pub_visibility = self.pub_visibility;
+        let live_fields = def.fields().iter().filter(|f| {
+            has_repr_c || (pub_visibility && (inherited_pub_visibility || f.vis.node.is_pub()))
+        });
         self.live_symbols.extend(live_fields.map(|f| f.hir_id));
 
         intravisit::walk_struct_def(self, def);
@@ -500,6 +508,7 @@ fn find_live<'tcx>(
         repr_has_repr_c: false,
         in_pat: false,
         inherited_pub_visibility: false,
+        pub_visibility: false,
         ignore_variant_stack: vec![],
         struct_constructors,
     };

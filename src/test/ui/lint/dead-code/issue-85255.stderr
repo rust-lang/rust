@@ -1,0 +1,32 @@
+warning: field is never read: `a`
+  --> $DIR/issue-85255.rs:7:5
+   |
+LL |     a: i32,
+   |     ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-85255.rs:4:9
+   |
+LL | #![warn(dead_code)]
+   |         ^^^^^^^^^
+
+warning: field is never read: `b`
+  --> $DIR/issue-85255.rs:8:5
+   |
+LL |     pub b: i32,
+   |     ^^^^^^^^^^
+
+warning: associated function is never used: `a`
+  --> $DIR/issue-85255.rs:14:8
+   |
+LL |     fn a(&self) -> i32 { 5 }
+   |        ^
+
+warning: associated function is never used: `b`
+  --> $DIR/issue-85255.rs:15:12
+   |
+LL |     pub fn b(&self) -> i32 { 6 }
+   |            ^
+
+warning: 4 warnings emitted
+
