@@ -463,5 +463,41 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     panicking::rust_panic_without_hook(payload)
 }
 
+/// Make all future panics abort directly without running the panic hook or unwinding.
+///
+/// There is no way to undo this; the effect lasts until the process exits or
+/// execs (or the equivalent).
+///
+/// # Use after fork
+///
+/// This function is particularly useful for calling after `libc::fork`.  After `fork`, in a
+/// multithreaded program it is (on many platforms) not safe to call the allocator.  It is also
+/// generally highly undesirable for an unwind to unwind past the `fork`, because that results in
+/// the unwind propagating to code that was only ever expecting to run in the parent.
+///
+/// `panic::always_abort()` helps avoid both of these.  It directly avoids any further unwinding,
+/// and if there is a panic, the abort will occur without allocating provided that the arguments to
+/// panic can be formatted without allocating.
+///
+/// Examples
+///
+/// ```no_run
+/// #![feature(panic_always_abort)]
+/// use std::panic;
+///
+/// panic::always_abort();
+///
+/// let _ = panic::catch_unwind(|| {
+///     panic!("inside the catch");
+/// });
+///
+/// // We will have aborted already, due to the panic.
+/// unreachable!();
+/// ```
+#[unstable(feature = "panic_always_abort", issue = "84438")]
+pub fn always_abort() {
+    crate::panicking::panic_count::set_always_abort();
+}
+
 #[cfg(test)]
 mod tests;

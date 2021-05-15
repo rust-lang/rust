@@ -75,6 +75,12 @@ pub trait CommandExt: Sealed {
     /// sure that the closure does not violate library invariants by making
     /// invalid use of these duplicates.
     ///
+    /// Panicking in the closure is safe only if all the format arguments for the
+    /// panic message can be safely formatted; this is because although
+    /// `Command` calls [`std::panic::always_abort`](crate::panic::always_abort)
+    /// before calling the pre_exec hook, panic will still try to format the
+    /// panic message.
+    ///
     /// When this closure is run, aspects such as the stdio file descriptors and
     /// working directory have successfully been changed, so output to these
     /// locations may not appear where intended.
