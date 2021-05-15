@@ -3,7 +3,8 @@
 use std::{borrow::Cow, fmt, sync::Arc};
 
 use chalk_ir::{
-    cast::Cast, fold::Fold, interner::HasInterner, FloatTy, IntTy, TyVariableKind, UniverseIndex,
+    cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, FloatTy, IntTy, TyVariableKind,
+    UniverseIndex,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
@@ -43,10 +44,7 @@ where
 
 impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
     pub(super) fn decanonicalize_ty(&self, ty: Ty) -> Ty {
-        crate::fold_free_vars(ty, |bound, _binders| {
-            let var = self.free_vars[bound.index].clone();
-            var.assert_ty_ref(&Interner).clone()
-        })
+        chalk_ir::Substitute::apply(&self.free_vars, ty, &Interner)
     }
 
     pub(super) fn apply_solution(
@@ -72,16 +70,16 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
                 _ => panic!("const variable in solution"),
             }),
         );
-        for (i, ty) in solution.value.iter(&Interner).enumerate() {
-            // FIXME: deal with non-type vars here -- the only problematic part is the normalization
-            // and maybe we don't need that with lazy normalization?
+        for (i, v) in solution.value.iter(&Interner).enumerate() {
             let var = self.free_vars[i].clone();
-            // eagerly replace projections in the type; we may be getting types
-            // e.g. from where clauses where this hasn't happened yet
-            let ty = ctx.normalize_associated_types_in(
-                new_vars.apply(ty.assert_ty_ref(&Interner).clone(), &Interner),
-            );
-            ctx.table.unify(var.assert_ty_ref(&Interner), &ty);
+            if let Some(ty) = v.ty(&Interner) {
+                // eagerly replace projections in the type; we may be getting types
+                // e.g. from where clauses where this hasn't happened yet
+                let ty = ctx.normalize_associated_types_in(new_vars.apply(ty.clone(), &Interner));
+                ctx.table.unify(var.assert_ty_ref(&Interner), &ty);
+            } else {
+                let _ = ctx.table.unify_inner(&var, &new_vars.apply(v.clone(), &Interner));
+            }
         }
     }
 }
@@ -288,14 +286,14 @@ impl<'a> InferenceTable<'a> {
 
     /// Unify two types and return new trait goals arising from it, so the
     /// caller needs to deal with them.
-    pub(crate) fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty) -> InferResult {
+    pub(crate) fn unify_inner<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult {
         match self.var_unification_table.relate(
             &Interner,
             &self.db,
             &self.trait_env.env,
             chalk_ir::Variance::Invariant,
-            ty1,
-            ty2,
+            t1,
+            t2,
         ) {
             Ok(_result) => {
                 // TODO deal with new goals
