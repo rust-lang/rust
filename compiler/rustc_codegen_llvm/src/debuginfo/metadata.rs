@@ -1280,6 +1280,31 @@ fn prepare_struct_metadata(
 // Tuples
 //=-----------------------------------------------------------------------------
 
+/// Returns names of captured upvars for closures and generators.
+///
+/// Here are some examples:
+///  - `name__field1__field2` when the upvar is captured by value.
+///  - `_ref__name__field` when the upvar is captured by reference.
+fn closure_saved_names_of_captured_variables(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<String> {
+    let body = tcx.optimized_mir(def_id);
+
+    body.var_debug_info
+        .iter()
+        .filter_map(|var| {
+            let is_ref = match var.value {
+                mir::VarDebugInfoContents::Place(place) if place.local == mir::Local::new(1) => {
+                    // The projection is either `[.., Field, Deref]` or `[.., Field]`. It
+                    // implies whether the variable is captured by value or by reference.
+                    matches!(place.projection.last().unwrap(), mir::ProjectionElem::Deref)
+                }
+                _ => return None,
+            };
+            let prefix = if is_ref { "_ref__" } else { "" };
+            Some(prefix.to_owned() + &var.name.as_str())
+        })
+        .collect::<Vec<_>>()
+}
+
 /// Creates `MemberDescription`s for the fields of a tuple.
 struct TupleMemberDescriptionFactory<'tcx> {
     ty: Ty<'tcx>,
@@ -1289,34 +1314,23 @@ struct TupleMemberDescriptionFactory<'tcx> {
 
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>) -> Vec<MemberDescription<'ll>> {
-        // For closures and generators, name the captured upvars
-        // with the help of `CapturedPlace::to_mangled_name`.
-        let closure_def_id = match *self.ty.kind() {
-            ty::Generator(def_id, ..) => def_id.as_local(),
-            ty::Closure(def_id, ..) => def_id.as_local(),
-            _ => None,
-        };
-        let captures = match closure_def_id {
-            Some(local_def_id) => {
-                let typeck_results = cx.tcx.typeck(local_def_id);
-                let captures = typeck_results
-                    .closure_min_captures_flattened(local_def_id.to_def_id())
-                    .collect::<Vec<_>>();
-                Some(captures)
+        let capture_names = match *self.ty.kind() {
+            ty::Generator(def_id, ..) | ty::Closure(def_id, ..) => {
+                Some(closure_saved_names_of_captured_variables(cx.tcx, def_id))
             }
             _ => None,
         };
-
         let layout = cx.layout_of(self.ty);
         self.component_types
             .iter()
             .enumerate()
             .map(|(i, &component_type)| {
                 let (size, align) = cx.size_and_align_of(component_type);
-                let name = captures
-                    .as_ref()
-                    .map(|c| c[i].to_mangled_name(cx.tcx))
-                    .unwrap_or_else(|| format!("__{}", i));
+                let name = if let Some(names) = capture_names.as_ref() {
+                    names[i].clone()
+                } else {
+                    format!("__{}", i)
+                };
                 MemberDescription {
                     name,
                     type_metadata: type_metadata(cx, component_type, self.span),

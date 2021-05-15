@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, PatKind, Thir};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
@@ -974,13 +974,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let mutability = captured_place.mutability;
 
-                    // FIXME(project-rfc-2229#8): Store more precise information
-                    let mut name = kw::Empty;
-                    if let Some(Node::Binding(pat)) = tcx_hir.find(var_id) {
-                        if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
-                            name = ident.name;
-                        }
-                    }
+                    let name = captured_place.to_symbol(tcx);
 
                     let mut projs = closure_env_projs.clone();
                     projs.push(ProjectionElem::Field(Field::new(i), ty));

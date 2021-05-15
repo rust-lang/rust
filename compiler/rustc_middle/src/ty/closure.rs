@@ -3,10 +3,12 @@ use crate::hir::place::{
 };
 use crate::{mir, ty};
 
+use std::fmt::Write;
+
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 
 use super::{Ty, TyCtxt};
 
@@ -159,37 +161,26 @@ impl CapturedPlace<'tcx> {
         place_to_string_for_capture(tcx, &self.place)
     }
 
-    /// Returns mangled names of captured upvars. Here are some examples:
-    ///  - `_captured_val__name__field`
-    ///  - `_captured_ref__name__field`
-    ///
-    /// The purpose is to use those names in debuginfo. They should be human-understandable.
-    /// Without the names, the end users may get confused when the debuggers just print some
-    /// pointers in closures or generators.
-    pub fn to_mangled_name(&self, tcx: TyCtxt<'tcx>) -> String {
-        let prefix = match self.info.capture_kind {
-            ty::UpvarCapture::ByValue(_) => "_captured_val__",
-            ty::UpvarCapture::ByRef(_) => "_captured_ref__",
-        };
-
+    /// Returns a symbol of the captured upvar, which looks like `name__field1__field2`.
+    pub fn to_symbol(&self, tcx: TyCtxt<'tcx>) -> Symbol {
         let hir_id = match self.place.base {
             HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
             base => bug!("Expected an upvar, found {:?}", base),
         };
-        let name = tcx.hir().name(hir_id);
+        let mut symbol = tcx.hir().name(hir_id).as_str().to_string();
 
         let mut ty = self.place.base_ty;
-        let mut fields = String::new();
         for proj in self.place.projections.iter() {
             match proj.kind {
                 HirProjectionKind::Field(idx, variant) => match ty.kind() {
-                    ty::Tuple(_) => fields = format!("{}__{}", fields, idx),
+                    ty::Tuple(_) => write!(&mut symbol, "__{}", idx).unwrap(),
                     ty::Adt(def, ..) => {
-                        fields = format!(
-                            "{}__{}",
-                            fields,
+                        write!(
+                            &mut symbol,
+                            "__{}",
                             def.variants[variant].fields[idx as usize].ident.name.as_str(),
-                        );
+                        )
+                        .unwrap();
                     }
                     ty => {
                         bug!("Unexpected type {:?} for `Field` projection", ty)
@@ -204,7 +195,7 @@ impl CapturedPlace<'tcx> {
             ty = proj.ty;
         }
 
-        prefix.to_owned() + &name.to_string() + &fields
+        Symbol::intern(&symbol)
     }
 
     /// Returns the hir-id of the root variable for the captured place.
