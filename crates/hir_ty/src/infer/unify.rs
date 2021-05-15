@@ -149,7 +149,9 @@ impl TypeVariableTable {
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
         match kind {
-            _ if self.inner[iv.index() as usize].diverging => TyKind::Never,
+            _ if self.inner.get(iv.index() as usize).map_or(false, |data| data.diverging) => {
+                TyKind::Never
+            }
             TyVariableKind::General => TyKind::Error,
             TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
             TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
@@ -205,6 +207,7 @@ impl<'a> InferenceTable<'a> {
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
         let var = self.var_unification_table.new_variable(UniverseIndex::ROOT);
         // Chalk might have created some type variables for its own purposes that we don't know about...
+        // TODO refactor this?
         self.type_variable_table.inner.extend(
             (0..1 + var.index() as usize - self.type_variable_table.inner.len())
                 .map(|_| TypeVariableData { diverging: false }),
