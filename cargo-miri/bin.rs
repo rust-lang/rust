@@ -6,6 +6,7 @@ use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::fmt::{Write as _};
 
 use serde::{Deserialize, Serialize};
 
@@ -90,12 +91,13 @@ fn show_help() {
 }
 
 fn show_version() {
-    println!(
-        "miri {} ({} {})",
-        env!("CARGO_PKG_VERSION"),
-        env!("VERGEN_GIT_SHA_SHORT"),
-        env!("VERGEN_GIT_COMMIT_DATE")
-    );
+    let mut version = format!("miri {}", env!("CARGO_PKG_VERSION"));
+    // Only use `option_env` on vergen variables to ensure the build succeeds
+    // when vergen failed to find the git info.
+    if let Some(sha) = option_env!("VERGEN_GIT_SHA_SHORT") {
+        write!(&mut version, " ({} {})", sha, option_env!("VERGEN_GIT_COMMIT_DATE").unwrap()).unwrap();
+    }
+    println!("{}", version);
 }
 
 fn show_error(msg: String) -> ! {
