@@ -30,7 +30,6 @@ use std::iter::FromIterator;
 use std::vec::Vec;
 
 const EXCEPT: Symbol = sym::except;
-const LABEL: Symbol = sym::label;
 const CFG: Symbol = sym::cfg;
 
 // Base and Extra labels to build up the labels
@@ -122,16 +121,6 @@ struct Assertion {
     dirty: Labels,
 }
 
-impl Assertion {
-    fn from_clean_labels(labels: Labels) -> Assertion {
-        Assertion { clean: labels, dirty: Labels::default() }
-    }
-
-    fn from_dirty_labels(labels: Labels) -> Assertion {
-        Assertion { clean: Labels::default(), dirty: labels }
-    }
-}
-
 pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
     if !tcx.sess.opts.debugging_opts.query_dep_graph {
         return;
@@ -181,15 +170,7 @@ impl DirtyCleanVisitor<'tcx> {
             // skip: not the correct `cfg=`
             return None;
         }
-        let assertion = if let Some(labels) = self.labels(attr) {
-            if is_clean {
-                Assertion::from_clean_labels(labels)
-            } else {
-                Assertion::from_dirty_labels(labels)
-            }
-        } else {
-            self.assertion_auto(item_id, attr, is_clean)
-        };
+        let assertion = self.assertion_auto(item_id, attr, is_clean);
         Some(assertion)
     }
 
@@ -216,16 +197,6 @@ impl DirtyCleanVisitor<'tcx> {
         } else {
             Assertion { clean: except, dirty: auto }
         }
-    }
-
-    fn labels(&self, attr: &Attribute) -> Option<Labels> {
-        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-            if item.has_name(LABEL) {
-                let value = expect_associated_value(self.tcx, &item);
-                return Some(self.resolve_labels(&item, value));
-            }
-        }
-        None
     }
 
     /// `except=` attribute value
@@ -437,30 +408,19 @@ impl ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
 /// Given a `#[rustc_dirty]` or `#[rustc_clean]` attribute, scan
 /// for a `cfg="foo"` attribute and check whether we have a cfg
 /// flag called `foo`.
-///
-/// Also make sure that the `label` and `except` fields do not
-/// both exist.
 fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
     let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
-    let (mut cfg, mut except, mut label) = (None, false, false);
+    let mut cfg = None;
     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
         if item.has_name(CFG) {
             let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
+        } else if !item.has_name(EXCEPT) {
+            tcx.sess.span_err(attr.span, &format!("unknown item `{}`", item.name_or_empty()));
         }
-        if item.has_name(LABEL) {
-            label = true;
-        }
-        if item.has_name(EXCEPT) {
-            except = true;
-        }
-    }
-
-    if label && except {
-        tcx.sess.span_fatal(attr.span, "must specify only one of: `label`, `except`");
     }
 
     match cfg {

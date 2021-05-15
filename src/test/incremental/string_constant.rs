@@ -18,8 +18,7 @@ pub mod x {
     }
 
     #[cfg(cfail2)]
-    #[rustc_dirty(label="hir_owner_nodes", cfg="cfail2")]
-    #[rustc_dirty(label="optimized_mir", cfg="cfail2")]
+    #[rustc_clean(except="hir_owner,hir_owner_nodes,optimized_mir,promoted_mir", cfg="cfail2")]
     pub fn x() {
         println!("{}", "2");
     }
@@ -28,8 +27,7 @@ pub mod x {
 pub mod y {
     use x;
 
-    #[rustc_clean(label="typeck", cfg="cfail2")]
-    #[rustc_clean(label="optimized_mir", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail2")]
     pub fn y() {
         x::x();
     }
@@ -38,8 +36,7 @@ pub mod y {
 pub mod z {
     use y;
 
-    #[rustc_clean(label="typeck", cfg="cfail2")]
-    #[rustc_clean(label="optimized_mir", cfg="cfail2")]
+    #[rustc_clean(cfg="cfail2")]
     pub fn z() {
         y::y();
     }
