@@ -131,17 +131,20 @@ impl<'a> InferenceContext<'a> {
                 let condition_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let mut both_arms_diverge = Diverges::Always;
 
+                let mut result_ty = self.table.new_type_var();
                 let then_ty = self.infer_expr_inner(*then_branch, &expected);
                 both_arms_diverge &= mem::replace(&mut self.diverges, Diverges::Maybe);
+                result_ty = self.coerce_merge_branch(&result_ty, &then_ty);
                 let else_ty = match else_branch {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
                     None => TyBuilder::unit(),
                 };
                 both_arms_diverge &= self.diverges;
+                result_ty = self.coerce_merge_branch(&result_ty, &else_ty);
 
                 self.diverges = condition_diverges | both_arms_diverge;
 
-                self.coerce_merge_branch(&then_ty, &else_ty)
+                result_ty
             }
             Expr::Block { statements, tail, label, id: _ } => {
                 let old_resolver = mem::replace(
