@@ -304,15 +304,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let tcx = self.tcx();
-        let r = self
-            .infcx
-            .unwrap()
-            .inner
-            .borrow_mut()
-            .unwrap_region_constraints()
-            .opportunistic_resolve_region(tcx, r);
-
         match *r {
             ty::ReLateBound(index, ..) => {
                 if index >= self.binder_index {

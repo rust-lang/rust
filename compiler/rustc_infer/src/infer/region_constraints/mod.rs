@@ -47,7 +47,7 @@ pub struct RegionConstraintStorage<'tcx> {
 
     /// When we add a R1 == R2 constriant, we currently add (a) edges
     /// R1 <= R2 and R2 <= R1 and (b) we unify the two regions in this
-    /// table. You can then call `opportunistic_resolve_region` early
+    /// table. You can then call `opportunistic_resolve_var` early
     /// which will map R1 and R2 to some common region (i.e., either
     /// R1 or R2). This is important when fulfillment, dropck and other such
     /// code is iterating to a fixed point, because otherwise we sometimes
