@@ -4,7 +4,7 @@ use std::mem;
 use crate::clean;
 use crate::clean::{FakeDefIdSet, Item, NestedAttributesExt};
 use crate::core::DocContext;
-use crate::fold::{DocFolder, StripItem};
+use crate::fold::{strip_item, DocFolder};
 use crate::passes::{ImplStripper, Pass};
 
 crate const STRIP_HIDDEN: Pass = Pass {
@@ -44,7 +44,7 @@ impl<'a> DocFolder for Stripper<'a> {
                     // strip things like impl methods but when doing so
                     // we must not add any items to the `retained` set.
                     let old = mem::replace(&mut self.update_retained, false);
-                    let ret = StripItem(self.fold_item_recur(i)).strip();
+                    let ret = strip_item(self.fold_item_recur(i));
                     self.update_retained = old;
                     return Some(ret);
                 }

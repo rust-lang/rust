@@ -3,7 +3,7 @@ use rustc_middle::middle::privacy::AccessLevels;
 use std::mem;
 
 use crate::clean::{self, FakeDefIdSet, GetDefId, Item};
-use crate::fold::{DocFolder, StripItem};
+use crate::fold::{strip_item, DocFolder};
 
 crate struct Stripper<'a> {
     crate retained: &'a mut FakeDefIdSet,
@@ -51,7 +51,7 @@ impl<'a> DocFolder for Stripper<'a> {
 
             clean::StructFieldItem(..) => {
                 if !i.visibility.is_public() {
-                    return Some(StripItem(i).strip());
+                    return Some(strip_item(i));
                 }
             }
 
@@ -59,7 +59,7 @@ impl<'a> DocFolder for Stripper<'a> {
                 if i.def_id.is_local() && !i.visibility.is_public() {
                     debug!("Stripper: stripping module {:?}", i.name);
                     let old = mem::replace(&mut self.update_retained, false);
-                    let ret = StripItem(self.fold_item_recur(i)).strip();
+                    let ret = strip_item(self.fold_item_recur(i));
                     self.update_retained = old;
                     return Some(ret);
                 }
