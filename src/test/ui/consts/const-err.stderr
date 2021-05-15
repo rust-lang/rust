@@ -15,16 +15,16 @@ LL | #![warn(const_err)]
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-err.rs:16:16
+  --> $DIR/const-err.rs:16:15
    |
 LL |     black_box((FOO, FOO));
-   |                ^^^ referenced constant has errors
+   |               ^^^^^^^^^^ referenced constant has errors
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-err.rs:16:21
+  --> $DIR/const-err.rs:16:15
    |
 LL |     black_box((FOO, FOO));
-   |                     ^^^ referenced constant has errors
+   |               ^^^^^^^^^^ referenced constant has errors
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

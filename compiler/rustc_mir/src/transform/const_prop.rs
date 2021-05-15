@@ -465,7 +465,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, span: Span, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &Constant<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.needs_subst() {
             return None;
@@ -474,6 +474,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         match self.ecx.mir_const_to_op(&c.literal, None) {
             Ok(op) => Some(op),
             Err(error) => {
+                let span = source_info.span;
                 let tcx = self.ecx.tcx.at(span);
                 let err = ConstEvalErr::new(&self.ecx, error, Some(span));
                 if let Some(lint_root) = self.lint_root(source_info) {
@@ -516,7 +517,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// or `eval_place`, depending on the variant of `Operand` used.
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<OpTy<'tcx>> {
         match *op {
-            Operand::Constant(box (span, ref c)) => self.eval_constant(span, c, source_info),
+            Operand::Constant(box (_, ref c)) => self.eval_constant(c, source_info),
             Operand::Move(place) | Operand::Copy(place) => self.eval_place(place),
         }
     }
@@ -1083,8 +1084,9 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        let source_info = self.source_info.unwrap();
-        self.eval_constant(source_info.span, constant, source_info);
+        let mut source_info = self.source_info.unwrap();
+        self.visit_span(&mut source_info.span);
+        self.eval_constant(constant, source_info);
     }
 
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {

@@ -436,29 +436,29 @@ fn use_verbose(ty: &&TyS<'tcx>) -> bool {
 }
 
 impl Visitor<'tcx> for ExtraComments<'tcx> {
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
-        self.super_constant(constant, location);
-        let Constant { user_ty, literal } = constant;
-        match literal.ty().kind() {
-            ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
-            // Unit type
-            ty::Tuple(tys) if tys.is_empty() => {}
-            _ => {
-                self.push("mir::Constant");
-                // FIXME implement visit_operand to take care of visit_span and visit_constant
-                // altogether
-                //self.push(&format!("+ span: {}", self.tcx.sess.source_map().span_to_string(*span)));
-                if let Some(user_ty) = user_ty {
-                    self.push(&format!("+ user_ty: {:?}", user_ty));
-                }
-                match literal {
-                    ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
-                    ConstantKind::Val(val, ty) => {
-                        // To keep the diffs small, we render this almost like we render ty::Const
-                        self.push(&format!(
-                            "+ literal: Const {{ ty: {}, val: Value({:?}) }}",
-                            ty, val
-                        ))
+    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+        self.super_operand(operand, location);
+        if let Operand::Constant(box (span, constant)) = operand {
+            let Constant { user_ty, literal } = constant;
+            match literal.ty().kind() {
+                ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char => {}
+                // Unit type
+                ty::Tuple(tys) if tys.is_empty() => {}
+                _ => {
+                    self.push("mir::Constant");
+                    self.push(&format!("+ span: {}", self.tcx.sess.source_map().span_to_string(*span)));
+                    if let Some(user_ty) = user_ty {
+                        self.push(&format!("+ user_ty: {:?}", user_ty));
+                    }
+                    match literal {
+                        ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
+                        ConstantKind::Val(val, ty) => {
+                            // To keep the diffs small, we render this almost like we render ty::Const
+                            self.push(&format!(
+                                    "+ literal: Const {{ ty: {}, val: Value({:?}) }}",
+                                    ty, val
+                            ))
+                        }
                     }
                 }
             }
