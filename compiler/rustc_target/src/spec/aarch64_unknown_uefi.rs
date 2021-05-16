@@ -15,10 +15,10 @@
 // The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
 // LLVM. "aarch64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{CodeModel, Target};
+use crate::spec::{CodeModel, LinkerFlavor, LldFlavor, Target};
 
 pub fn target() -> Target {
-    let mut base = super::uefi_base::opts();
+    let mut base = super::uefi_msvc_base::opts();
     base.cpu = "aarch64";
     base.max_atomic_width = Some(64);
 
@@ -30,6 +30,14 @@ pub fn target() -> Target {
     // have more test coverage. Disabling FP served GRUB well so far, so it should be good for us
     // as well.
     base.features = "-mmx,-sse,+soft-float".to_string();
+
+    let pre_link_args_msvc = vec!["/machine:arm64"];
+
+    base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
+    base.pre_link_args
+        .get_mut(&LinkerFlavor::Lld(LldFlavor::Link))
+        .unwrap()
+        .extend(pre_link_args_msvc);
 
     // UEFI systems run without a host OS, hence we cannot assume any code locality. We must tell
     // LLVM to expect code to reference any address in the address-space. The "large" code-model
