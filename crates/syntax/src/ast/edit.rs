@@ -10,12 +10,8 @@ use arrayvec::ArrayVec;
 
 use crate::{
     algo,
-    ast::{
-        self,
-        make::{self, tokens},
-        AstNode,
-    },
-    ted, AstToken, Direction, InsertPosition, NodeOrToken, SmolStr, SyntaxElement, SyntaxKind,
+    ast::{self, make, AstNode},
+    ted, AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxKind,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken, T,
 };
@@ -26,82 +22,6 @@ impl ast::BinExpr {
         let op_node: SyntaxElement = self.op_details()?.0.into();
         let to_insert: Option<SyntaxElement> = Some(make::token(op).into());
         Some(self.replace_children(single_node(op_node), to_insert))
-    }
-}
-
-impl ast::RecordExprFieldList {
-    #[must_use]
-    pub fn append_field(&self, field: &ast::RecordExprField) -> ast::RecordExprFieldList {
-        self.insert_field(InsertPosition::Last, field)
-    }
-
-    #[must_use]
-    pub fn insert_field(
-        &self,
-        position: InsertPosition<&'_ ast::RecordExprField>,
-        field: &ast::RecordExprField,
-    ) -> ast::RecordExprFieldList {
-        let is_multiline = self.syntax().text().contains_char('\n');
-        let ws;
-        let space = if is_multiline {
-            ws = tokens::WsBuilder::new(&format!(
-                "\n{}    ",
-                leading_indent(self.syntax()).unwrap_or_default()
-            ));
-            ws.ws()
-        } else {
-            tokens::single_space()
-        };
-
-        let mut to_insert: ArrayVec<SyntaxElement, 4> = ArrayVec::new();
-        to_insert.push(space.into());
-        to_insert.push(field.syntax().clone().into());
-        to_insert.push(make::token(T![,]).into());
-
-        macro_rules! after_l_curly {
-            () => {{
-                let anchor = match self.l_curly_token() {
-                    Some(it) => it.into(),
-                    None => return self.clone(),
-                };
-                InsertPosition::After(anchor)
-            }};
-        }
-
-        macro_rules! after_field {
-            ($anchor:expr) => {
-                if let Some(comma) = $anchor
-                    .syntax()
-                    .siblings_with_tokens(Direction::Next)
-                    .find(|it| it.kind() == T![,])
-                {
-                    InsertPosition::After(comma)
-                } else {
-                    to_insert.insert(0, make::token(T![,]).into());
-                    InsertPosition::After($anchor.syntax().clone().into())
-                }
-            };
-        }
-
-        let position = match position {
-            InsertPosition::First => after_l_curly!(),
-            InsertPosition::Last => {
-                if !is_multiline {
-                    // don't insert comma before curly
-                    to_insert.pop();
-                }
-                match self.fields().last() {
-                    Some(it) => after_field!(it),
-                    None => after_l_curly!(),
-                }
-            }
-            InsertPosition::Before(anchor) => {
-                InsertPosition::Before(anchor.syntax().clone().into())
-            }
-            InsertPosition::After(anchor) => after_field!(anchor),
-        };
-
-        self.insert_children(position, to_insert)
     }
 }
 
@@ -306,22 +226,6 @@ impl IndentLevel {
         }
         res.clone_subtree()
     }
-}
-
-// FIXME: replace usages with IndentLevel above
-fn leading_indent(node: &SyntaxNode) -> Option<SmolStr> {
-    for token in prev_tokens(node.first_token()?) {
-        if let Some(ws) = ast::Whitespace::cast(token.clone()) {
-            let ws_text = ws.text();
-            if let Some(pos) = ws_text.rfind('\n') {
-                return Some(ws_text[pos + 1..].into());
-            }
-        }
-        if token.text().contains('\n') {
-            break;
-        }
-    }
-    None
 }
 
 fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
