@@ -411,6 +411,21 @@ struct Arc;
 }
 
 #[test]
+fn extern_crate_self() {
+    check(
+        r#"
+//- /main.rs crate:main
+#[macro_use]
+extern crate self as bla;
+"#,
+        expect![[r#"
+            crate
+            bla: t
+        "#]],
+    );
+}
+
+#[test]
 fn reexport_across_crates() {
     check(
         r#"
