@@ -954,6 +954,14 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
+            ast::TyKind::AnonymousStruct(ref fields, ..) => {
+                self.s.word("struct");
+                self.print_record_struct_body(fields, ty.span);
+            }
+            ast::TyKind::AnonymousUnion(ref fields, ..) => {
+                self.s.word("union");
+                self.print_record_struct_body(fields, ty.span);
+            }
             ast::TyKind::Paren(ref typ) => {
                 self.popen();
                 self.print_type(typ);
@@ -1389,6 +1397,29 @@ impl<'a> State<'a> {
         }
     }
 
+    crate fn print_record_struct_body(
+        &mut self,
+        fields: &Vec<ast::FieldDef>,
+        span: rustc_span::Span,
+    ) {
+        self.nbsp();
+        self.bopen();
+        self.hardbreak_if_not_bol();
+
+        for field in fields {
+            self.hardbreak_if_not_bol();
+            self.maybe_print_comment(field.span.lo());
+            self.print_outer_attributes(&field.attrs);
+            self.print_visibility(&field.vis);
+            self.print_ident(field.ident.unwrap());
+            self.word_nbsp(":");
+            self.print_type(&field.ty);
+            self.s.word(",");
+        }
+
+        self.bclose(span)
+    }
+
     crate fn print_struct(
         &mut self,
         struct_def: &ast::VariantData,
@@ -1418,24 +1449,9 @@ impl<'a> State<'a> {
                 self.end();
                 self.end(); // Close the outer-box.
             }
-            ast::VariantData::Struct(..) => {
+            ast::VariantData::Struct(ref fields, ..) => {
                 self.print_where_clause(&generics.where_clause);
-                self.nbsp();
-                self.bopen();
-                self.hardbreak_if_not_bol();
-
-                for field in struct_def.fields() {
-                    self.hardbreak_if_not_bol();
-                    self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(&field.attrs);
-                    self.print_visibility(&field.vis);
-                    self.print_ident(field.ident.unwrap());
-                    self.word_nbsp(":");
-                    self.print_type(&field.ty);
-                    self.s.word(",");
-                }
-
-                self.bclose(span)
+                self.print_record_struct_body(fields, span);
             }
         }
     }
