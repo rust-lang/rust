@@ -15,9 +15,9 @@
 // The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
 // LLVM. "aarch64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use spec::{LinkerFlavor, LldFlavor, Target, TargetResult};
+use crate::spec::{CodeModel, Target};
 
-pub fn target() -> TargetResult {
+pub fn target() -> Target {
     let mut base = super::uefi_base::opts();
     base.cpu = "aarch64";
     base.max_atomic_width = Some(64);
@@ -34,23 +34,13 @@ pub fn target() -> TargetResult {
     // UEFI systems run without a host OS, hence we cannot assume any code locality. We must tell
     // LLVM to expect code to reference any address in the address-space. The "large" code-model
     // places no locality-restrictions, so it fits well here.
-    base.code_model = Some("large".to_string());
-
-    // small structs will be returned as int. This shouldn't matter much, since the restrictions
-    // placed by the UEFI specifications forbid any ABI to return structures.
-    base.abi_return_struct_as_int = true;
+    base.code_model = Some(CodeModel::Large);
 
     Ok(Target {
         llvm_target: "aarch64-unknown-windows".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "64".to_string(),
-        target_c_int_width: "32".to_string(),
+        pointer_width: 64,
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
-        target_os: "uefi".to_string(),
-        target_env: "".to_string(),
-        target_vendor: "unknown".to_string(),
-        arch: "x86_64".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Link),
+        arch: "aarch64".to_string(),
 
         options: base,
     })
