@@ -19,6 +19,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
+use std::fmt;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
@@ -40,6 +41,30 @@ const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
 const EXCLUDED_LINT_GROUPS: [&str; 1] = ["clippy::internal"];
 /// Collected deprecated lint will be assigned to this group in the JSON output
 const DEPRECATED_LINT_GROUP_STR: &str = "DEPRECATED";
+
+/// This template will be used to format the configuration section in the lint documentation.
+/// The `configurations` parameter will be replaced with one or multiple formatted
+/// `ClippyConfiguration` instances. See `CONFIGURATION_VALUE_TEMPLATE` for further customizations
+macro_rules! CONFIGURATION_SECTION_TEMPLATE {
+    () => {
+        r#"
+**Configuration**
+This lint has the following configuration variables:
+
+{configurations}
+"#
+    };
+}
+/// This template will be used to format an individual `ClippyConfiguration` instance in the
+/// lint documentation.
+///
+/// The format function will provide strings for the following parameters: `name`, `ty`, `doc` and
+/// `default`
+macro_rules! CONFIGURATION_VALUE_TEMPLATE {
+    () => {
+        "* {name}: {ty}: {doc} (defaults to `{default}`)\n"
+    };
+}
 
 const LINT_EMISSION_FUNCTIONS: [&[&str]; 7] = [
     &["clippy_utils", "diagnostics", "span_lint"],
@@ -102,13 +127,33 @@ declare_clippy_lint! {
 impl_lint_pass!(MetadataCollector => [INTERNAL_METADATA_COLLECTOR]);
 
 #[allow(clippy::module_name_repetitions)]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct MetadataCollector {
     /// All collected lints
     ///
     /// We use a Heap here to have the lints added in alphabetic order in the export
     lints: BinaryHeap<LintMetadata>,
     applicability_info: FxHashMap<String, ApplicabilityInfo>,
+    config: Vec<ClippyConfiguration>,
+}
+
+impl MetadataCollector {
+    pub fn new() -> Self {
+        Self {
+            lints: BinaryHeap::<LintMetadata>::default(),
+            applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
+            config: collect_configs(),
+        }
+    }
+
+    fn get_lint_configs(&self, lint_name: &str) -> Option<String> {
+        self.config
+            .iter()
+            .filter(|config| config.lints.iter().any(|lint| lint == lint_name))
+            .map(ToString::to_string)
+            .reduce(|acc, x| acc + &x)
+            .map(|configurations| format!(CONFIGURATION_SECTION_TEMPLATE!(), configurations = configurations))
+    }
 }
 
 impl Drop for MetadataCollector {
@@ -214,6 +259,95 @@ impl Serialize for ApplicabilityInfo {
     }
 }
 
+// ==================================================================
+// Configuration
+// ==================================================================
+#[derive(Debug, Clone, Default)]
+pub struct ClippyConfiguration {
+    name: String,
+    config_type: &'static str,
+    default: String,
+    lints: Vec<String>,
+    doc: String,
+    deprecation_reason: Option<&'static str>,
+}
+
+impl ClippyConfiguration {
+    pub fn new(
+        name: &'static str,
+        config_type: &'static str,
+        default: String,
+        doc_comment: &'static str,
+        deprecation_reason: Option<&'static str>,
+    ) -> Self {
+        let (lints, doc) = parse_config_field_doc(doc_comment)
+            .unwrap_or_else(|| (vec![], "[ERROR] MALFORMED DOC COMMENT".to_string()));
+
+        Self {
+            name: to_kebab(name),
+            lints,
+            doc,
+            config_type,
+            default,
+            deprecation_reason,
+        }
+    }
+}
+
+fn collect_configs() -> Vec<ClippyConfiguration> {
+    crate::utils::conf::metadata::get_configuration_metadata()
+}
+
+/// This parses the field documentation of the config struct.
+///
+/// ```rust, ignore
+/// parse_config_field_doc(cx, "Lint: LINT_NAME_1, LINT_NAME_2. Papa penguin, papa penguin")
+/// ```
+///
+/// Would yield:
+/// ```rust, ignore
+/// Some(["lint_name_1", "lint_name_2"], "Papa penguin, papa penguin")
+/// ```
+fn parse_config_field_doc(doc_comment: &str) -> Option<(Vec<String>, String)> {
+    const DOC_START: &str = " Lint: ";
+    if_chain! {
+        if doc_comment.starts_with(DOC_START);
+        if let Some(split_pos) = doc_comment.find('.');
+        then {
+            let mut doc_comment = doc_comment.to_string();
+            let documentation = doc_comment.split_off(split_pos);
+
+            doc_comment.make_ascii_lowercase();
+            let lints: Vec<String> = doc_comment.split_off(DOC_START.len()).split(", ").map(str::to_string).collect();
+
+            Some((lints, documentation))
+        } else {
+            None
+        }
+    }
+}
+
+/// Transforms a given `snake_case_string` to a tasty `kebab-case-string`
+fn to_kebab(config_name: &str) -> String {
+    config_name.replace('_', "-")
+}
+
+impl fmt::Display for ClippyConfiguration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            CONFIGURATION_VALUE_TEMPLATE!(),
+            name = self.name,
+            ty = self.config_type,
+            doc = self.doc,
+            default = self.default
+        )
+    }
+}
+
+// ==================================================================
+// Lint pass
+// ==================================================================
 impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// Collecting lint declarations like:
     /// ```rust, ignore
@@ -235,8 +369,12 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // metadata extraction
                 if let Some(group) = get_lint_group_or_lint(cx, &lint_name, item);
-                if let Some(docs) = extract_attr_docs_or_lint(cx, item);
+                if let Some(mut docs) = extract_attr_docs_or_lint(cx, item);
                 then {
+                    if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
+                        docs.push_str(&configuration_section);
+                    }
+
                     self.lints.push(LintMetadata::new(
                         lint_name,
                         SerializableSpan::from_item(cx, item),

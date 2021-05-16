@@ -1009,7 +1009,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     #[cfg(feature = "metadata-collector-lint")]
     {
         if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
-            store.register_late_pass(|| box utils::internal_lints::metadata_collector::MetadataCollector::default());
+            store.register_late_pass(|| box utils::internal_lints::metadata_collector::MetadataCollector::new());
         }
     }
 
