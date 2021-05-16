@@ -509,7 +509,7 @@ Several types of operands are supported:
   - Identical to `inout` except that the register allocator can reuse a register allocated to an `in` (this can happen if the compiler knows the `in` has the same initial value as the `inlateout`).
   - You should only write to the register after all inputs are read, otherwise you may clobber an input.
 * `const <expr>`
-  - `<expr>` must be an integer or floating-point constant expression.
+  - `<expr>` must be an integer constant expression.
   - The value of the expression is formatted as a string and substituted directly into the asm template string.
 * `sym <path>`
   - `<path>` must refer to a `fn` or `static`.
