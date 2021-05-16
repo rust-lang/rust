@@ -623,10 +623,14 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
+    /// Resolves the passed RegionVid to the root RegionVid in the unification table
     pub fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
         self.unification_table().find(rid).vid
     }
 
+    /// If the Region is a `ReVar`, then resolves it either to the root value in
+    /// the unification table, if it exists, or to the root `ReVar` in the table.
+    /// If the Region is not a `ReVar`, just returns the Region itself.
     pub fn opportunistic_resolve_region(
         &mut self,
         tcx: TyCtxt<'tcx>,
