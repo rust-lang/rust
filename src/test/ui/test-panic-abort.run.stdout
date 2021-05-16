@@ -1,10 +1,10 @@
 
 running 5 tests
-test it_exits - run ... FAILED
-test it_fails - run ... FAILED
+test it_exits ... FAILED
+test it_fails ... FAILED
 test it_panics - should panic ... ok
-test it_works - run ... ok
-test no_residual_environment - run ... ok
+test it_works ... ok
+test no_residual_environment ... ok
 
 failures:
 

@@ -1,6 +1,6 @@
 
 running 1 test
-test $DIR/issue-81662-shortness.rs - foo (line 6) - run ... FAILED
+test $DIR/issue-81662-shortness.rs - foo (line 6) ... FAILED
 
 failures:
 

@@ -1,7 +1,7 @@
 
 running 7 tests
 test $DIR/no-run-flag.rs - f (line 11) - compile ... ok
-test $DIR/no-run-flag.rs - f (line 14) - ignore ... ignored
+test $DIR/no-run-flag.rs - f (line 14) ... ignored
 test $DIR/no-run-flag.rs - f (line 17) - compile ... ok
 test $DIR/no-run-flag.rs - f (line 23) - compile fail ... ok
 test $DIR/no-run-flag.rs - f (line 28) - compile ... ok

@@ -169,7 +169,12 @@ impl<T: Write> PrettyFormatter<T> {
 
     fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
         let name = desc.padded_name(self.max_name_len, desc.name.padding());
-        self.write_plain(&format!("test {} - {} ... ", name, desc.test_mode()))?;
+        let test_mode = desc.test_mode();
+        if test_mode == "" {
+            self.write_plain(&format!("test {} ... ", name))?;
+        } else {
+            self.write_plain(&format!("test {} - {} ... ", name, test_mode))?;
+        }
 
         Ok(())
     }

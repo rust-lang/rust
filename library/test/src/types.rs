@@ -148,7 +148,7 @@ impl TestDesc {
     #[cfg(not(bootstrap))]
     pub fn test_mode(&self) -> &'static str {
         if self.ignore {
-            return &"ignore";
+            return &"";
         }
         match self.should_panic {
             options::ShouldPanic::Yes | options::ShouldPanic::YesWithMessage(_) => {
@@ -165,7 +165,7 @@ impl TestDesc {
         if self.no_run {
             return &"compile";
         }
-        &"run"
+        &""
     }
 
     #[cfg(bootstrap)]
