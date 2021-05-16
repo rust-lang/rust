@@ -14,8 +14,7 @@ fn mk_token_cursor(n: usize) -> TokenCursor<true> {
     TokenCursor {
         frame: mk_dummy_token_cursor_frame(),
         stack: vec![mk_dummy_token_cursor_frame(); n],
-        num_next_calls: 0,
-        break_last_token: true,
+        nncablt: Default::default(),
     }
 }
 macro_rules! bench_for_n {

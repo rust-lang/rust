@@ -185,7 +185,7 @@ impl<'a, const DSDC: bool> Drop for Parser<'a, DSDC> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
 pub(crate) struct NumNextCallsAndBreakLastToken(usize);
 
 impl NumNextCallsAndBreakLastToken {
@@ -201,19 +201,19 @@ impl NumNextCallsAndBreakLastToken {
 
     #[inline]
     fn set_break_last_token(&mut self) {
-        self.0 = !(Self::MASK_NUM_NEXT_CALLS) | self.0;
+        self.0 |= !(Self::MASK_NUM_NEXT_CALLS);
     }
     #[inline]
     fn unset_break_last_token(&mut self) {
-        self.0 = self.0 & Self::MASK_NUM_NEXT_CALLS;
+        self.0 &= Self::MASK_NUM_NEXT_CALLS;
     }
     #[inline]
     fn num_next_calls(self) -> usize {
         self.0 & Self::MASK_NUM_NEXT_CALLS
     }
     #[inline]
-    fn set_num_next_calls(&mut self, calls: usize) {
-        self.0 = self.0 | (calls & Self::MASK_NUM_NEXT_CALLS)
+    fn inc_num_next_calls(&mut self) {
+        self.0 = self.0.checked_add(1).unwrap();
     }
 }
 
@@ -486,9 +486,7 @@ impl<'a, const DESUGAR_DOC_COMMENTS: bool> Parser<'a, DESUGAR_DOC_COMMENTS> {
             } else {
                 self.token_cursor.next()
             };
-            self.token_cursor
-                .nncablt
-                .set_num_next_calls(self.token_cursor.nncablt.num_next_calls() + 1);
+            self.token_cursor.nncablt.inc_num_next_calls();
             // We've retrieved an token from the underlying
             // cursor, so we no longer need to worry about
             // an unglued token. See `break_and_eat` for more details

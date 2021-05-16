@@ -26,7 +26,7 @@ pub(crate) struct Directory {
 
 /// A parser for Rust source code.
 pub(crate) struct Parser<'a> {
-    parser: RawParser<'a>,
+    parser: RawParser<'a, false>,
 }
 
 /// A builder for the `Parser`.
@@ -68,7 +68,7 @@ impl<'a> ParserBuilder<'a> {
     fn parser(
         sess: &'a rustc_session::parse::ParseSess,
         input: Input,
-    ) -> Result<rustc_parse::parser::Parser<'a>, Option<Vec<Diagnostic>>> {
+    ) -> Result<rustc_parse::parser::Parser<'a, false>, Option<Vec<Diagnostic>>> {
         match input {
             Input::File(ref file) => catch_unwind(AssertUnwindSafe(move || {
                 new_parser_from_file(sess, file, None)

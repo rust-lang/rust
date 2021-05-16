@@ -90,7 +90,7 @@ impl Rewrite for MacroArg {
     }
 }
 
-fn build_parser<'a>(context: &RewriteContext<'a>, cursor: Cursor) -> Parser<'a> {
+fn build_parser<'a>(context: &RewriteContext<'a>, cursor: Cursor) -> Parser<'a, false> {
     stream_to_parser(
         context.parse_sess.inner(),
         cursor.collect(),
@@ -98,7 +98,7 @@ fn build_parser<'a>(context: &RewriteContext<'a>, cursor: Cursor) -> Parser<'a> 
     )
 }
 
-fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
+fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b, false>) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
         ($macro_arg:ident, $parser:expr, $f:expr) => {
             let mut cloned_parser = (*parser).clone();
@@ -122,23 +122,23 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
 
     parse_macro_arg!(
         Expr,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_expr(),
+        |parser: &mut rustc_parse::parser::Parser<'b, false>| parser.parse_expr(),
         |x: ptr::P<ast::Expr>| Some(x)
     );
     parse_macro_arg!(
         Ty,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_ty(),
+        |parser: &mut rustc_parse::parser::Parser<'b, false>| parser.parse_ty(),
         |x: ptr::P<ast::Ty>| Some(x)
     );
     parse_macro_arg!(
         Pat,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_pat_no_top_alt(None),
+        |parser: &mut rustc_parse::parser::Parser<'b, false>| parser.parse_pat_no_top_alt(None),
         |x: ptr::P<ast::Pat>| Some(x)
     );
     // `parse_item` returns `Option<ptr::P<ast::Item>>`.
     parse_macro_arg!(
         Item,
-        |parser: &mut rustc_parse::parser::Parser<'b>| parser.parse_item(ForceCollect::No),
+        |parser: &mut rustc_parse::parser::Parser<'b, false>| parser.parse_item(ForceCollect::No),
         |x: Option<ptr::P<ast::Item>>| x
     );
 
@@ -232,7 +232,7 @@ pub(crate) fn rewrite_macro(
     }
 }
 
-fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
+fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b, false>) -> Option<MacroArg> {
     for &keyword in RUST_KW.iter() {
         if parser.token.is_keyword(keyword)
             && parser.look_ahead(1, |t| {
