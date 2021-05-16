@@ -422,7 +422,7 @@ fn semantic_token_type_and_modifiers(
     let type_ = match highlight.tag {
         HlTag::Symbol(symbol) => match symbol {
             SymbolKind::Module => lsp_types::SemanticTokenType::NAMESPACE,
-            SymbolKind::Impl => lsp_types::SemanticTokenType::TYPE,
+            SymbolKind::Impl => semantic_tokens::TYPE_ALIAS,
             SymbolKind::Field => lsp_types::SemanticTokenType::PROPERTY,
             SymbolKind::TypeParam => lsp_types::SemanticTokenType::TYPE_PARAMETER,
             SymbolKind::ConstParam => semantic_tokens::CONST_PARAMETER,
