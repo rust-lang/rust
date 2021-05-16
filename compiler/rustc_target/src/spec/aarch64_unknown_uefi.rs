@@ -31,7 +31,7 @@ pub fn target() -> Target {
     // as well.
     base.features = "-mmx,-sse,+soft-float".to_string();
 
-    let pre_link_args_msvc = vec!["/machine:arm64"];
+    let pre_link_args_msvc = vec!["/machine:arm64".to_string()];
 
     base.pre_link_args.get_mut(&LinkerFlavor::Msvc).unwrap().extend(pre_link_args_msvc.clone());
     base.pre_link_args
