@@ -1,6 +1,8 @@
 // min-llvm-version: 10.0.1
+// revisions: powerpc powerpc64
 // assembly-output: emit-asm
-// compile-flags: --target powerpc-unknown-linux-gnu
+//[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
+//[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
 // needs-llvm-components: powerpc
 
 #![feature(no_core, lang_items, rustc_attrs, repr_simd)]
@@ -86,6 +88,13 @@ check!(reg_i16, i16, reg, "mr");
 // CHECK: #NO_APP
 check!(reg_i32, i32, reg, "mr");
 
+// powerpc64-LABEL: reg_i64:
+// powerpc64: #APP
+// powerpc64: mr {{[0-9]+}}, {{[0-9]+}}
+// powerpc64: #NO_APP
+#[cfg(powerpc64)]
+check!(reg_i64, i64, reg, "mr");
+
 // CHECK-LABEL: reg_i8_nz:
 // CHECK: #APP
 // CHECK: mr {{[0-9]+}}, {{[0-9]+}}
@@ -103,6 +112,13 @@ check!(reg_i16_nz, i16, reg_nonzero, "mr");
 // CHECK: mr {{[0-9]+}}, {{[0-9]+}}
 // CHECK: #NO_APP
 check!(reg_i32_nz, i32, reg_nonzero, "mr");
+
+// powerpc64-LABEL: reg_i64_nz:
+// powerpc64: #APP
+// powerpc64: mr {{[0-9]+}}, {{[0-9]+}}
+// powerpc64: #NO_APP
+#[cfg(powerpc64)]
+check!(reg_i64_nz, i64, reg_nonzero, "mr");
 
 // CHECK-LABEL: reg_f32:
 // CHECK: #APP
@@ -134,6 +150,13 @@ check_reg!(reg_i16_r0, i16, "0", "0", "mr");
 // CHECK: #NO_APP
 check_reg!(reg_i32_r0, i32, "0", "0", "mr");
 
+// powerpc64-LABEL: reg_i64_r0:
+// powerpc64: #APP
+// powerpc64: mr 0, 0
+// powerpc64: #NO_APP
+#[cfg(powerpc64)]
+check_reg!(reg_i64_r0, i64, "0", "0", "mr");
+
 // CHECK-LABEL: reg_i8_r18:
 // CHECK: #APP
 // CHECK: mr 18, 18
@@ -151,6 +174,13 @@ check_reg!(reg_i16_r18, i16, "18", "18", "mr");
 // CHECK: mr 18, 18
 // CHECK: #NO_APP
 check_reg!(reg_i32_r18, i32, "18", "18", "mr");
+
+// powerpc64-LABEL: reg_i64_r18:
+// powerpc64: #APP
+// powerpc64: mr 18, 18
+// powerpc64: #NO_APP
+#[cfg(powerpc64)]
+check_reg!(reg_i64_r18, i64, "18", "18", "mr");
 
 // CHECK-LABEL: reg_f32_f0:
 // CHECK: #APP
