@@ -1,5 +1,5 @@
-use std::time::{Duration, SystemTime, Instant};
 use std::convert::TryFrom;
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::stacked_borrows::Tag;
 use crate::*;
@@ -99,7 +99,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
         let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
 
-        let duration = system_time_to_duration(&SystemTime::now())? + Duration::from_secs(SECONDS_TO_UNIX_EPOCH);
+        let duration = system_time_to_duration(&SystemTime::now())?
+            + Duration::from_secs(SECONDS_TO_UNIX_EPOCH);
         let duration_ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
             .map_err(|_| err_unsup_format!("programs running more than 2^64 Windows ticks after the Windows epoch are not supported"))?;
 
@@ -115,7 +116,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn QueryPerformanceCounter(&mut self, lpPerformanceCount_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn QueryPerformanceCounter(
+        &mut self,
+        lpPerformanceCount_op: &OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceCounter");
@@ -124,14 +128,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
         let duration = Instant::now().duration_since(this.machine.time_anchor);
-        let qpc = i64::try_from(duration.as_nanos())
-            .map_err(|_| err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported"))?;
-        this.write_scalar(Scalar::from_i64(qpc), &this.deref_operand(lpPerformanceCount_op)?.into())?;
+        let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
+            err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
+        })?;
+        this.write_scalar(
+            Scalar::from_i64(qpc),
+            &this.deref_operand(lpPerformanceCount_op)?.into(),
+        )?;
         Ok(-1) // return non-zero on success
     }
 
     #[allow(non_snake_case)]
-    fn QueryPerformanceFrequency(&mut self, lpFrequency_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
+    fn QueryPerformanceFrequency(
+        &mut self,
+        lpFrequency_op: &OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("windows", "QueryPerformanceFrequency");
@@ -142,7 +153,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // is consistent across all processors.
         // Miri emulates a "hardware" performance counter with a resolution of 1ns,
         // and thus 10^9 counts per second.
-        this.write_scalar(Scalar::from_i64(1_000_000_000), &this.deref_operand(lpFrequency_op)?.into())?;
+        this.write_scalar(
+            Scalar::from_i64(1_000_000_000),
+            &this.deref_operand(lpFrequency_op)?.into(),
+        )?;
         Ok(-1) // Return non-zero on success
     }
 
@@ -155,8 +169,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
         let duration = Instant::now().duration_since(this.machine.time_anchor);
-        u64::try_from(duration.as_nanos())
-            .map_err(|_| err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported").into())
+        u64::try_from(duration.as_nanos()).map_err(|_| {
+            err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
+                .into()
+        })
     }
 
     fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
@@ -169,10 +185,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
         // no scaling needs to happen.
-        let (numer, denom) = (1,1);
+        let (numer, denom) = (1, 1);
         let imms = [
             immty_from_int_checked(numer, this.machine.layouts.u32)?,
-            immty_from_int_checked(denom, this.machine.layouts.u32)?
+            immty_from_int_checked(denom, this.machine.layouts.u32)?,
         ];
 
         this.write_packed_immediates(&info, &imms)?;

@@ -37,7 +37,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         match dlsym {
             Dlsym::Posix(dlsym) => posix::EvalContextExt::call_dlsym(this, dlsym, abi, args, ret),
-            Dlsym::Windows(dlsym) => windows::EvalContextExt::call_dlsym(this, dlsym, abi, args, ret),
+            Dlsym::Windows(dlsym) =>
+                windows::EvalContextExt::call_dlsym(this, dlsym, abi, args, ret),
         }
     }
 }

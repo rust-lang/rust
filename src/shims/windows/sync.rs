@@ -22,10 +22,7 @@ fn srwlock_get_or_create_id<'mir, 'tcx: 'mir>(
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     #[allow(non_snake_case)]
-    fn AcquireSRWLockExclusive(
-        &mut self,
-        lock_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+    fn AcquireSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
@@ -47,10 +44,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn TryAcquireSRWLockExclusive(
-        &mut self,
-        lock_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, u8> {
+    fn TryAcquireSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, u8> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
@@ -65,27 +59,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn ReleaseSRWLockExclusive(
-        &mut self,
-        lock_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+    fn ReleaseSRWLockExclusive(&mut self, lock_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
 
         if !this.rwlock_writer_unlock(id, active_thread) {
             // The docs do not say anything about this case, but it seems better to not allow it.
-            throw_ub_format!("calling ReleaseSRWLockExclusive on an SRWLock that is not exclusively locked by the current thread");
+            throw_ub_format!(
+                "calling ReleaseSRWLockExclusive on an SRWLock that is not exclusively locked by the current thread"
+            );
         }
 
         Ok(())
     }
 
     #[allow(non_snake_case)]
-    fn AcquireSRWLockShared(
-        &mut self,
-        lock_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+    fn AcquireSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
@@ -100,10 +90,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn TryAcquireSRWLockShared(
-        &mut self,
-        lock_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, u8> {
+    fn TryAcquireSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, u8> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
@@ -117,17 +104,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     #[allow(non_snake_case)]
-    fn ReleaseSRWLockShared(
-        &mut self,
-        lock_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+    fn ReleaseSRWLockShared(&mut self, lock_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let id = srwlock_get_or_create_id(this, lock_op)?;
         let active_thread = this.get_active_thread();
 
         if !this.rwlock_reader_unlock(id, active_thread) {
             // The docs do not say anything about this case, but it seems better to not allow it.
-            throw_ub_format!("calling ReleaseSRWLockShared on an SRWLock that is not locked by the current thread");
+            throw_ub_format!(
+                "calling ReleaseSRWLockShared on an SRWLock that is not locked by the current thread"
+            );
         }
 
         Ok(())

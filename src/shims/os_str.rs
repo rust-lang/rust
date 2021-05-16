@@ -48,7 +48,6 @@ pub fn bytes_to_os_str<'a, 'tcx>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsSt
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
     fn read_os_str_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
@@ -94,7 +93,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         scalar: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
-
         let bytes = os_str_to_bytes(os_str)?;
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required null
         // terminator to memory using the `ptr` pointer would cause an out-of-bounds access.
@@ -199,7 +197,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_wide_str(scalar)?;
 
-        Ok(this.convert_path_separator(Cow::Owned(os_str), PathConversion::TargetToHost).into_owned().into())
+        Ok(this
+            .convert_path_separator(Cow::Owned(os_str), PathConversion::TargetToHost)
+            .into_owned()
+            .into())
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of bytes),
@@ -211,7 +212,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = this.convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        let os_str = this
+            .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.write_os_str_to_c_str(&os_str, scalar, size)
     }
 
@@ -224,7 +226,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = this.convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        let os_str = this
+            .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.write_os_str_to_wide_str(&os_str, scalar, size)
     }
 
@@ -270,4 +273,3 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
     }
 }
-

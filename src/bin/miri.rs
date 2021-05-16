@@ -1,11 +1,11 @@
 #![feature(rustc_private)]
 
-extern crate rustc_middle;
 extern crate rustc_driver;
+extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_interface;
+extern crate rustc_middle;
 extern crate rustc_session;
-extern crate rustc_errors;
 
 use std::convert::TryFrom;
 use std::env;
@@ -14,11 +14,11 @@ use std::str::FromStr;
 use hex::FromHexError;
 use log::debug;
 
-use rustc_session::{CtfeBacktrace, config::ErrorOutputType};
-use rustc_errors::emitter::{HumanReadableErrorType, ColorConfig};
 use rustc_driver::Compilation;
+use rustc_errors::emitter::{ColorConfig, HumanReadableErrorType};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::{config::ErrorOutputType, CtfeBacktrace};
 
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
@@ -37,8 +37,13 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             let (entry_def_id, _) = if let Some((entry_def, x)) = tcx.entry_fn(LOCAL_CRATE) {
                 (entry_def, x)
             } else {
-                let output_ty = ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto));
-                rustc_session::early_error(output_ty, "miri can only run programs that have a main function");
+                let output_ty = ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(
+                    ColorConfig::Auto,
+                ));
+                rustc_session::early_error(
+                    output_ty,
+                    "miri can only run programs that have a main function",
+                );
             };
             let mut config = self.miri_config.clone();
 
@@ -249,10 +254,7 @@ fn main() {
                             err => panic!("unknown error decoding -Zmiri-seed as hex: {:?}", err),
                         });
                     if seed_raw.len() > 8 {
-                        panic!(
-                            "-Zmiri-seed must be at most 8 bytes, was {}",
-                            seed_raw.len()
-                        );
+                        panic!("-Zmiri-seed must be at most 8 bytes, was {}", seed_raw.len());
                     }
 
                     let mut bytes = [0; 8];
@@ -260,17 +262,19 @@ fn main() {
                     miri_config.seed = Some(u64::from_be_bytes(bytes));
                 }
                 arg if arg.starts_with("-Zmiri-env-exclude=") => {
-                    miri_config.excluded_env_vars
+                    miri_config
+                        .excluded_env_vars
                         .push(arg.strip_prefix("-Zmiri-env-exclude=").unwrap().to_owned());
                 }
                 arg if arg.starts_with("-Zmiri-track-pointer-tag=") => {
-                    let id: u64 = match arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap().parse() {
-                        Ok(id) => id,
-                        Err(err) => panic!(
-                            "-Zmiri-track-pointer-tag requires a valid `u64` argument: {}",
-                            err
-                        ),
-                    };
+                    let id: u64 =
+                        match arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap().parse() {
+                            Ok(id) => id,
+                            Err(err) => panic!(
+                                "-Zmiri-track-pointer-tag requires a valid `u64` argument: {}",
+                                err
+                            ),
+                        };
                     if let Some(id) = miri::PtrId::new(id) {
                         miri_config.tracked_pointer_tag = Some(id);
                     } else {
@@ -280,10 +284,8 @@ fn main() {
                 arg if arg.starts_with("-Zmiri-track-call-id=") => {
                     let id: u64 = match arg.strip_prefix("-Zmiri-track-call-id=").unwrap().parse() {
                         Ok(id) => id,
-                        Err(err) => panic!(
-                            "-Zmiri-track-call-id requires a valid `u64` argument: {}",
-                            err
-                        ),
+                        Err(err) =>
+                            panic!("-Zmiri-track-call-id requires a valid `u64` argument: {}", err),
                     };
                     if let Some(id) = miri::CallId::new(id) {
                         miri_config.tracked_call_id = Some(id);
@@ -292,20 +294,28 @@ fn main() {
                     }
                 }
                 arg if arg.starts_with("-Zmiri-track-alloc-id=") => {
-                    let id: u64 = match arg.strip_prefix("-Zmiri-track-alloc-id=").unwrap().parse() {
+                    let id: u64 = match arg.strip_prefix("-Zmiri-track-alloc-id=").unwrap().parse()
+                    {
                         Ok(id) => id,
-                        Err(err) => panic!(
-                            "-Zmiri-track-alloc-id requires a valid `u64` argument: {}",
-                            err
-                        ),
+                        Err(err) =>
+                            panic!("-Zmiri-track-alloc-id requires a valid `u64` argument: {}", err),
                     };
                     miri_config.tracked_alloc_id = Some(miri::AllocId(id));
                 }
                 arg if arg.starts_with("-Zmiri-compare-exchange-weak-failure-rate=") => {
-                    let rate = match arg.strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=").unwrap().parse::<f64>() {
+                    let rate = match arg
+                        .strip_prefix("-Zmiri-compare-exchange-weak-failure-rate=")
+                        .unwrap()
+                        .parse::<f64>()
+                    {
                         Ok(rate) if rate >= 0.0 && rate <= 1.0 => rate,
-                        Ok(_) => panic!("-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"),
-                        Err(err) => panic!("-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}", err),
+                        Ok(_) => panic!(
+                            "-Zmiri-compare-exchange-weak-failure-rate must be between `0.0` and `1.0`"
+                        ),
+                        Err(err) => panic!(
+                            "-Zmiri-compare-exchange-weak-failure-rate requires a `f64` between `0.0` and `1.0`: {}",
+                            err
+                        ),
                     };
                     miri_config.cmpxchg_weak_failure_rate = rate;
                 }
@@ -319,5 +329,9 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
-    run_compiler(rustc_args, &mut MiriCompilerCalls { miri_config }, /* insert_default_args: */ true)
+    run_compiler(
+        rustc_args,
+        &mut MiriCompilerCalls { miri_config },
+        /* insert_default_args: */ true,
+    )
 }

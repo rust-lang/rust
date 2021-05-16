@@ -1,21 +1,23 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
-use std::fs::{read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir};
+use std::fs::{
+    read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir,
+};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::time::SystemTime;
-use std::borrow::Cow;
 
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_target::abi::{Align, LayoutOf, Size};
 use rustc_middle::ty;
+use rustc_target::abi::{Align, LayoutOf, Size};
 
 use crate::*;
-use stacked_borrows::Tag;
 use helpers::{check_arg_count, immty_from_int_checked, immty_from_uint_checked};
 use shims::time::system_time_to_duration;
+use stacked_borrows::Tag;
 
 #[derive(Debug)]
 struct FileHandle {
@@ -23,13 +25,28 @@ struct FileHandle {
     writable: bool,
 }
 
-trait FileDescriptor : std::fmt::Debug {
+trait FileDescriptor: std::fmt::Debug {
     fn as_file_handle<'tcx>(&self) -> InterpResult<'tcx, &FileHandle>;
 
-    fn read<'tcx>(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>>;
-    fn write<'tcx>(&mut self, communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>>;
-    fn seek<'tcx>(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>>;
-    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>>;
+    fn read<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &mut [u8],
+    ) -> InterpResult<'tcx, io::Result<usize>>;
+    fn write<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &[u8],
+    ) -> InterpResult<'tcx, io::Result<usize>>;
+    fn seek<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>>;
+    fn close<'tcx>(
+        self: Box<Self>,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, io::Result<i32>>;
 
     fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>>;
 }
@@ -39,22 +56,37 @@ impl FileDescriptor for FileHandle {
         Ok(&self)
     }
 
-    fn read<'tcx>(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &mut [u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.read(bytes))
     }
 
-    fn write<'tcx>(&mut self, communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &[u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.write(bytes))
     }
 
-    fn seek<'tcx>(&mut self, communicate_allowed: bool, offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         Ok(self.file.seek(offset))
     }
 
-    fn close<'tcx>(self: Box<Self>, communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+    fn close<'tcx>(
+        self: Box<Self>,
+        communicate_allowed: bool,
+    ) -> InterpResult<'tcx, io::Result<i32>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
         // We sync the file if it was opened in a mode different than read-only.
         if self.writable {
@@ -88,7 +120,11 @@ impl FileDescriptor for io::Stdin {
         throw_unsup_format!("stdin cannot be used as FileHandle");
     }
 
-    fn read<'tcx>(&mut self, communicate_allowed: bool, bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(
+        &mut self,
+        communicate_allowed: bool,
+        bytes: &mut [u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         if !communicate_allowed {
             // We want isolation mode to be deterministic, so we have to disallow all reads, even stdin.
             helpers::isolation_error("`read` from stdin")?;
@@ -96,15 +132,26 @@ impl FileDescriptor for io::Stdin {
         Ok(Read::read(self, bytes))
     }
 
-    fn write<'tcx>(&mut self, _communicate_allowed: bool, _bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _bytes: &[u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot write to stdin");
     }
 
-    fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stdin");
     }
 
-    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+    fn close<'tcx>(
+        self: Box<Self>,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, io::Result<i32>> {
         throw_unsup_format!("stdin cannot be closed");
     }
 
@@ -118,11 +165,19 @@ impl FileDescriptor for io::Stdout {
         throw_unsup_format!("stdout cannot be used as FileHandle");
     }
 
-    fn read<'tcx>(&mut self, _communicate_allowed: bool, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _bytes: &mut [u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot read from stdout");
     }
 
-    fn write<'tcx>(&mut self, _communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        bytes: &[u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         let result = Write::write(self, bytes);
         // Stdout is buffered, flush to make sure it appears on the
@@ -135,11 +190,18 @@ impl FileDescriptor for io::Stdout {
         Ok(result)
     }
 
-    fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stdout");
     }
 
-    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+    fn close<'tcx>(
+        self: Box<Self>,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, io::Result<i32>> {
         throw_unsup_format!("stdout cannot be closed");
     }
 
@@ -153,21 +215,36 @@ impl FileDescriptor for io::Stderr {
         throw_unsup_format!("stderr cannot be used as FileHandle");
     }
 
-    fn read<'tcx>(&mut self, _communicate_allowed: bool, _bytes: &mut [u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn read<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _bytes: &mut [u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         throw_unsup_format!("cannot read from stderr");
     }
 
-    fn write<'tcx>(&mut self, _communicate_allowed: bool, bytes: &[u8]) -> InterpResult<'tcx, io::Result<usize>> {
+    fn write<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        bytes: &[u8],
+    ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
         Ok(Write::write(self, bytes))
     }
 
-    fn seek<'tcx>(&mut self, _communicate_allowed: bool, _offset: SeekFrom) -> InterpResult<'tcx, io::Result<u64>> {
+    fn seek<'tcx>(
+        &mut self,
+        _communicate_allowed: bool,
+        _offset: SeekFrom,
+    ) -> InterpResult<'tcx, io::Result<u64>> {
         throw_unsup_format!("cannot seek on stderr");
     }
 
-    fn close<'tcx>(self: Box<Self>, _communicate_allowed: bool) -> InterpResult<'tcx, io::Result<i32>> {
+    fn close<'tcx>(
+        self: Box<Self>,
+        _communicate_allowed: bool,
+    ) -> InterpResult<'tcx, io::Result<i32>> {
         throw_unsup_format!("stderr cannot be closed");
     }
 
@@ -187,9 +264,7 @@ impl<'tcx> Default for FileHandler {
         handles.insert(0i32, Box::new(io::stdin()));
         handles.insert(1i32, Box::new(io::stdout()));
         handles.insert(2i32, Box::new(io::stderr()));
-        FileHandler {
-            handles
-        }
+        FileHandler { handles }
     }
 }
 
@@ -203,11 +278,8 @@ impl<'tcx> FileHandler {
         // between used FDs, the find_map combinator will return it. If the first such unused FD
         // is after all other used FDs, the find_map combinator will return None, and we will use
         // the FD following the greatest FD thus far.
-        let candidate_new_fd = self
-            .handles
-            .range(min_fd..)
-            .zip(min_fd..)
-            .find_map(|((fd, _fh), counter)| {
+        let candidate_new_fd =
+            self.handles.range(min_fd..).zip(min_fd..).find_map(|((fd, _fh), counter)| {
                 if *fd != counter {
                     // There was a gap in the fds stored, return the first unused one
                     // (note that this relies on BTreeMap iterating in key order)
@@ -220,7 +292,10 @@ impl<'tcx> FileHandler {
         let new_fd = candidate_new_fd.unwrap_or_else(|| {
             // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
             // maximum fd in the map
-            self.handles.last_key_value().map(|(fd, _)| fd.checked_add(1).unwrap()).unwrap_or(min_fd)
+            self.handles
+                .last_key_value()
+                .map(|(fd, _)| fd.checked_add(1).unwrap())
+                .unwrap_or(min_fd)
         });
 
         self.handles.try_insert(new_fd, file_handle).unwrap();
@@ -292,7 +367,7 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
             immty_from_uint_checked(modified_sec, time_t_layout)?, // st_mtime
             immty_from_uint_checked(modified_nsec, long_layout)?, // st_mtime_nsec
             immty_from_uint_checked(0u128, time_t_layout)?, // st_ctime
-            immty_from_uint_checked(0u128, long_layout)?, // st_ctime_nsec
+            immty_from_uint_checked(0u128, long_layout)?,  // st_ctime_nsec
             immty_from_uint_checked(created_sec, time_t_layout)?, // st_birthtime
             immty_from_uint_checked(created_nsec, long_layout)?, // st_birthtime_nsec
             immty_from_uint_checked(metadata.size, off_t_layout)?, // st_size
@@ -319,7 +394,10 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
         Ok((-1).into())
     }
 
-    fn file_type_to_d_type(&mut self, file_type: std::io::Result<FileType>) -> InterpResult<'tcx, i32> {
+    fn file_type_to_d_type(
+        &mut self,
+        file_type: std::io::Result<FileType>,
+    ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
         match file_type {
             Ok(file_type) => {
@@ -353,10 +431,14 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
                     Ok(this.eval_libc("DT_UNKNOWN")?.to_u8()?.into())
                 }
             }
-            Err(e) => return match e.raw_os_error() {
-                Some(error) => Ok(error),
-                None => throw_unsup_format!("the error {} couldn't be converted to a return value", e),
-            }
+            Err(e) =>
+                return match e.raw_os_error() {
+                    Some(error) => Ok(error),
+                    None => throw_unsup_format!(
+                        "the error {} couldn't be converted to a return value",
+                        e
+                    ),
+                },
         }
     }
 }
@@ -396,7 +478,11 @@ impl Default for DirHandler {
     }
 }
 
-fn maybe_sync_file(file: &File, writable: bool, operation: fn(&File) -> std::io::Result<()>) -> std::io::Result<i32> {
+fn maybe_sync_file(
+    file: &File,
+    writable: bool,
+    operation: fn(&File) -> std::io::Result<()>,
+) -> std::io::Result<i32> {
     if !writable && cfg!(windows) {
         // sync_all() and sync_data() will return an error on Windows hosts if the file is not opened
         // for writing. (FlushFileBuffers requires that the file handle have the
@@ -505,16 +591,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(fd)
     }
 
-    fn fcntl(
-        &mut self,
-        args: &[OpTy<'tcx, Tag>],
-    ) -> InterpResult<'tcx, i32> {
+    fn fcntl(&mut self, args: &[OpTy<'tcx, Tag>]) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.check_no_isolation("`fcntl`")?;
 
         if args.len() < 2 {
-            throw_ub_format!("incorrect number of arguments for fcntl: got {}, expected at least 2", args.len());
+            throw_ub_format!(
+                "incorrect number of arguments for fcntl: got {}, expected at least 2",
+                args.len()
+            );
         }
         let fd = this.read_scalar(&args[0])?.to_i32()?;
         let cmd = this.read_scalar(&args[1])?.to_i32()?;
@@ -552,12 +638,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             Ok(-1)
                         }
                     }
-                },
+                }
                 None => return this.handle_not_found(),
             }
-        } else if this.tcx.sess.target.os == "macos"
-            && cmd == this.eval_libc_i32("F_FULLFSYNC")?
-        {
+        } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC")? {
             let &[_, _] = check_arg_count(args)?;
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
                 // FIXME: Support fullfsync for all FDs
@@ -585,12 +669,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn read(
-        &mut self,
-        fd: i32,
-        buf: Scalar<Tag>,
-        count: u64,
-    ) -> InterpResult<'tcx, i64> {
+    fn read(&mut self, fd: i32, buf: Scalar<Tag>, count: u64) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -637,12 +716,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn write(
-        &mut self,
-        fd: i32,
-        buf: Scalar<Tag>,
-        count: u64,
-    ) -> InterpResult<'tcx, i64> {
+    fn write(&mut self, fd: i32, buf: Scalar<Tag>, count: u64) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescriptor` trait.
@@ -719,7 +793,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn symlink(
         &mut self,
         target_op: &OpTy<'tcx, Tag>,
-        linkpath_op: &OpTy<'tcx, Tag>
+        linkpath_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i32> {
         #[cfg(unix)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
@@ -729,11 +803,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         #[cfg(windows)]
         fn create_link(src: &Path, dst: &Path) -> std::io::Result<()> {
             use std::os::windows::fs;
-            if src.is_dir() {
-                fs::symlink_dir(src, dst)
-            } else {
-                fs::symlink_file(src, dst)
-            }
+            if src.is_dir() { fs::symlink_dir(src, dst) } else { fs::symlink_file(src, dst) }
         }
 
         let this = self.eval_context_mut();
@@ -842,11 +912,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // set.
         // Other behaviors cannot be tested from `libstd` and thus are not implemented. If you
         // found this error, please open an issue reporting it.
-        if !(
-            path.is_absolute() ||
-            dirfd == this.eval_libc_i32("AT_FDCWD")? ||
-            (path.as_os_str().is_empty() && empty_path_flag)
-        ) {
+        if !(path.is_absolute()
+            || dirfd == this.eval_libc_i32("AT_FDCWD")?
+            || (path.as_os_str().is_empty() && empty_path_flag))
+        {
             throw_unsup_format!(
                 "using statx is only supported with absolute paths, relative paths with the file \
                 descriptor `AT_FDCWD`, and empty paths with the `AT_EMPTY_PATH` flag set and any \
@@ -889,20 +958,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // We need to set the corresponding bits of `mask` if the access, creation and modification
         // times were available. Otherwise we let them be zero.
-        let (access_sec, access_nsec) = metadata.accessed.map(|tup| {
-            mask |= this.eval_libc("STATX_ATIME")?.to_u32()?;
-            InterpResult::Ok(tup)
-        }).unwrap_or(Ok((0, 0)))?;
+        let (access_sec, access_nsec) = metadata
+            .accessed
+            .map(|tup| {
+                mask |= this.eval_libc("STATX_ATIME")?.to_u32()?;
+                InterpResult::Ok(tup)
+            })
+            .unwrap_or(Ok((0, 0)))?;
 
-        let (created_sec, created_nsec) = metadata.created.map(|tup| {
-            mask |= this.eval_libc("STATX_BTIME")?.to_u32()?;
-            InterpResult::Ok(tup)
-        }).unwrap_or(Ok((0, 0)))?;
+        let (created_sec, created_nsec) = metadata
+            .created
+            .map(|tup| {
+                mask |= this.eval_libc("STATX_BTIME")?.to_u32()?;
+                InterpResult::Ok(tup)
+            })
+            .unwrap_or(Ok((0, 0)))?;
 
-        let (modified_sec, modified_nsec) = metadata.modified.map(|tup| {
-            mask |= this.eval_libc("STATX_MTIME")?.to_u32()?;
-            InterpResult::Ok(tup)
-        }).unwrap_or(Ok((0, 0)))?;
+        let (modified_sec, modified_nsec) = metadata
+            .modified
+            .map(|tup| {
+                mask |= this.eval_libc("STATX_MTIME")?.to_u32()?;
+                InterpResult::Ok(tup)
+            })
+            .unwrap_or(Ok((0, 0)))?;
 
         let __u32_layout = this.libc_ty_layout("__u32")?;
         let __u64_layout = this.libc_ty_layout("__u64")?;
@@ -1006,10 +1084,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(result)
     }
 
-    fn rmdir(
-        &mut self,
-        path_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, i32> {
+    fn rmdir(&mut self, path_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.check_no_isolation("`rmdir`")?;
@@ -1087,7 +1162,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     name_place.layout.size.bytes(),
                 )?;
                 if !name_fits {
-                    throw_unsup_format!("a directory entry had a name too large to fit in libc::dirent64");
+                    throw_unsup_format!(
+                        "a directory entry had a name too large to fit in libc::dirent64"
+                    );
                 }
 
                 let entry_place = this.deref_operand(entry_op)?;
@@ -1175,7 +1252,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     name_place.layout.size.bytes(),
                 )?;
                 if !name_fits {
-                    throw_unsup_format!("a directory entry had a name too large to fit in libc::dirent");
+                    throw_unsup_format!(
+                        "a directory entry had a name too large to fit in libc::dirent"
+                    );
                 }
 
                 let entry_place = this.deref_operand(entry_op)?;
@@ -1194,8 +1273,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
                 let imms = [
-                    immty_from_uint_checked(ino, ino_t_layout)?, // d_ino
-                    immty_from_uint_checked(0u128, off_t_layout)?, // d_seekoff
+                    immty_from_uint_checked(ino, ino_t_layout)?,      // d_ino
+                    immty_from_uint_checked(0u128, off_t_layout)?,    // d_seekoff
                     immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
                     immty_from_uint_checked(file_name_len, c_ushort_layout)?, // d_namlen
                     immty_from_int_checked(file_type, c_uchar_layout)?, // d_type
@@ -1352,7 +1431,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         pathname_op: &OpTy<'tcx, Tag>,
         buf_op: &OpTy<'tcx, Tag>,
-        bufsize_op: &OpTy<'tcx, Tag>
+        bufsize_op: &OpTy<'tcx, Tag>,
     ) -> InterpResult<'tcx, i64> {
         let this = self.eval_context_mut();
 
@@ -1365,7 +1444,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let result = std::fs::read_link(pathname);
         match result {
             Ok(resolved) => {
-                let resolved = this.convert_path_separator(Cow::Borrowed(resolved.as_ref()), crate::shims::os_str::PathConversion::HostToTarget);
+                let resolved = this.convert_path_separator(
+                    Cow::Borrowed(resolved.as_ref()),
+                    crate::shims::os_str::PathConversion::HostToTarget,
+                );
                 let mut path_bytes = crate::shims::os_str::os_str_to_bytes(resolved.as_ref())?;
                 let bufsize: usize = bufsize.try_into().unwrap();
                 if path_bytes.len() > bufsize {
@@ -1388,12 +1470,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 /// `time` is Ok. Returns `None` if `time` is an error. Fails if `time` happens before the unix
 /// epoch.
 fn extract_sec_and_nsec<'tcx>(
-    time: std::io::Result<SystemTime>
+    time: std::io::Result<SystemTime>,
 ) -> InterpResult<'tcx, Option<(u64, u32)>> {
-    time.ok().map(|time| {
-        let duration = system_time_to_duration(&time)?;
-        Ok((duration.as_secs(), duration.subsec_nanos()))
-    }).transpose()
+    time.ok()
+        .map(|time| {
+            let duration = system_time_to_duration(&time)?;
+            Ok((duration.as_secs(), duration.subsec_nanos()))
+        })
+        .transpose()
 }
 
 /// Stores a file's metadata in order to avoid code duplication in the different metadata related
@@ -1410,13 +1494,10 @@ impl FileMetadata {
     fn from_path<'tcx, 'mir>(
         ecx: &mut MiriEvalContext<'mir, 'tcx>,
         path: &Path,
-        follow_symlink: bool
+        follow_symlink: bool,
     ) -> InterpResult<'tcx, Option<FileMetadata>> {
-        let metadata = if follow_symlink {
-            std::fs::metadata(path)
-        } else {
-            std::fs::symlink_metadata(path)
-        };
+        let metadata =
+            if follow_symlink { std::fs::metadata(path) } else { std::fs::symlink_metadata(path) };
 
         FileMetadata::from_meta(ecx, metadata)
     }

@@ -16,7 +16,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         this.tcx.sess.warn(
-            "thread support is experimental and incomplete: weak memory effects are not emulated."
+            "thread support is experimental and incomplete: weak memory effects are not emulated.",
         );
 
         // Create the new thread
@@ -31,7 +31,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         )?;
 
         // Read the function argument that will be sent to the new thread
-        // before the thread starts executing since reading after the 
+        // before the thread starts executing since reading after the
         // context switch will incorrectly report a data-race.
         let fn_ptr = this.read_scalar(start_routine)?.check_init()?;
         let func_arg = this.read_immediate(arg)?;
@@ -130,10 +130,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(0)
     }
 
-    fn pthread_setname_np(
-        &mut self,
-        name: Scalar<Tag>,
-    ) -> InterpResult<'tcx> {
+    fn pthread_setname_np(&mut self, name: Scalar<Tag>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "pthread_setname_np");
 

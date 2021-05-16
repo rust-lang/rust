@@ -3,10 +3,10 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
+use std::fmt;
 use std::num::NonZeroU64;
 use std::rc::Rc;
 use std::time::Instant;
-use std::fmt;
 
 use log::trace;
 use rand::rngs::StdRng;
@@ -21,8 +21,8 @@ use rustc_middle::{
         TyCtxt,
     },
 };
-use rustc_span::symbol::{sym, Symbol};
 use rustc_span::def_id::DefId;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::{LayoutOf, Size};
 use rustc_target::spec::abi::Abi;
 
@@ -100,7 +100,7 @@ impl fmt::Display for MiriMemoryKind {
             Env => write!(f, "environment variable"),
             Global => write!(f, "global (static or const)"),
             ExternStatic => write!(f, "extern static"),
-            Tls =>  write!(f, "thread-local static"),
+            Tls => write!(f, "thread-local static"),
         }
     }
 }
@@ -176,11 +176,7 @@ impl MemoryExtra {
     ) {
         let ptr = ptr.assert_ptr();
         assert_eq!(ptr.offset, Size::ZERO);
-        this.memory
-            .extra
-            .extern_statics
-            .try_insert(Symbol::intern(name), ptr.alloc_id)
-            .unwrap();
+        this.memory.extra.extern_statics.try_insert(Symbol::intern(name), ptr.alloc_id).unwrap();
     }
 
     /// Sets up the "extern statics" for this machine.
@@ -196,7 +192,11 @@ impl MemoryExtra {
                 this.write_scalar(Scalar::from_machine_usize(0, this), &place.into())?;
                 Self::add_extern_static(this, "__cxa_thread_atexit_impl", place.ptr);
                 // "environ"
-                Self::add_extern_static(this, "environ", this.machine.env_vars.environ.unwrap().ptr);
+                Self::add_extern_static(
+                    this,
+                    "environ",
+                    this.machine.env_vars.environ.unwrap().ptr,
+                );
             }
             "windows" => {
                 // "_tls_used"
@@ -282,8 +282,8 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
         validate: bool,
         layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>,
     ) -> Self {
-        let layouts = PrimitiveLayouts::new(layout_cx)
-            .expect("Couldn't get layouts of primitive types");
+        let layouts =
+            PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
@@ -476,15 +476,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) =
-            if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
-                let (stacks, base_tag) =
-                    Stacks::new_allocation(id, alloc.size, Rc::clone(stacked_borrows), kind);
-                (Some(stacks), base_tag)
-            } else {
-                // No stacks, no tag.
-                (None, Tag::Untagged)
-            };
+        let (stacks, base_tag) = if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
+            let (stacks, base_tag) =
+                Stacks::new_allocation(id, alloc.size, Rc::clone(stacked_borrows), kind);
+            (Some(stacks), base_tag)
+        } else {
+            // No stacks, no tag.
+            (None, Tag::Untagged)
+        };
         let race_alloc = if let Some(data_race) = &memory_extra.data_race {
             Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size, kind))
         } else {
@@ -518,7 +517,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         Ok(())
     }
 
-    
     fn after_static_mem_initialized(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         ptr: Pointer<Self::PointerTag>,
@@ -545,11 +543,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         kind: mir::RetagKind,
         place: &PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
-        if ecx.memory.extra.stacked_borrows.is_some() {
-            ecx.retag(kind, place)
-        } else {
-            Ok(())
-        }
+        if ecx.memory.extra.stacked_borrows.is_some() { ecx.retag(kind, place) } else { Ok(()) }
     }
 
     #[inline(always)]
@@ -566,24 +560,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     fn stack<'a>(
-        ecx: &'a InterpCx<'mir, 'tcx, Self>
+        ecx: &'a InterpCx<'mir, 'tcx, Self>,
     ) -> &'a [Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>] {
         ecx.active_thread_stack()
     }
 
     fn stack_mut<'a>(
-        ecx: &'a mut InterpCx<'mir, 'tcx, Self>
+        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
     ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::PointerTag, Self::FrameExtra>> {
         ecx.active_thread_stack_mut()
     }
 
     #[inline(always)]
     fn after_stack_push(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        if ecx.memory.extra.stacked_borrows.is_some() {
-            ecx.retag_return_place()
-        } else {
-            Ok(())
-        }
+        if ecx.memory.extra.stacked_borrows.is_some() { ecx.retag_return_place() } else { Ok(()) }
     }
 
     #[inline(always)]

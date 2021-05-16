@@ -1,16 +1,22 @@
-use std::{convert::{TryInto, TryFrom}, iter};
+use std::{
+    convert::{TryFrom, TryInto},
+    iter,
+};
 
 use log::trace;
 
+use rustc_apfloat::Float;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir;
-use rustc_target::{abi::{Align, Size}, spec::{PanicStrategy, abi::Abi}};
 use rustc_middle::ty;
-use rustc_apfloat::Float;
 use rustc_span::symbol::sym;
+use rustc_target::{
+    abi::{Align, Size},
+    spec::{abi::Abi, PanicStrategy},
+};
 
-use crate::*;
 use super::backtrace::EvalContextExt as _;
+use crate::*;
 use helpers::{check_abi, check_arg_count};
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}

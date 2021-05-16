@@ -6,7 +6,7 @@ use log::trace;
 use rand::Rng;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_target::abi::{Size, HasDataLayout};
+use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::*;
 

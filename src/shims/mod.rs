@@ -74,8 +74,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(false);
         }
 
-        let req_align = this
-            .force_bits(this.read_scalar(align_op)?.check_init()?, this.pointer_size())?;
+        let req_align =
+            this.force_bits(this.read_scalar(align_op)?.check_init()?, this.pointer_size())?;
 
         // Stop if the alignment is not a power of two.
         if !req_align.is_power_of_two() {

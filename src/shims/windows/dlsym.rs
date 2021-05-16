@@ -5,8 +5,7 @@ use crate::*;
 use helpers::check_abi;
 
 #[derive(Debug, Copy, Clone)]
-pub enum Dlsym {
-}
+pub enum Dlsym {}
 
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
