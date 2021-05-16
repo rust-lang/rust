@@ -27,7 +27,7 @@ macro_rules! rpc_encode_decode {
     (le $ty:ty) => {
         impl<S> Encode<S> for $ty {
             fn encode(self, w: &mut Writer, _: &mut S) {
-                w.write_all(&self.to_le_bytes()).unwrap();
+                w.extend_from_array(&self.to_le_bytes());
             }
         }
 
