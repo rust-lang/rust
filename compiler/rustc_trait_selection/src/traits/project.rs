@@ -529,15 +529,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // evaluation this is not the case, and dropping the trait
             // evaluations can causes ICEs (e.g., #43132).
             debug!(?ty, "found normalized ty");
-
-            // Once we have inferred everything we need to know, we
-            // can ignore the `obligations` from that point on.
-            if infcx.unresolved_type_vars(&ty.value).is_none() {
-                infcx.inner.borrow_mut().projection_cache().complete_normalized(cache_key, &ty);
-            // No need to extend `obligations`.
-            } else {
-                obligations.extend(ty.obligations);
-            }
+            obligations.extend(ty.obligations);
             return Ok(Some(ty.value));
         }
         Err(ProjectionCacheEntry::Error) => {
