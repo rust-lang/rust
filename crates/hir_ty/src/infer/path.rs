@@ -225,7 +225,7 @@ impl<'a> InferenceContext<'a> {
         method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
-            self.trait_env.clone(),
+            self.table.trait_env.clone(),
             krate,
             &traits_in_scope,
             None,

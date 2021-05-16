@@ -14,7 +14,7 @@
 //! the `ena` crate, which is extracted from rustc.
 
 use std::borrow::Cow;
-use std::mem;
+
 use std::ops::Index;
 use std::sync::Arc;
 
@@ -27,8 +27,8 @@ use hir_def::{
     path::{path, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::TypeRef,
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, Lookup, TraitId,
-    TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule, Lookup,
+    TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name::name};
 use la_arena::ArenaMap;
@@ -36,13 +36,11 @@ use rustc_hash::FxHashMap;
 use stdx::impl_from;
 use syntax::SmolStr;
 
-use super::{
-    DomainGoal, Guidance, InEnvironment, ProjectionTy, Solution, TraitEnvironment, TraitRef, Ty,
-};
+use super::{DomainGoal, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty};
 use crate::{
     db::HirDatabase, fold_tys, infer::diagnostics::InferenceDiagnostic,
-    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Canonical, Interner,
-    TyBuilder, TyExt, TyKind,
+    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Interner, TyBuilder, TyExt,
+    TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -227,8 +225,6 @@ struct InferenceContext<'a> {
     resolver: Resolver,
     table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
-    obligations: Vec<DomainGoal>,
-    last_obligations_check: Option<u32>,
     result: InferenceResult,
     /// The return type of the function being inferred, or the closure if we're
     /// currently within one.
@@ -260,15 +256,15 @@ fn find_breakable<'c>(
 
 impl<'a> InferenceContext<'a> {
     fn new(db: &'a dyn HirDatabase, owner: DefWithBodyId, resolver: Resolver) -> Self {
-        let trait_env =
-            owner.as_generic_def_id().map_or_else(Default::default, |d| db.trait_environment(d));
+        let krate = owner.module(db.upcast()).krate();
+        let trait_env = owner
+            .as_generic_def_id()
+            .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
         InferenceContext {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(db, trait_env.clone()),
-            obligations: Vec::default(),
-            last_obligations_check: None,
-            return_ty: TyKind::Error.intern(&Interner), // set in collect_fn_signature
             trait_env,
+            return_ty: TyKind::Error.intern(&Interner), // set in collect_fn_signature
             db,
             owner,
             body: db.body(owner),
@@ -284,6 +280,7 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_all(mut self) -> InferenceResult {
         // FIXME resolve obligations as well (use Guidance if necessary)
+        self.table.resolve_obligations_as_possible();
 
         // make sure diverging type variables are marked as such
         self.table.propagate_diverging_flag();
@@ -357,44 +354,11 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_obligations_as_possible(&mut self) {
-        let _span = profile::span("resolve_obligations_as_possible");
-
-        let obligations = mem::replace(&mut self.obligations, Vec::new());
-        for obligation in obligations {
-            let in_env = InEnvironment::new(&self.trait_env.env, obligation.clone());
-            let canonicalized = self.canonicalize(in_env);
-            let solution =
-                self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
-
-            match solution {
-                Some(Solution::Unique(canonical_subst)) => {
-                    canonicalized.apply_solution(
-                        self,
-                        Canonical {
-                            binders: canonical_subst.binders,
-                            // FIXME: handle constraints
-                            value: canonical_subst.value.subst,
-                        },
-                    );
-                }
-                Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    canonicalized.apply_solution(self, substs);
-                    self.obligations.push(obligation);
-                }
-                Some(_) => {
-                    // FIXME use this when trying to resolve everything at the end
-                    self.obligations.push(obligation);
-                }
-                None => {
-                    // FIXME obligation cannot be fulfilled => diagnostic
-                }
-            };
-        }
+        self.table.resolve_obligations_as_possible();
     }
 
     fn push_obligation(&mut self, o: DomainGoal) {
-        self.obligations.push(o);
-        self.last_obligations_check = None;
+        self.table.register_obligation(o.cast(&Interner));
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -467,25 +431,7 @@ impl<'a> InferenceContext<'a> {
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
     fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
-        let ty = self.resolve_ty_as_possible(ty);
-        fold_tys(
-            ty,
-            |ty, _| match ty.kind(&Interner) {
-                TyKind::Alias(AliasTy::Projection(proj_ty)) => {
-                    self.normalize_projection_ty(proj_ty.clone())
-                }
-                _ => ty,
-            },
-            DebruijnIndex::INNERMOST,
-        )
-    }
-
-    fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
-        let var = self.table.new_type_var();
-        let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
-        let obligation = alias_eq.cast(&Interner);
-        self.push_obligation(obligation);
-        var
+        self.table.normalize_associated_types_in(ty)
     }
 
     fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<VariantId>) {

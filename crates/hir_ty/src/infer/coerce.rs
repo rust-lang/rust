@@ -402,12 +402,15 @@ impl<'a> InferenceContext<'a> {
         // solve `CoerceUnsized` and `Unsize` goals at this point and leaves the
         // rest for later. Also, there's some logic about sized type variables.
         // Need to find out in what cases this is necessary
-        let solution = self.db.trait_solve(krate, canonicalized.value.clone()).ok_or(TypeError)?;
+        let solution = self
+            .db
+            .trait_solve(krate, canonicalized.value.clone().cast(&Interner))
+            .ok_or(TypeError)?;
 
         match solution {
             Solution::Unique(v) => {
                 canonicalized.apply_solution(
-                    self,
+                    &mut self.table,
                     Canonical {
                         binders: v.binders,
                         // FIXME handle constraints

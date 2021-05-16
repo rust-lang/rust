@@ -134,14 +134,14 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn trait_solve(
         &self,
         krate: CrateId,
-        goal: crate::Canonical<crate::InEnvironment<crate::DomainGoal>>,
+        goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
     ) -> Option<crate::Solution>;
 
     #[salsa::invoke(crate::traits::trait_solve_query)]
     fn trait_solve_query(
         &self,
         krate: CrateId,
-        goal: crate::Canonical<crate::InEnvironment<crate::DomainGoal>>,
+        goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
     ) -> Option<crate::Solution>;
 
     #[salsa::invoke(chalk_db::program_clauses_for_chalk_env_query)]
@@ -168,7 +168,7 @@ fn infer_wait(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> 
 fn trait_solve_wait(
     db: &dyn HirDatabase,
     krate: CrateId,
-    goal: crate::Canonical<crate::InEnvironment<crate::DomainGoal>>,
+    goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
 ) -> Option<crate::Solution> {
     let _p = profile::span("trait_solve::wait");
     db.trait_solve_query(krate, goal)

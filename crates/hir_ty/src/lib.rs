@@ -45,7 +45,7 @@ use hir_def::{
 };
 use stdx::always;
 
-use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
+use crate::{db::HirDatabase, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
@@ -114,6 +114,7 @@ pub type FnSig = chalk_ir::FnSig<Interner>;
 
 pub type InEnvironment<T> = chalk_ir::InEnvironment<T>;
 pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
+pub type Goal = chalk_ir::Goal<Interner>;
 pub type AliasEq = chalk_ir::AliasEq<Interner>;
 pub type Solution = chalk_solve::Solution<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;

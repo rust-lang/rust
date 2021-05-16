@@ -99,9 +99,9 @@ impl<'a> InferenceContext<'a> {
             environment: trait_env,
         };
         let canonical = self.canonicalize(obligation.clone());
-        if self.db.trait_solve(krate, canonical.value).is_some() {
+        if self.db.trait_solve(krate, canonical.value.cast(&Interner)).is_some() {
             self.push_obligation(obligation.goal);
-            let return_ty = self.normalize_projection_ty(projection);
+            let return_ty = self.table.normalize_projection_ty(projection);
             Some((arg_tys, return_ty))
         } else {
             None
@@ -306,7 +306,7 @@ impl<'a> InferenceContext<'a> {
                     self.resolver.krate(),
                     InEnvironment {
                         goal: canonicalized.value.clone(),
-                        environment: self.trait_env.env.clone(),
+                        environment: self.table.trait_env.env.clone(),
                     },
                 );
                 let (param_tys, ret_ty): (Vec<Ty>, Ty) = derefs

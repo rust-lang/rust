@@ -1035,9 +1035,11 @@ pub(crate) fn trait_environment_query(
         clauses.push(program_clause.into_from_env_clause(&Interner));
     }
 
+    let krate = def.module(db.upcast()).krate();
+
     let env = chalk_ir::Environment::new(&Interner).add_clauses(&Interner, clauses);
 
-    Arc::new(TraitEnvironment { traits_from_clauses: traits_in_scope, env })
+    Arc::new(TraitEnvironment { krate, traits_from_clauses: traits_in_scope, env })
 }
 
 /// Resolve the where clause(s) of an item with generics.

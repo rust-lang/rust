@@ -1,6 +1,6 @@
 //! Unification and canonicalization logic.
 
-use std::{borrow::Cow, fmt, sync::Arc};
+use std::{borrow::Cow, fmt, mem, sync::Arc};
 
 use chalk_ir::{
     cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, FloatTy, IntTy, TyVariableKind,
@@ -11,8 +11,9 @@ use ena::unify::UnifyKey;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
-    db::HirDatabase, fold_tys, static_lifetime, BoundVar, Canonical, DebruijnIndex, GenericArg,
-    InferenceVar, Interner, Scalar, Substitution, TraitEnvironment, Ty, TyKind, VariableKind,
+    db::HirDatabase, fold_tys, static_lifetime, AliasEq, AliasTy, BoundVar, Canonical,
+    DebruijnIndex, GenericArg, Goal, Guidance, InEnvironment, InferenceVar, Interner, ProjectionTy,
+    Scalar, Solution, Substitution, TraitEnvironment, Ty, TyKind, VariableKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -23,17 +24,11 @@ impl<'a> InferenceContext<'a> {
     where
         T::Result: HasInterner<Interner = Interner>,
     {
-        let result = self.table.var_unification_table.canonicalize(&Interner, t);
-        let free_vars = result
-            .free_vars
-            .into_iter()
-            .map(|free_var| free_var.to_generic_arg(&Interner))
-            .collect();
-        Canonicalized { value: result.quantified, free_vars }
+        self.table.canonicalize(t)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct Canonicalized<T>
 where
     T: HasInterner<Interner = Interner>,
@@ -49,22 +44,16 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
 
     pub(super) fn apply_solution(
         &self,
-        ctx: &mut InferenceContext<'_>,
+        ctx: &mut InferenceTable,
         solution: Canonical<Substitution>,
     ) {
         // the solution may contain new variables, which we need to convert to new inference vars
         let new_vars = Substitution::from_iter(
             &Interner,
             solution.binders.iter(&Interner).map(|k| match k.kind {
-                VariableKind::Ty(TyVariableKind::General) => {
-                    ctx.table.new_type_var().cast(&Interner)
-                }
-                VariableKind::Ty(TyVariableKind::Integer) => {
-                    ctx.table.new_integer_var().cast(&Interner)
-                }
-                VariableKind::Ty(TyVariableKind::Float) => {
-                    ctx.table.new_float_var().cast(&Interner)
-                }
+                VariableKind::Ty(TyVariableKind::General) => ctx.new_type_var().cast(&Interner),
+                VariableKind::Ty(TyVariableKind::Integer) => ctx.new_integer_var().cast(&Interner),
+                VariableKind::Ty(TyVariableKind::Float) => ctx.new_float_var().cast(&Interner),
                 // Chalk can sometimes return new lifetime variables. We just use the static lifetime everywhere
                 VariableKind::Lifetime => static_lifetime().cast(&Interner),
                 _ => panic!("const variable in solution"),
@@ -76,9 +65,9 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
                 // eagerly replace projections in the type; we may be getting types
                 // e.g. from where clauses where this hasn't happened yet
                 let ty = ctx.normalize_associated_types_in(new_vars.apply(ty.clone(), &Interner));
-                ctx.table.unify(var.assert_ty_ref(&Interner), &ty);
+                ctx.unify(var.assert_ty_ref(&Interner), &ty);
             } else {
-                let _ = ctx.table.unify_inner(&var, &new_vars.apply(v.clone(), &Interner));
+                let _ = ctx.unify_inner(&var, &new_vars.apply(v.clone(), &Interner));
             }
         }
     }
@@ -167,10 +156,11 @@ type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
 
 #[derive(Clone)]
 pub(crate) struct InferenceTable<'a> {
-    db: &'a dyn HirDatabase,
-    trait_env: Arc<TraitEnvironment>,
+    pub db: &'a dyn HirDatabase,
+    pub trait_env: Arc<TraitEnvironment>,
     pub(super) var_unification_table: ChalkInferenceTable,
     pub(super) type_variable_table: TypeVariableTable,
+    pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
 impl<'a> InferenceTable<'a> {
@@ -180,6 +170,7 @@ impl<'a> InferenceTable<'a> {
             trait_env,
             var_unification_table: ChalkInferenceTable::new(),
             type_variable_table: TypeVariableTable { inner: Vec::new() },
+            pending_obligations: Vec::new(),
         }
     }
 
@@ -200,6 +191,50 @@ impl<'a> InferenceTable<'a> {
                 data.diverging = true;
             }
         }
+    }
+
+    pub(super) fn canonicalize<T: Fold<Interner> + HasInterner<Interner = Interner>>(
+        &mut self,
+        t: T,
+    ) -> Canonicalized<T::Result>
+    where
+        T::Result: HasInterner<Interner = Interner>,
+    {
+        let result = self.var_unification_table.canonicalize(&Interner, t);
+        let free_vars = result
+            .free_vars
+            .into_iter()
+            .map(|free_var| free_var.to_generic_arg(&Interner))
+            .collect();
+        Canonicalized { value: result.quantified, free_vars }
+    }
+
+    /// Recurses through the given type, normalizing associated types mentioned
+    /// in it by replacing them by type variables and registering obligations to
+    /// resolve later. This should be done once for every type we get from some
+    /// type annotation (e.g. from a let type annotation, field type or function
+    /// call). `make_ty` handles this already, but e.g. for field types we need
+    /// to do it as well.
+    pub(super) fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
+        let ty = self.resolve_ty_as_possible(ty);
+        fold_tys(
+            ty,
+            |ty, _| match ty.kind(&Interner) {
+                TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                    self.normalize_projection_ty(proj_ty.clone())
+                }
+                _ => ty,
+            },
+            DebruijnIndex::INNERMOST,
+        )
+    }
+
+    pub(super) fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
+        let var = self.new_type_var();
+        let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
+        let obligation = alias_eq.cast(&Interner);
+        self.register_obligation(obligation);
+        var
     }
 
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
@@ -340,6 +375,94 @@ impl<'a> InferenceTable<'a> {
             },
             DebruijnIndex::INNERMOST,
         )
+    }
+
+    pub fn register_obligation(&mut self, goal: Goal) {
+        let in_env = InEnvironment::new(&self.trait_env.env, goal);
+        self.register_obligation_in_env(in_env)
+    }
+
+    fn register_obligation_in_env(&mut self, goal: InEnvironment<Goal>) {
+        let canonicalized = self.canonicalize(goal);
+        if !self.try_resolve_obligation(&canonicalized) {
+            self.pending_obligations.push(canonicalized);
+        }
+    }
+
+    pub fn resolve_obligations_as_possible(&mut self) {
+        let _span = profile::span("resolve_obligations_as_possible");
+        let mut changed = true;
+        let mut obligations = Vec::new();
+        while changed {
+            changed = false;
+            mem::swap(&mut self.pending_obligations, &mut obligations);
+            for canonicalized in obligations.drain(..) {
+                if !self.check_changed(&canonicalized) {
+                    self.pending_obligations.push(canonicalized);
+                    continue;
+                }
+                changed = true;
+                let uncanonical = chalk_ir::Substitute::apply(
+                    &canonicalized.free_vars,
+                    canonicalized.value.value,
+                    &Interner,
+                );
+                self.register_obligation_in_env(uncanonical);
+            }
+        }
+    }
+
+    /// This checks whether any of the free variables in the `canonicalized`
+    /// have changed (either been unified with another variable, or with a
+    /// value). If this is not the case, we don't need to try to solve the goal
+    /// again -- it'll give the same result as last time.
+    fn check_changed(&mut self, canonicalized: &Canonicalized<InEnvironment<Goal>>) -> bool {
+        canonicalized.free_vars.iter().any(|var| {
+            let iv = match var.data(&Interner) {
+                chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(&Interner),
+                chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(&Interner),
+                chalk_ir::GenericArgData::Const(c) => c.inference_var(&Interner),
+            }
+            .expect("free var is not inference var");
+            if self.var_unification_table.probe_var(iv).is_some() {
+                return true;
+            }
+            let root = self.var_unification_table.inference_var_root(iv);
+            iv != root
+        })
+    }
+
+    fn try_resolve_obligation(
+        &mut self,
+        canonicalized: &Canonicalized<InEnvironment<Goal>>,
+    ) -> bool {
+        let solution = self.db.trait_solve(self.trait_env.krate, canonicalized.value.clone());
+
+        match solution {
+            Some(Solution::Unique(canonical_subst)) => {
+                canonicalized.apply_solution(
+                    self,
+                    Canonical {
+                        binders: canonical_subst.binders,
+                        // FIXME: handle constraints
+                        value: canonical_subst.value.subst,
+                    },
+                );
+                true
+            }
+            Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                canonicalized.apply_solution(self, substs);
+                false
+            }
+            Some(_) => {
+                // FIXME use this when trying to resolve everything at the end
+                false
+            }
+            None => {
+                // FIXME obligation cannot be fulfilled => diagnostic
+                true
+            }
+        }
     }
 }
 

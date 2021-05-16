@@ -1712,15 +1712,17 @@ impl Type {
         resolver: &Resolver,
         ty: Ty,
     ) -> Type {
-        let environment =
-            resolver.generic_def().map_or_else(Default::default, |d| db.trait_environment(d));
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
         Type { krate, env: environment, ty }
     }
 
     fn new(db: &dyn HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
-        let environment =
-            resolver.generic_def().map_or_else(Default::default, |d| db.trait_environment(d));
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
         Type { krate, env: environment, ty }
     }
 

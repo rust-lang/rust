@@ -577,6 +577,7 @@ fn iterate_method_candidates_by_receiver(
         if iterate_inherent_methods(
             self_ty,
             db,
+            env.clone(),
             name,
             Some(receiver_ty),
             krate,
@@ -613,8 +614,16 @@ fn iterate_method_candidates_for_self_ty(
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Ty, AssocItemId) -> bool,
 ) -> bool {
-    if iterate_inherent_methods(self_ty, db, name, None, krate, visible_from_module, &mut callback)
-    {
+    if iterate_inherent_methods(
+        self_ty,
+        db,
+        env.clone(),
+        name,
+        None,
+        krate,
+        visible_from_module,
+        &mut callback,
+    ) {
         return true;
     }
     iterate_trait_method_candidates(self_ty, db, env, krate, traits_in_scope, name, None, callback)
@@ -653,12 +662,12 @@ fn iterate_trait_method_candidates(
         for (_name, item) in data.items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
-            if !is_valid_candidate(db, name, receiver_ty, *item, self_ty, None) {
+            if !is_valid_candidate(db, env.clone(), name, receiver_ty, *item, self_ty, None) {
                 continue;
             }
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, self_ty.clone());
-                if db.trait_solve(krate, goal).is_none() {
+                if db.trait_solve(krate, goal.cast(&Interner)).is_none() {
                     continue 'traits;
                 }
             }
@@ -675,6 +684,7 @@ fn iterate_trait_method_candidates(
 fn iterate_inherent_methods(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
@@ -690,14 +700,24 @@ fn iterate_inherent_methods(
 
         for &impl_def in impls.for_self_ty(&self_ty.value) {
             for &item in db.impl_data(impl_def).items.iter() {
-                if !is_valid_candidate(db, name, receiver_ty, item, self_ty, visible_from_module) {
+                if !is_valid_candidate(
+                    db,
+                    env.clone(),
+                    name,
+                    receiver_ty,
+                    item,
+                    self_ty,
+                    visible_from_module,
+                ) {
                     continue;
                 }
                 // we have to check whether the self type unifies with the type
                 // that the impl is for. If we have a receiver type, this
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
-                if receiver_ty.is_none() && inherent_impl_substs(db, impl_def, self_ty).is_none() {
+                if receiver_ty.is_none()
+                    && inherent_impl_substs(db, env.clone(), impl_def, self_ty).is_none()
+                {
                     cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
@@ -722,7 +742,7 @@ pub fn resolve_indexing_op(
     let deref_chain = autoderef_method_receiver(db, krate, ty);
     for ty in deref_chain {
         let goal = generic_implements_goal(db, env.clone(), index_trait, ty.clone());
-        if db.trait_solve(krate, goal).is_some() {
+        if db.trait_solve(krate, goal.cast(&Interner)).is_some() {
             return Some(ty);
         }
     }
@@ -731,6 +751,7 @@ pub fn resolve_indexing_op(
 
 fn is_valid_candidate(
     db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     item: AssocItemId,
@@ -749,7 +770,7 @@ fn is_valid_candidate(
                 if !data.has_self_param() {
                     return false;
                 }
-                let transformed_receiver_ty = match transform_receiver_ty(db, m, self_ty) {
+                let transformed_receiver_ty = match transform_receiver_ty(db, env, m, self_ty) {
                     Some(ty) => ty,
                     None => return false,
                 };
@@ -776,6 +797,7 @@ fn is_valid_candidate(
 
 pub(crate) fn inherent_impl_substs(
     db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
     impl_id: ImplId,
     self_ty: &Canonical<Ty>,
 ) -> Option<Substitution> {
@@ -798,8 +820,7 @@ pub(crate) fn inherent_impl_substs(
         binders: CanonicalVarKinds::from_iter(&Interner, kinds),
         value: (self_ty_with_vars, self_ty.value.clone()),
     };
-    let trait_env = Arc::new(TraitEnvironment::default()); // FIXME
-    let substs = super::infer::unify(db, trait_env, &tys)?;
+    let substs = super::infer::unify(db, env, &tys)?;
     // We only want the substs for the vars we added, not the ones from self_ty.
     // Also, if any of the vars we added are still in there, we replace them by
     // Unknown. I think this can only really happen if self_ty contained
@@ -824,6 +845,7 @@ fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution
 
 fn transform_receiver_ty(
     db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
     function_id: FunctionId,
     self_ty: &Canonical<Ty>,
 ) -> Option<Ty> {
@@ -833,7 +855,7 @@ fn transform_receiver_ty(
             .fill_with_unknown()
             .build(),
         AssocContainerId::ImplId(impl_id) => {
-            let impl_substs = inherent_impl_substs(db, impl_id, &self_ty)?;
+            let impl_substs = inherent_impl_substs(db, env, impl_id, &self_ty)?;
             TyBuilder::subst_for_def(db, function_id)
                 .use_parent_substs(&impl_substs)
                 .fill_with_unknown()
@@ -853,7 +875,7 @@ pub fn implements_trait(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal);
+    let solution = db.trait_solve(krate, goal.cast(&Interner));
 
     solution.is_some()
 }
@@ -866,7 +888,7 @@ pub fn implements_trait_unique(
     trait_: TraitId,
 ) -> bool {
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal);
+    let solution = db.trait_solve(krate, goal.cast(&Interner));
 
     matches!(solution, Some(crate::Solution::Unique(_)))
 }
