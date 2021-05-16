@@ -1,3 +1,4 @@
-use_small_heuristics = "Max"
 version = "Two"
+use_small_heuristics = "Max"
 match_arm_blocks = false
+match_arm_leading_pipes = "Preserve"

@@ -1,12 +1,12 @@
 use std::env;
 use std::ffi::OsString;
+use std::fmt::Write as _;
 use std::fs::{self, File};
-use std::iter::TakeWhile;
 use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
+use std::iter::TakeWhile;
 use std::ops::Not;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fmt::{Write as _};
 
 use serde::{Deserialize, Serialize};
 
@@ -95,7 +95,8 @@ fn show_version() {
     // Only use `option_env` on vergen variables to ensure the build succeeds
     // when vergen failed to find the git info.
     if let Some(sha) = option_env!("VERGEN_GIT_SHA_SHORT") {
-        write!(&mut version, " ({} {})", sha, option_env!("VERGEN_GIT_COMMIT_DATE").unwrap()).unwrap();
+        write!(&mut version, " ({} {})", sha, option_env!("VERGEN_GIT_COMMIT_DATE").unwrap())
+            .unwrap();
     }
     println!("{}", version);
 }
@@ -168,8 +169,7 @@ fn forward_patched_extern_arg(args: &mut impl Iterator<Item = String>, cmd: &mut
 }
 
 fn forward_miri_sysroot(cmd: &mut Command) {
-    let sysroot =
-        env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
+    let sysroot = env::var_os("MIRI_SYSROOT").expect("the wrapper should have set MIRI_SYSROOT");
     cmd.arg("--sysroot");
     cmd.arg(sysroot);
 }
@@ -471,7 +471,9 @@ fn phase_cargo_miri(mut args: env::Args) {
         Some("run") => MiriCommand::Run,
         Some("setup") => MiriCommand::Setup,
         // Invalid command.
-        _ => show_error(format!("`cargo miri` supports the following subcommands: `run`, `test`, and `setup`.")),
+        _ => show_error(format!(
+            "`cargo miri` supports the following subcommands: `run`, `test`, and `setup`."
+        )),
     };
     let verbose = has_arg_flag("-v");
 
@@ -515,13 +517,14 @@ fn phase_cargo_miri(mut args: env::Args) {
     // i.e., the first argument is `rustc` -- which is what we use in `main` to distinguish
     // the two codepaths. (That extra argument is why we prefer this over setting `RUSTC`.)
     if env::var_os("RUSTC_WRAPPER").is_some() {
-        println!("WARNING: Ignoring `RUSTC_WRAPPER` environment variable, Miri does not support wrapping.");
+        println!(
+            "WARNING: Ignoring `RUSTC_WRAPPER` environment variable, Miri does not support wrapping."
+        );
     }
     cmd.env("RUSTC_WRAPPER", &cargo_miri_path);
 
-    let runner_env_name = |triple: &str| {
-        format!("CARGO_TARGET_{}_RUNNER", triple.to_uppercase().replace('-', "_"))
-    };
+    let runner_env_name =
+        |triple: &str| format!("CARGO_TARGET_{}_RUNNER", triple.to_uppercase().replace('-', "_"));
     let host_runner_env_name = runner_env_name(&host);
     let target_runner_env_name = runner_env_name(target);
     // Set the target runner to us, so we can interpret the binaries.
@@ -628,7 +631,10 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
     let runnable_crate = !print && is_runnable_crate();
 
     if runnable_crate && target_crate {
-        assert!(phase != RustcPhase::Setup, "there should be no interpretation during sysroot build");
+        assert!(
+            phase != RustcPhase::Setup,
+            "there should be no interpretation during sysroot build"
+        );
         let inside_rustdoc = phase == RustcPhase::Rustdoc;
         // This is the binary or test crate that we want to interpret under Miri.
         // But we cannot run it here, as cargo invoked us as a compiler -- our stdin and stdout are not
@@ -657,7 +663,10 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
             cmd.env("MIRI_BE_RUSTC", "target");
 
             if verbose {
-                eprintln!("[cargo-miri rustc] captured input:\n{}", std::str::from_utf8(&env.stdin).unwrap());
+                eprintln!(
+                    "[cargo-miri rustc] captured input:\n{}",
+                    std::str::from_utf8(&env.stdin).unwrap()
+                );
                 eprintln!("[cargo-miri rustc] {:?}", cmd);
             }
 
@@ -715,7 +724,9 @@ fn phase_rustc(mut args: env::Args, phase: RustcPhase) {
         }
 
         // During setup, patch the panic runtime for `libpanic_abort` (mirroring what bootstrap usually does).
-        if phase == RustcPhase::Setup && get_arg_flag_value("--crate-name").as_deref() == Some("panic_abort") {
+        if phase == RustcPhase::Setup
+            && get_arg_flag_value("--crate-name").as_deref() == Some("panic_abort")
+        {
             cmd.arg("-C").arg("panic=abort");
         }
     } else {
@@ -765,12 +776,18 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
         .unwrap_or_else(|_| show_error(format!("file {:?} not found or `cargo-miri` invoked incorrectly; please only invoke this binary through `cargo miri`", binary)));
     let file = BufReader::new(file);
 
-    let info = serde_json::from_reader(file)
-        .unwrap_or_else(|_| show_error(format!("file {:?} contains outdated or invalid JSON; try `cargo clean`", binary)));
+    let info = serde_json::from_reader(file).unwrap_or_else(|_| {
+        show_error(format!(
+            "file {:?} contains outdated or invalid JSON; try `cargo clean`",
+            binary
+        ))
+    });
     let info = match info {
         CrateRunInfo::RunWith(info) => info,
         CrateRunInfo::SkipProcMacroTest => {
-            eprintln!("Running unit tests of `proc-macro` crates is not currently supported by Miri.");
+            eprintln!(
+                "Running unit tests of `proc-macro` crates is not currently supported by Miri."
+            );
             return;
         }
     };
@@ -783,7 +800,10 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
         if verbose {
             if let Some(old_val) = env::var_os(&name) {
                 if old_val != val {
-                    eprintln!("[cargo-miri runner] Overwriting run-time env var {:?}={:?} with build-time value {:?}", name, old_val, val);
+                    eprintln!(
+                        "[cargo-miri runner] Overwriting run-time env var {:?}={:?} with build-time value {:?}",
+                        name, old_val, val
+                    );
                 }
             }
         }
@@ -822,11 +842,7 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
     // Respect `MIRIFLAGS`.
     if let Ok(a) = env::var("MIRIFLAGS") {
         // This code is taken from `RUSTFLAGS` handling in cargo.
-        let args = a
-            .split(' ')
-            .map(str::trim)
-            .filter(|s| !s.is_empty())
-            .map(str::to_string);
+        let args = a.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string);
         cmd.args(args);
     }
 
@@ -845,12 +861,8 @@ fn phase_runner(binary: &Path, binary_args: env::Args, phase: RunnerPhase) {
     }
 
     match phase {
-        RunnerPhase::Rustdoc => {
-            exec_with_pipe(cmd, &info.stdin)
-        }
-        RunnerPhase::Cargo => {
-            exec(cmd)
-        }
+        RunnerPhase::Rustdoc => exec_with_pipe(cmd, &info.stdin),
+        RunnerPhase::Cargo => exec(cmd),
     }
 }
 
@@ -946,7 +958,10 @@ fn main() {
             if binary.exists() {
                 phase_runner(binary, args, RunnerPhase::Rustdoc);
             } else {
-                show_error(format!("`cargo-miri` called with non-existing path argument `{}` in rustdoc mode; please invoke this binary through `cargo miri`", arg));
+                show_error(format!(
+                    "`cargo-miri` called with non-existing path argument `{}` in rustdoc mode; please invoke this binary through `cargo miri`",
+                    arg
+                ));
             }
         } else {
             phase_rustc(args, RustcPhase::Rustdoc);
@@ -977,9 +992,14 @@ fn main() {
             } else if arg.starts_with("--") {
                 phase_rustdoc(arg, args);
             } else {
-                show_error(format!("`cargo-miri` called with unexpected first argument `{}`; please only invoke this binary through `cargo miri`", arg));
+                show_error(format!(
+                    "`cargo-miri` called with unexpected first argument `{}`; please only invoke this binary through `cargo miri`",
+                    arg
+                ));
             }
         }
-        _ => show_error(format!("`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`")),
+        _ => show_error(format!(
+            "`cargo-miri` called without first argument; please only invoke this binary through `cargo miri`"
+        )),
     }
 }
