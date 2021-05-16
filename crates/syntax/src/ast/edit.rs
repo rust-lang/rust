@@ -29,38 +29,6 @@ impl ast::BinExpr {
     }
 }
 
-fn make_multiline<N>(node: N) -> N
-where
-    N: AstNode + Clone,
-{
-    let l_curly = match node.syntax().children_with_tokens().find(|it| it.kind() == T!['{']) {
-        Some(it) => it,
-        None => return node,
-    };
-    let sibling = match l_curly.next_sibling_or_token() {
-        Some(it) => it,
-        None => return node,
-    };
-    let existing_ws = match sibling.as_token() {
-        None => None,
-        Some(tok) if tok.kind() != WHITESPACE => None,
-        Some(ws) => {
-            if ws.text().contains('\n') {
-                return node;
-            }
-            Some(ws.clone())
-        }
-    };
-
-    let indent = leading_indent(node.syntax()).unwrap_or_default();
-    let ws = tokens::WsBuilder::new(&format!("\n{}", indent));
-    let to_insert = iter::once(ws.ws().into());
-    match existing_ws {
-        None => node.insert_children(InsertPosition::After(l_curly), to_insert),
-        Some(ws) => node.replace_children(single_node(ws), to_insert),
-    }
-}
-
 impl ast::RecordExprFieldList {
     #[must_use]
     pub fn append_field(&self, field: &ast::RecordExprField) -> ast::RecordExprFieldList {
@@ -211,79 +179,6 @@ impl ast::UseTree {
             }
             Some(res)
         }
-    }
-}
-
-impl ast::MatchArmList {
-    #[must_use]
-    pub fn append_arms(&self, items: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
-        let mut res = self.clone();
-        res = res.strip_if_only_whitespace();
-        if !res.syntax().text().contains_char('\n') {
-            res = make_multiline(res);
-        }
-        items.into_iter().for_each(|it| res = res.append_arm(it));
-        res
-    }
-
-    fn strip_if_only_whitespace(&self) -> ast::MatchArmList {
-        let mut iter = self.syntax().children_with_tokens().skip_while(|it| it.kind() != T!['{']);
-        iter.next(); // Eat the curly
-        let mut inner = iter.take_while(|it| it.kind() != T!['}']);
-        if !inner.clone().all(|it| it.kind() == WHITESPACE) {
-            return self.clone();
-        }
-        let start = match inner.next() {
-            Some(s) => s,
-            None => return self.clone(),
-        };
-        let end = match inner.last() {
-            Some(s) => s,
-            None => start.clone(),
-        };
-        self.replace_children(start..=end, &mut iter::empty())
-    }
-
-    #[must_use]
-    pub fn remove_placeholder(&self) -> ast::MatchArmList {
-        let placeholder =
-            self.arms().find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
-        if let Some(placeholder) = placeholder {
-            self.remove_arm(&placeholder)
-        } else {
-            self.clone()
-        }
-    }
-
-    #[must_use]
-    fn remove_arm(&self, arm: &ast::MatchArm) -> ast::MatchArmList {
-        let start = arm.syntax().clone();
-        let end = if let Some(comma) = start
-            .siblings_with_tokens(Direction::Next)
-            .skip(1)
-            .find(|it| !it.kind().is_trivia())
-            .filter(|it| it.kind() == T![,])
-        {
-            comma
-        } else {
-            start.clone().into()
-        };
-        self.replace_children(start.into()..=end, None)
-    }
-
-    #[must_use]
-    pub fn append_arm(&self, item: ast::MatchArm) -> ast::MatchArmList {
-        let r_curly = match self.syntax().children_with_tokens().find(|it| it.kind() == T!['}']) {
-            Some(t) => t,
-            None => return self.clone(),
-        };
-        let position = InsertPosition::Before(r_curly);
-        let arm_ws = tokens::WsBuilder::new("    ");
-        let match_indent = &leading_indent(self.syntax()).unwrap_or_default();
-        let match_ws = tokens::WsBuilder::new(&format!("\n{}", match_indent));
-        let to_insert: ArrayVec<SyntaxElement, 3> =
-            [arm_ws.ws().into(), item.syntax().clone().into(), match_ws.ws().into()].into();
-        self.insert_children(position, to_insert)
     }
 }
 

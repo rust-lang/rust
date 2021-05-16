@@ -71,6 +71,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             .filter_map(|variant| build_pat(ctx.db(), module, variant))
             .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat))
             .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
+            .map(|it| it.clone_for_update())
             .collect::<Vec<_>>();
         if Some(enum_def)
             == FamousDefs(&ctx.sema, Some(module.krate()))
@@ -99,6 +100,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
             })
             .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat))
             .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
+            .map(|it| it.clone_for_update())
             .collect()
     } else {
         return None;
@@ -114,10 +116,20 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
         "Fill match arms",
         target,
         |builder| {
-            let new_arm_list = match_arm_list.remove_placeholder();
-            let n_old_arms = new_arm_list.arms().count();
-            let new_arm_list = new_arm_list.append_arms(missing_arms);
-            let first_new_arm = new_arm_list.arms().nth(n_old_arms);
+            let new_match_arm_list = match_arm_list.clone_for_update();
+
+            let catch_all_arm = new_match_arm_list
+                .arms()
+                .find(|arm| matches!(arm.pat(), Some(ast::Pat::WildcardPat(_))));
+            if let Some(arm) = catch_all_arm {
+                arm.remove()
+            }
+            let mut first_new_arm = None;
+            for arm in missing_arms {
+                first_new_arm.get_or_insert_with(|| arm.clone());
+                new_match_arm_list.add_arm(arm);
+            }
+
             let old_range = ctx.sema.original_range(match_arm_list.syntax()).range;
             match (first_new_arm, ctx.config.snippet_cap) {
                 (Some(first_new_arm), Some(cap)) => {
@@ -131,10 +143,10 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
                             }
                             None => Cursor::Before(first_new_arm.syntax()),
                         };
-                    let snippet = render_snippet(cap, new_arm_list.syntax(), cursor);
+                    let snippet = render_snippet(cap, new_match_arm_list.syntax(), cursor);
                     builder.replace_snippet(cap, old_range, snippet);
                 }
-                _ => builder.replace(old_range, new_arm_list.to_string()),
+                _ => builder.replace(old_range, new_match_arm_list.to_string()),
             }
         },
     )
@@ -919,8 +931,8 @@ fn main() {
                 match a {
                     // foo bar baz
                     A::One => {}
-                    // This is where the rest should be
                     $0A::Two => {}
+                    // This is where the rest should be
                 }
             }
             "#,
@@ -943,9 +955,9 @@ fn main() {
             enum A { One, Two }
             fn foo(a: A) {
                 match a {
-                    // foo bar baz
                     $0A::One => {}
                     A::Two => {}
+                    // foo bar baz
                 }
             }
             "#,

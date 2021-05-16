@@ -13,7 +13,7 @@ use crate::{
         make, GenericParamsOwner,
     },
     ted::{self, Position},
-    AstNode, AstToken, Direction,
+    AstNode, AstToken, Direction, SyntaxNode,
 };
 
 use super::NameOwner;
@@ -297,7 +297,7 @@ impl ast::AssocItemList {
             ),
             None => match self.l_curly_token() {
                 Some(l_curly) => {
-                    self.normalize_ws_between_braces();
+                    normalize_ws_between_braces(self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
                 }
                 None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
@@ -308,25 +308,6 @@ impl ast::AssocItemList {
             item.syntax().clone().into(),
         ];
         ted::insert_all(position, elements);
-    }
-
-    fn normalize_ws_between_braces(&self) -> Option<()> {
-        let l = self.l_curly_token()?;
-        let r = self.r_curly_token()?;
-        let indent = IndentLevel::from_node(self.syntax());
-
-        match l.next_sibling_or_token() {
-            Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
-                if ws.next_sibling_or_token()?.into_token()? == r {
-                    ted::replace(ws, make::tokens::whitespace(&format!("\n{}", indent)));
-                }
-            }
-            Some(ws) if ws.kind() == T!['}'] => {
-                ted::insert(Position::after(l), make::tokens::whitespace(&format!("\n{}", indent)));
-            }
-            _ => (),
-        }
-        Some(())
     }
 }
 
@@ -344,6 +325,73 @@ impl ast::Fn {
         }
         self.body().unwrap()
     }
+}
+
+impl ast::MatchArm {
+    pub fn remove(&self) {
+        if let Some(sibling) = self.syntax().prev_sibling_or_token() {
+            if sibling.kind() == SyntaxKind::WHITESPACE {
+                ted::remove(sibling);
+            }
+        }
+        if let Some(sibling) = self.syntax().next_sibling_or_token() {
+            if sibling.kind() == T![,] {
+                ted::remove(sibling);
+            }
+        }
+        ted::remove(self.syntax());
+    }
+}
+
+impl ast::MatchArmList {
+    pub fn add_arm(&self, arm: ast::MatchArm) {
+        normalize_ws_between_braces(self.syntax());
+        let position = match self.arms().last() {
+            Some(last_arm) => {
+                let curly = last_arm
+                    .syntax()
+                    .siblings_with_tokens(Direction::Next)
+                    .find(|it| it.kind() == T![,]);
+                Position::after(curly.unwrap_or_else(|| last_arm.syntax().clone().into()))
+            }
+            None => match self.l_curly_token() {
+                Some(it) => Position::after(it),
+                None => Position::last_child_of(self.syntax()),
+            },
+        };
+        let indent = IndentLevel::from_node(self.syntax()) + 1;
+        let elements = vec![
+            make::tokens::whitespace(&format!("\n{}", indent)).into(),
+            arm.syntax().clone().into(),
+        ];
+        ted::insert_all(position, elements);
+    }
+}
+
+fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
+    let l = node
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|it| it.kind() == T!['{'])?;
+    let r = node
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|it| it.kind() == T!['}'])?;
+
+    let indent = IndentLevel::from_node(node);
+
+    match l.next_sibling_or_token() {
+        Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
+            if ws.next_sibling_or_token()?.into_token()? == r {
+                ted::replace(ws, make::tokens::whitespace(&format!("\n{}", indent)));
+            }
+        }
+        Some(ws) if ws.kind() == T!['}'] => {
+            ted::insert(Position::after(l), make::tokens::whitespace(&format!("\n{}", indent)));
+        }
+        _ => (),
+    }
+    Some(())
 }
 
 #[cfg(test)]
