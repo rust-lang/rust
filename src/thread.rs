@@ -3,8 +3,8 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
-use std::rc::Rc;
 use std::num::TryFromIntError;
+use std::rc::Rc;
 use std::time::{Duration, Instant, SystemTime};
 
 use log::trace;
@@ -141,17 +141,19 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
 
     /// Get the name of the current thread, or `<unnamed>` if it was not set.
     fn thread_name(&self) -> &[u8] {
-        if let Some(ref thread_name) = self.thread_name {
-            thread_name
-        } else {
-            b"<unnamed>"
-        }
+        if let Some(ref thread_name) = self.thread_name { thread_name } else { b"<unnamed>" }
     }
 }
 
 impl<'mir, 'tcx> std::fmt::Debug for Thread<'mir, 'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}({:?}, {:?})", String::from_utf8_lossy(self.thread_name()), self.state, self.join_status)
+        write!(
+            f,
+            "{}({:?}, {:?})",
+            String::from_utf8_lossy(self.thread_name()),
+            self.state,
+            self.join_status
+        )
     }
 }
 
@@ -328,7 +330,11 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     }
 
     /// Mark that the active thread tries to join the thread with `joined_thread_id`.
-    fn join_thread(&mut self, joined_thread_id: ThreadId, data_race: &Option<Rc<data_race::GlobalState>>) -> InterpResult<'tcx> {
+    fn join_thread(
+        &mut self,
+        joined_thread_id: ThreadId,
+        data_race: &Option<Rc<data_race::GlobalState>>,
+    ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status != ThreadJoinStatus::Joinable {
             throw_ub_format!("trying to join a detached or already joined thread");
         }
@@ -431,7 +437,10 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Wakes up threads joining on the active one and deallocates thread-local statics.
     /// The `AllocId` that can now be freed is returned.
-    fn thread_terminated(&mut self, data_race: &Option<Rc<data_race::GlobalState>>) -> Vec<AllocId> {
+    fn thread_terminated(
+        &mut self,
+        data_race: &Option<Rc<data_race::GlobalState>>,
+    ) -> Vec<AllocId> {
         let mut free_tls_statics = Vec::new();
         {
             let mut thread_local_statics = self.thread_local_alloc_ids.borrow_mut();
@@ -470,7 +479,10 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// used in stateless model checkers such as Loom: run the active thread as
     /// long as we can and switch only when we have to (the active thread was
     /// blocked, terminated, or has explicitly asked to be preempted).
-    fn schedule(&mut self, data_race: &Option<Rc<data_race::GlobalState>>) -> InterpResult<'tcx, SchedulingAction> {
+    fn schedule(
+        &mut self,
+        data_race: &Option<Rc<data_race::GlobalState>>,
+    ) -> InterpResult<'tcx, SchedulingAction> {
         // Check whether the thread has **just** terminated (`check_terminated`
         // checks whether the thread has popped all its stack and if yes, sets
         // the thread state to terminated).
@@ -546,7 +558,10 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Get a thread-specific allocation id for the given thread-local static.
     /// If needed, allocate a new one.
-    fn get_or_create_thread_local_alloc_id(&mut self, def_id: DefId) -> InterpResult<'tcx, AllocId> {
+    fn get_or_create_thread_local_alloc_id(
+        &mut self,
+        def_id: DefId,
+    ) -> InterpResult<'tcx, AllocId> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
         if let Some(new_alloc_id) = this.machine.threads.get_thread_local_alloc_id(def_id) {
@@ -562,7 +577,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             let allocation = tcx.eval_static_initializer(def_id)?;
             // Create a fresh allocation with this content.
-            let new_alloc_id = this.memory.allocate_with(allocation.clone(), MiriMemoryKind::Tls.into()).alloc_id;
+            let new_alloc_id =
+                this.memory.allocate_with(allocation.clone(), MiriMemoryKind::Tls.into()).alloc_id;
             this.machine.threads.set_thread_local_alloc_id(def_id, new_alloc_id);
             Ok(new_alloc_id)
         }
@@ -654,9 +670,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         if let Some(data_race) = &this.memory.extra.data_race {
             if let Ok(string) = String::from_utf8(new_thread_name.clone()) {
-                data_race.thread_set_name(
-                    this.machine.threads.active_thread, string
-                );
+                data_race.thread_set_name(this.machine.threads.active_thread, string);
             }
         }
         this.machine.threads.set_thread_name(new_thread_name);

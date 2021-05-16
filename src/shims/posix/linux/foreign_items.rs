@@ -1,8 +1,8 @@
 use rustc_middle::mir;
 use rustc_target::spec::abi::Abi;
 
-use crate::*;
 use crate::helpers::{check_abi, check_arg_count};
+use crate::*;
 use shims::posix::fs::EvalContextExt as _;
 use shims::posix::linux::sync::futex;
 use shims::posix::sync::EvalContextExt as _;
@@ -133,24 +133,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // other types might be treated differently by the calling convention.
                 for arg in args {
                     if !matches!(arg.layout.abi, rustc_target::abi::Abi::Scalar(_)) {
-                        throw_ub_format!("`syscall` arguments must all have scalar layout, but {} does not", arg.layout.ty);
+                        throw_ub_format!(
+                            "`syscall` arguments must all have scalar layout, but {} does not",
+                            arg.layout.ty
+                        );
                     }
                 }
 
-                let sys_getrandom = this
-                    .eval_libc("SYS_getrandom")?
-                    .to_machine_usize(this)?;
+                let sys_getrandom = this.eval_libc("SYS_getrandom")?.to_machine_usize(this)?;
 
-                let sys_statx = this
-                    .eval_libc("SYS_statx")?
-                    .to_machine_usize(this)?;
+                let sys_statx = this.eval_libc("SYS_statx")?.to_machine_usize(this)?;
 
-                let sys_futex = this
-                    .eval_libc("SYS_futex")?
-                    .to_machine_usize(this)?;
+                let sys_futex = this.eval_libc("SYS_futex")?.to_machine_usize(this)?;
 
                 if args.is_empty() {
-                    throw_ub_format!("incorrect number of arguments for syscall: got 0, expected at least 1");
+                    throw_ub_format!(
+                        "incorrect number of arguments for syscall: got 0, expected at least 1"
+                    );
                 }
                 match this.read_scalar(&args[0])?.to_machine_usize(this)? {
                     // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
@@ -158,7 +157,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     id if id == sys_getrandom => {
                         // The first argument is the syscall id, so skip over it.
                         if args.len() < 4 {
-                            throw_ub_format!("incorrect number of arguments for `getrandom` syscall: got {}, expected at least 4", args.len());
+                            throw_ub_format!(
+                                "incorrect number of arguments for `getrandom` syscall: got {}, expected at least 4",
+                                args.len()
+                            );
                         }
                         getrandom(this, &args[1], &args[2], &args[3], dest)?;
                     }
@@ -167,9 +169,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     id if id == sys_statx => {
                         // The first argument is the syscall id, so skip over it.
                         if args.len() < 6 {
-                            throw_ub_format!("incorrect number of arguments for `statx` syscall: got {}, expected at least 6", args.len());
+                            throw_ub_format!(
+                                "incorrect number of arguments for `statx` syscall: got {}, expected at least 6",
+                                args.len()
+                            );
                         }
-                        let result = this.linux_statx(&args[1], &args[2], &args[3], &args[4], &args[5])?;
+                        let result =
+                            this.linux_statx(&args[1], &args[2], &args[3], &args[4], &args[5])?;
                         this.write_scalar(Scalar::from_machine_isize(result.into(), this), dest)?;
                     }
                     // `futex` is used by some synchonization primitives.
@@ -200,7 +206,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
-            "pthread_getattr_np" if this.frame().instance.to_string().starts_with("std::sys::unix::") => {
+            "pthread_getattr_np"
+                if this.frame().instance.to_string().starts_with("std::sys::unix::") =>
+            {
                 check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref _thread, ref _attr] = check_arg_count(args)?;
                 this.write_null(dest)?;

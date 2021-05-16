@@ -18,7 +18,10 @@ pub fn futex<'tcx>(
     // Therefore we don't use `check_arg_count` here, but only check for the
     // number of arguments to fall within a range.
     if args.len() < 4 {
-        throw_ub_format!("incorrect number of arguments for `futex` syscall: got {}, expected at least 4", args.len());
+        throw_ub_format!(
+            "incorrect number of arguments for `futex` syscall: got {}, expected at least 4",
+            args.len()
+        );
     }
 
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
@@ -49,13 +52,18 @@ pub fn futex<'tcx>(
         // or *timeout expires. `timeout == null` for an infinite timeout.
         op if op & !futex_realtime == futex_wait => {
             if args.len() < 5 {
-                throw_ub_format!("incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5", args.len());
+                throw_ub_format!(
+                    "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5",
+                    args.len()
+                );
             }
             let timeout = &args[4];
             let timeout_time = if this.is_null(this.read_scalar(timeout)?.check_init()?)? {
                 None
             } else {
-                this.check_no_isolation("`futex` syscall with `op=FUTEX_WAIT` and non-null timeout")?;
+                this.check_no_isolation(
+                    "`futex` syscall with `op=FUTEX_WAIT` and non-null timeout",
+                )?;
                 let duration = match this.read_timespec(timeout)? {
                     Some(duration) => duration,
                     None => {
@@ -74,7 +82,11 @@ pub fn futex<'tcx>(
             // Check the pointer for alignment and validity.
             // The API requires `addr` to be a 4-byte aligned pointer, and will
             // use the 4 bytes at the given address as an (atomic) i32.
-            this.memory.check_ptr_access(addr.to_scalar()?, Size::from_bytes(4), Align::from_bytes(4).unwrap())?;
+            this.memory.check_ptr_access(
+                addr.to_scalar()?,
+                Size::from_bytes(4),
+                Align::from_bytes(4).unwrap(),
+            )?;
             // Read an `i32` through the pointer, regardless of any wrapper types.
             // It's not uncommon for `addr` to be passed as another type than `*mut i32`, such as `*const AtomicI32`.
             // FIXME: this fails if `addr` is not a pointer type.
@@ -87,9 +99,14 @@ pub fn futex<'tcx>(
             //   operations on the same futex word."
             // SeqCst is total order over all operations.
             // FIXME: check if this should be changed when weak memory orders are added.
-            let futex_val = this.read_scalar_at_offset_atomic(
-                &addr.into(), 0, this.machine.layouts.i32, AtomicReadOp::SeqCst
-            )?.to_i32()?;
+            let futex_val = this
+                .read_scalar_at_offset_atomic(
+                    &addr.into(),
+                    0,
+                    this.machine.layouts.i32,
+                    AtomicReadOp::SeqCst,
+                )?
+                .to_i32()?;
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
                 this.block_thread(thread);

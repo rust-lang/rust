@@ -97,7 +97,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[ref info] = check_arg_count(args)?;
                 let result = this.mach_timebase_info(info)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
-            },
+            }
 
             // Access to command-line arguments
             "_NSGetArgc" => {
@@ -162,4 +162,3 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(true)
     }
 }
-

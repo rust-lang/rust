@@ -5,10 +5,10 @@ use std::time::Duration;
 
 use log::trace;
 
-use rustc_middle::mir;
-use rustc_middle::ty::{self, List, TyCtxt, layout::TyAndLayout};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
-use rustc_target::abi::{LayoutOf, Size, FieldsShape, Variants};
+use rustc_middle::mir;
+use rustc_middle::ty::{self, layout::TyAndLayout, List, TyCtxt};
+use rustc_target::abi::{FieldsShape, LayoutOf, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
 use rand::RngCore;
@@ -19,10 +19,8 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 
 /// Gets an instance for a path.
 fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId> {
-    tcx.crates()
-        .iter()
-        .find(|&&krate| tcx.original_crate_name(krate).as_str() == path[0])
-        .and_then(|krate| {
+    tcx.crates().iter().find(|&&krate| tcx.original_crate_name(krate).as_str() == path[0]).and_then(
+        |krate| {
             let krate = DefId { krate: *krate, index: CRATE_DEF_INDEX };
             let mut items = tcx.item_children(krate);
             let mut path_it = path.iter().skip(1).peekable();
@@ -40,7 +38,8 @@ fn try_resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> Option<DefId
                 }
             }
             None
-        })
+        },
+    )
 }
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -53,10 +52,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
     /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(
-        &mut self,
-        path: &[&str],
-    ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
+    fn eval_path_scalar(&mut self, path: &[&str]) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_mut();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
@@ -67,9 +63,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Helper function to get a `libc` constant as a `Scalar`.
     fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.eval_context_mut()
-            .eval_path_scalar(&["libc", name])?
-            .check_init()
+        self.eval_context_mut().eval_path_scalar(&["libc", name])?.check_init()
     }
 
     /// Helper function to get a `libc` constant as an `i32`.
@@ -101,7 +95,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Helper function to get the `TyAndLayout` of a `windows` type
     fn windows_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
         let this = self.eval_context_mut();
-        let ty = this.resolve_path(&["std", "sys", "windows", "c", name]).ty(*this.tcx, ty::ParamEnv::reveal_all());
+        let ty = this
+            .resolve_path(&["std", "sys", "windows", "c", name])
+            .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
 
@@ -170,7 +166,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let param_env = ty::ParamEnv::reveal_all(); // in Miri this is always the param_env we use... and this.param_env is private.
         let callee_abi = f.ty(*this.tcx, param_env).fn_sig(*this.tcx).abi();
         if callee_abi != caller_abi {
-            throw_ub_format!("calling a function with ABI {} using caller ABI {}", callee_abi.name(), caller_abi.name())
+            throw_ub_format!(
+                "calling a function with ABI {} using caller ABI {}",
+                callee_abi.name(),
+                caller_abi.name()
+            )
         }
 
         // Push frame.
@@ -181,9 +181,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let mut callee_args = this.frame().body.args_iter();
         for arg in args {
             let callee_arg = this.local_place(
-                callee_args.next().ok_or_else(||
-                    err_ub_format!("callee has fewer arguments than expected")
-                )?
+                callee_args
+                    .next()
+                    .ok_or_else(|| err_ub_format!("callee has fewer arguments than expected"))?,
             )?;
             this.write_immediate(*arg, &callee_arg)?;
         }
@@ -356,7 +356,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
 
-            fn visit_union(&mut self, _v: &MPlaceTy<'tcx, Tag>, _fields: NonZeroUsize) -> InterpResult<'tcx> {
+            fn visit_union(
+                &mut self,
+                _v: &MPlaceTy<'tcx, Tag>,
+                _fields: NonZeroUsize,
+            ) -> InterpResult<'tcx> {
                 bug!("we should have already handled unions in `visit_value`")
             }
         }
@@ -465,12 +469,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             })?
         } else if target.families.contains(&"windows".to_owned()) {
             // FIXME: we have to finish implementing the Windows equivalent of this.
-            this.eval_windows("c", match e.kind() {
-                NotFound => "ERROR_FILE_NOT_FOUND",
-                _ => throw_unsup_format!("io error {} cannot be transformed into a raw os error", e)
-            })?
+            this.eval_windows(
+                "c",
+                match e.kind() {
+                    NotFound => "ERROR_FILE_NOT_FOUND",
+                    _ => throw_unsup_format!(
+                        "io error {} cannot be transformed into a raw os error",
+                        e
+                    ),
+                },
+            )?
         } else {
-            throw_unsup_format!("setting the last OS error from an io::Error is unsupported for {}.", target_os)
+            throw_unsup_format!(
+                "setting the last OS error from an io::Error is unsupported for {}.",
+                target_os
+            )
         };
         this.set_last_error(last_error)
     }
@@ -556,8 +569,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 }
 
 /// Check that the number of args is what we expect.
-pub fn check_arg_count<'a, 'tcx, const N: usize>(args: &'a [OpTy<'tcx, Tag>]) -> InterpResult<'tcx, &'a [OpTy<'tcx, Tag>; N]>
-    where &'a [OpTy<'tcx, Tag>; N]: TryFrom<&'a [OpTy<'tcx, Tag>]> {
+pub fn check_arg_count<'a, 'tcx, const N: usize>(
+    args: &'a [OpTy<'tcx, Tag>],
+) -> InterpResult<'tcx, &'a [OpTy<'tcx, Tag>; N]>
+where
+    &'a [OpTy<'tcx, Tag>; N]: TryFrom<&'a [OpTy<'tcx, Tag>]>,
+{
     if let Ok(ops) = args.try_into() {
         return Ok(ops);
     }
@@ -569,7 +586,11 @@ pub fn check_abi<'a>(abi: Abi, exp_abi: Abi) -> InterpResult<'a, ()> {
     if abi == exp_abi {
         Ok(())
     } else {
-        throw_ub_format!("calling a function with ABI {} using caller ABI {}", exp_abi.name(), abi.name())
+        throw_ub_format!(
+            "calling a function with ABI {} using caller ABI {}",
+            exp_abi.name(),
+            abi.name()
+        )
     }
 }
 

@@ -77,7 +77,10 @@ impl<T> RangeMap<T> {
         };
         // The first offset that is not included any more.
         let end = offset + len;
-        slice.iter().take_while(move |elem| elem.range.start < end).map(|elem| (Size::from_bytes(elem.range.start), &elem.data))
+        slice
+            .iter()
+            .take_while(move |elem| elem.range.start < end)
+            .map(|elem| (Size::from_bytes(elem.range.start), &elem.data))
     }
 
     pub fn iter_mut_all<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> + 'a {
@@ -213,7 +216,9 @@ mod tests {
     fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64) -> Vec<T> {
         (offset..offset + len)
             .into_iter()
-            .map(|i| map.iter(Size::from_bytes(i), Size::from_bytes(1)).next().map(|(_, &t)| t).unwrap())
+            .map(|i| {
+                map.iter(Size::from_bytes(i), Size::from_bytes(1)).next().map(|(_, &t)| t).unwrap()
+            })
             .collect()
     }
 
@@ -267,7 +272,9 @@ mod tests {
         assert_eq!(to_vec(&map, 10, 10), vec![23, 42, 23, 23, 23, 19, 19, 19, 19, 19]);
         // Should be seeing two blocks with 19.
         assert_eq!(
-            map.iter(Size::from_bytes(15), Size::from_bytes(2)).map(|(_, &t)| t).collect::<Vec<_>>(),
+            map.iter(Size::from_bytes(15), Size::from_bytes(2))
+                .map(|(_, &t)| t)
+                .collect::<Vec<_>>(),
             vec![19, 19]
         );
 

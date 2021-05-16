@@ -1,14 +1,14 @@
 //! Implement thread-local storage.
 
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::hash_map::Entry as HashMapEntry;
+use std::collections::BTreeMap;
 
 use log::trace;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty;
-use rustc_target::abi::{Size, HasDataLayout};
+use rustc_target::abi::{HasDataLayout, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::*;
@@ -63,7 +63,11 @@ impl<'tcx> Default for TlsData<'tcx> {
 impl<'tcx> TlsData<'tcx> {
     /// Generate a new TLS key with the given destructor.
     /// `max_size` determines the integer size the key has to fit in.
-    pub fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>, max_size: Size) -> InterpResult<'tcx, TlsKey> {
+    pub fn create_tls_key(
+        &mut self,
+        dtor: Option<ty::Instance<'tcx>>,
+        max_size: Size,
+    ) -> InterpResult<'tcx, TlsKey> {
         let new_key = self.next_key;
         self.next_key += 1;
         self.keys.try_insert(new_key, TlsEntry { data: Default::default(), dtor }).unwrap();
@@ -105,7 +109,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: TlsKey,
         thread_id: ThreadId,
-        new_data: Option<Scalar<Tag>>
+        new_data: Option<Scalar<Tag>>,
     ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
@@ -138,14 +142,18 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
-        data: Scalar<Tag>
+        data: Scalar<Tag>,
     ) -> InterpResult<'tcx> {
         if self.dtors_running.contains_key(&thread) {
             // UB, according to libstd docs.
-            throw_ub_format!("setting thread's local storage destructor while destructors are already running");
+            throw_ub_format!(
+                "setting thread's local storage destructor while destructors are already running"
+            );
         }
         if self.macos_thread_dtors.insert(thread, (dtor, data)).is_some() {
-            throw_unsup_format!("setting more than one thread local storage destructor for the same thread is not supported");
+            throw_unsup_format!(
+                "setting more than one thread local storage destructor for the same thread is not supported"
+            );
         }
         Ok(())
     }
@@ -181,9 +189,7 @@ impl<'tcx> TlsData<'tcx> {
             Some(key) => Excluded(key),
             None => Unbounded,
         };
-        for (&key, TlsEntry { data, dtor }) in
-            thread_local.range_mut((start, Unbounded))
-        {
+        for (&key, TlsEntry { data, dtor }) in thread_local.range_mut((start, Unbounded)) {
             match data.entry(thread_id) {
                 BTreeEntry::Occupied(entry) => {
                     if let Some(dtor) = dtor {
@@ -237,7 +243,13 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // (that would be basically https://github.com/rust-lang/miri/issues/450),
         // we specifically look up the static in libstd that we know is placed
         // in that section.
-        let thread_callback = this.eval_path_scalar(&["std", "sys", "windows", "thread_local_key", "p_thread_callback"])?;
+        let thread_callback = this.eval_path_scalar(&[
+            "std",
+            "sys",
+            "windows",
+            "thread_local_key",
+            "p_thread_callback",
+        ])?;
         let thread_callback = this.memory.get_fn(thread_callback.check_init()?)?.as_instance()?;
 
         // The signature of this function is `unsafe extern "system" fn(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID)`.
@@ -297,12 +309,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let dtor = match this.machine.tls.fetch_tls_dtor(last_key, active_thread) {
             dtor @ Some(_) => dtor,
             // We ran each dtor once, start over from the beginning.
-            None => {
-                this.machine.tls.fetch_tls_dtor(None, active_thread)
-            }
+            None => this.machine.tls.fetch_tls_dtor(None, active_thread),
         };
         if let Some((instance, ptr, key)) = dtor {
-            this.machine.tls.dtors_running.get_mut(&active_thread).unwrap().last_dtor_key = Some(key);
+            this.machine.tls.dtors_running.get_mut(&active_thread).unwrap().last_dtor_key =
+                Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
             assert!(!this.is_null(ptr).unwrap(), "data can't be NULL when dtor is called!");
 
@@ -326,7 +337,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-
     /// Schedule an active thread's TLS destructor to run on the active thread.
     /// Note that this function does not run the destructors itself, it just
     /// schedules them one by one each time it is called and reenables the
@@ -349,7 +359,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // relevant function, reenabling the thread, and going back to
                 // the scheduler.
                 this.schedule_windows_tls_dtors()?;
-                return Ok(())
+                return Ok(());
             }
         }
         // The remaining dtors make some progress each time around the scheduler loop,
@@ -361,12 +371,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We have scheduled a MacOS dtor to run on the thread. Execute it
             // to completion and come back here. Scheduling a destructor
             // destroys it, so we will not enter this branch again.
-            return Ok(())
+            return Ok(());
         }
         if this.schedule_next_pthread_tls_dtor()? {
             // We have scheduled a pthread destructor and removed it from the
             // destructors list. Run it to completion and come back here.
-            return Ok(())
+            return Ok(());
         }
 
         // All dtors done!

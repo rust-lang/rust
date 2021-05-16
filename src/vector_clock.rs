@@ -1,11 +1,6 @@
 use rustc_index::vec::Idx;
 use smallvec::SmallVec;
-use std::{
-    cmp::Ordering,
-    convert::TryFrom,
-    fmt::Debug,
-    ops::Index,
-};
+use std::{cmp::Ordering, convert::TryFrom, fmt::Debug, ops::Index};
 
 /// A vector clock index, this is associated with a thread id
 /// but in some cases one vector index may be shared with

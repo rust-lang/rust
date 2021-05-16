@@ -9,10 +9,10 @@ use std::rc::Rc;
 use log::trace;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_hir::Mutability;
 use rustc_middle::mir::RetagKind;
 use rustc_middle::ty;
 use rustc_target::abi::{Align, LayoutOf, Size};
-use rustc_hir::Mutability;
 
 use crate::*;
 
@@ -157,7 +157,11 @@ impl fmt::Display for RefKind {
 
 /// Utilities for initialization and ID generation
 impl GlobalState {
-    pub fn new(tracked_pointer_tag: Option<PtrId>, tracked_call_id: Option<CallId>, track_raw: bool) -> Self {
+    pub fn new(
+        tracked_pointer_tag: Option<PtrId>,
+        tracked_call_id: Option<CallId>,
+        track_raw: bool,
+    ) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: FxHashMap::default(),
@@ -211,7 +215,9 @@ impl GlobalState {
 fn err_sb_ub(msg: String) -> InterpError<'static> {
     err_machine_stop!(TerminationInfo::ExperimentalUb {
         msg,
-        url: format!("https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md"),
+        url: format!(
+            "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md"
+        ),
     })
 }
 
@@ -300,10 +306,7 @@ impl<'tcx> Stack {
                         tag, item
                     )))?
                 } else {
-                    Err(err_sb_ub(format!(
-                        "deallocating while item is protected: {:?}",
-                        item
-                    )))?
+                    Err(err_sb_ub(format!("deallocating while item is protected: {:?}", item)))?
                 }
             }
         }
@@ -312,14 +315,21 @@ impl<'tcx> Stack {
 
     /// Test if a memory `access` using pointer tagged `tag` is granted.
     /// If yes, return the index of the item that granted it.
-    fn access(&mut self, access: AccessKind, ptr: Pointer<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
+    fn access(
+        &mut self,
+        access: AccessKind,
+        ptr: Pointer<Tag>,
+        global: &GlobalState,
+    ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
         let granting_idx = self.find_granting(access, ptr.tag).ok_or_else(|| {
             err_sb_ub(format!(
                 "no item granting {} to tag {:?} at {} found in borrow stack.",
-                access, ptr.tag, ptr.erase_tag(),
+                access,
+                ptr.tag,
+                ptr.erase_tag(),
             ))
         })?;
 
@@ -379,7 +389,12 @@ impl<'tcx> Stack {
     /// `weak` controls whether this operation is weak or strong: weak granting does not act as
     /// an access, and they add the new item directly on top of the one it is derived
     /// from instead of all the way at the top of the stack.
-    fn grant(&mut self, derived_from: Pointer<Tag>, new: Item, global: &GlobalState) -> InterpResult<'tcx> {
+    fn grant(
+        &mut self,
+        derived_from: Pointer<Tag>,
+        new: Item,
+        global: &GlobalState,
+    ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access =
             if new.perm.grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
@@ -480,12 +495,17 @@ impl Stacks {
             // `ExternStatic` is used for extern statics, and thus must also be listed here.
             // `Env` we list because we can get away with precise tracking there.
             // The base pointer is not unique, so the base permission is `SharedReadWrite`.
-            MemoryKind::Machine(MiriMemoryKind::Global | MiriMemoryKind::ExternStatic | MiriMemoryKind::Tls | MiriMemoryKind::Env) =>
-                (extra.borrow_mut().global_base_ptr(id), Permission::SharedReadWrite),
+            MemoryKind::Machine(
+                MiriMemoryKind::Global
+                | MiriMemoryKind::ExternStatic
+                | MiriMemoryKind::Tls
+                | MiriMemoryKind::Env,
+            ) => (extra.borrow_mut().global_base_ptr(id), Permission::SharedReadWrite),
             // Everything else we handle like raw pointers for now.
             _ => {
                 let mut extra = extra.borrow_mut();
-                let tag = if extra.track_raw { Tag::Tagged(extra.new_ptr()) } else { Tag::Untagged };
+                let tag =
+                    if extra.track_raw { Tag::Tagged(extra.new_ptr()) } else { Tag::Untagged };
                 (tag, Permission::SharedReadWrite)
             }
         };
@@ -584,9 +604,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
         let place = this.ref_to_mplace(val)?;
-        let size = this
-            .size_and_align_of_mplace(&place)?
-            .map(|(size, _)| size);
+        let size = this.size_and_align_of_mplace(&place)?.map(|(size, _)| size);
         // FIXME: If we cannot determine the size (because the unsized tail is an `extern type`),
         // bail out -- we cannot reasonably figure out which memory range to reborrow.
         // See https://github.com/rust-lang/unsafe-code-guidelines/issues/276.
@@ -667,7 +685,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// After a stack frame got pushed, retag the return place so that we are sure
     /// it does not alias with anything.
-    /// 
+    ///
     /// This is a HACK because there is nothing in MIR that would make the retag
     /// explicit. Also see https://github.com/rust-lang/rust/issues/71117.
     fn retag_return_place(&mut self) -> InterpResult<'tcx> {
@@ -690,7 +708,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ptr_layout = this.layout_of(this.tcx.mk_mut_ptr(return_place.layout.ty))?;
         let val = ImmTy::from_immediate(return_place.to_ref(), ptr_layout);
         // Reborrow it.
-        let val = this.retag_reference(&val, RefKind::Unique { two_phase: false }, /*protector*/ true)?;
+        let val = this.retag_reference(
+            &val,
+            RefKind::Unique { two_phase: false },
+            /*protector*/ true,
+        )?;
         // And use reborrowed pointer for return place.
         let return_place = this.ref_to_mplace(&val)?;
         this.frame_mut().return_place = Some(return_place.into());

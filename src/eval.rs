@@ -135,8 +135,9 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             argvs.push(arg_place.ptr);
         }
         // Make an array with all these pointers, in the Miri memory.
-        let argvs_layout =
-            ecx.layout_of(tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), u64::try_from(argvs.len()).unwrap()))?;
+        let argvs_layout = ecx.layout_of(
+            tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), u64::try_from(argvs.len()).unwrap()),
+        )?;
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Machine.into());
         for (idx, arg) in argvs.into_iter().enumerate() {
             let place = ecx.mplace_field(&argvs_place, idx)?;
@@ -224,9 +225,11 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     assert!(ecx.step()?, "a terminated thread was scheduled for execution");
                 }
                 SchedulingAction::ExecuteTimeoutCallback => {
-                    assert!(ecx.machine.communicate,
+                    assert!(
+                        ecx.machine.communicate,
                         "scheduler callbacks require disabled isolation, but the code \
-                        that created the callback did not check it");
+                        that created the callback did not check it"
+                    );
                     ecx.run_timeout_callback()?;
                 }
                 SchedulingAction::ExecuteDtors => {
@@ -241,7 +244,8 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
             }
             ecx.process_diagnostics(info);
         }
-        let return_code = ecx.read_scalar(&ret_place.into())?.check_init()?.to_machine_isize(&ecx)?;
+        let return_code =
+            ecx.read_scalar(&ret_place.into())?.check_init()?.to_machine_isize(&ecx)?;
         Ok(return_code)
     })();
 

@@ -2,8 +2,8 @@ extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
 
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_driver::Compilation;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
 
 use crate::test::Bencher;

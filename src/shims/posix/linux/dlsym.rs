@@ -3,8 +3,7 @@ use rustc_middle::mir;
 use crate::*;
 
 #[derive(Debug, Copy, Clone)]
-pub enum Dlsym {
-}
+pub enum Dlsym {}
 
 impl Dlsym {
     // Returns an error for unsupported symbols, and None if this symbol
@@ -13,7 +12,7 @@ impl Dlsym {
         Ok(match &*name {
             "__pthread_get_minstack" => None,
             "getrandom" => None, // std falls back to syscall(SYS_getrandom, ...) when this is NULL.
-            "statx" => None, // std falls back to syscall(SYS_statx, ...) when this is NULL.
+            "statx" => None,     // std falls back to syscall(SYS_statx, ...) when this is NULL.
             _ => throw_unsup_format!("unsupported Linux dlsym: {}", name),
         })
     }
