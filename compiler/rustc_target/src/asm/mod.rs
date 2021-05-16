@@ -6,7 +6,6 @@ use rustc_span::Symbol;
 use std::fmt;
 use std::str::FromStr;
 
-#[macro_use]
 macro_rules! def_reg_class {
     ($arch:ident $arch_regclass:ident {
         $(
@@ -51,7 +50,6 @@ macro_rules! def_reg_class {
     }
 }
 
-#[macro_use]
 macro_rules! def_regs {
     ($arch:ident $arch_reg:ident $arch_regclass:ident {
         $(
@@ -129,7 +127,6 @@ macro_rules! def_regs {
     }
 }
 
-#[macro_use]
 macro_rules! types {
     (
         $(_ : $($ty:expr),+;)?
