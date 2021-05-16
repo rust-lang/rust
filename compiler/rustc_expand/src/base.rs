@@ -1240,16 +1240,35 @@ pub(crate) fn pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseS
         if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
             if let [variant] = &*enum_def.variants {
                 if variant.ident.name == sym::Input {
-                    sess.buffer_lint_with_diagnostic(
-                        &PROC_MACRO_BACK_COMPAT,
-                        item.ident.span,
-                        ast::CRATE_NODE_ID,
-                        "using `procedural-masquerade` crate",
-                        BuiltinLintDiagnostics::ProcMacroBackCompat(
-                        "The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. \
-                        Versions of this crate below 0.1.7 will eventually stop compiling.".to_string())
-                    );
-                    return true;
+                    let filename = sess.source_map().span_to_filename(variant.ident.span);
+                    let filename = filename.prefer_local();
+                    let filename = filename.to_string_lossy();
+                    let rental_prefix = "rental-";
+                    if let Some(pos) = filename.find(rental_prefix) {
+                        let mut digits = filename[(pos + rental_prefix.len())..].split(".");
+                        // Check for a version before `0.5.6`
+                        if digits.next().and_then(|d| d.parse().ok()) == Some(0usize)
+                            && digits
+                                .next()
+                                .and_then(|d| d.parse().ok())
+                                .map_or(false, |d: usize| d <= 5)
+                            && digits
+                                .next()
+                                .and_then(|d| d[..1].parse().ok())
+                                .map_or(false, |d: usize| d < 6)
+                        {
+                            sess.buffer_lint_with_diagnostic(
+                                &PROC_MACRO_BACK_COMPAT,
+                                item.ident.span,
+                                ast::CRATE_NODE_ID,
+                                "using outdated version of `rental` crate",
+                                BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                "Versions of the `rental` crate below `0.5.6` will eventually stop compiling. \
+                                Please update to the latest version of `rental`".to_string())
+                            );
+                            return true;
+                        }
+                    }
                 }
             }
         }

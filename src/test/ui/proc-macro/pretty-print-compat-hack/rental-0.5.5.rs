@@ -1,5 +1,4 @@
-// check-pass
-// aux-build:test-macros.rs
+// ignore-test this is not a test
 
 #[macro_use]
 extern crate test_macros;
