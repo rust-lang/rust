@@ -112,7 +112,7 @@ This lint is **allowed by default**. It detects items missing documentation.
 For example:
 
 ```rust
-#![warn(rustdoc::missing_docs)]
+#![warn(missing_docs)]
 
 pub fn undocumented() {}
 # fn main() {}
