@@ -1100,12 +1100,12 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
 #[test]
 fn test_collect_after_iterator_clone() {
     let v = vec![0; 5];
-    let mut i = v.into_iter().peekable();
+    let mut i = v.into_iter().map(|i| i + 1).peekable();
     i.peek();
     let v = i.clone().collect::<Vec<_>>();
+    assert_eq!(v, [1, 1, 1, 1, 1]);
     assert!(v.len() <= v.capacity());
 }
-
 #[test]
 fn test_cow_from() {
     let borrowed: &[_] = &["borrowed", "(slice)"];
