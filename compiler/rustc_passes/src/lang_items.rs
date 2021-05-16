@@ -182,6 +182,8 @@ impl LanguageItemCollector<'tcx> {
         }
     }
 
+    // Like collect_item() above, but also checks whether the lang item is declared
+    // with the right number of generic arguments if it is a trait.
     fn collect_item_extended(&mut self, item_index: usize, hir_id: HirId, span: Span) {
         let item_def_id = self.tcx.hir().local_def_id(hir_id).to_def_id();
         let lang_item = LangItem::from_u32(item_index as u32).unwrap();
@@ -190,10 +192,15 @@ impl LanguageItemCollector<'tcx> {
         self.collect_item(item_index, item_def_id);
 
         // Now check whether the lang_item has the expected number of generic
-        // arguments. Binary and indexing operations have one (for the RHS/index),
-        // unary operations have no generic arguments.
+        // arguments if it is a trait. Generally speaking, binary and indexing
+        // operations have one (for the RHS/index), unary operations have none,
+        // and the rest also have none except for the closure traits (one for
+        // the argument list), generators (one for the resume argument),
+        // ordering/equality relations (one for the RHS), and various conversion
+        // traits.
 
         let expected_num = match lang_item {
+            // Binary operations
             LangItem::Add
             | LangItem::Sub
             | LangItem::Mul
@@ -215,11 +222,48 @@ impl LanguageItemCollector<'tcx> {
             | LangItem::ShlAssign
             | LangItem::ShrAssign
             | LangItem::Index
-            | LangItem::IndexMut => Some(1),
+            | LangItem::IndexMut
 
-            LangItem::Neg | LangItem::Not | LangItem::Deref | LangItem::DerefMut => Some(0),
+            // Miscellaneous
+            | LangItem::Unsize
+            | LangItem::CoerceUnsized
+            | LangItem::DispatchFromDyn
+            | LangItem::Fn
+            | LangItem::FnMut
+            | LangItem::FnOnce
+            | LangItem::Generator
+            | LangItem::PartialEq
+            | LangItem::PartialOrd
+                => Some(1),
 
-            // FIXME: add more cases?
+            // Unary operations
+            LangItem::Neg
+            | LangItem::Not
+
+            // Miscellaneous
+            | LangItem::Deref
+            | LangItem::DerefMut
+            | LangItem::Sized
+            | LangItem::StructuralPeq
+            | LangItem::StructuralTeq
+            | LangItem::Copy
+            | LangItem::Clone
+            | LangItem::Sync
+            | LangItem::DiscriminantKind
+            | LangItem::PointeeTrait
+            | LangItem::Freeze
+            | LangItem::Drop
+            | LangItem::Receiver
+            | LangItem::Future
+            | LangItem::Unpin
+            | LangItem::Termination
+            | LangItem::Try
+            | LangItem::Send
+            | LangItem::UnwindSafe
+            | LangItem::RefUnwindSafe
+                => Some(0),
+
+            // Not a trait
             _ => None,
         };
 

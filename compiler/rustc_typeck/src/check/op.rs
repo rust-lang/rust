@@ -1,7 +1,7 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use super::method::MethodCallee;
-use super::FnCtxt;
+use super::{has_expected_num_generic_args, FnCtxt};
 use rustc_ast as ast;
 use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -800,17 +800,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // elsewhere by now, but we have to catch it here so that we do not
         // index `other_tys` out of bounds (if the lang item has too many
         // generic arguments, `other_tys` is too short).
-        if let Some(trait_did) = trait_did {
-            let generics = self.tcx.generics_of(trait_did);
-            let expected_num = match op {
+        if !has_expected_num_generic_args(
+            self.tcx,
+            trait_did,
+            match op {
                 // Binary ops have a generic right-hand side, unary ops don't
                 Op::Binary(..) => 1,
                 Op::Unary(..) => 0,
-            } + if generics.has_self { 1 } else { 0 };
-            let num_generics = generics.count();
-            if num_generics != expected_num {
-                return Err(());
-            }
+            },
+        ) {
+            return Err(());
         }
 
         let method = trait_did.and_then(|trait_did| {

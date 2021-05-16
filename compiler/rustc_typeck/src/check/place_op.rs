@@ -1,5 +1,5 @@
 use crate::check::method::MethodCallee;
-use crate::check::{FnCtxt, PlaceOp};
+use crate::check::{has_expected_num_generic_args, FnCtxt, PlaceOp};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
@@ -157,16 +157,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If the lang item was declared incorrectly, stop here so that we don't
         // run into an ICE (#83893). The error is reported where the lang item is
         // declared.
-        if let Some(trait_did) = imm_tr {
-            let generics = self.tcx.generics_of(trait_did);
-            let expected_num = match op {
+        if !has_expected_num_generic_args(
+            self.tcx,
+            imm_tr,
+            match op {
                 PlaceOp::Deref => 0,
                 PlaceOp::Index => 1,
-            } + if generics.has_self { 1 } else { 0 };
-            let num_generics = generics.count();
-            if num_generics != expected_num {
-                return None;
-            }
+            },
+        ) {
+            return None;
         }
 
         imm_tr.and_then(|trait_did| {
@@ -197,16 +196,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If the lang item was declared incorrectly, stop here so that we don't
         // run into an ICE (#83893). The error is reported where the lang item is
         // declared.
-        if let Some(trait_did) = mut_tr {
-            let generics = self.tcx.generics_of(trait_did);
-            let expected_num = match op {
+        if !has_expected_num_generic_args(
+            self.tcx,
+            mut_tr,
+            match op {
                 PlaceOp::Deref => 0,
                 PlaceOp::Index => 1,
-            } + if generics.has_self { 1 } else { 0 };
-            let num_generics = generics.count();
-            if num_generics != expected_num {
-                return None;
-            }
+            },
+        ) {
+            return None;
         }
 
         mut_tr.and_then(|trait_did| {

@@ -1190,3 +1190,17 @@ fn fatally_break_rust(sess: &Session) {
 fn potentially_plural_count(count: usize, word: &str) -> String {
     format!("{} {}{}", count, word, pluralize!(count))
 }
+
+fn has_expected_num_generic_args<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_did: Option<DefId>,
+    mut expected: usize,
+) -> bool {
+    trait_did.map_or(true, |trait_did| {
+        let generics = tcx.generics_of(trait_did);
+        if generics.has_self {
+            expected += 1;
+        }
+        generics.count() == expected
+    })
+}
