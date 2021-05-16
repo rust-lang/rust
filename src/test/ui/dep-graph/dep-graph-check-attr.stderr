@@ -1,7 +1,7 @@
 error: attribute requires -Z query-dep-graph to be enabled
   --> $DIR/dep-graph-check-attr.rs:8:1
    |
-LL | #[rustc_dirty(hir_owner)]
+LL | #[rustc_clean(hir_owner)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: attribute requires -Z query-dep-graph to be enabled

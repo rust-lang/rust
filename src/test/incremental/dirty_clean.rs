@@ -25,7 +25,10 @@ mod x {
 mod y {
     use x;
 
-    #[rustc_dirty(except="typeck", cfg="cfail2")]
+    #[rustc_clean(
+        except="hir_owner,hir_owner_nodes,generics_of,predicates_of,type_of,fn_sig",
+        cfg="cfail2",
+    )]
     pub fn y() {
         //[cfail2]~^ ERROR `hir_owner(y)` should be dirty but is not
         //[cfail2]~| ERROR `hir_owner_nodes(y)` should be dirty but is not

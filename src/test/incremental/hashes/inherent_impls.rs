@@ -103,7 +103,10 @@ impl Foo {
 #[rustc_clean(cfg="cfail2", except="hir_owner")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(cfg="cfail2", except="type_of,predicates_of,promoted_mir")]
+    #[rustc_clean(
+        cfg="cfail2",
+        except="hir_owner,hir_owner_nodes,fn_sig,generics_of,typeck,associated_item,optimized_mir",
+    )]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_selfness(&self) { }
 }

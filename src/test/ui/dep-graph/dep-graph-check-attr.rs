@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-#[rustc_dirty(hir_owner)] //~ ERROR attribute requires -Z query-dep-graph
+#[rustc_clean(hir_owner)] //~ ERROR attribute requires -Z query-dep-graph
 fn main() {}
 
 #[rustc_if_this_changed(hir_owner)] //~ ERROR attribute requires -Z query-dep-graph
