@@ -651,7 +651,7 @@ declare_features! (
     (active, const_fn_unsize, "1.53.0", Some(64992), None),
 
     /// Allows `async {}` expressions in const contexts.
-    (active, const_async_blocks, "1.53.0", None, None),
+    (active, const_async_blocks, "1.53.0", Some(85368), None),
 
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
