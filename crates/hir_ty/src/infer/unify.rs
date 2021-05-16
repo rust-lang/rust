@@ -24,6 +24,9 @@ impl<'a> InferenceContext<'a> {
     where
         T::Result: HasInterner<Interner = Interner>,
     {
+        // try to resolve obligations before canonicalizing, since this might
+        // result in new knowledge about variables
+        self.resolve_obligations_as_possible();
         self.table.canonicalize(t)
     }
 }
@@ -216,7 +219,6 @@ impl<'a> InferenceTable<'a> {
     /// call). `make_ty` handles this already, but e.g. for field types we need
     /// to do it as well.
     pub(super) fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
-        let ty = self.resolve_ty_as_possible(ty);
         fold_tys(
             ty,
             |ty, _| match ty.kind(&Interner) {
@@ -302,11 +304,6 @@ impl<'a> InferenceTable<'a> {
         self.resolve_with_fallback(ty, |_, _, d, _| d)
     }
 
-    // FIXME get rid of this, instead resolve shallowly where necessary
-    pub(crate) fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
-        self.resolve_ty_as_possible_inner(&mut Vec::new(), ty)
-    }
-
     /// Unify two types and register new trait goals that arise from that.
     // TODO give these two functions better names
     pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
@@ -342,36 +339,6 @@ impl<'a> InferenceTable<'a> {
     /// otherwise, return ty.
     pub(crate) fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
         self.var_unification_table.normalize_ty_shallow(&Interner, ty).unwrap_or_else(|| ty.clone())
-    }
-
-    /// Resolves the type as far as currently possible, replacing type variables
-    /// by their known types.
-    fn resolve_ty_as_possible_inner(&mut self, tv_stack: &mut Vec<InferenceVar>, ty: Ty) -> Ty {
-        fold_tys(
-            ty,
-            |ty, _| match ty.kind(&Interner) {
-                &TyKind::InferenceVar(tv, kind) => {
-                    if tv_stack.contains(&tv) {
-                        // recursive type
-                        return self.type_variable_table.fallback_value(tv, kind);
-                    }
-                    if let Some(known_ty) = self.var_unification_table.probe_var(tv) {
-                        // known_ty may contain other variables that are known by now
-                        tv_stack.push(tv);
-                        let result = self.resolve_ty_as_possible_inner(
-                            tv_stack,
-                            known_ty.assert_ty_ref(&Interner).clone(),
-                        );
-                        tv_stack.pop();
-                        result
-                    } else {
-                        ty
-                    }
-                }
-                _ => ty,
-            },
-            DebruijnIndex::INNERMOST,
-        )
     }
 
     pub fn register_obligation(&mut self, goal: Goal) {

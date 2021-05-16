@@ -273,7 +273,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn err_ty(&self) -> Ty {
-        TyKind::Error.intern(&Interner)
+        self.result.standard_types.unknown.clone()
     }
 
     fn resolve_all(mut self) -> InferenceResult {
@@ -284,12 +284,14 @@ impl<'a> InferenceContext<'a> {
         self.table.propagate_diverging_flag();
         let mut result = std::mem::take(&mut self.result);
         for ty in result.type_of_expr.values_mut() {
-            let resolved = self.table.resolve_ty_completely(ty.clone());
-            *ty = resolved;
+            *ty = self.table.resolve_ty_completely(ty.clone());
         }
         for ty in result.type_of_pat.values_mut() {
-            let resolved = self.table.resolve_ty_completely(ty.clone());
-            *ty = resolved;
+            *ty = self.table.resolve_ty_completely(ty.clone());
+        }
+        for mismatch in result.type_mismatches.values_mut() {
+            mismatch.expected = self.table.resolve_ty_completely(mismatch.expected.clone());
+            mismatch.actual = self.table.resolve_ty_completely(mismatch.actual.clone());
         }
         result
     }
@@ -343,6 +345,14 @@ impl<'a> InferenceContext<'a> {
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty.kind(&Interner) {
             TyKind::Error => self.table.new_type_var(),
+            TyKind::InferenceVar(..) => {
+                let ty_resolved = self.resolve_ty_shallow(&ty);
+                if ty_resolved.is_unknown() {
+                    self.table.new_type_var()
+                } else {
+                    ty
+                }
+            }
             _ => ty,
         }
     }
@@ -371,18 +381,8 @@ impl<'a> InferenceContext<'a> {
         self.table.unify_inner(ty1, ty2)
     }
 
-    // FIXME get rid of this, instead resolve shallowly where necessary
-    /// Resolves the type as far as currently possible, replacing type variables
-    /// by their known types. All types returned by the infer_* functions should
-    /// be resolved as far as possible, i.e. contain no type variables with
-    /// known type.
-    fn resolve_ty_as_possible(&mut self, ty: Ty) -> Ty {
-        self.resolve_obligations_as_possible();
-
-        self.table.resolve_ty_as_possible(ty)
-    }
-
     fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
+        self.resolve_obligations_as_possible();
         self.table.resolve_ty_shallow(ty)
     }
 
@@ -416,7 +416,7 @@ impl<'a> InferenceContext<'a> {
                 };
                 self.push_obligation(trait_ref.cast(&Interner));
                 self.push_obligation(alias_eq.cast(&Interner));
-                self.resolve_ty_as_possible(ty)
+                ty
             }
             None => self.err_ty(),
         }

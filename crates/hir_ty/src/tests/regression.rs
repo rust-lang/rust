@@ -117,19 +117,19 @@ fn recursive_vars_2() {
         "#,
         expect![[r#"
             10..79 '{     ...x)]; }': ()
-            20..21 'x': {unknown}
-            24..31 'unknown': {unknown}
+            20..21 'x': &{unknown}
+            24..31 'unknown': &{unknown}
             41..42 'y': {unknown}
             45..52 'unknown': {unknown}
-            58..76 '[(x, y..., &x)]': [({unknown}, {unknown}); 2]
-            59..65 '(x, y)': ({unknown}, {unknown})
-            60..61 'x': {unknown}
+            58..76 '[(x, y..., &x)]': [(&{unknown}, {unknown}); 2]
+            59..65 '(x, y)': (&{unknown}, {unknown})
+            60..61 'x': &{unknown}
             63..64 'y': {unknown}
-            67..75 '(&y, &x)': (&{unknown}, &{unknown})
+            67..75 '(&y, &x)': (&{unknown}, {unknown})
             68..70 '&y': &{unknown}
             69..70 'y': {unknown}
-            72..74 '&x': &{unknown}
-            73..74 'x': {unknown}
+            72..74 '&x': &&{unknown}
+            73..74 'x': &{unknown}
         "#]],
     );
 }

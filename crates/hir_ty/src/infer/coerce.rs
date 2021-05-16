@@ -19,12 +19,12 @@ impl<'a> InferenceContext<'a> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
     pub(super) fn coerce(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
+        let from_ty = self.resolve_ty_shallow(from_ty);
+        let to_ty = self.resolve_ty_shallow(to_ty);
         // TODO handle expectations properly
         if to_ty.is_unknown() {
             return true;
         }
-        let from_ty = self.resolve_ty_shallow(from_ty);
-        let to_ty = self.resolve_ty_shallow(to_ty);
         match self.coerce_inner(from_ty, &to_ty) {
             Ok(_result) => {
                 // TODO deal with goals

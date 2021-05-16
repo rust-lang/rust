@@ -35,7 +35,7 @@ use super::{
 impl<'a> InferenceContext<'a> {
     pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
-        if ty.is_never() {
+        if self.resolve_ty_shallow(&ty).is_never() {
             // Any expression that produces a value of type `!` must have diverged
             self.diverges = Diverges::Always;
         }
@@ -46,7 +46,7 @@ impl<'a> InferenceContext<'a> {
                 TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
             );
         }
-        self.resolve_ty_as_possible(ty)
+        ty
     }
 
     /// Infer type of expression with possibly implicit coerce to the expected type.
@@ -67,7 +67,7 @@ impl<'a> InferenceContext<'a> {
             expected.ty.clone()
         };
 
-        self.resolve_ty_as_possible(ty)
+        ty
     }
 
     fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
@@ -284,8 +284,7 @@ impl<'a> InferenceContext<'a> {
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
-                    let resolved = self.resolve_ty_as_possible(arg_ty);
-                    self.infer_pat(*arg_pat, &resolved, BindingMode::default());
+                    self.infer_pat(*arg_pat, &arg_ty, BindingMode::default());
                 }
 
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
@@ -525,14 +524,14 @@ impl<'a> InferenceContext<'a> {
             Expr::Ref { expr, rawness, mutability } => {
                 let mutability = lower_to_chalk_mutability(*mutability);
                 let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) =
-                    &expected.ty.as_reference_or_ptr()
+                    &self.resolve_ty_shallow(&expected.ty).as_reference_or_ptr()
                 {
                     if *exp_mutability == Mutability::Mut && mutability == Mutability::Not {
-                        // FIXME: throw type error - expected mut reference but found shared ref,
+                        // FIXME: record type error - expected mut reference but found shared ref,
                         // which cannot be coerced
                     }
                     if *exp_rawness == Rawness::Ref && *rawness == Rawness::RawPtr {
-                        // FIXME: throw type error - expected reference but found ptr,
+                        // FIXME: record type error - expected reference but found ptr,
                         // which cannot be coerced
                     }
                     Expectation::rvalue_hint(Ty::clone(exp_inner))
@@ -559,6 +558,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
+                let inner_ty = self.resolve_ty_shallow(&inner_ty);
                 match op {
                     UnaryOp::Deref => match self.resolver.krate() {
                         Some(krate) => {
@@ -615,8 +615,10 @@ impl<'a> InferenceContext<'a> {
                         _ => Expectation::none(),
                     };
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
+                    let lhs_ty = self.resolve_ty_shallow(&lhs_ty);
                     let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty.clone());
                     let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
+                    let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
 
                     let ret = op::binary_op_return_ty(*op, lhs_ty.clone(), rhs_ty.clone());
 
@@ -699,7 +701,7 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Tuple { exprs } => {
-                let mut tys = match expected.ty.kind(&Interner) {
+                let mut tys = match self.resolve_ty_shallow(&expected.ty).kind(&Interner) {
                     TyKind::Tuple(_, substs) => substs
                         .iter(&Interner)
                         .map(|a| a.assert_ty_ref(&Interner).clone())
@@ -716,7 +718,7 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Tuple(tys.len(), Substitution::from_iter(&Interner, tys)).intern(&Interner)
             }
             Expr::Array(array) => {
-                let elem_ty = match expected.ty.kind(&Interner) {
+                let elem_ty = match self.resolve_ty_shallow(&expected.ty).kind(&Interner) {
                     TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
                     _ => self.table.new_type_var(),
                 };
@@ -788,7 +790,6 @@ impl<'a> InferenceContext<'a> {
         };
         // use a new type variable if we got unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        let ty = self.resolve_ty_as_possible(ty);
         self.write_expr_ty(tgt_expr, ty.clone());
         ty
     }
@@ -816,7 +817,6 @@ impl<'a> InferenceContext<'a> {
                         }
                     }
 
-                    let ty = self.resolve_ty_as_possible(ty);
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr { expr, .. } => {
@@ -894,7 +894,8 @@ impl<'a> InferenceContext<'a> {
         };
         // Apply autoref so the below unification works correctly
         // FIXME: return correct autorefs from lookup_method
-        let actual_receiver_ty = match expected_receiver_ty.as_reference() {
+        let actual_receiver_ty = match self.resolve_ty_shallow(&expected_receiver_ty).as_reference()
+        {
             Some((_, lifetime, mutability)) => {
                 TyKind::Ref(mutability, lifetime, derefed_receiver_ty).intern(&Interner)
             }
@@ -974,6 +975,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
+        let callable_ty = self.resolve_ty_shallow(&callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(&Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates = self.db.generic_predicates(def.into());
