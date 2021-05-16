@@ -150,6 +150,15 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     self.requires_unsafe(expr.span, CallToUnsafeFunction);
                 }
             }
+            ExprKind::Deref { arg } => {
+                if let ExprKind::StaticRef { def_id, .. } = self.thir[arg].kind {
+                    if self.tcx.is_mutable_static(def_id) {
+                        self.requires_unsafe(expr.span, UseOfMutableStatic);
+                    } else if self.tcx.is_foreign_item(def_id) {
+                        self.requires_unsafe(expr.span, UseOfExternStatic);
+                    }
+                }
+            }
             ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
                 self.requires_unsafe(expr.span, UseOfInlineAssembly);
             }
@@ -199,9 +208,7 @@ enum UnsafeOpKind {
     InitializingTypeWith,
     #[allow(dead_code)] // FIXME
     CastOfPointerToInt,
-    #[allow(dead_code)] // FIXME
     UseOfMutableStatic,
-    #[allow(dead_code)] // FIXME
     UseOfExternStatic,
     #[allow(dead_code)] // FIXME
     DerefOfRawPointer,
