@@ -40,7 +40,7 @@ fn main() {
         asm!("{}", const const_bar(x));
         //~^ ERROR attempt to use a non-constant value in a constant
 
-        // Const operands must be integer and must be constants.
+        // Const operands must be integers and must be constants.
 
         asm!("{}", const 0);
         asm!("{}", const 0i32);
@@ -52,7 +52,7 @@ fn main() {
     }
 }
 
-// Const operands must be integer or floats, and must be constants.
+// Const operands must be integers and must be constants.
 
 global_asm!("{}", const 0);
 global_asm!("{}", const 0i32);
