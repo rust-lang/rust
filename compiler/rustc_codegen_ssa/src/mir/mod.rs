@@ -1,4 +1,3 @@
-use crate::base;
 use crate::traits::*;
 use rustc_errors::ErrorReported;
 use rustc_middle::mir;
@@ -6,14 +5,12 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_target::abi::call::{FnAbi, PassMode};
-use rustc_target::abi::HasDataLayout;
 
 use std::iter;
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 
-use self::analyze::CleanupKind;
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::place::PlaceRef;
 use rustc_middle::mir::traversal;
@@ -49,12 +46,13 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// The funclet status of each basic block
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
 
-    /// When targeting MSVC, this stores the cleanup info for each funclet
-    /// BB. This is initialized as we compute the funclets' head block in RPO.
+    /// When targeting MSVC, this stores the cleanup info for each funclet BB.
+    /// This is initialized at the same time as the `landing_pads` entry for the
+    /// funclets' head block, i.e. when needed by an unwind / `cleanup_ret` edge.
     funclets: IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
 
-    /// This stores the landing-pad block for a given BB, computed lazily on GNU
-    /// and eagerly on MSVC.
+    /// This stores the cached landing/cleanup pad block for a given BB.
+    // FIXME(eddyb) rename this to `eh_pads`.
     landing_pads: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
 
     /// Cached unreachable block
@@ -165,7 +163,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         })
         .collect();
 
-    let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
     let mut fx = FunctionCx {
         instance,
         mir,
@@ -176,8 +173,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         blocks: block_bxs,
         unreachable_block: None,
         cleanup_kinds,
-        landing_pads,
-        funclets,
+        landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
+        funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks().len()),
         locals: IndexVec::new(),
         debug_context,
         per_local_var_debug_info: None,
@@ -271,77 +268,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
         }
     }
-}
-
-fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    mir: &'tcx mir::Body<'tcx>,
-    bx: &mut Bx,
-    cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
-    block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
-) -> (
-    IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
-    IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
-) {
-    iter::zip(block_bxs.iter_enumerated(), cleanup_kinds)
-        .map(|((bb, &llbb), cleanup_kind)| {
-            match *cleanup_kind {
-                CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}
-                _ => return (None, None),
-            }
-
-            let funclet;
-            let ret_llbb;
-            match mir[bb].terminator.as_ref().map(|t| &t.kind) {
-                // This is a basic block that we're aborting the program for,
-                // notably in an `extern` function. These basic blocks are inserted
-                // so that we assert that `extern` functions do indeed not panic,
-                // and if they do we abort the process.
-                //
-                // On MSVC these are tricky though (where we're doing funclets). If
-                // we were to do a cleanuppad (like below) the normal functions like
-                // `longjmp` would trigger the abort logic, terminating the
-                // program. Instead we insert the equivalent of `catch(...)` for C++
-                // which magically doesn't trigger when `longjmp` files over this
-                // frame.
-                //
-                // Lots more discussion can be found on #48251 but this codegen is
-                // modeled after clang's for:
-                //
-                //      try {
-                //          foo();
-                //      } catch (...) {
-                //          bar();
-                //      }
-                Some(&mir::TerminatorKind::Abort) => {
-                    let mut cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
-                    let mut cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
-                    ret_llbb = cs_bx.llbb();
-
-                    let cs = cs_bx.catch_switch(None, None, 1);
-                    cs_bx.add_handler(cs, cp_bx.llbb());
-
-                    // The "null" here is actually a RTTI type descriptor for the
-                    // C++ personality function, but `catch (...)` has no type so
-                    // it's null. The 64 here is actually a bitfield which
-                    // represents that this is a catch-all block.
-                    let null = bx.const_null(
-                        bx.type_i8p_ext(bx.cx().data_layout().instruction_address_space),
-                    );
-                    let sixty_four = bx.const_i32(64);
-                    funclet = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
-                    cp_bx.br(llbb);
-                }
-                _ => {
-                    let mut cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
-                    ret_llbb = cleanup_bx.llbb();
-                    funclet = cleanup_bx.cleanup_pad(None, &[]);
-                    cleanup_bx.br(llbb);
-                }
-            };
-
-            (Some(ret_llbb), Some(funclet))
-        })
-        .unzip()
 }
 
 /// Produces, for each argument, a `Value` pointing at the

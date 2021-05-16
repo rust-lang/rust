@@ -20,7 +20,7 @@ use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, LayoutOf};
+use rustc_target::abi::{self, HasDataLayout, LayoutOf};
 use rustc_target::spec::abi::Abi;
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
@@ -32,13 +32,34 @@ struct TerminatorCodegenHelper<'tcx> {
 }
 
 impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
-    /// Returns the associated funclet from `FunctionCx::funclets` for the
-    /// `funclet_bb` member if it is not `None`.
+    /// Returns the appropriate `Funclet` for the current funclet, if on MSVC,
+    /// either already previously cached, or newly created, by `landing_pad_for`.
     fn funclet<'b, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'b FunctionCx<'a, 'tcx, Bx>,
+        fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
-        self.funclet_bb.and_then(|funcl| fx.funclets[funcl].as_ref())
+        let funclet_bb = self.funclet_bb?;
+        if base::wants_msvc_seh(fx.cx.tcx().sess) {
+            // If `landing_pad_for` hasn't been called yet to create the `Funclet`,
+            // it has to be now. This may not seem necessary, as RPO should lead
+            // to all the unwind edges being visited (and so to `landing_pad_for`
+            // getting called for them), before building any of the blocks inside
+            // the funclet itself - however, if MIR contains edges that end up not
+            // being needed in the LLVM IR after monomorphization, the funclet may
+            // be unreachable, and we don't have yet a way to skip building it in
+            // such an eventuality (which may be a better solution than this).
+            if fx.funclets[funclet_bb].is_none() {
+                fx.landing_pad_for(funclet_bb);
+            }
+
+            Some(
+                fx.funclets[funclet_bb]
+                    .as_ref()
+                    .expect("landing_pad_for didn't also create funclets entry"),
+            )
+        } else {
+            None
+        }
     }
 
     fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
@@ -54,10 +75,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             (Some(f), Some(t_f)) if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) => {
                 (lltarget, false)
             }
-            // jump *into* cleanup - need a landing pad if GNU
-            (None, Some(_)) => (fx.landing_pad_to(target), false),
+            // jump *into* cleanup - need a landing pad if GNU, cleanup pad if MSVC
+            (None, Some(_)) => (fx.landing_pad_for(target), false),
             (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", self.terminator),
-            (Some(_), Some(_)) => (fx.landing_pad_to(target), true),
+            (Some(_), Some(_)) => (fx.landing_pad_for(target), true),
         }
     }
 
@@ -1170,38 +1191,88 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    /// Returns the landing-pad wrapper around the given basic block.
-    ///
-    /// No-op in MSVC SEH scheme.
-    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> Bx::BasicBlock {
-        if let Some(block) = self.landing_pads[target_bb] {
-            return block;
+    /// Returns the landing/cleanup pad wrapper around the given basic block.
+    // FIXME(eddyb) rename this to `eh_pad_for`.
+    fn landing_pad_for(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
+        if let Some(landing_pad) = self.landing_pads[bb] {
+            return landing_pad;
         }
 
-        let block = self.blocks[target_bb];
-        let landing_pad = self.landing_pad_uncached(block);
-        self.landing_pads[target_bb] = Some(landing_pad);
+        let landing_pad = self.landing_pad_for_uncached(bb);
+        self.landing_pads[bb] = Some(landing_pad);
         landing_pad
     }
 
-    fn landing_pad_uncached(&mut self, target_bb: Bx::BasicBlock) -> Bx::BasicBlock {
+    // FIXME(eddyb) rename this to `eh_pad_for_uncached`.
+    fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
+        let llbb = self.blocks[bb];
         if base::wants_msvc_seh(self.cx.sess()) {
-            span_bug!(self.mir.span, "landing pad was not inserted?")
+            let funclet;
+            let ret_llbb;
+            match self.mir[bb].terminator.as_ref().map(|t| &t.kind) {
+                // This is a basic block that we're aborting the program for,
+                // notably in an `extern` function. These basic blocks are inserted
+                // so that we assert that `extern` functions do indeed not panic,
+                // and if they do we abort the process.
+                //
+                // On MSVC these are tricky though (where we're doing funclets). If
+                // we were to do a cleanuppad (like below) the normal functions like
+                // `longjmp` would trigger the abort logic, terminating the
+                // program. Instead we insert the equivalent of `catch(...)` for C++
+                // which magically doesn't trigger when `longjmp` files over this
+                // frame.
+                //
+                // Lots more discussion can be found on #48251 but this codegen is
+                // modeled after clang's for:
+                //
+                //      try {
+                //          foo();
+                //      } catch (...) {
+                //          bar();
+                //      }
+                Some(&mir::TerminatorKind::Abort) => {
+                    let mut cs_bx = self.new_block(&format!("cs_funclet{:?}", bb));
+                    let mut cp_bx = self.new_block(&format!("cp_funclet{:?}", bb));
+                    ret_llbb = cs_bx.llbb();
+
+                    let cs = cs_bx.catch_switch(None, None, 1);
+                    cs_bx.add_handler(cs, cp_bx.llbb());
+
+                    // The "null" here is actually a RTTI type descriptor for the
+                    // C++ personality function, but `catch (...)` has no type so
+                    // it's null. The 64 here is actually a bitfield which
+                    // represents that this is a catch-all block.
+                    let null = cp_bx.const_null(
+                        cp_bx.type_i8p_ext(cp_bx.cx().data_layout().instruction_address_space),
+                    );
+                    let sixty_four = cp_bx.const_i32(64);
+                    funclet = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
+                    cp_bx.br(llbb);
+                }
+                _ => {
+                    let mut cleanup_bx = self.new_block(&format!("funclet_{:?}", bb));
+                    ret_llbb = cleanup_bx.llbb();
+                    funclet = cleanup_bx.cleanup_pad(None, &[]);
+                    cleanup_bx.br(llbb);
+                }
+            }
+            self.funclets[bb] = Some(funclet);
+            ret_llbb
+        } else {
+            let mut bx = self.new_block("cleanup");
+
+            let llpersonality = self.cx.eh_personality();
+            let llretty = self.landing_pad_type();
+            let lp = bx.landing_pad(llretty, llpersonality, 1);
+            bx.set_cleanup(lp);
+
+            let slot = self.get_personality_slot(&mut bx);
+            slot.storage_live(&mut bx);
+            Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
+
+            bx.br(llbb);
+            bx.llbb()
         }
-
-        let mut bx = self.new_block("cleanup");
-
-        let llpersonality = self.cx.eh_personality();
-        let llretty = self.landing_pad_type();
-        let lp = bx.landing_pad(llretty, llpersonality, 1);
-        bx.set_cleanup(lp);
-
-        let slot = self.get_personality_slot(&mut bx);
-        slot.storage_live(&mut bx);
-        Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
-
-        bx.br(target_bb);
-        bx.llbb()
     }
 
     fn landing_pad_type(&self) -> Bx::Type {
