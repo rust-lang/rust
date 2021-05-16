@@ -40,8 +40,11 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// then later loaded when generating the DIVERGE_BLOCK.
     personality_slot: Option<PlaceRef<'tcx, Bx::Value>>,
 
-    /// A `Block` for each MIR `BasicBlock`
-    blocks: IndexVec<mir::BasicBlock, Bx::BasicBlock>,
+    /// A backend `BasicBlock` for each MIR `BasicBlock`, created lazily
+    /// as-needed (e.g. RPO reaching it or another block branching to it).
+    // FIXME(eddyb) rename `llbbs` and other `ll`-prefixed things to use a
+    // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbbs`).
+    cached_llbbs: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
 
     /// The funclet status of each basic block
     cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
@@ -141,7 +144,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let debug_context = cx.create_function_debug_context(instance, &fn_abi, llfn, &mir);
 
-    let mut bx = Bx::new_block(cx, llfn, "start");
+    let start_llbb = Bx::append_block(cx, llfn, "start");
+    let mut bx = Bx::build(cx, start_llbb);
 
     if mir.basic_blocks().iter().any(|bb| bb.is_cleanup) {
         bx.set_personality_fn(cx.eh_personality());
@@ -151,17 +155,17 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // Allocate a `Block` for every basic block, except
     // the start block, if nothing loops back to it.
     let reentrant_start_block = !mir.predecessors()[mir::START_BLOCK].is_empty();
-    let block_bxs: IndexVec<mir::BasicBlock, Bx::BasicBlock> = mir
-        .basic_blocks()
-        .indices()
-        .map(|bb| {
-            if bb == mir::START_BLOCK && !reentrant_start_block {
-                bx.llbb()
-            } else {
-                bx.build_sibling_block(&format!("{:?}", bb)).llbb()
-            }
-        })
-        .collect();
+    let cached_llbbs: IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>> =
+        mir.basic_blocks()
+            .indices()
+            .map(|bb| {
+                if bb == mir::START_BLOCK && !reentrant_start_block {
+                    Some(start_llbb)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
     let mut fx = FunctionCx {
         instance,
@@ -170,7 +174,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         fn_abi,
         cx,
         personality_slot: None,
-        blocks: block_bxs,
+        cached_llbbs,
         unreachable_block: None,
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
@@ -245,28 +249,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Branch to the START block, if it's not the entry block.
     if reentrant_start_block {
-        bx.br(fx.blocks[mir::START_BLOCK]);
+        bx.br(fx.llbb(mir::START_BLOCK));
     }
-
-    let rpo = traversal::reverse_postorder(&mir);
-    let mut visited = BitSet::new_empty(mir.basic_blocks().len());
 
     // Codegen the body of each block using reverse postorder
-    for (bb, _) in rpo {
-        visited.insert(bb.index());
+    // FIXME(eddyb) reuse RPO iterator between `analysis` and this.
+    for (bb, _) in traversal::reverse_postorder(&mir) {
         fx.codegen_block(bb);
-    }
-
-    // Remove blocks that haven't been visited, or have no
-    // predecessors.
-    for bb in mir.basic_blocks().indices() {
-        // Unreachable block
-        if !visited.contains(bb.index()) {
-            debug!("codegen_mir: block {:?} was not visited", bb);
-            unsafe {
-                bx.delete_basic_block(fx.blocks[bb]);
-            }
-        }
     }
 }
 

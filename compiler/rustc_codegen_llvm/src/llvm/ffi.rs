@@ -1079,7 +1079,6 @@ extern "C" {
         Fn: &'a Value,
         Name: *const c_char,
     ) -> &'a BasicBlock;
-    pub fn LLVMDeleteBasicBlock(BB: &BasicBlock);
 
     // Operations on instructions
     pub fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;

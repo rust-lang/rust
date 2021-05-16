@@ -68,7 +68,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         target: mir::BasicBlock,
     ) -> (Bx::BasicBlock, bool) {
         let span = self.terminator.source_info.span;
-        let lltarget = fx.blocks[target];
+        let lltarget = fx.llbb(target);
         let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
         match (self.funclet_bb, target_funclet) {
             (None, None) => (lltarget, false),
@@ -133,13 +133,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
         if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
-            let ret_bx = if let Some((_, target)) = destination {
-                fx.blocks[target]
+            let ret_llbb = if let Some((_, target)) = destination {
+                fx.llbb(target)
             } else {
                 fx.unreachable_block()
             };
             let invokeret =
-                bx.invoke(fn_ptr, &llargs, ret_bx, self.llblock(fx, cleanup), self.funclet(fx));
+                bx.invoke(fn_ptr, &llargs, ret_llbb, self.llblock(fx, cleanup), self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, invokeret);
 
             if let Some((ret_dest, target)) = destination {
@@ -386,7 +386,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llblock(self, target);
-        let panic_block = self.new_block("panic");
+        let panic_block = bx.build_sibling_block("panic");
         if expected {
             bx.cond_br(cond, lltarget, panic_block.llbb());
         } else {
@@ -1205,7 +1205,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     // FIXME(eddyb) rename this to `eh_pad_for_uncached`.
     fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
-        let llbb = self.blocks[bb];
+        let llbb = self.llbb(bb);
         if base::wants_msvc_seh(self.cx.sess()) {
             let funclet;
             let ret_llbb;
@@ -1289,14 +1289,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         })
     }
 
-    pub fn new_block(&self, name: &str) -> Bx {
-        Bx::new_block(self.cx, self.llfn, name)
+    // FIXME(eddyb) replace with `build_sibling_block`/`append_sibling_block`
+    // (which requires having a `Bx` already, and not all callers do).
+    fn new_block(&self, name: &str) -> Bx {
+        let llbb = Bx::append_block(self.cx, self.llfn, name);
+        Bx::build(self.cx, llbb)
     }
 
-    pub fn build_block(&self, bb: mir::BasicBlock) -> Bx {
-        let mut bx = Bx::with_cx(self.cx);
-        bx.position_at_end(self.blocks[bb]);
-        bx
+    /// Get the backend `BasicBlock` for a MIR `BasicBlock`, either already
+    /// cached in `self.cached_llbbs`, or created on demand (and cached).
+    // FIXME(eddyb) rename `llbb` and other `ll`-prefixed things to use a
+    // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbb`).
+    pub fn llbb(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
+        self.cached_llbbs[bb].unwrap_or_else(|| {
+            // FIXME(eddyb) only name the block if `fewer_names` is `false`.
+            let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
+            self.cached_llbbs[bb] = Some(llbb);
+            llbb
+        })
+    }
+
+    pub fn build_block(&mut self, bb: mir::BasicBlock) -> Bx {
+        let llbb = self.llbb(bb);
+        Bx::build(self.cx, llbb)
     }
 
     fn make_return_dest(
