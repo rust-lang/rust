@@ -32,8 +32,8 @@ pub(crate) fn replace_impl_trait_with_generic(
         "Replace impl trait with generic",
         target,
         |edit| {
-            let impl_trait_type = edit.make_ast_mut(impl_trait_type);
-            let fn_ = edit.make_ast_mut(fn_);
+            let impl_trait_type = edit.make_mut(impl_trait_type);
+            let fn_ = edit.make_mut(fn_);
 
             let type_param_name = suggest_name::for_generic_parameter(&impl_trait_type);
 

@@ -79,8 +79,7 @@ pub(crate) fn reorder_impl(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
         "Sort methods",
         target,
         |builder| {
-            let methods =
-                methods.into_iter().map(|fn_| builder.make_ast_mut(fn_)).collect::<Vec<_>>();
+            let methods = methods.into_iter().map(|fn_| builder.make_mut(fn_)).collect::<Vec<_>>();
             methods
                 .into_iter()
                 .zip(sorted)

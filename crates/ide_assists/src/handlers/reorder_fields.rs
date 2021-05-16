@@ -70,10 +70,10 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         target,
         |builder| match fields {
             Either::Left((sorted, field_list)) => {
-                replace(builder.make_ast_mut(field_list).fields(), sorted)
+                replace(builder.make_mut(field_list).fields(), sorted)
             }
             Either::Right((sorted, field_list)) => {
-                replace(builder.make_ast_mut(field_list).fields(), sorted)
+                replace(builder.make_mut(field_list).fields(), sorted)
             }
         },
     )

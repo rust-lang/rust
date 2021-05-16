@@ -61,7 +61,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
         "Expand glob import",
         target.text_range(),
         |builder| {
-            let use_tree = builder.make_ast_mut(use_tree);
+            let use_tree = builder.make_mut(use_tree);
 
             let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
             let expanded = make::use_tree_list(names_to_import.iter().map(|n| {

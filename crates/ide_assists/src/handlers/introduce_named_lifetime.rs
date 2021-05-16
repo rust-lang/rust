@@ -84,8 +84,8 @@ fn generate_fn_def_assist(
         }
     };
     acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
-        let fn_def = builder.make_ast_mut(fn_def);
-        let lifetime = builder.make_ast_mut(lifetime);
+        let fn_def = builder.make_mut(fn_def);
+        let lifetime = builder.make_mut(lifetime);
         let loc_needing_lifetime =
             loc_needing_lifetime.and_then(|it| it.make_mut(builder).to_position());
 
@@ -107,8 +107,8 @@ fn generate_impl_def_assist(
 ) -> Option<()> {
     let new_lifetime_param = generate_unique_lifetime_param_name(impl_def.generic_param_list())?;
     acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
-        let impl_def = builder.make_ast_mut(impl_def);
-        let lifetime = builder.make_ast_mut(lifetime);
+        let impl_def = builder.make_mut(impl_def);
+        let lifetime = builder.make_mut(lifetime);
 
         impl_def.get_or_create_generic_param_list().add_generic_param(
             make::lifetime_param(new_lifetime_param.clone()).clone_for_update().into(),
@@ -141,8 +141,8 @@ enum NeedsLifetime {
 impl NeedsLifetime {
     fn make_mut(self, builder: &mut AssistBuilder) -> Self {
         match self {
-            Self::SelfParam(it) => Self::SelfParam(builder.make_ast_mut(it)),
-            Self::RefType(it) => Self::RefType(builder.make_ast_mut(it)),
+            Self::SelfParam(it) => Self::SelfParam(builder.make_mut(it)),
+            Self::RefType(it) => Self::RefType(builder.make_mut(it)),
         }
     }
 

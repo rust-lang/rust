@@ -74,10 +74,10 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext) -> Opti
             let assignments: Vec<_> = collector
                 .assignments
                 .into_iter()
-                .map(|(stmt, rhs)| (edit.make_ast_mut(stmt), rhs.clone_for_update()))
+                .map(|(stmt, rhs)| (edit.make_mut(stmt), rhs.clone_for_update()))
                 .collect();
 
-            let tgt = edit.make_ast_mut(tgt);
+            let tgt = edit.make_mut(tgt);
 
             for (stmt, rhs) in assignments {
                 let mut stmt = stmt.syntax().clone();

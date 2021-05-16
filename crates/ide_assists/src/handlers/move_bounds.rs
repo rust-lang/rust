@@ -36,8 +36,8 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
         "Move to where clause",
         target,
         |edit| {
-            let type_param_list = edit.make_ast_mut(type_param_list);
-            let parent = edit.make_mut(parent);
+            let type_param_list = edit.make_mut(type_param_list);
+            let parent = edit.make_syntax_mut(parent);
 
             let where_clause: ast::WhereClause = match_ast! {
                 match parent {

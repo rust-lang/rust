@@ -238,8 +238,8 @@ impl AssistBuilder {
         }
     }
 
-    pub(crate) fn make_ast_mut<N: AstNode>(&mut self, node: N) -> N {
-        N::cast(self.make_mut(node.syntax().clone())).unwrap()
+    pub(crate) fn make_mut<N: AstNode>(&mut self, node: N) -> N {
+        self.mutated_tree.get_or_insert_with(|| TreeMutator::new(node.syntax())).make_mut(&node)
     }
     /// Returns a copy of the `node`, suitable for mutation.
     ///
@@ -251,7 +251,7 @@ impl AssistBuilder {
     /// The typical pattern for an assist is to find specific nodes in the read
     /// phase, and then get their mutable couterparts using `make_mut` in the
     /// mutable state.
-    pub(crate) fn make_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
+    pub(crate) fn make_syntax_mut(&mut self, node: SyntaxNode) -> SyntaxNode {
         self.mutated_tree.get_or_insert_with(|| TreeMutator::new(&node)).make_syntax_mut(&node)
     }
 

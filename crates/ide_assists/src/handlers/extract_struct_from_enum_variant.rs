@@ -70,7 +70,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     continue;
                 }
                 builder.edit_file(file_id);
-                let source_file = builder.make_ast_mut(ctx.sema.parse(file_id));
+                let source_file = builder.make_mut(ctx.sema.parse(file_id));
                 let processed = process_references(
                     ctx,
                     &mut visited_modules_set,
@@ -84,8 +84,8 @@ pub(crate) fn extract_struct_from_enum_variant(
                 });
             }
             builder.edit_file(ctx.frange.file_id);
-            let source_file = builder.make_ast_mut(ctx.sema.parse(ctx.frange.file_id));
-            let variant = builder.make_ast_mut(variant.clone());
+            let source_file = builder.make_mut(ctx.sema.parse(ctx.frange.file_id));
+            let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {
                 let processed = process_references(
                     ctx,

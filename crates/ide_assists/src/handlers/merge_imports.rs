@@ -47,16 +47,16 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext) -> Option<()
         target,
         |builder| {
             if let Some((to_replace, replacement, to_remove)) = imports {
-                let to_replace = builder.make_ast_mut(to_replace);
-                let to_remove = builder.make_ast_mut(to_remove);
+                let to_replace = builder.make_mut(to_replace);
+                let to_remove = builder.make_mut(to_remove);
 
                 ted::replace(to_replace.syntax(), replacement.syntax());
                 to_remove.remove();
             }
 
             if let Some((to_replace, replacement, to_remove)) = uses {
-                let to_replace = builder.make_ast_mut(to_replace);
-                let to_remove = builder.make_ast_mut(to_remove);
+                let to_replace = builder.make_mut(to_replace);
+                let to_remove = builder.make_mut(to_remove);
 
                 ted::replace(to_replace.syntax(), replacement.syntax());
                 to_remove.remove()
