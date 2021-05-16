@@ -186,6 +186,15 @@ impl<'tcx> MonoItem<'tcx> {
     pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
         crate::dep_graph::make_compile_mono_item(tcx, self)
     }
+
+    /// Returns the item's `CrateNum`
+    pub fn krate(&self) -> CrateNum {
+        match self {
+            MonoItem::Fn(ref instance) => instance.def_id().krate,
+            MonoItem::Static(def_id) => def_id.krate,
+            MonoItem::GlobalAsm(..) => LOCAL_CRATE,
+        }
+    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
