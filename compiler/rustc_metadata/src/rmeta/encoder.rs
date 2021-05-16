@@ -509,9 +509,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                                 virtual_name: joined,
                                             }
                                         } else {
-                                            RealFileName::LocalPath(
-                                                Path::new(absolute).join(path_to_file),
-                                            )
+                                            RealFileName::LocalPath(joined)
                                         }
                                     }
                                     RealFileName::Remapped { local_path: _, virtual_name } => {
