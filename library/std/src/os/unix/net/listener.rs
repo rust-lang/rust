@@ -107,13 +107,16 @@ impl UnixListener {
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
-            cvt(libc::bind(*inner.as_inner(), &socket_addr.addr as *const _ as *const _, socket_addr.len as _))?;
+            cvt(libc::bind(
+                *inner.as_inner(),
+                &socket_addr.addr as *const _ as *const _,
+                socket_addr.len as _,
+            ))?;
             cvt(libc::listen(*inner.as_inner(), 128))?;
 
             Ok(UnixListener(inner))
         }
     }
-
 
     /// Accepts a new incoming connection to this listener.
     ///
