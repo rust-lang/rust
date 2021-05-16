@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Pointer, Scalar,
+    alloc_range, read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
 use rustc_middle::ty::ConstKind;
 
@@ -176,8 +176,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                     std::iter::repeat(0).take(size.bytes_usize()).collect::<Vec<u8>>(),
                     align,
                 );
-                let ptr = Pointer::new(AllocId(!0), Size::ZERO); // The alloc id is never used
-                alloc.write_scalar(fx, ptr, x.into(), size).unwrap();
+                alloc.write_scalar(fx, alloc_range(Size::ZERO, size), x.into()).unwrap();
                 let alloc = fx.tcx.intern_const_alloc(alloc);
                 return CValue::by_ref(pointer_for_allocation(fx, alloc), layout);
             }
