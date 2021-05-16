@@ -101,7 +101,7 @@ impl<'a> InferenceContext<'a> {
             // here, we would coerce from `!` to `?T`.
             match to_ty.kind(&Interner) {
                 TyKind::InferenceVar(tv, TyVariableKind::General) => {
-                    self.table.type_variable_table.set_diverging(*tv, true);
+                    self.table.set_diverging(*tv, true);
                 }
                 _ => {}
             }

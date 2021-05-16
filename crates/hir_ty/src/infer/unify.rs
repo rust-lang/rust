@@ -127,29 +127,6 @@ pub(crate) fn unify(
     ))
 }
 
-#[derive(Clone, Debug)]
-pub(super) struct TypeVariableTable {
-    inner: Vec<TypeVariableData>,
-}
-
-impl TypeVariableTable {
-    pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
-        self.inner[iv.index() as usize].diverging = diverging;
-    }
-
-    fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
-        match kind {
-            _ if self.inner.get(iv.index() as usize).map_or(false, |data| data.diverging) => {
-                TyKind::Never
-            }
-            TyVariableKind::General => TyKind::Error,
-            TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
-            TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
-        }
-        .intern(&Interner)
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct TypeVariableData {
     diverging: bool,
@@ -162,7 +139,7 @@ pub(crate) struct InferenceTable<'a> {
     pub db: &'a dyn HirDatabase,
     pub trait_env: Arc<TraitEnvironment>,
     pub(super) var_unification_table: ChalkInferenceTable,
-    pub(super) type_variable_table: TypeVariableTable,
+    pub(super) type_variable_table: Vec<TypeVariableData>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
@@ -172,7 +149,7 @@ impl<'a> InferenceTable<'a> {
             db,
             trait_env,
             var_unification_table: ChalkInferenceTable::new(),
-            type_variable_table: TypeVariableTable { inner: Vec::new() },
+            type_variable_table: Vec::new(),
             pending_obligations: Vec::new(),
         }
     }
@@ -184,16 +161,36 @@ impl<'a> InferenceTable<'a> {
     /// marked as diverging if necessary, so that resolving them gives the right
     /// result.
     pub(super) fn propagate_diverging_flag(&mut self) {
-        for i in 0..self.type_variable_table.inner.len() {
-            if !self.type_variable_table.inner[i].diverging {
+        for i in 0..self.type_variable_table.len() {
+            if !self.type_variable_table[i].diverging {
                 continue;
             }
             let v = InferenceVar::from(i as u32);
             let root = self.var_unification_table.inference_var_root(v);
-            if let Some(data) = self.type_variable_table.inner.get_mut(root.index() as usize) {
+            if let Some(data) = self.type_variable_table.get_mut(root.index() as usize) {
                 data.diverging = true;
             }
         }
+    }
+
+    pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
+        self.type_variable_table[iv.index() as usize].diverging = diverging;
+    }
+
+    fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
+        match kind {
+            _ if self
+                .type_variable_table
+                .get(iv.index() as usize)
+                .map_or(false, |data| data.diverging) =>
+            {
+                TyKind::Never
+            }
+            TyVariableKind::General => TyKind::Error,
+            TyVariableKind::Integer => TyKind::Scalar(Scalar::Int(IntTy::I32)),
+            TyVariableKind::Float => TyKind::Scalar(Scalar::Float(FloatTy::F64)),
+        }
+        .intern(&Interner)
     }
 
     pub(super) fn canonicalize<T: Fold<Interner> + HasInterner<Interner = Interner>>(
@@ -239,16 +236,19 @@ impl<'a> InferenceTable<'a> {
         var
     }
 
+    fn extend_type_variable_table(&mut self, to_index: usize) {
+        self.type_variable_table.extend(
+            (0..1 + to_index - self.type_variable_table.len())
+                .map(|_| TypeVariableData { diverging: false }),
+        );
+    }
+
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
         let var = self.var_unification_table.new_variable(UniverseIndex::ROOT);
         // Chalk might have created some type variables for its own purposes that we don't know about...
-        // TODO refactor this?
-        self.type_variable_table.inner.extend(
-            (0..1 + var.index() as usize - self.type_variable_table.inner.len())
-                .map(|_| TypeVariableData { diverging: false }),
-        );
-        assert_eq!(var.index() as usize, self.type_variable_table.inner.len() - 1);
-        self.type_variable_table.inner[var.index() as usize].diverging = diverging;
+        self.extend_type_variable_table(var.index() as usize);
+        assert_eq!(var.index() as usize, self.type_variable_table.len() - 1);
+        self.type_variable_table[var.index() as usize].diverging = diverging;
         var.to_ty_with_kind(&Interner, kind)
     }
 
@@ -289,12 +289,7 @@ impl<'a> InferenceTable<'a> {
         T: HasInterner<Interner = Interner> + Fold<Interner>,
     {
         t.fold_with(
-            &mut resolve::Resolver {
-                type_variable_table: &self.type_variable_table,
-                var_unification_table: &mut self.var_unification_table,
-                var_stack,
-                fallback,
-            },
+            &mut resolve::Resolver { table: self, var_stack, fallback },
             DebruijnIndex::INNERMOST,
         )
         .expect("fold failed unexpectedly")
@@ -433,14 +428,12 @@ impl<'a> InferenceTable<'a> {
 
 impl<'a> fmt::Debug for InferenceTable<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("InferenceTable")
-            .field("num_vars", &self.type_variable_table.inner.len())
-            .finish()
+        f.debug_struct("InferenceTable").field("num_vars", &self.type_variable_table.len()).finish()
     }
 }
 
 mod resolve {
-    use super::{ChalkInferenceTable, TypeVariableTable};
+    use super::InferenceTable;
     use crate::{
         ConcreteConst, Const, ConstData, ConstValue, DebruijnIndex, GenericArg, InferenceVar,
         Interner, Ty, TyVariableKind, VariableKind,
@@ -452,13 +445,12 @@ mod resolve {
     };
     use hir_def::type_ref::ConstScalar;
 
-    pub(super) struct Resolver<'a, F> {
-        pub type_variable_table: &'a TypeVariableTable,
-        pub var_unification_table: &'a mut ChalkInferenceTable,
+    pub(super) struct Resolver<'a, 'b, F> {
+        pub table: &'a mut InferenceTable<'b>,
         pub var_stack: &'a mut Vec<InferenceVar>,
         pub fallback: F,
     }
-    impl<'a, 'i, F> Folder<'i, Interner> for Resolver<'a, F>
+    impl<'a, 'b, 'i, F> Folder<'i, Interner> for Resolver<'a, 'b, F>
     where
         F: Fn(InferenceVar, VariableKind, GenericArg, DebruijnIndex) -> GenericArg + 'i,
     {
@@ -476,15 +468,15 @@ mod resolve {
             kind: TyVariableKind,
             outer_binder: DebruijnIndex,
         ) -> Fallible<Ty> {
-            let var = self.var_unification_table.inference_var_root(var);
+            let var = self.table.var_unification_table.inference_var_root(var);
             if self.var_stack.contains(&var) {
                 // recursive type
-                let default = self.type_variable_table.fallback_value(var, kind).cast(&Interner);
+                let default = self.table.fallback_value(var, kind).cast(&Interner);
                 return Ok((self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
                     .assert_ty_ref(&Interner)
                     .clone());
             }
-            let result = if let Some(known_ty) = self.var_unification_table.probe_var(var) {
+            let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
                 let result =
@@ -492,7 +484,7 @@ mod resolve {
                 self.var_stack.pop();
                 result.assert_ty_ref(&Interner).clone()
             } else {
-                let default = self.type_variable_table.fallback_value(var, kind).cast(&Interner);
+                let default = self.table.fallback_value(var, kind).cast(&Interner);
                 (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
                     .assert_ty_ref(&Interner)
                     .clone()
@@ -506,7 +498,7 @@ mod resolve {
             var: InferenceVar,
             outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
-            let var = self.var_unification_table.inference_var_root(var);
+            let var = self.table.var_unification_table.inference_var_root(var);
             let default = ConstData {
                 ty: ty.clone(),
                 value: ConstValue::Concrete(ConcreteConst { interned: ConstScalar::Unknown }),
@@ -519,7 +511,7 @@ mod resolve {
                     .assert_const_ref(&Interner)
                     .clone());
             }
-            let result = if let Some(known_ty) = self.var_unification_table.probe_var(var) {
+            let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
                 let result =
