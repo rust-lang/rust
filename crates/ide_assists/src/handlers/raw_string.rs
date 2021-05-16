@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use syntax::{ast, AstToken, TextRange, TextSize};
+use syntax::{ast, ast::IsString, AstToken, TextRange, TextSize};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

@@ -29,8 +29,8 @@ use stdx::impl_from;
 use syntax::ast;
 
 use crate::{
+    consteval,
     db::HirDatabase,
-    dummy_usize_const,
     mapping::ToChalk,
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::{
@@ -172,11 +172,12 @@ impl<'a> TyLoweringContext<'a> {
                 let inner_ty = self.lower_ty(inner);
                 TyKind::Raw(lower_to_chalk_mutability(*mutability), inner_ty).intern(&Interner)
             }
-            TypeRef::Array(inner) => {
+            TypeRef::Array(inner, len) => {
                 let inner_ty = self.lower_ty(inner);
-                // FIXME: we don't have length info here because we don't store an expression for
-                // the length
-                TyKind::Array(inner_ty, dummy_usize_const()).intern(&Interner)
+
+                let const_len = consteval::usize_const(len.as_usize());
+
+                TyKind::Array(inner_ty, const_len).intern(&Interner)
             }
             TypeRef::Slice(inner) => {
                 let inner_ty = self.lower_ty(inner);

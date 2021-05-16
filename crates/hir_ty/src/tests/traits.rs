@@ -3474,3 +3474,100 @@ fn main(){
         "#]],
     )
 }
+
+#[test]
+fn array_length() {
+    check_infer(
+        r#"
+trait T {
+    type Output;
+    fn do_thing(&self) -> Self::Output;
+}
+
+impl T for [u8; 4] {
+    type Output = usize;
+    fn do_thing(&self) -> Self::Output {
+        2
+    }
+}
+
+impl T for [u8; 2] {
+    type Output = u8;
+    fn do_thing(&self) -> Self::Output {
+        2
+    }
+}
+
+fn main() {
+    let v = [0u8; 2];
+    let v2 = v.do_thing();
+    let v3 = [0u8; 4];
+    let v4 = v3.do_thing();
+}
+"#,
+        expect![[r#"
+            44..48 'self': &Self
+            133..137 'self': &[u8; 4]
+            155..172 '{     ...     }': usize
+            165..166 '2': usize
+            236..240 'self': &[u8; 2]
+            258..275 '{     ...     }': u8
+            268..269 '2': u8
+            289..392 '{     ...g(); }': ()
+            299..300 'v': [u8; 2]
+            303..311 '[0u8; 2]': [u8; 2]
+            304..307 '0u8': u8
+            309..310 '2': usize
+            321..323 'v2': u8
+            326..327 'v': [u8; 2]
+            326..338 'v.do_thing()': u8
+            348..350 'v3': [u8; 4]
+            353..361 '[0u8; 4]': [u8; 4]
+            354..357 '0u8': u8
+            359..360 '4': usize
+            371..373 'v4': usize
+            376..378 'v3': [u8; 4]
+            376..389 'v3.do_thing()': usize
+        "#]],
+    )
+}
+
+// FIXME: We should infer the length of the returned array :)
+#[test]
+fn const_generics() {
+    check_infer(
+        r#"
+trait T {
+    type Output;
+    fn do_thing(&self) -> Self::Output;
+}
+
+impl<const L: usize> T for [u8; L] {
+    type Output = [u8; L];
+    fn do_thing(&self) -> Self::Output {
+        *self
+    }
+}
+
+fn main() {
+    let v = [0u8; 2];
+    let v2 = v.do_thing();
+}
+"#,
+        expect![[r#"
+            44..48 'self': &Self
+            151..155 'self': &[u8; _]
+            173..194 '{     ...     }': [u8; _]
+            183..188 '*self': [u8; _]
+            184..188 'self': &[u8; _]
+            208..260 '{     ...g(); }': ()
+            218..219 'v': [u8; 2]
+            222..230 '[0u8; 2]': [u8; 2]
+            223..226 '0u8': u8
+            228..229 '2': usize
+            240..242 'v2': [u8; _]
+            245..246 'v': [u8; 2]
+            245..257 'v.do_thing()': [u8; _]
+        "#]],
+    )
+}

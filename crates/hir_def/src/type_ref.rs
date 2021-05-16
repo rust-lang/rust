@@ -2,6 +2,7 @@
 //! be directly created from an ast::TypeRef, without further queries.
 
 use hir_expand::{name::Name, AstId, InFile};
+use std::convert::TryInto;
 use syntax::ast;
 
 use crate::{body::LowerCtx, path::Path};
@@ -79,7 +80,9 @@ pub enum TypeRef {
     Path(Path),
     RawPtr(Box<TypeRef>, Mutability),
     Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
-    Array(Box<TypeRef> /*, Expr*/),
+    // FIXME: for full const generics, the latter element (length) here is going to have to be an
+    // expression that is further lowered later in hir_ty.
+    Array(Box<TypeRef>, ConstScalar),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
     Fn(Vec<TypeRef>, bool /*varargs*/),
@@ -140,7 +143,16 @@ impl TypeRef {
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
             ast::Type::ArrayType(inner) => {
-                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
+                // FIXME: This is a hack. We should probably reuse the machinery of
+                // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
+                // `hir_ty` level, which would allow knowing the type of:
+                // let v: [u8; 2 + 2] = [0u8; 4];
+                let len = inner
+                    .expr()
+                    .map(ConstScalar::usize_from_literal_expr)
+                    .unwrap_or(ConstScalar::Unknown);
+
+                TypeRef::Array(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())), len)
             }
             ast::Type::SliceType(inner) => {
                 TypeRef::Slice(Box::new(TypeRef::from_ast_opt(&ctx, inner.ty())))
@@ -212,7 +224,7 @@ impl TypeRef {
                 }
                 TypeRef::RawPtr(type_ref, _)
                 | TypeRef::Reference(type_ref, ..)
-                | TypeRef::Array(type_ref)
+                | TypeRef::Array(type_ref, _)
                 | TypeRef::Slice(type_ref) => go(&type_ref, f),
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
@@ -296,5 +308,60 @@ impl TypeBound {
             TypeBound::Path(p) => Some(p),
             _ => None,
         }
+    }
+}
+
+/// A concrete constant value
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConstScalar {
+    // for now, we only support the trivial case of constant evaluating the length of an array
+    // Note that this is u64 because the target usize may be bigger than our usize
+    Usize(u64),
+
+    /// Case of an unknown value that rustc might know but we don't
+    // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
+    // constants
+    // https://github.com/rust-analyzer/rust-analyzer/pull/8813#issuecomment-840679177
+    // https://rust-lang.zulipchat.com/#narrow/stream/144729-wg-traits/topic/Handling.20non.20evaluatable.20constants'.20equality/near/238386348
+    Unknown,
+}
+
+impl std::fmt::Display for ConstScalar {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            ConstScalar::Usize(us) => write!(fmt, "{}", us),
+            ConstScalar::Unknown => write!(fmt, "_"),
+        }
+    }
+}
+
+impl ConstScalar {
+    /// Gets a target usize out of the ConstScalar
+    pub fn as_usize(&self) -> Option<u64> {
+        match self {
+            &ConstScalar::Usize(us) => Some(us),
+            _ => None,
+        }
+    }
+
+    // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
+    // parse stage.
+    fn usize_from_literal_expr(expr: ast::Expr) -> ConstScalar {
+        match expr {
+            ast::Expr::Literal(lit) => {
+                let lkind = lit.kind();
+                match lkind {
+                    ast::LiteralKind::IntNumber(num)
+                        if num.suffix() == None || num.suffix() == Some("usize") =>
+                    {
+                        num.value().and_then(|v| v.try_into().ok())
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+        .map(ConstScalar::Usize)
+        .unwrap_or(ConstScalar::Unknown)
     }
 }

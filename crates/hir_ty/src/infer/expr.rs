@@ -3,7 +3,7 @@
 use std::iter::{repeat, repeat_with};
 use std::{mem, sync::Arc};
 
-use chalk_ir::{cast::Cast, fold::Shift, ConstData, Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, fold::Shift, Mutability, TyVariableKind};
 use hir_def::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
@@ -15,9 +15,7 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef,
-    consts::ConstScalar,
-    dummy_usize_const,
+    autoderef, consteval,
     lower::lower_to_chalk_mutability,
     mapping::from_chalk,
     method_resolution, op,
@@ -25,7 +23,7 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
     utils::{generics, Generics},
-    AdtId, Binders, CallableDefId, ConstValue, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
     ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
@@ -724,7 +722,7 @@ impl<'a> InferenceContext<'a> {
                         for expr in items.iter() {
                             self.infer_expr_coerce(*expr, &Expectation::has_type(elem_ty.clone()));
                         }
-                        Some(items.len())
+                        Some(items.len() as u64)
                     }
                     Array::Repeat { initializer, repeat } => {
                         self.infer_expr_coerce(
@@ -737,20 +735,13 @@ impl<'a> InferenceContext<'a> {
                                 TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
                             ),
                         );
-                        // FIXME: support length for Repeat array expressions
-                        None
+
+                        let repeat_expr = &self.body.exprs[*repeat];
+                        consteval::eval_usize(repeat_expr)
                     }
                 };
 
-                let cd = ConstData {
-                    ty: TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(&Interner),
-                    value: ConstValue::Concrete(chalk_ir::ConcreteConst {
-                        interned: len
-                            .map(|len| ConstScalar::Usize(len as u64))
-                            .unwrap_or(ConstScalar::Unknown),
-                    }),
-                };
-                TyKind::Array(elem_ty, cd.intern(&Interner)).intern(&Interner)
+                TyKind::Array(elem_ty, consteval::usize_const(len)).intern(&Interner)
             }
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => TyKind::Scalar(Scalar::Bool).intern(&Interner),
@@ -758,11 +749,12 @@ impl<'a> InferenceContext<'a> {
                     TyKind::Ref(Mutability::Not, static_lifetime(), TyKind::Str.intern(&Interner))
                         .intern(&Interner)
                 }
-                Literal::ByteString(..) => {
+                Literal::ByteString(bs) => {
                     let byte_type = TyKind::Scalar(Scalar::Uint(UintTy::U8)).intern(&Interner);
 
-                    let array_type =
-                        TyKind::Array(byte_type, dummy_usize_const()).intern(&Interner);
+                    let len = consteval::usize_const(Some(bs.len() as u64));
+
+                    let array_type = TyKind::Array(byte_type, len).intern(&Interner);
                     TyKind::Ref(Mutability::Not, static_lifetime(), array_type).intern(&Interner)
                 }
                 Literal::Char(..) => TyKind::Scalar(Scalar::Char).intern(&Interner),

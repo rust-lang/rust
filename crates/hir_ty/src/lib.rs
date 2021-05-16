@@ -10,9 +10,9 @@ mod autoderef;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
+pub mod consteval;
 mod infer;
 mod interner;
-mod consts;
 mod lower;
 mod mapping;
 mod op;
@@ -38,9 +38,13 @@ use chalk_ir::{
     interner::HasInterner,
     UintTy,
 };
-use hir_def::{expr::ExprId, type_ref::Rawness, TypeParamId};
+use hir_def::{
+    expr::ExprId,
+    type_ref::{ConstScalar, Rawness},
+    TypeParamId,
+};
 
-use crate::{consts::ConstScalar, db::HirDatabase, display::HirDisplay, utils::generics};
+use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;

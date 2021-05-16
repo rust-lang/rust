@@ -4,7 +4,7 @@ use ide_assists::utils::extract_trivial_expression;
 use itertools::Itertools;
 use syntax::{
     algo::non_trivia_sibling,
-    ast::{self, AstNode, AstToken},
+    ast::{self, AstNode, AstToken, IsString},
     Direction, NodeOrToken, SourceFile,
     SyntaxKind::{self, USE_TREE, WHITESPACE},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,

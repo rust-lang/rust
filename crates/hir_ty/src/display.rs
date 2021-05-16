@@ -962,11 +962,10 @@ impl HirDisplay for TypeRef {
                 write!(f, "{}", mutability)?;
                 inner.hir_fmt(f)?;
             }
-            TypeRef::Array(inner) => {
+            TypeRef::Array(inner, len) => {
                 write!(f, "[")?;
                 inner.hir_fmt(f)?;
-                // FIXME: Array length?
-                write!(f, "; _]")?;
+                write!(f, "; {}]", len)?;
             }
             TypeRef::Slice(inner) => {
                 write!(f, "[")?;
