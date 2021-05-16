@@ -833,6 +833,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.ecx.memory.read_bytes(mplace.ptr, Size::from_bytes(len)),
                     self.path,
                     err_ub!(InvalidUninitBytes(..)) => { "uninitialized data in `str`" },
+                    err_unsup!(ReadPointerAsBytes) => { "a pointer in `str`" },
                 );
             }
             ty::Array(tys, ..) | ty::Slice(tys)
