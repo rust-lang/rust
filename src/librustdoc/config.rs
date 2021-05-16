@@ -565,7 +565,7 @@ impl Options {
         let target =
             matches.opt_str("target").map_or(TargetTriple::from_triple(host_triple()), |target| {
                 if target.ends_with(".json") {
-                    TargetTriple::TargetPath(PathBuf::from(target))
+                    TargetTriple::from_path(Path::new(&target))
                 } else {
                     TargetTriple::TargetTriple(target)
                 }
