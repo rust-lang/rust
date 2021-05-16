@@ -1745,12 +1745,17 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
         ty = it.type_(),
         path = relpath
     );
+
     if parentlen == 0 {
-        // There is no sidebar-items.js beyond the crate root path
-        // FIXME maybe dynamic crate loading can be merged here
+        write!(
+            buffer,
+            "<script defer src=\"{}sidebar-items{}.js\"></script>",
+            relpath, cx.shared.resource_suffix
+        );
     } else {
-        write!(buffer, "<script defer src=\"{path}sidebar-items.js\"></script>", path = relpath);
+        write!(buffer, "<script defer src=\"{}sidebar-items.js\"></script>", relpath);
     }
+
     // Closes sidebar-elems div.
     buffer.write_str("</div>");
 }
