@@ -5,6 +5,7 @@ use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PRe
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::parse::ParseSess;
+use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Pos, Span};
 
@@ -166,11 +167,17 @@ impl<'a> StringReader<'a> {
                 self.cook_doc_comment(content_start, content, CommentKind::Block, doc_style)
             }
             rustc_lexer::TokenKind::Whitespace => return None,
-            rustc_lexer::TokenKind::Ident | rustc_lexer::TokenKind::RawIdent => {
+            rustc_lexer::TokenKind::Ident
+            | rustc_lexer::TokenKind::RawIdent
+            | rustc_lexer::TokenKind::BadPrefix => {
                 let is_raw_ident = token == rustc_lexer::TokenKind::RawIdent;
+                let is_bad_prefix = token == rustc_lexer::TokenKind::BadPrefix;
                 let mut ident_start = start;
                 if is_raw_ident {
                     ident_start = ident_start + BytePos(2);
+                }
+                if is_bad_prefix {
+                    self.report_reserved_prefix(start);
                 }
                 let sym = nfc_normalize(self.str_from(ident_start));
                 let span = self.mk_sp(start, self.pos);
@@ -489,6 +496,29 @@ impl<'a> StringReader<'a> {
 
         err.emit();
         FatalError.raise()
+    }
+
+    fn report_reserved_prefix(&self, start: BytePos) {
+        // See RFC 3101.
+        if self.sess.edition < Edition::Edition2021 {
+            return;
+        }
+
+        let mut err = self.sess.span_diagnostic.struct_span_err(
+            self.mk_sp(start, self.pos),
+            &format!("prefix `{}` is unknown", self.str_from_to(start, self.pos)),
+        );
+        err.span_label(self.mk_sp(start, self.pos), "unknown prefix");
+        err.span_label(
+            self.mk_sp(self.pos, self.pos),
+            &format!(
+                "help: consider inserting a whitespace before this `{}`",
+                self.str_from_to(self.pos, self.pos + BytePos(1)),
+            ),
+        );
+        err.note("prefixed identifiers and string literals are reserved since Rust 2021");
+
+        err.emit();
     }
 
     /// Note: It was decided to not add a test case, because it would be too big.
