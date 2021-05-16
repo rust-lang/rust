@@ -23,7 +23,7 @@ impl<'a> InferenceContext<'a> {
         if to_ty.is_unknown() {
             return true;
         }
-        let from_ty = self.resolve_ty_shallow(from_ty).into_owned();
+        let from_ty = self.resolve_ty_shallow(from_ty);
         let to_ty = self.resolve_ty_shallow(to_ty);
         match self.coerce_inner(from_ty, &to_ty) {
             Ok(_result) => {
@@ -46,9 +46,7 @@ impl<'a> InferenceContext<'a> {
     ///    least upper bound.
     pub(super) fn coerce_merge_branch(&mut self, ty1: &Ty, ty2: &Ty) -> Ty {
         let ty1 = self.resolve_ty_shallow(ty1);
-        let ty1 = ty1.as_ref();
         let ty2 = self.resolve_ty_shallow(ty2);
-        let ty2 = ty2.as_ref();
         // Special case: two function types. Try to coerce both to
         // pointers to have a chance at getting a match. See
         // https://github.com/rust-lang/rust/blob/7b805396bf46dce972692a6846ce2ad8481c5f85/src/librustc_typeck/check/coercion.rs#L877-L916
@@ -80,9 +78,9 @@ impl<'a> InferenceContext<'a> {
         // type is a type variable and the new one is `!`, trying it the other
         // way around first would mean we make the type variable `!`, instead of
         // just marking it as possibly diverging.
-        if self.coerce(ty2, ty1) {
+        if self.coerce(&ty2, &ty1) {
             ty1.clone()
-        } else if self.coerce(ty1, ty2) {
+        } else if self.coerce(&ty1, &ty2) {
             ty2.clone()
         } else {
             // TODO record a type mismatch

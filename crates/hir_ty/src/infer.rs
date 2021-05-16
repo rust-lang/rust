@@ -13,8 +13,6 @@
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
 
-use std::borrow::Cow;
-
 use std::ops::Index;
 use std::sync::Arc;
 
@@ -384,7 +382,7 @@ impl<'a> InferenceContext<'a> {
         self.table.resolve_ty_as_possible(ty)
     }
 
-    fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
+    fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
         self.table.resolve_ty_shallow(ty)
     }
 

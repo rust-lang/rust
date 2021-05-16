@@ -1,6 +1,6 @@
 //! Unification and canonicalization logic.
 
-use std::{borrow::Cow, fmt, mem, sync::Arc};
+use std::{fmt, mem, sync::Arc};
 
 use chalk_ir::{
     cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, FloatTy, IntTy, TyVariableKind,
@@ -340,11 +340,8 @@ impl<'a> InferenceTable<'a> {
 
     /// If `ty` is a type variable with known type, returns that type;
     /// otherwise, return ty.
-    // FIXME this could probably just return Ty
-    pub(crate) fn resolve_ty_shallow<'b>(&mut self, ty: &'b Ty) -> Cow<'b, Ty> {
-        self.var_unification_table
-            .normalize_ty_shallow(&Interner, ty)
-            .map_or(Cow::Borrowed(ty), Cow::Owned)
+    pub(crate) fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
+        self.var_unification_table.normalize_ty_shallow(&Interner, ty).unwrap_or_else(|| ty.clone())
     }
 
     /// Resolves the type as far as currently possible, replacing type variables
