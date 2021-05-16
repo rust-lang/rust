@@ -169,13 +169,19 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     }
                 }
             }
-            ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
-                self.requires_unsafe(expr.span, UseOfInlineAssembly);
-            }
             ExprKind::Deref { arg } => {
-                if self.thir[arg].ty.is_unsafe_ptr() {
+                if let ExprKind::StaticRef { def_id, .. } = self.thir[arg].kind {
+                    if self.tcx.is_mutable_static(def_id) {
+                        self.requires_unsafe(expr.span, UseOfMutableStatic);
+                    } else if self.tcx.is_foreign_item(def_id) {
+                        self.requires_unsafe(expr.span, UseOfExternStatic);
+                    }
+                } else if self.thir[arg].ty.is_unsafe_ptr() {
                     self.requires_unsafe(expr.span, DerefOfRawPointer);
                 }
+            }
+            ExprKind::InlineAsm { .. } | ExprKind::LlvmInlineAsm { .. } => {
+                self.requires_unsafe(expr.span, UseOfInlineAssembly);
             }
             ExprKind::Adt {
                 adt_def,
@@ -242,9 +248,7 @@ enum UnsafeOpKind {
     UseOfInlineAssembly,
     InitializingTypeWith,
     CastOfPointerToInt,
-    #[allow(dead_code)] // FIXME
     UseOfMutableStatic,
-    #[allow(dead_code)] // FIXME
     UseOfExternStatic,
     DerefOfRawPointer,
     #[allow(dead_code)] // FIXME
