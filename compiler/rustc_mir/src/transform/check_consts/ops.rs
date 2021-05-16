@@ -141,12 +141,20 @@ impl NonConstOp for FnPtrCast {
 pub struct Generator(pub hir::GeneratorKind);
 impl NonConstOp for Generator {
     fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-        Status::Forbidden
+        if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
+            Status::Unstable(sym::const_async_blocks)
+        } else {
+            Status::Forbidden
+        }
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
-        ccx.tcx.sess.struct_span_err(span, &msg)
+        if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
+            feature_err(&ccx.tcx.sess.parse_sess, sym::const_async_blocks, span, &msg)
+        } else {
+            ccx.tcx.sess.struct_span_err(span, &msg)
+        }
     }
 }
 
