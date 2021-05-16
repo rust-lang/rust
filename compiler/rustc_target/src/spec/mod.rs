@@ -917,6 +917,7 @@ supported_targets! {
 
     ("x86_64-unknown-uefi", x86_64_unknown_uefi),
     ("i686-unknown-uefi", i686_unknown_uefi),
+    ("aarch64-unknown-uefi", aarch64_unknown_uefi),
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
 
