@@ -12,6 +12,7 @@ pub(crate) fn codegen_cpuid_call<'tcx>(
 ) -> (Value, Value, Value, Value) {
     let leaf_0 = fx.bcx.create_block();
     let leaf_1 = fx.bcx.create_block();
+    let leaf_7 = fx.bcx.create_block();
     let leaf_8000_0000 = fx.bcx.create_block();
     let leaf_8000_0001 = fx.bcx.create_block();
     let unsupported_leaf = fx.bcx.create_block();
@@ -25,6 +26,7 @@ pub(crate) fn codegen_cpuid_call<'tcx>(
     let mut switch = cranelift_frontend::Switch::new();
     switch.set_entry(0, leaf_0);
     switch.set_entry(1, leaf_1);
+    switch.set_entry(7, leaf_7);
     switch.set_entry(0x8000_0000, leaf_8000_0000);
     switch.set_entry(0x8000_0001, leaf_8000_0001);
     switch.emit(&mut fx.bcx, leaf, unsupported_leaf);
@@ -42,6 +44,11 @@ pub(crate) fn codegen_cpuid_call<'tcx>(
     let ecx_features = fx.bcx.ins().iconst(types::I32, 0);
     let edx_features = fx.bcx.ins().iconst(types::I32, 1 << 25 /* sse */ | 1 << 26 /* sse2 */);
     fx.bcx.ins().jump(dest, &[cpu_signature, additional_information, ecx_features, edx_features]);
+
+    fx.bcx.switch_to_block(leaf_7);
+    // This leaf technically has subleaves, but we just return zero for all subleaves.
+    let zero = fx.bcx.ins().iconst(types::I32, 0);
+    fx.bcx.ins().jump(dest, &[zero, zero, zero, zero]);
 
     fx.bcx.switch_to_block(leaf_8000_0000);
     let extended_max_basic_leaf = fx.bcx.ins().iconst(types::I32, 0);
