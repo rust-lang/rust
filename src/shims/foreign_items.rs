@@ -114,7 +114,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// by this function.
     /// Returns Ok(Some(body)) if processing the foreign item
     /// is delegated to another function.
-    #[rustfmt::skip]
     fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
@@ -149,6 +148,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let panic_impl_instance = ty::Instance::mono(tcx, panic_impl_id);
                     return Ok(Some(&*this.load_mir(panic_impl_instance.def, None)?));
                 }
+                #[rustfmt::skip]
                 | "exit"
                 | "ExitProcess"
                 => {
@@ -160,7 +160,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
                 "abort" => {
                     check_abi(abi, Abi::C { unwind: false })?;
-                    throw_machine_stop!(TerminationInfo::Abort("the program aborted execution".to_owned()))
+                    throw_machine_stop!(TerminationInfo::Abort(
+                        "the program aborted execution".to_owned()
+                    ))
                 }
                 _ => throw_unsup_format!("can't call (diverging) foreign function: {}", link_name),
             },
@@ -175,7 +177,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // We forward this to the underlying *implementation* in the panic runtime crate.
             // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
             // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
-            "__rust_start_panic" | "__rust_panic_cleanup" => {
+            #[rustfmt::skip]
+            "__rust_start_panic" |
+            "__rust_panic_cleanup" => {
                 check_abi(abi, Abi::C { unwind: false })?;
                 // This replicates some of the logic in `inject_panic_runtime`.
                 // FIXME: is there a way to reuse that logic?
@@ -406,6 +410,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // math functions
+            #[rustfmt::skip]
             | "cbrtf"
             | "coshf"
             | "sinhf"
@@ -430,6 +435,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
             }
+            #[rustfmt::skip]
             | "_hypotf"
             | "hypotf"
             | "atan2f"
@@ -448,6 +454,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u32(n.to_bits()), dest)?;
             }
+            #[rustfmt::skip]
             | "cbrt"
             | "cosh"
             | "sinh"
@@ -472,6 +479,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
             }
+            #[rustfmt::skip]
             | "_hypot"
             | "hypot"
             | "atan2"
@@ -488,6 +496,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
+            #[rustfmt::skip]
             | "_ldexp"
             | "ldexp"
             | "scalbn"
