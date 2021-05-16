@@ -549,17 +549,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         })?;
 
-        // Make sure we check both pointers for an access of the total size and aligment,
-        // *even if* the total size is 0.
-        let src =
-            self.memory.check_ptr_access(self.read_scalar(&src)?.check_init()?, size, align)?;
+        let src = self.read_scalar(&src)?.check_init()?;
+        let dst = self.read_scalar(&dst)?.check_init()?;
 
-        let dst =
-            self.memory.check_ptr_access(self.read_scalar(&dst)?.check_init()?, size, align)?;
-
-        if let (Some(src), Some(dst)) = (src, dst) {
-            self.memory.copy(src, dst, size, nonoverlapping)?;
-        }
-        Ok(())
+        self.memory.copy(src, align, dst, align, size, nonoverlapping)
     }
 }

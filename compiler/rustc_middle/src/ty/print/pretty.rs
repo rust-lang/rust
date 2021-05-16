@@ -1,5 +1,5 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::mir::interpret::{AllocId, ConstValue, GlobalAlloc, Pointer, Scalar};
+use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
@@ -1004,9 +1004,9 @@ pub trait PrettyPrinter<'tcx>:
                 _,
             ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
                 Some(GlobalAlloc::Memory(alloc)) => {
-                    let bytes = int.assert_bits(self.tcx().data_layout.pointer_size);
-                    let size = Size::from_bytes(bytes);
-                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), ptr, size) {
+                    let len = int.assert_bits(self.tcx().data_layout.pointer_size);
+                    let range = AllocRange { start: ptr.offset, size: Size::from_bytes(len) };
+                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), range) {
                         p!(pretty_print_byte_str(byte_str))
                     } else {
                         p!("<too short allocation>")
@@ -1181,10 +1181,9 @@ pub trait PrettyPrinter<'tcx>:
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
                 let n = n.val.try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
-                let n = Size::from_bytes(n);
-                let ptr = Pointer::new(AllocId(0), offset);
+                let range = AllocRange { start: offset, size: Size::from_bytes(n) };
 
-                let byte_str = alloc.get_bytes(&self.tcx(), ptr, n).unwrap();
+                let byte_str = alloc.get_bytes(&self.tcx(), range).unwrap();
                 p!("*");
                 p!(pretty_print_byte_str(byte_str));
                 Ok(self)
