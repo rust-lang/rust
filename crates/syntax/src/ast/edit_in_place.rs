@@ -368,6 +368,46 @@ impl ast::MatchArmList {
     }
 }
 
+impl ast::RecordExprFieldList {
+    pub fn add_field(&self, field: ast::RecordExprField) {
+        let is_multiline = self.syntax().text().contains_char('\n');
+        let whitespace = if is_multiline {
+            let indent = IndentLevel::from_node(self.syntax()) + 1;
+            make::tokens::whitespace(&format!("\n{}", indent))
+        } else {
+            make::tokens::single_space()
+        };
+
+        let position = match self.fields().last() {
+            Some(last_field) => {
+                let comma = match last_field
+                    .syntax()
+                    .siblings_with_tokens(Direction::Next)
+                    .filter_map(|it| it.into_token())
+                    .find(|it| it.kind() == T![,])
+                {
+                    Some(it) => it,
+                    None => {
+                        let comma = ast::make::token(T![,]);
+                        ted::insert(Position::after(last_field.syntax()), &comma);
+                        comma
+                    }
+                };
+                Position::after(comma)
+            }
+            None => match self.l_curly_token() {
+                Some(it) => Position::after(it),
+                None => Position::last_child_of(self.syntax()),
+            },
+        };
+
+        ted::insert_all(position, vec![whitespace.into(), field.syntax().clone().into()]);
+        if is_multiline {
+            ted::insert(Position::after(field.syntax()), ast::make::token(T![,]));
+        }
+    }
+}
+
 fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     let l = node
         .children_with_tokens()

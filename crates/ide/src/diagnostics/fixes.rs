@@ -100,11 +100,12 @@ impl DiagnosticWithFix for MissingFields {
         let root = sema.db.parse_or_expand(self.file)?;
         let field_list_parent = self.field_list_parent.to_node(&root);
         let old_field_list = field_list_parent.record_expr_field_list()?;
-        let mut new_field_list = old_field_list.clone();
+        let new_field_list = old_field_list.clone_for_update();
         for f in self.missed_fields.iter() {
             let field =
-                make::record_expr_field(make::name_ref(&f.to_string()), Some(make::expr_unit()));
-            new_field_list = new_field_list.append_field(&field);
+                make::record_expr_field(make::name_ref(&f.to_string()), Some(make::expr_unit()))
+                    .clone_for_update();
+            new_field_list.add_field(field);
         }
 
         let edit = {

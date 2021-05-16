@@ -579,7 +579,7 @@ fn test_fn() {
 struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
-    let s = TestStruct { one: (), two: ()};
+    let s = TestStruct { one: (), two: () };
 }
 "#,
         );
@@ -599,7 +599,7 @@ impl TestStruct {
 struct TestStruct { one: i32 }
 
 impl TestStruct {
-    fn test_fn() { let s = Self { one: ()}; }
+    fn test_fn() { let s = Self { one: () }; }
 }
 "#,
         );
@@ -792,7 +792,7 @@ fn main() {
 pub struct Foo { pub a: i32, pub b: i32 }
 "#,
             r#"
-fn some(, b: ()) {}
+fn some(, b: () ) {}
 fn items() {}
 fn here() {}
 
