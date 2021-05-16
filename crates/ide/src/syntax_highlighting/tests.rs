@@ -39,11 +39,11 @@ struct Foo {
     pub y: i32,
 }
 
-trait Bar {
+trait Bar where Self: {
     fn bar(&self) -> i32;
 }
 
-impl Bar for Foo {
+impl Bar for Foo where Self: {
     fn bar(&self) -> i32 {
         self.x
     }
