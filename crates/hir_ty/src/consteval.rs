@@ -11,12 +11,12 @@ use hir_def::{
 use crate::{Const, ConstData, ConstValue, Interner, TyKind};
 
 /// Extension trait for [`Const`]
-pub trait ConstExtension {
+pub trait ConstExt {
     /// Is a [`Const`] unknown?
     fn is_unknown(&self) -> bool;
 }
 
-impl ConstExtension for Const {
+impl ConstExt for Const {
     fn is_unknown(&self) -> bool {
         match self.data(&Interner).value {
             // interned Unknown
@@ -35,20 +35,12 @@ impl ConstExtension for Const {
     }
 }
 
-/// Extension trait for [`Expr`]
-pub trait ExprEval {
-    /// Attempts to evaluate the expression as a target usize.
-    fn eval_usize(&self) -> Option<u64>;
-}
-
-impl ExprEval for Expr {
-    // FIXME: support more than just evaluating literals
-    fn eval_usize(&self) -> Option<u64> {
-        match self {
-            Expr::Literal(Literal::Uint(v, None))
-            | Expr::Literal(Literal::Uint(v, Some(BuiltinUint::Usize))) => (*v).try_into().ok(),
-            _ => None,
-        }
+// FIXME: support more than just evaluating literals
+pub fn eval_usize(expr: &Expr) -> Option<u64> {
+    match expr {
+        Expr::Literal(Literal::Uint(v, None))
+        | Expr::Literal(Literal::Uint(v, Some(BuiltinUint::Usize))) => (*v).try_into().ok(),
+        _ => None,
     }
 }
 

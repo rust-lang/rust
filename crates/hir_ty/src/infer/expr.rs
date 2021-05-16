@@ -15,8 +15,7 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef,
-    consteval::{self, ExprEval},
+    autoderef, consteval,
     lower::lower_to_chalk_mutability,
     mapping::from_chalk,
     method_resolution, op,
@@ -738,7 +737,7 @@ impl<'a> InferenceContext<'a> {
                         );
 
                         let repeat_expr = &self.body.exprs[*repeat];
-                        repeat_expr.eval_usize()
+                        consteval::eval_usize(repeat_expr)
                     }
                 };
 

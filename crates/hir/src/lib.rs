@@ -53,7 +53,7 @@ use hir_def::{
 use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
 use hir_ty::{
     autoderef,
-    consteval::ConstExtension,
+    consteval::ConstExt,
     could_unify,
     method_resolution::{self, def_crates, TyFingerprint},
     primitive::UintTy,

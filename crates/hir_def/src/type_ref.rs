@@ -336,6 +336,14 @@ impl std::fmt::Display for ConstScalar {
 }
 
 impl ConstScalar {
+    /// Gets a target usize out of the ConstScalar
+    pub fn as_usize(&self) -> Option<u64> {
+        match self {
+            &ConstScalar::Usize(us) => Some(us),
+            _ => None,
+        }
+    }
+
     // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
     // parse stage.
     fn usize_from_literal_expr(expr: ast::Expr) -> ConstScalar {
