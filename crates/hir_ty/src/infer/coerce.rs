@@ -26,8 +26,8 @@ impl<'a> InferenceContext<'a> {
             return true;
         }
         match self.coerce_inner(from_ty, &to_ty) {
-            Ok(_result) => {
-                // TODO deal with goals
+            Ok(result) => {
+                self.table.register_infer_ok(result);
                 true
             }
             Err(_) => {
@@ -67,8 +67,9 @@ impl<'a> InferenceContext<'a> {
             let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(&Interner);
             let result1 = self.coerce_inner(ty1.clone(), &target_ty);
             let result2 = self.coerce_inner(ty2.clone(), &target_ty);
-            if let (Ok(_result1), Ok(_result2)) = (result1, result2) {
-                // TODO deal with the goals
+            if let (Ok(result1), Ok(result2)) = (result1, result2) {
+                self.table.register_infer_ok(result1);
+                self.table.register_infer_ok(result2);
                 return target_ty;
             }
         }
@@ -104,7 +105,7 @@ impl<'a> InferenceContext<'a> {
                 }
                 _ => {}
             }
-            return Ok(InferOk {});
+            return Ok(InferOk { goals: Vec::new() });
         }
 
         // Consider coercing the subtype to a DST
@@ -416,10 +417,11 @@ impl<'a> InferenceContext<'a> {
                     },
                 );
             }
+            // FIXME: should we accept ambiguous results here?
             _ => return Err(TypeError),
         };
 
-        Ok(InferOk {})
+        Ok(InferOk { goals: Vec::new() })
     }
 }
 
@@ -444,11 +446,11 @@ fn safe_to_unsafe_fn_ty(fn_ty: FnPointer) -> FnPointer {
     }
 }
 
-fn coerce_mutabilities(from: Mutability, to: Mutability) -> InferResult {
+fn coerce_mutabilities(from: Mutability, to: Mutability) -> Result<(), TypeError> {
     match (from, to) {
         (Mutability::Mut, Mutability::Mut)
         | (Mutability::Mut, Mutability::Not)
-        | (Mutability::Not, Mutability::Not) => Ok(InferOk {}),
+        | (Mutability::Not, Mutability::Not) => Ok(()),
         (Mutability::Not, Mutability::Mut) => Err(TypeError),
     }
 }

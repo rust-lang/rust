@@ -307,12 +307,12 @@ impl<'a> InferenceTable<'a> {
     /// Unify two types and register new trait goals that arise from that.
     // TODO give these two functions better names
     pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        let _result = if let Ok(r) = self.unify_inner(ty1, ty2) {
+        let result = if let Ok(r) = self.unify_inner(ty1, ty2) {
             r
         } else {
             return false;
         };
-        // TODO deal with new goals
+        self.register_infer_ok(result);
         true
     }
 
@@ -327,10 +327,7 @@ impl<'a> InferenceTable<'a> {
             t1,
             t2,
         ) {
-            Ok(_result) => {
-                // TODO deal with new goals
-                Ok(InferOk {})
-            }
+            Ok(result) => Ok(InferOk { goals: result.goals }),
             Err(chalk_ir::NoSolution) => Err(TypeError),
         }
     }
@@ -351,6 +348,10 @@ impl<'a> InferenceTable<'a> {
         if !self.try_resolve_obligation(&canonicalized) {
             self.pending_obligations.push(canonicalized);
         }
+    }
+
+    pub fn register_infer_ok(&mut self, infer_ok: InferOk) {
+        infer_ok.goals.into_iter().for_each(|goal| self.register_obligation_in_env(goal));
     }
 
     pub fn resolve_obligations_as_possible(&mut self) {

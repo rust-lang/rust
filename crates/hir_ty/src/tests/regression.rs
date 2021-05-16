@@ -758,7 +758,7 @@ fn issue_4885() {
         "#,
         expect![[r#"
             136..139 'key': &K
-            198..214 '{     ...key) }': {unknown}
+            198..214 '{     ...key) }': impl Future<Output = <K as Foo<R>>::Bar>
             204..207 'bar': fn bar<R, K>(&K) -> impl Future<Output = <K as Foo<R>>::Bar>
             204..212 'bar(key)': impl Future<Output = <K as Foo<R>>::Bar>
             208..211 'key': &K

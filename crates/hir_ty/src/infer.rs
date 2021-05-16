@@ -37,8 +37,8 @@ use syntax::SmolStr;
 use super::{DomainGoal, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty};
 use crate::{
     db::HirDatabase, fold_tys, infer::diagnostics::InferenceDiagnostic,
-    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Interner, TyBuilder, TyExt,
-    TyKind,
+    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Goal, Interner, TyBuilder,
+    TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -104,7 +104,7 @@ impl Default for BindingMode {
 
 #[derive(Debug)]
 pub(crate) struct InferOk {
-    // obligations
+    goals: Vec<InEnvironment<Goal>>,
 }
 #[derive(Debug)]
 pub(crate) struct TypeError;
