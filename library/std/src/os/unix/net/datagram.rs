@@ -136,7 +136,11 @@ impl UnixDatagram {
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixDatagram> {
         unsafe {
             let socket = UnixDatagram::unbound()?;
-            cvt(libc::bind(*socket.0.as_inner(), &socket_addr.addr as *const _ as *const _, socket_addr.len as _))?;
+            cvt(libc::bind(
+                *socket.0.as_inner(),
+                &socket_addr.addr as *const _ as *const _,
+                socket_addr.len as _,
+            ))?;
             Ok(socket)
         }
     }
@@ -245,7 +249,11 @@ impl UnixDatagram {
     #[unstable(feature = "unix_socket_abstract", issue = "42048")]
     pub fn connect_addr(&self, socket_addr: &SocketAddr) -> io::Result<()> {
         unsafe {
-            cvt(libc::connect(*self.0.as_inner(), &socket_addr.addr as *const _ as *const _, socket_addr.len))?;
+            cvt(libc::connect(
+                *self.0.as_inner(),
+                &socket_addr.addr as *const _ as *const _,
+                socket_addr.len,
+            ))?;
         }
         Ok(())
     }
