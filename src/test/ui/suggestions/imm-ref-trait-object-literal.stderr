@@ -24,7 +24,7 @@ LL |   foo(s);
    |       ^
    |       |
    |       expected an implementor of trait `Trait`
-   |       help: consider borrowing mutably here: `&mut s`
+   |       help: consider mutably borrowing here: `&mut s`
 
 error: aborting due to 2 previous errors
 

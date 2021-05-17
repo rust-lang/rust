@@ -689,17 +689,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Blacklist traits for which it would be nonsensical to suggest borrowing.
         // For instance, immutable references are always Copy, so suggesting to
         // borrow would always succeed, but it's probably not what the user wanted.
-        let blacklist: Vec<_> = [
-            LangItem::Copy,
-            LangItem::Clone,
-            LangItem::Pin,
-            LangItem::Unpin,
-            LangItem::Sized,
-            LangItem::Send,
-        ]
-        .iter()
-        .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
-        .collect();
+        let blacklist: Vec<_> =
+            [LangItem::Copy, LangItem::Clone, LangItem::Unpin, LangItem::Sized, LangItem::Send]
+                .iter()
+                .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
+                .collect();
 
         let span = obligation.cause.span;
         let param_env = obligation.param_env;
@@ -771,7 +765,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         err.span_suggestion(
                             span,
                             &format!(
-                                "consider borrowing{} here",
+                                "consider{} borrowing here",
                                 if mtbl { " mutably" } else { "" }
                             ),
                             format!("&{}{}", if mtbl { "mut " } else { "" }, snippet),

@@ -8,7 +8,7 @@ LL |     foo(a);
    |         ^
    |         |
    |         expected an implementor of trait `Tr`
-   |         help: consider borrowing mutably here: `&mut a`
+   |         help: consider mutably borrowing here: `&mut a`
 
 error: aborting due to previous error
 
