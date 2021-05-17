@@ -128,7 +128,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ````
-    #[unstable(feature = "unix_socket_abstract", issue = "42048")]
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn connect_addr(socket_addr: &SocketAddr) -> io::Result<UnixStream> {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;

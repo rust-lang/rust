@@ -103,7 +103,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_abstract", issue = "42048")]
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         unsafe {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;

@@ -215,7 +215,7 @@ impl SocketAddr {
     /// }
     /// ```
     #[cfg(any(doc, target_os = "android", target_os = "linux",))]
-    #[unstable(feature = "unix_socket_abstract", issue = "42048")]
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn as_abstract_namespace(&self) -> Option<&[u8]> {
         if let AddressKind::Abstract(name) = self.address() { Some(name) } else { None }
     }
@@ -272,7 +272,7 @@ impl SocketAddr {
     /// }
     /// ```
     #[cfg(any(doc, target_os = "android", target_os = "linux",))]
-    #[unstable(feature = "unix_socket_abstract", issue = "42048")]
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn from_abstract_namespace(namespace: &[u8]) -> io::Result<SocketAddr> {
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
