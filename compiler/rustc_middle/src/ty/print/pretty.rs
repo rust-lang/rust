@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::ItemKind;
 use rustc_session::config::TrimmedDefPaths;
@@ -285,7 +285,7 @@ pub trait PrettyPrinter<'tcx>:
             return Ok((self, false));
         }
 
-        match self.tcx().trimmed_def_paths(LOCAL_CRATE).get(&def_id) {
+        match self.tcx().trimmed_def_paths(()).get(&def_id) {
             None => Ok((self, false)),
             Some(symbol) => {
                 self.write_str(&symbol.as_str())?;
@@ -361,7 +361,7 @@ pub trait PrettyPrinter<'tcx>:
             return Ok((self, false));
         }
 
-        let visible_parent_map = self.tcx().visible_parent_map(LOCAL_CRATE);
+        let visible_parent_map = self.tcx().visible_parent_map(());
 
         let mut cur_def_key = self.tcx().def_key(def_id);
         debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
@@ -2302,9 +2302,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 /// `std::vec::Vec` to just `Vec`, as long as there is no other `Vec` importable anywhere.
 ///
 /// The implementation uses similar import discovery logic to that of 'use' suggestions.
-fn trimmed_def_paths(tcx: TyCtxt<'_>, crate_num: CrateNum) -> FxHashMap<DefId, Symbol> {
-    assert_eq!(crate_num, LOCAL_CRATE);
-
+fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     let mut map = FxHashMap::default();
 
     if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {

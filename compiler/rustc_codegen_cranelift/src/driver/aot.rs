@@ -42,7 +42,7 @@ fn emit_module(
 
     unwind_context.emit(&mut product);
 
-    let tmp_file = tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(&name));
+    let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
     let obj = product.object.write().unwrap();
     if let Err(err) = std::fs::write(&tmp_file, obj) {
         tcx.sess.fatal(&format!("error writing object file: {}", err));
@@ -74,7 +74,7 @@ fn reuse_workproduct_for_cgu(
     let work_product = cgu.work_product(tcx);
     if let Some(saved_file) = &work_product.saved_file {
         let obj_out = tcx
-            .output_filenames(LOCAL_CRATE)
+            .output_filenames(())
             .temp_path(OutputType::Object, Some(&cgu.name().as_str()));
         object = Some(obj_out.clone());
         let source_file = rustc_incremental::in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
@@ -190,7 +190,7 @@ pub(crate) fn run_aot(
     let mut work_products = FxHashMap::default();
 
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
-        tcx.collect_and_partition_mono_items(LOCAL_CRATE).1
+        tcx.collect_and_partition_mono_items(()).1
     } else {
         // If only `--emit metadata` is used, we shouldn't perform any codegen.
         // Also `tcx.collect_and_partition_mono_items` may panic in that case.
@@ -276,7 +276,7 @@ pub(crate) fn run_aot(
                 .to_string();
 
             let tmp_file = tcx
-                .output_filenames(LOCAL_CRATE)
+                .output_filenames(())
                 .temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
 
             let obj = crate::backend::with_object(tcx.sess, &metadata_cgu_name, |object| {
@@ -353,7 +353,7 @@ fn codegen_global_asm(tcx: TyCtxt<'_>, cgu_name: &str, global_asm: &str) {
         .join("\n");
 
     let output_object_file =
-        tcx.output_filenames(LOCAL_CRATE).temp_path(OutputType::Object, Some(cgu_name));
+        tcx.output_filenames(()).temp_path(OutputType::Object, Some(cgu_name));
 
     // Assemble `global_asm`
     let global_asm_object_file = add_file_stem_postfix(output_object_file.clone(), ".asm");

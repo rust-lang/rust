@@ -285,7 +285,7 @@ impl<'tcx> Queries<'tcx> {
         self.ongoing_codegen.compute(|| {
             let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
-                tcx.analysis(LOCAL_CRATE).ok();
+                tcx.analysis(()).ok();
 
                 // Don't do code generation if there were any errors
                 self.session().compile_status()?;
@@ -302,7 +302,7 @@ impl<'tcx> Queries<'tcx> {
     /// to write UI tests that actually test that compilation succeeds without reporting
     /// an error.
     fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
-        let def_id = match tcx.entry_fn(LOCAL_CRATE) {
+        let def_id = match tcx.entry_fn(()) {
             Some((def_id, _)) => def_id,
             _ => return,
         };

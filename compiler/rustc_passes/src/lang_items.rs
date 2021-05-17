@@ -15,7 +15,7 @@ use rustc_middle::ty::TyCtxt;
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::{extract, ITEM_REFS};
 use rustc_hir::{HirId, LangItem, LanguageItems, Target};
@@ -183,7 +183,7 @@ impl LanguageItemCollector<'tcx> {
 }
 
 /// Traverses and collects all the lang items in all crates.
-fn collect(tcx: TyCtxt<'_>) -> LanguageItems {
+fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
 
@@ -207,8 +207,5 @@ fn collect(tcx: TyCtxt<'_>) -> LanguageItems {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.get_lang_items = |tcx, id| {
-        assert_eq!(id, LOCAL_CRATE);
-        collect(tcx)
-    };
+    providers.get_lang_items = get_lang_items;
 }

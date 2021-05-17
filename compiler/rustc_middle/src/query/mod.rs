@@ -20,7 +20,7 @@ rustc_queries! {
     /// This is because the `hir_crate` query gives you access to all other items.
     /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
     /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
-    query hir_crate(key: CrateNum) -> &'tcx Crate<'tcx> {
+    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         eval_always
         no_hash
         desc { "get the crate HIR" }
@@ -28,7 +28,7 @@ rustc_queries! {
 
     /// The indexed HIR. This can be conveniently accessed by `tcx.hir()`.
     /// Avoid calling this query directly.
-    query index_hir(_: CrateNum) -> &'tcx crate::hir::IndexedHir<'tcx> {
+    query index_hir(_: ()) -> &'tcx crate::hir::IndexedHir<'tcx> {
         eval_always
         no_hash
         desc { "index HIR" }
@@ -114,7 +114,7 @@ rustc_queries! {
         cache_on_disk_if { key.is_local() }
     }
 
-    query analysis(key: CrateNum) -> Result<(), ErrorReported> {
+    query analysis(key: ()) -> Result<(), ErrorReported> {
         eval_always
         desc { "running analysis passes on this crate" }
     }
@@ -199,7 +199,7 @@ rustc_queries! {
         desc { "looking up the native libraries of a linked crate" }
     }
 
-    query lint_levels(_: CrateNum) -> LintLevelMap {
+    query lint_levels(_: ()) -> LintLevelMap {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "computing the lint levels for items in this crate" }
@@ -223,7 +223,7 @@ rustc_queries! {
     /// Set of all the `DefId`s in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.
-    query mir_keys(_: CrateNum) -> FxHashSet<LocalDefId> {
+    query mir_keys(_: ()) -> FxHashSet<LocalDefId> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "getting a list of all mir_keys" }
     }
@@ -543,7 +543,7 @@ rustc_queries! {
     }
 
     /// Gets a map with the variance of every item; use `item_variance` instead.
-    query crate_variances(_: CrateNum) -> ty::CrateVariancesMap<'tcx> {
+    query crate_variances(_: ()) -> ty::CrateVariancesMap<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "computing the variances for items in this crate" }
     }
@@ -554,8 +554,7 @@ rustc_queries! {
     }
 
     /// Maps from thee `DefId` of a type to its (inferred) outlives.
-    query inferred_outlives_crate(_: CrateNum)
-        -> ty::CratePredicatesMap<'tcx> {
+    query inferred_outlives_crate(_: ()) -> ty::CratePredicatesMap<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "computing the inferred outlives predicates for items in this crate" }
     }
@@ -694,7 +693,7 @@ rustc_queries! {
             desc { |tcx| "computing CoerceUnsized info for `{}`", tcx.def_path_str(key) }
         }
 
-    query typeck_item_bodies(_: CrateNum) -> () {
+    query typeck_item_bodies(_: ()) -> () {
         desc { "type-checking all item bodies" }
     }
 
@@ -753,18 +752,15 @@ rustc_queries! {
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
-    /// (Defined only for `LOCAL_CRATE`.)
-    query crate_inherent_impls(k: CrateNum)
-        -> CrateInherentImpls {
+    query crate_inherent_impls(k: ()) -> CrateInherentImpls {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
-        desc { "all inherent impls defined in crate `{:?}`", k }
+        desc { "all inherent impls defined in crate" }
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    /// (Defined only for `LOCAL_CRATE`.)
-    query crate_inherent_impls_overlap_check(_: CrateNum)
+    query crate_inherent_impls_overlap_check(_: ())
         -> () {
         eval_always
         desc { "check for overlap between inherent impls defined in this crate" }
@@ -858,16 +854,16 @@ rustc_queries! {
     }
 
     /// Performs part of the privacy check and computes "access levels".
-    query privacy_access_levels(_: CrateNum) -> &'tcx AccessLevels {
+    query privacy_access_levels(_: ()) -> &'tcx AccessLevels {
         eval_always
         desc { "privacy access levels" }
     }
-    query check_private_in_public(_: CrateNum) -> () {
+    query check_private_in_public(_: ()) -> () {
         eval_always
         desc { "checking for private elements in public interfaces" }
     }
 
-    query reachable_set(_: CrateNum) -> FxHashSet<LocalDefId> {
+    query reachable_set(_: ()) -> FxHashSet<LocalDefId> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "reachability" }
     }
@@ -977,7 +973,7 @@ rustc_queries! {
     /// Passing in any other crate will cause an ICE.
     ///
     /// [`LOCAL_CRATE`]: rustc_hir::def_id::LOCAL_CRATE
-    query all_local_trait_impls(local_crate: CrateNum) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
+    query all_local_trait_impls(_: ()) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
 
@@ -1080,9 +1076,7 @@ rustc_queries! {
         desc { "dylib dependency formats of crate" }
     }
 
-    query dependency_formats(_: CrateNum)
-        -> Lrc<crate::middle::dependency_format::Dependencies>
-    {
+    query dependency_formats(_: ()) -> Lrc<crate::middle::dependency_format::Dependencies> {
         desc { "get the linkage format of all dependencies" }
     }
 
@@ -1170,10 +1164,10 @@ rustc_queries! {
     query is_reachable_non_generic(def_id: DefId) -> bool {
         desc { |tcx| "checking whether `{}` is an exported symbol", tcx.def_path_str(def_id) }
     }
-    query is_unreachable_local_definition(def_id: DefId) -> bool {
+    query is_unreachable_local_definition(def_id: LocalDefId) -> bool {
         desc { |tcx|
             "checking whether `{}` is reachable from outside the crate",
-            tcx.def_path_str(def_id),
+            tcx.def_path_str(def_id.to_def_id()),
         }
     }
 
@@ -1183,11 +1177,9 @@ rustc_queries! {
     /// added or removed in any upstream crate. Instead use the narrower
     /// `upstream_monomorphizations_for`, `upstream_drop_glue_for`, or, even
     /// better, `Instance::upstream_monomorphization()`.
-    query upstream_monomorphizations(
-        k: CrateNum
-    ) -> DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
+    query upstream_monomorphizations(_: ()) -> DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
         storage(ArenaCacheSelector<'tcx>)
-        desc { "collecting available upstream monomorphizations `{:?}`", k }
+        desc { "collecting available upstream monomorphizations" }
     }
 
     /// Returns the set of upstream monomorphizations available for the
@@ -1230,13 +1222,13 @@ rustc_queries! {
 
     /// Identifies the entry-point (e.g., the `main` function) for a given
     /// crate, returning `None` if there is no entry point (such as for library crates).
-    query entry_fn(_: CrateNum) -> Option<(DefId, EntryFnType)> {
+    query entry_fn(_: ()) -> Option<(DefId, EntryFnType)> {
         desc { "looking up the entry function of a crate" }
     }
-    query plugin_registrar_fn(_: CrateNum) -> Option<DefId> {
+    query plugin_registrar_fn(_: ()) -> Option<LocalDefId> {
         desc { "looking up the plugin registrar for a crate" }
     }
-    query proc_macro_decls_static(_: CrateNum) -> Option<DefId> {
+    query proc_macro_decls_static(_: ()) -> Option<LocalDefId> {
         desc { "looking up the derive registrar for a crate" }
     }
     query crate_disambiguator(_: CrateNum) -> CrateDisambiguator {
@@ -1363,7 +1355,7 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
-    query get_lib_features(_: CrateNum) -> LibFeatures {
+    query get_lib_features(_: ()) -> LibFeatures {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the lib features map" }
@@ -1373,16 +1365,14 @@ rustc_queries! {
         desc { "calculating the lib features defined in a crate" }
     }
     /// Returns the lang items defined in another crate by loading it from metadata.
-    // FIXME: It is illegal to pass a `CrateNum` other than `LOCAL_CRATE` here, just get rid
-    // of that argument?
-    query get_lang_items(_: CrateNum) -> LanguageItems {
+    query get_lang_items(_: ()) -> LanguageItems {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the lang items map" }
     }
 
     /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: CrateNum) -> FxHashMap<Symbol, DefId> {
+    query all_diagnostic_items(_: ()) -> FxHashMap<Symbol, DefId> {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the diagnostic items map" }
@@ -1402,13 +1392,11 @@ rustc_queries! {
     query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
         desc { "calculating the missing lang items in a crate" }
     }
-    query visible_parent_map(_: CrateNum)
-        -> DefIdMap<DefId> {
+    query visible_parent_map(_: ()) -> DefIdMap<DefId> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the visible parent map" }
     }
-    query trimmed_def_paths(_: CrateNum)
-        -> FxHashMap<DefId, Symbol> {
+    query trimmed_def_paths(_: ()) -> FxHashMap<DefId, Symbol> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "calculating trimmed def paths" }
     }
@@ -1420,7 +1408,7 @@ rustc_queries! {
         eval_always
         desc { "looking at the source for a crate" }
     }
-    query postorder_cnums(_: CrateNum) -> &'tcx [CrateNum] {
+    query postorder_cnums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "generating a postorder list of CrateNums" }
     }
@@ -1433,8 +1421,7 @@ rustc_queries! {
         eval_always
         desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
-    query maybe_unused_extern_crates(_: CrateNum)
-        -> &'tcx [(LocalDefId, Span)] {
+    query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
         eval_always
         desc { "looking up all possibly unused extern crates" }
     }
@@ -1444,12 +1431,12 @@ rustc_queries! {
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
-    query stability_index(_: CrateNum) -> stability::Index<'tcx> {
+    query stability_index(_: ()) -> stability::Index<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the stability index for the local crate" }
     }
-    query all_crate_nums(_: CrateNum) -> &'tcx [CrateNum] {
+    query all_crate_nums(_: ()) -> &'tcx [CrateNum] {
         eval_always
         desc { "fetching all foreign CrateNum instances" }
     }
@@ -1457,7 +1444,7 @@ rustc_queries! {
     /// A vector of every trait accessible in the whole crate
     /// (i.e., including those from subcrates). This is used only for
     /// error reporting.
-    query all_traits(_: CrateNum) -> &'tcx [DefId] {
+    query all_traits(_: ()) -> &'tcx [DefId] {
         desc { "fetching all foreign and local traits" }
     }
 
@@ -1471,8 +1458,7 @@ rustc_queries! {
         desc { "exported_symbols" }
     }
 
-    query collect_and_partition_mono_items(_: CrateNum)
-        -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+    query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
         eval_always
         desc { "collect_and_partition_mono_items" }
     }
@@ -1481,8 +1467,7 @@ rustc_queries! {
     }
 
     /// All items participating in code generation together with items inlined into them.
-    query codegened_and_inlined_items(_: CrateNum)
-        -> &'tcx DefIdSet {
+    query codegened_and_inlined_items(_: ()) -> &'tcx DefIdSet {
         eval_always
        desc { "codegened_and_inlined_items" }
     }
@@ -1497,11 +1482,11 @@ rustc_queries! {
                 tcx.def_path_str(key)
         }
     }
-    query backend_optimization_level(_: CrateNum) -> OptLevel {
+    query backend_optimization_level(_: ()) -> OptLevel {
         desc { "optimization level used by backend" }
     }
 
-    query output_filenames(_: CrateNum) -> Arc<OutputFilenames> {
+    query output_filenames(_: ()) -> Arc<OutputFilenames> {
         eval_always
         desc { "output_filenames" }
     }
@@ -1677,7 +1662,7 @@ rustc_queries! {
         desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
     }
 
-    query features_query(_: CrateNum) -> &'tcx rustc_feature::Features {
+    query features_query(_: ()) -> &'tcx rustc_feature::Features {
         eval_always
         desc { "looking up enabled feature gates" }
     }

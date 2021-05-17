@@ -1218,18 +1218,18 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn lib_features(self) -> &'tcx middle::lib_features::LibFeatures {
-        self.get_lib_features(LOCAL_CRATE)
+        self.get_lib_features(())
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)
     pub fn lang_items(self) -> &'tcx rustc_hir::lang_items::LanguageItems {
-        self.get_lang_items(LOCAL_CRATE)
+        self.get_lang_items(())
     }
 
     /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
     /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
     pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {
-        self.all_diagnostic_items(LOCAL_CRATE).get(&name).copied()
+        self.all_diagnostic_items(()).get(&name).copied()
     }
 
     /// Check whether the diagnostic item with the given `name` has the given `DefId`.
@@ -1238,11 +1238,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn stability(self) -> &'tcx stability::Index<'tcx> {
-        self.stability_index(LOCAL_CRATE)
+        self.stability_index(())
     }
 
     pub fn crates(self) -> &'tcx [CrateNum] {
-        self.all_crate_nums(LOCAL_CRATE)
+        self.all_crate_nums(())
     }
 
     pub fn allocator_kind(self) -> Option<AllocatorKind> {
@@ -1250,7 +1250,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn features(self) -> &'tcx rustc_feature::Features {
-        self.features_query(LOCAL_CRATE)
+        self.features_query(())
     }
 
     pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
@@ -2623,7 +2623,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         mut id: hir::HirId,
     ) -> (Level, LintLevelSource) {
-        let sets = self.lint_levels(LOCAL_CRATE);
+        let sets = self.lint_levels(());
         loop {
             if let Some(pair) = sets.level_and_source(lint, id, self.sess) {
                 return pair;
@@ -2795,10 +2795,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         tcx.crate_name
     };
     providers.maybe_unused_trait_import = |tcx, id| tcx.maybe_unused_trait_imports.contains(&id);
-    providers.maybe_unused_extern_crates = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        &tcx.maybe_unused_extern_crates[..]
-    };
+    providers.maybe_unused_extern_crates = |tcx, ()| &tcx.maybe_unused_extern_crates[..];
     providers.names_imported_by_glob_use =
         |tcx, id| tcx.arena.alloc(tcx.glob_map.get(&id).cloned().unwrap_or_default());
 
@@ -2815,18 +2812,9 @@ pub fn provide(providers: &mut ty::query::Providers) {
         tcx.stability().local_deprecation_entry(id)
     };
     providers.extern_mod_stmt_cnum = |tcx, id| tcx.extern_crate_map.get(&id).cloned();
-    providers.all_crate_nums = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())
-    };
-    providers.output_filenames = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.output_filenames.clone()
-    };
-    providers.features_query = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.sess.features_untracked()
-    };
+    providers.all_crate_nums = |tcx, ()| tcx.arena.alloc_slice(&tcx.cstore.crates_untracked());
+    providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
+    providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.sess.contains_name(tcx.hir().krate_attrs(), sym::panic_runtime)

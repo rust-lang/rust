@@ -97,7 +97,7 @@ mod variance;
 
 use rustc_errors::{struct_span_err, ErrorReported};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
@@ -449,7 +449,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
 }
 
 fn check_for_entry_fn(tcx: TyCtxt<'_>) {
-    match tcx.entry_fn(LOCAL_CRATE) {
+    match tcx.entry_fn(()) {
         Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
         _ => {}
@@ -510,7 +510,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
         }
     });
 
-    tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
+    tcx.sess.time("item_bodies_checking", || tcx.typeck_item_bodies(()));
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);

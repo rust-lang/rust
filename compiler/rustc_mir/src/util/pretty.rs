@@ -10,7 +10,7 @@ use super::spanview::write_mir_fn_spanview;
 use crate::transform::MirSource;
 use either::Either;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer,
@@ -1020,6 +1020,6 @@ pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
     if let Some(i) = single {
         vec![i]
     } else {
-        tcx.mir_keys(LOCAL_CRATE).iter().map(|def_id| def_id.to_def_id()).collect()
+        tcx.mir_keys(()).iter().map(|def_id| def_id.to_def_id()).collect()
     }
 }

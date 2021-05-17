@@ -6,7 +6,7 @@ use llvm::coverageinfo::CounterMappingRegion;
 use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression};
 use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_llvm::RustString;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_span::Symbol;
@@ -265,7 +265,7 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
     let all_def_ids: DefIdSet = tcx
-        .mir_keys(LOCAL_CRATE)
+        .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
             let def_id = local_def_id.to_def_id();
@@ -276,7 +276,7 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
         })
         .collect();
 
-    let codegenned_def_ids = tcx.codegened_and_inlined_items(LOCAL_CRATE);
+    let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
     let mut unused_def_ids_by_file: FxHashMap<Symbol, Vec<DefId>> = FxHashMap::default();
     for &non_codegenned_def_id in all_def_ids.difference(codegenned_def_ids) {

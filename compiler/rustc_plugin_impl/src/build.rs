@@ -1,7 +1,7 @@
 //! Used by `rustc` when compiling a plugin crate.
 
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -31,33 +31,25 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for RegistrarFinder<'tcx> {
 }
 
 /// Finds the function marked with `#[plugin_registrar]`, if any.
-pub fn find_plugin_registrar(tcx: TyCtxt<'_>) -> Option<DefId> {
-    tcx.plugin_registrar_fn(LOCAL_CRATE)
-}
-
-fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+fn plugin_registrar_fn(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
     let mut finder = RegistrarFinder { tcx, registrars: Vec::new() };
     tcx.hir().krate().visit_all_item_likes(&mut finder);
 
-    match finder.registrars.len() {
-        0 => None,
-        1 => {
-            let (def_id, _) = finder.registrars.pop().unwrap();
-            Some(def_id.to_def_id())
+    let (def_id, span) = finder.registrars.pop()?;
+
+    if !finder.registrars.is_empty() {
+        let diagnostic = tcx.sess.diagnostic();
+        let mut e = diagnostic.struct_err("multiple plugin registration functions found");
+        e.span_note(span, "one is here");
+        for &(_, span) in &finder.registrars {
+            e.span_note(span, "one is here");
         }
-        _ => {
-            let diagnostic = tcx.sess.diagnostic();
-            let mut e = diagnostic.struct_err("multiple plugin registration functions found");
-            for &(_, span) in &finder.registrars {
-                e.span_note(span, "one is here");
-            }
-            e.emit();
-            diagnostic.abort_if_errors();
-            unreachable!();
-        }
+        e.emit();
+        diagnostic.abort_if_errors();
+        unreachable!();
     }
+
+    Some(def_id)
 }
 
 pub fn provide(providers: &mut Providers) {

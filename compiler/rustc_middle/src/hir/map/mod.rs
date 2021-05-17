@@ -150,7 +150,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'_, 'hir> {
 
 impl<'hir> Map<'hir> {
     pub fn krate(&self) -> &'hir Crate<'hir> {
-        self.tcx.hir_crate(LOCAL_CRATE)
+        self.tcx.hir_crate(())
     }
 
     #[inline]
@@ -489,7 +489,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_impls(&self, trait_did: DefId) -> &'hir [LocalDefId] {
-        self.tcx.all_local_trait_impls(LOCAL_CRATE).get(&trait_did).map_or(&[], |xs| &xs[..])
+        self.tcx.all_local_trait_impls(()).get(&trait_did).map_or(&[], |xs| &xs[..])
     }
 
     /// Gets the attributes on the crate. This is preferable to
@@ -928,9 +928,7 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx IndexedHir<'tcx> {
-    assert_eq!(cnum, LOCAL_CRATE);
-
+pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx IndexedHir<'tcx> {
     let _prof_timer = tcx.sess.prof.generic_activity("build_hir_map");
 
     let hcx = tcx.create_stable_hashing_context();
@@ -943,10 +941,12 @@ pub(super) fn index_hir<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> &'tcx Indexe
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
+    assert_eq!(crate_num, LOCAL_CRATE);
+
     let mut hcx = tcx.create_stable_hashing_context();
 
     let mut hir_body_nodes: Vec<_> = tcx
-        .index_hir(crate_num)
+        .index_hir(())
         .map
         .iter_enumerated()
         .filter_map(|(def_id, hod)| {

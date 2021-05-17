@@ -347,7 +347,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
 ) -> Option<Bx::Function> {
-    let main_def_id = cx.tcx().entry_fn(LOCAL_CRATE).map(|(def_id, _)| def_id)?;
+    let (main_def_id, entry_type) = cx.tcx().entry_fn(())?;
     let main_is_local = main_def_id.is_local();
     let instance = Instance::mono(cx.tcx(), main_def_id);
 
@@ -364,10 +364,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    return cx.tcx().entry_fn(LOCAL_CRATE).map(|(_, et)| {
-        let use_start_lang_item = EntryFnType::Start != et;
-        create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item)
-    });
+    let use_start_lang_item = EntryFnType::Start != entry_type;
+    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item);
+    return Some(entry_fn);
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
@@ -487,7 +486,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
+    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -512,7 +511,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // linkage, then it's already got an allocator shim and we'll be using that
     // one instead. If nothing exists then it's our job to generate the
     // allocator!
-    let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
+    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
@@ -769,7 +768,7 @@ impl CrateInfo {
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
-            dependency_formats: tcx.dependency_formats(LOCAL_CRATE),
+            dependency_formats: tcx.dependency_formats(()),
         };
         let lang_items = tcx.lang_items();
 

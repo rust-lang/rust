@@ -95,7 +95,7 @@ impl<'tcx> SaveContext<'tcx> {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
         let crate_type = sess.crate_types()[0];
-        let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
+        let outputs = &*self.tcx.output_filenames(());
 
         if outputs.outputs.contains_key(&OutputType::Metadata) {
             filename_for_metadata(sess, crate_name, outputs)
@@ -1000,7 +1000,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             // Privacy checking requires and is done after type checking; use a
             // fallback in case the access levels couldn't have been correctly computed.
             let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
+                Ok(..) => tcx.privacy_access_levels(()),
                 Err(..) => tcx.arena.alloc(AccessLevels::default()),
             };
 

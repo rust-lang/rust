@@ -18,7 +18,7 @@ use crate::{passes::LateLintPassObject, LateContext, LateLintPass, LintStore};
 use rustc_ast as ast;
 use rustc_data_structures::sync::{join, par_iter, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit as hir_visit;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::map::Map;
@@ -375,7 +375,7 @@ fn late_lint_mod_pass<'tcx, T: LateLintPass<'tcx>>(
     module_def_id: LocalDefId,
     pass: T,
 ) {
-    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels(());
 
     let context = LateContext {
         tcx,
@@ -423,7 +423,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx>>(
 }
 
 fn late_lint_pass_crate<'tcx, T: LateLintPass<'tcx>>(tcx: TyCtxt<'tcx>, pass: T) {
-    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels(());
 
     let krate = tcx.hir().krate();
 
