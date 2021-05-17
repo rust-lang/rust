@@ -437,18 +437,18 @@ dependencies = [
 
 [[package]]
 name = "fsevent-sys"
-version = "3.0.2"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77a29c77f1ca394c3e73a9a5d24cfcabb734682d9634fc398f2204a63c994120"
+checksum = "ca6f5e6817058771c10f0eb0f05ddf1e35844266f972004fe8e4b21fda295bd5"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "fst"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d79238883cf0307100b90aba4a755d8051a3182305dfe7f649a1e9dc0517006f"
+checksum = "e398fae362f4124bbe630d99519fb2d68a03e2e3a23b441028cdcdc4f4895687"
 
 [[package]]
 name = "gimli"
@@ -939,11 +939,10 @@ dependencies = [
 
 [[package]]
 name = "notify"
-version = "5.0.0-pre.7"
+version = "5.0.0-pre.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ebe7699a0f8c5759450716ee03d231685c22b4fe8f406c42c22e0ad94d40ce7"
+checksum = "46bbbcd078f1f00ddb7a9abe70b96e91229b44b0b3afdec610f8e5137f8f014b"
 dependencies = [
- "anymap",
  "bitflags",
  "crossbeam-channel",
  "filetime",
