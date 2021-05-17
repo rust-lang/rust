@@ -64,38 +64,30 @@ impl<'tcx> UnsafetyVisitor<'tcx> {
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
             SafetyContext::UnsafeFn => {
                 // unsafe_op_in_unsafe_fn is disallowed
-                if kind == BorrowOfPackedField {
-                    // FIXME handle borrows of packed fields
-                } else {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0133,
-                        "{} is unsafe and requires unsafe block",
-                        description,
-                    )
-                    .span_label(span, description)
-                    .note(note)
-                    .emit();
-                }
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0133,
+                    "{} is unsafe and requires unsafe block",
+                    description,
+                )
+                .span_label(span, description)
+                .note(note)
+                .emit();
             }
             SafetyContext::Safe => {
-                if kind == BorrowOfPackedField {
-                    // FIXME handle borrows of packed fields
-                } else {
-                    let fn_sugg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
-                    struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0133,
-                        "{} is unsafe and requires unsafe{} block",
-                        description,
-                        fn_sugg,
-                    )
-                    .span_label(span, description)
-                    .note(note)
-                    .emit();
-                }
+                let fn_sugg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0133,
+                    "{} is unsafe and requires unsafe{} block",
+                    description,
+                    fn_sugg,
+                )
+                .span_label(span, description)
+                .note(note)
+                .emit();
             }
         }
     }
@@ -203,8 +195,6 @@ enum UnsafeOpKind {
     #[allow(dead_code)] // FIXME
     CastOfPointerToInt,
     #[allow(dead_code)] // FIXME
-    BorrowOfPackedField,
-    #[allow(dead_code)] // FIXME
     UseOfMutableStatic,
     #[allow(dead_code)] // FIXME
     UseOfExternStatic,
@@ -244,11 +234,6 @@ impl UnsafeOpKind {
             CastOfPointerToInt => {
                 ("cast of pointer to int", "casting pointers to integers in constants")
             }
-            BorrowOfPackedField => (
-                "borrow of packed field",
-                "fields of packed structs might be misaligned: dereferencing a misaligned pointer \
-                 or even just creating a misaligned reference is undefined behavior",
-            ),
             UseOfMutableStatic => (
                 "use of mutable static",
                 "mutable statics can be mutated by multiple threads: aliasing violations or data \
