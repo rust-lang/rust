@@ -364,6 +364,7 @@ mod unnecessary_sort_by;
 mod unnecessary_wraps;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
+mod unused_async;
 mod unused_io_amount;
 mod unused_self;
 mod unused_unit;
@@ -961,6 +962,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         unnecessary_wraps::UNNECESSARY_WRAPS,
         unnested_or_patterns::UNNESTED_OR_PATTERNS,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
+        unused_async::UNUSED_ASYNC,
         unused_io_amount::UNUSED_IO_AMOUNT,
         unused_self::UNUSED_SELF,
         unused_unit::UNUSED_UNIT,
@@ -1273,6 +1275,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_map::ManualMap);
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
     store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
+    store.register_late_pass(|| box unused_async::UnusedAsync);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(arithmetic::FLOAT_ARITHMETIC),
@@ -1417,6 +1420,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(unit_types::LET_UNIT_VALUE),
         LintId::of(unnecessary_wraps::UNNECESSARY_WRAPS),
         LintId::of(unnested_or_patterns::UNNESTED_OR_PATTERNS),
+        LintId::of(unused_async::UNUSED_ASYNC),
         LintId::of(unused_self::UNUSED_SELF),
         LintId::of(wildcard_imports::ENUM_GLOB_USE),
         LintId::of(wildcard_imports::WILDCARD_IMPORTS),
