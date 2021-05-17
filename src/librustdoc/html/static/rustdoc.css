@@ -1262,12 +1262,11 @@ h4 > .notable-traits {
 }
 
 #copy-path {
+	background: initial;
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
-}
-#copy-path> img {
-	margin-bottom: 2px;
+	border: 0;
 }
 
 #theme-choices {

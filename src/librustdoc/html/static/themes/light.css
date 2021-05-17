@@ -384,16 +384,25 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu, #help-button, #copy-path {
+#theme-picker, #settings-menu, #help-button {
 	border-color: #e0e0e0;
 	background-color: #fff;
 }
 
 #theme-picker:hover, #theme-picker:focus,
 #settings-menu:hover, #settings-menu:focus,
-#help-button:hover, #help-button:focus,
-#copy-path:hover, #copy-path:focus {
+#help-button:hover, #help-button:focus {
 	border-color: #717171;
+}
+
+#copy-path {
+	color: #999;
+}
+#copy-path > img {
+	filter: invert(50%);
+}
+#copy-path:hover > img {
+	filter: invert(35%);
 }
 
 #theme-choices {
