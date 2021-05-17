@@ -11,6 +11,7 @@ use rustc_hir::{Arm, Expr, ExprKind, PatKind};
 use rustc_lint::LintContext;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -87,6 +88,8 @@ fn lint_manual_unwrap_or<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
             if let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind;
             if path_to_local_id(unwrap_arm.body, binding_hir_id);
             if !contains_return_break_continue_macro(or_arm.body);
+            if !cx.typeck_results().expr_adjustments(unwrap_arm.body).iter()
+                .any(|a| matches!(a.kind, Adjust::Deref(Some(..))));
             then {
                 Some(or_arm)
             } else {
