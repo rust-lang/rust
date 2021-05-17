@@ -427,9 +427,13 @@ nav.sub {
 	border-bottom: 1px solid;
 }
 
-#main > .docblock h1 { font-size: 1.3em; }
-#main > .docblock h2 { font-size: 1.15em; }
-#main > .docblock h3, #main > .docblock h4, #main > .docblock h5 { font-size: 1em; }
+.top-doc .docblock h1 { font-size: 1.3em; }
+.top-doc .docblock h2 { font-size: 1.15em; }
+.top-doc .docblock h3,
+.top-doc .docblock h4,
+.top-doc .docblock h5 {
+	font-size: 1em;
+}
 
 .docblock h1 { font-size: 1em; }
 .docblock h2 { font-size: 0.95em; }
