@@ -441,6 +441,8 @@ pub struct Align {
 }
 
 impl Align {
+    pub const ONE: Align = Align { pow2: 0 };
+
     #[inline]
     pub fn from_bits(bits: u64) -> Result<Align, String> {
         Align::from_bytes(Size::from_bits(bits).bytes())
@@ -450,7 +452,7 @@ impl Align {
     pub fn from_bytes(align: u64) -> Result<Align, String> {
         // Treat an alignment of 0 bytes like 1-byte alignment.
         if align == 0 {
-            return Ok(Align { pow2: 0 });
+            return Ok(Align::ONE);
         }
 
         #[cold]

@@ -264,13 +264,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some((size, _align)) => size,
             None => self.get_raw(ptr.alloc_id)?.size(),
         };
-        let align = Align::from_bytes(1).unwrap();
         // This will also call the access hooks.
         self.copy(
             ptr.into(),
-            align,
+            Align::ONE,
             new_ptr.into(),
-            align,
+            Align::ONE,
             old_size.min(new_size),
             /*nonoverlapping*/ true,
         )?;
@@ -379,10 +378,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         &self,
         sptr: Scalar<M::PointerTag>,
         size: Size,
-        align: Option<Align>,
+        align: Align,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx> {
-        self.check_and_deref_ptr(sptr, size, align, msg, |ptr| {
+        self.check_and_deref_ptr(sptr, size, Some(align), msg, |ptr| {
             let (size, align) =
                 self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferenceable)?;
             Ok((size, align, ()))
@@ -604,6 +603,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
+    /// Return the `extra` field of the given allocation.
+    pub fn get_alloc_extra<'a>(&'a self, id: AllocId) -> InterpResult<'tcx, &'a M::AllocExtra> {
+        Ok(&self.get_raw(id)?.extra)
+    }
+
     /// Gives raw mutable access to the `Allocation`, without bounds or alignment checks.
     /// The caller is responsible for calling the access hooks!
     ///
@@ -664,6 +668,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
+    /// Return the `extra` field of the given allocation.
+    pub fn get_alloc_extra_mut<'a>(
+        &'a mut self,
+        id: AllocId,
+    ) -> InterpResult<'tcx, &'a mut M::AllocExtra> {
+        Ok(&mut self.get_raw_mut(id)?.0.extra)
+    }
+
     /// Obtain the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
     ///
@@ -688,7 +700,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // The caller requested no function pointers.
                 throw_ub!(DerefFunctionPointer(id))
             } else {
-                Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
+                Ok((Size::ZERO, Align::ONE))
             };
         }
 
@@ -930,7 +942,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ///
     /// Performs appropriate bounds checks.
     pub fn read_bytes(&self, sptr: Scalar<M::PointerTag>, size: Size) -> InterpResult<'tcx, &[u8]> {
-        let alloc_ref = match self.get(sptr, size, Align::from_bytes(1).unwrap())? {
+        let alloc_ref = match self.get(sptr, size, Align::ONE)? {
             Some(a) => a,
             None => return Ok(&[]), // zero-sized access
         };
@@ -956,7 +968,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         assert_eq!(lower, len, "can only write iterators with a precise length");
 
         let size = Size::from_bytes(len);
-        let alloc_ref = match self.get_mut(sptr, size, Align::from_bytes(1).unwrap())? {
+        let alloc_ref = match self.get_mut(sptr, size, Align::ONE)? {
             Some(alloc_ref) => alloc_ref,
             None => {
                 // zero-sized access

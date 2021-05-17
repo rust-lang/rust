@@ -1031,11 +1031,8 @@ where
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate_bytes(str.as_bytes(), kind);
         let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
-        let mplace = MemPlace {
-            ptr: ptr.into(),
-            align: Align::from_bytes(1).unwrap(),
-            meta: MemPlaceMeta::Meta(meta),
-        };
+        let mplace =
+            MemPlace { ptr: ptr.into(), align: Align::ONE, meta: MemPlaceMeta::Meta(meta) };
 
         let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
         MPlaceTy { mplace, layout }

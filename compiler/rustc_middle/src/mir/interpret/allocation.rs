@@ -114,7 +114,7 @@ impl<Tag> Allocation<Tag> {
     }
 
     pub fn from_byte_aligned_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
-        Allocation::from_bytes(slice, Align::from_bytes(1).unwrap())
+        Allocation::from_bytes(slice, Align::ONE)
     }
 
     pub fn uninit(size: Size, align: Align) -> Self {

@@ -329,7 +329,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     self.ecx.memory.check_ptr_access_align(
                         vtable,
                         3 * self.ecx.tcx.data_layout.pointer_size, // drop, size, align
-                        Some(self.ecx.tcx.data_layout.pointer_align.abi),
+                        self.ecx.tcx.data_layout.pointer_align.abi,
                         CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
                     ),
                     self.path,
@@ -415,7 +415,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             self.ecx.memory.check_ptr_access_align(
                 place.ptr,
                 size,
-                Some(align),
+                align,
                 CheckInAllocMsg::InboundsTest, // will anyway be replaced by validity message
             ),
             self.path,
