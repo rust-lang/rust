@@ -1898,6 +1898,9 @@ pub fn exit(code: i32) -> ! {
 /// process, no destructors on the current stack or any other thread's stack
 /// will be run.
 ///
+/// Rust IO buffers (eg, from `BufWriter`) will not be flushed.
+/// Likewise, C stdio buffers will (on most platforms) not be flushed.
+///
 /// This is in contrast to the default behaviour of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
 /// When `panic="abort"` is set, either as an argument to `rustc` or in a
