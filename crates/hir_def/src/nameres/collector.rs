@@ -482,6 +482,7 @@ impl DefCollector<'_> {
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
             if m == self.def_map.module_id(current_module_id) {
+                cov_mark::hit!(ignore_macro_use_extern_crate_self);
                 return;
             }
 

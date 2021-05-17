@@ -411,7 +411,8 @@ struct Arc;
 }
 
 #[test]
-fn extern_crate_self() {
+fn macro_use_extern_crate_self() {
+    cov_mark::check!(ignore_macro_use_extern_crate_self);
     check(
         r#"
 //- /main.rs crate:main
