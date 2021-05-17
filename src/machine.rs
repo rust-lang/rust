@@ -478,14 +478,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let alloc = alloc.into_owned();
         let (stacks, base_tag) = if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
             let (stacks, base_tag) =
-                Stacks::new_allocation(id, alloc.size, Rc::clone(stacked_borrows), kind);
+                Stacks::new_allocation(id, alloc.size(), Rc::clone(stacked_borrows), kind);
             (Some(stacks), base_tag)
         } else {
             // No stacks, no tag.
             (None, Tag::Untagged)
         };
         let race_alloc = if let Some(data_race) = &memory_extra.data_race {
-            Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size, kind))
+            Some(data_race::AllocExtra::new_allocation(&data_race, alloc.size(), kind))
         } else {
             None
         };
