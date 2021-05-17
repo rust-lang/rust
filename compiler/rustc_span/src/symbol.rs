@@ -374,6 +374,7 @@ symbols! {
         conservative_impl_trait,
         console,
         const_allocate,
+        const_async_blocks,
         const_compare_raw_pointers,
         const_constructor,
         const_eval_limit,
