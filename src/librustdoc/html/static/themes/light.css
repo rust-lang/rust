@@ -207,7 +207,7 @@ details.undocumented > summary::before {
 	border-color: #66afe9;
 }
 
-.search-focus:disabled {
+.search-input:disabled {
 	background-color: #e6e6e6;
 }
 
