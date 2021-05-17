@@ -112,7 +112,7 @@ fn solve(
     let fuel = std::cell::Cell::new(CHALK_SOLVER_FUEL);
 
     let should_continue = || {
-        context.db.check_canceled();
+        db.unwind_if_cancelled();
         let remaining = fuel.get();
         fuel.set(remaining - 1);
         if remaining == 0 {

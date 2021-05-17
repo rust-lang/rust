@@ -6,7 +6,7 @@ use std::{
 };
 
 use ide::{
-    Annotation, AnnotationKind, Assist, AssistKind, CallInfo, Cancelable, CompletionItem,
+    Annotation, AnnotationKind, Assist, AssistKind, CallInfo, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
     InlayKind, InsertTextFormat, Markup, NavigationTarget, ReferenceAccess, RenameError, Runnable,
@@ -726,7 +726,7 @@ pub(crate) fn snippet_text_document_edit(
 pub(crate) fn snippet_text_document_ops(
     snap: &GlobalStateSnapshot,
     file_system_edit: FileSystemEdit,
-) -> Cancelable<Vec<lsp_ext::SnippetDocumentChangeOperation>> {
+) -> Cancellable<Vec<lsp_ext::SnippetDocumentChangeOperation>> {
     let mut ops = Vec::new();
     match file_system_edit {
         FileSystemEdit::CreateFile { dst, initial_contents } => {
@@ -756,7 +756,7 @@ pub(crate) fn snippet_text_document_ops(
             let new_uri = snap.anchored_path(&dst);
             let mut rename_file =
                 lsp_types::RenameFile { old_uri, new_uri, options: None, annotation_id: None };
-            if snap.analysis.is_library_file(src) == Ok(true)
+            if snap.analysis.is_library_file(src).ok() == Some(true)
                 && snap.config.change_annotation_support()
             {
                 rename_file.annotation_id = Some(outside_workspace_annotation_id())

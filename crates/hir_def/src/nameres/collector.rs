@@ -351,7 +351,7 @@ impl DefCollector<'_> {
         let mut i = 0;
         'outer: loop {
             loop {
-                self.db.check_canceled();
+                self.db.unwind_if_cancelled();
                 loop {
                     if self.resolve_imports() == ReachedFixedPoint::Yes {
                         break;
@@ -831,7 +831,7 @@ impl DefCollector<'_> {
         vis: Visibility,
         import_type: ImportType,
     ) {
-        self.db.check_canceled();
+        self.db.unwind_if_cancelled();
         self.update_recursive(module_id, resolutions, vis, import_type, 0)
     }
 

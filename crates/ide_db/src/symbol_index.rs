@@ -127,7 +127,7 @@ fn library_symbols(db: &dyn SymbolsDatabase) -> Arc<FxHashMap<SourceRootId, Symb
 }
 
 fn file_symbols(db: &dyn SymbolsDatabase, file_id: FileId) -> Arc<SymbolIndex> {
-    db.check_canceled();
+    db.unwind_if_cancelled();
     let parse = db.parse(file_id);
 
     let symbols = source_file_to_file_symbols(&parse.tree(), file_id);
