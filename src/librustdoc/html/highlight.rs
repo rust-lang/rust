@@ -408,7 +408,6 @@ impl<'a> Classifier<'a> {
                 c => c,
             },
             TokenKind::RawIdent => Class::Ident,
-            //TODO How do I test this?
             TokenKind::RawKeyword => Class::KeyWord,
             TokenKind::Lifetime { .. } => Class::Lifetime,
         };

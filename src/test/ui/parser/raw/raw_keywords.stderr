@@ -1,0 +1,116 @@
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:10:16
+   |
+LL |     one_token!(k#ident);
+   |                ^^^^^^^ help: insert a whitespace: `k #ident`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:12:16
+   |
+LL |     one_token!(k#fn);
+   |                ^^^^ help: insert a whitespace: `k #fn`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:14:16
+   |
+LL |     one_token!(k#Self);
+   |                ^^^^^^ help: insert a whitespace: `k #Self`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:16:16
+   |
+LL |     one_token!(k#dyn);
+   |                ^^^^^ help: insert a whitespace: `k #dyn`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:18:16
+   |
+LL |     one_token!(k#await);
+   |                ^^^^^^^ help: insert a whitespace: `k #await`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:22:18
+   |
+LL |     two_tokens!(#k#other_variable);
+   |                  ^^^^^^^^^^^^^^^^ help: insert a whitespace: `k #other_variable`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:26:17
+   |
+LL |     two_tokens!(k#r"raw string");
+   |                 ^^^ help: insert a whitespace: `k #r`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:28:17
+   |
+LL |     two_tokens!(k#r "raw string");
+   |                 ^^^ help: insert a whitespace: `k #r`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:30:17
+   |
+LL |     two_tokens!(k#br"raw byte string");
+   |                 ^^^^ help: insert a whitespace: `k #br`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:32:19
+   |
+LL |     three_tokens!(k#r"raw string"#);
+   |                   ^^^ help: insert a whitespace: `k #r`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:34:18
+   |
+LL |     four_tokens!(k#r#"raw string"#);
+   |                  ^^^ help: insert a whitespace: `k #r`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:36:17
+   |
+LL |     two_tokens!(k#b'-');
+   |                 ^^^ help: insert a whitespace: `k #b`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:38:17
+   |
+LL |     two_tokens!(k#b '-');
+   |                 ^^^ help: insert a whitespace: `k #b`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:65:15
+   |
+LL |         const k#SOMETHING: i32 = 42;
+   |               ^^^^^^^^^^^ help: insert a whitespace: `k #SOMETHING`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:71:9
+   |
+LL |         k#k
+   |         ^^^ help: insert a whitespace: `k #k`
+
+error: raw keyword syntax is reserved for future use
+  --> $DIR/raw_keywords.rs:77:17
+   |
+LL |     two_tokens!(k#knampf);
+   |                 ^^^^^^^^ help: insert a whitespace: `k #knampf`
+
+error: unexpected end of macro invocation
+  --> $DIR/raw_keywords.rs:77:25
+   |
+LL | macro_rules! two_tokens { ( $a:tt $b:tt ) => { }; }
+   | ----------------------- when calling this macro
+...
+LL |     two_tokens!(k#knampf);
+   |                         ^ missing tokens in macro arguments
+
+error: no rules expected the token `knampf`
+  --> $DIR/raw_keywords.rs:80:21
+   |
+LL | macro_rules! two_tokens { ( $a:tt $b:tt ) => { }; }
+   | ----------------------- when calling this macro
+...
+LL |     two_tokens!(k # knampf);
+   |                     ^^^^^^ no rules expected this token in macro call
+
+error: aborting due to 18 previous errors
+
