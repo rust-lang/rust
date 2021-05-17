@@ -14,18 +14,18 @@ use ide_db::RootDatabase;
 
 use crate::Assist;
 
-/// A [Diagnostic] that potentially has a fix available.
+/// A [Diagnostic] that potentially has some fixes available.
 ///
 /// [Diagnostic]: hir::diagnostics::Diagnostic
-pub(crate) trait DiagnosticWithFix: Diagnostic {
+pub(crate) trait DiagnosticWithFixes: Diagnostic {
     /// `resolve` determines if the diagnostic should fill in the `edit` field
     /// of the assist.
     ///
     /// If `resolve` is false, the edit will be computed later, on demand, and
     /// can be omitted.
-    fn fix(
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist>;
+    ) -> Option<Vec<Assist>>;
 }

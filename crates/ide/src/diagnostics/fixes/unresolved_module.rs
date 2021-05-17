@@ -3,17 +3,17 @@ use ide_assists::{Assist, AssistResolveStrategy};
 use ide_db::{base_db::AnchoredPathBuf, source_change::FileSystemEdit, RootDatabase};
 use syntax::AstNode;
 
-use crate::diagnostics::{fix, DiagnosticWithFix};
+use crate::diagnostics::{fix, DiagnosticWithFixes};
 
-impl DiagnosticWithFix for UnresolvedModule {
-    fn fix(
+impl DiagnosticWithFixes for UnresolvedModule {
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
+    ) -> Option<Vec<Assist>> {
         let root = sema.db.parse_or_expand(self.file)?;
         let unresolved_module = self.decl.to_node(&root);
-        Some(fix(
+        Some(vec![fix(
             "create_module",
             "Create module",
             FileSystemEdit::CreateFile {
@@ -25,7 +25,7 @@ impl DiagnosticWithFix for UnresolvedModule {
             }
             .into(),
             unresolved_module.syntax().text_range(),
-        ))
+        )])
     }
 }
 
@@ -45,33 +45,35 @@ mod tests {
                         message: "unresolved module",
                         range: 0..8,
                         severity: Error,
-                        fix: Some(
-                            Assist {
-                                id: AssistId(
-                                    "create_module",
-                                    QuickFix,
-                                ),
-                                label: "Create module",
-                                group: None,
-                                target: 0..8,
-                                source_change: Some(
-                                    SourceChange {
-                                        source_file_edits: {},
-                                        file_system_edits: [
-                                            CreateFile {
-                                                dst: AnchoredPathBuf {
-                                                    anchor: FileId(
-                                                        0,
-                                                    ),
-                                                    path: "foo.rs",
+                        fixes: Some(
+                            [
+                                Assist {
+                                    id: AssistId(
+                                        "create_module",
+                                        QuickFix,
+                                    ),
+                                    label: "Create module",
+                                    group: None,
+                                    target: 0..8,
+                                    source_change: Some(
+                                        SourceChange {
+                                            source_file_edits: {},
+                                            file_system_edits: [
+                                                CreateFile {
+                                                    dst: AnchoredPathBuf {
+                                                        anchor: FileId(
+                                                            0,
+                                                        ),
+                                                        path: "foo.rs",
+                                                    },
+                                                    initial_contents: "",
                                                 },
-                                                initial_contents: "",
-                                            },
-                                        ],
-                                        is_snippet: false,
-                                    },
-                                ),
-                            },
+                                            ],
+                                            is_snippet: false,
+                                        },
+                                    ),
+                                },
+                            ],
                         ),
                         unused: false,
                         code: Some(

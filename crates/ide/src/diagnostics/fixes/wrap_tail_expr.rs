@@ -4,14 +4,14 @@ use ide_db::{source_change::SourceChange, RootDatabase};
 use syntax::AstNode;
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, DiagnosticWithFix};
+use crate::diagnostics::{fix, DiagnosticWithFixes};
 
-impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
-    fn fix(
+impl DiagnosticWithFixes for MissingOkOrSomeInTailExpr {
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
+    ) -> Option<Vec<Assist>> {
         let root = sema.db.parse_or_expand(self.file)?;
         let tail_expr = self.expr.to_node(&root);
         let tail_expr_range = tail_expr.syntax().text_range();
@@ -19,7 +19,7 @@ impl DiagnosticWithFix for MissingOkOrSomeInTailExpr {
         let edit = TextEdit::replace(tail_expr_range, replacement);
         let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
         let name = if self.required == "Ok" { "Wrap with Ok" } else { "Wrap with Some" };
-        Some(fix("wrap_tail_expr", name, source_change, tail_expr_range))
+        Some(vec![fix("wrap_tail_expr", name, source_change, tail_expr_range)])
     }
 }
 

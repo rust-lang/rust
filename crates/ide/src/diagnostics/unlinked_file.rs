@@ -18,7 +18,7 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{
-    diagnostics::{fix, fixes::DiagnosticWithFix},
+    diagnostics::{fix, fixes::DiagnosticWithFixes},
     Assist,
 };
 
@@ -50,13 +50,13 @@ impl Diagnostic for UnlinkedFile {
     }
 }
 
-impl DiagnosticWithFix for UnlinkedFile {
-    fn fix(
+impl DiagnosticWithFixes for UnlinkedFile {
+    fn fixes(
         &self,
         sema: &hir::Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
-        // If there's an existing module that could add a `mod` item to include the unlinked file,
+    ) -> Option<Vec<Assist>> {
+        // If there's an existing module that could add `mod` or `pub mod` items to include the unlinked file,
         // suggest that as a fix.
 
         let source_root = sema.db.source_root(sema.db.file_source_root(self.file_id));
@@ -90,7 +90,7 @@ impl DiagnosticWithFix for UnlinkedFile {
                         }
 
                         if module.origin.file_id() == Some(*parent_id) {
-                            return make_fix(sema.db, *parent_id, module_name, self.file_id);
+                            return make_fixes(sema.db, *parent_id, module_name, self.file_id);
                         }
                     }
                 }
@@ -101,20 +101,23 @@ impl DiagnosticWithFix for UnlinkedFile {
     }
 }
 
-fn make_fix(
+fn make_fixes(
     db: &RootDatabase,
     parent_file_id: FileId,
     new_mod_name: &str,
     added_file_id: FileId,
-) -> Option<Assist> {
+) -> Option<Vec<Assist>> {
     fn is_outline_mod(item: &ast::Item) -> bool {
         matches!(item, ast::Item::Module(m) if m.item_list().is_none())
     }
 
     let mod_decl = format!("mod {};", new_mod_name);
+    let pub_mod_decl = format!("pub mod {};", new_mod_name);
+
     let ast: ast::SourceFile = db.parse(parent_file_id).tree();
 
-    let mut builder = TextEdit::builder();
+    let mut mod_decl_builder = TextEdit::builder();
+    let mut pub_mod_decl_builder = TextEdit::builder();
 
     // If there's an existing `mod m;` statement matching the new one, don't emit a fix (it's
     // probably `#[cfg]`d out).
@@ -138,30 +141,43 @@ fn make_fix(
     {
         Some(last) => {
             cov_mark::hit!(unlinked_file_append_to_existing_mods);
-            builder.insert(last.syntax().text_range().end(), format!("\n{}", mod_decl));
+            let offset = last.syntax().text_range().end();
+            mod_decl_builder.insert(offset, format!("\n{}", mod_decl));
+            pub_mod_decl_builder.insert(offset, format!("\n{}", pub_mod_decl));
         }
         None => {
             // Prepend before the first item in the file.
             match ast.items().next() {
                 Some(item) => {
                     cov_mark::hit!(unlinked_file_prepend_before_first_item);
-                    builder.insert(item.syntax().text_range().start(), format!("{}\n\n", mod_decl));
+                    let offset = item.syntax().text_range().start();
+                    mod_decl_builder.insert(offset, format!("{}\n\n", mod_decl));
+                    pub_mod_decl_builder.insert(offset, format!("{}\n\n", pub_mod_decl));
                 }
                 None => {
                     // No items in the file, so just append at the end.
                     cov_mark::hit!(unlinked_file_empty_file);
-                    builder.insert(ast.syntax().text_range().end(), format!("{}\n", mod_decl));
+                    let offset = ast.syntax().text_range().end();
+                    mod_decl_builder.insert(offset, format!("{}\n", mod_decl));
+                    pub_mod_decl_builder.insert(offset, format!("{}\n", pub_mod_decl));
                 }
             }
         }
     }
 
-    let edit = builder.finish();
     let trigger_range = db.parse(added_file_id).tree().syntax().text_range();
-    Some(fix(
-        "add_mod_declaration",
-        &format!("Insert `{}`", mod_decl),
-        SourceChange::from_text_edit(parent_file_id, edit),
-        trigger_range,
-    ))
+    Some(vec![
+        fix(
+            "add_mod_declaration",
+            &format!("Insert `{}`", mod_decl),
+            SourceChange::from_text_edit(parent_file_id, mod_decl_builder.finish()),
+            trigger_range,
+        ),
+        fix(
+            "add_pub_mod_declaration",
+            &format!("Insert `{}`", pub_mod_decl),
+            SourceChange::from_text_edit(parent_file_id, pub_mod_decl_builder.finish()),
+            trigger_range,
+        ),
+    ])
 }

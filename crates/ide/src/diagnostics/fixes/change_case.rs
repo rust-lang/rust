@@ -4,16 +4,16 @@ use ide_db::{base_db::FilePosition, RootDatabase};
 use syntax::AstNode;
 
 use crate::{
-    diagnostics::{unresolved_fix, DiagnosticWithFix},
+    diagnostics::{unresolved_fix, DiagnosticWithFixes},
     references::rename::rename_with_semantics,
 };
 
-impl DiagnosticWithFix for IncorrectCase {
-    fn fix(
+impl DiagnosticWithFixes for IncorrectCase {
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
+    ) -> Option<Vec<Assist>> {
         let root = sema.db.parse_or_expand(self.file)?;
         let name_node = self.ident.to_node(&root);
 
@@ -28,7 +28,7 @@ impl DiagnosticWithFix for IncorrectCase {
             res.source_change = Some(source_change.ok().unwrap_or_default());
         }
 
-        Some(res)
+        Some(vec![res])
     }
 }
 

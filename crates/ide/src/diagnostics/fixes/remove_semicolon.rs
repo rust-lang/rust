@@ -4,14 +4,14 @@ use ide_db::{source_change::SourceChange, RootDatabase};
 use syntax::{ast, AstNode};
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, DiagnosticWithFix};
+use crate::diagnostics::{fix, DiagnosticWithFixes};
 
-impl DiagnosticWithFix for RemoveThisSemicolon {
-    fn fix(
+impl DiagnosticWithFixes for RemoveThisSemicolon {
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
+    ) -> Option<Vec<Assist>> {
         let root = sema.db.parse_or_expand(self.file)?;
 
         let semicolon = self
@@ -26,7 +26,7 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
         let edit = TextEdit::delete(semicolon);
         let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
 
-        Some(fix("remove_semicolon", "Remove this semicolon", source_change, semicolon))
+        Some(vec![fix("remove_semicolon", "Remove this semicolon", source_change, semicolon)])
     }
 }
 

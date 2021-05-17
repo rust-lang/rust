@@ -28,7 +28,7 @@ use unlinked_file::UnlinkedFile;
 
 use crate::{Assist, AssistId, AssistKind, FileId, Label, SourceChange};
 
-use self::fixes::DiagnosticWithFix;
+use self::fixes::DiagnosticWithFixes;
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -36,14 +36,14 @@ pub struct Diagnostic {
     pub message: String,
     pub range: TextRange,
     pub severity: Severity,
-    pub fix: Option<Assist>,
+    pub fixes: Option<Vec<Assist>>,
     pub unused: bool,
     pub code: Option<DiagnosticCode>,
 }
 
 impl Diagnostic {
     fn error(range: TextRange, message: String) -> Self {
-        Self { message, range, severity: Severity::Error, fix: None, unused: false, code: None }
+        Self { message, range, severity: Severity::Error, fixes: None, unused: false, code: None }
     }
 
     fn hint(range: TextRange, message: String) -> Self {
@@ -51,14 +51,14 @@ impl Diagnostic {
             message,
             range,
             severity: Severity::WeakWarning,
-            fix: None,
+            fixes: None,
             unused: false,
             code: None,
         }
     }
 
-    fn with_fix(self, fix: Option<Assist>) -> Self {
-        Self { fix, ..self }
+    fn with_fixes(self, fixes: Option<Vec<Assist>>) -> Self {
+        Self { fixes, ..self }
     }
 
     fn with_unused(self, unused: bool) -> Self {
@@ -154,7 +154,7 @@ pub(crate) fn diagnostics(
             // Override severity and mark as unused.
             res.borrow_mut().push(
                 Diagnostic::hint(range, d.message())
-                    .with_fix(d.fix(&sema, resolve))
+                    .with_fixes(d.fixes(&sema, resolve))
                     .with_code(Some(d.code())),
             );
         })
@@ -210,23 +210,23 @@ pub(crate) fn diagnostics(
     res.into_inner()
 }
 
-fn diagnostic_with_fix<D: DiagnosticWithFix>(
+fn diagnostic_with_fix<D: DiagnosticWithFixes>(
     d: &D,
     sema: &Semantics<RootDatabase>,
     resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::error(sema.diagnostics_display_range(d.display_source()).range, d.message())
-        .with_fix(d.fix(&sema, resolve))
+        .with_fixes(d.fixes(&sema, resolve))
         .with_code(Some(d.code()))
 }
 
-fn warning_with_fix<D: DiagnosticWithFix>(
+fn warning_with_fix<D: DiagnosticWithFixes>(
     d: &D,
     sema: &Semantics<RootDatabase>,
     resolve: &AssistResolveStrategy,
 ) -> Diagnostic {
     Diagnostic::hint(sema.diagnostics_display_range(d.display_source()).range, d.message())
-        .with_fix(d.fix(&sema, resolve))
+        .with_fixes(d.fixes(&sema, resolve))
         .with_code(Some(d.code()))
 }
 
@@ -256,12 +256,12 @@ fn check_unnecessary_braces_in_use_statement(
 
         acc.push(
             Diagnostic::hint(use_range, "Unnecessary braces in use statement".to_string())
-                .with_fix(Some(fix(
+                .with_fixes(Some(vec![fix(
                     "remove_braces",
                     "Remove unnecessary braces",
                     SourceChange::from_text_edit(file_id, edit),
                     use_range,
-                ))),
+                )])),
         );
     }
 
@@ -309,9 +309,23 @@ mod tests {
     /// Takes a multi-file input fixture with annotated cursor positions,
     /// and checks that:
     ///  * a diagnostic is produced
-    ///  * this diagnostic fix trigger range touches the input cursor position
+    ///  * the first diagnostic fix trigger range touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
     pub(crate) fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
+        check_nth_fix(0, ra_fixture_before, ra_fixture_after);
+    }
+    /// Takes a multi-file input fixture with annotated cursor positions,
+    /// and checks that:
+    ///  * a diagnostic is produced
+    ///  * every diagnostic fixes trigger range touches the input cursor position
+    ///  * that the contents of the file containing the cursor match `after` after each diagnostic fix is applied
+    pub(crate) fn check_fixes(ra_fixture_before: &str, ra_fixtures_after: Vec<&str>) {
+        for (i, ra_fixture_after) in ra_fixtures_after.iter().enumerate() {
+            check_nth_fix(i, ra_fixture_before, ra_fixture_after)
+        }
+    }
+
+    fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
 
         let (analysis, file_position) = fixture::position(ra_fixture_before);
@@ -324,9 +338,9 @@ mod tests {
             .unwrap()
             .pop()
             .unwrap();
-        let fix = diagnostic.fix.unwrap();
+        let fix = &diagnostic.fixes.unwrap()[nth];
         let actual = {
-            let source_change = fix.source_change.unwrap();
+            let source_change = fix.source_change.as_ref().unwrap();
             let file_id = *source_change.source_file_edits.keys().next().unwrap();
             let mut actual = analysis.file_text(file_id).unwrap().to_string();
 
@@ -344,7 +358,6 @@ mod tests {
             file_position.offset
         );
     }
-
     /// Checks that there's a diagnostic *without* fix at `$0`.
     fn check_no_fix(ra_fixture: &str) {
         let (analysis, file_position) = fixture::position(ra_fixture);
@@ -357,7 +370,7 @@ mod tests {
             .unwrap()
             .pop()
             .unwrap();
-        assert!(diagnostic.fix.is_none(), "got a fix when none was expected: {:?}", diagnostic);
+        assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {:?}", diagnostic);
     }
 
     /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
@@ -393,7 +406,7 @@ mod tests {
                         message: "unresolved macro `foo::bar!`",
                         range: 5..8,
                         severity: Error,
-                        fix: None,
+                        fixes: None,
                         unused: false,
                         code: Some(
                             DiagnosticCode(
@@ -542,18 +555,26 @@ mod a {
     #[test]
     fn unlinked_file_prepend_first_item() {
         cov_mark::check!(unlinked_file_prepend_before_first_item);
-        check_fix(
+        // Only tests the first one for `pub mod` since the rest are the same
+        check_fixes(
             r#"
 //- /main.rs
 fn f() {}
 //- /foo.rs
 $0
 "#,
-            r#"
+            vec![
+                r#"
 mod foo;
 
 fn f() {}
 "#,
+                r#"
+pub mod foo;
+
+fn f() {}
+"#,
+            ],
         );
     }
 

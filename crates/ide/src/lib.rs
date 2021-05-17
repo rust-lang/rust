@@ -565,7 +565,7 @@ impl Analysis {
             let diagnostic_assists = if include_fixes {
                 diagnostics::diagnostics(db, diagnostics_config, &resolve, frange.file_id)
                     .into_iter()
-                    .filter_map(|it| it.fix)
+                    .flat_map(|it| it.fixes.unwrap_or_default())
                     .filter(|it| it.target.intersect(frange.range).is_some())
                     .collect()
             } else {
