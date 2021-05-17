@@ -66,6 +66,9 @@ pub enum TokenKind {
     Ident,
     /// "r#ident"
     RawIdent,
+    /// "k#ident"
+    /// Unstable feature handling is done in rustc_parse/src/lexer/mod.rs
+    RawKeyword,
     /// "12_u8", "1.0e-40", "b"123"". See `LiteralKind` for more details.
     Literal { kind: LiteralKind, suffix_start: usize },
     /// "'a"
@@ -361,6 +364,9 @@ impl Cursor<'_> {
                 _ => self.ident(),
             },
 
+            // Raw keyword
+            'k' if self.first() == '#' && is_id_start(self.second()) => self.raw_keyword(),
+
             // Identifier (this should be checked after other variant that can
             // start as identifier).
             c if is_id_start(c) => self.ident(),
@@ -485,6 +491,15 @@ impl Cursor<'_> {
         // Eat the identifier part of RawIdent.
         self.eat_identifier();
         RawIdent
+    }
+
+    fn raw_keyword(&mut self) -> TokenKind {
+        debug_assert!(self.prev() == 'k' && self.first() == '#' && is_id_start(self.second()));
+        // Eat "#" symbol.
+        self.bump();
+        // Eat the identifier part of the keyword.
+        self.eat_identifier();
+        RawKeyword
     }
 
     fn ident(&mut self) -> TokenKind {

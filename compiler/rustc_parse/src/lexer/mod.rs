@@ -187,6 +187,25 @@ impl<'a> StringReader<'a> {
                 }
                 token::Ident(sym, is_raw_ident)
             }
+            rustc_lexer::TokenKind::RawKeyword => {
+                let span = self.mk_sp(start, self.pos);
+                self.sess
+                    .span_diagnostic
+                    .struct_span_err(span, "raw keyword syntax is reserved for future use")
+                    // With whitespace, it tokenizes as three tokens, just like before this reservation.
+                    .span_suggestion(
+                        span,
+                        "insert a whitespace",
+                        format!("k #{}", self.str_from(start + BytePos(2))),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+
+                let sym = nfc_normalize(self.str_from(start + BytePos(2)));
+                // For recovery, treat it as a raw ident.
+                // FIXME: Add a flag to Ident to mark it as a raw keyword.
+                token::Ident(sym, true)
+            }
             rustc_lexer::TokenKind::Literal { kind, suffix_start } => {
                 let suffix_start = start + BytePos(suffix_start as u32);
                 let (kind, symbol) = self.cook_lexer_literal(start, suffix_start, kind);
