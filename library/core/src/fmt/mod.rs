@@ -1104,7 +1104,9 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
         None => {
             // We can use default formatting parameters for all arguments.
             for (arg, piece) in iter::zip(args.args, args.pieces) {
-                formatter.buf.write_str(*piece)?;
+                if !piece.is_empty() {
+                    formatter.buf.write_str(*piece)?;
+                }
                 (arg.formatter)(arg.value, &mut formatter)?;
                 idx += 1;
             }
@@ -1113,7 +1115,9 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
             for (arg, piece) in iter::zip(fmt, args.pieces) {
-                formatter.buf.write_str(*piece)?;
+                if !piece.is_empty() {
+                    formatter.buf.write_str(*piece)?;
+                }
                 // SAFETY: arg and args.args come from the same Arguments,
                 // which guarantees the indexes are always within bounds.
                 unsafe { run(&mut formatter, arg, &args.args) }?;
