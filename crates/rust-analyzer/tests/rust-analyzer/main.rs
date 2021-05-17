@@ -39,40 +39,6 @@ const PROFILE: &str = "";
 // const PROFILE: &'static str = "*@3>100";
 
 #[test]
-fn can_disable_semantic_strings() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    [true, false].iter().for_each(|semantic_strings| {
-        let server = Project::with_fixture(
-            r#"
-//- /Cargo.toml
-[package]
-name = "foo"
-version = "0.0.0"
-
-//- /src/lib.rs
-const foo: &'static str = "hi";
-"#,
-        )
-        .with_config(serde_json::json!({ "semanticStringTokens": semantic_strings }))
-        .server()
-        .wait_until_workspace_is_loaded();
-
-        let res = server.send_request::<SemanticTokensRangeRequest>(SemanticTokensRangeParams {
-            text_document: server.doc_id("src/lib.rs"),
-            partial_result_params: PartialResultParams::default(),
-            work_done_progress_params: WorkDoneProgressParams::default(),
-            range: Range::new(Position::new(0, 26), Position::new(0, 30)),
-        });
-
-        let tok_res: SemanticTokens = from_value(res).expect("invalid server response");
-        assert!(tok_res.data.len() == *semantic_strings as usize);
-    });
-}
-
-#[test]
 fn completes_items_from_standard_library() {
     if skip_slow_tests() {
         return;

@@ -179,6 +179,15 @@ Controls file watching implementation.
 --
 These directories will be ignored by rust-analyzer.
 --
+[[rust-analyzer.highlighting.strings]]rust-analyzer.highlighting.strings (default: `true`)::
++
+--
+Use semantic tokens for strings.
+
+In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
+By disabling semantic tokens for strings, other grammars can be used to highlight
+their contents.
+--
 [[rust-analyzer.hoverActions.debug]]rust-analyzer.hoverActions.debug (default: `true`)::
 +
 --
@@ -331,13 +340,4 @@ Additional arguments to `rustfmt`.
 --
 Advanced option, fully override the command rust-analyzer uses for
 formatting.
---
-[[rust-analyzer.semanticStringTokens]]rust-analyzer.semanticStringTokens (default: `true`)::
-+
---
-Use semantic tokens for strings.
-
-In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
-By disabling semantic tokens for strings, other grammars can be used to highlight
-their contents.
 --

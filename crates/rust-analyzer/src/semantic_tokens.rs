@@ -184,8 +184,8 @@ pub(crate) fn diff_tokens(old: &[SemanticToken], new: &[SemanticToken]) -> Vec<S
     }
 }
 
-pub(crate) fn type_index(type_: SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| *it == type_).unwrap() as u32
+pub(crate) fn type_index(ty: SemanticTokenType) -> u32 {
+    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
 }
 
 #[cfg(test)]

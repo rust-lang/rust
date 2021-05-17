@@ -1394,9 +1394,9 @@ pub(crate) fn handle_semantic_tokens_full(
     let line_index = snap.file_line_index(file_id)?;
 
     let highlights = snap.analysis.highlight(file_id)?;
-    let semantic_strings = snap.config.semantic_strings();
+    let highlight_strings = snap.config.highlighting_strings();
     let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
+        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
 
     // Unconditionally cache the tokens
     snap.semantic_tokens_cache.lock().insert(params.text_document.uri, semantic_tokens.clone());
@@ -1415,9 +1415,9 @@ pub(crate) fn handle_semantic_tokens_full_delta(
     let line_index = snap.file_line_index(file_id)?;
 
     let highlights = snap.analysis.highlight(file_id)?;
-    let semantic_strings = snap.config.semantic_strings();
+    let highlight_strings = snap.config.highlighting_strings();
     let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
+        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
 
     let mut cache = snap.semantic_tokens_cache.lock();
     let cached_tokens = cache.entry(params.text_document.uri).or_default();
@@ -1446,9 +1446,9 @@ pub(crate) fn handle_semantic_tokens_range(
     let line_index = snap.file_line_index(frange.file_id)?;
 
     let highlights = snap.analysis.highlight_range(frange)?;
-    let semantic_strings = snap.config.semantic_strings();
+    let highlight_strings = snap.config.highlighting_strings();
     let semantic_tokens =
-        to_proto::semantic_tokens(&text, &line_index, highlights, semantic_strings);
+        to_proto::semantic_tokens(&text, &line_index, highlights, highlight_strings);
     Ok(Some(semantic_tokens.into()))
 }
 

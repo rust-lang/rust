@@ -791,13 +791,14 @@ Many names in rust-analyzer conflict with keywords.
 We use mangled names instead of `r#ident` syntax:
 
 ```
-struct -> strukt
 crate  -> krate
-impl   -> imp
-trait  -> trait_
-fn     -> func
 enum   -> enum_
+fn     -> func
+impl   -> imp
 mod    -> module
+struct -> strukt
+trait  -> trait_
+type   -> ty
 ```
 
 **Rationale:** consistency.

@@ -124,6 +124,13 @@ config_data! {
         /// These directories will be ignored by rust-analyzer.
         files_excludeDirs: Vec<PathBuf> = "[]",
 
+        /// Use semantic tokens for strings.
+        ///
+        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
+        /// By disabling semantic tokens for strings, other grammars can be used to highlight
+        /// their contents.
+        highlighting_strings: bool = "true",
+
         /// Whether to show `Debug` action. Only applies when
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hoverActions_debug: bool           = "true",
@@ -208,13 +215,6 @@ config_data! {
         /// Advanced option, fully override the command rust-analyzer uses for
         /// formatting.
         rustfmt_overrideCommand: Option<Vec<String>> = "null",
-
-        /// Use semantic tokens for strings.
-        ///
-        /// In some editors (e.g. vscode) semantic tokens override other highlighting grammars.
-        /// By disabling semantic tokens for strings, other grammars can be used to highlight
-        /// their contents.
-        semanticStringTokens: bool = "true",
     }
 }
 
@@ -387,9 +387,6 @@ impl Config {
     }
     pub fn line_folding_only(&self) -> bool {
         try_or!(self.caps.text_document.as_ref()?.folding_range.as_ref()?.line_folding_only?, false)
-    }
-    pub fn semantic_strings(&self) -> bool {
-        self.data.semanticStringTokens
     }
     pub fn hierarchical_symbols(&self) -> bool {
         try_or!(
@@ -664,6 +661,9 @@ impl Config {
             method_refs: self.data.lens_enable && self.data.lens_methodReferences,
             refs: self.data.lens_enable && self.data.lens_references,
         }
+    }
+    pub fn highlighting_strings(&self) -> bool {
+        self.data.highlighting_strings
     }
     pub fn hover(&self) -> HoverConfig {
         HoverConfig {
