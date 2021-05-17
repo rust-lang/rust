@@ -374,8 +374,9 @@ where
             .size_and_align_of_mplace(&place)?
             .unwrap_or((place.layout.size, place.layout.align.abi));
         assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
-        // Check (stricter) dynamic alignment, unless forced otherwise.
-        place.mplace.align = force_align.unwrap_or(align);
+        let align = force_align.unwrap_or(align);
+        // Record new (stricter, unless forced) alignment requirement in place.
+        place.mplace.align = align;
         // When dereferencing a pointer, it must be non-null, aligned, and live.
         if let Some(ptr) = self.memory.check_ptr_access(place.ptr, size, align)? {
             place.mplace.ptr = ptr.into();
