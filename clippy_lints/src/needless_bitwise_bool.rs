@@ -24,10 +24,12 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
+    /// let (x,y) = (true, false);
     /// if x & !y {} // where both x and y are booleans
     /// ```
     /// Use instead:
     /// ```rust
+    /// let (x,y) = (true, false);
     /// if x && !y {}
     /// ```
     pub NEEDLESS_BITWISE_BOOL,
