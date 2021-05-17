@@ -18,16 +18,15 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        SemanticTokensRangeRequest, WillRenameFiles,
+        WillRenameFiles,
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
-    PartialResultParams, Position, Range, RenameFilesParams, SemanticTokens,
-    SemanticTokensRangeParams, TextDocumentItem, TextDocumentPositionParams,
-    WorkDoneProgressParams,
+    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
+    TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::lsp_ext::{OnEnter, Runnables, RunnablesParams};
-use serde_json::{from_value, json};
+use serde_json::json;
 use test_utils::skip_slow_tests;
 
 use crate::{
