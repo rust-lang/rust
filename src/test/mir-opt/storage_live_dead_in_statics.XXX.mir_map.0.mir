@@ -192,10 +192,10 @@ static XXX: &Foo = {
         _2 = Foo { tup: const "hi", data: move _3 }; // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:29: 23:2
                                          // ty::Const
                                          // + ty: &str
-                                         // + val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 })
+                                         // + val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 })
                                          // mir::Constant
                                          // + span: $DIR/storage_live_dead_in_statics.rs:6:10: 6:14
-                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, size: Size { raw: 2 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 }) }
+                                         // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 }) }
         StorageDead(_3);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:23:1: 23:2
         _1 = &_2;                        // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
         _0 = &(*_1);                     // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2

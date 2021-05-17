@@ -27,8 +27,6 @@ pub struct Allocation<Tag = (), Extra = ()> {
     relocations: Relocations<Tag>,
     /// Denotes which part of this allocation is initialized.
     init_mask: InitMask,
-    /// The size of the allocation. Currently, must always equal `bytes.len()`.
-    pub size: Size,
     /// The alignment of the allocation to detect unaligned reads.
     /// (`Align` guarantees that this is a power of two.)
     pub align: Align,
@@ -94,7 +92,6 @@ impl<Tag> Allocation<Tag> {
             bytes,
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, true),
-            size,
             align,
             mutability: Mutability::Not,
             extra: (),
@@ -110,7 +107,6 @@ impl<Tag> Allocation<Tag> {
             bytes: vec![0; size.bytes_usize()],
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, false),
-            size,
             align,
             mutability: Mutability::Mut,
             extra: (),
@@ -127,7 +123,6 @@ impl Allocation<(), ()> {
     ) -> Allocation<T, E> {
         Allocation {
             bytes: self.bytes,
-            size: self.size,
             relocations: Relocations::from_presorted(
                 self.relocations
                     .iter()
@@ -150,7 +145,11 @@ impl Allocation<(), ()> {
 /// Raw accessors. Provide access to otherwise private bytes.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn len(&self) -> usize {
-        self.size.bytes_usize()
+        self.bytes.len()
+    }
+
+    pub fn size(&self) -> Size {
+        Size::from_bytes(self.len())
     }
 
     /// Looks at a slice which may describe uninitialized bytes or describe a relocation. This differs

@@ -77,10 +77,10 @@
           _9 = const "hello, world!";      // scope 4 at $DIR/const_debuginfo.rs:14:13: 14:28
                                            // ty::Const
                                            // + ty: &str
-                                           // + val: Value(Slice { data: Allocation { bytes: [104, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [8191], len: Size { raw: 13 } }, size: Size { raw: 13 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 13 })
+                                           // + val: Value(Slice { data: Allocation { bytes: [104, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [8191], len: Size { raw: 13 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 13 })
                                            // mir::Constant
                                            // + span: $DIR/const_debuginfo.rs:14:13: 14:28
-                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [8191], len: Size { raw: 13 } }, size: Size { raw: 13 }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 13 }) }
+                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [8191], len: Size { raw: 13 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 13 }) }
           StorageLive(_10);                // scope 5 at $DIR/const_debuginfo.rs:16:9: 16:10
           (_10.0: bool) = const true;      // scope 5 at $DIR/const_debuginfo.rs:16:13: 16:34
           (_10.1: bool) = const false;     // scope 5 at $DIR/const_debuginfo.rs:16:13: 16:34

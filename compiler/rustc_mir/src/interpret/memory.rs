@@ -244,7 +244,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let new_ptr = self.allocate(new_size, new_align, kind);
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
-            None => self.get_raw(ptr.alloc_id)?.size,
+            None => self.get_raw(ptr.alloc_id)?.size(),
         };
         self.copy(ptr, new_ptr, old_size.min(new_size), /*nonoverlapping*/ true)?;
         self.deallocate(ptr, old_size_and_align, kind)?;
@@ -306,11 +306,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             );
         }
         if let Some((size, align)) = old_size_and_align {
-            if size != alloc.size || align != alloc.align {
+            if size != alloc.size() || align != alloc.align {
                 throw_ub_format!(
                     "incorrect layout on deallocation: {} has size {} and alignment {}, but gave size {} and alignment {}",
                     ptr.alloc_id,
-                    alloc.size.bytes(),
+                    alloc.size().bytes(),
                     alloc.align.bytes(),
                     size.bytes(),
                     align.bytes(),
@@ -319,11 +319,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         // Let the machine take some extra action
-        let size = alloc.size;
+        let size = alloc.size();
         AllocationExtra::memory_deallocated(&mut alloc, ptr, size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
-        let old = self.dead_alloc_map.insert(ptr.alloc_id, (alloc.size, alloc.align));
+        let old = self.dead_alloc_map.insert(ptr.alloc_id, (alloc.size(), alloc.align));
         if old.is_some() {
             bug!("Nothing can be deallocated twice");
         }
@@ -586,7 +586,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a global's allocation in miri
         if let Some((_, alloc)) = self.alloc_map.get(id) {
-            return Ok((alloc.size, alloc.align));
+            return Ok((alloc.size(), alloc.align));
         }
 
         // # Function pointers
@@ -614,7 +614,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Memory(alloc)) => {
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
-                Ok((alloc.size, alloc.align))
+                Ok((alloc.size(), alloc.align))
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
             // The rest must be dead.
