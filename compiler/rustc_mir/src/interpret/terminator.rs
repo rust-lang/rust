@@ -3,7 +3,10 @@ use std::convert::TryFrom;
 
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::Instance;
-use rustc_middle::{mir, ty};
+use rustc_middle::{
+    mir,
+    ty::{self, Ty},
+};
 use rustc_target::abi::{self, LayoutOf as _};
 use rustc_target::spec::abi::Abi;
 
@@ -228,15 +231,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // ABI check
-        {
-            let callee_abi = {
-                let instance_ty = instance.ty(*self.tcx, self.param_env);
-                match instance_ty.kind() {
-                    ty::FnDef(..) => instance_ty.fn_sig(*self.tcx).abi(),
-                    ty::Closure(..) => Abi::RustCall,
-                    ty::Generator(..) => Abi::Rust,
-                    _ => span_bug!(self.cur_span(), "unexpected callee ty: {:?}", instance_ty),
-                }
+        let check_abi = |this: &Self, instance_ty: Ty<'tcx>| -> InterpResult<'tcx> {
+            let callee_abi = match instance_ty.kind() {
+                ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
+                ty::Closure(..) => Abi::RustCall,
+                ty::Generator(..) => Abi::Rust,
+                _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
             };
             let normalize_abi = |abi| match abi {
                 Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
@@ -253,10 +253,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     caller_abi.name()
                 )
             }
-        }
+            Ok(())
+        };
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
+                check_abi(self, instance.ty(*self.tcx, self.param_env))?;
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
                 M::call_intrinsic(self, instance, args, ret, unwind)
             }
@@ -273,6 +275,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         Some(body) => body,
                         None => return Ok(()),
                     };
+
+                // Check against the ABI of the MIR body we are calling (not the ABI of `instance`;
+                // these can differ when `find_mir_or_eval_fn` does something clever like resolve
+                // exported symbol names).
+                check_abi(self, self.tcx.type_of(body.source.def_id()))?;
 
                 self.push_stack_frame(
                     instance,
