@@ -1534,6 +1534,19 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 ..
             } => {
                 let tag_info = if fallback {
+                    // For MSVC, we generate a union of structs for each variant with an explicit
+                    // discriminant field roughly equivalent to the following C:
+                    // ```c
+                    // union _enum<{name}> {
+                    //   struct {variant 0 name} {
+                    //     tag$ variant$;
+                    //     <variant 0 fields>
+                    //   } Variant0;
+                    //   <other variant structs>
+                    // }
+                    // ```
+                    // The natvis in `intrinsic.nativs` then matches on `this.Variant0.variant$` to
+                    // determine which variant is active and then displays it.
                     Some(DirectTag {
                         tag_field: Field::from(tag_field),
                         tag_type_metadata: self.tag_type_metadata.unwrap(),
@@ -1613,6 +1626,25 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 // For MSVC, we will generate a union of two structs, one for the dataful variant and one that just points to
                 // the discriminant field. We also create an enum that contains tag values for the non-dataful variants and
                 // make the discriminant field that type. We then use natvis to render the enum type correctly in Windbg/VS.
+                // This will generate debuginfo roughly equivalent to the following C:
+                // ```c
+                // union _enum<{name}, {min niche}, {max niche}, {dataful variant name} {
+                //   struct dataful_variant {
+                //     <fields in dataful variant>
+                //   },
+                //   struct discriminant$ {
+                //     enum tag$ {
+                //       <non-dataful variants>
+                //     } discriminant;
+                //   }
+                // }
+                // ```
+                // The natvis in `intrinsic.natvis` matches on the type name `_enum<*, *, *, *>`
+                // and evaluates `this.discriminant$.discriminant`. If the value is between
+                // the min niche and max niche, then the enum is in the dataful variant and
+                // `this.dataful_variant` is rendered. Otherwise, the enum is in one of the
+                // non-dataful variants. In that case, we just need to render the name of the
+                // `this.discriminant$.discriminant` enum.
                 if fallback {
                     let unique_type_id = debug_context(cx)
                         .type_map
@@ -1938,9 +1970,7 @@ fn describe_enum_variant(
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
                 let offset = enum_layout.fields.offset(tag_field.as_usize());
-                let tag_name =
-                    if cx.tcx.sess.target.is_like_msvc { "variant$" } else { "RUST$ENUM$DISR" };
-                let args = (tag_name.to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
+                let args = ("variant$".to_owned(), enum_layout.field(cx, tag_field.as_usize()).ty);
                 (Some(offset), Some(args))
             }
             _ => (None, None),
