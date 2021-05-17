@@ -9,7 +9,7 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
-use rustc_target::abi::LayoutOf;
+use rustc_target::abi::{LayoutOf, Size};
 
 use crate::*;
 
@@ -50,19 +50,19 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mi
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
-    fn read_os_str_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
+    fn read_os_str_from_c_str<'a>(&'a self, sptr: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
     where
         'tcx: 'a,
         'mir: 'a,
     {
         let this = self.eval_context_ref();
-        let bytes = this.memory.read_c_str(scalar)?;
+        let bytes = this.read_c_str(sptr)?;
         bytes_to_os_str(bytes)
     }
 
     /// Helper function to read an OsString from a 0x0000-terminated sequence of u16,
     /// which is what the Windows APIs usually handle.
-    fn read_os_str_from_wide_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString>
+    fn read_os_str_from_wide_str<'a>(&'a self, sptr: Scalar<Tag>) -> InterpResult<'tcx, OsString>
     where
         'tcx: 'a,
         'mir: 'a,
@@ -78,7 +78,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(s.into())
         }
 
-        let u16_vec = self.eval_context_ref().memory.read_wide_str(scalar)?;
+        let u16_vec = self.eval_context_ref().read_wide_str(sptr)?;
         u16vec_to_osstring(u16_vec)
     }
 
@@ -90,7 +90,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_os_str_to_c_str(
         &mut self,
         os_str: &OsStr,
-        scalar: Scalar<Tag>,
+        sptr: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let bytes = os_str_to_bytes(os_str)?;
@@ -102,7 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         self.eval_context_mut()
             .memory
-            .write_bytes(scalar, bytes.iter().copied().chain(iter::once(0u8)))?;
+            .write_bytes(sptr, bytes.iter().copied().chain(iter::once(0u8)))?;
         Ok((true, string_length))
     }
 
@@ -114,7 +114,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_os_str_to_wide_str(
         &mut self,
         os_str: &OsStr,
-        scalar: Scalar<Tag>,
+        sptr: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(windows)]
@@ -136,15 +136,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // If `size` is smaller or equal than `bytes.len()`, writing `bytes` plus the required
         // 0x0000 terminator to memory would cause an out-of-bounds access.
         let string_length = u64::try_from(u16_vec.len()).unwrap();
-        if size <= string_length {
+        let string_length = string_length.checked_add(1).unwrap();
+        if size < string_length {
             return Ok((false, string_length));
         }
 
         // Store the UTF-16 string.
-        self.eval_context_mut()
-            .memory
-            .write_u16s(scalar, u16_vec.into_iter().chain(iter::once(0x0000)))?;
-        Ok((true, string_length))
+        let size2 = Size::from_bytes(2);
+        let this = self.eval_context_mut();
+        let tcx = &*this.tcx;
+        let ptr = this.force_ptr(sptr)?; // we need to write at least the 0 terminator
+        let alloc = this.memory.get_raw_mut(ptr.alloc_id)?;
+        for (offset, wchar) in u16_vec.into_iter().chain(iter::once(0x0000)).enumerate() {
+            let offset = u64::try_from(offset).unwrap();
+            alloc.write_scalar(
+                tcx,
+                ptr.offset(size2 * offset, tcx)?,
+                Scalar::from_u16(wchar).into(),
+                size2,
+            )?;
+        }
+        Ok((true, string_length - 1))
     }
 
     /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of bytes.
@@ -178,13 +190,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Read a null-terminated sequence of bytes, and perform path separator conversion if needed.
-    fn read_path_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, Cow<'a, Path>>
+    fn read_path_from_c_str<'a>(&'a self, sptr: Scalar<Tag>) -> InterpResult<'tcx, Cow<'a, Path>>
     where
         'tcx: 'a,
         'mir: 'a,
     {
         let this = self.eval_context_ref();
-        let os_str = this.read_os_str_from_c_str(scalar)?;
+        let os_str = this.read_os_str_from_c_str(sptr)?;
 
         Ok(match this.convert_path_separator(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
             Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
@@ -193,9 +205,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Read a null-terminated sequence of `u16`s, and perform path separator conversion if needed.
-    fn read_path_from_wide_str(&self, scalar: Scalar<Tag>) -> InterpResult<'tcx, PathBuf> {
+    fn read_path_from_wide_str(&self, sptr: Scalar<Tag>) -> InterpResult<'tcx, PathBuf> {
         let this = self.eval_context_ref();
-        let os_str = this.read_os_str_from_wide_str(scalar)?;
+        let os_str = this.read_os_str_from_wide_str(sptr)?;
 
         Ok(this
             .convert_path_separator(Cow::Owned(os_str), PathConversion::TargetToHost)
@@ -208,13 +220,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_path_to_c_str(
         &mut self,
         path: &Path,
-        scalar: Scalar<Tag>,
+        sptr: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
         let os_str = this
             .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.write_os_str_to_c_str(&os_str, scalar, size)
+        this.write_os_str_to_c_str(&os_str, sptr, size)
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of `u16`s),
@@ -222,13 +234,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn write_path_to_wide_str(
         &mut self,
         path: &Path,
-        scalar: Scalar<Tag>,
+        sptr: Scalar<Tag>,
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
         let os_str = this
             .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.write_os_str_to_wide_str(&os_str, scalar, size)
+        this.write_os_str_to_wide_str(&os_str, sptr, size)
     }
 
     fn convert_path_separator<'a>(

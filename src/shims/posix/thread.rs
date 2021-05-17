@@ -111,7 +111,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let option = this.read_scalar(option)?.to_i32()?;
         if option == this.eval_libc_i32("PR_SET_NAME")? {
             let address = this.read_scalar(arg2)?.check_init()?;
-            let mut name = this.memory.read_c_str(address)?.to_owned();
+            let mut name = this.read_c_str(address)?.to_owned();
             // The name should be no more than 16 bytes, including the null
             // byte. Since `read_c_str` returns the string without the null
             // byte, we need to truncate to 15.
@@ -134,7 +134,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         this.assert_target_os("macos", "pthread_setname_np");
 
-        let name = this.memory.read_c_str(name)?.to_owned();
+        let name = this.read_c_str(name)?.to_owned();
         this.set_active_thread_name(name);
 
         Ok(())

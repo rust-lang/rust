@@ -566,6 +566,51 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Duration::new(seconds, nanoseconds)
         })
     }
+
+    fn read_c_str<'a>(&'a self, sptr: Scalar<Tag>) -> InterpResult<'tcx, &'a [u8]>
+    where
+        'tcx: 'a,
+        'mir: 'a,
+    {
+        let this = self.eval_context_ref();
+        let size1 = Size::from_bytes(1);
+        let ptr = this.force_ptr(sptr)?; // We need to read at least 1 byte, so we can eagerly get a ptr.
+
+        // Step 1: determine the length.
+        let alloc = this.memory.get_raw(ptr.alloc_id)?;
+        let mut len = Size::ZERO;
+        loop {
+            let byte = alloc.read_scalar(this, ptr.offset(len, this)?, size1)?.to_u8()?;
+            if byte == 0 {
+                break;
+            } else {
+                len = len + size1;
+            }
+        }
+
+        // Step 2: get the bytes.
+        this.memory.read_bytes(ptr.into(), len)
+    }
+
+    fn read_wide_str(&self, sptr: Scalar<Tag>) -> InterpResult<'tcx, Vec<u16>> {
+        let this = self.eval_context_ref();
+        let size2 = Size::from_bytes(2);
+
+        let mut ptr = this.force_ptr(sptr)?; // We need to read at least 1 wchar, so we can eagerly get a ptr.
+        let mut wchars = Vec::new();
+        let alloc = this.memory.get_raw(ptr.alloc_id)?;
+        loop {
+            let wchar = alloc.read_scalar(this, ptr, size2)?.to_u16()?;
+            if wchar == 0 {
+                break;
+            } else {
+                wchars.push(wchar);
+                ptr = ptr.offset(size2, this)?;
+            }
+        }
+
+        Ok(wchars)
+    }
 }
 
 /// Check that the number of args is what we expect.
