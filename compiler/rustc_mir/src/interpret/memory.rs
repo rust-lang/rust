@@ -804,41 +804,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         self.get_raw(ptr.alloc_id)?.get_bytes(self, ptr, size)
     }
 
-    /// Reads a 0-terminated sequence of bytes from memory. Returns them as a slice.
-    ///
-    /// Performs appropriate bounds checks.
-    pub fn read_c_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, &[u8]> {
-        let ptr = self.force_ptr(ptr)?; // We need to read at least 1 byte, so we *need* a ptr.
-        self.get_raw(ptr.alloc_id)?.read_c_str(self, ptr)
-    }
-
-    /// Reads a 0x0000-terminated u16-sequence from memory. Returns them as a Vec<u16>.
-    /// Terminator 0x0000 is not included in the returned Vec<u16>.
-    ///
-    /// Performs appropriate bounds checks.
-    pub fn read_wide_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, Vec<u16>> {
-        let size_2bytes = Size::from_bytes(2);
-        let align_2bytes = Align::from_bytes(2).unwrap();
-        // We need to read at least 2 bytes, so we *need* a ptr.
-        let mut ptr = self.force_ptr(ptr)?;
-        let allocation = self.get_raw(ptr.alloc_id)?;
-        let mut u16_seq = Vec::new();
-
-        loop {
-            ptr = self
-                .check_ptr_access(ptr.into(), size_2bytes, align_2bytes)?
-                .expect("cannot be a ZST");
-            let single_u16 = allocation.read_scalar(self, ptr, size_2bytes)?.to_u16()?;
-            if single_u16 != 0x0000 {
-                u16_seq.push(single_u16);
-                ptr = ptr.offset(size_2bytes, self)?;
-            } else {
-                break;
-            }
-        }
-        Ok(u16_seq)
-    }
-
     /// Writes the given stream of bytes into memory.
     ///
     /// Performs appropriate bounds checks.
@@ -864,46 +829,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         };
         let tcx = self.tcx;
         self.get_raw_mut(ptr.alloc_id)?.write_bytes(&tcx, ptr, src)
-    }
-
-    /// Writes the given stream of u16s into memory.
-    ///
-    /// Performs appropriate bounds checks.
-    pub fn write_u16s(
-        &mut self,
-        ptr: Scalar<M::PointerTag>,
-        src: impl IntoIterator<Item = u16>,
-    ) -> InterpResult<'tcx> {
-        let mut src = src.into_iter();
-        let (lower, upper) = src.size_hint();
-        let len = upper.expect("can only write bounded iterators");
-        assert_eq!(lower, len, "can only write iterators with a precise length");
-
-        let size = Size::from_bytes(lower);
-        let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(2).unwrap())? {
-            Some(ptr) => ptr,
-            None => {
-                // zero-sized access
-                assert_matches!(
-                    src.next(),
-                    None,
-                    "iterator said it was empty but returned an element"
-                );
-                return Ok(());
-            }
-        };
-        let tcx = self.tcx;
-        let allocation = self.get_raw_mut(ptr.alloc_id)?;
-
-        for idx in 0..len {
-            let val = Scalar::from_u16(
-                src.next().expect("iterator was shorter than it said it would be"),
-            );
-            let offset_ptr = ptr.offset(Size::from_bytes(idx) * 2, &tcx)?; // `Size` multiplication
-            allocation.write_scalar(&tcx, offset_ptr, val.into(), Size::from_bytes(2))?;
-        }
-        assert_matches!(src.next(), None, "iterator was longer than it said it would be");
-        Ok(())
     }
 
     /// Expects the caller to have checked bounds and alignment.
