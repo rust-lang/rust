@@ -276,6 +276,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         None => return Ok(()),
                     };
 
+                // Check against the ABI of the MIR body we are calling (not the ABI of `instance`;
+                // these can differ when `find_mir_or_eval_fn` does something clever like resolve
+                // exported symbol names).
                 check_abi(self, self.tcx.type_of(body.source.def_id()))?;
 
                 self.push_stack_frame(
