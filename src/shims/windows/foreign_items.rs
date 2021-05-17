@@ -298,7 +298,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let len = this.read_scalar(len)?.to_u32()?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
                 if flags != 2 {
-                    // BCRYPT_USE_SYSTEM_PREFERRED_RNG
+                    //      ^ BCRYPT_USE_SYSTEM_PREFERRED_RNG
                     throw_unsup_format!(
                         "BCryptGenRandom is supported only with the BCRYPT_USE_SYSTEM_PREFERRED_RNG flag"
                     );
