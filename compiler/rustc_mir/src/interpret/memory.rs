@@ -934,6 +934,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(a) => a,
             None => return Ok(&[]), // zero-sized access
         };
+        // Side-step AllocRef and directly access the underlying bytes more efficiently.
+        // (We are staying inside the bounds here so all is good.)
         Ok(alloc_ref
             .alloc
             .get_bytes(&alloc_ref.tcx, alloc_ref.range)
@@ -1006,7 +1008,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let src = self.check_ptr_access(src, size, src_align)?;
         let dest = self.check_ptr_access(dest, size * num_copies, dest_align)?; // `Size` multiplication
 
-        // FIXME: avoid looking up allocations more often than necessary.
+        // FIXME: we look up both allocations twice here, once ebfore for the `check_ptr_access`
+        // and once below to get the underlying `&[mut] Allocation`.
 
         // Source alloc preparations and access hooks.
         let src = match src {
@@ -1033,6 +1036,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             dest.offset,
             num_copies,
         );
+        // Prepare a copy of the initialization mask.
+        let compressed = src_alloc.compress_uninit_range(src, size);
         // This checks relocation edges on the src.
         let src_bytes = src_alloc
             .get_bytes_with_uninit_and_ptr(&tcx, alloc_range(src.offset, size))
@@ -1046,9 +1051,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             .get_bytes_mut_ptr(&tcx, alloc_range(dest.offset, size * num_copies))
             .as_mut_ptr();
 
-        // Prepare a copy of the initialization mask.
-        let compressed = self.get_raw(src.alloc_id)?.compress_uninit_range(src, size);
-
         if compressed.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
             // is marked as uninitialized but we otherwise omit changing the byte representation which may
@@ -1056,7 +1058,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // This also avoids writing to the target bytes so that the backing allocation is never
             // touched if the bytes stay uninitialized for the whole interpreter execution. On contemporary
             // operating system this can avoid physically allocating the page.
-            let dest_alloc = self.get_raw_mut(dest.alloc_id)?.0;
             dest_alloc.mark_init(alloc_range(dest.offset, size * num_copies), false); // `Size` multiplication
             dest_alloc.mark_relocation_range(relocations);
             return Ok(());
@@ -1096,7 +1097,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        let dest_alloc = self.get_raw_mut(dest.alloc_id)?.0;
         // now fill in all the "init" data
         dest_alloc.mark_compressed_init_range(&compressed, dest, size, num_copies);
         // copy the relocations to the destination
