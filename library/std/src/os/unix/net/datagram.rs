@@ -132,7 +132,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_abstract", issue = "42048")]
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixDatagram> {
         unsafe {
             let socket = UnixDatagram::unbound()?;
@@ -246,7 +246,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_abstract", issue = "42048")]
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn connect_addr(&self, socket_addr: &SocketAddr) -> io::Result<()> {
         unsafe {
             cvt(libc::connect(
@@ -558,7 +558,7 @@ impl UnixDatagram {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "unix_socket_abstract", issue = "42048")]
+    #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn send_to_addr(&self, buf: &[u8], socket_addr: &SocketAddr) -> io::Result<usize> {
         unsafe {
             let count = cvt(libc::sendto(
