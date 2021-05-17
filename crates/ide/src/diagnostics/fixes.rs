@@ -1,10 +1,12 @@
 //! Provides a way to attach fixes to the diagnostics.
 //! The same module also has all curret custom fixes for the diagnostics implemented.
+mod fill_missing_fields;
+
 use hir::{
     db::AstDatabase,
     diagnostics::{
-        Diagnostic, IncorrectCase, MissingFields, MissingOkOrSomeInTailExpr, NoSuchField,
-        RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap, UnresolvedModule,
+        Diagnostic, IncorrectCase, MissingOkOrSomeInTailExpr, NoSuchField, RemoveThisSemicolon,
+        ReplaceFilterMapNextWithFindMap, UnresolvedModule,
     },
     HasSource, HirDisplay, InFile, Semantics, VariantDef,
 };
@@ -15,7 +17,6 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    algo,
     ast::{self, edit::IndentLevel, make, ArgListOwner},
     AstNode, TextRange,
 };
@@ -79,47 +80,6 @@ impl DiagnosticWithFix for NoSuchField {
             self.file.original_file(sema.db),
             &self.field.to_node(&root),
         )
-    }
-}
-
-impl DiagnosticWithFix for MissingFields {
-    fn fix(
-        &self,
-        sema: &Semantics<RootDatabase>,
-        _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
-        // Note that although we could add a diagnostics to
-        // fill the missing tuple field, e.g :
-        // `struct A(usize);`
-        // `let a = A { 0: () }`
-        // but it is uncommon usage and it should not be encouraged.
-        if self.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
-            return None;
-        }
-
-        let root = sema.db.parse_or_expand(self.file)?;
-        let field_list_parent = self.field_list_parent.to_node(&root);
-        let old_field_list = field_list_parent.record_expr_field_list()?;
-        let new_field_list = old_field_list.clone_for_update();
-        for f in self.missed_fields.iter() {
-            let field =
-                make::record_expr_field(make::name_ref(&f.to_string()), Some(make::expr_unit()))
-                    .clone_for_update();
-            new_field_list.add_field(field);
-        }
-
-        let edit = {
-            let mut builder = TextEdit::builder();
-            algo::diff(&old_field_list.syntax(), &new_field_list.syntax())
-                .into_text_edit(&mut builder);
-            builder.finish()
-        };
-        Some(fix(
-            "fill_missing_fields",
-            "Fill struct fields",
-            SourceChange::from_text_edit(self.file.original_file(sema.db), edit),
-            sema.original_range(&field_list_parent.syntax()).range,
-        ))
     }
 }
 
