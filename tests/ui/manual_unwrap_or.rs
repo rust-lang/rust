@@ -213,4 +213,11 @@ fn format_name(name: Option<&Rc<str>>) -> &str {
     }
 }
 
+fn implicit_deref_ref() {
+    let _: &str = match Some(&"bye") {
+        None => "hi",
+        Some(s) => s,
+    };
+}
+
 fn main() {}
