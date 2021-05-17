@@ -2323,9 +2323,10 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     // to try to remove it.
     #[inline]
     default fn to_string(&self) -> String {
-        use fmt::Write;
         let mut buf = String::new();
-        buf.write_fmt(format_args!("{}", self))
+        let mut formatter = core::fmt::Formatter::new(&mut buf);
+        // Bypass format_args!() to avoid write_str with zero-length strs
+        fmt::Display::fmt(self, &mut formatter)
             .expect("a Display implementation returned an error unexpectedly");
         buf
     }
