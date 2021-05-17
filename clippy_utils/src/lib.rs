@@ -1572,8 +1572,10 @@ where
     Hash: Fn(&T) -> u64,
     Eq: Fn(&T, &T) -> bool,
 {
-    if exprs.len() == 2 && eq(&exprs[0], &exprs[1]) {
-        return vec![(&exprs[0], &exprs[1])];
+    match exprs {
+        [a, b] if eq(a, b) => return vec![(a, b)],
+        _ if exprs.len() <= 2 => return vec![],
+        _ => {},
     }
 
     let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
