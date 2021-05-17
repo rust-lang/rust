@@ -1,4 +1,4 @@
-//! Platform-specific extensions to `std` for WASI.
+//! Platform-specific extensions to `std` for the WebAssembly System Interface (WASI).
 //!
 //! Provides access to platform-level information on WASI, and exposes
 //! WASI-specific functions that would otherwise be inappropriate as
