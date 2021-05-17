@@ -347,9 +347,8 @@ struct TidyDocs {
 
 impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
-        // Test hopefully don't really need comments, and for assists we already
-        // have special comments which are source of doc tests and user docs.
-        if is_exclude_dir(path, &["tests", "test_data"]) {
+        // Tests and diagnostic fixes don't need module level comments.
+        if is_exclude_dir(path, &["tests", "test_data", "fixes"]) {
             return;
         }
 
