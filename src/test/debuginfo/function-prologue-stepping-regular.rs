@@ -2,8 +2,7 @@
 // beginning of a function.
 
 // min-lldb-version: 310
-// ignore-gdb
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+// ignore-lldb
 // compile-flags:-g
 
 // lldb-command:breakpoint set --name immediate_args
