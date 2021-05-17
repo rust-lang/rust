@@ -378,6 +378,10 @@ impl ast::RecordExprFieldList {
             make::tokens::single_space()
         };
 
+        if is_multiline {
+            normalize_ws_between_braces(self.syntax());
+        }
+
         let position = match self.fields().last() {
             Some(last_field) => {
                 let comma = match last_field

@@ -29,3 +29,13 @@ impl DiagnosticWithFix for RemoveThisSemicolon {
         Some(fix("remove_semicolon", "Remove this semicolon", source_change, semicolon))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::diagnostics::tests::check_fix;
+
+    #[test]
+    fn remove_semicolon() {
+        check_fix(r#"fn f() -> i32 { 92$0; }"#, r#"fn f() -> i32 { 92 }"#);
+    }
+}

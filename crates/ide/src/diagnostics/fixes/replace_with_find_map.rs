@@ -40,3 +40,45 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::diagnostics::tests::check_fix;
+
+    #[test]
+    fn replace_with_wind_map() {
+        check_fix(
+            r#"
+//- /main.rs crate:main deps:core
+use core::iter::Iterator;
+use core::option::Option::{self, Some, None};
+fn foo() {
+    let m = [1, 2, 3].iter().$0filter_map(|x| if *x == 2 { Some (4) } else { None }).next();
+}
+//- /core/lib.rs crate:core
+pub mod option {
+    pub enum Option<T> { Some(T), None }
+}
+pub mod iter {
+    pub trait Iterator {
+        type Item;
+        fn filter_map<B, F>(self, f: F) -> FilterMap where F: FnMut(Self::Item) -> Option<B> { FilterMap }
+        fn next(&mut self) -> Option<Self::Item>;
+    }
+    pub struct FilterMap {}
+    impl Iterator for FilterMap {
+        type Item = i32;
+        fn next(&mut self) -> i32 { 7 }
+    }
+}
+"#,
+            r#"
+use core::iter::Iterator;
+use core::option::Option::{self, Some, None};
+fn foo() {
+    let m = [1, 2, 3].iter().find_map(|x| if *x == 2 { Some (4) } else { None });
+}
+"#,
+        )
+    }
+}
