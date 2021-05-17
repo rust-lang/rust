@@ -27,8 +27,6 @@ pub struct Allocation<Tag = (), Extra = ()> {
     relocations: Relocations<Tag>,
     /// Denotes which part of this allocation is initialized.
     init_mask: InitMask,
-    /// The size of the allocation. Currently, must always equal `bytes.len()`.
-    pub size: Size,
     /// The alignment of the allocation to detect unaligned reads.
     /// (`Align` guarantees that this is a power of two.)
     pub align: Align,
@@ -94,7 +92,6 @@ impl<Tag> Allocation<Tag> {
             bytes,
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, true),
-            size,
             align,
             mutability: Mutability::Not,
             extra: (),
@@ -110,7 +107,6 @@ impl<Tag> Allocation<Tag> {
             bytes: vec![0; size.bytes_usize()],
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, false),
-            size,
             align,
             mutability: Mutability::Mut,
             extra: (),
@@ -127,7 +123,6 @@ impl Allocation<(), ()> {
     ) -> Allocation<T, E> {
         Allocation {
             bytes: self.bytes,
-            size: self.size,
             relocations: Relocations::from_presorted(
                 self.relocations
                     .iter()
@@ -150,7 +145,11 @@ impl Allocation<(), ()> {
 /// Raw accessors. Provide access to otherwise private bytes.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn len(&self) -> usize {
-        self.size.bytes_usize()
+        self.bytes.len()
+    }
+
+    pub fn size(&self) -> Size {
+        Size::from_bytes(self.len())
     }
 
     /// Looks at a slice which may describe uninitialized bytes or describe a relocation. This differs
@@ -276,29 +275,6 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
 /// Reading and writing.
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
-    /// Reads bytes until a `0` is encountered. Will error if the end of the allocation is reached
-    /// before a `0` is found.
-    ///
-    /// Most likely, you want to call `Memory::read_c_str` instead of this method.
-    pub fn read_c_str(
-        &self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-    ) -> InterpResult<'tcx, &[u8]> {
-        let offset = ptr.offset.bytes_usize();
-        Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
-            Some(size) => {
-                let size_with_null = Size::from_bytes(size) + Size::from_bytes(1);
-                // Go through `get_bytes` for checks and AllocationExtra hooks.
-                // We read the null, so we include it in the request, but we want it removed
-                // from the result, so we do subslicing.
-                &self.get_bytes(cx, ptr, size_with_null)?[..size]
-            }
-            // This includes the case where `offset` is out-of-bounds to begin with.
-            None => throw_ub!(UnterminatedCString(ptr.erase_tag())),
-        })
-    }
-
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
     /// relocation. If `allow_uninit_and_ptr` is `false`, also enforces that the memory in the
     /// given range contains neither relocations nor uninitialized bytes.
