@@ -271,7 +271,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 #[allow(non_snake_case)]
                 let &[ref hModule, ref lpProcName] = check_arg_count(args)?;
                 this.read_scalar(hModule)?.to_machine_isize(this)?;
-                let name = this.memory.read_c_str(this.read_scalar(lpProcName)?.check_init()?)?;
+                let name = this.read_c_str(this.read_scalar(lpProcName)?.check_init()?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
                     this.write_scalar(Scalar::from(ptr), dest)?;

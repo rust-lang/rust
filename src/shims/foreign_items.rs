@@ -405,7 +405,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 check_abi(abi, Abi::C { unwind: false })?;
                 let &[ref ptr] = check_arg_count(args)?;
                 let ptr = this.read_scalar(ptr)?.check_init()?;
-                let n = this.memory.read_c_str(ptr)?.len();
+                let n = this.read_c_str(ptr)?.len();
                 this.write_scalar(Scalar::from_machine_usize(u64::try_from(n).unwrap(), this), dest)?;
             }
 

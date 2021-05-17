@@ -187,7 +187,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[ref handle, ref symbol] = check_arg_count(args)?;
                 this.read_scalar(handle)?.to_machine_usize(this)?;
                 let symbol = this.read_scalar(symbol)?.check_init()?;
-                let symbol_name = this.memory.read_c_str(symbol)?;
+                let symbol_name = this.read_c_str(symbol)?;
                 if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.os)? {
                     let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
                     this.write_scalar(Scalar::from(ptr), dest)?;
