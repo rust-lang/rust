@@ -321,7 +321,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 false
             }
-            Safety::BuiltinUnsafe => true,
             Safety::ExplicitUnsafe(hir_id) => {
                 // mark unsafe block as used if there are any unsafe operations inside
                 if !violations.is_empty() {

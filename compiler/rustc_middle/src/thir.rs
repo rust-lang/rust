@@ -101,8 +101,6 @@ pub struct Block {
 pub enum BlockSafety {
     Safe,
     ExplicitUnsafe(hir::HirId),
-    PushUnsafe,
-    PopUnsafe,
 }
 
 #[derive(Debug, HashStable)]

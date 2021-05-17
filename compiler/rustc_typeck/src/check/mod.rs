@@ -174,13 +174,12 @@ impl Needs {
 pub struct UnsafetyState {
     pub def: hir::HirId,
     pub unsafety: hir::Unsafety,
-    pub unsafe_push_count: u32,
     from_fn: bool,
 }
 
 impl UnsafetyState {
     pub fn function(unsafety: hir::Unsafety, def: hir::HirId) -> UnsafetyState {
-        UnsafetyState { def, unsafety, unsafe_push_count: 0, from_fn: true }
+        UnsafetyState { def, unsafety, from_fn: true }
     }
 
     pub fn recurse(self, blk: &hir::Block<'_>) -> UnsafetyState {
@@ -193,19 +192,11 @@ impl UnsafetyState {
             hir::Unsafety::Unsafe if self.from_fn => self,
 
             unsafety => {
-                let (unsafety, def, count) = match blk.rules {
-                    BlockCheckMode::PushUnsafeBlock(..) => {
-                        (unsafety, blk.hir_id, self.unsafe_push_count.checked_add(1).unwrap())
-                    }
-                    BlockCheckMode::PopUnsafeBlock(..) => {
-                        (unsafety, blk.hir_id, self.unsafe_push_count.checked_sub(1).unwrap())
-                    }
-                    BlockCheckMode::UnsafeBlock(..) => {
-                        (hir::Unsafety::Unsafe, blk.hir_id, self.unsafe_push_count)
-                    }
-                    BlockCheckMode::DefaultBlock => (unsafety, self.def, self.unsafe_push_count),
+                let (unsafety, def) = match blk.rules {
+                    BlockCheckMode::UnsafeBlock(..) => (hir::Unsafety::Unsafe, blk.hir_id),
+                    BlockCheckMode::DefaultBlock => (unsafety, self.def),
                 };
-                UnsafetyState { def, unsafety, unsafe_push_count: count, from_fn: false }
+                UnsafetyState { def, unsafety, from_fn: false }
             }
         }
     }
