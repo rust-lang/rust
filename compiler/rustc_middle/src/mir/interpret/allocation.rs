@@ -276,29 +276,6 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
 /// Reading and writing.
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
-    /// Reads bytes until a `0` is encountered. Will error if the end of the allocation is reached
-    /// before a `0` is found.
-    ///
-    /// Most likely, you want to call `Memory::read_c_str` instead of this method.
-    pub fn read_c_str(
-        &self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-    ) -> InterpResult<'tcx, &[u8]> {
-        let offset = ptr.offset.bytes_usize();
-        Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
-            Some(size) => {
-                let size_with_null = Size::from_bytes(size) + Size::from_bytes(1);
-                // Go through `get_bytes` for checks and AllocationExtra hooks.
-                // We read the null, so we include it in the request, but we want it removed
-                // from the result, so we do subslicing.
-                &self.get_bytes(cx, ptr, size_with_null)?[..size]
-            }
-            // This includes the case where `offset` is out-of-bounds to begin with.
-            None => throw_ub!(UnterminatedCString(ptr.erase_tag())),
-        })
-    }
-
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
     /// relocation. If `allow_uninit_and_ptr` is `false`, also enforces that the memory in the
     /// given range contains neither relocations nor uninitialized bytes.
