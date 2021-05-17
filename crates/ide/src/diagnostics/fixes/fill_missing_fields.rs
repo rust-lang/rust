@@ -189,4 +189,29 @@ fn test_fn() {
 "#,
         );
     }
+
+    #[test]
+    fn test_fill_struct_fields_blank_line() {
+        check_fix(
+            r#"
+struct S { a: (), b: () }
+
+fn f() {
+    S {
+        $0
+    };
+}
+"#,
+            r#"
+struct S { a: (), b: () }
+
+fn f() {
+    S {
+        a: (),
+        b: (),
+    };
+}
+"#,
+        );
+    }
 }
