@@ -1,4 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
+#![feature(new_uninit)]
 
 use std::thread::spawn;
 use std::ptr::null_mut;
@@ -29,7 +30,7 @@ pub fn main() {
             // Uses relaxed semantics to not generate
             // a release sequence.
             let pointer = &*ptr.0;
-            pointer.store(Box::into_raw(Box::new(MaybeUninit::uninit())), Ordering::Relaxed);
+            pointer.store(Box::into_raw(Box::new_uninit()), Ordering::Relaxed);
         });
 
         let j2 = spawn(move || {

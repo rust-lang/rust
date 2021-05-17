@@ -506,15 +506,57 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn before_deallocation(
-        memory_extra: &mut Self::MemoryExtra,
-        id: AllocId,
+    fn memory_read(
+        _memory_extra: &Self::MemoryExtra,
+        alloc: &Allocation<Tag, AllocExtra>,
+        ptr: Pointer<Tag>,
+        size: Size,
     ) -> InterpResult<'tcx> {
-        if Some(id) == memory_extra.tracked_alloc_id {
-            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(id));
+        if let Some(data_race) = &alloc.extra.data_race {
+            data_race.read(ptr, size)?;
         }
+        if let Some(stacked_borrows) = &alloc.extra.stacked_borrows {
+            stacked_borrows.memory_read(ptr, size)
+        } else {
+            Ok(())
+        }
+    }
 
-        Ok(())
+    #[inline(always)]
+    fn memory_written(
+        _memory_extra: &mut Self::MemoryExtra,
+        alloc: &mut Allocation<Tag, AllocExtra>,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> InterpResult<'tcx> {
+        if let Some(data_race) = &mut alloc.extra.data_race {
+            data_race.write(ptr, size)?;
+        }
+        if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
+            stacked_borrows.memory_written(ptr, size)
+        } else {
+            Ok(())
+        }
+    }
+
+    #[inline(always)]
+    fn memory_deallocated(
+        memory_extra: &mut Self::MemoryExtra,
+        alloc: &mut Allocation<Tag, AllocExtra>,
+        ptr: Pointer<Tag>,
+    ) -> InterpResult<'tcx> {
+        let size = alloc.size();
+        if Some(ptr.alloc_id) == memory_extra.tracked_alloc_id {
+            register_diagnostic(NonHaltingDiagnostic::FreedAlloc(ptr.alloc_id));
+        }
+        if let Some(data_race) = &mut alloc.extra.data_race {
+            data_race.deallocate(ptr, size)?;
+        }
+        if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
+            stacked_borrows.memory_deallocated(ptr, size)
+        } else {
+            Ok(())
+        }
     }
 
     fn after_static_mem_initialized(
@@ -599,55 +641,5 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         ptr: Pointer<Self::PointerTag>,
     ) -> InterpResult<'tcx, u64> {
         intptrcast::GlobalState::ptr_to_int(ptr, memory)
-    }
-}
-
-impl AllocationExtra<Tag> for AllocExtra {
-    #[inline(always)]
-    fn memory_read<'tcx>(
-        alloc: &Allocation<Tag, AllocExtra>,
-        ptr: Pointer<Tag>,
-        size: Size,
-    ) -> InterpResult<'tcx> {
-        if let Some(data_race) = &alloc.extra.data_race {
-            data_race.read(ptr, size)?;
-        }
-        if let Some(stacked_borrows) = &alloc.extra.stacked_borrows {
-            stacked_borrows.memory_read(ptr, size)
-        } else {
-            Ok(())
-        }
-    }
-
-    #[inline(always)]
-    fn memory_written<'tcx>(
-        alloc: &mut Allocation<Tag, AllocExtra>,
-        ptr: Pointer<Tag>,
-        size: Size,
-    ) -> InterpResult<'tcx> {
-        if let Some(data_race) = &mut alloc.extra.data_race {
-            data_race.write(ptr, size)?;
-        }
-        if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
-            stacked_borrows.memory_written(ptr, size)
-        } else {
-            Ok(())
-        }
-    }
-
-    #[inline(always)]
-    fn memory_deallocated<'tcx>(
-        alloc: &mut Allocation<Tag, AllocExtra>,
-        ptr: Pointer<Tag>,
-        size: Size,
-    ) -> InterpResult<'tcx> {
-        if let Some(data_race) = &mut alloc.extra.data_race {
-            data_race.deallocate(ptr, size)?;
-        }
-        if let Some(stacked_borrows) = &mut alloc.extra.stacked_borrows {
-            stacked_borrows.memory_deallocated(ptr, size)
-        } else {
-            Ok(())
-        }
     }
 }

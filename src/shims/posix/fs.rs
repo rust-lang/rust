@@ -677,10 +677,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         trace!("Reading from FD {}, size {}", fd, count);
 
         // Check that the *entire* buffer is actually valid memory.
-        this.memory.check_ptr_access(
+        this.memory.check_ptr_access_align(
             buf,
             Size::from_bytes(count),
-            Align::from_bytes(1).unwrap(),
+            Align::ONE,
+            CheckInAllocMsg::MemoryAccessTest,
         )?;
 
         // We cap the number of read bytes to the largest value that we are able to fit in both the
@@ -722,10 +723,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Isolation check is done via `FileDescriptor` trait.
 
         // Check that the *entire* buffer is actually valid memory.
-        this.memory.check_ptr_access(
+        this.memory.check_ptr_access_align(
             buf,
             Size::from_bytes(count),
-            Align::from_bytes(1).unwrap(),
+            Align::ONE,
+            CheckInAllocMsg::MemoryAccessTest,
         )?;
 
         // We cap the number of written bytes to the largest value that we are able to fit in both the
