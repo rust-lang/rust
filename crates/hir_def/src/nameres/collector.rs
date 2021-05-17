@@ -481,6 +481,11 @@ impl DefCollector<'_> {
         let res = self.def_map.resolve_name_in_extern_prelude(self.db, &extern_crate.name);
 
         if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
+            if m == self.def_map.module_id(current_module_id) {
+                cov_mark::hit!(ignore_macro_use_extern_crate_self);
+                return;
+            }
+
             cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
             self.import_all_macros_exported(current_module_id, m.krate);
         }
