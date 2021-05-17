@@ -664,18 +664,18 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
             }
         }
 
-        let (local, foreign) = implementors.iter().partition::<Vec<_>, _>(|i| {
+        let (mut local, mut foreign) = implementors.iter().partition::<Vec<_>, _>(|i| {
             i.inner_impl()
                 .for_
                 .def_id_full(cx.cache())
                 .map_or(true, |d| cx.cache.paths.contains_key(&d))
         });
 
-        let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
-            local.iter().partition(|i| i.inner_impl().synthetic);
+        local.sort_by(|a, b| compare_impl(a, b, cx));
+        foreign.sort_by(|a, b| compare_impl(a, b, cx));
 
-        synthetic.sort_by(|a, b| compare_impl(a, b, cx));
-        concrete.sort_by(|a, b| compare_impl(a, b, cx));
+        let (synthetic, concrete): (Vec<&&Impl>, Vec<&&Impl>) =
+            local.iter().partition(|i| i.inner_impl().synthetic);
 
         if !foreign.is_empty() {
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
@@ -1284,9 +1284,15 @@ fn render_stability_since(
     )
 }
 
-fn compare_impl<'a, 'b>(lhs: &'a &&Impl, rhs: &'b &&Impl, cx: &Context<'_>) -> Ordering {
+fn compare_impl<'a, 'b>(lhs: &'a &Impl, rhs: &'b &Impl, cx: &Context<'_>) -> Ordering {
     let lhss = format!("{}", lhs.inner_impl().print(false, cx));
     let rhss = format!("{}", rhs.inner_impl().print(false, cx));
+
+    if lhs.inner_impl().negative_polarity && !rhs.inner_impl().negative_polarity {
+        return Ordering::Less;
+    } else if rhs.inner_impl().negative_polarity && !lhs.inner_impl().negative_polarity {
+        return Ordering::Greater;
+    }
 
     // lhs and rhs are formatted as HTML, which may be unnecessary
     compare_names(&lhss, &rhss)
