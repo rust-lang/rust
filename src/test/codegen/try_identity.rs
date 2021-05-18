@@ -9,8 +9,8 @@ type R = Result<u64, i32>;
 
 // This was written to the `?` from `try_trait`, but `try_trait_v2` uses a different structure,
 // so the relevant desugar is copied inline in order to keep the test testing the same thing.
-// FIXME(#85133): while this might be useful for `r#try!`, it would be nice to have a MIR optimization
-// that picks up the `?` desugaring, as `SimplifyArmIdentity` does not.  See #85133
+// FIXME(#85133): while this might be useful for `r#try!`, it would be nice to have a MIR
+// optimization that picks up the `?` desugaring, as `SimplifyArmIdentity` does not.
 #[no_mangle]
 pub fn try_identity(x: R) -> R {
 // CHECK: start:
