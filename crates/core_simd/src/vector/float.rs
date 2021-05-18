@@ -35,6 +35,14 @@ macro_rules! impl_float_vector {
             pub fn abs(self) -> Self {
                 unsafe { crate::intrinsics::simd_fabs(self) }
             }
+
+            /// Produces a vector where every lane has the square root value
+            /// of the equivalently-indexed lane in `self`
+            #[inline]
+            #[cfg(feature = "std")]
+            pub fn sqrt(self) -> Self {
+                unsafe { crate::intrinsics::simd_fsqrt(self) }
+            }
         }
 
         impl<const LANES: usize> $name<LANES>

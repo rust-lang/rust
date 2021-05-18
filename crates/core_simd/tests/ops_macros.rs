@@ -426,6 +426,13 @@ macro_rules! impl_float_tests {
                     )
                 }
 
+                fn sqrt<const LANES: usize>() {
+                    test_helpers::test_unary_elementwise(
+                        &Vector::<LANES>::sqrt,
+                        &Scalar::sqrt,
+                        &|_| true,
+                    )
+                }
                 fn horizontal_sum<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
                         test_helpers::prop_assert_biteq! (
