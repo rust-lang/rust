@@ -11,7 +11,6 @@ use crate::sync::Arc;
 use crate::sys::handle::Handle;
 use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt};
-pub use crate::sys_common::fs::try_exists;
 use crate::sys_common::FromInner;
 
 use super::to_u16s;
@@ -943,5 +942,34 @@ fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
             ptr::null_mut(),
         ))
         .map(drop)
+    }
+}
+
+// Try to see if a file exists but, unlike `exists`, report I/O errors.
+pub fn try_exists(path: &Path) -> io::Result<bool> {
+    // Open the file to ensure any symlinks are followed to their target.
+    let mut opts = OpenOptions::new();
+    // No read, write, etc access rights are needed.
+    opts.access_mode(0);
+    // Backup semantics enables opening directories as well as files.
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
+    match File::open(path, &opts) {
+        Err(e) => match e.kind() {
+            // The file definitely does not exist
+            io::ErrorKind::NotFound => Ok(false),
+
+            // `ERROR_SHARING_VIOLATION` means that the file has been locked by
+            // another process. This is often temporary so we simply report it
+            // as the file existing.
+            io::ErrorKind::Other if e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as i32) => {
+                Ok(true)
+            }
+            // Other errors such as `ERROR_ACCESS_DENIED` may indicate that the
+            // file exists. However, these types of errors are usually more
+            // permanent so we report them here.
+            _ => Err(e),
+        },
+        // The file was opened successfully therefore it must exist,
+        Ok(_) => Ok(true),
     }
 }
