@@ -2,9 +2,8 @@
 
 #![allow(clippy::module_name_repetitions)]
 
-use std::collections::HashMap;
-
 use rustc_ast::ast::Mutability;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{TyKind, Unsafety};
@@ -184,14 +183,14 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    is_normalizable_helper(cx, param_env, ty, &mut HashMap::new())
+    is_normalizable_helper(cx, param_env, ty, &mut FxHashMap::default())
 }
 
 fn is_normalizable_helper<'tcx>(
     cx: &LateContext<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
-    cache: &mut HashMap<Ty<'tcx>, bool>,
+    cache: &mut FxHashMap<Ty<'tcx>, bool>,
 ) -> bool {
     if let Some(&cached_result) = cache.get(ty) {
         return cached_result;

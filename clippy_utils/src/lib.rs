@@ -3,7 +3,14 @@
 #![feature(iter_zip)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
+// warn on the same lints as `clippy_lints`
+#![warn(trivial_casts, trivial_numeric_casts)]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
+// warn on rustc internal lints
+#![warn(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -13,7 +20,6 @@ extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
-extern crate rustc_hir_pretty;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
@@ -1326,7 +1332,7 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 }
 
 /// Checks if the given function kind is an async function.
-pub fn is_async_fn(kind: FnKind) -> bool {
+pub fn is_async_fn(kind: FnKind<'_>) -> bool {
     matches!(kind, FnKind::ItemFn(_, _, header, _) if header.asyncness == IsAsync::Async)
 }
 
