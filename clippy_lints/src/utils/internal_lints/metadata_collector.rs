@@ -114,6 +114,8 @@ const DEPRECATED_LINT_TYPE: [&str; 3] = ["clippy_lints", "deprecated_lints", "Cl
 
 /// The index of the applicability name of `paths::APPLICABILITY_VALUES`
 const APPLICABILITY_NAME_INDEX: usize = 2;
+/// This applicability will be set for unresolved applicability values.
+const APPLICABILITY_UNRESOLVED_STR: &str = "Unresolved";
 
 declare_clippy_lint! {
     /// **What it does:** Collects metadata about clippy lints for the website.
@@ -192,7 +194,7 @@ impl Drop for MetadataCollector {
         let mut lints = std::mem::take(&mut self.lints).into_sorted_vec();
         lints
             .iter_mut()
-            .for_each(|x| x.applicability = applicability_info.remove(&x.id));
+            .for_each(|x| x.applicability = Some(applicability_info.remove(&x.id).unwrap_or_default()));
 
         // Outputting
         if Path::new(OUTPUT_FILE).exists() {
@@ -208,7 +210,7 @@ struct LintMetadata {
     id: String,
     id_span: SerializableSpan,
     group: String,
-    level: &'static str,
+    level: String,
     docs: String,
     /// This field is only used in the output and will only be
     /// mapped shortly before the actual output.
@@ -221,7 +223,7 @@ impl LintMetadata {
             id,
             id_span,
             group,
-            level,
+            level: level.to_string(),
             docs,
             applicability: None,
         }
@@ -269,14 +271,16 @@ impl Serialize for ApplicabilityInfo {
     where
         S: Serializer,
     {
-        let index = self.applicability.unwrap_or_default();
-
         let mut s = serializer.serialize_struct("ApplicabilityInfo", 2)?;
         s.serialize_field("is_multi_part_suggestion", &self.is_multi_part_suggestion)?;
-        s.serialize_field(
-            "applicability",
-            &paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX],
-        )?;
+        if let Some(index) = self.applicability {
+            s.serialize_field(
+                "applicability",
+                &paths::APPLICABILITY_VALUES[index][APPLICABILITY_NAME_INDEX],
+            )?;
+        } else {
+            s.serialize_field("applicability", APPLICABILITY_UNRESOLVED_STR)?;
+        }
         s.end()
     }
 }
@@ -486,6 +490,13 @@ fn extract_attr_docs_or_lint(cx: &LateContext<'_>, item: &Item<'_>) -> Option<St
 /// ```
 ///
 /// Would result in `Hello world!\n=^.^=\n`
+///
+/// ---
+///
+/// This function may modify the doc comment to ensure that the string can be displayed using a
+/// markdown viewer in Clippy's lint list. The following modifications could be applied:
+/// * Removal of leading space after a new line. (Important to display tables)
+/// * Ensures that code blocks only contain language information
 fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     let mut lines = attrs.iter().filter_map(ast::Attribute::doc_str);
@@ -510,7 +521,12 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
                 continue;
             }
         }
-        docs.push_str(line);
+        // This removes the leading space that the macro translation introduces
+        if let Some(stripped_doc) = line.strip_prefix(' ') {
+            docs.push_str(stripped_doc);
+        } else if !line.is_empty() {
+            docs.push_str(line);
+        }
     }
     Some(docs)
 }
