@@ -1077,8 +1077,11 @@ impl<'a> Parser<'a> {
                     let span = expr.span;
 
                     match &expr.kind {
-                        // Not gated to supporte things like `doc = $expr` that work on stable.
-                        _ if is_interpolated_expr => {}
+                        // Not gated to support things like `doc = $expr` that work on stable.
+                        // Do not gate in `capture_cfg` mode, since we flatten all nontemrinals
+                        // before parsing. `capture_cfg` mode is only used to reparse existing
+                        // tokens, so the gating will be performed by the initial parse
+                        _ if is_interpolated_expr || self.capture_cfg => {}
                         ExprKind::Lit(lit) if lit.kind.is_unsuffixed() => {}
                         _ => self.sess.gated_spans.gate(sym::extended_key_value_attributes, span),
                     }
