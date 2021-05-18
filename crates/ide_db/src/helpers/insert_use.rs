@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use hir::Semantics;
 use syntax::{
     algo,
-    ast::{self, make, AstNode, PathSegmentKind},
+    ast::{self, make, AstNode, ModuleItemOwner, PathSegmentKind},
     ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
 };
 
@@ -88,15 +88,46 @@ impl ImportScope {
             ImportScope::Module(item_list) => ImportScope::Module(item_list.clone_for_update()),
         }
     }
+
+    fn guess_merge_behavior_from_scope(&self) -> Option<MergeBehavior> {
+        let use_stmt = |item| match item {
+            ast::Item::Use(use_) => use_.use_tree(),
+            _ => None,
+        };
+        let use_stmts = match self {
+            ImportScope::File(f) => f.items(),
+            ImportScope::Module(m) => m.items(),
+        }
+        .filter_map(use_stmt);
+        let mut res = None;
+        for tree in use_stmts {
+            if let Some(list) = tree.use_tree_list() {
+                if list.use_trees().any(|tree| tree.use_tree_list().is_some()) {
+                    // double nested tree list, can only be a crate style import at this point
+                    return Some(MergeBehavior::Crate);
+                }
+                // has to be at least a module style based import, might be crate style tho so look further
+                res = Some(MergeBehavior::Module);
+            }
+        }
+        res
+    }
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
 pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: InsertUseConfig) {
     let _p = profile::span("insert_use");
+    let mb = match cfg.granularity {
+        ImportGranularity::Preserve => scope.guess_merge_behavior_from_scope(),
+        ImportGranularity::Crate => Some(MergeBehavior::Crate),
+        ImportGranularity::Module => Some(MergeBehavior::Module),
+        ImportGranularity::Item => None,
+    };
+
     let use_item =
         make::use_(None, make::use_tree(path.clone(), None, None, false)).clone_for_update();
     // merge into existing imports if possible
-    if let Some(mb) = cfg.granularity.merge_behavior() {
+    if let Some(mb) = mb {
         for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
                 ted::replace(existing_use.syntax(), merged.syntax());
