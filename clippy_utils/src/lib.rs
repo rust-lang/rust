@@ -20,7 +20,6 @@ extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_hir;
-extern crate rustc_hir_pretty;
 extern crate rustc_infer;
 extern crate rustc_lexer;
 extern crate rustc_lint;
@@ -1333,7 +1332,7 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
 }
 
 /// Checks if the given function kind is an async function.
-pub fn is_async_fn(kind: FnKind) -> bool {
+pub fn is_async_fn(kind: FnKind<'_>) -> bool {
     matches!(kind, FnKind::ItemFn(_, _, header, _) if header.asyncness == IsAsync::Async)
 }
 
