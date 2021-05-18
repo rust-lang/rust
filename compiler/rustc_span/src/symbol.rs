@@ -131,6 +131,7 @@ symbols! {
         BinaryHeap,
         Borrow,
         C,
+        CStr,
         CString,
         Center,
         Clone,
