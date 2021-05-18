@@ -1068,8 +1068,13 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 
     let mut result = T::from_u32(0);
 
-    if radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize {
-        // SAFETY: Consider the highest radix of 16:
+    if intrinsics::likely(
+        radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize,
+    ) {
+        // SAFETY: We can take this fast path when `radix.pow(digits.len()) - 1 <= T::MAX`
+        // but the condition above is a faster (conservative) approximation of this.
+        //
+        // Consider the highest radix of 16:
         // `u8::MAX` is `ff` (2 characters), `u16::MAX` is `ffff` (4 characters)
         // We can be sure that any src len of 2 would fit in a u8 so we don't need
         // to check for overflow.
@@ -1088,9 +1093,14 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         let overflow_err = || PIE { kind: if is_positive { PosOverflow } else { NegOverflow } };
 
         for &c in digits {
+            // When `radix` is passed in as a literal, rather than doing a slow `imul`
+            // then the compiler can use a shift if `radix` is a power of 2.
+            // (*10 can also be turned into *8 + *2).
+            // When the compiler can't use these optimisations,
+            // there is a latency of several cycles so doing the
+            // multiply before we need to use the result helps.
             let mul = result.checked_mul(radix);
             let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
-            // multiply done early for performance reasons.
             result = mul.ok_or_else(overflow_err)?;
             result = additive_op(&result, x).ok_or_else(overflow_err)?;
         }
