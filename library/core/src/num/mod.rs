@@ -1097,8 +1097,8 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             // the compiler can use shifts if `radix` can be expressed as a
             // sum of powers of 2 (x*10 can be written as x*8 + x*2).
             // When the compiler can't use these optimisations,
-            // there is a latency of several cycles so doing the
-            // multiply before we need to use the result helps.
+            // the latency of the multiplication can be hidden by issuing it
+            // before the result is needed.
             let mul = result.checked_mul(radix);
             let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
             result = mul.ok_or_else(overflow_err)?;
