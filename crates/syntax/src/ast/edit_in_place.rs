@@ -239,6 +239,16 @@ impl ast::TypeBoundList {
     }
 }
 
+impl ast::PathSegment {
+    pub fn get_or_create_generic_arg_list(&self) -> ast::GenericArgList {
+        if self.generic_arg_list().is_none() {
+            let arg_list = make::generic_arg_list().clone_for_update();
+            ted::append_child(self.syntax(), arg_list.syntax())
+        }
+        self.generic_arg_list().unwrap()
+    }
+}
+
 impl ast::UseTree {
     pub fn remove(&self) {
         for &dir in [Direction::Next, Direction::Prev].iter() {

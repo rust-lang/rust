@@ -24,7 +24,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext},
-    ast_transform::{self, AstTransform, QualifyPaths, SubstituteTypeParams},
+    ast_transform::AstTransform,
 };
 
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
@@ -132,14 +132,18 @@ pub fn add_trait_assoc_items_to_impl(
     target_scope: hir::SemanticsScope,
 ) -> (ast::Impl, ast::AssocItem) {
     let source_scope = sema.scope_for_def(trait_);
-    let ast_transform = QualifyPaths::new(&target_scope, &source_scope)
-        .or(SubstituteTypeParams::for_trait_impl(&source_scope, trait_, impl_.clone()));
 
-    let items = items
-        .into_iter()
-        .map(|it| it.clone_for_update())
-        .inspect(|it| ast_transform::apply(&*ast_transform, it))
-        .map(|it| edit::remove_attrs_and_docs(&it).clone_subtree().clone_for_update());
+    let transform = AstTransform {
+        subst: (trait_, impl_.clone()),
+        source_scope: &source_scope,
+        target_scope: &target_scope,
+    };
+
+    let items = items.into_iter().map(|assoc_item| {
+        let assoc_item = assoc_item.clone_for_update();
+        transform.apply(assoc_item.clone());
+        edit::remove_attrs_and_docs(&assoc_item).clone_subtree().clone_for_update()
+    });
 
     let res = impl_.clone_for_update();
 

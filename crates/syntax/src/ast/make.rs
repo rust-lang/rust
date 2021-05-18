@@ -106,6 +106,10 @@ pub fn impl_trait(trait_: ast::Path, ty: ast::Path) -> ast::Impl {
     ast_from_text(&format!("impl {} for {} {{}}", trait_, ty))
 }
 
+pub(crate) fn generic_arg_list() -> ast::GenericArgList {
+    ast_from_text("const S: T<> = ();")
+}
+
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
     ast_from_text(&format!("use {};", name_ref))
 }
