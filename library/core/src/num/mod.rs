@@ -57,12 +57,7 @@ pub use nonzero::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, No
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
 
-#[unstable(
-    feature = "int_error_matching",
-    reason = "it can be useful to match errors when making error messages \
-              for integer parsing",
-    issue = "22639"
-)]
+#[stable(feature = "int_error_matching", since = "1.54.0")]
 pub use error::IntErrorKind;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
