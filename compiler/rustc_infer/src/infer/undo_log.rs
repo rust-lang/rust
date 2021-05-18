@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
+use rustc_middle::infer::unify_key::RegionVidKey;
 use rustc_middle::ty;
 
 use crate::{
@@ -22,7 +23,7 @@ pub(crate) enum UndoLog<'tcx> {
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
-    RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
+    RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
     PushRegionObligation,
 }
@@ -55,7 +56,7 @@ impl_from! {
 
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
 
-    RegionUnificationTable(sv::UndoLog<ut::Delegate<ty::RegionVid>>),
+    RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
 }
 
