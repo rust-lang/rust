@@ -170,7 +170,8 @@ function hideThemeButtonState() {
         // 1 for "In Parameters"
         // 2 for "In Return Types"
         currentTab: 0,
-        mouseMovedAfterSearch: true,
+        // tab and back preserves the element that was focused.
+        focusedByTab: [null, null, null],
         clearInputTimeout: function() {
             if (searchState.timeout !== null) {
                 clearTimeout(searchState.timeout);
@@ -260,10 +261,6 @@ function hideThemeButtonState() {
             });
             search_input.addEventListener("blur", function() {
                 search_input.placeholder = searchState.input.origPlaceholder;
-            });
-
-            document.addEventListener("mousemove", function() {
-                searchState.mouseMovedAfterSearch = true;
             });
 
             search_input.removeAttribute('disabled');
@@ -1064,7 +1061,7 @@ function hideThemeButtonState() {
             ["T", "Focus the theme picker menu"],
             ["↑", "Move up in search results"],
             ["↓", "Move down in search results"],
-            ["ctrl + ↑ / ↓", "Switch result tab"],
+            ["← / →", "Switch result tab (when results focused)"],
             ["&#9166;", "Go to active search result"],
             ["+", "Expand all sections"],
             ["-", "Collapse all sections"],
