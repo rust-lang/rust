@@ -53,7 +53,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             return;
         }
 
-        let local_id = match item.def_id.as_local() {
+        let local_id = match item.def_id.as_real().and_then(|x| x.as_local()) {
             Some(id) => id,
             // We don't need to check the syntax for other crates so returning
             // without doing anything should not be a problem.
