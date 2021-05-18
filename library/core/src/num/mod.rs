@@ -1094,8 +1094,8 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 
         for &c in digits {
             // When `radix` is passed in as a literal, rather than doing a slow `imul`
-            // then the compiler can use a shift if `radix` is a power of 2.
-            // (*10 can also be turned into *8 + *2).
+            // the compiler can use shifts if `radix` can be expressed as a
+            // sum of powers of 2 (x*10 can be written as x*8 + x*2).
             // When the compiler can't use these optimisations,
             // there is a latency of several cycles so doing the
             // multiply before we need to use the result helps.
