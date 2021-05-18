@@ -2415,7 +2415,7 @@ pub fn i8x16_neg(a: v128) -> v128 {
 
 /// Count the number of bits set to one within each lane.
 #[inline]
-// #[cfg_attr(test, assert_instr(i8x16.popcnt))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i8x16.popcnt))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i8x16.popcnt"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -2664,7 +2664,7 @@ pub fn u8x16_avgr(a: v128, b: v128) -> v128 {
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.extadd_pairwise_i8x16_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -2675,7 +2675,7 @@ pub fn i16x8_extadd_pairwise_i8x16(a: v128) -> v128 {
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i16x8.extadd_pairwise_i8x16_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.extadd_pairwise_i8x16_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -2712,7 +2712,7 @@ pub fn i16x8_neg(a: v128) -> v128 {
 
 /// Lane-wise saturating rounding multiplication in Q15 format.
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.qmulr_sat_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i16x8.q15mulr_sat_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.q15mulr_sat_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3048,7 +3048,7 @@ pub fn u16x8_avgr(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_low_i8x16(a), i16x8_extend_low_i8x16(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extmul_low_i8x16_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i16x8.extmul_low_i8x16_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.extmul_low_i8x16_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3061,7 +3061,7 @@ pub fn i16x8_extmul_low_i8x16(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_high_i8x16(a), i16x8_extend_high_i8x16(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extmul_high_i8x16_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i16x8.extmul_high_i8x16_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.extmul_high_i8x16_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3074,7 +3074,7 @@ pub fn i16x8_extmul_high_i8x16(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_low_u8x16(a), i16x8_extend_low_u8x16(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extmul_low_i8x16_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i16x8.extmul_low_i8x16_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.extmul_low_i8x16_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3090,7 +3090,7 @@ pub use i16x8_extmul_low_u8x16 as u16x8_extmul_low_u8x16;
 ///
 /// Equivalent of `i16x8_mul(i16x8_extend_high_u8x16(a), i16x8_extend_high_u8x16(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i16x8.extmul_high_i8x16_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i16x8.extmul_high_i8x16_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.extmul_high_i8x16_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3104,7 +3104,7 @@ pub use i16x8_extmul_high_u8x16 as u16x8_extmul_high_u8x16;
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.extadd_pairwise_i16x8_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3115,7 +3115,7 @@ pub fn i32x4_extadd_pairwise_i16x8(a: v128) -> v128 {
 /// Lane-wise integer extended pairwise addition producing extended results
 /// (twice wider results than the inputs).
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.extadd_pairwise_i16x8_u))]
 #[doc(alias("i32x4.extadd_pairwise_i16x8_u"))]
 #[target_feature(enable = "simd128")]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3407,7 +3407,7 @@ pub fn i32x4_dot_i16x8(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_low_i16x8_s(a), i32x4_extend_low_i16x8_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.extmul_low_i16x8_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3420,7 +3420,7 @@ pub fn i32x4_extmul_low_i16x8(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_high_i16x8_s(a), i32x4_extend_high_i16x8_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.extmul_high_i16x8_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3433,7 +3433,7 @@ pub fn i32x4_extmul_high_i16x8(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_low_u16x8(a), i32x4_extend_low_u16x8(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.extmul_low_i16x8_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.extmul_low_i16x8_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3449,7 +3449,7 @@ pub use i32x4_extmul_low_u16x8 as u32x4_extmul_low_u16x8;
 ///
 /// Equivalent of `i32x4_mul(i32x4_extend_high_u16x8(a), i32x4_extend_high_u16x8(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.extmul_high_i16x8_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.extmul_high_i16x8_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3514,7 +3514,7 @@ pub use i64x2_bitmask as u64x2_bitmask;
 /// Converts low half of the smaller lane vector to a larger lane
 /// vector, sign extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extend_low_i32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3528,7 +3528,7 @@ pub fn i64x2_extend_low_i32x4(a: v128) -> v128 {
 /// Converts high half of the smaller lane vector to a larger lane
 /// vector, sign extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extend_high_i32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3542,7 +3542,7 @@ pub fn i64x2_extend_high_i32x4(a: v128) -> v128 {
 /// Converts low half of the smaller lane vector to a larger lane
 /// vector, zero extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extend_low_i32x4_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extend_low_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3559,7 +3559,7 @@ pub use i64x2_extend_low_u32x4 as u64x2_extend_low_u32x4;
 /// Converts high half of the smaller lane vector to a larger lane
 /// vector, zero extended.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extend_high_i32x4_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extend_high_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3661,7 +3661,7 @@ pub use i64x2_mul as u64x2_mul;
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_low_i32x4_s(a), i64x2_extend_low_i32x4_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extmul_low_i32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3674,7 +3674,7 @@ pub fn i64x2_extmul_low_i32x4(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_high_i32x4_s(a), i64x2_extend_high_i32x4_s(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_s))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_s))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extmul_high_i32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3687,7 +3687,7 @@ pub fn i64x2_extmul_high_i32x4(a: v128, b: v128) -> v128 {
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_low_i32x4_u(a), i64x2_extend_low_i32x4_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extmul_low_i32x4_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extmul_low_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3703,7 +3703,7 @@ pub use i64x2_extmul_low_u32x4 as u64x2_extmul_low_u32x4;
 ///
 /// Equivalent of `i64x2_mul(i64x2_extend_high_i32x4_u(a), i64x2_extend_high_i32x4_u(b))`
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i64x2.extmul_high_i32x4_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.extmul_high_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -4095,7 +4095,7 @@ pub fn f32x4_convert_u32x4(a: v128) -> v128 {
 /// lane is outside the range of the destination type, the result is saturated
 /// to the nearest representable integer value.
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_s_zero))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_s_zero))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.trunc_sat_f64x2_s_zero"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -4119,7 +4119,7 @@ pub fn i32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
 /// lane is outside the range of the destination type, the result is saturated
 /// to the nearest representable integer value.
 #[inline]
-// #[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_u_zero))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(i32x4.trunc_sat_f64x2_u_zero))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.trunc_sat_f64x2_u_zero"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -4149,7 +4149,7 @@ pub fn f64x2_convert_low_i32x4(a: v128) -> v128 {
 
 /// Lane-wise conversion from integer to floating point.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_u))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(f64x2.convert_low_i32x4_u))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("f64x2.convert_low_i32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -4166,7 +4166,7 @@ pub fn f64x2_convert_low_u32x4(a: v128) -> v128 {
 /// single-precision floating point number, it is rounded to the nearest-even
 /// representable number.
 #[inline]
-// #[cfg_attr(test, assert_instr(f32x4.demote_f64x2_zero))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(f32x4.demote_f64x2_zero))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("f32x4.demote_f64x2_zero"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -4177,7 +4177,7 @@ pub fn f32x4_demote_f64x2_zero(a: v128) -> v128 {
 /// Conversion of the two lower single-precision floating point lanes to the two
 /// double-precision lanes of the result.
 #[inline]
-// #[cfg_attr(test, assert_instr(f64x2.promote_low_f32x4))] // FIXME wasmtime
+#[cfg_attr(test, assert_instr(f64x2.promote_low_f32x4))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("f32x4.promote_low_f32x4"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -4633,16 +4633,15 @@ pub mod tests {
         compare_bytes(i32x4_extend_low_u16x8(ones), halves);
         compare_bytes(i32x4_extend_high_u16x8(ones), halves);
 
-        // FIXME wasmtime
-        // compare_bytes(i64x2_extend_low_i32x4_s(zero), zero);
-        // compare_bytes(i64x2_extend_high_i32x4_s(zero), zero);
-        // compare_bytes(i64x2_extend_low_i32x4_u(zero), zero);
-        // compare_bytes(i64x2_extend_high_i32x4_u(zero), zero);
-        // compare_bytes(i64x2_extend_low_i32x4_s(ones), ones);
-        // compare_bytes(i64x2_extend_high_i32x4_s(ones), ones);
-        // let halves = i64x2_splat(u32::MAX.into());
-        // compare_bytes(i64x2_extend_low_i32x4_u(ones), halves);
-        // compare_bytes(i64x2_extend_high_i32x4_u(ones), halves);
+        compare_bytes(i64x2_extend_low_i32x4(zero), zero);
+        compare_bytes(i64x2_extend_high_i32x4(zero), zero);
+        compare_bytes(i64x2_extend_low_u32x4(zero), zero);
+        compare_bytes(i64x2_extend_high_u32x4(zero), zero);
+        compare_bytes(i64x2_extend_low_i32x4(ones), ones);
+        compare_bytes(i64x2_extend_high_i32x4(ones), ones);
+        let halves = i64x2_splat(u32::MAX.into());
+        compare_bytes(u64x2_extend_low_u32x4(ones), halves);
+        compare_bytes(u64x2_extend_high_u32x4(ones), halves);
     }
 
     #[test]
@@ -5721,5 +5720,333 @@ pub mod tests {
             f64x2_convert_low_i32x4(i32x4(i32::MIN, i32::MAX, 3, 4)),
             f64x2(f64::from(i32::MIN), f64::from(i32::MAX)),
         );
+        compare_bytes(f64x2_convert_low_u32x4(u32x4(1, 2, 3, 4)), f64x2(1., 2.));
+        compare_bytes(
+            f64x2_convert_low_u32x4(u32x4(u32::MIN, u32::MAX, 3, 4)),
+            f64x2(f64::from(u32::MIN), f64::from(u32::MAX)),
+        );
+
+        compare_bytes(
+            i32x4_trunc_sat_f64x2_zero(f64x2(1., f64::NEG_INFINITY)),
+            i32x4(1, i32::MIN, 0, 0),
+        );
+        compare_bytes(
+            i32x4_trunc_sat_f64x2_zero(f64x2(f64::NAN, f64::INFINITY)),
+            i32x4(0, i32::MAX, 0, 0),
+        );
+        compare_bytes(
+            u32x4_trunc_sat_f64x2_zero(f64x2(1., f64::NEG_INFINITY)),
+            u32x4(1, 0, 0, 0),
+        );
+        compare_bytes(
+            u32x4_trunc_sat_f64x2_zero(f64x2(f64::NAN, f64::INFINITY)),
+            u32x4(0, u32::MAX, 0, 0),
+        );
+    }
+
+    #[test]
+    fn test_popcnt() {
+        unsafe {
+            for i in 0..=255 {
+                compare_bytes(
+                    i8x16_popcnt(u8x16_splat(i)),
+                    u8x16_splat(i.count_ones() as u8),
+                )
+            }
+
+            let vectors = [
+                [0u8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+                [
+                    100, 200, 50, 0, 10, 7, 38, 185, 192, 3, 34, 85, 93, 7, 31, 99,
+                ],
+            ];
+
+            for vector in vectors.iter() {
+                compare_bytes(
+                    i8x16_popcnt(transmute(*vector)),
+                    i8x16(
+                        vector[0].count_ones() as i8,
+                        vector[1].count_ones() as i8,
+                        vector[2].count_ones() as i8,
+                        vector[3].count_ones() as i8,
+                        vector[4].count_ones() as i8,
+                        vector[5].count_ones() as i8,
+                        vector[6].count_ones() as i8,
+                        vector[7].count_ones() as i8,
+                        vector[8].count_ones() as i8,
+                        vector[9].count_ones() as i8,
+                        vector[10].count_ones() as i8,
+                        vector[11].count_ones() as i8,
+                        vector[12].count_ones() as i8,
+                        vector[13].count_ones() as i8,
+                        vector[14].count_ones() as i8,
+                        vector[15].count_ones() as i8,
+                    ),
+                )
+            }
+        }
+    }
+
+    #[test]
+    fn test_promote_demote() {
+        let tests = [
+            [1., 2.],
+            [f64::NAN, f64::INFINITY],
+            [100., 201.],
+            [0., -0.],
+            [f64::NEG_INFINITY, 0.],
+        ];
+
+        for [a, b] in tests {
+            compare_bytes(
+                f32x4_demote_f64x2_zero(f64x2(a, b)),
+                f32x4(a as f32, b as f32, 0., 0.),
+            );
+            compare_bytes(
+                f64x2_promote_low_f32x4(f32x4(a as f32, b as f32, 0., 0.)),
+                f64x2(a, b),
+            );
+        }
+    }
+
+    #[test]
+    fn test_extmul() {
+        macro_rules! test {
+            ($(
+                $ctor:ident {
+                    from: $from:ident,
+                    to: $to:ident,
+                    low: $low:ident,
+                    high: $high:ident,
+                } => {
+                    $(([$($a:tt)*] * [$($b:tt)*]))*
+                }
+            )*) => ($(
+                $(unsafe {
+                    let a: [$from; 16 / mem::size_of::<$from>()] = [$($a)*];
+                    let b: [$from; 16 / mem::size_of::<$from>()] = [$($b)*];
+                    let low = mem::transmute::<_, [$to; 16 / mem::size_of::<$to>()]>($low($ctor($($a)*), $ctor($($b)*)));
+                    let high = mem::transmute::<_, [$to; 16 / mem::size_of::<$to>()]>($high($ctor($($a)*), $ctor($($b)*)));
+
+                    let half = a.len() / 2;
+                    for i in 0..half {
+                        assert_eq!(
+                            (a[i] as $to).wrapping_mul((b[i] as $to)),
+                            low[i],
+                            "expected {} * {}", a[i] as $to, b[i] as $to,
+                        );
+                        assert_eq!(
+                            (a[half + i] as $to).wrapping_mul((b[half + i] as $to)),
+                            high[i],
+                            "expected {} * {}", a[half + i] as $to, b[half + i] as $to,
+                        );
+                    }
+                })*
+            )*)
+        }
+        test! {
+            i8x16 {
+                from: i8,
+                to: i16,
+                low: i16x8_extmul_low_i8x16,
+                high: i16x8_extmul_high_i8x16,
+            } => {
+                (
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                        *
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                )
+                (
+                    [-1, -2, 3, 100, 124, -38, 33, 87, 92, 108, 22, 8, -43, -128, 22, 0]
+                        *
+                    [-5, -2, 6, 10, 45, -4, 4, -2, 0, 88, 92, -102, -98, 83, 73, 54]
+                )
+            }
+            u8x16 {
+                from: u8,
+                to: u16,
+                low: u16x8_extmul_low_u8x16,
+                high: u16x8_extmul_high_u8x16,
+            } => {
+                (
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                        *
+                    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                )
+                (
+                    [1, 2, 3, 100, 124, 38, 33, 87, 92, 198, 22, 8, 43, 128, 22, 0]
+                        *
+                    [5, 200, 6, 10, 45, 248, 4, 2, 0, 2, 92, 102, 234, 83, 73, 54]
+                )
+            }
+            i16x8 {
+                from: i16,
+                to: i32,
+                low: i32x4_extmul_low_i16x8,
+                high: i32x4_extmul_high_i16x8,
+            } => {
+                (
+                    [0, 0, 0, 0, 0, 0, 0, 0]
+                        *
+                    [0, 0, 0, 0, 0, 0, 0, 0]
+                )
+                (
+                    [-1, 0, i16::MAX, 19931, -2259, 64, 200, 87]
+                        *
+                    [1, 1, i16::MIN, 29391, 105, 2, 100, -2]
+                )
+            }
+            u16x8 {
+                from: u16,
+                to: u32,
+                low: u32x4_extmul_low_u16x8,
+                high: u32x4_extmul_high_u16x8,
+            } => {
+                (
+                    [0, 0, 0, 0, 0, 0, 0, 0]
+                        *
+                    [0, 0, 0, 0, 0, 0, 0, 0]
+                )
+                (
+                    [1, 0, u16::MAX, 19931, 2259, 64, 200, 87]
+                        *
+                    [1, 1, 3, 29391, 105, 2, 100, 2]
+                )
+            }
+            i32x4 {
+                from: i32,
+                to: i64,
+                low: i64x2_extmul_low_i32x4,
+                high: i64x2_extmul_high_i32x4,
+            } => {
+                (
+                    [0, 0, 0, 0]
+                        *
+                    [0, 0, 0, 0]
+                )
+                (
+                    [-1, 0, i32::MAX, 19931]
+                        *
+                    [1, 1, i32::MIN, 29391]
+                )
+                (
+                    [i32::MAX, 3003183, 3 << 20, 0xffffff]
+                        *
+                    [i32::MAX, i32::MIN, -40042, 300]
+                )
+            }
+            u32x4 {
+                from: u32,
+                to: u64,
+                low: u64x2_extmul_low_u32x4,
+                high: u64x2_extmul_high_u32x4,
+            } => {
+                (
+                    [0, 0, 0, 0]
+                        *
+                    [0, 0, 0, 0]
+                )
+                (
+                    [1, 0, u32::MAX, 19931]
+                        *
+                    [1, 1, 3, 29391]
+                )
+                (
+                    [u32::MAX, 3003183, 3 << 20, 0xffffff]
+                        *
+                    [u32::MAX, 3000, 40042, 300]
+                )
+            }
+        }
+    }
+
+    #[test]
+    fn test_q15mulr_sat_s() {
+        fn test(a: [i16; 8], b: [i16; 8]) {
+            let a_v = i16x8(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
+            let b_v = i16x8(b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
+            let result = i16x8_q15mulr_sat(a_v, b_v);
+            let result = unsafe { mem::transmute::<v128, [i16; 8]>(result) };
+
+            for (i, (a, b)) in a.iter().zip(&b).enumerate() {
+                assert_eq!(
+                    result[i],
+                    (((*a as i32) * (*b as i32) + 0x4000) >> 15) as i16
+                );
+            }
+        }
+
+        test([0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0]);
+        test([1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1]);
+        test(
+            [-1, 100, 2003, -29494, 12, 128, 994, 1],
+            [-4049, 8494, -10483, 0, 5, 2222, 883, -9],
+        );
+    }
+
+    #[test]
+    fn test_extadd() {
+        macro_rules! test {
+            ($(
+                $func:ident {
+                    from: $from:ident,
+                    to: $to:ident,
+                } => {
+                    $([$($a:tt)*])*
+                }
+            )*) => ($(
+                $(unsafe {
+                    let a: [$from; 16 / mem::size_of::<$from>()] = [$($a)*];
+                    let a_v = mem::transmute::<_, v128>(a);
+                    let r = mem::transmute::<v128, [$to; 16 / mem::size_of::<$to>()]>($func(a_v));
+
+                    let half = a.len() / 2;
+                    for i in 0..half {
+                        assert_eq!(
+                            (a[2 * i] as $to).wrapping_add((a[2 * i + 1] as $to)),
+                            r[i],
+                            "failed {} + {} != {}",
+                            a[2 * i] as $to,
+                            a[2 * i + 1] as $to,
+                            r[i],
+                        );
+                    }
+                })*
+            )*)
+        }
+        test! {
+            i16x8_extadd_pairwise_i8x16 {
+                from: i8,
+                to: i16,
+            } => {
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                [-1, -2, 3, 100, 124, -38, 33, 87, 92, 108, 22, 8, -43, -128, 22, 0]
+                [-5, -2, 6, 10, 45, -4, 4, -2, 0, 88, 92, -102, -98, 83, 73, 54]
+            }
+            i16x8_extadd_pairwise_u8x16 {
+                from: u8,
+                to: i16,
+            } => {
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                [1, 2, 3, 100, 124, 38, 33, 87, 92, 198, 22, 8, 43, 128, 22, 0]
+                [5, 200, 6, 10, 45, 248, 4, 2, 0, 2, 92, 102, 234, 83, 73, 54]
+            }
+            i32x4_extadd_pairwise_i16x8 {
+                from: i16,
+                to: i32,
+            } => {
+                [0, 0, 0, 0, 0, 0, 0, 0]
+                [-1, 0, i16::MAX, 19931, -2259, 64, 200, 87]
+                [1, 1, i16::MIN, 29391, 105, 2, 100, -2]
+            }
+            i32x4_extadd_pairwise_u16x8 {
+                from: u16,
+                to: i32,
+            } => {
+                [0, 0, 0, 0, 0, 0, 0, 0]
+                [1, 0, u16::MAX, 19931, 2259, 64, 200, 87]
+                [1, 1, 3, 29391, 105, 2, 100, 2]
+            }
+        }
     }
 }
