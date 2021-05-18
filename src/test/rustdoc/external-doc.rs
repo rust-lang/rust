@@ -1,5 +1,4 @@
 #![feature(external_doc)]
-#![feature(extended_key_value_attributes)]
 
 // @has external_doc/struct.CanHasDocs.html
 // @has - '//h1' 'External Docs'

@@ -1065,23 +1065,10 @@ impl<'a> Parser<'a> {
             } else if !delimited_only {
                 if self.eat(&token::Eq) {
                     let eq_span = self.prev_token.span;
-                    let mut is_interpolated_expr = false;
-                    if let token::Interpolated(nt) = &self.token.kind {
-                        if let token::NtExpr(..) = **nt {
-                            is_interpolated_expr = true;
-                        }
-                    }
 
                     // Collect tokens because they are used during lowering to HIR.
                     let expr = self.parse_expr_force_collect()?;
                     let span = expr.span;
-
-                    match &expr.kind {
-                        // Not gated to support things like `doc = $expr` that work on stable.
-                        _ if is_interpolated_expr => {}
-                        ExprKind::Lit(lit) if lit.kind.is_unsuffixed() => {}
-                        _ => self.sess.gated_spans.gate(sym::extended_key_value_attributes, span),
-                    }
 
                     let token_kind = token::Interpolated(Lrc::new(token::NtExpr(expr)));
                     MacArgs::Eq(eq_span, Token::new(token_kind, span))
