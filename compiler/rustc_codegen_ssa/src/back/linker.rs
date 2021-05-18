@@ -276,27 +276,18 @@ impl<'a> Linker for GccLinker<'a> {
     fn set_output_kind(&mut self, output_kind: LinkOutputKind, out_filename: &Path) {
         match output_kind {
             LinkOutputKind::DynamicNoPicExe => {
-                if !self.is_ld
-                    && self.sess.target.linker_is_gnu
-                    && !self.sess.target.is_like_windows
-                {
+                if !self.is_ld && self.sess.target.linker_is_gnu {
                     self.cmd.arg("-no-pie");
                 }
             }
             LinkOutputKind::DynamicPicExe => {
-                // noop on windows w/ gcc & ld, error w/ lld
-                if !self.sess.target.is_like_windows {
-                    // `-pie` works for both gcc wrapper and ld
-                    self.cmd.arg("-pie");
-                }
+                // `-pie` works for both gcc wrapper and ld.
+                self.cmd.arg("-pie");
             }
             LinkOutputKind::StaticNoPicExe => {
                 // `-static` works for both gcc wrapper and ld.
                 self.cmd.arg("-static");
-                if !self.is_ld
-                    && self.sess.target.linker_is_gnu
-                    && !self.sess.target.is_like_windows
-                {
+                if !self.is_ld && self.sess.target.linker_is_gnu {
                     self.cmd.arg("-no-pie");
                 }
             }
