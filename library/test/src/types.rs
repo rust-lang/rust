@@ -145,32 +145,34 @@ impl TestDesc {
         }
     }
 
+    /// Returns None for ignored test or that that are just run, otherwise give a description of the type of test.
+    /// Descriptions include "should panic", "compile fail" and "compile".
     #[cfg(not(bootstrap))]
-    pub fn test_mode(&self) -> &'static str {
+    pub fn test_mode(&self) -> Option<&'static str> {
         if self.ignore {
-            return &"";
+            return None;
         }
         match self.should_panic {
             options::ShouldPanic::Yes | options::ShouldPanic::YesWithMessage(_) => {
-                return &"should panic";
+                return Some("should panic");
             }
             options::ShouldPanic::No => {}
         }
         if self.allow_fail {
-            return &"allow fail";
+            return Some("allow fail");
         }
         if self.compile_fail {
-            return &"compile fail";
+            return Some("compile fail");
         }
         if self.no_run {
-            return &"compile";
+            return Some("compile");
         }
-        &""
+        None
     }
 
     #[cfg(bootstrap)]
-    pub fn test_mode(&self) -> &'static str {
-        &""
+    pub fn test_mode(&self) -> Option<&'static str> {
+        None
     }
 }
 
