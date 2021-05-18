@@ -1,5 +1,5 @@
 error[E0382]: use of partially moved value
-  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:9:6
+  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:7:6
    |
 LL | fn f(a @ A(u): A) -> Box<u8> {
    |      ^^^^^^-^

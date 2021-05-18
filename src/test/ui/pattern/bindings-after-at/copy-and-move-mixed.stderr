@@ -1,5 +1,5 @@
 error[E0382]: use of partially moved value
-  --> $DIR/copy-and-move-mixed.rs:14:9
+  --> $DIR/copy-and-move-mixed.rs:12:9
    |
 LL |     let a @ NC(b, c @ NC(d, e)) = NC(C, NC(C, C));
    |         ^^^^^^^^^^------------^
