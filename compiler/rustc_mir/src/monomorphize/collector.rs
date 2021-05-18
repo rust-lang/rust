@@ -919,7 +919,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
         return false;
     }
 
-    if !tcx.is_mir_available(def_id) {
+    if !tcx.is_mir_available(def_id) && !tcx.is_ctfe_mir_available(def_id) {
         bug!("no MIR available for {:?}", def_id);
     }
 
