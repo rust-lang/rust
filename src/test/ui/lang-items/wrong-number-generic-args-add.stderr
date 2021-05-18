@@ -1,0 +1,20 @@
+error[E0718]: `add` language item must be applied to a trait with 1 generic argument
+  --> $DIR/wrong-number-generic-args-add.rs:11:1
+   |
+LL | #[lang = "add"]
+   | ^^^^^^^^^^^^^^^
+LL | trait MyAdd<'a, T> {}
+   |            ------- this trait has 2 generic arguments, not 1
+
+error[E0369]: cannot add `{integer}` to `{integer}`
+  --> $DIR/wrong-number-generic-args-add.rs:18:7
+   |
+LL |     r + a
+   |     - ^ - {integer}
+   |     |
+   |     {integer}
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0369, E0718.
+For more information about an error, try `rustc --explain E0369`.
