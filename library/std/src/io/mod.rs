@@ -1663,7 +1663,7 @@ pub trait Seek {
     ///
     /// # Errors
     ///
-    /// Seeking can fail, for example becaue it might involve flushing a buffer.
+    /// Seeking can fail, for example because it might involve flushing a buffer.
     ///
     /// Seeking to a negative offset is considered an error.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1675,7 +1675,7 @@ pub trait Seek {
     ///
     /// # Errors
     ///
-    /// Rewinding can fail, for example becaue it might involve flushing a buffer.
+    /// Rewinding can fail, for example because it might involve flushing a buffer.
     ///
     /// # Example
     ///
