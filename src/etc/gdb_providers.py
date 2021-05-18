@@ -85,6 +85,31 @@ class StdStrProvider:
     def display_hint():
         return "string"
 
+class StdSliceProvider:
+    def __init__(self, valobj):
+        self.valobj = valobj
+        self.length = int(valobj["length"])
+        self.data_ptr = valobj["data_ptr"]
+
+    def to_string(self):
+        return "{}(size={})".format(self.valobj.type, self.length)
+
+    def children(self):
+        for index in xrange(self.length):
+            element_ptr = self.data_ptr + index
+            try:
+                # rust-lang/rust#64343: passing deref expr to `str` allows
+                # catching exception on garbage pointer
+                str(element_ptr.dereference())
+                yield "[{}]".format(index), element_ptr.dereference()
+            except RuntimeError:
+                yield str(index), "inaccessible"
+
+                break
+
+    @staticmethod
+    def display_hint():
+        return "array"
 
 class StdVecProvider:
     def __init__(self, valobj):
