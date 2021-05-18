@@ -144,7 +144,7 @@ h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-im
 }
 
 h1, h2, h3, h4,
-.sidebar, a.source, .search-input, .content table td:first-child > a,
+.sidebar, a.source, .search-input, .search-results .result-name,
 div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
@@ -748,6 +748,15 @@ a {
 	outline: 0;
 }
 
+.search-results {
+	display: none;
+	padding-bottom: 2em;
+}
+
+.search-results.active {
+	display: block;
+}
+
 .search-results .desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
@@ -756,22 +765,14 @@ a {
 }
 
 .search-results a {
+	/* A little margin ensures the browser's outlining of focused links has room to display. */
+	margin-left: 2px;
+	margin-right: 2px;
 	display: block;
 }
 
-.content .search-results td:first-child {
-	padding-right: 0;
+.result-name {
 	width: 50%;
-}
-.content .search-results td:first-child a {
-	padding-right: 10px;
-}
-.content .search-results td:first-child a:after {
-	clear: both;
-	content: "";
-	display: block;
-}
-.content .search-results td:first-child a span {
 	float: left;
 }
 
@@ -1134,6 +1135,11 @@ pre.rust {
 .search-failed {
 	text-align: center;
 	margin-top: 20px;
+	display: none;
+}
+
+.search-failed.active {
+	display: block;
 }
 
 .search-failed > ul {
@@ -1262,12 +1268,11 @@ h4 > .notable-traits {
 }
 
 #copy-path {
+	background: initial;
 	margin-left: 10px;
 	padding: 0;
 	padding-left: 2px;
-}
-#copy-path> img {
-	margin-bottom: 2px;
+	border: 0;
 }
 
 #theme-choices {

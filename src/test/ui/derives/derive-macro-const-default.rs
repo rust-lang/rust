@@ -1,5 +1,4 @@
 // check-pass
-#![allow(incomplete_features)]
 #![feature(const_generics_defaults)]
 
 #[derive(Clone, PartialEq, Debug)]
