@@ -698,7 +698,6 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::repr128,
     sym::unsized_locals,
     sym::capture_disjoint_fields,
-    sym::const_generics_defaults,
     sym::inherent_associated_types,
     sym::type_alias_impl_trait,
     sym::native_link_modifiers,
