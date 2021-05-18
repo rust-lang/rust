@@ -165,7 +165,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
-        Box::new(crate::metadata::CraneliftMetadataLoader)
+        Box::new(rustc_codegen_ssa::back::metadata::DefaultMetadataLoader)
     }
 
     fn provide(&self, _providers: &mut Providers) {}
@@ -218,13 +218,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
     ) -> Result<(), ErrorReported> {
         use rustc_codegen_ssa::back::link::link_binary;
 
-        let target_cpu = crate::target_triple(sess).to_string();
         link_binary::<crate::archive::ArArchiveBuilder<'_>>(
             sess,
             &codegen_results,
             outputs,
             &codegen_results.crate_name.as_str(),
-            &target_cpu,
         );
 
         Ok(())

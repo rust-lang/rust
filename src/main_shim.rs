@@ -16,7 +16,7 @@ pub(crate) fn maybe_create_entry_wrapper(
     is_jit: bool,
     is_primary_cgu: bool,
 ) {
-    let (main_def_id, is_main_fn) = match tcx.entry_fn(LOCAL_CRATE) {
+    let (main_def_id, is_main_fn) = match tcx.entry_fn(()) {
         Some((def_id, entry_ty)) => (
             def_id,
             match entry_ty {

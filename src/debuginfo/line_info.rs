@@ -66,7 +66,7 @@ fn line_program_add_file(
 ) -> FileId {
     match &file.name {
         FileName::Real(path) => {
-            let (dir_path, file_name) = split_path_dir_and_file(path.stable_name());
+            let (dir_path, file_name) = split_path_dir_and_file(path.remapped_path_if_available());
             let dir_name = osstr_as_utf8_bytes(dir_path.as_os_str());
             let file_name = osstr_as_utf8_bytes(file_name);
 
@@ -87,7 +87,7 @@ fn line_program_add_file(
         filename => {
             let dir_id = line_program.default_directory();
             let dummy_file_name = LineString::new(
-                filename.to_string().into_bytes(),
+                filename.prefer_remapped().to_string().into_bytes(),
                 line_program.encoding(),
                 line_strings,
             );

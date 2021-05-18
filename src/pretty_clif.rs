@@ -214,7 +214,7 @@ pub(crate) fn write_ir_file(
         return;
     }
 
-    let clif_output_dir = tcx.output_filenames(LOCAL_CRATE).with_extension("clif");
+    let clif_output_dir = tcx.output_filenames(()).with_extension("clif");
 
     match std::fs::create_dir(&clif_output_dir) {
         Ok(()) => {}
