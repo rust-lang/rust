@@ -46,14 +46,13 @@ fn check_expr_field_shorthand(
 
         let field_range = record_field.syntax().text_range();
         acc.push(
-            Diagnostic::hint(field_range, "Shorthand struct initialization".to_string()).with_fix(
-                Some(fix(
+            Diagnostic::hint(field_range, "Shorthand struct initialization".to_string())
+                .with_fixes(Some(vec![fix(
                     "use_expr_field_shorthand",
                     "Use struct shorthand initialization",
                     SourceChange::from_text_edit(file_id, edit),
                     field_range,
-                )),
-            ),
+                )])),
         );
     }
 }
@@ -86,13 +85,13 @@ fn check_pat_field_shorthand(
         let edit = edit_builder.finish();
 
         let field_range = record_pat_field.syntax().text_range();
-        acc.push(Diagnostic::hint(field_range, "Shorthand struct pattern".to_string()).with_fix(
-            Some(fix(
+        acc.push(Diagnostic::hint(field_range, "Shorthand struct pattern".to_string()).with_fixes(
+            Some(vec![fix(
                 "use_pat_field_shorthand",
                 "Use struct field shorthand",
                 SourceChange::from_text_edit(file_id, edit),
                 field_range,
-            )),
+            )]),
         ));
     }
 }

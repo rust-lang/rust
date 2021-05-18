@@ -7,14 +7,14 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::diagnostics::{fix, DiagnosticWithFix};
+use crate::diagnostics::{fix, DiagnosticWithFixes};
 
-impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
-    fn fix(
+impl DiagnosticWithFixes for ReplaceFilterMapNextWithFindMap {
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
+    ) -> Option<Vec<Assist>> {
         let root = sema.db.parse_or_expand(self.file)?;
         let next_expr = self.next_expr.to_node(&root);
         let next_call = ast::MethodCallExpr::cast(next_expr.syntax().clone())?;
@@ -32,12 +32,12 @@ impl DiagnosticWithFix for ReplaceFilterMapNextWithFindMap {
 
         let source_change = SourceChange::from_text_edit(self.file.original_file(sema.db), edit);
 
-        Some(fix(
+        Some(vec![fix(
             "replace_with_find_map",
             "Replace filter_map(..).next() with find_map()",
             source_change,
             trigger_range,
-        ))
+        )])
     }
 }
 

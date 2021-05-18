@@ -5,16 +5,16 @@ use syntax::{algo, ast::make, AstNode};
 use text_edit::TextEdit;
 
 use crate::{
-    diagnostics::{fix, fixes::DiagnosticWithFix},
+    diagnostics::{fix, fixes::DiagnosticWithFixes},
     Assist,
 };
 
-impl DiagnosticWithFix for MissingFields {
-    fn fix(
+impl DiagnosticWithFixes for MissingFields {
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
+    ) -> Option<Vec<Assist>> {
         // Note that although we could add a diagnostics to
         // fill the missing tuple field, e.g :
         // `struct A(usize);`
@@ -41,12 +41,12 @@ impl DiagnosticWithFix for MissingFields {
                 .into_text_edit(&mut builder);
             builder.finish()
         };
-        Some(fix(
+        Some(vec![fix(
             "fill_missing_fields",
             "Fill struct fields",
             SourceChange::from_text_edit(self.file.original_file(sema.db), edit),
             sema.original_range(&field_list_parent.syntax()).range,
-        ))
+        )])
     }
 }
 

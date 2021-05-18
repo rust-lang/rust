@@ -7,18 +7,17 @@ use syntax::{
 use text_edit::TextEdit;
 
 use crate::{
-    diagnostics::{fix, DiagnosticWithFix},
+    diagnostics::{fix, DiagnosticWithFixes},
     Assist, AssistResolveStrategy,
 };
-
-impl DiagnosticWithFix for NoSuchField {
-    fn fix(
+impl DiagnosticWithFixes for NoSuchField {
+    fn fixes(
         &self,
         sema: &Semantics<RootDatabase>,
         _resolve: &AssistResolveStrategy,
-    ) -> Option<Assist> {
+    ) -> Option<Vec<Assist>> {
         let root = sema.db.parse_or_expand(self.file)?;
-        missing_record_expr_field_fix(
+        missing_record_expr_field_fixes(
             &sema,
             self.file.original_file(sema.db),
             &self.field.to_node(&root),
@@ -26,11 +25,11 @@ impl DiagnosticWithFix for NoSuchField {
     }
 }
 
-fn missing_record_expr_field_fix(
+fn missing_record_expr_field_fixes(
     sema: &Semantics<RootDatabase>,
     usage_file_id: FileId,
     record_expr_field: &ast::RecordExprField,
-) -> Option<Assist> {
+) -> Option<Vec<Assist>> {
     let record_lit = ast::RecordExpr::cast(record_expr_field.syntax().parent()?.parent()?)?;
     let def_id = sema.resolve_variant(record_lit)?;
     let module;
@@ -89,12 +88,12 @@ fn missing_record_expr_field_fix(
         TextEdit::insert(last_field_syntax.text_range().end(), new_field),
     );
 
-    return Some(fix(
+    return Some(vec![fix(
         "create_field",
         "Create field",
         source_change,
         record_expr_field.syntax().text_range(),
-    ));
+    )]);
 
     fn record_field_list(field_def_list: ast::FieldList) -> Option<ast::RecordFieldList> {
         match field_def_list {
