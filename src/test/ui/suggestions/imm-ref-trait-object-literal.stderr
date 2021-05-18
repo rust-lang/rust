@@ -21,10 +21,10 @@ LL | fn foo<X: Trait>(_: X) {}
    |           ----- required by this bound in `foo`
 ...
 LL |   foo(s);
-   |       ^ the trait `Trait` is not implemented for `S`
-   |
-   = help: the following implementations were found:
-             <&'a mut S as Trait>
+   |       ^
+   |       |
+   |       expected an implementor of trait `Trait`
+   |       help: consider mutably borrowing here: `&mut s`
 
 error: aborting due to 2 previous errors
 

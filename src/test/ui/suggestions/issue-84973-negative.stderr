@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `i32: Tr` is not satisfied
+  --> $DIR/issue-84973-negative.rs:10:9
+   |
+LL | fn bar<T: Tr>(t: T) {}
+   |           -- required by this bound in `bar`
+...
+LL |     bar(a);
+   |         ^ the trait `Tr` is not implemented for `i32`
+
+error[E0277]: the trait bound `f32: Tr` is not satisfied
+  --> $DIR/issue-84973-negative.rs:11:9
+   |
+LL | fn bar<T: Tr>(t: T) {}
+   |           -- required by this bound in `bar`
+...
+LL |     bar(b);
+   |         ^
+   |         |
+   |         expected an implementor of trait `Tr`
+   |         help: consider borrowing here: `&b`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
