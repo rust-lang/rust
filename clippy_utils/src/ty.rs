@@ -231,6 +231,17 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     }
 }
 
+/// Checks if the type is a reference equals to a diagnostic item
+pub fn is_type_ref_to_diagnostic_item(cx: &LateContext<'_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
+    match ty.kind() {
+        ty::Ref(_, ref_ty, _) => match ref_ty.kind() {
+            ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
 /// Checks if the type is equal to a diagnostic item
 ///
 /// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
