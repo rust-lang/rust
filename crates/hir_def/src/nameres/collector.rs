@@ -811,6 +811,17 @@ impl DefCollector<'_> {
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
+            let resolver = |path| {
+                let resolved_res = self.def_map.resolve_path_fp_with_macro(
+                    self.db,
+                    ResolveMode::Other,
+                    directive.module_id,
+                    &path,
+                    BuiltinShadowMode::Module,
+                );
+                resolved_res.resolved_def.take_macros()
+            };
+
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, fragment } => {
                     match macro_call_as_call_id(
@@ -818,16 +829,7 @@ impl DefCollector<'_> {
                         *fragment,
                         self.db,
                         self.def_map.krate,
-                        |path| {
-                            let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                                self.db,
-                                ResolveMode::Other,
-                                directive.module_id,
-                                &path,
-                                BuiltinShadowMode::Module,
-                            );
-                            resolved_res.resolved_def.take_macros()
-                        },
+                        &resolver,
                         &mut |_err| (),
                     ) {
                         Ok(Ok(call_id)) => {
@@ -844,7 +846,7 @@ impl DefCollector<'_> {
                         *derive_attr,
                         self.db,
                         self.def_map.krate,
-                        |path| self.resolve_derive_macro(directive.module_id, &path),
+                        &resolver,
                     ) {
                         Ok(call_id) => {
                             resolved.push((directive.module_id, call_id, directive.depth));
@@ -865,18 +867,6 @@ impl DefCollector<'_> {
         }
 
         res
-    }
-
-    fn resolve_derive_macro(&self, module: LocalModuleId, path: &ModPath) -> Option<MacroDefId> {
-        let resolved_res = self.def_map.resolve_path_fp_with_macro(
-            self.db,
-            ResolveMode::Other,
-            module,
-            &path,
-            BuiltinShadowMode::Module,
-        );
-
-        resolved_res.resolved_def.take_macros()
     }
 
     fn collect_macro_expansion(
