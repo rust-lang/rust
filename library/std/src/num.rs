@@ -22,7 +22,7 @@ pub use core::num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, 
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use core::num::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
- #[stable(feature = "int_error_matching", since = "1.54.0")]
+#[stable(feature = "int_error_matching", since = "1.54.0")]
 pub use core::num::IntErrorKind;
 
 #[cfg(test)]
