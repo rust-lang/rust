@@ -18,6 +18,8 @@ pub use hir::PrefixKind;
 /// How imports should be grouped into use statements.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ImportGranularity {
+    /// Try to guess the granularity of imports on a per module basis by observing the existing imports.
+    Guess,
     /// Do not change the granularity of any imports and preserve the original structure written by the developer.
     Preserve,
     /// Merge imports from the same crate into a single use statement.
@@ -26,16 +28,6 @@ pub enum ImportGranularity {
     Module,
     /// Flatten imports so that each has its own use statement.
     Item,
-}
-
-impl ImportGranularity {
-    pub fn merge_behavior(self) -> Option<MergeBehavior> {
-        match self {
-            ImportGranularity::Crate => Some(MergeBehavior::Crate),
-            ImportGranularity::Module => Some(MergeBehavior::Module),
-            ImportGranularity::Preserve | ImportGranularity::Item => None,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -118,10 +110,10 @@ impl ImportScope {
 pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: InsertUseConfig) {
     let _p = profile::span("insert_use");
     let mb = match cfg.granularity {
-        ImportGranularity::Preserve => scope.guess_merge_behavior_from_scope(),
+        ImportGranularity::Guess => scope.guess_merge_behavior_from_scope(),
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
         ImportGranularity::Module => Some(MergeBehavior::Module),
-        ImportGranularity::Item => None,
+        ImportGranularity::Item | ImportGranularity::Preserve => None,
     };
 
     let use_item =

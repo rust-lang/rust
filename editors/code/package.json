@@ -387,15 +387,17 @@
                 "$generated-start": false,
                 "rust-analyzer.assist.importGranularity": {
                     "markdownDescription": "How imports should be grouped into use statements.",
-                    "default": "preserve",
+                    "default": "guess",
                     "type": "string",
                     "enum": [
+                        "guess",
                         "preserve",
                         "crate",
                         "module",
                         "item"
                     ],
                     "enumDescriptions": [
+                        "Try to guess the granularity of imports on a per module basis by observing the existing imports.",
                         "Do not change the granularity of any imports and preserve the original structure written by the developer.",
                         "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
                         "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",

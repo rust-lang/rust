@@ -36,7 +36,7 @@ config_data! {
         /// The strategy to use when inserting new imports or merging imports.
         assist_importGranularity |
         assist_importMergeBehavior |
-        assist_importMergeBehaviour: ImportGranularityDef  = "\"preserve\"",
+        assist_importMergeBehaviour: ImportGranularityDef  = "\"guess\"",
         /// The path structure for newly inserted paths to use.
         assist_importPrefix: ImportPrefixDef           = "\"plain\"",
         /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
@@ -610,6 +610,7 @@ impl Config {
     fn insert_use_config(&self) -> InsertUseConfig {
         InsertUseConfig {
             granularity: match self.data.assist_importGranularity {
+                ImportGranularityDef::Guess => ImportGranularity::Guess,
                 ImportGranularityDef::Preserve => ImportGranularity::Preserve,
                 ImportGranularityDef::Item => ImportGranularity::Item,
                 ImportGranularityDef::Crate => ImportGranularity::Crate,
@@ -719,9 +720,10 @@ enum ManifestOrProjectJson {
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 enum ImportGranularityDef {
+    Preserve,
+    Guess,
     #[serde(alias = "none")]
     Item,
-    Preserve,
     #[serde(alias = "full")]
     Crate,
     #[serde(alias = "last")]
