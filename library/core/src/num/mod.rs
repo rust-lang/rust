@@ -1068,9 +1068,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 
     let mut result = T::from_u32(0);
 
-    if intrinsics::likely(
-        radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize,
-    ) {
+    if radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize {
         // SAFETY: We can take this fast path when `radix.pow(digits.len()) - 1 <= T::MAX`
         // but the condition above is a faster (conservative) approximation of this.
         //
