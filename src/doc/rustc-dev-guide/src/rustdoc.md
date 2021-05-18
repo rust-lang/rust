@@ -42,7 +42,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   * If you've used `rustup toolchain link local /path/to/build/$TARGET/stage1`
     previously, then after the previous build command, `cargo +local doc` will
     Just Work.
-* Use `./x.py doc --stage 1 library/std` to use this rustdoc to generate the
+* Use `./x.py doc library/std` to use this rustdoc to generate the
   standard library docs.
   * The completed docs will be available in `build/$TARGET/doc/std`, though the
     bundle is meant to be used as though you would copy out the `doc` folder to
