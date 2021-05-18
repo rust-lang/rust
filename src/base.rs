@@ -110,11 +110,6 @@ pub(crate) fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &context.func);
 
-    // Perform rust specific optimizations
-    tcx.sess.time("optimize clif ir", || {
-        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
-    });
-
     // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
     // instruction, which doesn't have an encoding.
     context.compute_cfg();
@@ -125,10 +120,14 @@ pub(crate) fn codegen_fn<'tcx>(
     // invalidate it when it would change.
     context.domtree.clear();
 
-    context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
+    // Perform rust specific optimizations
+    tcx.sess.time("optimize clif ir", || {
+        crate::optimize::optimize_function(tcx, instance, context, &mut clif_comments);
+    });
 
     // Define function
     tcx.sess.time("define function", || {
+        context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
         module
             .define_function(func_id, context, &mut NullTrapSink {}, &mut NullStackMapSink {})
             .unwrap()
