@@ -1378,8 +1378,9 @@ impl Clean<Type> for hir::Ty<'_> {
             }
             TyKind::Path(_) => clean_qpath(&self, cx),
             TyKind::TraitObject(ref bounds, ref lifetime, _) => {
-                match bounds[0].clean(cx).trait_ {
-                    ResolvedPath { path, param_names: None, did, is_generic } => {
+                let cleaned = bounds[0].clean(cx);
+                match cleaned.trait_ {
+                    ResolvedPath { path, param_names: None, did, is_generic, .. } => {
                         let mut bounds: Vec<self::GenericBound> = bounds[1..]
                             .iter()
                             .map(|bound| {
@@ -1392,7 +1393,12 @@ impl Clean<Type> for hir::Ty<'_> {
                         if !lifetime.is_elided() {
                             bounds.push(self::GenericBound::Outlives(lifetime.clean(cx)));
                         }
-                        ResolvedPath { path, param_names: Some(bounds), did, is_generic }
+                        ResolvedPath {
+                            path,
+                            param_names: Some((bounds, cleaned.generic_params)),
+                            did,
+                            is_generic,
+                        }
                     }
                     _ => Infer, // shouldn't happen
                 }
@@ -1542,7 +1548,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 let path =
                     external_path(cx, cx.tcx.item_name(did), Some(did), false, bindings, substs);
-                ResolvedPath { path, param_names: Some(param_names), did, is_generic: false }
+                ResolvedPath {
+                    path,
+                    param_names: Some((param_names, vec![])),
+                    did,
+                    is_generic: false,
+                }
             }
             ty::Tuple(ref t) => {
                 Tuple(t.iter().map(|t| t.expect_ty()).collect::<Vec<_>>().clean(cx))
@@ -2248,7 +2259,7 @@ impl From<GenericBound> for SimpleBound {
             GenericBound::TraitBound(t, mod_) => match t.trait_ {
                 Type::ResolvedPath { path, param_names, .. } => SimpleBound::TraitBound(
                     path.segments,
-                    param_names.map_or_else(Vec::new, |v| {
+                    param_names.map_or_else(Vec::new, |(v, _)| {
                         v.iter().map(|p| SimpleBound::from(p.clone())).collect()
                     }),
                     t.generic_params,

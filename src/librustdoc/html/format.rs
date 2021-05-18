@@ -646,11 +646,11 @@ fn primitive_link(
 
 /// Helper to render type parameters
 fn tybounds<'a, 'tcx: 'a>(
-    param_names: &'a Option<Vec<clean::GenericBound>>,
+    param_names: Option<&'a Vec<clean::GenericBound>>,
     cx: &'a Context<'tcx>,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
-    display_fn(move |f| match *param_names {
-        Some(ref params) => {
+    display_fn(move |f| match param_names {
+        Some(params) => {
             for param in params {
                 write!(f, " + ")?;
                 fmt::Display::fmt(&param.print(cx), f)?;
@@ -695,8 +695,27 @@ fn fmt_type<'cx>(
     match *t {
         clean::Generic(name) => write!(f, "{}", name),
         clean::ResolvedPath { did, ref param_names, ref path, is_generic } => {
-            if param_names.is_some() {
+            let generic_params = param_names.as_ref().map(|(_, x)| x);
+            let param_names = param_names.as_ref().map(|(x, _)| x);
+
+            if let Some(generic_params) = generic_params {
                 f.write_str("dyn ")?;
+
+                if !generic_params.is_empty() {
+                    if f.alternate() {
+                        write!(
+                            f,
+                            "for<{:#}> ",
+                            comma_sep(generic_params.iter().map(|g| g.print(cx)))
+                        )?;
+                    } else {
+                        write!(
+                            f,
+                            "for&lt;{}&gt; ",
+                            comma_sep(generic_params.iter().map(|g| g.print(cx)))
+                        )?;
+                    }
+                }
             }
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             resolved_path(f, did, path, is_generic, use_absolute, cx)?;
@@ -835,7 +854,7 @@ fn fmt_type<'cx>(
                         }
                     }
                 }
-                clean::ResolvedPath { param_names: Some(ref v), .. } if !v.is_empty() => {
+                clean::ResolvedPath { param_names: Some((ref v, _)), .. } if !v.is_empty() => {
                     write!(f, "{}{}{}(", amp, lt, m)?;
                     fmt_type(&ty, f, use_absolute, cx)?;
                     write!(f, ")")

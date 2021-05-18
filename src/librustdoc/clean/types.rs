@@ -1407,7 +1407,9 @@ crate enum Type {
     /// Structs/enums/traits (most that would be an `hir::TyKind::Path`).
     ResolvedPath {
         path: Path,
-        param_names: Option<Vec<GenericBound>>,
+        /// If `param_names` is `Some`, this path is a trait object and the Vecs repsresent
+        /// `(generic bounds, generic parameters)`
+        param_names: Option<(Vec<GenericBound>, Vec<GenericParamDef>)>,
         did: DefId,
         /// `true` if is a `T::Name` path for associated types.
         is_generic: bool,

@@ -378,7 +378,7 @@ impl FromWithTcx<clean::Type> for Type {
                 id: from_def_id(did.into()),
                 args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
                 param_names: param_names
-                    .map(|v| v.into_iter().map(|x| x.into_tcx(tcx)).collect())
+                    .map(|(v, _)| v.into_iter().map(|x| x.into_tcx(tcx)).collect())
                     .unwrap_or_default(),
             },
             Generic(s) => Type::Generic(s.to_string()),
