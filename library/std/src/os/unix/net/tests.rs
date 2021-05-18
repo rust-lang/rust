@@ -388,8 +388,131 @@ fn test_unix_datagram_timeout_zero_duration() {
 }
 
 #[test]
-fn abstract_namespace_not_allowed() {
+fn abstract_namespace_not_allowed_connect() {
     assert!(UnixStream::connect("\0asdf").is_err());
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_stream_connect() {
+    let msg1 = b"hello";
+    let msg2 = b"world";
+
+    let socket_addr = or_panic!(SocketAddr::from_abstract_namespace(b"namespace"));
+    let listener = or_panic!(UnixListener::bind_addr(&socket_addr));
+
+    let thread = thread::spawn(move || {
+        let mut stream = or_panic!(listener.accept()).0;
+        let mut buf = [0; 5];
+        or_panic!(stream.read(&mut buf));
+        assert_eq!(&msg1[..], &buf[..]);
+        or_panic!(stream.write_all(msg2));
+    });
+
+    let mut stream = or_panic!(UnixStream::connect_addr(&socket_addr));
+
+    let peer = or_panic!(stream.peer_addr());
+    assert_eq!(peer.as_abstract_namespace().unwrap(), b"namespace");
+
+    or_panic!(stream.write_all(msg1));
+    let mut buf = vec![];
+    or_panic!(stream.read_to_end(&mut buf));
+    assert_eq!(&msg2[..], &buf[..]);
+    drop(stream);
+
+    thread.join().unwrap();
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_stream_iter() {
+    let addr = or_panic!(SocketAddr::from_abstract_namespace(b"hidden"));
+    let listener = or_panic!(UnixListener::bind_addr(&addr));
+
+    let thread = thread::spawn(move || {
+        for stream in listener.incoming().take(2) {
+            let mut stream = or_panic!(stream);
+            let mut buf = [0];
+            or_panic!(stream.read(&mut buf));
+        }
+    });
+
+    for _ in 0..2 {
+        let mut stream = or_panic!(UnixStream::connect_addr(&addr));
+        or_panic!(stream.write_all(&[0]));
+    }
+
+    thread.join().unwrap();
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_datagram_bind_send_to_addr() {
+    let addr1 = or_panic!(SocketAddr::from_abstract_namespace(b"ns1"));
+    let sock1 = or_panic!(UnixDatagram::bind_addr(&addr1));
+
+    let local = or_panic!(sock1.local_addr());
+    assert_eq!(local.as_abstract_namespace().unwrap(), b"ns1");
+
+    let addr2 = or_panic!(SocketAddr::from_abstract_namespace(b"ns2"));
+    let sock2 = or_panic!(UnixDatagram::bind_addr(&addr2));
+
+    let msg = b"hello world";
+    or_panic!(sock1.send_to_addr(msg, &addr2));
+    let mut buf = [0; 11];
+    let (len, addr) = or_panic!(sock2.recv_from(&mut buf));
+    assert_eq!(msg, &buf[..]);
+    assert_eq!(len, 11);
+    assert_eq!(addr.as_abstract_namespace().unwrap(), b"ns1");
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_datagram_connect_addr() {
+    let addr1 = or_panic!(SocketAddr::from_abstract_namespace(b"ns3"));
+    let bsock1 = or_panic!(UnixDatagram::bind_addr(&addr1));
+
+    let sock = or_panic!(UnixDatagram::unbound());
+    or_panic!(sock.connect_addr(&addr1));
+
+    let msg = b"hello world";
+    or_panic!(sock.send(msg));
+    let mut buf = [0; 11];
+    let (len, addr) = or_panic!(bsock1.recv_from(&mut buf));
+    assert_eq!(len, 11);
+    assert_eq!(addr.is_unnamed(), true);
+    assert_eq!(msg, &buf[..]);
+
+    let addr2 = or_panic!(SocketAddr::from_abstract_namespace(b"ns4"));
+    let bsock2 = or_panic!(UnixDatagram::bind_addr(&addr2));
+
+    or_panic!(sock.connect_addr(&addr2));
+    or_panic!(sock.send(msg));
+    or_panic!(bsock2.recv_from(&mut buf));
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_namespace_too_long() {
+    match SocketAddr::from_abstract_namespace(
+        b"abcdefghijklmnopqrstuvwxyzabcdefghijklmn\
+        opqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi\
+        jklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz",
+    ) {
+        Err(ref e) if e.kind() == io::ErrorKind::InvalidInput => {}
+        Err(e) => panic!("unexpected error {}", e),
+        Ok(_) => panic!("unexpected success"),
+    }
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+#[test]
+fn test_abstract_namespace_no_pathname_and_not_unnamed() {
+    let namespace = b"local";
+    let addr = or_panic!(SocketAddr::from_abstract_namespace(&namespace[..]));
+    assert_eq!(addr.as_pathname(), None);
+    assert_eq!(addr.as_abstract_namespace(), Some(&namespace[..]));
+    assert_eq!(addr.is_unnamed(), false);
 }
 
 #[test]
