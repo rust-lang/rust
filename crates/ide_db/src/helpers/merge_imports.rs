@@ -181,7 +181,7 @@ fn recursive_merge(
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.
-fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast::Path)> {
+pub fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast::Path)> {
     let mut res = None;
     let mut lhs_curr = lhs.first_qualifier_or_self();
     let mut rhs_curr = rhs.first_qualifier_or_self();
@@ -289,7 +289,7 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
     a.as_ref().map(ast::NameRef::text).cmp(&b.as_ref().map(ast::NameRef::text))
 }
 
-fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
+pub fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
     match (vis0, vis1) {
         (None, None) => true,
         // FIXME: Don't use the string representation to check for equality

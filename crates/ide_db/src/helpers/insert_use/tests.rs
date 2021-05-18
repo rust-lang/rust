@@ -631,6 +631,104 @@ fn merge_last_fail3() {
     );
 }
 
+#[test]
+fn guess_empty() {
+    check_guess("", ImportGranularityGuess::Unknown);
+}
+
+#[test]
+fn guess_single() {
+    check_guess(r"use foo::{baz::{qux, quux}, bar};", ImportGranularityGuess::Crate);
+    check_guess(r"use foo::bar;", ImportGranularityGuess::Unknown);
+    check_guess(r"use foo::bar::{baz, qux};", ImportGranularityGuess::CrateOrModule);
+}
+
+#[test]
+fn guess_unknown() {
+    check_guess(
+        r"
+use foo::bar::baz;
+use oof::rab::xuq;
+",
+        ImportGranularityGuess::Unknown,
+    );
+}
+
+#[test]
+fn guess_item() {
+    check_guess(
+        r"
+use foo::bar::baz;
+use foo::bar::qux;
+",
+        ImportGranularityGuess::Item,
+    );
+}
+
+#[test]
+fn guess_module() {
+    check_guess(
+        r"
+use foo::bar::baz;
+use foo::bar::{qux, quux};
+",
+        ImportGranularityGuess::Module,
+    );
+    // this is a rather odd case, technically this file isn't following any style properly.
+    check_guess(
+        r"
+use foo::bar::baz;
+use foo::{baz::{qux, quux}, bar};
+",
+        ImportGranularityGuess::Module,
+    );
+}
+
+#[test]
+fn guess_crate_or_module() {
+    check_guess(
+        r"
+use foo::bar::baz;
+use oof::bar::{qux, quux};
+",
+        ImportGranularityGuess::CrateOrModule,
+    );
+}
+
+#[test]
+fn guess_crate() {
+    check_guess(
+        r"
+use frob::bar::baz;
+use foo::{baz::{qux, quux}, bar};
+",
+        ImportGranularityGuess::Crate,
+    );
+}
+
+#[test]
+fn guess_skips_differing_vis() {
+    check_guess(
+        r"
+use foo::bar::baz;
+pub use foo::bar::qux;
+",
+        ImportGranularityGuess::Unknown,
+    );
+}
+
+#[test]
+fn guess_grouping_matters() {
+    check_guess(
+        r"
+use foo::bar::baz;
+use oof::bar::baz;
+use foo::bar::qux;
+",
+        ImportGranularityGuess::Unknown,
+    );
+}
+
 fn check(
     path: &str,
     ra_fixture_before: &str,
@@ -651,7 +749,16 @@ fn check(
         .find_map(ast::Path::cast)
         .unwrap();
 
-    insert_use(&file, path, InsertUseConfig { granularity, prefix_kind: PrefixKind::Plain, group });
+    insert_use(
+        &file,
+        path,
+        InsertUseConfig {
+            granularity,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group,
+        },
+    );
     let result = file.as_syntax_node().to_string();
     assert_eq_text!(ra_fixture_after, &result);
 }
@@ -685,4 +792,10 @@ fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior
 
     let result = try_merge_imports(&use0, &use1, mb);
     assert_eq!(result.map(|u| u.to_string()), None);
+}
+
+fn check_guess(ra_fixture: &str, expected: ImportGranularityGuess) {
+    let syntax = ast::SourceFile::parse(ra_fixture).tree().syntax().clone();
+    let file = super::ImportScope::from(syntax).unwrap();
+    assert_eq!(file.guess_granularity_from_scope(), expected);
 }

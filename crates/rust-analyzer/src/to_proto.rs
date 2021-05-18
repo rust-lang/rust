@@ -1179,6 +1179,7 @@ mod tests {
                     insert_use: InsertUseConfig {
                         granularity: ImportGranularity::Item,
                         prefix_kind: PrefixKind::Plain,
+                        enforce_granularity: true,
                         group: true,
                     },
                 },

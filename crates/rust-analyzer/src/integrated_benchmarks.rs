@@ -138,6 +138,7 @@ fn integrated_completion_benchmark() {
             insert_use: InsertUseConfig {
                 granularity: ImportGranularity::Crate,
                 prefix_kind: hir::PrefixKind::ByCrate,
+                enforce_granularity: true,
                 group: true,
             },
         };
@@ -171,6 +172,7 @@ fn integrated_completion_benchmark() {
             insert_use: InsertUseConfig {
                 granularity: ImportGranularity::Crate,
                 prefix_kind: hir::PrefixKind::ByCrate,
+                enforce_granularity: true,
                 group: true,
             },
         };

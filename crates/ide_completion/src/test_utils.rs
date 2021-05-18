@@ -25,6 +25,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,
         prefix_kind: PrefixKind::Plain,
+        enforce_granularity: true,
         group: true,
     },
 };

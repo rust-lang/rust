@@ -26,6 +26,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     insert_use: InsertUseConfig {
         granularity: ImportGranularity::Crate,
         prefix_kind: hir::PrefixKind::Plain,
+        enforce_granularity: true,
         group: true,
     },
 };
