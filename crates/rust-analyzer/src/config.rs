@@ -12,8 +12,7 @@ use std::{ffi::OsString, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
 use ide_db::helpers::{
-    insert_use::{InsertUseConfig, PrefixKind},
-    merge_imports::MergeBehavior,
+    insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
 };
 use lsp_types::{ClientCapabilities, MarkupKind};
@@ -35,8 +34,9 @@ use crate::{
 config_data! {
     struct ConfigData {
         /// The strategy to use when inserting new imports or merging imports.
+        assist_importGranularity |
         assist_importMergeBehavior |
-        assist_importMergeBehaviour: MergeBehaviorDef  = "\"crate\"",
+        assist_importMergeBehaviour: ImportGranularityDef  = "\"preserve\"",
         /// The path structure for newly inserted paths to use.
         assist_importPrefix: ImportPrefixDef           = "\"plain\"",
         /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
@@ -609,10 +609,11 @@ impl Config {
     }
     fn insert_use_config(&self) -> InsertUseConfig {
         InsertUseConfig {
-            merge: match self.data.assist_importMergeBehavior {
-                MergeBehaviorDef::None => None,
-                MergeBehaviorDef::Crate => Some(MergeBehavior::Crate),
-                MergeBehaviorDef::Module => Some(MergeBehavior::Module),
+            granularity: match self.data.assist_importGranularity {
+                ImportGranularityDef::Preserve => ImportGranularity::Preserve,
+                ImportGranularityDef::Item => ImportGranularity::Item,
+                ImportGranularityDef::Crate => ImportGranularity::Crate,
+                ImportGranularityDef::Module => ImportGranularity::Module,
             },
             prefix_kind: match self.data.assist_importPrefix {
                 ImportPrefixDef::Plain => PrefixKind::Plain,
@@ -717,8 +718,10 @@ enum ManifestOrProjectJson {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-enum MergeBehaviorDef {
-    None,
+enum ImportGranularityDef {
+    #[serde(alias = "none")]
+    Item,
+    Preserve,
     #[serde(alias = "full")]
     Crate,
     #[serde(alias = "last")]
@@ -737,7 +740,7 @@ macro_rules! _config_data {
     (struct $name:ident {
         $(
             $(#[doc=$doc:literal])*
-            $field:ident $(| $alias:ident)?: $ty:ty = $default:expr,
+            $field:ident $(| $alias:ident)*: $ty:ty = $default:expr,
         )*
     }) => {
         #[allow(non_snake_case)]
@@ -749,7 +752,7 @@ macro_rules! _config_data {
                     $field: get_field(
                         &mut json,
                         stringify!($field),
-                        None$(.or(Some(stringify!($alias))))?,
+                        None$(.or(Some(stringify!($alias))))*,
                         $default,
                     ),
                 )*}

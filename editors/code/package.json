@@ -385,19 +385,21 @@
                     "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
                 "$generated-start": false,
-                "rust-analyzer.assist.importMergeBehavior": {
-                    "markdownDescription": "The strategy to use when inserting new imports or merging imports.",
-                    "default": "crate",
+                "rust-analyzer.assist.importGranularity": {
+                    "markdownDescription": "How imports should be grouped into use statements.",
+                    "default": "preserve",
                     "type": "string",
                     "enum": [
-                        "none",
+                        "preserve",
                         "crate",
-                        "module"
+                        "module",
+                        "item"
                     ],
                     "enumDescriptions": [
-                        "Do not merge imports at all.",
-                        "Merge imports from the same crate into a single `use` statement.",
-                        "Merge imports from the same module into a single `use` statement."
+                        "Do not change the granularity of any imports and preserve the original structure written by the developer.",
+                        "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                        "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                        "Flatten imports so that each has its own use statement."
                     ]
                 },
                 "rust-analyzer.assist.importPrefix": {

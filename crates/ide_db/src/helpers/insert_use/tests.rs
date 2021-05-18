@@ -21,7 +21,7 @@ use crate::bar::A;
 use self::bar::A;
 use super::bar::A;
 use external_crate2::bar::A;",
-        None,
+        ImportGranularity::Item,
         false,
         false,
     );
@@ -36,7 +36,7 @@ fn insert_not_group_empty() {
         r"use external_crate2::bar::A;
 
 ",
-        None,
+        ImportGranularity::Item,
         false,
         false,
     );
@@ -281,7 +281,7 @@ fn insert_empty_module() {
         r"{
     use foo::bar;
 }",
-        None,
+        ImportGranularity::Item,
         true,
         true,
     )
@@ -635,7 +635,7 @@ fn check(
     path: &str,
     ra_fixture_before: &str,
     ra_fixture_after: &str,
-    mb: Option<MergeBehavior>,
+    granularity: ImportGranularity,
     module: bool,
     group: bool,
 ) {
@@ -651,21 +651,21 @@ fn check(
         .find_map(ast::Path::cast)
         .unwrap();
 
-    insert_use(&file, path, InsertUseConfig { merge: mb, prefix_kind: PrefixKind::Plain, group });
+    insert_use(&file, path, InsertUseConfig { granularity, prefix_kind: PrefixKind::Plain, group });
     let result = file.as_syntax_node().to_string();
     assert_eq_text!(ra_fixture_after, &result);
 }
 
 fn check_crate(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Crate), false, true)
+    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Crate, false, true)
 }
 
 fn check_module(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, Some(MergeBehavior::Module), false, true)
+    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Module, false, true)
 }
 
 fn check_none(path: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
-    check(path, ra_fixture_before, ra_fixture_after, None, false, true)
+    check(path, ra_fixture_before, ra_fixture_after, ImportGranularity::Item, false, true)
 }
 
 fn check_merge_only_fail(ra_fixture0: &str, ra_fixture1: &str, mb: MergeBehavior) {

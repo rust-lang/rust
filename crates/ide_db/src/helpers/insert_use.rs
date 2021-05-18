@@ -15,9 +15,32 @@ use crate::{
 
 pub use hir::PrefixKind;
 
+/// How imports should be grouped into use statements.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ImportGranularity {
+    /// Do not change the granularity of any imports and preserve the original structure written by the developer.
+    Preserve,
+    /// Merge imports from the same crate into a single use statement.
+    Crate,
+    /// Merge imports from the same module into a single use statement.
+    Module,
+    /// Flatten imports so that each has its own use statement.
+    Item,
+}
+
+impl ImportGranularity {
+    pub fn merge_behavior(self) -> Option<MergeBehavior> {
+        match self {
+            ImportGranularity::Crate => Some(MergeBehavior::Crate),
+            ImportGranularity::Module => Some(MergeBehavior::Module),
+            ImportGranularity::Preserve | ImportGranularity::Item => None,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InsertUseConfig {
-    pub merge: Option<MergeBehavior>,
+    pub granularity: ImportGranularity,
     pub prefix_kind: PrefixKind,
     pub group: bool,
 }
@@ -73,7 +96,7 @@ pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: InsertUseConfig
     let use_item =
         make::use_(None, make::use_tree(path.clone(), None, None, false)).clone_for_update();
     // merge into existing imports if possible
-    if let Some(mb) = cfg.merge {
+    if let Some(mb) = cfg.granularity.merge_behavior() {
         for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
                 ted::replace(existing_use.syntax(), merged.syntax());
