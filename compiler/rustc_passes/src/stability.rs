@@ -607,7 +607,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_private_stability(&self, hir_id: HirId, span: Span) {
-        let stab = self.tcx.stability().local_stability(hir_id);
+        let stab = self.tcx.lookup_stability(self.tcx.hir().local_def_id(hir_id));
         let is_error = stab.is_some() && !self.access_levels.is_reachable(hir_id);
         if is_error {
             let def_id = self.tcx.hir().local_def_id(hir_id);
