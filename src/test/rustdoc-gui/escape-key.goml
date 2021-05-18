@@ -1,0 +1,27 @@
+goto: file://|DOC_PATH|/test_docs/index.html
+// First, we check that the search results are hidden when the Escape key is pressed.
+write: (".search-input", "test")
+wait-for: "#search > h1" // The search element is empty before the first search 
+assert: ("#search", "class", "content")
+assert: ("#main", "class", "content hidden")
+press-key: "Escape"
+assert: ("#search", "class", "content hidden")
+assert: ("#main", "class", "content")
+
+// Check that focusing the search input brings back the search results
+focus: ".search-input"
+assert: ("#search", "class", "content")
+assert: ("#main", "class", "content hidden")
+
+// Now let's check that when the help popup is displayed and we press Escape, it doesn't
+// hide the search results too.
+click: "#help-button"
+assert: ("#help", "class", "")
+press-key: "Escape"
+assert: ("#help", "class", "hidden")
+assert: ("#search", "class", "content")
+assert: ("#main", "class", "content hidden")
+
+// FIXME: Once https://github.com/rust-lang/rust/pull/84462 is merged, add check to ensure
+// that Escape hides the search results when a result is focused.
+// press-key: "ArrowDown"
