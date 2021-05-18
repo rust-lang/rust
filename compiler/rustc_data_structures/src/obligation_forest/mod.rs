@@ -366,8 +366,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     && self
                         .error_cache
                         .get(&obligation_tree_id)
-                        .map(|errors| errors.contains(v.key()))
-                        .unwrap_or(false);
+                        .map_or(false, |errors| errors.contains(v.key()));
 
                 if already_failed {
                     Err(())
