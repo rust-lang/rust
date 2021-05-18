@@ -341,3 +341,13 @@ Additional arguments to `rustfmt`.
 Advanced option, fully override the command rust-analyzer uses for
 formatting.
 --
+[[rust-analyzer.workspace.symbol.search.scope]]rust-analyzer.workspace.symbol.search.scope (default: `"workspace"`)::
++
+--
+Workspace symbol search scope.
+--
+[[rust-analyzer.workspace.symbol.search.kind]]rust-analyzer.workspace.symbol.search.kind (default: `"only_types"`)::
++
+--
+Workspace symbol search kind.
+--

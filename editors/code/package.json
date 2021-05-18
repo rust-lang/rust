@@ -783,6 +783,32 @@
                         "type": "string"
                     }
                 },
+                "rust-analyzer.workspace.symbol.search.scope": {
+                    "markdownDescription": "Workspace symbol search scope.",
+                    "default": "workspace",
+                    "type": "string",
+                    "enum": [
+                        "workspace",
+                        "workspace_and_dependencies"
+                    ],
+                    "enumDescriptions": [
+                        "Search in current workspace only",
+                        "Search in current workspace and dependencies"
+                    ]
+                },
+                "rust-analyzer.workspace.symbol.search.kind": {
+                    "markdownDescription": "Workspace symbol search kind.",
+                    "default": "only_types",
+                    "type": "string",
+                    "enum": [
+                        "only_types",
+                        "all_symbols"
+                    ],
+                    "enumDescriptions": [
+                        "Search for types only",
+                        "Search for all symbols kinds"
+                    ]
+                },
                 "$generated-end": false
             }
         },
