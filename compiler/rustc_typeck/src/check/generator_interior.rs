@@ -89,19 +89,31 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
-                let note = format!(
-                    "the type is part of the {} because of this {}",
-                    self.kind, yield_data.source
-                );
-
                 // If unresolved type isn't a ty_var then unresolved_type_span is None
                 let span = self
                     .prev_unresolved_span
                     .unwrap_or_else(|| unresolved_type_span.unwrap_or(source_span));
-                self.fcx
-                    .need_type_info_err_in_generator(self.kind, span, unresolved_type)
-                    .span_note(yield_data.span, &*note)
-                    .emit();
+
+                // If we encounter an int/float variable, then inference fallback didn't
+                // finish due to some other error. Don't emit spurious additional errors.
+                if let ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(_)) =
+                    unresolved_type.kind()
+                {
+                    self.fcx
+                        .tcx
+                        .sess
+                        .delay_span_bug(span, &format!("Encountered var {:?}", unresolved_type));
+                } else {
+                    let note = format!(
+                        "the type is part of the {} because of this {}",
+                        self.kind, yield_data.source
+                    );
+
+                    self.fcx
+                        .need_type_info_err_in_generator(self.kind, span, unresolved_type)
+                        .span_note(yield_data.span, &*note)
+                        .emit();
+                }
             } else {
                 // Insert the type into the ordered set.
                 let scope_span = scope.map(|s| s.span(self.fcx.tcx, self.region_scope_tree));
