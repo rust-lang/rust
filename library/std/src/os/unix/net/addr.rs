@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, iter, mem, ptr};
+use crate::{ascii, fmt, io, iter, mem};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -285,7 +285,7 @@ impl SocketAddr {
                 ));
             }
 
-            ptr::copy_nonoverlapping(
+            crate::ptr::copy_nonoverlapping(
                 namespace.as_ptr(),
                 addr.sun_path.as_mut_ptr().offset(1) as *mut u8,
                 namespace.len(),
