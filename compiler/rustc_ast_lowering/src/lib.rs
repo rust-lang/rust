@@ -332,7 +332,7 @@ pub fn lower_crate<'a, 'hir>(
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
-        allow_try_trait: Some([sym::try_trait][..].into()),
+        allow_try_trait: Some([sym::control_flow_enum, sym::try_trait_v2][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
     }
     .lower_crate(krate)
@@ -2490,14 +2490,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat(span, hir::PatKind::Lit(expr))
     }
 
-    fn pat_ok(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
+    fn pat_cf_continue(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ResultOk, field)
+        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowContinue, field)
     }
 
-    fn pat_err(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
+    fn pat_cf_break(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ResultErr, field)
+        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowBreak, field)
     }
 
     fn pat_some(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {

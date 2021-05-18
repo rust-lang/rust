@@ -45,6 +45,7 @@
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_trait)]
+#![feature(try_trait_v2)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(int_error_matching)]

@@ -1,7 +1,7 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::convert;
-use crate::ops::{self, ControlFlow, Try};
+use crate::ops::{self, ControlFlow};
 use crate::result::Result;
 
 /// Indicates whether a value is available or if the current task has been
@@ -129,12 +129,12 @@ impl<T> From<T> for Poll<T> {
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<T, E> Try for Poll<Result<T, E>> {
-    type Ok = Poll<T>;
+impl<T, E> ops::TryV1 for Poll<Result<T, E>> {
+    type Output = Poll<T>;
     type Error = E;
 
     #[inline]
-    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+    fn into_result(self) -> Result<Self::Output, Self::Error> {
         match self {
             Poll::Ready(Ok(x)) => Ok(Poll::Ready(x)),
             Poll::Ready(Err(e)) => Err(e),
@@ -148,7 +148,7 @@ impl<T, E> Try for Poll<Result<T, E>> {
     }
 
     #[inline]
-    fn from_ok(x: Self::Ok) -> Self {
+    fn from_ok(x: Self::Output) -> Self {
         x.map(Ok)
     }
 }
@@ -184,12 +184,12 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Pol
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<T, E> Try for Poll<Option<Result<T, E>>> {
-    type Ok = Poll<Option<T>>;
+impl<T, E> ops::TryV1 for Poll<Option<Result<T, E>>> {
+    type Output = Poll<Option<T>>;
     type Error = E;
 
     #[inline]
-    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+    fn into_result(self) -> Result<Self::Output, Self::Error> {
         match self {
             Poll::Ready(Some(Ok(x))) => Ok(Poll::Ready(Some(x))),
             Poll::Ready(Some(Err(e))) => Err(e),
@@ -204,7 +204,7 @@ impl<T, E> Try for Poll<Option<Result<T, E>>> {
     }
 
     #[inline]
-    fn from_ok(x: Self::Ok) -> Self {
+    fn from_ok(x: Self::Output) -> Self {
         x.map(|x| x.map(Ok))
     }
 }

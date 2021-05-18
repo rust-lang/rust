@@ -1,10 +1,11 @@
-error[E0277]: the trait bound `bool: Try` is not satisfied
+error[E0277]: a `try` block must return `Result` or `Option` (or another type that implements `Try`)
   --> $DIR/try-block-in-while.rs:6:17
    |
 LL |     while try { false } {}
-   |                 ^^^^^ the trait `Try` is not implemented for `bool`
+   |                 ^^^^^ could not wrap the final value of the block as `bool` doesn't implement `Try`
    |
-   = note: required by `from_ok`
+   = help: the trait `Try` is not implemented for `bool`
+   = note: required by `from_output`
 
 error: aborting due to previous error
 

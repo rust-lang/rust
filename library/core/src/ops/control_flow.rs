@@ -1,5 +1,4 @@
-use crate::convert;
-use crate::ops::{self, Try};
+use crate::{convert, ops};
 
 /// Used to tell an operation whether it should exit early or go on as usual.
 ///
@@ -53,8 +52,10 @@ use crate::ops::{self, Try};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ControlFlow<B, C = ()> {
     /// Move on to the next phase of the operation as normal.
+    #[cfg_attr(not(bootstrap), lang = "Continue")]
     Continue(C),
     /// Exit the operation without running subsequent phases.
+    #[cfg_attr(not(bootstrap), lang = "Break")]
     Break(B),
     // Yes, the order of the variants doesn't match the type parameters.
     // They're in this order so that `ControlFlow<A, B>` <-> `Result<B, A>`
@@ -62,11 +63,11 @@ pub enum ControlFlow<B, C = ()> {
 }
 
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
-impl<B, C> Try for ControlFlow<B, C> {
-    type Ok = C;
+impl<B, C> ops::TryV1 for ControlFlow<B, C> {
+    type Output = C;
     type Error = B;
     #[inline]
-    fn into_result(self) -> Result<Self::Ok, Self::Error> {
+    fn into_result(self) -> Result<Self::Output, Self::Error> {
         match self {
             ControlFlow::Continue(y) => Ok(y),
             ControlFlow::Break(x) => Err(x),
@@ -77,7 +78,7 @@ impl<B, C> Try for ControlFlow<B, C> {
         ControlFlow::Break(v)
     }
     #[inline]
-    fn from_ok(v: Self::Ok) -> Self {
+    fn from_ok(v: Self::Output) -> Self {
         ControlFlow::Continue(v)
     }
 }
@@ -182,14 +183,15 @@ impl<B, C> ControlFlow<B, C> {
     }
 }
 
-impl<R: Try> ControlFlow<R, R::Ok> {
+#[cfg(bootstrap)]
+impl<R: ops::TryV1> ControlFlow<R, R::Output> {
     /// Create a `ControlFlow` from any type implementing `Try`.
     #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
     pub fn from_try(r: R) -> Self {
-        match Try::into_result(r) {
+        match R::into_result(r) {
             Ok(v) => ControlFlow::Continue(v),
-            Err(v) => ControlFlow::Break(Try::from_error(v)),
+            Err(v) => ControlFlow::Break(R::from_error(v)),
         }
     }
 
@@ -198,7 +200,30 @@ impl<R: Try> ControlFlow<R, R::Ok> {
     #[inline]
     pub fn into_try(self) -> R {
         match self {
-            ControlFlow::Continue(v) => Try::from_ok(v),
+            ControlFlow::Continue(v) => R::from_ok(v),
+            ControlFlow::Break(v) => v,
+        }
+    }
+}
+
+#[cfg(not(bootstrap))]
+impl<R: ops::TryV2> ControlFlow<R, R::Output> {
+    /// Create a `ControlFlow` from any type implementing `Try`.
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[inline]
+    pub fn from_try(r: R) -> Self {
+        match R::branch(r) {
+            ControlFlow::Continue(v) => ControlFlow::Continue(v),
+            ControlFlow::Break(v) => ControlFlow::Break(R::from_residual(v)),
+        }
+    }
+
+    /// Convert a `ControlFlow` into any type implementing `Try`;
+    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+    #[inline]
+    pub fn into_try(self) -> R {
+        match self {
+            ControlFlow::Continue(v) => R::from_output(v),
             ControlFlow::Break(v) => v,
         }
     }

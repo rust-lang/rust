@@ -1999,7 +1999,7 @@ pub trait Iterator {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let mut accum = init;
         while let Some(x) = self.next() {
@@ -2041,7 +2041,7 @@ pub trait Iterator {
     where
         Self: Sized,
         F: FnMut(Self::Item) -> R,
-        R: Try<Ok = ()>,
+        R: Try<Output = ()>,
     {
         #[inline]
         fn call<T, R>(mut f: impl FnMut(T) -> R) -> impl FnMut((), T) -> R {
@@ -2412,17 +2412,48 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[cfg(not(bootstrap))]
+    fn try_find<F, R, E>(&mut self, f: F) -> Result<Option<Self::Item>, E>
+    where
+        Self: Sized,
+        F: FnMut(&Self::Item) -> R,
+        R: Try<Output = bool>,
+        // FIXME: This bound is rather strange, but means minimal breakage on nightly.
+        // See #85115 for the issue tracking a holistic solution for this and try_map.
+        R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+    {
+        #[inline]
+        fn check<F, T, R, E>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, E>>
+        where
+            F: FnMut(&T) -> R,
+            R: Try<Output = bool>,
+            R: crate::ops::TryV2<Residual = Result<crate::convert::Infallible, E>>,
+        {
+            move |(), x| match f(&x).branch() {
+                ControlFlow::Continue(false) => ControlFlow::CONTINUE,
+                ControlFlow::Continue(true) => ControlFlow::Break(Ok(x)),
+                ControlFlow::Break(Err(x)) => ControlFlow::Break(Err(x)),
+            }
+        }
+
+        self.try_fold((), check(f)).break_value().transpose()
+    }
+
+    /// We're bootstrapping.
+    #[inline]
+    #[unstable(feature = "try_find", reason = "new API", issue = "63178")]
+    #[cfg(bootstrap)]
     fn try_find<F, R>(&mut self, f: F) -> Result<Option<Self::Item>, R::Error>
     where
         Self: Sized,
         F: FnMut(&Self::Item) -> R,
-        R: Try<Ok = bool>,
+        R: Try<Output = bool>,
     {
         #[inline]
         fn check<F, T, R>(mut f: F) -> impl FnMut((), T) -> ControlFlow<Result<T, R::Error>>
         where
             F: FnMut(&T) -> R,
-            R: Try<Ok = bool>,
+            R: Try<Output = bool>,
         {
             move |(), x| match f(&x).into_result() {
                 Ok(false) => ControlFlow::CONTINUE,

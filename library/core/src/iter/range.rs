@@ -755,7 +755,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         if self.is_empty() {
             return try { init };
@@ -860,7 +860,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         if self.is_empty() {
             return try { init };
