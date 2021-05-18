@@ -281,8 +281,11 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             }
             LinkOutputKind::DynamicPicExe => {
-                // `-pie` works for both gcc wrapper and ld.
-                self.cmd.arg("-pie");
+                // noop on windows w/ gcc & ld, error w/ lld
+                if !self.sess.target.is_like_windows {
+                    // `-pie` works for both gcc wrapper and ld.
+                    self.cmd.arg("-pie");
+                }
             }
             LinkOutputKind::StaticNoPicExe => {
                 // `-static` works for both gcc wrapper and ld.
