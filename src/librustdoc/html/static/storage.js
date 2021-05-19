@@ -34,6 +34,9 @@ var localStoredTheme = getSettingValue("theme");
 
 var savedHref = [];
 
+// /!\ IMPORTANT /!\
+//
+// If `elem` doesn't exist, it'll return `null`, so be careful if you're using `!hasClass`.
 // eslint-disable-next-line no-unused-vars
 function hasClass(elem, className) {
     return elem && elem.classList && elem.classList.contains(className);
