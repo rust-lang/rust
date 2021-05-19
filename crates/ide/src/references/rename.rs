@@ -55,12 +55,14 @@ pub(crate) fn prepare_rename(
     match def {
         Definition::SelfType(_) => bail!("Cannot rename `Self`"),
         Definition::ModuleDef(ModuleDef::BuiltinType(_)) => bail!("Cannot rename builtin type"),
-        _ => {}
+        Definition::ModuleDef(ModuleDef::Module(_)) => (),
+        _ => {
+            let nav = def
+                .try_to_nav(sema.db)
+                .ok_or_else(|| format_err!("No references found at position"))?;
+            nav.focus_range.ok_or_else(|| format_err!("No identifier available to rename"))?;
+        }
     };
-    let nav =
-        def.try_to_nav(sema.db).ok_or_else(|| format_err!("No references found at position"))?;
-    nav.focus_range.ok_or_else(|| format_err!("No identifier available to rename"))?;
-
     let name_like = sema
         .find_node_at_offset_with_descend(&syntax, position.offset)
         .ok_or_else(|| format_err!("No references found at position"))?;
