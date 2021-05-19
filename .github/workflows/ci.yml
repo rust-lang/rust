@@ -92,11 +92,34 @@ jobs:
       - name: Test
         run: bash ./ci.sh
 
+  fmt:
+    name: check formatting (ignored by bors)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: rustfmt
+            default: true
+      - name: Check formatting (miri)
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - name: Check formatting (cargo-miri)
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path cargo-miri/Cargo.toml --all -- --check
+
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a
   # workflow is successful listening to webhooks only.
   #
   # ALL THE PREVIOUS JOBS NEED TO BE ADDED TO THE `needs` SECTION OF THIS JOB!
+  # (`fmt` is deliberately not listed, we want bors to ignore it.)
   end-success:
     name: bors build finished
     runs-on: ubuntu-latest
