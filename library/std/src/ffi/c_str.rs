@@ -185,6 +185,7 @@ pub struct CString {
 ///
 /// [`&str`]: prim@str
 #[derive(Hash)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
