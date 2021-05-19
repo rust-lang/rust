@@ -132,6 +132,7 @@ symbols! {
         Borrow,
         Break,
         C,
+        CStr,
         CString,
         Center,
         Clone,
