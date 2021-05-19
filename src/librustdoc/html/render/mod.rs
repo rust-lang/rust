@@ -1352,8 +1352,11 @@ fn render_impl(
         }
         let w = if short_documented && trait_.is_some() { interesting } else { boring };
 
-        if !doc_buffer.is_empty() {
-            w.write_str("<details class=\"rustdoc-toggle\" open><summary>");
+        let toggled = !doc_buffer.is_empty();
+        if toggled {
+            let method_toggle_class =
+                if item_type == ItemType::Method { " method-toggle" } else { "" };
+            write!(w, "<details class=\"rustdoc-toggle{}\" open><summary>", method_toggle_class);
         }
         match *item.kind {
             clean::MethodItem(..) | clean::TyMethodItem(_) => {
@@ -1453,7 +1456,7 @@ fn render_impl(
         }
 
         w.push_buffer(info_buffer);
-        if !doc_buffer.is_empty() {
+        if toggled {
             w.write_str("</summary>");
             w.push_buffer(doc_buffer);
             w.push_str("</details>");
