@@ -222,7 +222,6 @@ impl RootDatabase {
         sweep_each_query![
             // AstDatabase
             hir::db::InternMacroQuery
-            hir::db::InternEagerExpansionQuery
 
             // InternDatabase
             hir::db::InternFunctionQuery

@@ -14,7 +14,7 @@ use syntax::{ast, AstNode, SyntaxNode, TextRange, TextSize};
 use crate::{
     db::{self, AstDatabase},
     name::{AsName, Name},
-    HirFileId, HirFileIdRepr, InFile, MacroCallId, MacroCallLoc, MacroDefKind, MacroFile,
+    HirFileId, HirFileIdRepr, InFile, MacroCallLoc, MacroDefKind, MacroFile,
 };
 
 #[derive(Clone, Debug)]
@@ -140,10 +140,7 @@ impl HygieneInfo {
         let (token_id, origin) = self.macro_def.map_id_up(token_id);
         let (token_map, tt) = match origin {
             mbe::Origin::Call => {
-                let call_id = match self.file.macro_call_id {
-                    MacroCallId::LazyMacro(lazy) => lazy,
-                    MacroCallId::EagerMacro(_) => unreachable!(),
-                };
+                let call_id = self.file.macro_call_id;
                 let loc: MacroCallLoc = db.lookup_intern_macro(call_id);
                 let arg_start = loc.kind.arg(db)?.text_range().start();
                 (&self.macro_arg.1, InFile::new(loc.kind.file_id(), arg_start))
@@ -186,23 +183,20 @@ impl HygieneFrame {
     pub(crate) fn new(db: &dyn AstDatabase, file_id: HirFileId) -> HygieneFrame {
         let (info, krate, local_inner) = match file_id.0 {
             HirFileIdRepr::FileId(_) => (None, None, false),
-            HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
-                MacroCallId::EagerMacro(_id) => (None, None, false),
-                MacroCallId::LazyMacro(id) => {
-                    let loc = db.lookup_intern_macro(id);
-                    let info = make_hygiene_info(db, macro_file, &loc)
-                        .map(|info| (loc.kind.file_id(), info));
-                    match loc.def.kind {
-                        MacroDefKind::Declarative(_) => {
-                            (info, Some(loc.def.krate), loc.def.local_inner)
-                        }
-                        MacroDefKind::BuiltIn(..) => (info, Some(loc.def.krate), false),
-                        MacroDefKind::BuiltInDerive(..) => (info, None, false),
-                        MacroDefKind::BuiltInEager(..) => (info, None, false),
-                        MacroDefKind::ProcMacro(..) => (info, None, false),
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let info =
+                    make_hygiene_info(db, macro_file, &loc).map(|info| (loc.kind.file_id(), info));
+                match loc.def.kind {
+                    MacroDefKind::Declarative(_) => {
+                        (info, Some(loc.def.krate), loc.def.local_inner)
                     }
+                    MacroDefKind::BuiltIn(..) => (info, Some(loc.def.krate), false),
+                    MacroDefKind::BuiltInDerive(..) => (info, None, false),
+                    MacroDefKind::BuiltInEager(..) => (info, None, false),
+                    MacroDefKind::ProcMacro(..) => (info, None, false),
                 }
-            },
+            }
         };
 
         let (calling_file, info) = match info {

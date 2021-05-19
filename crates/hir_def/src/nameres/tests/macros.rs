@@ -686,6 +686,27 @@ pub trait Clone {}
 }
 
 #[test]
+fn builtin_derive_with_unresolved_attributes_fall_back() {
+    // Tests that we still resolve derives after ignoring an unresolved attribute.
+    cov_mark::check!(unresolved_attribute_fallback);
+    let map = compute_crate_def_map(
+        r#"
+        //- /main.rs crate:main deps:core
+        use core::Clone;
+
+        #[derive(Clone)]
+        #[unresolved]
+        struct Foo;
+
+        //- /core.rs crate:core
+        #[rustc_builtin_macro]
+        pub macro Clone {}
+        "#,
+    );
+    assert_eq!(map.modules[map.root].scope.impls().len(), 1);
+}
+
+#[test]
 fn macro_expansion_overflow() {
     cov_mark::check!(macro_expansion_overflow);
     check(
@@ -842,7 +863,6 @@ fn collects_derive_helpers() {
 fn resolve_macro_def() {
     check(
         r#"
-//- /lib.rs
 pub macro structs($($i:ident),*) {
     $(struct $i { field: u32 } )*
 }

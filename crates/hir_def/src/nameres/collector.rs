@@ -367,6 +367,8 @@ impl DefCollector<'_> {
     /// This improves UX when proc macros are turned off or don't work, and replicates the behavior
     /// before we supported proc. attribute macros.
     fn reseed_with_unresolved_attributes(&mut self) -> ReachedFixedPoint {
+        cov_mark::hit!(unresolved_attribute_fallback);
+
         let mut added_items = false;
         let unexpanded_macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
         for directive in &unexpanded_macros {
@@ -391,7 +393,9 @@ impl DefCollector<'_> {
                 added_items = true;
             }
         }
-        self.unexpanded_macros = unexpanded_macros;
+
+        // The collection above might add new unresolved macros (eg. derives), so merge the lists.
+        self.unexpanded_macros.extend(unexpanded_macros);
 
         if added_items {
             // Continue name resolution with the new data.
@@ -948,20 +952,17 @@ impl DefCollector<'_> {
         // incrementality).
         let err = self.db.macro_expand_error(macro_call_id);
         if let Some(err) = err {
-            if let MacroCallId::LazyMacro(id) = macro_call_id {
-                let loc: MacroCallLoc = self.db.lookup_intern_macro(id);
+            let loc: MacroCallLoc = self.db.lookup_intern_macro(macro_call_id);
 
-                let diag = match err {
-                    hir_expand::ExpandError::UnresolvedProcMacro => {
-                        // Missing proc macros are non-fatal, so they are handled specially.
-                        DefDiagnostic::unresolved_proc_macro(module_id, loc.kind)
-                    }
-                    _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
-                };
+            let diag = match err {
+                hir_expand::ExpandError::UnresolvedProcMacro => {
+                    // Missing proc macros are non-fatal, so they are handled specially.
+                    DefDiagnostic::unresolved_proc_macro(module_id, loc.kind)
+                }
+                _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
+            };
 
-                self.def_map.diagnostics.push(diag);
-            }
-            // FIXME: Handle eager macros.
+            self.def_map.diagnostics.push(diag);
         }
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
