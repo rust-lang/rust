@@ -622,7 +622,7 @@ fn polymorphize<'tcx>(
             self.tcx
         }
 
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
             debug!("fold_ty: ty={:?}", ty);
             match ty.kind {
                 ty::Closure(def_id, substs) => {
@@ -631,11 +631,11 @@ fn polymorphize<'tcx>(
                         ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
                         substs,
                     );
-                    if substs == polymorphized_substs {
+                    Ok(if substs == polymorphized_substs {
                         ty
                     } else {
                         self.tcx.mk_closure(def_id, polymorphized_substs)
-                    }
+                    })
                 }
                 ty::Generator(def_id, substs, movability) => {
                     let polymorphized_substs = polymorphize(
@@ -643,11 +643,11 @@ fn polymorphize<'tcx>(
                         ty::InstanceDef::Item(ty::WithOptConstParam::unknown(def_id)),
                         substs,
                     );
-                    if substs == polymorphized_substs {
+                    Ok(if substs == polymorphized_substs {
                         ty
                     } else {
                         self.tcx.mk_generator(def_id, polymorphized_substs, movability)
-                    }
+                    })
                 }
                 _ => ty.super_fold_with(self),
             }

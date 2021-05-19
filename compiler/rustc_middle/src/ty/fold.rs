@@ -301,19 +301,22 @@ where
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let t = ty.super_fold_with(self);
-        (self.ty_op)(t)
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        let t = ty.super_fold_with(self)?;
+        Ok((self.ty_op)(t))
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let r = r.super_fold_with(self);
-        (self.lt_op)(r)
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+        let r = r.super_fold_with(self)?;
+        Ok((self.lt_op)(r))
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        let ct = ct.super_fold_with(self);
-        (self.ct_op)(ct)
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        let ct = ct.super_fold_with(self)?;
+        Ok((self.ct_op)(ct))
     }
 }
 
@@ -481,7 +484,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     fn fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
@@ -489,16 +492,16 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         match *r {
             ty::ReLateBound(debruijn, _) if debruijn < self.current_index => {
                 debug!(?self.current_index, "skipped bound region");
                 *self.skipped_regions = true;
-                r
+                Ok(r)
             }
             _ => {
                 debug!(?self.current_index, "folding free region");
-                (self.fold_region_fn)(r, self.current_index)
+                Ok((self.fold_region_fn)(r, self.current_index))
             }
         }
     }
@@ -539,19 +542,19 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     fn fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
         t
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match *t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
                 if let Some(fld_t) = self.fld_t.as_mut() {
                     let ty = fld_t(bound_ty);
-                    return ty::fold::shift_vars(self.tcx, &ty, self.current_index.as_u32());
+                    return Ok(ty::fold::shift_vars(self.tcx, &ty, self.current_index.as_u32()));
                 }
             }
             _ if t.has_vars_bound_at_or_above(self.current_index) => {
@@ -559,10 +562,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
             }
             _ => {}
         }
-        t
+        Ok(t)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         match *r {
             ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
                 if let Some(fld_r) = self.fld_r.as_mut() {
@@ -573,25 +576,28 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
                         // debruijn index. Then we adjust it to the
                         // correct depth.
                         assert_eq!(debruijn1, ty::INNERMOST);
-                        self.tcx.mk_region(ty::ReLateBound(debruijn, br))
+                        Ok(self.tcx.mk_region(ty::ReLateBound(debruijn, br)))
                     } else {
-                        region
+                        Ok(region)
                     };
                 }
             }
             _ => {}
         }
-        r
+        Ok(r)
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         match *ct {
             ty::Const { val: ty::ConstKind::Bound(debruijn, bound_const), ty }
                 if debruijn == self.current_index =>
             {
                 if let Some(fld_c) = self.fld_c.as_mut() {
                     let ct = fld_c(bound_const, ty);
-                    return ty::fold::shift_vars(self.tcx, &ct, self.current_index.as_u32());
+                    return Ok(ty::fold::shift_vars(self.tcx, &ct, self.current_index.as_u32()));
                 }
             }
             _ if ct.has_vars_bound_at_or_above(self.current_index) => {
@@ -599,7 +605,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
             }
             _ => {}
         }
-        ct
+        Ok(ct)
     }
 }
 
@@ -949,36 +955,36 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
     fn fold_binder<T: TypeFoldable<'tcx>>(
         &mut self,
         t: ty::Binder<'tcx, T>,
-    ) -> ty::Binder<'tcx, T> {
+    ) -> Result<ty::Binder<'tcx, T>, Self::Error> {
         self.current_index.shift_in(1);
         let t = t.super_fold_with(self);
         self.current_index.shift_out(1);
         t
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         match *r {
             ty::ReLateBound(debruijn, br) => {
                 if self.amount == 0 || debruijn < self.current_index {
-                    r
+                    Ok(r)
                 } else {
                     let debruijn = debruijn.shifted_in(self.amount);
                     let shifted = ty::ReLateBound(debruijn, br);
-                    self.tcx.mk_region(shifted)
+                    Ok(self.tcx.mk_region(shifted))
                 }
             }
-            _ => r,
+            _ => Ok(r),
         }
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match *ty.kind() {
             ty::Bound(debruijn, bound_ty) => {
                 if self.amount == 0 || debruijn < self.current_index {
-                    ty
+                    Ok(ty)
                 } else {
                     let debruijn = debruijn.shifted_in(self.amount);
-                    self.tcx.mk_ty(ty::Bound(debruijn, bound_ty))
+                    Ok(self.tcx.mk_ty(ty::Bound(debruijn, bound_ty)))
                 }
             }
 
@@ -986,13 +992,18 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         if let ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty } = *ct {
             if self.amount == 0 || debruijn < self.current_index {
-                ct
+                Ok(ct)
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_const(ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty })
+                Ok(self
+                    .tcx
+                    .mk_const(ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty }))
             }
         } else {
             ct.super_fold_with(self)
@@ -1295,19 +1306,22 @@ impl<'tcx> TypeFolder<'tcx> for ExposeDefaultConstSubstsFolder<'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if ty.flags().intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
             ty.super_fold_with(self)
         } else {
-            ty
+            Ok(ty)
         }
     }
 
-    fn fold_predicate(&mut self, pred: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
+    fn fold_predicate(
+        &mut self,
+        pred: ty::Predicate<'tcx>,
+    ) -> Result<ty::Predicate<'tcx>, Self::Error> {
         if pred.inner.flags.intersects(TypeFlags::HAS_UNKNOWN_DEFAULT_CONST_SUBSTS) {
             pred.super_fold_with(self)
         } else {
-            pred
+            Ok(pred)
         }
     }
 }

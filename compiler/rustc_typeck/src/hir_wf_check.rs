@@ -183,7 +183,7 @@ impl<'tcx> TypeFolder<'tcx> for EraseAllBoundRegions<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        if let ty::ReLateBound(..) = r { &ty::ReErased } else { r }
+    fn fold_region(&mut self, r: Region<'tcx>) -> Result<Region<'tcx>, Self::Error> {
+        if let ty::ReLateBound(..) = r { Ok(&ty::ReErased) } else { Ok(r) }
     }
 }

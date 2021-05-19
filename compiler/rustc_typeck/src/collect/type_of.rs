@@ -729,17 +729,17 @@ fn infer_placeholder_type<'a>(
             self.tcx
         }
 
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
             if !self.success {
-                return ty;
+                return Ok(ty);
             }
 
             match ty.kind() {
-                ty::FnDef(def_id, _) => self.tcx.mk_fn_ptr(self.tcx.fn_sig(*def_id)),
+                ty::FnDef(def_id, _) => Ok(self.tcx.mk_fn_ptr(self.tcx.fn_sig(*def_id))),
                 // FIXME: non-capturing closures should also suggest a function pointer
                 ty::Closure(..) | ty::Generator(..) => {
                     self.success = false;
-                    ty
+                    Ok(ty)
                 }
                 _ => ty.super_fold_with(self),
             }

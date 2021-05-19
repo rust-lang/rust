@@ -1087,12 +1087,12 @@ impl<'tcx> TypeFoldable<'tcx> for InferConst<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        ty::Unevaluated {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(ty::Unevaluated {
             def: self.def,
             substs_: Some(self.substs(folder.tcx()).fold_with(folder)?),
             promoted: self.promoted,
-        }
+        })
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
@@ -1112,12 +1112,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx, ()> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        ty::Unevaluated {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(ty::Unevaluated {
             def: self.def,
             substs_: Some(self.substs(folder.tcx()).fold_with(folder)?),
             promoted: self.promoted,
-        }
+        })
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
