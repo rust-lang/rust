@@ -1,6 +1,6 @@
 use hir::HirDisplay;
 use syntax::{
-    ast::{self, AstNode, LetStmt, NameOwner},
+    ast::{self, AstNode, LetStmt},
     TextRange,
 };
 
@@ -31,9 +31,6 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
         _ => return None,
     };
     let pat_range = pat.syntax().text_range();
-    // The binding must have a name
-    let name = pat.name()?;
-    let name_range = name.syntax().text_range();
 
     // Assist should only be applicable if cursor is between 'let' and '='
     let cursor_in_range = {
@@ -74,7 +71,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
                 builder.replace(ascribed_ty.syntax().text_range(), inferred_type);
             }
             None => {
-                builder.insert(name_range.end(), format!(": {}", inferred_type));
+                builder.insert(pat_range.end(), format!(": {}", inferred_type));
             }
         },
     )
@@ -242,6 +239,24 @@ struct Test<K, T = u8> { k: K, t: T }
 
 fn main() {
     let test: Test<i32> = Test { t: 23u8, k: 33 };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_should_be_added_after_pattern() {
+        // LetStmt = Attr* 'let' Pat (':' Type)? '=' initializer:Expr ';'
+        check_assist(
+            add_explicit_type,
+            r#"
+fn main() {
+    let $0test @ () = ();
+}
+"#,
+            r#"
+fn main() {
+    let test @ (): () = ();
 }
 "#,
         );
