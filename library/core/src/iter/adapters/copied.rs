@@ -1,7 +1,7 @@
 use crate::iter::adapters::{
-    zip::try_get_unchecked, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
+    zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::mem::MaybeUninit;
 use crate::mem::SizedTypeProperties;
 use crate::num::NonZeroUsize;
@@ -254,4 +254,24 @@ impl<I: Default> Default for Copied<I> {
     fn default() -> Self {
         Self::new(Default::default())
     }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I> SourceIter for Copied<I>
+where
+    I: SourceIter,
+{
+    type Source = I::Source;
+
+    #[inline]
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
+        // SAFETY: unsafe function forwarding to unsafe function with the same requirements
+        unsafe { SourceIter::as_inner(&mut self.it) }
+    }
+}
+
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable> InPlaceIterable for Copied<I> {
+    const EXPAND_BY: Option<NonZeroUsize> = I::EXPAND_BY;
+    const MERGE_BY: Option<NonZeroUsize> = I::MERGE_BY;
 }
