@@ -153,7 +153,6 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("aarch64", "fp") => "fp-armv8",
         ("aarch64", "fp16") => "fullfp16",
         ("aarch64", "fhm") => "fp16fml",
-        ("aarch64", "lse2") => "outline-atomics",
         ("aarch64", "rcpc2") => "rcpc-immo",
         ("aarch64", "dpb") => "ccpp",
         ("aarch64", "dpb2") => "ccdp",

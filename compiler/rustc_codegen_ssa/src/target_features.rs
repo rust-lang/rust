@@ -33,7 +33,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("thumb-mode", Some(sym::arm_target_feature)),
 ];
 
-// Commented features are not available in LLVM 9.0, or have since been renamed
+// Commented features are not available in LLVM 10.0, or have since been renamed
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // FEAT_AdvSimd
     ("neon", Some(sym::aarch64_target_feature)),
@@ -51,8 +51,6 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("ras", Some(sym::aarch64_target_feature)),
     // FEAT_LSE
     ("lse", Some(sym::aarch64_target_feature)),
-    // FEAT_LSE2
-    // ("lse2", Some(sym::aarch64_target_feature)),
     // FEAT_RDM
     ("rdm", Some(sym::aarch64_target_feature)),
     // FEAT_RCPC
