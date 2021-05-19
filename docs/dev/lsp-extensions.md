@@ -651,32 +651,36 @@ export const enum Direction {
 }
 ```
 
-## Lookup workspace symbol search scope and kind
+## Workspace Symbols Filtering
 
 **Issue:** https://github.com/rust-analyzer/rust-analyzer/pull/7698
 
-This request is sent from client to server to search for workspace symbols filtered by an
-optional search scope and / or an optional symbol kind.
+**Experimental Server Capability:** `{ "workspaceSymbolScopeKindFiltering": boolean }`
 
-**Method:** `workspace/symbol`
+Extends the existing `workspace/symbol` request with ability to filter symbols by broad scope and kind of symbol.
+If this capability is set, `workspace/symbol` parameter gains two new optional fields:
 
-**Request:** `WorkspaceSymbolParams`
-
-**Response:** `SymbolInformation[] | null`
 
 ```typescript
-interface lsp_ext.WorkspaceSymbolParams extends WorkspaceSymbolParams {
+interface WorkspaceSymbolParams {
+    /**
+     * Return only the symbols defined in the specified scope.
+     */
     searchScope?: WorkspaceSymbolSearchScope;
+    /**
+     * Return only the symbols of specified kinds.
+     */
     searchKind?: WorkspaceSymbolSearchKind;
+    ...
 }
 
 const enum WorkspaceSymbolSearchScope {
-    Workspace = "Workspace",
-    WorkspaceAndDependencies = "WorkspaceAndDependencies"
+    Workspace = "workspace",
+    WorkspaceAndDependencies = "workspaceAndDependencies"
 }
 
 const enum WorkspaceSymbolSearchKind {
-    OnlyTypes = "OnlyTypes",
-    AllSymbols = "AllSymbols"
+    OnlyTypes = "onlyTypes",
+    AllSymbols = "allSymbols"
 }
 ```
