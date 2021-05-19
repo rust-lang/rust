@@ -557,6 +557,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     debug!(?c1, ?c2, "evaluate_predicate_recursively: equating consts");
 
+                    if self.tcx().features().const_evaluatable_checked {
+                        // FIXME: we probably should only try to unify abstract constants
+                        // if the constants depend on generic parameters.
+                        //
+                        // Let's just see where this breaks :shrug:
+                        if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
+                            (c1.val, c2.val)
+                        {
+                            if self
+                                .tcx()
+                                .try_unify_abstract_consts(((a.def, a.substs), (b.def, b.substs)))
+                            {
+                                return Ok(EvaluatedToOk);
+                            }
+                        }
+                    }
+
                     let evaluate = |c: &'tcx ty::Const<'tcx>| {
                         if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
                             self.infcx
@@ -591,7 +608,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             )
                         }
                         (Err(ErrorHandled::TooGeneric), _) | (_, Err(ErrorHandled::TooGeneric)) => {
-                            Ok(EvaluatedToAmbig)
+                            if c1.has_infer_types_or_consts() || c2.has_infer_types_or_consts() {
+                                Ok(EvaluatedToAmbig)
+                            } else {
+                                // Two different constants using generic parameters ~> error.
+                                Ok(EvaluatedToErr)
+                            }
                         }
                     }
                 }
