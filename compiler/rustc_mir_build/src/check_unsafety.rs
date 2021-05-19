@@ -9,8 +9,9 @@ use rustc_session::lint::Level;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
-struct UnsafetyVisitor<'tcx> {
+struct UnsafetyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    thir: &'a Thir<'tcx>,
     /// The `HirId` of the current scope, which would be the `HirId`
     /// of the current HIR node, modulo adjustments. Used for lint levels.
     hir_context: hir::HirId,
@@ -20,7 +21,7 @@ struct UnsafetyVisitor<'tcx> {
     body_unsafety: BodyUnsafety,
 }
 
-impl<'tcx> UnsafetyVisitor<'tcx> {
+impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     fn in_safety_context<R>(
         &mut self,
         safety_context: SafetyContext,
@@ -119,8 +120,12 @@ impl<'tcx> UnsafetyVisitor<'tcx> {
     }
 }
 
-impl<'thir, 'tcx> Visitor<'thir, 'tcx> for UnsafetyVisitor<'tcx> {
-    fn visit_block(&mut self, block: &Block<'thir, 'tcx>) {
+impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
+    fn thir(&self) -> &'a Thir<'tcx> {
+        &self.thir
+    }
+
+    fn visit_block(&mut self, block: &Block) {
         if let BlockSafety::ExplicitUnsafe(hir_id) = block.safety_mode {
             self.in_safety_context(
                 SafetyContext::UnsafeBlock { span: block.span, hir_id, used: false },
@@ -131,17 +136,17 @@ impl<'thir, 'tcx> Visitor<'thir, 'tcx> for UnsafetyVisitor<'tcx> {
         }
     }
 
-    fn visit_expr(&mut self, expr: &'thir Expr<'thir, 'tcx>) {
+    fn visit_expr(&mut self, expr: &Expr<'tcx>) {
         match expr.kind {
             ExprKind::Scope { value, lint_level: LintLevel::Explicit(hir_id), region_scope: _ } => {
                 let prev_id = self.hir_context;
                 self.hir_context = hir_id;
-                self.visit_expr(value);
+                self.visit_expr(&self.thir[value]);
                 self.hir_context = prev_id;
                 return;
             }
             ExprKind::Call { fun, ty: _, args: _, from_hir_call: _, fn_span: _ } => {
-                if fun.ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
+                if self.thir[fun].ty.fn_sig(self.tcx).unsafety() == hir::Unsafety::Unsafe {
                     self.requires_unsafe(expr.span, CallToUnsafeFunction);
                 }
             }
@@ -278,7 +283,12 @@ impl UnsafeOpKind {
 
 // FIXME: checking unsafety for closures should be handled by their parent body,
 // as they inherit their "safety context" from their declaration site.
-pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, thir: &Expr<'_, 'tcx>, hir_id: hir::HirId) {
+pub fn check_unsafety<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    thir: &Thir<'tcx>,
+    expr: ExprId,
+    hir_id: hir::HirId,
+) {
     let body_unsafety = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(BodyUnsafety::Safe, |fn_sig| {
         if fn_sig.header.unsafety == hir::Unsafety::Unsafe {
             BodyUnsafety::Unsafe(fn_sig.span)
@@ -288,8 +298,9 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, thir: &Expr<'_, 'tcx>, hir_id: hi
     });
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
-    let mut visitor = UnsafetyVisitor { tcx, safety_context, hir_context: hir_id, body_unsafety };
-    visitor.visit_expr(thir);
+    let mut visitor =
+        UnsafetyVisitor { tcx, thir, safety_context, hir_context: hir_id, body_unsafety };
+    visitor.visit_expr(&thir[expr]);
 }
 
 crate fn thir_check_unsafety_inner<'tcx>(
@@ -299,10 +310,8 @@ crate fn thir_check_unsafety_inner<'tcx>(
     let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_id = tcx.hir().body_owned_by(hir_id);
     let body = tcx.hir().body(body_id);
-
-    let arena = Arena::default();
-    let thir = cx::build_thir(tcx, def, &arena, &body.value);
-    check_unsafety(tcx, thir, hir_id);
+    let (thir, expr) = cx::build_thir(tcx, def, &body.value);
+    check_unsafety(tcx, &thir, expr, hir_id);
 }
 
 crate fn thir_check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {

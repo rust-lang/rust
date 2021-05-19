@@ -574,7 +574,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn break_scope(
         &mut self,
         mut block: BasicBlock,
-        value: Option<&Expr<'_, 'tcx>>,
+        value: Option<&Expr<'tcx>>,
         target: BreakableTarget,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
@@ -933,7 +933,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn test_bool(
         &mut self,
         mut block: BasicBlock,
-        condition: &Expr<'_, 'tcx>,
+        condition: &Expr<'tcx>,
         source_info: SourceInfo,
     ) -> (BasicBlock, BasicBlock) {
         let cond = unpack!(block = self.as_local_operand(block, condition));
