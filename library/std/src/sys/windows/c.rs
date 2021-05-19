@@ -68,6 +68,10 @@ pub type ADDRESS_FAMILY = USHORT;
 pub const TRUE: BOOL = 1;
 pub const FALSE: BOOL = 0;
 
+pub const CSTR_LESS_THAN: c_int = 1;
+pub const CSTR_EQUAL: c_int = 2;
+pub const CSTR_GREATER_THAN: c_int = 3;
+
 pub const FILE_ATTRIBUTE_READONLY: DWORD = 0x1;
 pub const FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x10;
 pub const FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x400;
@@ -1072,6 +1076,14 @@ extern "system" {
     pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK);
     pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN;
     pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN;
+
+    pub fn CompareStringOrdinal(
+        lpString1: LPCWSTR,
+        cchCount1: c_int,
+        lpString2: LPCWSTR,
+        cchCount2: c_int,
+        bIgnoreCase: BOOL,
+    ) -> c_int;
 }
 
 // Functions that aren't available on every version of Windows that we support,

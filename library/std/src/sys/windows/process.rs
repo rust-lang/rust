@@ -4,6 +4,7 @@
 mod tests;
 
 use crate::borrow::Borrow;
+use crate::cmp;
 use crate::collections::BTreeMap;
 use crate::convert::{TryFrom, TryInto};
 use crate::env;
@@ -34,32 +35,76 @@ use libc::{c_void, EXIT_FAILURE, EXIT_SUCCESS};
 // Command
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Debug, Eq)]
 #[doc(hidden)]
-pub struct EnvKey(OsString);
+pub struct EnvKey {
+    os_string: OsString,
+    // This stores a UTF-16 encoded string to workaround the mismatch between
+    // Rust's OsString (WTF-8) and the Windows API string type (UTF-16).
+    // Normally converting on every API call is acceptable but here
+    // `c::CompareStringOrdinal` will be called for every use of `==`.
+    utf16: Vec<u16>,
+}
+
+// Windows environment variables preserve their case but comparisons use
+// simplified case folding. So we call `CompareStringOrdinal` to get the OS to
+// perform the comparison.
+impl Ord for EnvKey {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        unsafe {
+            let result = c::CompareStringOrdinal(
+                self.utf16.as_ptr(),
+                self.utf16.len() as _,
+                other.utf16.as_ptr(),
+                other.utf16.len() as _,
+                c::TRUE,
+            );
+            match result {
+                c::CSTR_LESS_THAN => cmp::Ordering::Less,
+                c::CSTR_EQUAL => cmp::Ordering::Equal,
+                c::CSTR_GREATER_THAN => cmp::Ordering::Greater,
+                // `CompareStringOrdinal` should never fail so long as the parameters are correct.
+                _ => panic!("comparing environment keys failed: {}", Error::last_os_error()),
+            }
+        }
+    }
+}
+impl PartialOrd for EnvKey {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for EnvKey {
+    fn eq(&self, other: &Self) -> bool {
+        if self.utf16.len() != other.utf16.len() {
+            false
+        } else {
+            self.cmp(other) == cmp::Ordering::Equal
+        }
+    }
+}
 
 impl From<OsString> for EnvKey {
-    fn from(mut k: OsString) -> Self {
-        k.make_ascii_uppercase();
-        EnvKey(k)
+    fn from(k: OsString) -> Self {
+        EnvKey { utf16: k.encode_wide().collect(), os_string: k }
     }
 }
 
 impl From<EnvKey> for OsString {
     fn from(k: EnvKey) -> Self {
-        k.0
+        k.os_string
     }
 }
 
 impl Borrow<OsStr> for EnvKey {
     fn borrow(&self) -> &OsStr {
-        &self.0
+        &self.os_string
     }
 }
 
 impl AsRef<OsStr> for EnvKey {
     fn as_ref(&self) -> &OsStr {
-        &self.0
+        &self.os_string
     }
 }
 
@@ -531,7 +576,8 @@ fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>) -> io::Result<(*mut 
         let mut blk = Vec::new();
 
         for (k, v) in env {
-            blk.extend(ensure_no_nuls(k.0)?.encode_wide());
+            ensure_no_nuls(k.os_string)?;
+            blk.extend(k.utf16);
             blk.push('=' as u16);
             blk.extend(ensure_no_nuls(v)?.encode_wide());
             blk.push(0);

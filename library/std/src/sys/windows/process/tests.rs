@@ -1,5 +1,7 @@
 use super::make_command_line;
+use crate::env;
 use crate::ffi::{OsStr, OsString};
+use crate::process::Command;
 
 #[test]
 fn test_make_command_line() {
@@ -40,4 +42,63 @@ fn test_make_command_line() {
         test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[], false),
         "\"\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}\""
     );
+}
+
+// On Windows, environment args are case preserving but comparisons are case-insensitive.
+// See: #85242
+#[test]
+fn windows_env_unicode_case() {
+    let test_cases = [
+        ("ä", "Ä"),
+        ("ß", "SS"),
+        ("Ä", "Ö"),
+        ("Ä", "Ö"),
+        ("I", "İ"),
+        ("I", "i"),
+        ("I", "ı"),
+        ("i", "I"),
+        ("i", "İ"),
+        ("i", "ı"),
+        ("İ", "I"),
+        ("İ", "i"),
+        ("İ", "ı"),
+        ("ı", "I"),
+        ("ı", "i"),
+        ("ı", "İ"),
+        ("ä", "Ä"),
+        ("ß", "SS"),
+        ("Ä", "Ö"),
+        ("Ä", "Ö"),
+        ("I", "İ"),
+        ("I", "i"),
+        ("I", "ı"),
+        ("i", "I"),
+        ("i", "İ"),
+        ("i", "ı"),
+        ("İ", "I"),
+        ("İ", "i"),
+        ("İ", "ı"),
+        ("ı", "I"),
+        ("ı", "i"),
+        ("ı", "İ"),
+    ];
+    // Test that `cmd.env` matches `env::set_var` when setting two strings that
+    // may (or may not) be case-folded when compared.
+    for (a, b) in test_cases.iter() {
+        let mut cmd = Command::new("cmd");
+        cmd.env(a, "1");
+        cmd.env(b, "2");
+        env::set_var(a, "1");
+        env::set_var(b, "2");
+
+        for (key, value) in cmd.get_envs() {
+            assert_eq!(
+                env::var(key).ok(),
+                value.map(|s| s.to_string_lossy().into_owned()),
+                "command environment mismatch: {} {}",
+                a,
+                b
+            );
+        }
+    }
 }
