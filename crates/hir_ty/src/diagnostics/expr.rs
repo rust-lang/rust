@@ -311,11 +311,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 // necessary.
                 //
                 // FIXME we should use the type checker for this.
-                if pat_ty == match_expr_ty
+                if (pat_ty == match_expr_ty
                     || match_expr_ty
                         .as_reference()
                         .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
-                        .unwrap_or(false)
+                        .unwrap_or(false))
+                    && types_of_subpatterns_do_match(pat, &cx.body, &infer)
                 {
                     // If we had a NotUsefulMatchArm diagnostic, we could
                     // check the usefulness of each pattern as we added it
@@ -494,6 +495,21 @@ pub fn record_pattern_missing_fields(
         return None;
     }
     Some((variant_def, missed_fields, exhaustive))
+}
+
+fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResult) -> bool {
+    fn walk(pat: PatId, body: &Body, infer: &InferenceResult, has_type_mismatches: &mut bool) {
+        match infer.type_mismatch_for_pat(pat) {
+            Some(_) => *has_type_mismatches = true,
+            None => {
+                body[pat].walk_child_pats(|subpat| walk(subpat, body, infer, has_type_mismatches))
+            }
+        }
+    }
+
+    let mut has_type_mismatches = false;
+    walk(pat, body, infer, &mut has_type_mismatches);
+    !has_type_mismatches
 }
 
 #[cfg(test)]
