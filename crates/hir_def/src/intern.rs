@@ -4,7 +4,7 @@
 
 use std::{
     collections::HashMap,
-    fmt::{self, Debug},
+    fmt::{self, Debug, Display},
     hash::{BuildHasherDefault, Hash, Hasher},
     ops::Deref,
     sync::Arc,
@@ -166,6 +166,12 @@ impl<T: Internable + ?Sized> Clone for Interned<T> {
 }
 
 impl<T: Debug + Internable + ?Sized> Debug for Interned<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (*self.arc).fmt(f)
+    }
+}
+
+impl<T: Display + Internable + ?Sized> Display for Interned<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (*self.arc).fmt(f)
     }
