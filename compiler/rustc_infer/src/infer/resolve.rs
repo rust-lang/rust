@@ -177,7 +177,7 @@ where
     T: TypeFoldable<'tcx>,
 {
     let mut full_resolver = FullTypeResolver { infcx, err: None };
-    let result = value.fold_with(&mut full_resolver);
+    let result = value.fold_with(&mut full_resolver).into_ok();
     match full_resolver.err {
         None => Ok(result),
         Some(e) => Err(e),

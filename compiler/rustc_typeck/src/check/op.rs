@@ -447,8 +447,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let mut eraser = TypeParamEraser(&self, expr.span);
                             let needs_bound = self
                                 .lookup_op_method(
-                                    eraser.fold_ty(lhs_ty),
-                                    &[eraser.fold_ty(rhs_ty)],
+                                    eraser.fold_ty(lhs_ty).into_ok(),
+                                    &[eraser.fold_ty(rhs_ty).into_ok()],
                                     Op::Binary(op, is_assign),
                                 )
                                 .is_ok();

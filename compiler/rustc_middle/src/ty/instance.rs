@@ -589,7 +589,7 @@ fn polymorphize<'tcx>(
                     // ..and polymorphize any closures/generators captured as upvars.
                     let upvars_ty = upvars_ty.unwrap();
                     let polymorphized_upvars_ty = upvars_ty.fold_with(
-                        &mut PolymorphizationFolder { tcx });
+                        &mut PolymorphizationFolder { tcx }).into_ok();
                     debug!("polymorphize: polymorphized_upvars_ty={:?}", polymorphized_upvars_ty);
                     ty::GenericArg::from(polymorphized_upvars_ty)
                 },

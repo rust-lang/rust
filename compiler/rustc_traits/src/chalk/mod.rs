@@ -49,12 +49,12 @@ crate fn evaluate_goal<'tcx>(
 
     let mut params_substitutor =
         ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placeholder);
-    let obligation = obligation.fold_with(&mut params_substitutor);
+    let obligation = obligation.fold_with(&mut params_substitutor).into_ok();
     // FIXME(chalk): we really should be substituting these back in the solution
     let _params: FxHashMap<usize, ParamTy> = params_substitutor.params;
 
     let mut regions_substitutor = RegionsSubstitutor::new(tcx, reempty_placeholder);
-    let obligation = obligation.fold_with(&mut regions_substitutor);
+    let obligation = obligation.fold_with(&mut regions_substitutor).into_ok();
 
     let max_universe = obligation.max_universe.index();
 

@@ -431,7 +431,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> Subst<'tcx> for T {
         span: Option<Span>,
     ) -> T {
         let mut folder = SubstFolder { tcx, substs, span, binders_passed: 0 };
-        self.fold_with(&mut folder)
+        self.fold_with(&mut folder).into_ok()
     }
 }
 

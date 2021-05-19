@@ -1709,8 +1709,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'tcx> for InferCtxt<'a, 'tcx> {
         self.probe(|_| {
             let mut selcx = SelectionContext::new(self);
 
-            let cleaned_pred =
-                pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
+            let cleaned_pred = pred
+                .fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() })
+                .into_ok();
 
             let cleaned_pred = super::project::normalize(
                 &mut selcx,

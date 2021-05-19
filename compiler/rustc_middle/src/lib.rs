@@ -51,6 +51,7 @@
 #![feature(iter_zip)]
 #![feature(thread_local_const_init)]
 #![feature(trusted_step)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
 
 #[macro_use]
