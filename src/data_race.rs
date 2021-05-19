@@ -720,7 +720,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         if let Some(data_race) = &mut this.memory.extra.data_race {
             if data_race.multi_threaded.get() {
                 let alloc_meta =
-                    this.memory.get_raw_mut(ptr.alloc_id)?.extra.data_race.as_mut().unwrap();
+                    this.memory.get_alloc_extra_mut(ptr.alloc_id)?.data_race.as_mut().unwrap();
                 alloc_meta.reset_clocks(ptr.offset, size);
             }
         }
@@ -1024,7 +1024,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 let place_ptr = place.ptr.assert_ptr();
                 let size = place.layout.size;
                 let alloc_meta =
-                    &this.memory.get_raw(place_ptr.alloc_id)?.extra.data_race.as_ref().unwrap();
+                    &this.memory.get_alloc_extra(place_ptr.alloc_id)?.data_race.as_ref().unwrap();
                 log::trace!(
                     "Atomic op({}) with ordering {:?} on memory({:?}, offset={}, size={})",
                     description,

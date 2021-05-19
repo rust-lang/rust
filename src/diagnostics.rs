@@ -136,13 +136,13 @@ pub fn report_error<'tcx, 'mir>(
 
     // Extra output to help debug specific issues.
     match e.kind() {
-        UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some(access))) => {
+        UndefinedBehavior(UndefinedBehaviorInfo::InvalidUninitBytes(Some((alloc_id, access)))) => {
             eprintln!(
                 "Uninitialized read occurred at offsets 0x{:x}..0x{:x} into this allocation:",
-                access.uninit_ptr.offset.bytes(),
-                access.uninit_ptr.offset.bytes() + access.uninit_size.bytes(),
+                access.uninit_offset.bytes(),
+                access.uninit_offset.bytes() + access.uninit_size.bytes(),
             );
-            eprintln!("{:?}", ecx.memory.dump_alloc(access.uninit_ptr.alloc_id));
+            eprintln!("{:?}", ecx.memory.dump_alloc(*alloc_id));
         }
         _ => {}
     }

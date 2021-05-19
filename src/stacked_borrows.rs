@@ -561,7 +561,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         );
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
-        let extra = &this.memory.get_raw(ptr.alloc_id)?.extra;
+        let extra = this.memory.get_alloc_extra(ptr.alloc_id)?;
         let stacked_borrows =
             extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
         // Update the stacks.

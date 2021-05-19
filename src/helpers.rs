@@ -8,7 +8,7 @@ use log::trace;
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, layout::TyAndLayout, List, TyCtxt};
-use rustc_target::abi::{FieldsShape, LayoutOf, Size, Variants};
+use rustc_target::abi::{Align, FieldsShape, LayoutOf, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
 use rand::RngCore;
@@ -577,10 +577,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ptr = this.force_ptr(sptr)?; // We need to read at least 1 byte, so we can eagerly get a ptr.
 
         // Step 1: determine the length.
-        let alloc = this.memory.get_raw(ptr.alloc_id)?;
         let mut len = Size::ZERO;
         loop {
-            let byte = alloc.read_scalar(this, ptr.offset(len, this)?, size1)?.to_u8()?;
+            // FIXME: We are re-getting the allocation each time around the loop.
+            // Would be nice if we could somehow "extend" an existing AllocRange.
+            let alloc = this.memory.get(ptr.offset(len, this)?.into(), size1, Align::ONE)?.unwrap(); // not a ZST, so we will get a result
+            let byte = alloc.read_scalar(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
             } else {
@@ -595,12 +597,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn read_wide_str(&self, sptr: Scalar<Tag>) -> InterpResult<'tcx, Vec<u16>> {
         let this = self.eval_context_ref();
         let size2 = Size::from_bytes(2);
+        let align2 = Align::from_bytes(2).unwrap();
 
         let mut ptr = this.force_ptr(sptr)?; // We need to read at least 1 wchar, so we can eagerly get a ptr.
         let mut wchars = Vec::new();
-        let alloc = this.memory.get_raw(ptr.alloc_id)?;
         loop {
-            let wchar = alloc.read_scalar(this, ptr, size2)?.to_u16()?;
+            // FIXME: We are re-getting the allocation each time around the loop.
+            // Would be nice if we could somehow "extend" an existing AllocRange.
+            let alloc = this.memory.get(ptr.into(), size2, align2)?.unwrap(); // not a ZST, so we will get a result
+            let wchar = alloc.read_scalar(alloc_range(Size::ZERO, size2))?.to_u16()?;
             if wchar == 0 {
                 break;
             } else {

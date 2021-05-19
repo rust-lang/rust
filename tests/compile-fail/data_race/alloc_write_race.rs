@@ -1,4 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
+#![feature(new_uninit)]
 
 use std::thread::spawn;
 use std::ptr::null_mut;
@@ -9,11 +10,6 @@ struct EvilSend<T>(pub T);
 
 unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
-
-extern "C" {
-    fn malloc(size: usize) -> *mut u8;
-    fn free(ptr: *mut u8);
-}
 
 pub fn main() {
     // Shared atomic pointer
@@ -33,7 +29,7 @@ pub fn main() {
             // Uses relaxed semantics to not generate
             // a release sequence.
             let pointer = &*ptr.0;
-            pointer.store(malloc(std::mem::size_of::<usize>()) as *mut usize, Ordering::Relaxed);
+            pointer.store(Box::into_raw(Box::<usize>::new_uninit()) as *mut usize, Ordering::Relaxed);
         });
 
         let j2 = spawn(move || {
@@ -45,6 +41,6 @@ pub fn main() {
         j2.join().unwrap();
 
         // Clean up memory, will never be executed
-        free(pointer.load(Ordering::Relaxed) as *mut _);
+        drop(Box::from_raw(pointer.load(Ordering::Relaxed)));
     }
 }

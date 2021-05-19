@@ -9,7 +9,7 @@ use std::os::unix::ffi::{OsStrExt, OsStringExt};
 #[cfg(windows)]
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 
-use rustc_target::abi::{LayoutOf, Size};
+use rustc_target::abi::{Align, LayoutOf, Size};
 
 use crate::*;
 
@@ -144,17 +144,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Store the UTF-16 string.
         let size2 = Size::from_bytes(2);
         let this = self.eval_context_mut();
-        let tcx = &*this.tcx;
-        let ptr = this.force_ptr(sptr)?; // we need to write at least the 0 terminator
-        let alloc = this.memory.get_raw_mut(ptr.alloc_id)?;
+        let mut alloc = this
+            .memory
+            .get_mut(sptr, size2 * string_length, Align::from_bytes(2).unwrap())?
+            .unwrap(); // not a ZST, so we will get a result
         for (offset, wchar) in u16_vec.into_iter().chain(iter::once(0x0000)).enumerate() {
             let offset = u64::try_from(offset).unwrap();
-            alloc.write_scalar(
-                tcx,
-                ptr.offset(size2 * offset, tcx)?,
-                Scalar::from_u16(wchar).into(),
-                size2,
-            )?;
+            alloc
+                .write_scalar(alloc_range(size2 * offset, size2), Scalar::from_u16(wchar).into())?;
         }
         Ok((true, string_length - 1))
     }
