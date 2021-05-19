@@ -707,6 +707,35 @@ fn builtin_derive_with_unresolved_attributes_fall_back() {
 }
 
 #[test]
+fn unresolved_attributes_fall_back_track_per_file_moditems() {
+    // Tests that we track per-file ModItems when ignoring an unresolved attribute.
+    // Just tracking the `ModItem` leads to `Foo` getting ignored.
+
+    check(
+        r#"
+        //- /main.rs crate:main
+
+        mod submod;
+
+        #[unresolved]
+        struct Foo;
+
+        //- /submod.rs
+        #[unresolved]
+        struct Bar;
+        "#,
+        expect![[r#"
+            crate
+            Foo: t v
+            submod: t
+
+            crate::submod
+            Bar: t v
+        "#]],
+    );
+}
+
+#[test]
 fn macro_expansion_overflow() {
     cov_mark::check!(macro_expansion_overflow);
     check(
