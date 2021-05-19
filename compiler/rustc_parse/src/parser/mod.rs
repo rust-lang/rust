@@ -185,46 +185,13 @@ impl<'a, const DSDC: bool> Drop for Parser<'a, DSDC> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default)]
-pub(crate) struct NumNextCallsAndBreakLastToken(usize);
-
-impl NumNextCallsAndBreakLastToken {
-    const MASK_NUM_NEXT_CALLS: usize = !(1 << (usize::BITS - 1));
-    #[inline]
-    fn break_last_token(self) -> bool {
-        (self.0 >> (usize::BITS - 1)) == 1
-    }
-    #[inline]
-    const fn new(break_token: bool) -> Self {
-        Self((break_token as usize) << (usize::BITS - 1))
-    }
-
-    #[inline]
-    fn set_break_last_token(&mut self) {
-        self.0 |= !(Self::MASK_NUM_NEXT_CALLS);
-    }
-    #[inline]
-    fn unset_break_last_token(&mut self) {
-        self.0 &= Self::MASK_NUM_NEXT_CALLS;
-    }
-    #[inline]
-    fn num_next_calls(self) -> usize {
-        self.0 & Self::MASK_NUM_NEXT_CALLS
-    }
-    #[inline]
-    fn inc_num_next_calls(&mut self) {
-        self.0 = self.0.checked_add(1).unwrap();
-    }
-}
-
 #[derive(Clone)]
 pub(crate) struct TokenCursor<const DESUGAR_DOC_COMMENTS: bool> {
     pub(crate) frame: TokenCursorFrame,
     pub(crate) stack: Vec<TokenCursorFrame>,
-    pub(crate) nncablt: NumNextCallsAndBreakLastToken,
     // Counts the number of calls to `next` or `next_desugared`,
     // depending on whether `desugar_doc_comments` is set.
-    // pub(crate) num_next_calls: usize,
+    pub(crate) num_next_calls: usize,
     // During parsing, we may sometimes need to 'unglue' a
     // glued token into two component tokens
     // (e.g. '>>' into '>' and '>), so that the parser
@@ -246,7 +213,7 @@ pub(crate) struct TokenCursor<const DESUGAR_DOC_COMMENTS: bool> {
     // field is used to track this token - it gets
     // appended to the captured stream when
     // we evaluate a `LazyTokenStream`
-    // pub(crate) break_last_token: bool,
+    pub(crate) break_last_token: bool,
 }
 
 use bitflags::bitflags;
@@ -458,7 +425,8 @@ impl<'a, const DESUGAR_DOC_COMMENTS: bool> Parser<'a, DESUGAR_DOC_COMMENTS> {
             token_cursor: TokenCursor {
                 frame: start_frame,
                 stack: Default::default(),
-                nncablt: NumNextCallsAndBreakLastToken::new(false),
+                num_next_calls: 0,
+                break_last_token: false,
             },
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
@@ -486,11 +454,11 @@ impl<'a, const DESUGAR_DOC_COMMENTS: bool> Parser<'a, DESUGAR_DOC_COMMENTS> {
             } else {
                 self.token_cursor.next()
             };
-            self.token_cursor.nncablt.inc_num_next_calls();
+            self.token_cursor.num_next_calls += 1;
             // We've retrieved an token from the underlying
             // cursor, so we no longer need to worry about
             // an unglued token. See `break_and_eat` for more details
-            self.token_cursor.nncablt.unset_break_last_token();
+            self.token_cursor.break_last_token = false;
             if next.span.is_dummy() {
                 // Tweak the location for better diagnostics, but keep syntactic context intact.
                 next.span = fallback_span.with_ctxt(next.span.ctxt());
@@ -700,7 +668,7 @@ impl<'a, const DESUGAR_DOC_COMMENTS: bool> Parser<'a, DESUGAR_DOC_COMMENTS> {
                 // If we consume any additional tokens, then this token
                 // is not needed (we'll capture the entire 'glued' token),
                 // and `next_tok` will set this field to `None`
-                self.token_cursor.nncablt.set_break_last_token();
+                self.token_cursor.break_last_token = true;
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));

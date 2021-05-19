@@ -30,7 +30,7 @@ impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
         let mut attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
-        let start_pos = self.token_cursor.nncablt.num_next_calls();
+        let start_pos = self.token_cursor.num_next_calls;
         loop {
             debug!("parse_outer_attributes: self.token={:?}", self.token);
             let attr = if self.check(&token::Pound) {
@@ -179,7 +179,7 @@ impl<'a, const DSDC: bool> Parser<'a, DSDC> {
     crate fn parse_inner_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
-            let start_pos: u32 = self.token_cursor.nncablt.num_next_calls().try_into().unwrap();
+            let start_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
             // Only try to parse if it is an inner attribute (has `!`).
             let attr = if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
                 Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
@@ -194,7 +194,7 @@ impl<'a, const DSDC: bool> Parser<'a, DSDC> {
                 None
             };
             if let Some(attr) = attr {
-                let end_pos: u32 = self.token_cursor.nncablt.num_next_calls().try_into().unwrap();
+                let end_pos: u32 = self.token_cursor.num_next_calls.try_into().unwrap();
                 // If we are currently capturing tokens, mark the location of this inner attribute.
                 // If capturing ends up creating a `LazyTokenStream`, we will include
                 // this replace range with it, removing the inner attribute from the final

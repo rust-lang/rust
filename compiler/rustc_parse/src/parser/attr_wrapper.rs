@@ -96,7 +96,7 @@ struct LazyTokenStreamImpl<const DESUGAR_DOC_COMMENTS: bool> {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(LazyTokenStreamImpl<true>, 136);
+rustc_data_structures::static_assert_size!(LazyTokenStreamImpl<true>, 144);
 
 impl<const DSDC: bool> CreateTokenStream for LazyTokenStreamImpl<DSDC> {
     fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
@@ -281,8 +281,8 @@ impl<'a, const DSDC: bool> Parser<'a, DSDC> {
 
         let replace_ranges_end = self.capture_state.replace_ranges.len();
 
-        let cursor_snapshot_next_calls = cursor_snapshot.nncablt.num_next_calls();
-        let mut end_pos = self.token_cursor.nncablt.num_next_calls();
+        let cursor_snapshot_next_calls = cursor_snapshot.num_next_calls;
+        let mut end_pos = self.token_cursor.num_next_calls;
 
         // Capture a trailing token if requested by the callback 'f'
         match trailing {
@@ -302,7 +302,7 @@ impl<'a, const DSDC: bool> Parser<'a, DSDC> {
         // then extend the range of captured tokens to include it, since the parser
         // was not actually bumped past it. When the `LazyTokenStream` gets converted
         // into a `AttrAnnotatedTokenStream`, we will create the proper token.
-        if self.token_cursor.nncablt.break_last_token() {
+        if self.token_cursor.break_last_token {
             assert_eq!(
                 trailing,
                 TrailingToken::None,
@@ -336,7 +336,7 @@ impl<'a, const DSDC: bool> Parser<'a, DSDC> {
             start_token,
             num_calls,
             cursor_snapshot,
-            break_last_token: self.token_cursor.nncablt.break_last_token(),
+            break_last_token: self.token_cursor.break_last_token,
             replace_ranges,
         });
 
@@ -375,7 +375,7 @@ impl<'a, const DSDC: bool> Parser<'a, DSDC> {
             let new_tokens = vec![(FlatToken::AttrTarget(attr_data), Spacing::Alone)];
 
             assert!(
-                !self.token_cursor.nncablt.break_last_token(),
+                !self.token_cursor.break_last_token,
                 "Should not have unglued last token with cfg attr"
             );
             let range: Range<u32> = (start_pos.try_into().unwrap())..(end_pos.try_into().unwrap());
