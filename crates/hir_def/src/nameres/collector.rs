@@ -21,6 +21,7 @@ use syntax::ast;
 
 use crate::{
     attr::{AttrId, Attrs},
+    builtin_attr,
     db::DefDatabase,
     derive_macro_as_call_id,
     intern::Interned,
@@ -99,6 +100,7 @@ pub(super) fn collect_defs(
         proc_macros,
         exports_proc_macros: false,
         from_glob_import: Default::default(),
+        ignore_attrs_on: FxHashSet::default(),
     };
     match block {
         Some(block) => {
@@ -217,6 +219,7 @@ struct MacroDirective {
 enum MacroDirectiveKind {
     FnLike { ast_id: AstIdWithPath<ast::MacroCall>, fragment: FragmentKind },
     Derive { ast_id: AstIdWithPath<ast::Item>, derive_attr: AttrId },
+    Attr { ast_id: AstIdWithPath<ast::Item>, attr: AttrId, mod_item: ModItem },
 }
 
 struct DefData<'a> {
@@ -243,6 +246,7 @@ struct DefCollector<'a> {
     proc_macros: Vec<(Name, ProcMacroExpander)>,
     exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
+    ignore_attrs_on: FxHashSet<ModItem>,
 }
 
 impl DefCollector<'_> {
@@ -292,16 +296,26 @@ impl DefCollector<'_> {
     fn collect(&mut self) {
         // main name resolution fixed-point loop.
         let mut i = 0;
-        loop {
-            self.db.check_canceled();
-            self.resolve_imports();
+        'outer: loop {
+            loop {
+                self.db.check_canceled();
+                loop {
+                    if self.resolve_imports() == ReachedFixedPoint::Yes {
+                        break;
+                    }
+                }
+                if self.resolve_macros() == ReachedFixedPoint::Yes {
+                    break;
+                }
 
-            match self.resolve_macros() {
-                ReachedFixedPoint::Yes => break,
-                ReachedFixedPoint::No => i += 1,
+                i += 1;
+                if i == FIXED_POINT_LIMIT {
+                    log::error!("name resolution is stuck");
+                    break 'outer;
+                }
             }
-            if i == FIXED_POINT_LIMIT {
-                log::error!("name resolution is stuck");
+
+            if self.reseed_with_unresolved_attributes() == ReachedFixedPoint::Yes {
                 break;
             }
         }
@@ -340,6 +354,50 @@ impl DefCollector<'_> {
             let module_id = self.def_map.module_id(root);
             let root = &mut self.def_map.modules[root];
             root.scope.censor_non_proc_macros(module_id);
+        }
+    }
+
+    /// When the fixed-point loop reaches a stable state, we might still have some unresolved
+    /// attributes (or unexpanded attribute proc macros) left over. This takes them, and feeds the
+    /// item they're applied to back into name resolution.
+    ///
+    /// This effectively ignores the fact that the macro is there and just treats the items as
+    /// normal code.
+    ///
+    /// This improves UX when proc macros are turned off or don't work, and replicates the behavior
+    /// before we supported proc. attribute macros.
+    fn reseed_with_unresolved_attributes(&mut self) -> ReachedFixedPoint {
+        let mut added_items = false;
+        let unexpanded_macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
+        for directive in &unexpanded_macros {
+            if let MacroDirectiveKind::Attr { mod_item, .. } = &directive.kind {
+                // Make sure to only add such items once.
+                if !self.ignore_attrs_on.insert(*mod_item) {
+                    continue;
+                }
+
+                let file_id = self.def_map[directive.module_id].definition_source(self.db).file_id;
+                let item_tree = self.db.file_item_tree(file_id);
+                let mod_dir = self.mod_dirs[&directive.module_id].clone();
+                ModCollector {
+                    def_collector: &mut *self,
+                    macro_depth: directive.depth,
+                    module_id: directive.module_id,
+                    file_id,
+                    item_tree: &item_tree,
+                    mod_dir,
+                }
+                .collect(&[*mod_item]);
+                added_items = true;
+            }
+        }
+        self.unexpanded_macros = unexpanded_macros;
+
+        if added_items {
+            // Continue name resolution with the new data.
+            ReachedFixedPoint::No
+        } else {
+            ReachedFixedPoint::Yes
         }
     }
 
@@ -504,35 +562,35 @@ impl DefCollector<'_> {
         }
     }
 
-    /// Import resolution
-    ///
-    /// This is a fix point algorithm. We resolve imports until no forward
-    /// progress in resolving imports is made
-    fn resolve_imports(&mut self) {
-        let mut n_previous_unresolved = self.unresolved_imports.len() + 1;
-
-        while self.unresolved_imports.len() < n_previous_unresolved {
-            n_previous_unresolved = self.unresolved_imports.len();
-            let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
-            for mut directive in imports {
+    /// Tries to resolve every currently unresolved import.
+    fn resolve_imports(&mut self) -> ReachedFixedPoint {
+        let mut res = ReachedFixedPoint::Yes;
+        let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+        let imports = imports
+            .into_iter()
+            .filter_map(|mut directive| {
                 directive.status = self.resolve_import(directive.module_id, &directive.import);
                 match directive.status {
                     PartialResolvedImport::Indeterminate(_) => {
                         self.record_resolved_import(&directive);
                         // FIXME: For avoid performance regression,
                         // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
-                        self.resolved_imports.push(directive)
+                        self.resolved_imports.push(directive);
+                        res = ReachedFixedPoint::No;
+                        None
                     }
                     PartialResolvedImport::Resolved(_) => {
                         self.record_resolved_import(&directive);
-                        self.resolved_imports.push(directive)
+                        self.resolved_imports.push(directive);
+                        res = ReachedFixedPoint::No;
+                        None
                     }
-                    PartialResolvedImport::Unresolved => {
-                        self.unresolved_imports.push(directive);
-                    }
+                    PartialResolvedImport::Unresolved => Some(directive),
                 }
-            }
-        }
+            })
+            .collect();
+        self.unresolved_imports = imports;
+        res
     }
 
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
@@ -856,6 +914,9 @@ impl DefCollector<'_> {
                         Err(UnresolvedMacro { .. }) => (),
                     }
                 }
+                MacroDirectiveKind::Attr { .. } => {
+                    // not yet :)
+                }
             }
 
             true
@@ -948,7 +1009,7 @@ impl DefCollector<'_> {
                         ));
                     }
                 },
-                MacroDirectiveKind::Derive { .. } => {
+                MacroDirectiveKind::Derive { .. } | MacroDirectiveKind::Attr { .. } => {
                     // FIXME: we might want to diagnose this too
                 }
             }
@@ -1056,6 +1117,14 @@ impl ModCollector<'_, '_> {
                     continue;
                 }
             }
+
+            if let Err(()) = self.resolve_attributes(&attrs, item) {
+                // Do not process the item. It has at least one non-builtin attribute, which *must*
+                // resolve to a proc macro (or fail to resolve), so we'll never see this item during
+                // normal name resolution.
+                continue;
+            }
+
             let module = self.def_collector.def_map.module_id(self.module_id);
 
             let mut def = None;
@@ -1362,6 +1431,62 @@ impl ModCollector<'_, '_> {
         res
     }
 
+    /// Resolves attributes on an item.
+    ///
+    /// Returns `Err` when some attributes could not be resolved to builtins and have been
+    /// registered as unresolved.
+    fn resolve_attributes(&mut self, attrs: &Attrs, mod_item: ModItem) -> Result<(), ()> {
+        fn is_builtin_attr(path: &ModPath) -> bool {
+            if path.kind == PathKind::Plain {
+                if let Some(tool_module) = path.segments().first() {
+                    let tool_module = tool_module.to_string();
+                    if builtin_attr::TOOL_MODULES.iter().any(|m| tool_module == *m) {
+                        return true;
+                    }
+                }
+
+                if let Some(name) = path.as_ident() {
+                    let name = name.to_string();
+                    if builtin_attr::INERT_ATTRIBUTES
+                        .iter()
+                        .chain(builtin_attr::EXTRA_ATTRIBUTES)
+                        .any(|attr| name == *attr)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        }
+
+        // We failed to resolve an attribute on this item earlier, and are falling back to treating
+        // the item as-is.
+        if self.def_collector.ignore_attrs_on.contains(&mod_item) {
+            return Ok(());
+        }
+
+        match attrs.iter().find(|attr| !is_builtin_attr(&attr.path)) {
+            Some(non_builtin_attr) => {
+                log::debug!("non-builtin attribute {}", non_builtin_attr.path);
+
+                let ast_id = AstIdWithPath::new(
+                    self.file_id,
+                    mod_item.ast_id(self.item_tree),
+                    non_builtin_attr.path.as_ref().clone(),
+                );
+                self.def_collector.unexpanded_macros.push(MacroDirective {
+                    module_id: self.module_id,
+                    depth: self.macro_depth + 1,
+                    kind: MacroDirectiveKind::Attr { ast_id, attr: non_builtin_attr.id, mod_item },
+                });
+
+                Err(())
+            }
+            None => Ok(()),
+        }
+    }
+
     fn collect_derives(&mut self, attrs: &Attrs, ast_id: FileAstId<ast::Item>) {
         for derive in attrs.by_key("derive").attrs() {
             match derive.parse_derive() {
@@ -1594,6 +1719,7 @@ mod tests {
             proc_macros: Default::default(),
             exports_proc_macros: false,
             from_glob_import: Default::default(),
+            ignore_attrs_on: FxHashSet::default(),
         };
         collector.seed_with_top_level();
         collector.collect();
