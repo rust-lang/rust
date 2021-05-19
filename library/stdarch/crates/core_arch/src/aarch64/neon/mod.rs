@@ -1766,6 +1766,26 @@ pub unsafe fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
     transmute(u64x1::new(simd_extract(a, 0)))
 }
 
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[rustc_legacy_const_generics(1)]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, IMM5 = 0))]
+pub unsafe fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
+    static_assert!(IMM5 : i32 where IMM5 == 0);
+    simd_extract(v, IMM5 as u32)
+}
+
+/// Duplicate vector element to vector or scalar
+#[inline]
+#[target_feature(enable = "neon")]
+#[rustc_legacy_const_generics(1)]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, IMM5 = 0))]
+pub unsafe fn vgetq_lane_f64<const IMM5: i32>(v: float64x2_t) -> f64 {
+    static_assert_imm1!(IMM5);
+    simd_extract(v, IMM5 as u32)
+}
+
 /* FIXME: 16-bit float
 /// Vector combine
 #[inline]
@@ -3862,6 +3882,22 @@ mod tests {
         let e = u64x1::new(1);
         let r: u64x1 = transmute(vget_low_p64(transmute(a)));
         assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vget_lane_f64() {
+        let v = f64x1::new(1.0);
+        let r = vget_lane_f64::<0>(transmute(v));
+        assert_eq!(r, 1.0);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vgetq_lane_f64() {
+        let v = f64x2::new(0.0, 1.0);
+        let r = vgetq_lane_f64::<1>(transmute(v));
+        assert_eq!(r, 1.0);
+        let r = vgetq_lane_f64::<0>(transmute(v));
+        assert_eq!(r, 0.0);
     }
 
     #[simd_test(enable = "neon")]
