@@ -574,7 +574,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(place.ptr, place.layout.size, align, CheckInAllocMsg::MemoryAccessTest)?;
+        this.memory.check_ptr_access_align(
+            place.ptr,
+            place.layout.size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+        )?;
         // Perform regular access.
         this.write_scalar(val, dest)?;
         Ok(())
@@ -595,7 +600,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(place.ptr, place.layout.size, align, CheckInAllocMsg::MemoryAccessTest)?;
+        this.memory.check_ptr_access_align(
+            place.ptr,
+            place.layout.size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+        )?;
 
         // Perform atomic store
         this.write_scalar_atomic(val, &place, atomic)?;
@@ -645,7 +655,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(place.ptr, place.layout.size, align, CheckInAllocMsg::MemoryAccessTest)?;
+        this.memory.check_ptr_access_align(
+            place.ptr,
+            place.layout.size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+        )?;
 
         match atomic_op {
             AtomicOp::Min => {
@@ -682,7 +697,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(place.ptr, place.layout.size, align, CheckInAllocMsg::MemoryAccessTest)?;
+        this.memory.check_ptr_access_align(
+            place.ptr,
+            place.layout.size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+        )?;
 
         let old = this.atomic_exchange_scalar(&place, new, atomic)?;
         this.write_scalar(old, dest)?; // old value is returned
@@ -708,7 +728,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(place.ptr, place.layout.size, align, CheckInAllocMsg::MemoryAccessTest)?;
+        this.memory.check_ptr_access_align(
+            place.ptr,
+            place.layout.size,
+            align,
+            CheckInAllocMsg::MemoryAccessTest,
+        )?;
 
         let old = this.atomic_compare_exchange_scalar(
             &place,
