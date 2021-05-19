@@ -520,7 +520,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
         ty::Dynamic(binder, _) => {
             let mut has_emitted = false;
             for predicate in binder.iter() {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
+                if let ty::WhereClause::Trait(ref trait_ref) = predicate.skip_binder() {
                     let def_id = trait_ref.def_id;
                     let descr_post = &format!(" trait object{}{}", plural_suffix, data.descr_post);
                     if check_must_not_suspend_def(

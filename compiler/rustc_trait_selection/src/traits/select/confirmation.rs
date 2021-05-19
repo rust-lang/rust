@@ -737,22 +737,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 upcast_trait_ref = util::supertraits(tcx, source_trait_ref).nth(idx).unwrap();
                 assert_eq!(data_b.principal_def_id(), Some(upcast_trait_ref.def_id()));
                 let existential_predicate = upcast_trait_ref.map_bound(|trait_ref| {
-                    ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(
-                        tcx, trait_ref,
-                    ))
+                    ty::WhereClause::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
                 });
                 let iter = Some(existential_predicate)
                     .into_iter()
                     .chain(
                         data_a
                             .projection_bounds()
-                            .map(|b| b.map_bound(ty::ExistentialPredicate::Projection)),
+                            .map(|b| b.map_bound(ty::WhereClause::Projection)),
                     )
                     .chain(
-                        data_b
-                            .auto_traits()
-                            .map(ty::ExistentialPredicate::AutoTrait)
-                            .map(ty::Binder::dummy),
+                        data_b.auto_traits().map(ty::WhereClause::AutoTrait).map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
@@ -838,18 +833,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We already checked the compatiblity of auto traits within `assemble_candidates_for_unsizing`.
                 let iter = data_a
                     .principal()
-                    .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
+                    .map(|b| b.map_bound(ty::WhereClause::Trait))
                     .into_iter()
                     .chain(
                         data_a
                             .projection_bounds()
-                            .map(|b| b.map_bound(ty::ExistentialPredicate::Projection)),
+                            .map(|b| b.map_bound(ty::WhereClause::Projection)),
                     )
                     .chain(
-                        data_b
-                            .auto_traits()
-                            .map(ty::ExistentialPredicate::AutoTrait)
-                            .map(ty::Binder::dummy),
+                        data_b.auto_traits().map(ty::WhereClause::AutoTrait).map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
                 let source_trait = tcx.mk_dynamic(existential_predicates, r_b);

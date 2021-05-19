@@ -376,11 +376,10 @@ impl Checker<'mir, 'tcx> {
                 ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
                         match pred.skip_binder() {
-                            ty::ExistentialPredicate::AutoTrait(_)
-                            | ty::ExistentialPredicate::Projection(_) => {
+                            ty::WhereClause::AutoTrait(_) | ty::WhereClause::Projection(_) => {
                                 self.check_op(ops::ty::DynTrait(kind))
                             }
-                            ty::ExistentialPredicate::Trait(trait_ref) => {
+                            ty::WhereClause::Trait(trait_ref) => {
                                 if Some(trait_ref.def_id) != self.tcx.lang_items().sized_trait() {
                                     self.check_op(ops::ty::DynTrait(kind))
                                 }

@@ -672,7 +672,7 @@ fn check_const_value_eq<R: TypeRelation<'tcx>>(
     })
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>> {
+impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -695,7 +695,7 @@ impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredi
         }
 
         let v = iter::zip(a_v, b_v).map(|(ep_a, ep_b)| {
-            use crate::ty::ExistentialPredicate::*;
+            use ty::WhereClause::*;
             match (ep_a.skip_binder(), ep_b.skip_binder()) {
                 (Trait(a), Trait(b)) => Ok(ep_a
                     .rebind(Trait(relation.relate(ep_a.rebind(a), ep_b.rebind(b))?.skip_binder()))),
