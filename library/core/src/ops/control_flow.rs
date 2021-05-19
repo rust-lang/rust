@@ -63,6 +63,7 @@ pub enum ControlFlow<B, C = ()> {
 }
 
 #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
+#[cfg(bootstrap)]
 impl<B, C> ops::TryV1 for ControlFlow<B, C> {
     type Output = C;
     type Error = B;
