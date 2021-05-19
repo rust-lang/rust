@@ -296,19 +296,26 @@ impl DefCollector<'_> {
     fn collect(&mut self) {
         // main name resolution fixed-point loop.
         let mut i = 0;
-        loop {
-            self.db.check_canceled();
-            self.resolve_imports();
+        'outer: loop {
+            loop {
+                self.db.check_canceled();
+                loop {
+                    if self.resolve_imports() == ReachedFixedPoint::Yes {
+                        break;
+                    }
+                }
+                if self.resolve_macros() == ReachedFixedPoint::Yes {
+                    break;
+                }
 
-            match self.resolve_macros() {
-                ReachedFixedPoint::Yes => match self.reseed_with_unresolved_attributes() {
-                    ReachedFixedPoint::Yes => break,
-                    ReachedFixedPoint::No => i += 1,
-                },
-                ReachedFixedPoint::No => i += 1,
+                i += 1;
+                if i == FIXED_POINT_LIMIT {
+                    log::error!("name resolution is stuck");
+                    break 'outer;
+                }
             }
-            if i == FIXED_POINT_LIMIT {
-                log::error!("name resolution is stuck");
+
+            if self.reseed_with_unresolved_attributes() == ReachedFixedPoint::Yes {
                 break;
             }
         }
@@ -550,35 +557,31 @@ impl DefCollector<'_> {
         }
     }
 
-    /// Import resolution
-    ///
-    /// This is a fix point algorithm. We resolve imports until no forward
-    /// progress in resolving imports is made
-    fn resolve_imports(&mut self) {
-        let mut n_previous_unresolved = self.unresolved_imports.len() + 1;
-
-        while self.unresolved_imports.len() < n_previous_unresolved {
-            n_previous_unresolved = self.unresolved_imports.len();
-            let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
-            for mut directive in imports {
-                directive.status = self.resolve_import(directive.module_id, &directive.import);
-                match directive.status {
-                    PartialResolvedImport::Indeterminate(_) => {
-                        self.record_resolved_import(&directive);
-                        // FIXME: For avoid performance regression,
-                        // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
-                        self.resolved_imports.push(directive)
-                    }
-                    PartialResolvedImport::Resolved(_) => {
-                        self.record_resolved_import(&directive);
-                        self.resolved_imports.push(directive)
-                    }
-                    PartialResolvedImport::Unresolved => {
-                        self.unresolved_imports.push(directive);
-                    }
+    /// Tries to resolve every currently unresolved import.
+    fn resolve_imports(&mut self) -> ReachedFixedPoint {
+        let mut res = ReachedFixedPoint::Yes;
+        let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+        for mut directive in imports {
+            directive.status = self.resolve_import(directive.module_id, &directive.import);
+            match directive.status {
+                PartialResolvedImport::Indeterminate(_) => {
+                    self.record_resolved_import(&directive);
+                    // FIXME: For avoid performance regression,
+                    // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
+                    self.resolved_imports.push(directive);
+                    res = ReachedFixedPoint::No;
+                }
+                PartialResolvedImport::Resolved(_) => {
+                    self.record_resolved_import(&directive);
+                    self.resolved_imports.push(directive);
+                    res = ReachedFixedPoint::No;
+                }
+                PartialResolvedImport::Unresolved => {
+                    self.unresolved_imports.push(directive);
                 }
             }
         }
+        res
     }
 
     fn resolve_import(&self, module_id: LocalModuleId, import: &Import) -> PartialResolvedImport {
