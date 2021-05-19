@@ -328,7 +328,7 @@ impl Constructor {
             PatKind::Leaf { .. } | PatKind::Deref { .. } => Single,
             &PatKind::Variant { enum_variant, .. } => Variant(enum_variant),
             &PatKind::LiteralBool { value } => IntRange(IntRange::from_bool(value)),
-            PatKind::Or { .. } => panic!("bug: Or-pattern should have been expanded earlier on."),
+            PatKind::Or { .. } => cx.bug("Or-pattern should have been expanded earlier on."),
         }
     }
 
@@ -375,7 +375,7 @@ impl Constructor {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(super) fn is_covered_by(&self, _pcx: PatCtxt<'_>, other: &Self) -> bool {
+    pub(super) fn is_covered_by(&self, pcx: PatCtxt<'_>, other: &Self) -> bool {
         // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
@@ -400,17 +400,17 @@ impl Constructor {
             // Only a wildcard pattern can match the special extra constructor.
             (NonExhaustive, _) => false,
 
-            _ => panic!(
-                "bug: trying to compare incompatible constructors {:?} and {:?}",
+            _ => pcx.cx.bug(&format!(
+                "trying to compare incompatible constructors {:?} and {:?}",
                 self, other
-            ),
+            )),
         }
     }
 
     /// Faster version of `is_covered_by` when applied to many constructors. `used_ctors` is
     /// assumed to be built from `matrix.head_ctors()` with wildcards filtered out, and `self` is
     /// assumed to have been split from a wildcard.
-    fn is_covered_by_any(&self, _pcx: PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
+    fn is_covered_by_any(&self, pcx: PatCtxt<'_>, used_ctors: &[Constructor]) -> bool {
         if used_ctors.is_empty() {
             return false;
         }
@@ -431,7 +431,7 @@ impl Constructor {
             // This constructor is never covered by anything else
             NonExhaustive => false,
             Str(..) | FloatRange(..) | Opaque | Missing | Wildcard => {
-                panic!("bug: found unexpected ctor in all_ctors: {:?}", self)
+                pcx.cx.bug(&format!("found unexpected ctor in all_ctors: {:?}", self))
             }
         }
     }
@@ -683,7 +683,9 @@ impl Fields {
                         }
                     }
                 }
-                _ => panic!("Unexpected type for `Single` constructor: {:?}", ty),
+                ty_kind => {
+                    cx.bug(&format!("Unexpected type for `Single` constructor: {:?}", ty_kind))
+                }
             },
             Slice(..) => {
                 unimplemented!()
@@ -748,7 +750,7 @@ impl Fields {
                 // can ignore this issue.
                 TyKind::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 TyKind::Slice(..) | TyKind::Array(..) => {
-                    panic!("bug: bad slice pattern {:?} {:?}", ctor, pcx.ty)
+                    pcx.cx.bug(&format!("bad slice pattern {:?} {:?}", ctor, pcx.ty))
                 }
                 _ => PatKind::Wild,
             },
@@ -758,10 +760,11 @@ impl Fields {
             Constructor::IntRange(_) => UNHANDLED,
             NonExhaustive => PatKind::Wild,
             Wildcard => return Pat::wildcard_from_ty(pcx.ty),
-            Opaque => panic!("bug: we should not try to apply an opaque constructor"),
-            Missing => {
-                panic!("bug: trying to apply the `Missing` constructor; this should have been done in `apply_constructors`")
-            }
+            Opaque => pcx.cx.bug("we should not try to apply an opaque constructor"),
+            Missing => pcx.cx.bug(
+                "trying to apply the `Missing` constructor;\
+                this should have been done in `apply_constructors`",
+            ),
         };
 
         Pat { ty: pcx.ty.clone(), kind: Box::new(pat) }

@@ -357,6 +357,18 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             infer: &infer,
             db,
             pattern_arena: &pattern_arena,
+            eprint_panic_context: &|| {
+                use syntax::AstNode;
+                if let Ok(scrutinee_sptr) = source_map.expr_syntax(match_expr) {
+                    let root = scrutinee_sptr.file_syntax(db.upcast());
+                    if let Some(match_ast) = scrutinee_sptr.value.to_node(&root).syntax().parent() {
+                        eprintln!(
+                            "Match checking is about to panic on this expression:\n{}",
+                            match_ast.to_string(),
+                        );
+                    }
+                }
+            },
         };
         let report = compute_match_usefulness(&cx, &m_arms);
 
