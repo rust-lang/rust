@@ -109,11 +109,11 @@ pre, .rustdoc.source .example-wrap {
 	color: #4E4C4C;
 }
 
-.content a:hover {
+.search-results a:hover {
 	background-color: #ddd;
 }
 
-.content a:focus {
+.search-results a:focus {
 	color: #000 !important;
 	background-color: #ccc;
 }
