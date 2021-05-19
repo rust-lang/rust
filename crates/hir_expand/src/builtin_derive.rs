@@ -8,7 +8,7 @@ use syntax::{
     match_ast,
 };
 
-use crate::{db::AstDatabase, name, quote, AstId, CrateId, LazyMacroId, MacroDefId, MacroDefKind};
+use crate::{db::AstDatabase, name, quote, AstId, CrateId, MacroCallId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -21,7 +21,7 @@ macro_rules! register_builtin {
             pub fn expand(
                 &self,
                 db: &dyn AstDatabase,
-                id: LazyMacroId,
+                id: MacroCallId,
                 tt: &tt::Subtree,
             ) -> Result<tt::Subtree, mbe::ExpandError> {
                 let expander = match *self {
@@ -164,7 +164,7 @@ fn expand_simple_derive(
     Ok(expanded)
 }
 
-fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
+fn find_builtin_crate(db: &dyn AstDatabase, id: MacroCallId) -> tt::TokenTree {
     // FIXME: make hygiene works for builtin derive macro
     // such that $crate can be used here.
     let cg = db.crate_graph();
@@ -184,7 +184,7 @@ fn find_builtin_crate(db: &dyn AstDatabase, id: LazyMacroId) -> tt::TokenTree {
 
 fn copy_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -193,7 +193,7 @@ fn copy_expand(
 
 fn clone_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -202,7 +202,7 @@ fn clone_expand(
 
 fn default_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -211,7 +211,7 @@ fn default_expand(
 
 fn debug_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -220,7 +220,7 @@ fn debug_expand(
 
 fn hash_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -229,7 +229,7 @@ fn hash_expand(
 
 fn eq_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -238,7 +238,7 @@ fn eq_expand(
 
 fn partial_eq_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -247,7 +247,7 @@ fn partial_eq_expand(
 
 fn ord_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -256,7 +256,7 @@ fn ord_expand(
 
 fn partial_ord_expand(
     db: &dyn AstDatabase,
-    id: LazyMacroId,
+    id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let krate = find_builtin_crate(db, id);
@@ -317,6 +317,7 @@ $0
                 local_inner: false,
             },
             krate: CrateId(0),
+            eager: None,
             kind: MacroCallKind::Derive {
                 ast_id,
                 derive_name: name.to_string(),

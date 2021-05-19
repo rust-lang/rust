@@ -80,19 +80,10 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(file_id) => file_id,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let file_id = match macro_file.macro_call_id {
-                    MacroCallId::LazyMacro(id) => {
-                        let loc = db.lookup_intern_macro(id);
-                        loc.kind.file_id()
-                    }
-                    MacroCallId::EagerMacro(id) => {
-                        let loc = db.lookup_intern_eager_expansion(id);
-                        if let Some(included_file) = loc.included_file {
-                            return included_file;
-                        } else {
-                            loc.call.file_id
-                        }
-                    }
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                let file_id = match &loc.eager {
+                    Some(EagerCallInfo { included_file: Some(file), .. }) => (*file).into(),
+                    _ => loc.kind.file_id(),
                 };
                 file_id.original_file(db)
             }
@@ -103,17 +94,10 @@ impl HirFileId {
         let mut level = 0;
         let mut curr = self;
         while let HirFileIdRepr::MacroFile(macro_file) = curr.0 {
+            let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+
             level += 1;
-            curr = match macro_file.macro_call_id {
-                MacroCallId::LazyMacro(id) => {
-                    let loc = db.lookup_intern_macro(id);
-                    loc.kind.file_id()
-                }
-                MacroCallId::EagerMacro(id) => {
-                    let loc = db.lookup_intern_eager_expansion(id);
-                    loc.call.file_id
-                }
-            };
+            curr = loc.kind.file_id();
         }
         level
     }
@@ -122,16 +106,10 @@ impl HirFileId {
     pub fn call_node(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxNode>> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
-            HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
-                MacroCallId::LazyMacro(lazy_id) => {
-                    let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
-                    Some(loc.kind.node(db))
-                }
-                MacroCallId::EagerMacro(id) => {
-                    let loc: EagerCallLoc = db.lookup_intern_eager_expansion(id);
-                    Some(loc.call.with_value(loc.call.to_node(db).syntax().clone()))
-                }
-            },
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                Some(loc.kind.node(db))
+            }
         }
     }
 
@@ -140,14 +118,7 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let lazy_id = match macro_file.macro_call_id {
-                    MacroCallId::LazyMacro(id) => id,
-                    MacroCallId::EagerMacro(_id) => {
-                        // FIXME: handle expansion_info for eager macro
-                        return None;
-                    }
-                };
-                let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
 
                 let arg_tt = loc.kind.arg(db)?;
 
@@ -180,13 +151,7 @@ impl HirFileId {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
-                let lazy_id = match macro_file.macro_call_id {
-                    MacroCallId::LazyMacro(id) => id,
-                    MacroCallId::EagerMacro(_id) => {
-                        return None;
-                    }
-                };
-                let loc: MacroCallLoc = db.lookup_intern_macro(lazy_id);
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
                 let item = match loc.def.kind {
                     MacroDefKind::BuiltInDerive(..) => loc.kind.node(db),
                     _ => return None,
@@ -199,16 +164,12 @@ impl HirFileId {
     /// Return whether this file is an include macro
     pub fn is_include_macro(&self, db: &dyn db::AstDatabase) -> bool {
         match self.0 {
-            HirFileIdRepr::MacroFile(macro_file) => match macro_file.macro_call_id {
-                MacroCallId::EagerMacro(id) => {
-                    let loc = db.lookup_intern_eager_expansion(id);
-                    return loc.included_file.is_some();
-                }
-                _ => {}
-            },
-            _ => {}
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+                matches!(loc.eager, Some(EagerCallInfo { included_file: Some(_), .. }))
+            }
+            _ => false,
         }
-        false
     }
 }
 
@@ -220,29 +181,8 @@ pub struct MacroFile {
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroCallId {
-    LazyMacro(LazyMacroId),
-    EagerMacro(EagerMacroId),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LazyMacroId(salsa::InternId);
-impl_intern_key!(LazyMacroId);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EagerMacroId(salsa::InternId);
-impl_intern_key!(EagerMacroId);
-
-impl From<LazyMacroId> for MacroCallId {
-    fn from(it: LazyMacroId) -> Self {
-        MacroCallId::LazyMacro(it)
-    }
-}
-impl From<EagerMacroId> for MacroCallId {
-    fn from(it: EagerMacroId) -> Self {
-        MacroCallId::EagerMacro(it)
-    }
-}
+pub struct MacroCallId(salsa::InternId);
+impl_intern_key!(MacroCallId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
@@ -258,8 +198,8 @@ impl MacroDefId {
         db: &dyn db::AstDatabase,
         krate: CrateId,
         kind: MacroCallKind,
-    ) -> LazyMacroId {
-        db.intern_macro(MacroCallLoc { def: self, krate, kind })
+    ) -> MacroCallId {
+        db.intern_macro(MacroCallLoc { def: self, krate, eager: None, kind })
     }
 
     pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {
@@ -289,9 +229,17 @@ pub enum MacroDefKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct EagerCallInfo {
+    /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
+    expansion: Arc<tt::Subtree>,
+    included_file: Option<FileId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
     pub(crate) def: MacroDefId,
     pub(crate) krate: CrateId,
+    eager: Option<EagerCallInfo>,
     pub kind: MacroCallKind,
 }
 
@@ -313,6 +261,7 @@ pub enum MacroCallKind {
 }
 
 impl MacroCallKind {
+    /// Returns the file containing the macro invocation.
     fn file_id(&self) -> HirFileId {
         match self {
             MacroCallKind::FnLike { ast_id, .. } => ast_id.file_id,
@@ -352,17 +301,6 @@ impl MacroCallId {
     pub fn as_file(self) -> HirFileId {
         MacroFile { macro_call_id: self }.into()
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EagerCallLoc {
-    pub(crate) def: MacroDefId,
-    pub(crate) fragment: FragmentKind,
-    pub(crate) subtree: Arc<tt::Subtree>,
-    pub(crate) krate: CrateId,
-    pub(crate) call: AstId<ast::MacroCall>,
-    // The included file ID of the include macro.
-    pub(crate) included_file: Option<FileId>,
 }
 
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro

@@ -22,7 +22,7 @@
 use crate::{
     ast::{self, AstNode},
     db::AstDatabase,
-    EagerCallLoc, EagerMacroId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    EagerCallInfo, InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
 use base_db::CrateId;
@@ -105,7 +105,7 @@ pub fn expand_eager_macro(
     def: MacroDefId,
     resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
     mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
-) -> Result<EagerMacroId, ErrorEmitted> {
+) -> Result<MacroCallId, ErrorEmitted> {
     let parsed_args = diagnostic_sink.option_with(
         || Some(mbe::ast_to_token_tree(&macro_call.value.token_tree()?).0),
         || err("malformed macro invocation"),
@@ -118,15 +118,14 @@ pub fn expand_eager_macro(
     // When `lazy_expand` is called, its *parent* file must be already exists.
     // Here we store an eager macro id for the argument expanded subtree here
     // for that purpose.
-    let arg_id = db.intern_eager_expansion({
-        EagerCallLoc {
-            def,
-            fragment: FragmentKind::Expr,
-            subtree: Arc::new(parsed_args.clone()),
-            krate,
-            call: call_id,
+    let arg_id = db.intern_macro(MacroCallLoc {
+        def,
+        krate,
+        eager: Some(EagerCallInfo {
+            expansion: Arc::new(parsed_args.clone()),
             included_file: None,
-        }
+        }),
+        kind: MacroCallKind::FnLike { ast_id: call_id, fragment: FragmentKind::Expr },
     });
     let arg_file_id: MacroCallId = arg_id.into();
 
@@ -146,16 +145,17 @@ pub fn expand_eager_macro(
         let res = eager.expand(db, arg_id, &subtree);
 
         let expanded = diagnostic_sink.expand_result_option(res)?;
-        let eager = EagerCallLoc {
+        let loc = MacroCallLoc {
             def,
-            fragment: expanded.fragment,
-            subtree: Arc::new(expanded.subtree),
             krate,
-            call: call_id,
-            included_file: expanded.included_file,
+            eager: Some(EagerCallInfo {
+                expansion: Arc::new(expanded.subtree),
+                included_file: expanded.included_file,
+            }),
+            kind: MacroCallKind::FnLike { ast_id: call_id, fragment: expanded.fragment },
         };
 
-        Ok(db.intern_eager_expansion(eager))
+        Ok(db.intern_macro(loc))
     } else {
         panic!("called `expand_eager_macro` on non-eager macro def {:?}", def);
     }

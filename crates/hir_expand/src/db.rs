@@ -13,8 +13,8 @@ use syntax::{
 
 use crate::{
     ast_id_map::AstIdMap, hygiene::HygieneFrame, input::process_macro_input, BuiltinDeriveExpander,
-    BuiltinFnLikeExpander, EagerCallLoc, EagerMacroId, HirFileId, HirFileIdRepr, LazyMacroId,
-    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc, MacroDefId,
+    MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -41,7 +41,7 @@ impl TokenExpander {
     fn expand(
         &self,
         db: &dyn AstDatabase,
-        id: LazyMacroId,
+        id: MacroCallId,
         tt: &tt::Subtree,
     ) -> mbe::ExpandResult<tt::Subtree> {
         match self {
@@ -101,11 +101,7 @@ pub trait AstDatabase: SourceDatabase {
     /// We encode macro definitions into ids of macro calls, this what allows us
     /// to be incremental.
     #[salsa::interned]
-    fn intern_macro(&self, macro_call: MacroCallLoc) -> LazyMacroId;
-    /// Certain built-in macros are eager (`format!(concat!("file: ", file!(), "{}"")), 92`).
-    /// For them, we actually want to encode the whole token tree as an argument.
-    #[salsa::interned]
-    fn intern_eager_expansion(&self, eager: EagerCallLoc) -> EagerMacroId;
+    fn intern_macro(&self, macro_call: MacroCallLoc) -> MacroCallId;
 
     /// Lowers syntactic macro call to a token tree representation.
     #[salsa::transparent]
@@ -146,17 +142,12 @@ pub fn expand_hypothetical(
         token_to_map.text_range().checked_sub(hypothetical_args.syntax().text_range().start())?;
     let token_id = tmap_1.token_by_range(range)?;
 
-    let lazy_id = match actual_macro_call {
-        MacroCallId::LazyMacro(id) => id,
-        MacroCallId::EagerMacro(_) => return None,
-    };
-
     let macro_def = {
-        let loc = db.lookup_intern_macro(lazy_id);
+        let loc: MacroCallLoc = db.lookup_intern_macro(actual_macro_call);
         db.macro_def(loc.def)?
     };
 
-    let hypothetical_expansion = macro_def.expand(db, lazy_id, &tt);
+    let hypothetical_expansion = macro_def.expand(db, actual_macro_call, &tt);
 
     let fragment_kind = macro_fragment_kind(db, actual_macro_call);
 
@@ -194,30 +185,22 @@ fn parse_macro_expansion(
         // Note:
         // The final goal we would like to make all parse_macro success,
         // such that the following log will not call anyway.
-        match macro_file.macro_call_id {
-            MacroCallId::LazyMacro(id) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro(id);
-                let node = loc.kind.node(db);
+        let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
+        let node = loc.kind.node(db);
 
-                // collect parent information for warning log
-                let parents = std::iter::successors(loc.kind.file_id().call_node(db), |it| {
-                    it.file_id.call_node(db)
-                })
+        // collect parent information for warning log
+        let parents =
+            std::iter::successors(loc.kind.file_id().call_node(db), |it| it.file_id.call_node(db))
                 .map(|n| format!("{:#}", n.value))
                 .collect::<Vec<_>>()
                 .join("\n");
 
-                log::warn!(
-                    "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
-                    err,
-                    node.value,
-                    parents
-                );
-            }
-            _ => {
-                log::warn!("fail on macro_parse: (reason: {:?})", err);
-            }
-        }
+        log::warn!(
+            "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
+            err,
+            node.value,
+            parents
+        );
     }
     let tt = match result.value {
         Some(tt) => tt,
@@ -269,25 +252,16 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
     let arg = db.macro_arg_text(id)?;
     let (mut tt, tmap) = mbe::syntax_node_to_token_tree(&SyntaxNode::new_root(arg));
 
-    if let MacroCallId::LazyMacro(id) = id {
-        let loc: MacroCallLoc = db.lookup_intern_macro(id);
-        if loc.def.is_proc_macro() {
-            // proc macros expect their inputs without parentheses, MBEs expect it with them included
-            tt.delimiter = None;
-        }
+    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    if loc.def.is_proc_macro() {
+        // proc macros expect their inputs without parentheses, MBEs expect it with them included
+        tt.delimiter = None;
     }
 
     Some(Arc::new((tt, tmap)))
 }
 
 fn macro_arg_text(db: &dyn AstDatabase, id: MacroCallId) -> Option<GreenNode> {
-    let id = match id {
-        MacroCallId::LazyMacro(id) => id,
-        MacroCallId::EagerMacro(_id) => {
-            // FIXME: support macro_arg for eager macro
-            return None;
-        }
-    };
     let loc = db.lookup_intern_macro(id);
     let arg = loc.kind.arg(db)?;
     let arg = process_macro_input(db, arg, id);
@@ -347,24 +321,21 @@ fn macro_expand_with_arg(
     arg: Option<Arc<(tt::Subtree, mbe::TokenMap)>>,
 ) -> ExpandResult<Option<Arc<tt::Subtree>>> {
     let _p = profile::span("macro_expand");
-    let lazy_id = match id {
-        MacroCallId::LazyMacro(id) => id,
-        MacroCallId::EagerMacro(id) => {
-            if arg.is_some() {
-                return ExpandResult::str_err(
-                    "hypothetical macro expansion not implemented for eager macro".to_owned(),
-                );
-            } else {
-                return ExpandResult {
-                    value: Some(db.lookup_intern_eager_expansion(id).subtree),
-                    // FIXME: There could be errors here!
-                    err: None,
-                };
-            }
+    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    if let Some(eager) = &loc.eager {
+        if arg.is_some() {
+            return ExpandResult::str_err(
+                "hypothetical macro expansion not implemented for eager macro".to_owned(),
+            );
+        } else {
+            return ExpandResult {
+                value: Some(eager.expansion.clone()),
+                // FIXME: There could be errors here!
+                err: None,
+            };
         }
-    };
+    }
 
-    let loc = db.lookup_intern_macro(lazy_id);
     let macro_arg = match arg.or_else(|| db.macro_arg(id)) {
         Some(it) => it,
         None => return ExpandResult::str_err("Fail to args in to tt::TokenTree".into()),
@@ -374,7 +345,7 @@ fn macro_expand_with_arg(
         Some(it) => it,
         None => return ExpandResult::str_err("Fail to find macro definition".into()),
     };
-    let ExpandResult { value: tt, err } = macro_rules.expand(db, lazy_id, &macro_arg.0);
+    let ExpandResult { value: tt, err } = macro_rules.expand(db, id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if count > TOKEN_LIMIT {
@@ -391,12 +362,7 @@ fn expand_proc_macro(
     db: &dyn AstDatabase,
     id: MacroCallId,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    let lazy_id = match id {
-        MacroCallId::LazyMacro(id) => id,
-        MacroCallId::EagerMacro(_) => unreachable!(),
-    };
-
-    let loc = db.lookup_intern_macro(lazy_id);
+    let loc: MacroCallLoc = db.lookup_intern_macro(id);
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
         None => {
@@ -436,14 +402,6 @@ fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> 
 }
 
 fn macro_fragment_kind(db: &dyn AstDatabase, id: MacroCallId) -> FragmentKind {
-    match id {
-        MacroCallId::LazyMacro(id) => {
-            let loc: MacroCallLoc = db.lookup_intern_macro(id);
-            loc.kind.fragment_kind()
-        }
-        MacroCallId::EagerMacro(id) => {
-            let loc: EagerCallLoc = db.lookup_intern_eager_expansion(id);
-            loc.fragment
-        }
-    }
+    let loc: MacroCallLoc = db.lookup_intern_macro(id);
+    loc.kind.fragment_kind()
 }
