@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// let x: &i32 = &5;
     /// ```
     pub NEEDLESS_BORROW,
-    nursery,
+    style,
     "taking a reference that is going to be automatically dereferenced"
 }
 

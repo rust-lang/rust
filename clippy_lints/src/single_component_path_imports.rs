@@ -70,7 +70,7 @@ fn check_mod(cx: &EarlyContext<'_>, items: &[P<Item>]) {
     for item in items {
         track_uses(
             cx,
-            &item,
+            item,
             &mut imports_reused_with_self,
             &mut single_use_usages,
             &mut macros,
@@ -117,7 +117,7 @@ fn track_uses(
 
     match &item.kind {
         ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) => {
-            check_mod(cx, &items);
+            check_mod(cx, items);
         },
         ItemKind::MacroDef(MacroDef { macro_rules: true, .. }) => {
             macros.push(item.ident.name);

@@ -55,7 +55,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
         if self.abort {
             return;
         }
-        if let ExprKind::MethodCall(ref seg, _, ref args, _) = expr.kind {
+        if let ExprKind::MethodCall(seg, _, args, _) = expr.kind {
             if args.len() == 1 && match_var(&args[0], self.name) {
                 if seg.ident.name.as_str() == "capacity" {
                     self.abort = true;
@@ -79,5 +79,5 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
 }
 
 fn get_binding_name(arg: &Param<'_>) -> Option<Symbol> {
-    get_pat_name(&arg.pat)
+    get_pat_name(arg.pat)
 }
