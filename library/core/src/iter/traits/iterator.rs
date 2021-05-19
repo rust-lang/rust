@@ -1849,6 +1849,12 @@ pub trait Iterator {
     ///
     /// The relative order of partitioned items is not maintained.
     ///
+    /// # Current implementation
+    /// Current algorithms tries finding the first element for which the predicate evaluates
+    /// to false, and the last element for which it evaluates to true and repeatedly swaps them.
+    ///
+    /// Time Complexity: *O*(*N*)
+    ///
     /// See also [`is_partitioned()`] and [`partition()`].
     ///
     /// [`is_partitioned()`]: Iterator::is_partitioned
