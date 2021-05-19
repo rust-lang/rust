@@ -1,5 +1,3 @@
-#![feature(external_doc)]
-
 #![crate_name = "foo"]
 
 // @has foo/struct.Example.html
@@ -51,7 +49,7 @@ pub struct I;
 // @matches - '//div[@class="docblock"]/p' '(?m)a\nno whitespace\nJust some text.\Z'
 ///a
 ///no whitespace
-#[doc(include = "unindent.md")]
+#[doc = include_str!("unindent.md")]
 pub struct J;
 
 // @has foo/struct.K.html
@@ -60,5 +58,5 @@ pub struct J;
 ///
 ///    4 whitespaces!
 ///
-#[doc(include = "unindent.md")]
+#[doc = include_str!("unindent.md")]
 pub struct K;

@@ -705,7 +705,7 @@ impl CheckAttrVisitor<'tcx> {
         let mut is_valid = true;
 
         if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
-            for meta in list {
+            for meta in &list {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
                         sym::alias
@@ -757,7 +757,6 @@ impl CheckAttrVisitor<'tcx> {
                         | sym::html_no_source
                         | sym::html_playground_url
                         | sym::html_root_url
-                        | sym::include
                         | sym::inline
                         | sym::issue_tracker_base_url
                         | sym::keyword
@@ -791,6 +790,30 @@ impl CheckAttrVisitor<'tcx> {
                                             Applicability::MachineApplicable,
                                         );
                                         diag.note("`doc(spotlight)` is now a no-op");
+                                    }
+                                    if i_meta.has_name(sym::include) {
+                                        if let Some(value) = i_meta.value_str() {
+                                            // if there are multiple attributes, the suggestion would suggest deleting all of them, which is incorrect
+                                            let applicability = if list.len() == 1 {
+                                                Applicability::MachineApplicable
+                                            } else {
+                                                Applicability::MaybeIncorrect
+                                            };
+                                            let inner = if attr.style == AttrStyle::Inner {
+                                                "!"
+                                            } else {
+                                                ""
+                                            };
+                                            diag.span_suggestion(
+                                                attr.meta().unwrap().span,
+                                                "use `doc = include_str!` instead",
+                                                format!(
+                                                    "#{}[doc = include_str!(\"{}\")]",
+                                                    inner, value
+                                                ),
+                                                applicability,
+                                            );
+                                        }
                                     }
                                     diag.emit();
                                 },

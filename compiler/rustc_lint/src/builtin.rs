@@ -489,7 +489,7 @@ fn has_doc(sess: &Session, attr: &ast::Attribute) -> bool {
 
     if let Some(list) = attr.meta_item_list() {
         for meta in list {
-            if meta.has_name(sym::include) || meta.has_name(sym::hidden) {
+            if meta.has_name(sym::hidden) {
                 return true;
             }
         }
