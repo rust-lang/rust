@@ -1128,6 +1128,18 @@ fn main() {
     }
 
     #[test]
+    fn mismatched_types_in_or_patterns() {
+        check_diagnostics(
+            r#"
+fn main() {
+    match false { true | () => {} }
+    match (false,) { (true | (),) => {} }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn malformed_match_arm_tuple_enum_missing_pattern() {
         // We are testing to be sure we don't panic here when the match
         // arm `Either::B` is missing its pattern.

@@ -130,7 +130,10 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 }
                 Err(SyntheticSyntax) => continue,
             };
-            types.push((syntax_ptr, ty));
+            types.push((syntax_ptr.clone(), ty));
+            if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat) {
+                mismatches.push((syntax_ptr, mismatch));
+            }
         }
 
         for (expr, ty) in inference_result.type_of_expr.iter() {

@@ -42,7 +42,7 @@ impl<'a> InferenceContext<'a> {
         let could_unify = self.unify(&ty, &expected.ty);
         if !could_unify {
             self.result.type_mismatches.insert(
-                tgt_expr,
+                tgt_expr.into(),
                 TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
             );
         }
@@ -54,9 +54,10 @@ impl<'a> InferenceContext<'a> {
     pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, &expected);
         let ty = if !self.coerce(&ty, &expected.coercion_target()) {
-            self.result
-                .type_mismatches
-                .insert(expr, TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() });
+            self.result.type_mismatches.insert(
+                expr.into(),
+                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
+            );
             // Return actual type when type mismatch.
             // This is needed for diagnostic when return type mismatch.
             ty

@@ -137,8 +137,12 @@ pub struct InferenceResult {
     assoc_resolutions: FxHashMap<ExprOrPatId, AssocItemId>,
     diagnostics: Vec<InferenceDiagnostic>,
     pub type_of_expr: ArenaMap<ExprId, Ty>,
+    /// For each pattern record the type it resolves to.
+    ///
+    /// **Note**: When a pattern type is resolved it may still contain
+    /// unresolved or missing subpatterns or subpatterns of mismatched types.
     pub type_of_pat: ArenaMap<PatId, Ty>,
-    pub(super) type_mismatches: ArenaMap<ExprId, TypeMismatch>,
+    type_mismatches: FxHashMap<ExprOrPatId, TypeMismatch>,
     /// Interned Unknown to return references to.
     standard_types: InternedStandardTypes,
 }
@@ -163,7 +167,22 @@ impl InferenceResult {
         self.assoc_resolutions.get(&id.into()).copied()
     }
     pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch> {
-        self.type_mismatches.get(expr)
+        self.type_mismatches.get(&expr.into())
+    }
+    pub fn type_mismatch_for_pat(&self, pat: PatId) -> Option<&TypeMismatch> {
+        self.type_mismatches.get(&pat.into())
+    }
+    pub fn expr_type_mismatches(&self) -> impl Iterator<Item = (ExprId, &TypeMismatch)> {
+        self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
+            ExprOrPatId::ExprId(expr) => Some((expr, mismatch)),
+            _ => None,
+        })
+    }
+    pub fn pat_type_mismatches(&self) -> impl Iterator<Item = (PatId, &TypeMismatch)> {
+        self.type_mismatches.iter().filter_map(|(expr_or_pat, mismatch)| match *expr_or_pat {
+            ExprOrPatId::PatId(pat) => Some((pat, mismatch)),
+            _ => None,
+        })
     }
     pub fn add_diagnostics(
         &self,
