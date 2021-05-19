@@ -237,7 +237,7 @@ struct EagerCallInfo {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
-    pub(crate) def: MacroDefId,
+    pub def: MacroDefId,
     pub(crate) krate: CrateId,
     eager: Option<EagerCallInfo>,
     pub kind: MacroCallKind,

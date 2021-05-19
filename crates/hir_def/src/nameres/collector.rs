@@ -43,7 +43,7 @@ use crate::{
     UnresolvedMacro,
 };
 
-use super::proc_macro::ProcMacroDef;
+use super::proc_macro::{ProcMacroDef, ProcMacroKind};
 
 const GLOB_RECURSION_LIMIT: usize = 100;
 const EXPANSION_DEPTH_LIMIT: usize = 128;
@@ -101,6 +101,7 @@ pub(super) fn collect_defs(
         exports_proc_macros: false,
         from_glob_import: Default::default(),
         ignore_attrs_on: FxHashSet::default(),
+        derive_helpers_in_scope: FxHashMap::default(),
     };
     match block {
         Some(block) => {
@@ -247,6 +248,9 @@ struct DefCollector<'a> {
     exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
     ignore_attrs_on: FxHashSet<InFile<ModItem>>,
+    /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
+    /// attributes.
+    derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<Name>>,
 }
 
 impl DefCollector<'_> {
@@ -950,19 +954,33 @@ impl DefCollector<'_> {
         // First, fetch the raw expansion result for purposes of error reporting. This goes through
         // `macro_expand_error` to avoid depending on the full expansion result (to improve
         // incrementality).
+        let loc: MacroCallLoc = self.db.lookup_intern_macro(macro_call_id);
         let err = self.db.macro_expand_error(macro_call_id);
         if let Some(err) = err {
-            let loc: MacroCallLoc = self.db.lookup_intern_macro(macro_call_id);
-
             let diag = match err {
                 hir_expand::ExpandError::UnresolvedProcMacro => {
                     // Missing proc macros are non-fatal, so they are handled specially.
-                    DefDiagnostic::unresolved_proc_macro(module_id, loc.kind)
+                    DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone())
                 }
-                _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
+                _ => DefDiagnostic::macro_error(module_id, loc.kind.clone(), err.to_string()),
             };
 
             self.def_map.diagnostics.push(diag);
+        }
+
+        // If we've just resolved a derive, record its helper attributes.
+        if let MacroCallKind::Derive { ast_id, .. } = &loc.kind {
+            if loc.def.krate != self.def_map.krate {
+                let def_map = self.db.crate_def_map(loc.def.krate);
+                if let Some(def) = def_map.exported_proc_macros.get(&loc.def) {
+                    if let ProcMacroKind::CustomDerive { helpers } = &def.kind {
+                        self.derive_helpers_in_scope
+                            .entry(*ast_id)
+                            .or_default()
+                            .extend(helpers.iter().cloned());
+                    }
+                }
+            }
         }
 
         // Then, fetch and process the item tree. This will reuse the expansion result from above.
@@ -1120,9 +1138,8 @@ impl ModCollector<'_, '_> {
             }
 
             if let Err(()) = self.resolve_attributes(&attrs, item) {
-                // Do not process the item. It has at least one non-builtin attribute, which *must*
-                // resolve to a proc macro (or fail to resolve), so we'll never see this item during
-                // normal name resolution.
+                // Do not process the item. It has at least one non-builtin attribute, so the
+                // fixed-point algorithm is required to resolve the rest of them.
                 continue;
             }
 
@@ -1721,6 +1738,7 @@ mod tests {
             exports_proc_macros: false,
             from_glob_import: Default::default(),
             ignore_attrs_on: FxHashSet::default(),
+            derive_helpers_in_scope: FxHashMap::default(),
         };
         collector.seed_with_top_level();
         collector.collect();
