@@ -49,7 +49,7 @@ const DEPRECATED_LINT_LEVEL: &str = "none";
 const DEFAULT_LINT_LEVELS: [(&str, &str); 8] = [
     ("correctness", "deny"),
     ("restriction", "allow"),
-    ("style", "warm"),
+    ("style", "warn"),
     ("pedantic", "allow"),
     ("complexity", "warn"),
     ("perf", "warn"),
