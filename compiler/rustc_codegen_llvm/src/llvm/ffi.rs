@@ -54,7 +54,7 @@ pub enum CallConv {
 }
 
 /// LLVMRustLinkage
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum Linkage {
     ExternalLinkage = 0,
@@ -72,6 +72,7 @@ pub enum Linkage {
 
 // LLVMRustVisibility
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub enum Visibility {
     Default = 0,
     Hidden = 1,

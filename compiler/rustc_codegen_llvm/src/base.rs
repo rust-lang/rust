@@ -218,3 +218,27 @@ pub fn visibility_to_llvm(linkage: Visibility) -> llvm::Visibility {
         Visibility::Protected => llvm::Visibility::Protected,
     }
 }
+
+pub fn linkage_from_llvm(linkage: llvm::Linkage) -> Linkage {
+    match linkage {
+        llvm::Linkage::ExternalLinkage => Linkage::External,
+        llvm::Linkage::AvailableExternallyLinkage => Linkage::AvailableExternally,
+        llvm::Linkage::LinkOnceAnyLinkage => Linkage::LinkOnceAny,
+        llvm::Linkage::LinkOnceODRLinkage => Linkage::LinkOnceODR,
+        llvm::Linkage::WeakAnyLinkage => Linkage::WeakAny,
+        llvm::Linkage::WeakODRLinkage => Linkage::WeakODR,
+        llvm::Linkage::AppendingLinkage => Linkage::Appending,
+        llvm::Linkage::InternalLinkage => Linkage::Internal,
+        llvm::Linkage::PrivateLinkage => Linkage::Private,
+        llvm::Linkage::ExternalWeakLinkage => Linkage::ExternalWeak,
+        llvm::Linkage::CommonLinkage => Linkage::Common,
+    }
+}
+
+pub fn visibility_from_llvm(linkage: llvm::Visibility) -> Visibility {
+    match linkage {
+        llvm::Visibility::Default => Visibility::Default,
+        llvm::Visibility::Hidden => Visibility::Hidden,
+        llvm::Visibility::Protected => Visibility::Protected,
+    }
+}
