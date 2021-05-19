@@ -396,7 +396,7 @@ impl FromWithTcx<clean::Type> for Type {
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
-            QPath { name, self_type, trait_ } => Type::QualifiedPath {
+            QPath { name, self_type, trait_, .. } => Type::QualifiedPath {
                 name: name.to_string(),
                 self_type: Box::new((*self_type).into_tcx(tcx)),
                 trait_: Box::new((*trait_).into_tcx(tcx)),
