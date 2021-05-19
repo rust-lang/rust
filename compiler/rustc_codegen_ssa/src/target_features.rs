@@ -17,6 +17,8 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("neon", Some(sym::arm_target_feature)),
     ("crc", Some(sym::arm_target_feature)),
     ("crypto", Some(sym::arm_target_feature)),
+    ("aes", Some(sym::arm_target_feature)),
+    ("sha2", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -107,6 +109,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("jsconv", Some(sym::aarch64_target_feature)),
     // FEAT_FCMA
     ("fcma", Some(sym::aarch64_target_feature)),
+    // FEAT_AES
+    ("aes", Some(sym::aarch64_target_feature)),
     // FEAT_SHA1 & FEAT_SHA256
     ("sha2", Some(sym::aarch64_target_feature)),
     // FEAT_SHA512 & FEAT_SHA3
