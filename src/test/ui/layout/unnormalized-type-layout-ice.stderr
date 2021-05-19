@@ -1,0 +1,8 @@
+error: layout error: Unknown(<() as Foo>::Bar)
+  --> $DIR/unnormalized-type-layout-ice.rs:11:1
+   |
+LL | type Invalid = <() as Foo>::Bar;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

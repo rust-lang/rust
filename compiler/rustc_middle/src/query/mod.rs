@@ -1504,7 +1504,7 @@ rustc_queries! {
     /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
     query normalize_generic_arg_after_erasing_regions(
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
-    ) -> GenericArg<'tcx> {
+    ) -> Result<GenericArg<'tcx>, NoSolution> {
         desc { "normalizing `{}`", goal.value }
     }
 

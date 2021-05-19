@@ -18,7 +18,9 @@ crate fn provide(p: &mut Providers) {
             normalize_after_erasing_regions(tcx, goal)
         },
         normalize_mir_const_after_erasing_regions: |tcx, goal| {
-            normalize_after_erasing_regions(tcx, goal)
+            normalize_after_erasing_regions(tcx, goal).unwrap_or_else(|NoSolution| {
+                bug!("could not fully normalize mir const {:?}", goal.value)
+            })
         },
         ..*p
     };
@@ -28,12 +30,12 @@ crate fn provide(p: &mut Providers) {
 fn normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
     goal: ParamEnvAnd<'tcx, T>,
-) -> T {
+) -> Result<T, NoSolution> {
     let ParamEnvAnd { param_env, value } = goal;
     tcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::dummy();
-        match infcx.at(&cause, param_env).normalize(value) {
-            Ok(Normalized { value: normalized_value, obligations: normalized_obligations }) => {
+        infcx.at(&cause, param_env).normalize(value).map(
+            |Normalized { value: normalized_value, obligations: normalized_obligations }| {
                 // We don't care about the `obligations`; they are
                 // always only region relations, and we are about to
                 // erase those anyway:
@@ -50,9 +52,8 @@ fn normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Cop
                 let erased = infcx.tcx.erase_regions(resolved_value);
                 debug_assert!(!erased.needs_infer(), "{:?}", erased);
                 erased
-            }
-            Err(NoSolution) => bug!("could not fully normalize `{:?}`", value),
-        }
+            },
+        )
     })
 }
 

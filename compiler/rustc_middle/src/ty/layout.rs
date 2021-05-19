@@ -548,7 +548,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     data_ptr.valid_range = 1..=*data_ptr.valid_range.end();
                 }
 
-                let pointee = tcx.normalize_erasing_regions(param_env, pointee);
+                let pointee = tcx
+                    .try_normalize_erasing_regions(param_env, pointee)
+                    .map_err(|_| LayoutError::Unknown(ty))?;
                 if pointee.is_sized(tcx.at(DUMMY_SP), param_env) {
                     return Ok(tcx.intern_layout(Layout::scalar(self, data_ptr)));
                 }
@@ -574,7 +576,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             // Arrays and slices.
             ty::Array(element, mut count) => {
                 if count.has_projections() {
-                    count = tcx.normalize_erasing_regions(param_env, count);
+                    count = tcx
+                        .try_normalize_erasing_regions(param_env, count)
+                        .map_err(|_| LayoutError::Unknown(ty))?;
                     if count.has_projections() {
                         return Err(LayoutError::Unknown(ty));
                     }
@@ -1350,7 +1354,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             // Types with no meaningful known layout.
             ty::Projection(_) | ty::Opaque(..) => {
-                let normalized = tcx.normalize_erasing_regions(param_env, ty);
+                let normalized = tcx
+                    .try_normalize_erasing_regions(param_env, ty)
+                    .map_err(|_| LayoutError::Unknown(ty))?;
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
                 }
@@ -1951,7 +1957,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::Projection(_) | ty::Opaque(..) => {
-                let normalized = tcx.normalize_erasing_regions(param_env, ty);
+                let normalized = tcx
+                    .try_normalize_erasing_regions(param_env, ty)
+                    .map_err(|_| LayoutError::Unknown(ty))?;
                 if ty == normalized {
                     Err(err)
                 } else {
@@ -2022,7 +2030,10 @@ impl<'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'tcx>> {
     /// executes in "reveal all" mode.
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
-        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
+        let ty = self
+            .tcx
+            .try_normalize_erasing_regions(param_env, ty)
+            .map_err(|_| LayoutError::Unknown(ty))?;
         let layout = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyAndLayout { ty, layout };
 
@@ -2046,7 +2057,10 @@ impl LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'tcx>> {
     /// executes in "reveal all" mode.
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyAndLayout {
         let param_env = self.param_env.with_reveal_all_normalized(*self.tcx);
-        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
+        let ty = self
+            .tcx
+            .try_normalize_erasing_regions(param_env, ty)
+            .map_err(|_| LayoutError::Unknown(ty))?;
         let layout = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyAndLayout { ty, layout };
 
