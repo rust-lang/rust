@@ -156,6 +156,7 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("aarch64", "rcpc2") => "rcpc-immo",
         ("aarch64", "dpb") => "ccpp",
         ("aarch64", "dpb2") => "ccdp",
+        ("aarch64", "frintts") => "fptoint",
         ("aarch64", "fcma") => "complxnum",
         (_, s) => s,
     }

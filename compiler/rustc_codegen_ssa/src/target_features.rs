@@ -88,7 +88,7 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // FEAT_SVE2_BitPerm
     ("sve2-bitperm", Some(sym::aarch64_target_feature)),
     // FEAT_FRINTTS
-    ("fptoint", Some(sym::aarch64_target_feature)),
+    ("frintts", Some(sym::aarch64_target_feature)),
     // FEAT_I8MM
     // ("i8mm", Some(sym::aarch64_target_feature)),
     // FEAT_F32MM
