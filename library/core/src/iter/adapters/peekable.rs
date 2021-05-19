@@ -1,4 +1,4 @@
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{adapters::SourceIter, FusedIterator, TrustedLen};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator with a `peek()` that returns an optional reference to the next
@@ -356,6 +356,3 @@ where
         unsafe { SourceIter::as_inner(&mut self.iter) }
     }
 }
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: InPlaceIterable> InPlaceIterable for Peekable<I> {}
