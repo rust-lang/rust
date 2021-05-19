@@ -329,7 +329,7 @@ fn macro_expand_with_arg(
             );
         } else {
             return ExpandResult {
-                value: Some(eager.expansion.clone()),
+                value: Some(eager.arg_or_expansion.clone()),
                 // FIXME: There could be errors here!
                 err: None,
             };

@@ -625,7 +625,7 @@ mod tests {
                     def,
                     krate,
                     eager: Some(EagerCallInfo {
-                        expansion: Arc::new(parsed_args.clone()),
+                        arg_or_expansion: Arc::new(parsed_args.clone()),
                         included_file: None,
                     }),
                     kind: MacroCallKind::FnLike { ast_id: call_id, fragment: FragmentKind::Expr },
@@ -636,7 +636,7 @@ mod tests {
                     def,
                     krate,
                     eager: Some(EagerCallInfo {
-                        expansion: Arc::new(expanded.subtree),
+                        arg_or_expansion: Arc::new(expanded.subtree),
                         included_file: expanded.included_file,
                     }),
                     kind: MacroCallKind::FnLike { ast_id: call_id, fragment: expanded.fragment },

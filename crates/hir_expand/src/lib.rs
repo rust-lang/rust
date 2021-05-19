@@ -231,7 +231,7 @@ pub enum MacroDefKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EagerCallInfo {
     /// NOTE: This can be *either* the expansion result, *or* the argument to the eager macro!
-    expansion: Arc<tt::Subtree>,
+    arg_or_expansion: Arc<tt::Subtree>,
     included_file: Option<FileId>,
 }
 
