@@ -146,7 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let mut alloc = this
             .memory
-            .get_mut(sptr, Size::from_bytes(string_length), Align::from_bytes(2).unwrap())?
+            .get_mut(sptr, size2 * string_length, Align::from_bytes(2).unwrap())?
             .unwrap(); // not a ZST, so we will get a result
         for (offset, wchar) in u16_vec.into_iter().chain(iter::once(0x0000)).enumerate() {
             let offset = u64::try_from(offset).unwrap();
