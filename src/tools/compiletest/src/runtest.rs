@@ -2327,7 +2327,11 @@ impl<'test> TestCx<'test> {
         // For now, though…
         if let Some(rev) = self.revision {
             let prefixes = format!("CHECK,{}", rev);
-            filecheck.args(&["--check-prefixes", &prefixes]);
+            if self.config.llvm_version.unwrap_or(0) >= 130000 {
+                filecheck.args(&["--allow-unused-prefixes", "--check-prefixes", &prefixes]);
+            } else {
+                filecheck.args(&["--check-prefixes", &prefixes]);
+            }
         }
         self.compose_and_run(filecheck, "", None, None)
     }

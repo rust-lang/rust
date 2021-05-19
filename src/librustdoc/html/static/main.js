@@ -425,9 +425,9 @@ function hideThemeButtonState() {
     function handleEscape(ev) {
         var help = getHelpElement(false);
         var search = searchState.outputElement();
-        if (!hasClass(help, "hidden")) {
+        if (help && !hasClass(help, "hidden")) {
             displayHelp(false, ev, help);
-        } else if (!hasClass(search, "hidden")) {
+        } else if (search && !hasClass(search, "hidden")) {
             searchState.clearInputTimeout();
             ev.preventDefault();
             searchState.hideResults(search);

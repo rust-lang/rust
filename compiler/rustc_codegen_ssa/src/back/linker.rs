@@ -281,8 +281,11 @@ impl<'a> Linker for GccLinker<'a> {
                 }
             }
             LinkOutputKind::DynamicPicExe => {
-                // `-pie` works for both gcc wrapper and ld.
-                self.cmd.arg("-pie");
+                // noop on windows w/ gcc & ld, error w/ lld
+                if !self.sess.target.is_like_windows {
+                    // `-pie` works for both gcc wrapper and ld.
+                    self.cmd.arg("-pie");
+                }
             }
             LinkOutputKind::StaticNoPicExe => {
                 // `-static` works for both gcc wrapper and ld.
@@ -347,7 +350,7 @@ impl<'a> Linker for GccLinker<'a> {
                 // has -needed-l{} / -needed_library {}
                 // but we have no way to detect that here.
                 self.sess.warn("`as-needed` modifier not implemented yet for ld64");
-            } else if self.sess.target.linker_is_gnu {
+            } else if self.sess.target.linker_is_gnu && !self.sess.target.is_like_windows {
                 self.linker_arg("--no-as-needed");
             } else {
                 self.sess.warn("`as-needed` modifier not supported for current linker");
@@ -358,7 +361,7 @@ impl<'a> Linker for GccLinker<'a> {
         if !as_needed {
             if self.sess.target.is_like_osx {
                 // See above FIXME comment
-            } else if self.sess.target.linker_is_gnu {
+            } else if self.sess.target.linker_is_gnu && !self.sess.target.is_like_windows {
                 self.linker_arg("--as-needed");
             }
         }
@@ -469,7 +472,7 @@ impl<'a> Linker for GccLinker<'a> {
         // eliminate the metadata. If we're building an executable, however,
         // --gc-sections drops the size of hello world from 1.8MB to 597K, a 67%
         // reduction.
-        } else if !keep_metadata {
+        } else if self.sess.target.linker_is_gnu && !keep_metadata {
             self.linker_arg("--gc-sections");
         }
     }
@@ -477,9 +480,7 @@ impl<'a> Linker for GccLinker<'a> {
     fn no_gc_sections(&mut self) {
         if self.sess.target.is_like_osx {
             self.linker_arg("-no_dead_strip");
-        } else if self.sess.target.is_like_solaris {
-            self.linker_arg("-zrecord");
-        } else {
+        } else if self.sess.target.linker_is_gnu {
             self.linker_arg("--no-gc-sections");
         }
     }
@@ -692,7 +693,7 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn add_as_needed(&mut self) {
-        if self.sess.target.linker_is_gnu {
+        if self.sess.target.linker_is_gnu && !self.sess.target.is_like_windows {
             self.linker_arg("--as-needed");
         } else if self.sess.target.is_like_solaris {
             // -z ignore is the Solaris equivalent to the GNU ld --as-needed option

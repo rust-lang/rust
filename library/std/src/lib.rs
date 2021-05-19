@@ -268,7 +268,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(extend_one)]
-#![feature(extended_key_value_attributes)]
+#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
 #![feature(gen_future)]
