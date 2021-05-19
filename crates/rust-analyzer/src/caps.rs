@@ -122,6 +122,7 @@ pub fn server_capabilities(client_caps: &ClientCapabilities) -> ServerCapabiliti
             "runnables": {
                 "kinds": [ "cargo" ],
             },
+            "workspaceSymbolScopeKindFiltering": true,
         })),
     }
 }
