@@ -60,13 +60,13 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
 // TypeFoldable implementations.
 
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        traits::Obligation {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(traits::Obligation {
             cause: self.cause,
             recursion_depth: self.recursion_depth,
-            predicate: self.predicate.fold_with(folder),
-            param_env: self.param_env.fold_with(folder),
-        }
+            predicate: self.predicate.fold_with(folder)?,
+            param_env: self.param_env.fold_with(folder)?,
+        })
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
