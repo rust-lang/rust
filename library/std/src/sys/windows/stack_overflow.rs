@@ -1,7 +1,7 @@
 #![cfg_attr(test, allow(dead_code))]
 
 use crate::sys::c;
-use crate::sys_common::util::report_overflow;
+use crate::thread;
 
 pub struct Handler;
 
@@ -24,7 +24,10 @@ extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -
         let code = rec.ExceptionCode;
 
         if code == c::EXCEPTION_STACK_OVERFLOW {
-            report_overflow();
+            rtprintpanic!(
+                "\nthread '{}' has overflowed its stack\n",
+                thread::current().name().unwrap_or("<unknown>")
+            );
         }
         c::EXCEPTION_CONTINUE_SEARCH
     }
