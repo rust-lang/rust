@@ -368,7 +368,7 @@ mod desc {
     pub const parse_target_feature: &str = parse_string;
     pub const parse_wasi_exec_model: &str = "either `command` or `reactor`";
     pub const parse_split_debuginfo: &str =
-        "one of supported split-debuginfo modes (`off` or `dsymutil`)";
+        "one of supported split-debuginfo modes (`off`, `packed`, or `unpacked`)";
 }
 
 mod parse {
