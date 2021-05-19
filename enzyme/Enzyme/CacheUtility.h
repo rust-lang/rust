@@ -169,6 +169,8 @@ public:
     return false;
   }
 
+  llvm::AllocaInst *getDynamicLoopLimit(llvm::Loop *L);
+
   /// Print out all currently cached values
   void dumpScope() {
     llvm::errs() << "scope:\n";

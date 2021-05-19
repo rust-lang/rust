@@ -411,6 +411,37 @@ void CanonicalizeLatches(const Loop *L, BasicBlock *Header,
   }
 }
 
+llvm::AllocaInst *CacheUtility::getDynamicLoopLimit(llvm::Loop *L) {
+  assert(L);
+  assert(loopContexts.find(L) != loopContexts.end());
+  auto &found = loopContexts[L];
+  assert(found.dynamic);
+  if (found.trueLimit)
+    return cast<AllocaInst>(found.trueLimit);
+
+  LimitContext lctx(/*ReverseLimit*/ false, found.preheader);
+  AllocaInst *LimitVar =
+      createCacheForScope(lctx, found.var->getType(), "loopLimit",
+                          /*shouldfree*/ true);
+
+  for (auto ExitBlock : found.exitBlocks) {
+    IRBuilder<> B(&ExitBlock->front());
+    auto Limit = B.CreatePHI(found.var->getType(), 1);
+
+    for (BasicBlock *Pred : predecessors(ExitBlock)) {
+      if (LI.getLoopFor(Pred) == L) {
+        Limit->addIncoming(found.var, Pred);
+      } else {
+        Limit->addIncoming(UndefValue::get(found.var->getType()), Pred);
+      }
+    }
+
+    storeInstructionInCache(lctx, Limit, LimitVar);
+  }
+  found.trueLimit = LimitVar;
+  return LimitVar;
+}
+
 bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
                               bool ReverseLimit) {
   Loop *L = LI.getLoopFor(BB);
@@ -585,27 +616,14 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
                 L->getHeader()->getParent()->getName(), "lim: ", *Limit,
                 " maxlim: ", *MaxIterations);
 
-    LimitContext lctx(ReverseLimit, ReverseLimit ? loopContexts[L].preheader
-                                                 : &newFunc->getEntryBlock());
-    LimitVar = createCacheForScope(lctx, CanonicalIV->getType(), "loopLimit",
-                                   /*shouldfree*/ true);
-
-    for (auto ExitBlock : loopContexts[L].exitBlocks) {
-      IRBuilder<> B(&ExitBlock->front());
-      auto Limit = B.CreatePHI(CanonicalIV->getType(), 1);
-
-      for (BasicBlock *Pred : predecessors(ExitBlock)) {
-        if (LI.getLoopFor(Pred) == L) {
-          Limit->addIncoming(CanonicalIV, Pred);
-        } else {
-          Limit->addIncoming(UndefValue::get(CanonicalIV->getType()), Pred);
-        }
-      }
-
-      storeInstructionInCache(lctx, Limit, cast<AllocaInst>(LimitVar));
-    }
     loopContexts[L].dynamic = true;
     loopContexts[L].maxLimit = nullptr;
+
+    if (assumeDynamicLoopOfSizeOne(L)) {
+      LimitVar = nullptr;
+    } else {
+      LimitVar = getDynamicLoopLimit(L);
+    }
   }
   loopContexts[L].trueLimit = LimitVar;
   if (EfficientMaxCache && loopContexts[L].dynamic &&

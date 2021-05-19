@@ -632,10 +632,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
           LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                             lc.preheader);
-          Value *lim =
-              lookupValueFromCache(/*forwardPass*/ false, BuilderM, lctx,
-                                   cast<AllocaInst>(lc.trueLimit),
-                                   /*isi1*/ false);
+          Value *lim = lookupValueFromCache(
+              /*forwardPass*/ false, BuilderM, lctx,
+              getDynamicLoopLimit(LI.getLoopFor(lc.header)),
+              /*isi1*/ false);
           unwrap_cache[BuilderM.GetInsertBlock()][idx] = lim;
           return lim;
         }
@@ -1568,9 +1568,10 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
         assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
         LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                           lc.preheader);
-        lim = lookupValueFromCache(/*forwardPass*/ false, tbuild, lctx,
-                                   cast<AllocaInst>(lc.trueLimit),
-                                   /*isi1*/ false);
+        lim =
+            lookupValueFromCache(/*forwardPass*/ false, tbuild, lctx,
+                                 getDynamicLoopLimit(LI.getLoopFor(lc.header)),
+                                 /*isi1*/ false);
       } else {
         lim = lookupM(lc.trueLimit, tbuild);
       }
@@ -2902,9 +2903,10 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
         assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
         LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                           lc.preheader);
-        lim = lookupValueFromCache(/*forwardPass*/ false, BuilderM, lctx,
-                                   cast<AllocaInst>(lc.trueLimit),
-                                   /*isi1*/ false);
+        lim =
+            lookupValueFromCache(/*forwardPass*/ false, BuilderM, lctx,
+                                 getDynamicLoopLimit(LI.getLoopFor(lc.header)),
+                                 /*isi1*/ false);
       } else {
         lim = lookupM(lc.trueLimit, BuilderM);
       }
