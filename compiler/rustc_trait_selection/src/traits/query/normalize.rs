@@ -61,7 +61,6 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             cause: self.cause,
             param_env: self.param_env,
             obligations: vec![],
-            error: false,
             cache: SsoHashMap::new(),
             anon_depth: 0,
             universes: vec![],
@@ -88,7 +87,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
                 normalizer.universes.extend((0..max_visitor.escaping).map(|_| None));
             }
         }
-        let result = value.fold_with(&mut normalizer).into_ok();
+        let result = value.fold_with(&mut normalizer);
         info!(
             "normalize::<{}>: result={:?} with {} obligations",
             std::any::type_name::<T>(),
@@ -100,11 +99,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
             std::any::type_name::<T>(),
             normalizer.obligations,
         );
-        if normalizer.error {
-            Err(NoSolution)
-        } else {
-            Ok(Normalized { value: result, obligations: normalizer.obligations })
-        }
+        result.map(|value| Normalized { value, obligations: normalizer.obligations })
     }
 }
 
@@ -171,12 +166,13 @@ struct QueryNormalizer<'cx, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
-    error: bool,
     anon_depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,
 }
 
 impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
+    type Error = NoSolution;
+
     fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -262,39 +258,22 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-                match tcx.normalize_projection_ty(c_data) {
-                    Ok(result) => {
-                        // We don't expect ambiguity.
-                        if result.is_ambiguous() {
-                            self.error = true;
-                            return ty.super_fold_with(self);
-                        }
-
-                        match self.infcx.instantiate_query_response_and_region_obligations(
-                            self.cause,
-                            self.param_env,
-                            &orig_values,
-                            result,
-                        ) {
-                            Ok(InferOk { value: result, obligations }) => {
-                                debug!("QueryNormalizer: result = {:#?}", result);
-                                debug!("QueryNormalizer: obligations = {:#?}", obligations);
-                                self.obligations.extend(obligations);
-                                Ok(result.normalized_ty)
-                            }
-
-                            Err(_) => {
-                                self.error = true;
-                                ty.super_fold_with(self)
-                            }
-                        }
-                    }
-
-                    Err(NoSolution) => {
-                        self.error = true;
-                        ty.super_fold_with(self)
-                    }
+                let result = tcx.normalize_projection_ty(c_data)?;
+                // We don't expect ambiguity.
+                if result.is_ambiguous() {
+                    return Err(NoSolution);
                 }
+                let InferOk { value: result, obligations } =
+                    self.infcx.instantiate_query_response_and_region_obligations(
+                        self.cause,
+                        self.param_env,
+                        &orig_values,
+                        result,
+                    )?;
+                debug!("QueryNormalizer: result = {:#?}", result);
+                debug!("QueryNormalizer: obligations = {:#?}", obligations);
+                self.obligations.extend(obligations);
+                Ok(result.normalized_ty)
             }
 
             ty::Projection(data) => {
@@ -318,43 +297,29 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                     .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
-                match tcx.normalize_projection_ty(c_data) {
-                    Ok(result) => {
-                        // We don't expect ambiguity.
-                        if result.is_ambiguous() {
-                            self.error = true;
-                            return ty.super_fold_with(self);
-                        }
-                        match self.infcx.instantiate_query_response_and_region_obligations(
-                            self.cause,
-                            self.param_env,
-                            &orig_values,
-                            result,
-                        ) {
-                            Ok(InferOk { value: result, obligations }) => {
-                                debug!("QueryNormalizer: result = {:#?}", result);
-                                debug!("QueryNormalizer: obligations = {:#?}", obligations);
-                                self.obligations.extend(obligations);
-                                Ok(crate::traits::project::PlaceholderReplacer::replace_placeholders(
-                                    infcx,
-                                    mapped_regions,
-                                    mapped_types,
-                                    mapped_consts,
-                                    &self.universes,
-                                    result.normalized_ty,
-                                ))
-                            }
-                            Err(_) => {
-                                self.error = true;
-                                ty.super_fold_with(self)
-                            }
-                        }
-                    }
-                    Err(NoSolution) => {
-                        self.error = true;
-                        ty.super_fold_with(self)
-                    }
+                let result = tcx.normalize_projection_ty(c_data)?;
+                // We don't expect ambiguity.
+                if result.is_ambiguous() {
+                    return Err(NoSolution);
                 }
+                let InferOk { value: result, obligations } =
+                    self.infcx.instantiate_query_response_and_region_obligations(
+                        self.cause,
+                        self.param_env,
+                        &orig_values,
+                        result,
+                    )?;
+                debug!("QueryNormalizer: result = {:#?}", result);
+                debug!("QueryNormalizer: obligations = {:#?}", obligations);
+                self.obligations.extend(obligations);
+                Ok(crate::traits::project::PlaceholderReplacer::replace_placeholders(
+                    infcx,
+                    mapped_regions,
+                    mapped_types,
+                    mapped_consts,
+                    &self.universes,
+                    result.normalized_ty,
+                ))
             }
 
             _ => ty.super_fold_with(self),

@@ -181,22 +181,18 @@ pub fn fully_resolve<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>, value: T) -> Fixu
 where
     T: TypeFoldable<'tcx>,
 {
-    let mut full_resolver = FullTypeResolver { infcx, err: None };
-    let result = value.fold_with(&mut full_resolver).into_ok();
-    match full_resolver.err {
-        None => Ok(result),
-        Some(e) => Err(e),
-    }
+    value.fold_with(&mut FullTypeResolver { infcx })
 }
 
 // N.B. This type is not public because the protocol around checking the
 // `err` field is not enforceable otherwise.
 struct FullTypeResolver<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
-    err: Option<FixupError<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
+    type Error = FixupError<'tcx>;
+
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
@@ -207,18 +203,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         } else {
             let t = self.infcx.shallow_resolve(t);
             match *t.kind() {
-                ty::Infer(ty::TyVar(vid)) => {
-                    self.err = Some(FixupError::UnresolvedTy(vid));
-                    Ok(self.tcx().ty_error())
-                }
-                ty::Infer(ty::IntVar(vid)) => {
-                    self.err = Some(FixupError::UnresolvedIntTy(vid));
-                    Ok(self.tcx().ty_error())
-                }
-                ty::Infer(ty::FloatVar(vid)) => {
-                    self.err = Some(FixupError::UnresolvedFloatTy(vid));
-                    Ok(self.tcx().ty_error())
-                }
+                ty::Infer(ty::TyVar(vid)) => Err(FixupError::UnresolvedTy(vid)),
+                ty::Infer(ty::IntVar(vid)) => Err(FixupError::UnresolvedIntTy(vid)),
+                ty::Infer(ty::FloatVar(vid)) => Err(FixupError::UnresolvedFloatTy(vid)),
                 ty::Infer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }
@@ -250,8 +237,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             let c = self.infcx.shallow_resolve(c);
             match c.val {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
-                    self.err = Some(FixupError::UnresolvedConst(vid));
-                    return Ok(self.tcx().const_error(c.ty));
+                    return Err(FixupError::UnresolvedConst(vid));
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);
