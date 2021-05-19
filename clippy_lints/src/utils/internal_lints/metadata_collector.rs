@@ -37,10 +37,28 @@ const BLACK_LISTED_LINTS: [&str; 3] = ["lint_author", "deep_code_inspection", "i
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
 /// `clippy::all`
 const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
-/// Lints within this group will be excluded from the collection
-const EXCLUDED_LINT_GROUPS: [&str; 1] = ["clippy::internal"];
+/// Lints within this group will be excluded from the collection. These groups
+/// have to be defined without the `clippy::` prefix.
+const EXCLUDED_LINT_GROUPS: [&str; 1] = ["internal"];
 /// Collected deprecated lint will be assigned to this group in the JSON output
-const DEPRECATED_LINT_GROUP_STR: &str = "DEPRECATED";
+const DEPRECATED_LINT_GROUP_STR: &str = "deprecated";
+/// This is the lint level for deprecated lints that will be displayed in the lint list
+const DEPRECATED_LINT_LEVEL: &str = "none";
+/// This array holds Clippy's lint groups with their corresponding default lint level. The
+/// lint level for deprecated lints is set in `DEPRECATED_LINT_LEVEL`.
+const DEFAULT_LINT_LEVELS: [(&str, &str); 8] = [
+    ("correctness", "deny"),
+    ("restriction", "allow"),
+    ("style", "warm"),
+    ("pedantic", "allow"),
+    ("complexity", "warn"),
+    ("perf", "warn"),
+    ("cargo", "allow"),
+    ("nursery", "allow"),
+];
+/// This prefix is in front of the lint groups in the lint store. The prefix will be trimmed
+/// to only keep the actual lint group in the output.
+const CLIPPY_LINT_GROUP_PREFIX: &str = "clippy::";
 
 /// This template will be used to format the configuration section in the lint documentation.
 /// The `configurations` parameter will be replaced with one or multiple formatted
@@ -188,6 +206,7 @@ struct LintMetadata {
     id: String,
     id_span: SerializableSpan,
     group: String,
+    level: &'static str,
     docs: String,
     /// This field is only used in the output and will only be
     /// mapped shortly before the actual output.
@@ -195,11 +214,12 @@ struct LintMetadata {
 }
 
 impl LintMetadata {
-    fn new(id: String, id_span: SerializableSpan, group: String, docs: String) -> Self {
+    fn new(id: String, id_span: SerializableSpan, group: String, level: &'static str, docs: String) -> Self {
         Self {
             id,
             id_span,
             group,
+            level,
             docs,
             applicability: None,
         }
@@ -368,7 +388,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
                 if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // metadata extraction
-                if let Some(group) = get_lint_group_or_lint(cx, &lint_name, item);
+                if let Some((group, level)) = get_lint_group_and_level_or_lint(cx, &lint_name, item);
                 if let Some(mut docs) = extract_attr_docs_or_lint(cx, item);
                 then {
                     if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
@@ -379,6 +399,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                         lint_name,
                         SerializableSpan::from_item(cx, item),
                         group,
+                        level,
                         docs,
                     ));
                 }
@@ -396,6 +417,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                         lint_name,
                         SerializableSpan::from_item(cx, item),
                         DEPRECATED_LINT_GROUP_STR.to_string(),
+                        DEPRECATED_LINT_LEVEL,
                         docs,
                     ));
                 }
@@ -475,15 +497,32 @@ fn extract_attr_docs(cx: &LateContext<'_>, item: &Item<'_>) -> Option<String> {
         })
 }
 
-fn get_lint_group_or_lint(cx: &LateContext<'_>, lint_name: &str, item: &'hir Item<'_>) -> Option<String> {
+fn get_lint_group_and_level_or_lint(
+    cx: &LateContext<'_>,
+    lint_name: &str,
+    item: &'hir Item<'_>,
+) -> Option<(String, &'static str)> {
     let result = cx.lint_store.check_lint_name(lint_name, Some(sym::clippy));
     if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
-        get_lint_group(cx, lint_lst[0])
-            .or_else(|| {
-                lint_collection_error_item(cx, item, "Unable to determine lint group");
+        if let Some(group) = get_lint_group(cx, lint_lst[0]) {
+            if EXCLUDED_LINT_GROUPS.contains(&group.as_str()) {
+                return None;
+            }
+
+            if let Some(level) = get_lint_level_from_group(&group) {
+                Some((group, level))
+            } else {
+                lint_collection_error_item(
+                    cx,
+                    item,
+                    &format!("Unable to determine lint level for found group `{}`", group),
+                );
                 None
-            })
-            .filter(|group| !EXCLUDED_LINT_GROUPS.contains(&group.as_str()))
+            }
+        } else {
+            lint_collection_error_item(cx, item, "Unable to determine lint group");
+            None
+        }
     } else {
         lint_collection_error_item(cx, item, "Unable to find lint in lint_store");
         None
@@ -496,12 +535,19 @@ fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
             continue;
         }
 
-        if lints.iter().any(|x| *x == lint_id) {
-            return Some((*group_name).to_string());
+        if lints.iter().any(|group_lint| *group_lint == lint_id) {
+            let group = group_name.strip_prefix(CLIPPY_LINT_GROUP_PREFIX).unwrap_or(group_name);
+            return Some((*group).to_string());
         }
     }
 
     None
+}
+
+fn get_lint_level_from_group(lint_group: &str) -> Option<&'static str> {
+    DEFAULT_LINT_LEVELS
+        .iter()
+        .find_map(|(group_name, group_level)| (*group_name == lint_group).then(|| *group_level))
 }
 
 fn is_deprecated_lint(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
