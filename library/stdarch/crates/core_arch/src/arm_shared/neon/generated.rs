@@ -13070,7 +13070,7 @@ pub unsafe fn vset_lane_s8<const LANE: i32>(a: i8, b: int8x8_t) -> int8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t {
-    static_assert_imm4!(LANE);
+    static_assert_imm2!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13082,7 +13082,7 @@ pub unsafe fn vset_lane_s16<const LANE: i32>(a: i16, b: int16x4_t) -> int16x4_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t {
-    static_assert_imm5!(LANE);
+    static_assert_imm1!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13094,7 +13094,7 @@ pub unsafe fn vset_lane_s32<const LANE: i32>(a: i32, b: int32x2_t) -> int32x2_t 
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_s64<const LANE: i32>(a: i64, b: int64x1_t) -> int64x1_t {
-    static_assert_imm6!(LANE);
+    static_assert!(LANE : i32 where LANE == 0);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13118,7 +13118,7 @@ pub unsafe fn vset_lane_u8<const LANE: i32>(a: u8, b: uint8x8_t) -> uint8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_t {
-    static_assert_imm4!(LANE);
+    static_assert_imm2!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13130,7 +13130,7 @@ pub unsafe fn vset_lane_u16<const LANE: i32>(a: u16, b: uint16x4_t) -> uint16x4_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_t {
-    static_assert_imm5!(LANE);
+    static_assert_imm1!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13142,7 +13142,7 @@ pub unsafe fn vset_lane_u32<const LANE: i32>(a: u32, b: uint32x2_t) -> uint32x2_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_u64<const LANE: i32>(a: u64, b: uint64x1_t) -> uint64x1_t {
-    static_assert_imm6!(LANE);
+    static_assert!(LANE : i32 where LANE == 0);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13166,7 +13166,7 @@ pub unsafe fn vset_lane_p8<const LANE: i32>(a: p8, b: poly8x8_t) -> poly8x8_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_t {
-    static_assert_imm4!(LANE);
+    static_assert_imm2!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13178,7 +13178,7 @@ pub unsafe fn vset_lane_p16<const LANE: i32>(a: p16, b: poly16x4_t) -> poly16x4_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_t {
-    static_assert_imm6!(LANE);
+    static_assert!(LANE : i32 where LANE == 0);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13190,7 +13190,7 @@ pub unsafe fn vset_lane_p64<const LANE: i32>(a: p64, b: poly64x1_t) -> poly64x1_
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
-    static_assert_imm3!(LANE);
+    static_assert_imm4!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13202,7 +13202,7 @@ pub unsafe fn vsetq_lane_s8<const LANE: i32>(a: i8, b: int8x16_t) -> int8x16_t {
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t {
-    static_assert_imm4!(LANE);
+    static_assert_imm3!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13214,7 +13214,7 @@ pub unsafe fn vsetq_lane_s16<const LANE: i32>(a: i16, b: int16x8_t) -> int16x8_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t {
-    static_assert_imm5!(LANE);
+    static_assert_imm2!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13226,7 +13226,7 @@ pub unsafe fn vsetq_lane_s32<const LANE: i32>(a: i32, b: int32x4_t) -> int32x4_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t {
-    static_assert_imm6!(LANE);
+    static_assert_imm1!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13238,7 +13238,7 @@ pub unsafe fn vsetq_lane_s64<const LANE: i32>(a: i64, b: int64x2_t) -> int64x2_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t {
-    static_assert_imm3!(LANE);
+    static_assert_imm4!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13250,42 +13250,6 @@ pub unsafe fn vsetq_lane_u8<const LANE: i32>(a: u8, b: uint8x16_t) -> uint8x16_t
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsetq_lane_u16<const LANE: i32>(a: u16, b: uint16x8_t) -> uint16x8_t {
-    static_assert_imm4!(LANE);
-    simd_insert(b, LANE as u32, a)
-}
-
-/// Insert vector element from another vector element
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
-#[rustc_legacy_const_generics(2)]
-pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4_t {
-    static_assert_imm5!(LANE);
-    simd_insert(b, LANE as u32, a)
-}
-
-/// Insert vector element from another vector element
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
-#[rustc_legacy_const_generics(2)]
-pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2_t {
-    static_assert_imm6!(LANE);
-    simd_insert(b, LANE as u32, a)
-}
-
-/// Insert vector element from another vector element
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
-#[rustc_legacy_const_generics(2)]
-pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t {
     static_assert_imm3!(LANE);
     simd_insert(b, LANE as u32, a)
 }
@@ -13297,8 +13261,44 @@ pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
-pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8_t {
+pub unsafe fn vsetq_lane_u32<const LANE: i32>(a: u32, b: uint32x4_t) -> uint32x4_t {
+    static_assert_imm2!(LANE);
+    simd_insert(b, LANE as u32, a)
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsetq_lane_u64<const LANE: i32>(a: u64, b: uint64x2_t) -> uint64x2_t {
+    static_assert_imm1!(LANE);
+    simd_insert(b, LANE as u32, a)
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsetq_lane_p8<const LANE: i32>(a: p8, b: poly8x16_t) -> poly8x16_t {
     static_assert_imm4!(LANE);
+    simd_insert(b, LANE as u32, a)
+}
+
+/// Insert vector element from another vector element
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8_t {
+    static_assert_imm3!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -13310,7 +13310,7 @@ pub unsafe fn vsetq_lane_p16<const LANE: i32>(a: p16, b: poly16x8_t) -> poly16x8
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(nop, LANE = 0))]
 #[rustc_legacy_const_generics(2)]
 pub unsafe fn vsetq_lane_p64<const LANE: i32>(a: p64, b: poly64x2_t) -> poly64x2_t {
-    static_assert_imm6!(LANE);
+    static_assert_imm1!(LANE);
     simd_insert(b, LANE as u32, a)
 }
 
@@ -21006,144 +21006,144 @@ mod test {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_s8() {
-        let a: i8x8 = i8x8::new(-128, 0x7F, 2, 3, 4, 5, 6, 7);
+        let a: i8x8 = i8x8::new(2, -128, 0x7F, 3, 4, 5, 6, 7);
         let b: i8x8 = i8x8::new(2, 2, 2, 2, 2, 2, 2, 2);
-        let e: i8x8 = i8x8::new(-128, 0x7F, 8, 12, 16, 20, 24, 28);
+        let e: i8x8 = i8x8::new(8, -128, 0x7F, 12, 16, 20, 24, 28);
         let r: i8x8 = transmute(vqrshl_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_s8() {
-        let a: i8x16 = i8x16::new(-128, 0x7F, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let a: i8x16 = i8x16::new(2, -128, 0x7F, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let b: i8x16 = i8x16::new(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2);
-        let e: i8x16 = i8x16::new(-128, 0x7F, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60);
+        let e: i8x16 = i8x16::new(8, -128, 0x7F, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60);
         let r: i8x16 = transmute(vqrshlq_s8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_s16() {
-        let a: i16x4 = i16x4::new(-32768, 0x7F_FF, 2, 3);
+        let a: i16x4 = i16x4::new(2, -32768, 0x7F_FF, 3);
         let b: i16x4 = i16x4::new(2, 2, 2, 2);
-        let e: i16x4 = i16x4::new(-32768, 0x7F_FF, 8, 12);
+        let e: i16x4 = i16x4::new(8, -32768, 0x7F_FF, 12);
         let r: i16x4 = transmute(vqrshl_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_s16() {
-        let a: i16x8 = i16x8::new(-32768, 0x7F_FF, 2, 3, 4, 5, 6, 7);
+        let a: i16x8 = i16x8::new(2, -32768, 0x7F_FF, 3, 4, 5, 6, 7);
         let b: i16x8 = i16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
-        let e: i16x8 = i16x8::new(-32768, 0x7F_FF, 8, 12, 16, 20, 24, 28);
+        let e: i16x8 = i16x8::new(8, -32768, 0x7F_FF, 12, 16, 20, 24, 28);
         let r: i16x8 = transmute(vqrshlq_s16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_s32() {
-        let a: i32x2 = i32x2::new(-2147483648, 0x7F_FF_FF_FF);
+        let a: i32x2 = i32x2::new(2, -2147483648);
         let b: i32x2 = i32x2::new(2, 2);
-        let e: i32x2 = i32x2::new(-2147483648, 0x7F_FF_FF_FF);
+        let e: i32x2 = i32x2::new(8, -2147483648);
         let r: i32x2 = transmute(vqrshl_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_s32() {
-        let a: i32x4 = i32x4::new(-2147483648, 0x7F_FF_FF_FF, 2, 3);
+        let a: i32x4 = i32x4::new(2, -2147483648, 0x7F_FF_FF_FF, 3);
         let b: i32x4 = i32x4::new(2, 2, 2, 2);
-        let e: i32x4 = i32x4::new(-2147483648, 0x7F_FF_FF_FF, 8, 12);
+        let e: i32x4 = i32x4::new(8, -2147483648, 0x7F_FF_FF_FF, 12);
         let r: i32x4 = transmute(vqrshlq_s32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_s64() {
-        let a: i64x1 = i64x1::new(-9223372036854775808);
+        let a: i64x1 = i64x1::new(2);
         let b: i64x1 = i64x1::new(2);
-        let e: i64x1 = i64x1::new(-9223372036854775808);
+        let e: i64x1 = i64x1::new(8);
         let r: i64x1 = transmute(vqrshl_s64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_s64() {
-        let a: i64x2 = i64x2::new(-9223372036854775808, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let a: i64x2 = i64x2::new(2, -9223372036854775808);
         let b: i64x2 = i64x2::new(2, 2);
-        let e: i64x2 = i64x2::new(-9223372036854775808, 0x7F_FF_FF_FF_FF_FF_FF_FF);
+        let e: i64x2 = i64x2::new(8, -9223372036854775808);
         let r: i64x2 = transmute(vqrshlq_s64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_u8() {
-        let a: u8x8 = u8x8::new(0, 0xFF, 2, 3, 4, 5, 6, 7);
+        let a: u8x8 = u8x8::new(2, 0, 0xFF, 3, 4, 5, 6, 7);
         let b: i8x8 = i8x8::new(2, 2, 2, 2, 2, 2, 2, 2);
-        let e: u8x8 = u8x8::new(0, 0xFF, 8, 12, 16, 20, 24, 28);
+        let e: u8x8 = u8x8::new(8, 0, 0xFF, 12, 16, 20, 24, 28);
         let r: u8x8 = transmute(vqrshl_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_u8() {
-        let a: u8x16 = u8x16::new(0, 0xFF, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+        let a: u8x16 = u8x16::new(2, 0, 0xFF, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
         let b: i8x16 = i8x16::new(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2);
-        let e: u8x16 = u8x16::new(0, 0xFF, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60);
+        let e: u8x16 = u8x16::new(8, 0, 0xFF, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60);
         let r: u8x16 = transmute(vqrshlq_u8(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_u16() {
-        let a: u16x4 = u16x4::new(0, 0xFF_FF, 2, 3);
+        let a: u16x4 = u16x4::new(2, 0, 0xFF_FF, 3);
         let b: i16x4 = i16x4::new(2, 2, 2, 2);
-        let e: u16x4 = u16x4::new(0, 0xFF_FF, 8, 12);
+        let e: u16x4 = u16x4::new(8, 0, 0xFF_FF, 12);
         let r: u16x4 = transmute(vqrshl_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_u16() {
-        let a: u16x8 = u16x8::new(0, 0xFF_FF, 2, 3, 4, 5, 6, 7);
+        let a: u16x8 = u16x8::new(2, 0, 0xFF_FF, 3, 4, 5, 6, 7);
         let b: i16x8 = i16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
-        let e: u16x8 = u16x8::new(0, 0xFF_FF, 8, 12, 16, 20, 24, 28);
+        let e: u16x8 = u16x8::new(8, 0, 0xFF_FF, 12, 16, 20, 24, 28);
         let r: u16x8 = transmute(vqrshlq_u16(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_u32() {
-        let a: u32x2 = u32x2::new(0, 0xFF_FF_FF_FF);
+        let a: u32x2 = u32x2::new(2, 0);
         let b: i32x2 = i32x2::new(2, 2);
-        let e: u32x2 = u32x2::new(0, 0xFF_FF_FF_FF);
+        let e: u32x2 = u32x2::new(8, 0);
         let r: u32x2 = transmute(vqrshl_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_u32() {
-        let a: u32x4 = u32x4::new(0, 0xFF_FF_FF_FF, 2, 3);
+        let a: u32x4 = u32x4::new(2, 0, 0xFF_FF_FF_FF, 3);
         let b: i32x4 = i32x4::new(2, 2, 2, 2);
-        let e: u32x4 = u32x4::new(0, 0xFF_FF_FF_FF, 8, 12);
+        let e: u32x4 = u32x4::new(8, 0, 0xFF_FF_FF_FF, 12);
         let r: u32x4 = transmute(vqrshlq_u32(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshl_u64() {
-        let a: u64x1 = u64x1::new(0);
+        let a: u64x1 = u64x1::new(2);
         let b: i64x1 = i64x1::new(2);
-        let e: u64x1 = u64x1::new(0);
+        let e: u64x1 = u64x1::new(8);
         let r: u64x1 = transmute(vqrshl_u64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vqrshlq_u64() {
-        let a: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let a: u64x2 = u64x2::new(2, 0);
         let b: i64x2 = i64x2::new(2, 2);
-        let e: u64x2 = u64x2::new(0, 0xFF_FF_FF_FF_FF_FF_FF_FF);
+        let e: u64x2 = u64x2::new(8, 0);
         let r: u64x2 = transmute(vqrshlq_u64(transmute(a), transmute(b)));
         assert_eq!(r, e);
     }

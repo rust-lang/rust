@@ -5,7 +5,10 @@
 pub(crate) struct ValidateConstRound<const IMM: i32>;
 impl<const IMM: i32> ValidateConstRound<IMM> {
     pub(crate) const VALID: () = {
-        assert!(IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11, "Invalid IMM value");
+        assert!(
+            IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11,
+            "Invalid IMM value"
+        );
     };
 }
 

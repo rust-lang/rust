@@ -5,7 +5,10 @@
 pub(crate) struct ValidateConstRound<const IMM: i32>;
 impl<const IMM: i32> ValidateConstRound<IMM> {
     pub(crate) const VALID: () = {
-        assert!(IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11, "Invalid IMM value");
+        assert!(
+            IMM == 4 || IMM == 8 || IMM == 9 || IMM == 10 || IMM == 11,
+            "Invalid IMM value"
+        );
     };
 }
 
@@ -70,7 +73,10 @@ macro_rules! static_assert_imm_u8 {
 pub(crate) struct ValidateConstGatherScale<const SCALE: i32>;
 impl<const SCALE: i32> ValidateConstGatherScale<SCALE> {
     pub(crate) const VALID: () = {
-        assert!(SCALE == 1 || SCALE == 2 || SCALE == 4 || SCALE == 8, "Invalid SCALE value");
+        assert!(
+            SCALE == 1 || SCALE == 2 || SCALE == 4 || SCALE == 8,
+            "Invalid SCALE value"
+        );
     };
 }
 

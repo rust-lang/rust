@@ -1843,9 +1843,23 @@ b = 1
 validate 41
 
 aarch64 = sqsub
-generate i8, i16, i32, i64
+generate i8, i16
 aarch64 = uqsub
-generate u8, u16, u32, u64
+generate u8, u16
+
+/// Saturating subtract
+name = vqsub
+a = 42
+b = 1
+validate 41
+
+aarch64 = uqsub
+link-aarch64 = uqsub._EXT_
+generate u32, u64
+
+aarch64 = sqsub
+link-aarch64 = sqsub._EXT_
+generate i32, i64
 
 /// Halving add
 name = vhadd
@@ -1999,9 +2013,23 @@ b = 1
 validate 43
 
 aarch64 = sqadd
-generate i8, i16, i32, i64
+generate i8, i16
 aarch64 = uqadd
-generate u8, u16, u32, u64
+generate u8, u16
+
+/// Saturating add
+name = vqadd
+a = 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42, 42
+b = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+validate 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58
+
+aarch64 = uqadd
+link-aarch64 = uqadd._EXT_
+generate u32, u64
+
+aarch64 = sqadd
+link-aarch64 = sqadd._EXT_
+generate i32, i64
 
 /// Multiply
 name = vmul
@@ -3383,9 +3411,22 @@ a = 1
 validate 1
 
 aarch64 = sqxtn
-generate i16:i8, i32:i16, i64:i32
+generate i16:i8, i32:i16
 aarch64 = uqxtn
-generate u16:u8, u32:u16, u64:u32
+generate u16:u8, u32:u16
+
+/// Saturating extract narrow
+name = vqmovn
+a = 1
+validate 1
+
+aarch64 = sqxtn
+link-aarch64 = scalar.sqxtn._EXT2_._EXT_
+generate i64:i32
+
+aarch64 = uqxtn
+link-aarch64 = scalar.uqxtn._EXT2_._EXT_
+generate u64:u32
 
 /// Signed saturating extract narrow
 name = vqmovn_high
@@ -3609,12 +3650,13 @@ generate i16:i16:int16x4_t:i16, i16:i16:int16x8_t:i16, i32:i32:int32x2_t:i32, i3
 
 /// Signed saturating rounding shift left
 name = vqrshl
-a = MIN, MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+a = 2, MIN, MAX, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
-validate MIN, MAX, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+validate 8, MIN, MAX, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
 
 aarch64 = sqrshl
 link-aarch64 = sqrshl._EXT_
+generate i32, i64
 
 arm = vqrshl
 link-arm = vqrshifts._EXT_
@@ -3630,17 +3672,18 @@ b = 2
 validate 4
 
 aarch64 = sqrshl
-generate i8, i16, i32, i64
+generate i8, i16
 
 /// Unsigned signed saturating rounding shift left
 name = vqrshl
 out-suffix
-a = MIN, MAX, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+a = 2, MIN, MAX, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
-validate 0, MAX, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
+validate 8, 0, MAX, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
 
 aarch64 = uqrshl
 link-aarch64 = uqrshl._EXT_
+generate u32:i32:u32, u64:i64:u64
 
 arm = vqrshl
 link-arm = vqrshiftu._EXT_
@@ -3658,7 +3701,7 @@ b = 2
 validate 4
 
 aarch64 = uqrshl
-generate u8:i8:u8, u16:i16:u16, u32:i32:u32, u64:i64:u64
+generate u8:i8:u8, u16:i16:u16
 
 /// Signed saturating rounded shift right narrow
 name = vqrshrn
@@ -3806,6 +3849,7 @@ validate 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
 
 aarch64 = sqshl
 link-aarch64 = sqshl._EXT_
+generate i64
 
 arm = vqshl
 link-arm = vqshifts._EXT_
@@ -3820,7 +3864,7 @@ b = 2
 validate 4
 
 aarch64 = sqshl
-generate i8, i16, i32, i64
+generate i8, i16, i32
 
 /// Unsigned saturating shift left
 name = vqshl
@@ -3831,6 +3875,7 @@ validate 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60
 
 aarch64 = uqshl
 link-aarch64 = uqshl._EXT_
+generate u64:i64:u64
 
 arm = vqshl
 link-arm = vqshiftu._EXT_
@@ -3847,7 +3892,7 @@ b = 2
 validate 4
 
 aarch64 = uqshl
-generate u8:i8:u8, u16:i16:u16, u32:i32:u32, u64:i64:u64
+generate u8:i8:u8, u16:i16:u16, u32:i32:u32
 
 /// Signed saturating shift left
 name = vqshl
@@ -3915,6 +3960,7 @@ validate 0, 1, 2, 3, 4, 5, 6, 7
 aarch64 = sqshrn
 link-aarch64 = sqshrn._EXT2_
 const-aarch64 = N
+generate i64:i32
 
 arm = vqshrn
 link-arm = vqshiftns._EXT2_
@@ -3932,7 +3978,7 @@ n = 2
 validate 1
 
 aarch64 = sqshrn
-generate i16:i8, i32:i16, i64:i32
+generate i16:i8, i32:i16
 
 /// Signed saturating shift right narrow
 name = vqshrn_high
@@ -3960,6 +4006,7 @@ validate 0, 1, 2, 3, 4, 5, 6, 7
 aarch64 = uqshrn
 link-aarch64 = uqshrn._EXT2_
 const-aarch64 = N
+generate u64:u32
 
 arm = vqshrn
 link-arm = vqshiftnu._EXT2_
@@ -3977,7 +4024,7 @@ n = 2
 validate 1
 
 aarch64 = uqshrn
-generate u16:u8, u32:u16, u64:u32
+generate u16:u8, u32:u16
 
 /// Unsigned saturating shift right narrow
 name = vqshrn_high
@@ -4261,20 +4308,11 @@ validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
 
 aarch64 = srshl
 link-aarch64 = srshl._EXT_
+generate i64
 
 arm = vrshl
 link-arm = vrshifts._EXT_
 generate int*_t, int64x*_t
-
-/// Signed rounding shift left
-name = vrshl
-multi_fn = transmute, {vrshl-in_ntt-noext, transmute(a), transmute(b)}
-a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
-validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
-
-aarch64 = srshl
-generate i64
 
 /// Unsigned rounding shift left
 name = vrshl
@@ -4285,22 +4323,12 @@ validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
 
 aarch64 = urshl
 link-aarch64 = urshl._EXT_
+generate u64:i64:u64
 
 arm = vrshl
 link-arm = vrshiftu._EXT_
 generate uint8x8_t:int8x8_t:uint8x8_t, uint8x16_t:int8x16_t:uint8x16_t, uint16x4_t:int16x4_t:uint16x4_t, uint16x8_t:int16x8_t:uint16x8_t
 generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint64x1_t:int64x1_t:uint64x1_t, uint64x2_t:int64x2_t:uint64x2_t
-
-/// Unsigned rounding shift left
-name = vrshl
-out-suffix
-multi_fn = transmute, {vrshl-out_ntt-noext, transmute(a), transmute(b)}
-a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
-b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
-validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
-
-aarch64 = urshl
-generate u64:i64:u64
 
 /// Signed rounding shift right
 name = vrshr
@@ -4438,15 +4466,14 @@ name = vrsra
 n-suffix
 constn = N
 multi_fn = static_assert-N-1-bits
-multi_fn = vrshr_n-in_ntt-::<N>, b:in_ntt, transmute(b)
-multi_fn = transmute, {simd_add, transmute(a), b}
+multi_fn = vrshr-nself-::<N>, b:in_t, b
+multi_fn = a + b
 a = 1
 b = 4
 n = 2
 validate 2
 
-// We use "nop" here to skip the instruction test, since it cannot be optimized correctly.
-aarch64 = nop
+aarch64 = srsra
 generate i64
 
 /// Ungisned rounding shift right and accumulate.
@@ -4454,21 +4481,20 @@ name = vrsra
 n-suffix
 constn = N
 multi_fn = static_assert-N-1-bits
-multi_fn = vrshr_n-in_ntt-::<N>, b:in_ntt, transmute(b)
-multi_fn = transmute, {simd_add, transmute(a), b}
+multi_fn = vrshr-nself-::<N>, b:in_t, b
+multi_fn = a + b
 a = 1
 b = 4
 n = 2
 validate 2
 
-// We use "nop" here to skip the instruction test, since it cannot be optimized correctly.
-aarch64 = nop
+aarch64 = ursra
 generate u64
 
 /// Insert vector element from another vector element
 name = vset_lane
 constn = LANE
-multi_fn = static_assert_imm-in_bits_exp_len-LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
 multi_fn = simd_insert, b, LANE as u32, a
 a = 1
 b = 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
@@ -4490,7 +4516,7 @@ generate p64:poly64x1_t:poly64x1_t
 name = vsetq_lane
 no-q
 constn = LANE
-multi_fn = static_assert_imm-in_bits_exp_len-LANE
+multi_fn = static_assert_imm-in_exp_len-LANE
 multi_fn = simd_insert, b, LANE as u32, a
 a = 1
 b = 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
@@ -4547,10 +4573,10 @@ a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
 
-arm = vshl
-link-arm = vshifts._EXT_
 aarch64 = sshl
 link-aarch64 = sshl._EXT_
+arm = vshl
+link-arm = vshifts._EXT_
 generate int*_t, int64x*_t
 
 /// Signed Shift left
@@ -4570,10 +4596,10 @@ a = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
 b = 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
 validate 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
 
-arm = vshl
-link-arm = vshiftu._EXT_
 aarch64 = ushl
 link-aarch64 = ushl._EXT_
+arm = vshl
+link-arm = vshiftu._EXT_
 generate uint8x8_t:int8x8_t:uint8x8_t, uint8x16_t:int8x16_t:uint8x16_t, uint16x4_t:int16x4_t:uint16x4_t, uint16x8_t:int16x8_t:uint16x8_t
 generate uint32x2_t:int32x2_t:uint32x2_t, uint32x4_t:int32x4_t:uint32x4_t, uint64x1_t:int64x1_t:uint64x1_t, uint64x2_t:int64x2_t:uint64x2_t
 

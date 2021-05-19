@@ -1184,9 +1184,7 @@ pub unsafe fn vadd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddd_s64(a: i64, b: i64) -> i64 {
-    let a: int64x1_t = transmute(a);
-    let b: int64x1_t = transmute(b);
-    simd_extract(simd_add(a, b), 0)
+    a.wrapping_add(b)
 }
 
 /// Vector add.
@@ -1194,9 +1192,7 @@ pub unsafe fn vaddd_s64(a: i64, b: i64) -> i64 {
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(add))]
 pub unsafe fn vaddd_u64(a: u64, b: u64) -> u64 {
-    let a: uint64x1_t = transmute(a);
-    let b: uint64x1_t = transmute(b);
-    simd_extract(simd_add(a, b), 0)
+    a.wrapping_add(b)
 }
 
 /// Horizontal vector max.
