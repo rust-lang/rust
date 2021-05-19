@@ -10,7 +10,7 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 
-use super::{BindingMode, Expectation, InferenceContext};
+use super::{BindingMode, Expectation, InferenceContext, TypeMismatch};
 use crate::{
     lower::lower_to_chalk_mutability, static_lifetime, Interner, Substitution, Ty, TyBuilder,
     TyExt, TyKind,
@@ -266,7 +266,10 @@ impl<'a> InferenceContext<'a> {
         // use a new type variable if we got error type here
         let ty = self.insert_type_vars_shallow(ty);
         if !self.unify(&ty, expected) {
-            // FIXME record mismatch, we need to change the type of self.type_mismatches for that
+            self.result.type_mismatches.insert(
+                pat.into(),
+                TypeMismatch { expected: expected.clone(), actual: ty.clone() },
+            );
         }
         let ty = self.resolve_ty_as_possible(ty);
         self.write_pat_ty(pat, ty.clone());

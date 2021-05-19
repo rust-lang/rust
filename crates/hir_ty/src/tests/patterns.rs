@@ -546,7 +546,9 @@ fn infer_const_pattern() {
             273..276 'Bar': usize
             280..283 'Bar': usize
             200..223: expected (), got Foo
+            211..214: expected (), got Foo
             262..285: expected (), got usize
+            273..276: expected (), got usize
         "#]],
     );
 }
@@ -703,7 +705,7 @@ fn box_pattern() {
 
 #[test]
 fn tuple_ellipsis_pattern() {
-    check_infer(
+    check_infer_with_mismatches(
         r#"
 fn foo(tuple: (u8, i16, f32)) {
     match tuple {
@@ -744,6 +746,8 @@ fn foo(tuple: (u8, i16, f32)) {
             186..200 '{/*too long*/}': ()
             209..210 '_': (u8, i16, f32)
             214..216 '{}': ()
+            136..142: expected (u8, i16, f32), got (u8, i16)
+            170..182: expected (u8, i16, f32), got (u8, i16, f32, _)
         "#]],
     );
 }
@@ -850,4 +854,56 @@ fn f(e: Enum) {
 }
     "#,
     )
+}
+
+#[test]
+fn type_mismatch_in_or_pattern() {
+    check_infer_with_mismatches(
+        r#"
+fn main() {
+    match (false,) {
+        (true | (),) => {}
+        (() | true,) => {}
+        (_ | (),) => {}
+        (() | _,) => {}
+    }
+}
+"#,
+        expect![[r#"
+            10..142 '{     ...   } }': ()
+            16..140 'match ...     }': ()
+            22..30 '(false,)': (bool,)
+            23..28 'false': bool
+            41..53 '(true | (),)': (bool,)
+            42..46 'true': bool
+            42..46 'true': bool
+            42..51 'true | ()': bool
+            49..51 '()': ()
+            57..59 '{}': ()
+            68..80 '(() | true,)': ((),)
+            69..71 '()': ()
+            69..78 '() | true': ()
+            74..78 'true': bool
+            74..78 'true': bool
+            84..86 '{}': ()
+            95..104 '(_ | (),)': (bool,)
+            96..97 '_': bool
+            96..102 '_ | ()': bool
+            100..102 '()': ()
+            108..110 '{}': ()
+            119..128 '(() | _,)': ((),)
+            120..122 '()': ()
+            120..126 '() | _': ()
+            125..126 '_': bool
+            132..134 '{}': ()
+            49..51: expected bool, got ()
+            68..80: expected (bool,), got ((),)
+            69..71: expected bool, got ()
+            69..78: expected bool, got ()
+            100..102: expected bool, got ()
+            119..128: expected (bool,), got ((),)
+            120..122: expected bool, got ()
+            120..126: expected bool, got ()
+        "#]],
+    );
 }

@@ -211,7 +211,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         // FIXME: Due to shortcomings in the current type system implementation, only emit this
         // diagnostic if there are no type mismatches in the containing function.
-        if self.infer.type_mismatches.iter().next().is_some() {
+        if self.infer.expr_type_mismatches().next().is_some() {
             return;
         }
 
