@@ -246,7 +246,7 @@ struct DefCollector<'a> {
     proc_macros: Vec<(Name, ProcMacroExpander)>,
     exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
-    ignore_attrs_on: FxHashSet<ModItem>,
+    ignore_attrs_on: FxHashSet<InFile<ModItem>>,
 }
 
 impl DefCollector<'_> {
@@ -372,9 +372,9 @@ impl DefCollector<'_> {
         let mut added_items = false;
         let unexpanded_macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
         for directive in &unexpanded_macros {
-            if let MacroDirectiveKind::Attr { mod_item, .. } = &directive.kind {
+            if let MacroDirectiveKind::Attr { ast_id, mod_item, .. } = &directive.kind {
                 // Make sure to only add such items once.
-                if !self.ignore_attrs_on.insert(*mod_item) {
+                if !self.ignore_attrs_on.insert(ast_id.ast_id.with_value(*mod_item)) {
                     continue;
                 }
 
@@ -1463,7 +1463,7 @@ impl ModCollector<'_, '_> {
 
         // We failed to resolve an attribute on this item earlier, and are falling back to treating
         // the item as-is.
-        if self.def_collector.ignore_attrs_on.contains(&mod_item) {
+        if self.def_collector.ignore_attrs_on.contains(&InFile::new(self.file_id, mod_item)) {
             return Ok(());
         }
 
