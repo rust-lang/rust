@@ -1058,7 +1058,8 @@ fn check_opaque_types<'fcx, 'tcx>(
         },
         lt_op: |lt| lt,
         ct_op: |ct| ct,
-    });
+    })
+    .into_ok();
 }
 
 const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \

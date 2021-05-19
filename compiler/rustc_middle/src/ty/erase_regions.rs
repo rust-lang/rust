@@ -9,7 +9,7 @@ pub(super) fn provide(providers: &mut ty::query::Providers) {
 fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     // N.B., use `super_fold_with` here. If we used `fold_with`, it
     // could invoke the `erase_regions_ty` query recursively.
-    ty.super_fold_with(&mut RegionEraserVisitor { tcx })
+    ty.super_fold_with(&mut RegionEraserVisitor { tcx }).into_ok()
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -25,7 +25,7 @@ impl<'tcx> TyCtxt<'tcx> {
             return value;
         }
         debug!("erase_regions({:?})", value);
-        let value1 = value.fold_with(&mut RegionEraserVisitor { tcx: self });
+        let value1 = value.fold_with(&mut RegionEraserVisitor { tcx: self }).into_ok();
         debug!("erase_regions = {:?}", value1);
         value1
     }

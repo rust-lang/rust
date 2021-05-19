@@ -438,7 +438,7 @@ where
     }
 
     debug!("fixup_opaque_types({:?})", val);
-    val.fold_with(&mut FixupFolder { tcx })
+    val.fold_with(&mut FixupFolder { tcx }).into_ok()
 }
 
 fn typeck_const_arg<'tcx>(

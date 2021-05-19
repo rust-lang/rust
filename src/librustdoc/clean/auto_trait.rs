@@ -469,7 +469,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         _ => false,
                     }
             })
-            .map(|p| p.fold_with(&mut replacer));
+            .map(|p| p.fold_with(&mut replacer).into_ok());
 
         let mut generic_params =
             (tcx.generics_of(item_def_id), tcx.explicit_predicates_of(item_def_id))

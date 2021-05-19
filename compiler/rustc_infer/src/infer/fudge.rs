@@ -162,7 +162,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         {
             Ok(value)
         } else {
-            Ok(value.fold_with(&mut fudger))
+            Ok(value.fold_with(&mut fudger).into_ok())
         }
     }
 }

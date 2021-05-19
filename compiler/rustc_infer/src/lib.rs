@@ -23,6 +23,7 @@
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(in_band_lifetimes)]
 #![feature(control_flow_enum)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]

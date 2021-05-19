@@ -640,7 +640,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         let mut resolver = Resolver::new(self.fcx, span, self.body);
-        let x = x.fold_with(&mut resolver);
+        let x = x.fold_with(&mut resolver).into_ok();
         if cfg!(debug_assertions) && x.needs_infer() {
             span_bug!(span.to_span(self.fcx.tcx), "writeback: `{:?}` has inference variables", x);
         }

@@ -519,7 +519,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             indices: FxHashMap::default(),
             binder_index: ty::INNERMOST,
         };
-        let out_value = value.fold_with(&mut canonicalizer);
+        let out_value = value.fold_with(&mut canonicalizer).into_ok();
 
         // Once we have canonicalized `out_value`, it should not
         // contain anything that ties it to this inference context
@@ -637,7 +637,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         let infcx = self.infcx.expect("encountered ty-var without infcx");
         let bound_to = infcx.shallow_resolve(ty_var);
         if bound_to != ty_var {
-            self.fold_ty(bound_to)
+            self.fold_ty(bound_to).into_ok()
         } else {
             let var = self.canonical_var(info, ty_var.into());
             self.tcx().mk_ty(ty::Bound(self.binder_index, var.into()))
@@ -656,12 +656,12 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         let infcx = self.infcx.expect("encountered const-var without infcx");
         let bound_to = infcx.shallow_resolve(const_var);
         if bound_to != const_var {
-            self.fold_const(bound_to)
+            self.fold_const(bound_to).into_ok()
         } else {
             let var = self.canonical_var(info, const_var.into());
             self.tcx().mk_const(ty::Const {
                 val: ty::ConstKind::Bound(self.binder_index, var),
-                ty: self.fold_ty(const_var.ty),
+                ty: self.fold_ty(const_var.ty).into_ok(),
             })
         }
     }

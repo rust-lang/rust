@@ -571,14 +571,14 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
         if self.found_recursion {
             return None;
         }
-        let substs = substs.fold_with(self);
+        let substs = substs.fold_with(self).into_ok();
         if !self.check_recursion || self.seen_opaque_tys.insert(def_id) {
             let expanded_ty = match self.expanded_cache.get(&(def_id, substs)) {
                 Some(expanded_ty) => expanded_ty,
                 None => {
                     let generic_ty = self.tcx.type_of(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx, substs);
-                    let expanded_ty = self.fold_ty(concrete_ty);
+                    let expanded_ty = self.fold_ty(concrete_ty).into_ok();
                     self.expanded_cache.insert((def_id, substs), expanded_ty);
                     expanded_ty
                 }
@@ -1073,7 +1073,7 @@ pub fn normalize_opaque_types(
         check_recursion: false,
         tcx,
     };
-    val.fold_with(&mut visitor)
+    val.fold_with(&mut visitor).into_ok()
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {

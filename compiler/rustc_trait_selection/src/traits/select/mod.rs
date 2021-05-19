@@ -1973,7 +1973,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &'o TraitObligation<'tcx>,
     ) -> TraitObligationStack<'o, 'tcx> {
         let fresh_trait_ref =
-            obligation.predicate.to_poly_trait_ref().fold_with(&mut self.freshener);
+            obligation.predicate.to_poly_trait_ref().fold_with(&mut self.freshener).into_ok();
 
         let dfn = previous_stack.cache.next_dfn();
         let depth = previous_stack.depth() + 1;

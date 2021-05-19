@@ -813,7 +813,7 @@ crate fn collect_bound_vars<'tcx, T: TypeFoldable<'tcx>>(
         .collect();
 
     let mut bound_var_substitutor = NamedBoundVarSubstitutor::new(tcx, &named_parameters);
-    let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor);
+    let new_ty = ty.skip_binder().fold_with(&mut bound_var_substitutor).into_ok();
 
     for var in named_parameters.values() {
         parameters.insert(*var, chalk_ir::VariableKind::Lifetime);

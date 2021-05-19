@@ -70,7 +70,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         F: FnOnce(u32) -> ty::InferTy,
     {
         if let Some(ty) = opt_ty {
-            return ty.fold_with(self);
+            return ty.fold_with(self).into_ok();
         }
 
         match self.ty_freshen_map.entry(key) {
@@ -96,7 +96,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         F: FnOnce(u32) -> ty::InferConst<'tcx>,
     {
         if let Some(ct) = opt_ct {
-            return ct.fold_with(self);
+            return ct.fold_with(self).into_ok();
         }
 
         match self.const_freshen_map.entry(key) {

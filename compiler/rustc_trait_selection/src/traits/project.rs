@@ -312,7 +312,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
         let value = self.selcx.infcx().resolve_vars_if_possible(value);
 
-        if !value.has_projections() { value } else { value.fold_with(self) }
+        if !value.has_projections() { value } else { value.fold_with(self).into_ok() }
     }
 }
 
@@ -1186,7 +1186,8 @@ fn confirm_candidate<'cx, 'tcx>(
     // when possible for this to work. See `auto-trait-projection-recursion.rs`
     // for a case where this matters.
     if progress.ty.has_infer_regions() {
-        progress.ty = OpportunisticRegionResolver::new(selcx.infcx()).fold_ty(progress.ty);
+        progress.ty =
+            OpportunisticRegionResolver::new(selcx.infcx()).fold_ty(progress.ty).into_ok();
     }
     progress
 }
