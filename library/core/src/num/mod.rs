@@ -1096,7 +1096,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
             // sum of powers of 2 (x*10 can be written as x*8 + x*2).
             // When the compiler can't use these optimisations,
             // the latency of the multiplication can be hidden by issuing it
-            // before the result is needed.
+            // before the result is needed to improve performance on
+            // modern out-of-order CPU as multiplication here is slower
+            // than the other instructions, we can get the end result faster
+            // doing multiplication first and let the CPU spends other cycles
+            // doing other computation and get multiplication result later.
             let mul = result.checked_mul(radix);
             let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
             result = mul.ok_or_else(overflow_err)?;
