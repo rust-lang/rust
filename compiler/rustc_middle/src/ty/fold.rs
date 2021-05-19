@@ -147,8 +147,8 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 }
 
 impl TypeFoldable<'tcx> for hir::Constness {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Self {
-        self
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
+        Ok(self)
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
         ControlFlow::CONTINUE

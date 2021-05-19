@@ -153,11 +153,11 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         match self.unpack() {
-            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
-            GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
-            GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
+            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).map(Into::into),
+            GenericArgKind::Type(ty) => ty.fold_with(folder).map(Into::into),
+            GenericArgKind::Const(ct) => ct.fold_with(folder).map(Into::into),
         }
     }
 
@@ -364,7 +364,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
         // The match arms are in order of frequency. The 1, 2, and 0 cases are
@@ -373,22 +373,27 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
         // calling `intern_substs`.
         match self.len() {
             1 => {
-                let param0 = self[0].fold_with(folder);
-                if param0 == self[0] { self } else { folder.tcx().intern_substs(&[param0]) }
+                let param0 = self[0].fold_with(folder)?;
+                if param0 == self[0] { Ok(self) } else { Ok(folder.tcx().intern_substs(&[param0])) }
             }
             2 => {
-                let param0 = self[0].fold_with(folder);
-                let param1 = self[1].fold_with(folder);
+                let param0 = self[0].fold_with(folder)?;
+                let param1 = self[1].fold_with(folder)?;
                 if param0 == self[0] && param1 == self[1] {
-                    self
+                    Ok(self)
                 } else {
-                    folder.tcx().intern_substs(&[param0, param1])
+                    Ok(folder.tcx().intern_substs(&[param0, param1]))
                 }
             }
-            0 => self,
+            0 => Ok(self),
             _ => {
-                let params: SmallVec<[_; 8]> = self.iter().map(|k| k.fold_with(folder)).collect();
-                if params[..] == self[..] { self } else { folder.tcx().intern_substs(&params) }
+                let params: SmallVec<[_; 8]> =
+                    self.iter().map(|k| k.fold_with(folder)).collect::<Result<_, _>>()?;
+                if params[..] == self[..] {
+                    Ok(self)
+                } else {
+                    Ok(folder.tcx().intern_substs(&params))
+                }
             }
         }
     }
