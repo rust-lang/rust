@@ -99,17 +99,17 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !ty.has_projections() {
-            return ty;
+            return Ok(ty);
         }
 
         if let Some(ty) = self.cache.get(&ty) {
-            return ty;
+            return Ok(ty);
         }
 
-        let ty = ty.super_fold_with(self);
-        let res = (|| match *ty.kind() {
+        let ty = ty.super_fold_with(self)?;
+        let res = match *ty.kind() {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
@@ -140,7 +140,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                                 ty
                             );
                         }
-                        let folded_ty = ensure_sufficient_stack(|| self.fold_ty(concrete_ty));
+                        let folded_ty = ensure_sufficient_stack(|| self.fold_ty(concrete_ty))?;
                         self.anon_depth -= 1;
                         folded_ty
                     }
@@ -175,25 +175,25 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                         // We don't expect ambiguity.
                         if result.is_ambiguous() {
                             self.error = true;
-                            return ty;
-                        }
+                            ty
+                        } else {
+                            match self.infcx.instantiate_query_response_and_region_obligations(
+                                self.cause,
+                                self.param_env,
+                                &orig_values,
+                                result,
+                            ) {
+                                Ok(InferOk { value: result, obligations }) => {
+                                    debug!("QueryNormalizer: result = {:#?}", result);
+                                    debug!("QueryNormalizer: obligations = {:#?}", obligations);
+                                    self.obligations.extend(obligations);
+                                    result.normalized_ty
+                                }
 
-                        match self.infcx.instantiate_query_response_and_region_obligations(
-                            self.cause,
-                            self.param_env,
-                            &orig_values,
-                            result,
-                        ) {
-                            Ok(InferOk { value: result, obligations }) => {
-                                debug!("QueryNormalizer: result = {:#?}", result);
-                                debug!("QueryNormalizer: obligations = {:#?}", obligations);
-                                self.obligations.extend(obligations);
-                                result.normalized_ty
-                            }
-
-                            Err(_) => {
-                                self.error = true;
-                                ty
+                                Err(_) => {
+                                    self.error = true;
+                                    ty
+                                }
                             }
                         }
                     }
@@ -206,17 +206,23 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             }
 
             _ => ty,
-        })();
+        };
         self.cache.insert(ty, res);
-        res
+        Ok(res)
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        let constant = constant.super_fold_with(self);
-        constant.eval(self.infcx.tcx, self.param_env)
+    fn fold_const(
+        &mut self,
+        constant: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        let constant = constant.super_fold_with(self)?;
+        Ok(constant.eval(self.infcx.tcx, self.param_env))
     }
 
-    fn fold_mir_const(&mut self, constant: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+    fn fold_mir_const(
+        &mut self,
+        constant: mir::ConstantKind<'tcx>,
+    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
         constant.super_fold_with(self)
     }
 }

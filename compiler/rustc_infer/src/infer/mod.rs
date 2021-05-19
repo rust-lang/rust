@@ -1651,12 +1651,15 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.shallow_resolve_ty(ty)
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        Ok(self.infcx.shallow_resolve_ty(ty))
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        Ok(if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
             self.infcx
                 .inner
                 .borrow_mut()
@@ -1667,7 +1670,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
                 .unwrap_or(ct)
         } else {
             ct
-        }
+        })
     }
 }
 

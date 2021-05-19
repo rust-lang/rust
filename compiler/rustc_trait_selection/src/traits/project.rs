@@ -321,9 +321,9 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
         self.selcx.tcx()
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !ty.has_projections() {
-            return ty;
+            return Ok(ty);
         }
         // We don't want to normalize associated types that occur inside of region
         // binders, because they may contain bound regions, and we can't cope with that.
@@ -336,8 +336,8 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
-        let ty = ty.super_fold_with(self);
-        match *ty.kind() {
+        let ty = ty.super_fold_with(self)?;
+        Ok(match *ty.kind() {
             ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal() {
@@ -358,7 +358,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                         let generic_ty = self.tcx().type_of(def_id);
                         let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.depth += 1;
-                        let folded_ty = self.fold_ty(concrete_ty);
+                        let folded_ty = self.fold_ty(concrete_ty)?;
                         self.depth -= 1;
                         folded_ty
                     }
@@ -397,15 +397,18 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             }
 
             _ => ty,
-        }
+        })
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        constant: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         if self.selcx.tcx().lazy_normalization() {
-            constant
+            Ok(constant)
         } else {
-            let constant = constant.super_fold_with(self);
-            constant.eval(self.selcx.tcx(), self.param_env)
+            let constant = constant.super_fold_with(self)?;
+            Ok(constant.eval(self.selcx.tcx(), self.param_env))
         }
     }
 }
