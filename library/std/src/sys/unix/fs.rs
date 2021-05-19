@@ -48,7 +48,7 @@ use libc::{
     dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, readdir64_r, stat64,
 };
 
-pub use crate::sys_common::fs::remove_dir_all;
+pub use crate::sys_common::fs::{remove_dir_all, try_exists};
 
 pub struct File(FileDesc);
 
