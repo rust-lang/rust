@@ -93,7 +93,7 @@ jobs:
         run: bash ./ci.sh
 
   fmt:
-    name: Check formatting (ignored by bors)
+    name: check formatting (ignored by bors)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -102,7 +102,7 @@ jobs:
         with:
             toolchain: nightly
             components: rustfmt
-            override: true
+            default: true
       - name: Check formatting (miri)
         uses: actions-rs/cargo@v1
         with:
