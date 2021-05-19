@@ -46,8 +46,8 @@ use std::ops::ControlFlow;
 ///
 /// To implement this conveniently, use the derive macro located in `rustc_macros`.
 pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
-    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self;
-    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
+    fn super_fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error>;
+    fn fold_with<F: TypeFolder<'tcx>>(self, folder: &mut F) -> Result<Self, F::Error> {
         self.super_fold_with(folder)
     }
 
@@ -161,28 +161,36 @@ impl TypeFoldable<'tcx> for hir::Constness {
 /// identity fold, it should invoke `foo.fold_with(self)` to fold each
 /// sub-item.
 pub trait TypeFolder<'tcx>: Sized {
+    type Error = !;
+
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
-    fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Binder<'tcx, T>
+    fn fold_binder<T>(&mut self, t: Binder<'tcx, T>) -> Result<Binder<'tcx, T>, Self::Error>
     where
         T: TypeFoldable<'tcx>,
     {
         t.super_fold_with(self)
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         t.super_fold_with(self)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         r.super_fold_with(self)
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        c: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         c.super_fold_with(self)
     }
 
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+    fn fold_mir_const(
+        &mut self,
+        c: mir::ConstantKind<'tcx>,
+    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
         bug!("most type folders should not be folding MIR datastructures: {:?}", c)
     }
 }
