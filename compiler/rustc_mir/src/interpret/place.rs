@@ -14,9 +14,9 @@ use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
-    mir_assign_valid_types, AllocId, AllocMap, Allocation, AllocationExtra, ConstAlloc, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
-    PointerArithmetic, Scalar, ScalarMaybeUninit,
+    alloc_range, mir_assign_valid_types, AllocId, AllocMap, AllocRef, AllocRefMut, Allocation,
+    ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy,
+    Operand, Pointer, PointerArithmetic, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -293,7 +293,6 @@ where
     M: Machine<'mir, 'tcx, PointerTag = Tag>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKind>, Allocation<Tag, M::AllocExtra>)>,
-    M::AllocExtra: AllocationExtra<Tag>,
 {
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
@@ -339,24 +338,26 @@ where
         self.mplace_access_checked(place, None)
     }
 
-    /// Check if the given place is good for memory access with the given
-    /// size, falling back to the layout's size if `None` (in the latter case,
-    /// this must be a statically sized type).
-    ///
-    /// On success, returns `None` for zero-sized accesses (where nothing else is
-    /// left to do) and a `Pointer` to use for the actual access otherwise.
     #[inline]
-    pub(super) fn check_mplace_access(
+    pub(super) fn get_alloc(
         &self,
         place: &MPlaceTy<'tcx, M::PointerTag>,
-        size: Option<Size>,
-    ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
-        let size = size.unwrap_or_else(|| {
-            assert!(!place.layout.is_unsized());
-            assert!(!place.meta.has_meta());
-            place.layout.size
-        });
-        self.memory.check_ptr_access(place.ptr, size, place.align)
+    ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::PointerTag, M::AllocExtra>>> {
+        assert!(!place.layout.is_unsized());
+        assert!(!place.meta.has_meta());
+        let size = place.layout.size;
+        self.memory.get(place.ptr, size, place.align)
+    }
+
+    #[inline]
+    pub(super) fn get_alloc_mut(
+        &mut self,
+        place: &MPlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::PointerTag, M::AllocExtra>>> {
+        assert!(!place.layout.is_unsized());
+        assert!(!place.meta.has_meta());
+        let size = place.layout.size;
+        self.memory.get_mut(place.ptr, size, place.align)
     }
 
     /// Return the "access-checked" version of this `MPlace`, where for non-ZST
@@ -373,10 +374,11 @@ where
             .size_and_align_of_mplace(&place)?
             .unwrap_or((place.layout.size, place.layout.align.abi));
         assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
-        // Check (stricter) dynamic alignment, unless forced otherwise.
-        place.mplace.align = force_align.unwrap_or(align);
+        let align = force_align.unwrap_or(align);
+        // Record new (stricter, unless forced) alignment requirement in place.
+        place.mplace.align = align;
         // When dereferencing a pointer, it must be non-null, aligned, and live.
-        if let Some(ptr) = self.check_mplace_access(&place, Some(size))? {
+        if let Some(ptr) = self.memory.check_ptr_access(place.ptr, size, align)? {
             place.mplace.ptr = ptr.into();
         }
         Ok(place)
@@ -786,12 +788,12 @@ where
         // wrong type.
 
         // Invalid places are a thing: the return place of a diverging function
-        let ptr = match self.check_mplace_access(dest, None)? {
-            Some(ptr) => ptr,
+        let tcx = *self.tcx;
+        let mut alloc = match self.get_alloc_mut(dest)? {
+            Some(a) => a,
             None => return Ok(()), // zero-sized access
         };
 
-        let tcx = *self.tcx;
         // FIXME: We should check that there are dest.layout.size many bytes available in
         // memory.  The code below is not sufficient, with enough padding it might not
         // cover all the bytes!
@@ -805,12 +807,7 @@ where
                         dest.layout
                     ),
                 }
-                self.memory.get_raw_mut(ptr.alloc_id)?.write_scalar(
-                    &tcx,
-                    ptr,
-                    scalar,
-                    dest.layout.size,
-                )
+                alloc.write_scalar(alloc_range(Size::ZERO, dest.layout.size), scalar)
             }
             Immediate::ScalarPair(a_val, b_val) => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
@@ -824,16 +821,15 @@ where
                         dest.layout
                     ),
                 };
-                let (a_size, b_size) = (a.size(self), b.size(self));
-                let b_offset = a_size.align_to(b.align(self).abi);
-                let b_ptr = ptr.offset(b_offset, self)?;
+                let (a_size, b_size) = (a.size(&tcx), b.size(&tcx));
+                let b_offset = a_size.align_to(b.align(&tcx).abi);
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
                 // fields do not match the `ScalarPair` components.
 
-                self.memory.get_raw_mut(ptr.alloc_id)?.write_scalar(&tcx, ptr, a_val, a_size)?;
-                self.memory.get_raw_mut(b_ptr.alloc_id)?.write_scalar(&tcx, b_ptr, b_val, b_size)
+                alloc.write_scalar(alloc_range(Size::ZERO, a_size), a_val)?;
+                alloc.write_scalar(alloc_range(b_offset, b_size), b_val)
             }
         }
     }
@@ -902,19 +898,8 @@ where
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
 
-        let src = self
-            .check_mplace_access(&src, Some(size))
-            .expect("places should be checked on creation");
-        let dest = self
-            .check_mplace_access(&dest, Some(size))
-            .expect("places should be checked on creation");
-        let (src_ptr, dest_ptr) = match (src, dest) {
-            (Some(src_ptr), Some(dest_ptr)) => (src_ptr, dest_ptr),
-            (None, None) => return Ok(()), // zero-sized copy
-            _ => bug!("The pointers should both be Some or both None"),
-        };
-
-        self.memory.copy(src_ptr, dest_ptr, size, /*nonoverlapping*/ true)
+        self.memory
+            .copy(src.ptr, src.align, dest.ptr, dest.align, size, /*nonoverlapping*/ true)
     }
 
     /// Copies the data from an operand to a place. The layouts may disagree, but they must
@@ -1047,11 +1032,8 @@ where
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate_bytes(str.as_bytes(), kind);
         let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
-        let mplace = MemPlace {
-            ptr: ptr.into(),
-            align: Align::from_bytes(1).unwrap(),
-            meta: MemPlaceMeta::Meta(meta),
-        };
+        let mplace =
+            MemPlace { ptr: ptr.into(), align: Align::ONE, meta: MemPlaceMeta::Meta(meta) };
 
         let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
         MPlaceTy { mplace, layout }
