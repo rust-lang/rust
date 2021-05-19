@@ -1152,7 +1152,7 @@ pub(crate) fn compute_match_usefulness(
         .collect();
 
     let wild_pattern =
-        cx.pattern_arena.borrow_mut().alloc(Pat::wildcard_from_ty(&cx.infer[cx.match_expr]));
+        cx.pattern_arena.borrow_mut().alloc(Pat::wildcard_from_ty(cx.infer[cx.match_expr].clone()));
     let v = PatStack::from_pattern(wild_pattern);
     let usefulness = is_useful(cx, &matrix, &v, ConstructWitness, false, true);
     let non_exhaustiveness_witnesses = match usefulness {

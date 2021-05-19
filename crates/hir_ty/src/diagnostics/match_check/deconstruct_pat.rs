@@ -632,10 +632,7 @@ impl Fields {
     }
 
     /// Convenience; internal use.
-    fn wildcards_from_tys<'a>(
-        cx: &MatchCheckCtx<'_>,
-        tys: impl IntoIterator<Item = &'a Ty>,
-    ) -> Self {
+    fn wildcards_from_tys(cx: &MatchCheckCtx<'_>, tys: impl IntoIterator<Item = Ty>) -> Self {
         let wilds = tys.into_iter().map(Pat::wildcard_from_ty);
         let pats = wilds.map(|pat| cx.alloc_pat(pat)).collect();
         Fields::Vec(pats)
@@ -645,13 +642,13 @@ impl Fields {
     pub(crate) fn wildcards(pcx: PatCtxt<'_>, constructor: &Constructor) -> Self {
         let ty = pcx.ty;
         let cx = pcx.cx;
-        let wildcard_from_ty = |ty| cx.alloc_pat(Pat::wildcard_from_ty(ty));
+        let wildcard_from_ty = |ty: &Ty| cx.alloc_pat(Pat::wildcard_from_ty(ty.clone()));
 
         let ret = match constructor {
             Single | Variant(_) => match ty.kind(&Interner) {
                 TyKind::Tuple(_, substs) => {
                     let tys = substs.iter(&Interner).map(|ty| ty.assert_ty_ref(&Interner));
-                    Fields::wildcards_from_tys(cx, tys)
+                    Fields::wildcards_from_tys(cx, tys.cloned())
                 }
                 TyKind::Ref(.., rty) => Fields::from_single_pattern(wildcard_from_ty(rty)),
                 &TyKind::Adt(AdtId(adt), ref substs) => {
@@ -666,14 +663,20 @@ impl Fields {
                         // Whether we must not match the fields of this variant exhaustively.
                         let is_non_exhaustive =
                             is_field_list_non_exhaustive(variant_id, cx) && !adt_is_local;
-                        let field_ty_arena = cx.db.field_types(variant_id);
-                        let field_tys =
-                            || field_ty_arena.iter().map(|(_, binders)| binders.skip_binders());
+
+                        cov_mark::hit!(match_check_wildcard_expanded_to_substitutions);
+                        let field_ty_data = cx.db.field_types(variant_id);
+                        let field_tys = || {
+                            field_ty_data
+                                .iter()
+                                .map(|(_, binders)| binders.clone().substitute(&Interner, substs))
+                        };
+
                         // In the following cases, we don't need to filter out any fields. This is
                         // the vast majority of real cases, since uninhabited fields are uncommon.
                         let has_no_hidden_fields = (matches!(adt, hir_def::AdtId::EnumId(_))
                             && !is_non_exhaustive)
-                            || !field_tys().any(|ty| cx.is_uninhabited(ty));
+                            || !field_tys().any(|ty| cx.is_uninhabited(&ty));
 
                         if has_no_hidden_fields {
                             Fields::wildcards_from_tys(cx, field_tys())
@@ -759,7 +762,7 @@ impl Fields {
             FloatRange(..) => UNHANDLED,
             Constructor::IntRange(_) => UNHANDLED,
             NonExhaustive => PatKind::Wild,
-            Wildcard => return Pat::wildcard_from_ty(pcx.ty),
+            Wildcard => return Pat::wildcard_from_ty(pcx.ty.clone()),
             Opaque => pcx.cx.bug("we should not try to apply an opaque constructor"),
             Missing => pcx.cx.bug(
                 "trying to apply the `Missing` constructor;\

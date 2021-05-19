@@ -39,8 +39,8 @@ pub(crate) struct Pat {
 }
 
 impl Pat {
-    pub(crate) fn wildcard_from_ty(ty: &Ty) -> Self {
-        Pat { ty: ty.clone(), kind: Box::new(PatKind::Wild) }
+    pub(crate) fn wildcard_from_ty(ty: Ty) -> Self {
+        Pat { ty, kind: Box::new(PatKind::Wild) }
     }
 }
 
@@ -1140,6 +1140,22 @@ fn main() {
         //^^^^ Missing match arm
         true if false => {}
         false         => {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn pattern_type_is_of_substitution() {
+        cov_mark::check!(match_check_wildcard_expanded_to_substitutions);
+        check_diagnostics(
+            r#"
+struct Foo<T>(T);
+struct Bar;
+fn main() {
+    match Foo(Bar) {
+        _ | Foo(Bar) => {}
+    }
 }
 "#,
         );
