@@ -367,6 +367,8 @@ impl DefCollector<'_> {
     /// This improves UX when proc macros are turned off or don't work, and replicates the behavior
     /// before we supported proc. attribute macros.
     fn reseed_with_unresolved_attributes(&mut self) -> ReachedFixedPoint {
+        cov_mark::hit!(unresolved_attribute_fallback);
+
         let mut added_items = false;
         let unexpanded_macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
         for directive in &unexpanded_macros {
@@ -391,7 +393,9 @@ impl DefCollector<'_> {
                 added_items = true;
             }
         }
-        self.unexpanded_macros = unexpanded_macros;
+
+        // The collection above might add new unresolved macros (eg. derives), so merge the lists.
+        self.unexpanded_macros.extend(unexpanded_macros);
 
         if added_items {
             // Continue name resolution with the new data.
