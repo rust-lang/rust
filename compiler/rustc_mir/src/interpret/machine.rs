@@ -313,7 +313,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     #[inline(always)]
     fn memory_read(
         _memory_extra: &Self::MemoryExtra,
-        _alloc: &Allocation<Self::PointerTag, Self::AllocExtra>,
+        _alloc_extra: &Self::AllocExtra,
         _ptr: Pointer<Self::PointerTag>,
         _size: Size,
     ) -> InterpResult<'tcx> {
@@ -324,7 +324,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     #[inline(always)]
     fn memory_written(
         _memory_extra: &mut Self::MemoryExtra,
-        _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        _alloc_extra: &mut Self::AllocExtra,
         _ptr: Pointer<Self::PointerTag>,
         _size: Size,
     ) -> InterpResult<'tcx> {
@@ -335,8 +335,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     #[inline(always)]
     fn memory_deallocated(
         _memory_extra: &mut Self::MemoryExtra,
-        _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        _alloc_extra: &mut Self::AllocExtra,
         _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
     ) -> InterpResult<'tcx> {
         Ok(())
     }
