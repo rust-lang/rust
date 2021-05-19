@@ -40,11 +40,11 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.needs_infer() { ty.super_fold_with(self) } else { self.tcx.erase_regions_ty(ty) }
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
+        if ty.needs_infer() { ty.super_fold_with(self) } else { Ok(self.tcx.erase_regions_ty(ty)) }
     }
 
-    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> Result<ty::Binder<'tcx, T>, Self::Error>
     where
         T: TypeFoldable<'tcx>,
     {
@@ -52,7 +52,7 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
         u.super_fold_with(self)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         // because late-bound regions affect subtyping, we can't
         // erase the bound/free distinction, but we can replace
         // all free regions with 'erased.
@@ -62,12 +62,15 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
         // away. In codegen, they will always be erased to 'erased
         // whenever a substitution occurs.
         match *r {
-            ty::ReLateBound(..) => r,
-            _ => self.tcx.lifetimes.re_erased,
+            ty::ReLateBound(..) => Ok(r),
+            _ => Ok(self.tcx.lifetimes.re_erased),
         }
     }
 
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+    fn fold_mir_const(
+        &mut self,
+        c: mir::ConstantKind<'tcx>,
+    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
         c.super_fold_with(self)
     }
 }

@@ -1004,12 +1004,12 @@ impl TypeFolder<'tcx> for TypeParamEraser<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         match ty.kind() {
-            ty::Param(_) => self.0.next_ty_var(TypeVariableOrigin {
+            ty::Param(_) => Ok(self.0.next_ty_var(TypeVariableOrigin {
                 kind: TypeVariableOriginKind::MiscVariable,
                 span: self.1,
-            }),
+            })),
             _ => ty.super_fold_with(self),
         }
     }

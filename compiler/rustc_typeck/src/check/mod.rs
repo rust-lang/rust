@@ -374,7 +374,7 @@ where
             self.tcx
         }
 
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
             match *ty.kind() {
                 ty::Opaque(def_id, substs) => {
                     debug!("fixup_opaque_types: found type {:?}", ty);
@@ -395,7 +395,7 @@ where
                                         // Replace inference type with a generic parameter
                                         self.tcx.mk_param_from_def(param)
                                     } else {
-                                        old_param.fold_with(self)
+                                        old_param.fold_with(self).into_ok()
                                     }
                                 }
                                 GenericArgKind::Const(old_const) => {
@@ -413,23 +413,23 @@ where
                                             ty
                                         );
                                     } else {
-                                        old_param.fold_with(self)
+                                        old_param.fold_with(self).into_ok()
                                     }
                                 }
                                 GenericArgKind::Lifetime(old_region) => {
                                     if let RegionKind::ReVar(_) = old_region {
                                         self.tcx.mk_param_from_def(param)
                                     } else {
-                                        old_param.fold_with(self)
+                                        old_param.fold_with(self).into_ok()
                                     }
                                 }
                             }
                         });
                         let new_ty = self.tcx.mk_opaque(def_id, new_substs);
                         debug!("fixup_opaque_types: new type: {:?}", new_ty);
-                        new_ty
+                        Ok(new_ty)
                     } else {
-                        ty
+                        Ok(ty)
                     }
                 }
                 _ => ty.super_fold_with(self),

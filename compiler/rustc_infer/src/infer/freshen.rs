@@ -117,11 +117,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
         match *r {
             ty::ReLateBound(..) => {
                 // leave bound regions alone
-                r
+                Ok(r)
             }
 
             ty::ReStatic
@@ -132,14 +132,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::ReEmpty(_)
             | ty::ReErased => {
                 // replace all free regions with 'erased
-                self.tcx().lifetimes.re_erased
+                Ok(self.tcx().lifetimes.re_erased)
             }
         }
     }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !t.needs_infer() && !t.has_erasable_regions() {
-            return t;
+            return Ok(t);
         }
 
         let tcx = self.infcx.tcx;
@@ -147,10 +147,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         match *t.kind() {
             ty::Infer(ty::TyVar(v)) => {
                 let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
-                self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy)
+                Ok(self.freshen_ty(opt_ty, ty::TyVar(v), ty::FreshTy))
             }
 
-            ty::Infer(ty::IntVar(v)) => self.freshen_ty(
+            ty::Infer(ty::IntVar(v)) => Ok(self.freshen_ty(
                 self.infcx
                     .inner
                     .borrow_mut()
@@ -159,9 +159,9 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .map(|v| v.to_type(tcx)),
                 ty::IntVar(v),
                 ty::FreshIntTy,
-            ),
+            )),
 
-            ty::Infer(ty::FloatVar(v)) => self.freshen_ty(
+            ty::Infer(ty::FloatVar(v)) => Ok(self.freshen_ty(
                 self.infcx
                     .inner
                     .borrow_mut()
@@ -170,7 +170,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .map(|v| v.to_type(tcx)),
                 ty::FloatVar(v),
                 ty::FreshFloatTy,
-            ),
+            )),
 
             ty::Infer(ty::FreshTy(ct) | ty::FreshIntTy(ct) | ty::FreshFloatTy(ct)) => {
                 if ct >= self.ty_freshen_count {
@@ -181,7 +181,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                         self.ty_freshen_count
                     );
                 }
-                t
+                Ok(t)
             }
 
             ty::Generator(..)
@@ -213,7 +213,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         match ct.val {
             ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
                 let opt_ct = self
@@ -224,12 +227,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     .probe_value(v)
                     .val
                     .known();
-                return self.freshen_const(
+                return Ok(self.freshen_const(
                     opt_ct,
                     ty::InferConst::Var(v),
                     ty::InferConst::Fresh,
                     ct.ty,
-                );
+                ));
             }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
@@ -240,7 +243,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                         self.const_freshen_count,
                     );
                 }
-                return ct;
+                return Ok(ct);
             }
 
             ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {

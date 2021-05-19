@@ -93,19 +93,25 @@ impl TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         let arg = self.param_env.and(ty.into());
-        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_ty()
+        Ok(self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_ty())
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(
+        &mut self,
+        c: &'tcx ty::Const<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
         let arg = self.param_env.and(c.into());
-        self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_const()
+        Ok(self.tcx.normalize_generic_arg_after_erasing_regions(arg).expect_const())
     }
 
     #[inline]
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
+    fn fold_mir_const(
+        &mut self,
+        c: mir::ConstantKind<'tcx>,
+    ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
         let arg = self.param_env.and(c);
-        self.tcx.normalize_mir_const_after_erasing_regions(arg)
+        Ok(self.tcx.normalize_mir_const_after_erasing_regions(arg))
     }
 }

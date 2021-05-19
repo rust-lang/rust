@@ -21,6 +21,7 @@
 #![feature(crate_visibility_modifier)]
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(control_flow_enum)]
+#![feature(unwrap_infallible)]
 #![recursion_limit = "512"] // For rustdoc
 
 #[macro_use]
