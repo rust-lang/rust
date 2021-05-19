@@ -441,35 +441,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // we don't want the note in the else clause to be emitted
                     } else if let [ty] = &visitor.0[..] {
                         if let ty::Param(p) = *ty.kind() {
-                            // Check if the method would be found if the type param wasn't
-                            // involved. If so, it means that adding a trait bound to the param is
-                            // enough. Otherwise we do not give the suggestion.
-                            let mut eraser = TypeParamEraser(&self, expr.span);
-                            let needs_bound = self
-                                .lookup_op_method(
-                                    eraser.fold_ty(lhs_ty),
-                                    &[eraser.fold_ty(rhs_ty)],
-                                    Op::Binary(op, is_assign),
-                                )
-                                .is_ok();
-                            if needs_bound {
-                                suggest_constraining_param(
-                                    self.tcx,
-                                    self.body_id,
-                                    &mut err,
-                                    ty,
-                                    rhs_ty,
-                                    missing_trait,
-                                    p,
-                                    use_output,
-                                );
-                            } else if *ty != lhs_ty {
+                            if *ty != lhs_ty {
                                 // When we know that a missing bound is responsible, we don't show
                                 // this note as it is redundant.
                                 err.note(&format!(
                                     "the trait `{}` is not implemented for `{}`",
                                     missing_trait, lhs_ty
                                 ));
+                            } else {
+                                // Check if the method would be found if the type param wasn't
+                                // involved. If so, it means that adding a trait bound to the param is
+                                // enough. Otherwise we do not give the suggestion.
+                                let mut eraser = TypeParamEraser(&self, expr.span);
+                                let needs_bound = self
+                                    .lookup_op_method(
+                                        eraser.fold_ty(lhs_ty),
+                                        &[eraser.fold_ty(rhs_ty)],
+                                        Op::Binary(op, is_assign),
+                                    )
+                                    .is_ok();
+                                if needs_bound {
+                                    suggest_constraining_param(
+                                        self.tcx,
+                                        self.body_id,
+                                        &mut err,
+                                        ty,
+                                        rhs_ty,
+                                        missing_trait,
+                                        p,
+                                        use_output,
+                                    );
+                                }
                             }
                         } else {
                             bug!("type param visitor stored a non type param: {:?}", ty.kind());
