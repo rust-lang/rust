@@ -1260,8 +1260,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ParamEnv<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ParamEnv<'tcx> {
-    fn super_fold_with<F: ty::fold::TypeFolder<'tcx>>(self, folder: &mut F) -> Self {
-        ParamEnv::new(self.caller_bounds().fold_with(folder), self.reveal().fold_with(folder))
+    fn super_fold_with<F: ty::fold::TypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        Ok(ParamEnv::new(self.caller_bounds().fold_with(folder)?, self.reveal().fold_with(folder)?))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
