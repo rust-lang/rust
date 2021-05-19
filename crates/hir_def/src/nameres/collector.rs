@@ -561,26 +561,30 @@ impl DefCollector<'_> {
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
         let mut res = ReachedFixedPoint::Yes;
         let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
-        for mut directive in imports {
-            directive.status = self.resolve_import(directive.module_id, &directive.import);
-            match directive.status {
-                PartialResolvedImport::Indeterminate(_) => {
-                    self.record_resolved_import(&directive);
-                    // FIXME: For avoid performance regression,
-                    // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
-                    self.resolved_imports.push(directive);
-                    res = ReachedFixedPoint::No;
+        let imports = imports
+            .into_iter()
+            .filter_map(|mut directive| {
+                directive.status = self.resolve_import(directive.module_id, &directive.import);
+                match directive.status {
+                    PartialResolvedImport::Indeterminate(_) => {
+                        self.record_resolved_import(&directive);
+                        // FIXME: For avoid performance regression,
+                        // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
+                        self.resolved_imports.push(directive);
+                        res = ReachedFixedPoint::No;
+                        None
+                    }
+                    PartialResolvedImport::Resolved(_) => {
+                        self.record_resolved_import(&directive);
+                        self.resolved_imports.push(directive);
+                        res = ReachedFixedPoint::No;
+                        None
+                    }
+                    PartialResolvedImport::Unresolved => Some(directive),
                 }
-                PartialResolvedImport::Resolved(_) => {
-                    self.record_resolved_import(&directive);
-                    self.resolved_imports.push(directive);
-                    res = ReachedFixedPoint::No;
-                }
-                PartialResolvedImport::Unresolved => {
-                    self.unresolved_imports.push(directive);
-                }
-            }
-        }
+            })
+            .collect();
+        self.unresolved_imports = imports;
         res
     }
 
