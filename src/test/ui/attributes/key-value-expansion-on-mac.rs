@@ -1,4 +1,3 @@
-#![feature(extended_key_value_attributes)]
 #![feature(rustc_attrs)]
 
 #[rustc_dummy = stringify!(a)] // OK
