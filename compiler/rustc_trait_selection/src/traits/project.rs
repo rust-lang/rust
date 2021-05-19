@@ -339,7 +339,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         if !needs_normalization(&value, self.param_env.reveal()) {
             value
         } else {
-            value.fold_with(self)
+            value.fold_with(self).into_ok()
         }
     }
 }
@@ -555,7 +555,7 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
             universe_indices,
         };
 
-        let value = value.super_fold_with(&mut replacer);
+        let value = value.super_fold_with(&mut replacer).into_ok();
 
         (value, replacer.mapped_regions, replacer.mapped_types, replacer.mapped_consts)
     }
@@ -681,7 +681,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
             universe_indices,
             current_index: ty::INNERMOST,
         };
-        value.super_fold_with(&mut replacer)
+        value.super_fold_with(&mut replacer).into_ok()
     }
 }
 
@@ -1546,7 +1546,8 @@ fn confirm_candidate<'cx, 'tcx>(
     // when possible for this to work. See `auto-trait-projection-recursion.rs`
     // for a case where this matters.
     if progress.ty.has_infer_regions() {
-        progress.ty = OpportunisticRegionResolver::new(selcx.infcx()).fold_ty(progress.ty);
+        progress.ty =
+            OpportunisticRegionResolver::new(selcx.infcx()).fold_ty(progress.ty).into_ok();
     }
     progress
 }

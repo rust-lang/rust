@@ -95,7 +95,8 @@ pub fn equal_up_to_regions(
                 // Leave consts and types unchanged.
                 ct_op: |ct| ct,
                 ty_op: |ty| ty,
-            }),
+            })
+            .into_ok(),
         )
     };
     tcx.infer_ctxt().enter(|infcx| infcx.can_eq(param_env, normalize(src), normalize(dest)).is_ok())

@@ -2222,6 +2222,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .predicate
             .to_poly_trait_ref()
             .fold_with(&mut self.freshener)
+            .into_ok()
             .with_constness(obligation.predicate.skip_binder().constness);
 
         let dfn = previous_stack.cache.next_dfn();

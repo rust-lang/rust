@@ -88,7 +88,7 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
                 normalizer.universes.extend((0..max_visitor.escaping).map(|_| None));
             }
         }
-        let result = value.fold_with(&mut normalizer);
+        let result = value.fold_with(&mut normalizer).into_ok();
         info!(
             "normalize::<{}>: result={:?} with {} obligations",
             std::any::type_name::<T>(),

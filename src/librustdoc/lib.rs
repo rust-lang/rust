@@ -18,6 +18,7 @@
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
+#![feature(unwrap_infallible)]
 #![warn(rustc::internal)]
 
 #[macro_use]

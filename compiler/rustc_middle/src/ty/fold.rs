@@ -336,7 +336,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        value.fold_with(&mut RegionFolder::new(self, skipped_regions, &mut f))
+        value.fold_with(&mut RegionFolder::new(self, skipped_regions, &mut f)).into_ok()
     }
 
     /// Invoke `callback` on every region appearing free in `value`.
@@ -638,7 +638,7 @@ impl<'tcx> TyCtxt<'tcx> {
             value
         } else {
             let mut replacer = BoundVarReplacer::new(self, Some(&mut real_fld_r), None, None);
-            value.fold_with(&mut replacer)
+            value.fold_with(&mut replacer).into_ok()
         };
         (value, region_map)
     }
@@ -664,7 +664,7 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             let mut replacer =
                 BoundVarReplacer::new(self, Some(&mut fld_r), Some(&mut fld_t), Some(&mut fld_c));
-            value.fold_with(&mut replacer)
+            value.fold_with(&mut replacer).into_ok()
         }
     }
 
@@ -1030,7 +1030,7 @@ where
 {
     debug!("shift_vars(value={:?}, amount={})", value, amount);
 
-    value.fold_with(&mut Shifter::new(tcx, amount))
+    value.fold_with(&mut Shifter::new(tcx, amount)).into_ok()
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -1293,7 +1293,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// FIXME(@lcnr): explain this function a bit more
     pub fn expose_default_const_substs<T: TypeFoldable<'tcx>>(self, v: T) -> T {
-        v.fold_with(&mut ExposeDefaultConstSubstsFolder { tcx: self })
+        v.fold_with(&mut ExposeDefaultConstSubstsFolder { tcx: self }).into_ok()
     }
 }
 

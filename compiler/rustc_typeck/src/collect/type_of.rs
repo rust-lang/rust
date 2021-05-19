@@ -761,7 +761,7 @@ fn infer_placeholder_type<'a>(
 
                 // Suggesting unnameable types won't help.
                 let mut mk_nameable = MakeNameable::new(tcx);
-                let ty = mk_nameable.fold_ty(ty);
+                let ty = mk_nameable.fold_ty(ty).into_ok();
                 let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
                 if let Some(sugg_ty) = sugg_ty {
                     err.span_suggestion(
@@ -785,7 +785,7 @@ fn infer_placeholder_type<'a>(
 
             if !ty.references_error() {
                 let mut mk_nameable = MakeNameable::new(tcx);
-                let ty = mk_nameable.fold_ty(ty);
+                let ty = mk_nameable.fold_ty(ty).into_ok();
                 let sugg_ty = if mk_nameable.success { Some(ty) } else { None };
                 if let Some(sugg_ty) = sugg_ty {
                     diag.span_suggestion(

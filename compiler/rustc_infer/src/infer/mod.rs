@@ -681,7 +681,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {
-        t.fold_with(&mut self.freshener())
+        t.fold_with(&mut self.freshener()).into_ok()
     }
 
     /// Returns the origin of the type variable identified by `vid`, or `None`
@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        value.fold_with(&mut ShallowResolver { infcx: self })
+        value.fold_with(&mut ShallowResolver { infcx: self }).into_ok()
     }
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -1402,7 +1402,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return value; // Avoid duplicated subst-folding.
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
-        value.fold_with(&mut r)
+        value.fold_with(&mut r).into_ok()
     }
 
     /// Returns the first unresolved variable contained in `T`. In the

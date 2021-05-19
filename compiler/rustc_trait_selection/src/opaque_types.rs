@@ -65,14 +65,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty = instantiated_ty.fold_with(&mut ReverseMapper::new(
-            self.tcx,
-            self.is_tainted_by_errors(),
-            def_id,
-            map,
-            instantiated_ty,
-            span,
-        ));
+        let definition_ty = instantiated_ty
+            .fold_with(&mut ReverseMapper::new(
+                self.tcx,
+                self.is_tainted_by_errors(),
+                def_id,
+                map,
+                instantiated_ty,
+                span,
+            ))
+            .into_ok();
         debug!(?definition_ty);
 
         definition_ty
@@ -123,14 +125,14 @@ impl ReverseMapper<'tcx> {
     ) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
         self.map_missing_regions_to_empty = true;
-        let kind = kind.fold_with(self);
+        let kind = kind.fold_with(self).into_ok();
         self.map_missing_regions_to_empty = false;
         kind
     }
 
     fn fold_kind_normally(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
         assert!(!self.map_missing_regions_to_empty);
-        kind.fold_with(self)
+        kind.fold_with(self).into_ok()
     }
 }
 

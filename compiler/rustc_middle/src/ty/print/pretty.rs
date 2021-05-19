@@ -2193,7 +2193,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                 name: &mut name,
                 region_map: BTreeMap::new(),
             };
-            let new_value = value.clone().skip_binder().fold_with(&mut folder);
+            let new_value = value.clone().skip_binder().fold_with(&mut folder).into_ok();
             let region_map = folder.region_map;
             start_or_continue(&mut self, "", "> ");
             (new_value, region_map)
