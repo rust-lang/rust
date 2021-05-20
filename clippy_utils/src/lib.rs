@@ -4,7 +4,14 @@
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
+// warn on the same lints as `clippy_lints`
+#![warn(trivial_casts, trivial_numeric_casts)]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
+// warn on rustc internal lints
+#![warn(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -855,6 +862,24 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     })
 }
 
+/// Gets the loop enclosing the given expression, if any.
+pub fn get_enclosing_loop(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    let map = tcx.hir();
+    for (_, node) in map.parent_iter(expr.hir_id) {
+        match node {
+            Node::Expr(
+                e @ Expr {
+                    kind: ExprKind::Loop(..),
+                    ..
+                },
+            ) => return Some(e),
+            Node::Expr(_) | Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
+            _ => break,
+        }
+    }
+    None
+}
+
 /// Gets the parent node if it's an impl block.
 pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
     let map = tcx.hir();
@@ -947,7 +972,12 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
-            if let ExpnKind::Macro { kind: MacroKind::Bang, name: mac_name, proc_macro: _ } = data.kind {
+            if let ExpnKind::Macro {
+                kind: MacroKind::Bang,
+                name: mac_name,
+                proc_macro: _,
+            } = data.kind
+            {
                 if mac_name.as_str() == name {
                     return Some(new_span);
                 }
@@ -975,7 +1005,12 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
-        if let ExpnKind::Macro { kind: MacroKind::Bang, name: mac_name, proc_macro: _ } = data.kind {
+        if let ExpnKind::Macro {
+            kind: MacroKind::Bang,
+            name: mac_name,
+            proc_macro: _,
+        } = data.kind
+        {
             if mac_name.as_str() == name {
                 return Some(new_span);
             }

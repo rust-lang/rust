@@ -10,7 +10,11 @@ fn bad1(string: Option<&str>) -> (bool, &str) {
 fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
     if string.is_none() {
         None
-    } else { string.map_or(Some((false, "")), |x| Some((true, x))) }
+    } else if let Some(x) = string {
+        Some((true, x))
+    } else {
+        Some((false, ""))
+    }
 }
 
 fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
