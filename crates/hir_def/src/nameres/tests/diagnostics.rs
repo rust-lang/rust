@@ -237,3 +237,20 @@ fn good_out_dir_diagnostic() {
         "#,
     );
 }
+
+#[test]
+fn register_attr_and_tool() {
+    cov_mark::check!(register_attr);
+    cov_mark::check!(register_tool);
+    check_no_diagnostics(
+        r#"
+#![register_tool(tool)]
+#![register_attr(attr)]
+
+#[tool::path]
+#[attr]
+struct S;
+        "#,
+    );
+    // NB: we don't currently emit diagnostics here
+}

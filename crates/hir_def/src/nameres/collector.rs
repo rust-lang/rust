@@ -20,7 +20,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 
 use crate::{
-    attr::{Attr, AttrId, Attrs},
+    attr::{Attr, AttrId, AttrInput, Attrs},
     builtin_attr,
     db::DefDatabase,
     derive_macro_as_call_id,
@@ -100,8 +100,10 @@ pub(super) fn collect_defs(
         proc_macros,
         exports_proc_macros: false,
         from_glob_import: Default::default(),
-        ignore_attrs_on: Default::default(),
+        skip_attrs: Default::default(),
         derive_helpers_in_scope: Default::default(),
+        registered_attrs: Default::default(),
+        registered_tools: Default::default(),
     };
     match block {
         Some(block) => {
@@ -253,10 +255,14 @@ struct DefCollector<'a> {
     ///
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
-    ignore_attrs_on: FxHashMap<InFile<ModItem>, AttrId>,
+    skip_attrs: FxHashMap<InFile<ModItem>, AttrId>,
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<Name>>,
+    /// Custom attributes registered with `#![register_attr]`.
+    registered_attrs: Vec<String>,
+    /// Custom tool modules registered with `#![register_tool]`.
+    registered_tools: Vec<String>,
 }
 
 impl DefCollector<'_> {
@@ -265,11 +271,39 @@ impl DefCollector<'_> {
         let item_tree = self.db.file_item_tree(file_id.into());
         let module_id = self.def_map.root;
         self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
-        if item_tree
-            .top_level_attrs(self.db, self.def_map.krate)
-            .cfg()
-            .map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false))
-        {
+
+        let attrs = item_tree.top_level_attrs(self.db, self.def_map.krate);
+        if attrs.cfg().map_or(true, |cfg| self.cfg_options.check(&cfg) != Some(false)) {
+            // Process other crate-level attributes.
+            for attr in &*attrs {
+                let attr_name = match attr.path.as_ident() {
+                    Some(name) => name,
+                    None => continue,
+                };
+
+                let registered_name = if *attr_name == hir_expand::name![register_attr]
+                    || *attr_name == hir_expand::name![register_tool]
+                {
+                    match &attr.input {
+                        Some(AttrInput::TokenTree(subtree)) => match &*subtree.token_trees {
+                            [tt::TokenTree::Leaf(tt::Leaf::Ident(name))] => name.as_name(),
+                            _ => continue,
+                        },
+                        _ => continue,
+                    }
+                } else {
+                    continue;
+                };
+
+                if *attr_name == hir_expand::name![register_attr] {
+                    self.registered_attrs.push(registered_name.to_string());
+                    cov_mark::hit!(register_attr);
+                } else {
+                    self.registered_tools.push(registered_name.to_string());
+                    cov_mark::hit!(register_tool);
+                }
+            }
+
             ModCollector {
                 def_collector: &mut *self,
                 macro_depth: 0,
@@ -382,7 +416,7 @@ impl DefCollector<'_> {
         let mut unresolved_macros = std::mem::replace(&mut self.unresolved_macros, Vec::new());
         let pos = unresolved_macros.iter().position(|directive| {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr } = &directive.kind {
-                self.ignore_attrs_on.insert(ast_id.ast_id.with_value(*mod_item), *attr);
+                self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), *attr);
 
                 let file_id = ast_id.ast_id.file_id;
                 let item_tree = self.db.file_item_tree(file_id);
@@ -941,7 +975,7 @@ impl DefCollector<'_> {
                                 let file_id = ast_id.ast_id.file_id;
                                 let item_tree = self.db.file_item_tree(file_id);
                                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
-                                self.ignore_attrs_on.insert(InFile::new(file_id, *mod_item), *attr);
+                                self.skip_attrs.insert(InFile::new(file_id, *mod_item), *attr);
                                 ModCollector {
                                     def_collector: &mut *self,
                                     macro_depth: directive.depth,
@@ -1479,32 +1513,8 @@ impl ModCollector<'_, '_> {
     /// If `ignore_up_to` is `Some`, attributes precending and including that attribute will be
     /// assumed to be resolved already.
     fn resolve_attributes(&mut self, attrs: &Attrs, mod_item: ModItem) -> Result<(), ()> {
-        fn is_builtin_attr(path: &ModPath) -> bool {
-            if path.kind == PathKind::Plain {
-                if let Some(tool_module) = path.segments().first() {
-                    let tool_module = tool_module.to_string();
-                    if builtin_attr::TOOL_MODULES.iter().any(|m| tool_module == *m) {
-                        return true;
-                    }
-                }
-
-                if let Some(name) = path.as_ident() {
-                    let name = name.to_string();
-                    if builtin_attr::INERT_ATTRIBUTES
-                        .iter()
-                        .chain(builtin_attr::EXTRA_ATTRIBUTES)
-                        .any(|attr| name == *attr)
-                    {
-                        return true;
-                    }
-                }
-            }
-
-            false
-        }
-
         let mut ignore_up_to =
-            self.def_collector.ignore_attrs_on.get(&InFile::new(self.file_id, mod_item)).copied();
+            self.def_collector.skip_attrs.get(&InFile::new(self.file_id, mod_item)).copied();
         for attr in attrs.iter().skip_while(|attr| match ignore_up_to {
             Some(id) if attr.id == id => {
                 ignore_up_to = None;
@@ -1515,7 +1525,7 @@ impl ModCollector<'_, '_> {
         }) {
             if attr.path.as_ident() == Some(&hir_expand::name![derive]) {
                 self.collect_derive(attr, mod_item);
-            } else if is_builtin_attr(&attr.path) {
+            } else if self.is_builtin_or_registered_attr(&attr.path) {
                 continue;
             } else {
                 log::debug!("non-builtin attribute {}", attr.path);
@@ -1536,6 +1546,37 @@ impl ModCollector<'_, '_> {
         }
 
         Ok(())
+    }
+
+    fn is_builtin_or_registered_attr(&self, path: &ModPath) -> bool {
+        if path.kind == PathKind::Plain {
+            if let Some(tool_module) = path.segments().first() {
+                let tool_module = tool_module.to_string();
+                if builtin_attr::TOOL_MODULES
+                    .iter()
+                    .copied()
+                    .chain(self.def_collector.registered_tools.iter().map(|s| &**s))
+                    .any(|m| tool_module == *m)
+                {
+                    return true;
+                }
+            }
+
+            if let Some(name) = path.as_ident() {
+                let name = name.to_string();
+                if builtin_attr::INERT_ATTRIBUTES
+                    .iter()
+                    .chain(builtin_attr::EXTRA_ATTRIBUTES)
+                    .copied()
+                    .chain(self.def_collector.registered_attrs.iter().map(|s| &**s))
+                    .any(|attr| name == *attr)
+                {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     fn collect_derive(&mut self, attr: &Attr, mod_item: ModItem) {
@@ -1779,8 +1820,10 @@ mod tests {
             proc_macros: Default::default(),
             exports_proc_macros: false,
             from_glob_import: Default::default(),
-            ignore_attrs_on: Default::default(),
-            derive_helpers_in_scope: FxHashMap::default(),
+            skip_attrs: Default::default(),
+            derive_helpers_in_scope: Default::default(),
+            registered_attrs: Default::default(),
+            registered_tools: Default::default(),
         };
         collector.seed_with_top_level();
         collector.collect();

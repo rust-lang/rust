@@ -164,6 +164,8 @@ pub mod known {
         doc,
         cfg,
         cfg_attr,
+        register_attr,
+        register_tool,
         // Components of known path (value or mod name)
         std,
         core,
