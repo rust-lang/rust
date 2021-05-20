@@ -47,7 +47,12 @@ pub struct MacroRefData {
 
 impl MacroRefData {
     pub fn new(name: String, callee: Span, cx: &LateContext<'_>) -> Self {
-        let mut path = cx.sess().source_map().span_to_filename(callee).prefer_local().to_string();
+        let mut path = cx
+            .sess()
+            .source_map()
+            .span_to_filename(callee)
+            .prefer_local()
+            .to_string();
 
         // std lib paths are <::std::module::file type>
         // so remove brackets, space and type.
@@ -96,7 +101,8 @@ impl MacroUseImports {
         let name = snippet(cx, cx.sess().source_map().span_until_char(call_site, '!'), "_");
         if let Some(callee) = span.source_callee() {
             if !self.collected.contains(&call_site) {
-                self.mac_refs.push(MacroRefData::new(name.to_string(), callee.def_site, cx));
+                self.mac_refs
+                    .push(MacroRefData::new(name.to_string(), callee.def_site, cx));
                 self.collected.insert(call_site);
             }
         }
@@ -174,7 +180,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                                 .push((*item).to_string());
                             check_dup.push((*item).to_string());
                         }
-                    }
+                    },
                     [root, rest @ ..] => {
                         if rest.iter().all(|item| !check_dup.contains(&(*item).to_string())) {
                             let filtered = rest
@@ -198,7 +204,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                                 .push(rest.join("::"));
                             check_dup.extend(rest.iter().map(ToString::to_string));
                         }
-                    }
+                    },
                 }
             }
         }

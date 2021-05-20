@@ -205,4 +205,19 @@ mod issue6965 {
     }
 }
 
+use std::rc::Rc;
+fn format_name(name: Option<&Rc<str>>) -> &str {
+    match name {
+        None => "<anon>",
+        Some(name) => name,
+    }
+}
+
+fn implicit_deref_ref() {
+    let _: &str = match Some(&"bye") {
+        None => "hi",
+        Some(s) => s,
+    };
+}
+
 fn main() {}

@@ -162,5 +162,11 @@ error: unnecessary structure name repetition
 LL |             A::new::<submod::B>(submod::B {})
    |             ^ help: use the applicable keyword: `Self`
 
-error: aborting due to 27 previous errors
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:491:13
+   |
+LL |             S2::new()
+   |             ^^ help: use the applicable keyword: `Self`
+
+error: aborting due to 28 previous errors
 
