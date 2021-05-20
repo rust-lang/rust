@@ -736,6 +736,28 @@ fn unresolved_attributes_fall_back_track_per_file_moditems() {
 }
 
 #[test]
+fn resolves_derive_helper() {
+    cov_mark::check!(resolved_derive_helper);
+    check(
+        r#"
+//- /main.rs crate:main deps:proc
+#[derive(proc::Derive)]
+#[helper]
+#[unresolved]
+struct S;
+
+//- /proc.rs crate:proc
+#[proc_macro_derive(Derive, attributes(helper))]
+fn derive() {}
+        "#,
+        expect![[r#"
+            crate
+            S: t v
+        "#]],
+    )
+}
+
+#[test]
 fn macro_expansion_overflow() {
     cov_mark::check!(macro_expansion_overflow);
     check(
