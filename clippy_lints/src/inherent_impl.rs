@@ -3,10 +3,7 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{in_macro, is_allowed};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::{
-    def_id::{LocalDefId, LOCAL_CRATE},
-    Crate, Item, ItemKind, Node,
-};
+use rustc_hir::{def_id::LocalDefId, Crate, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -56,16 +53,16 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
 
         for (_, impl_ids) in cx
             .tcx
-            .crate_inherent_impls(LOCAL_CRATE)
+            .crate_inherent_impls(())
             .inherent_impls
             .iter()
-            .filter(|(id, impls)| {
+            .filter(|(&id, impls)| {
                 impls.len() > 1
                     // Check for `#[allow]` on the type definition
                     && !is_allowed(
                         cx,
                         MULTIPLE_INHERENT_IMPL,
-                        cx.tcx.hir().local_def_id_to_hir_id(id.expect_local()),
+                        cx.tcx.hir().local_def_id_to_hir_id(id),
                     )
             })
         {

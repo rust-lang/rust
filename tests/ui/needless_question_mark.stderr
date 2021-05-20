@@ -75,7 +75,7 @@ LL |         || -> Option<_> { Some(Some($expr)?) }()
 LL |     let _x = some_and_qmark_in_macro!(x?);
    |              ---------------------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `some_and_qmark_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

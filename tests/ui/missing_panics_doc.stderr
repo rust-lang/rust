@@ -27,7 +27,7 @@ note: first possible panic found here
    |
 LL |     panic!("This function panics")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:18:1
@@ -42,7 +42,7 @@ note: first possible panic found here
    |
 LL |     todo!()
    |     ^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:23:1
@@ -61,7 +61,7 @@ note: first possible panic found here
    |
 LL |             panic!()
    |             ^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:32:1
@@ -76,7 +76,7 @@ note: first possible panic found here
    |
 LL |     if true { unreachable!() } else { panic!() }
    |                                       ^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:37:1
@@ -92,7 +92,7 @@ note: first possible panic found here
    |
 LL |     assert_eq!(x, 0);
    |     ^^^^^^^^^^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:43:1
@@ -108,7 +108,7 @@ note: first possible panic found here
    |
 LL |     assert_ne!(x, 0);
    |     ^^^^^^^^^^^^^^^^^
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `assert_ne` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 7 previous errors
 

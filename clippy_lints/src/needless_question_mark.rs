@@ -100,7 +100,7 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if is_lang_ctor(cx, qpath, OptionSome) || is_lang_ctor(cx, qpath, ResultOk);
         if let ExprKind::Match(inner_expr_with_q, _, MatchSource::TryDesugar) = &arg.kind;
         if let ExprKind::Call(called, [inner_expr]) = &inner_expr_with_q.kind;
-        if let ExprKind::Path(QPath::LangItem(LangItem::TryIntoResult, _)) = &called.kind;
+        if let ExprKind::Path(QPath::LangItem(LangItem::TryTraitBranch, _)) = &called.kind;
         if expr.span.ctxt() == inner_expr.span.ctxt();
         let expr_ty = cx.typeck_results().expr_ty(expr);
         let inner_ty = cx.typeck_results().expr_ty(inner_expr);

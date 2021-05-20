@@ -66,7 +66,7 @@ use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
@@ -683,7 +683,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
 /// Returns `true` if the provided `def_id` is an entrypoint to a program.
 pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
     cx.tcx
-        .entry_fn(LOCAL_CRATE)
+        .entry_fn(())
         .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id)
 }
 
@@ -971,7 +971,12 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
-            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+            if let ExpnKind::Macro {
+                kind: MacroKind::Bang,
+                name: mac_name,
+                proc_macro: _,
+            } = data.kind
+            {
                 if mac_name.as_str() == name {
                     return Some(new_span);
                 }
@@ -999,7 +1004,12 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
-        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+        if let ExpnKind::Macro {
+            kind: MacroKind::Bang,
+            name: mac_name,
+            proc_macro: _,
+        } = data.kind
+        {
             if mac_name.as_str() == name {
                 return Some(new_span);
             }

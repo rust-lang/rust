@@ -247,7 +247,7 @@ impl SerializableSpan {
         let loc: Loc = cx.sess().source_map().lookup_char_pos(span.lo());
 
         Self {
-            path: format!("{}", loc.file.name),
+            path: format!("{}", loc.file.name.prefer_remapped()),
             line: loc.line,
         }
     }
