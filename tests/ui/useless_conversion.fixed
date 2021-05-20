@@ -70,4 +70,23 @@ fn main() {
     let a: i32 = 1;
     let b: i32 = 1;
     let _ = (a + b) * 3;
+
+    // see #7205
+    let s: Foo<'a'> = Foo;
+    let _: Foo<'b'> = s.into();
+    let s2: Foo<'a'> = Foo;
+    let _: Foo<'a'> = s2;
+    let s3: Foo<'a'> = Foo;
+    let _ = s3;
+    let s4: Foo<'a'> = Foo;
+    let _ = vec![s4, s4, s4].into_iter();
+}
+
+#[derive(Copy, Clone)]
+struct Foo<const C: char>;
+
+impl From<Foo<'a'>> for Foo<'b'> {
+    fn from(_s: Foo<'a'>) -> Self {
+        Foo
+    }
 }

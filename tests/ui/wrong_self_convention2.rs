@@ -23,7 +23,7 @@ mod issue6983 {
     }
 
     struct FooNoCopy;
-    // trigger lint
+    // don't trigger
     impl ToU64 for FooNoCopy {
         fn to_u64(self) -> u64 {
             2
@@ -40,5 +40,32 @@ mod issue7032 {
         fn from_usize(x: usize) -> Self {
             x
         }
+    }
+}
+
+mod issue7179 {
+    pub struct S(i32);
+
+    impl S {
+        // don't trigger (`s` is not `self`)
+        pub fn from_be(s: Self) -> Self {
+            S(i32::from_be(s.0))
+        }
+
+        // lint
+        pub fn from_be_self(self) -> Self {
+            S(i32::from_be(self.0))
+        }
+    }
+
+    trait T {
+        // don't trigger (`s` is not `self`)
+        fn from_be(s: Self) -> Self;
+        // lint
+        fn from_be_self(self) -> Self;
+    }
+
+    trait Foo: Sized {
+        fn as_byte_slice(slice: &[Self]) -> &[u8];
     }
 }
