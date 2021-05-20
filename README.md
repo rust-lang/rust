@@ -273,8 +273,8 @@ See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 ## Trademark
 
 The Rust programming language is an open source, community project governed
-by a core team. It is also sponsored by the Mozilla Foundation (“Mozilla”),
-which owns and protects the Rust and Cargo trademarks and logos
+by [the Rust Foundation][rust-foundation],
+which also owns and protects the Rust and Cargo trademarks and logos
 (the “Rust Trademarks”).
 
 If you want to use these names or brands, please read the [media guide][media-guide].
@@ -282,5 +282,6 @@ If you want to use these names or brands, please read the [media guide][media-gu
 Third-party logos may be subject to third-party copyrights and trademarks. See
 [Licenses][policies-licenses] for details.
 
+[rust-foundation]: https://foundation.rust-lang.org/
 [media-guide]: https://www.rust-lang.org/policies/media-guide
 [policies-licenses]: https://www.rust-lang.org/policies/licenses
