@@ -968,11 +968,11 @@ window.initSearch = function(rawSearchIndex) {
             extraClass = " active";
         }
 
-        var output = "";
+        var output = document.createElement("div");
         var duplicates = {};
         var length = 0;
         if (array.length > 0) {
-            output = "<div class=\"search-results " + extraClass + "\">";
+            output.className = "search-results " + extraClass;
 
             array.forEach(function(item) {
                 if (item.is_alias !== true) {
@@ -994,19 +994,46 @@ window.initSearch = function(rawSearchIndex) {
                     extra = " <i>(keyword)</i>";
                 }
 
-                output += "<a class=\"result-" + type + "\" href=\"" + item.href + "\">" +
-                          "<div><div class=\"result-name\">" +
-                          (item.is_alias === true ?
-                           ("<span class=\"alias\"><b>" + item.alias + " </b></span><span " +
-                              "class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>") : "") +
-                          item.displayPath + "<span class=\"" + type + "\">" +
-                          name + extra + "</span></div><div class=\"desc\">" +
-                          "<span>" + item.desc +
-                          "&nbsp;</span></div></div></a>";
+                var link = document.createElement("a");
+                link.className = "result-" + type;
+                link.href = item.href;
+
+                var wrapper = document.createElement("div");
+                var resultName = document.createElement("div");
+                resultName.className = "result-name";
+
+                if (item.is_alias) {
+                    var alias = document.createElement("span");
+                    alias.className = "alias";
+
+                    var bold = document.createElement("b");
+                    bold.innerText = item.alias;
+                    alias.appendChild(bold);
+
+                    alias.insertAdjacentHTML(
+                        "beforeend",
+                        "<span class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>");
+
+                    resultName.appendChild(alias);
+                }
+                resultName.insertAdjacentHTML(
+                    "beforeend",
+                    item.displayPath + "<span class=\"" + type + "\">" + name + extra + "</span>");
+                wrapper.appendChild(resultName);
+
+                var description = document.createElement("div");
+                description.className = "desc";
+                var spanDesc = document.createElement("span");
+                spanDesc.innerText = item.desc + "\u00A0";
+
+                description.appendChild(spanDesc);
+                wrapper.appendChild(description);
+                link.appendChild(wrapper);
+                output.appendChild(link);
             });
-            output += "</div>";
         } else {
-            output = "<div class=\"search-failed\"" + extraClass + ">No results :(<br/>" +
+            output.className = "search-failed" + extraClass;
+            output.innerHTML = "No results :(<br/>" +
                 "Try on <a href=\"https://duckduckgo.com/?q=" +
                 encodeURIComponent("rust " + query.query) +
                 "\">DuckDuckGo</a>?<br/><br/>" +
@@ -1018,7 +1045,7 @@ window.initSearch = function(rawSearchIndex) {
                 "href=\"https://doc.rust-lang.org/book/index.html\">Rust Book</a> for " +
                 "introductions to language features and the language itself.</li><li><a " +
                 "href=\"https://docs.rs\">Docs.rs</a> for documentation of crates released on" +
-                " <a href=\"https://crates.io/\">crates.io</a>.</li></ul></div>";
+                " <a href=\"https://crates.io/\">crates.io</a>.</li></ul>";
         }
         return [output, length];
     }
@@ -1078,10 +1105,16 @@ window.initSearch = function(rawSearchIndex) {
             makeTabHeader(0, "In Names", ret_others[1]) +
             makeTabHeader(1, "In Parameters", ret_in_args[1]) +
             makeTabHeader(2, "In Return Types", ret_returned[1]) +
-            "</div><div id=\"results\">" +
-            ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
+            "</div>";
+
+        var resultsElem = document.createElement("div");
+        resultsElem.id = "results";
+        resultsElem.appendChild(ret_others[0]);
+        resultsElem.appendChild(ret_in_args[0]);
+        resultsElem.appendChild(ret_returned[0]);
 
         search.innerHTML = output;
+        search.appendChild(resultsElem);
         // Reset focused elements.
         searchState.focusedByTab = [null, null, null];
         searchState.showResults(search);
