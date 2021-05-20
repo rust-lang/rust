@@ -1631,17 +1631,17 @@ impl<T, E> ops::TryV1 for Result<T, E> {
     type Output = T;
     type Error = E;
 
-    #[inline]
+    #[inline(always)]
     fn into_result(self) -> Self {
         self
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_ok(v: T) -> Self {
         Ok(v)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_error(v: E) -> Self {
         Err(v)
     }
@@ -1652,12 +1652,12 @@ impl<T, E> ops::TryV2 for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
 
-    #[inline]
+    #[inline(always)]
     fn from_output(output: Self::Output) -> Self {
         Ok(output)
     }
 
-    #[inline]
+    #[inline(always)]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Ok(v) => ControlFlow::Continue(v),
@@ -1668,7 +1668,7 @@ impl<T, E> ops::TryV2 for Result<T, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
-    #[inline]
+    #[inline(always)]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {
             Err(e) => Err(From::from(e)),

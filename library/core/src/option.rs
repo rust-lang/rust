@@ -1648,17 +1648,17 @@ impl<T> ops::TryV1 for Option<T> {
     type Output = T;
     type Error = NoneError;
 
-    #[inline]
+    #[inline(always)]
     fn into_result(self) -> Result<T, NoneError> {
         self.ok_or(NoneError)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_ok(v: T) -> Self {
         Some(v)
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_error(_: NoneError) -> Self {
         None
     }
@@ -1669,12 +1669,12 @@ impl<T> ops::TryV2 for Option<T> {
     type Output = T;
     type Residual = Option<convert::Infallible>;
 
-    #[inline]
+    #[inline(always)]
     fn from_output(output: Self::Output) -> Self {
         Some(output)
     }
 
-    #[inline]
+    #[inline(always)]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Some(v) => ControlFlow::Continue(v),
@@ -1685,7 +1685,7 @@ impl<T> ops::TryV2 for Option<T> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T> ops::FromResidual for Option<T> {
-    #[inline]
+    #[inline(always)]
     fn from_residual(residual: Option<convert::Infallible>) -> Self {
         match residual {
             None => None,
