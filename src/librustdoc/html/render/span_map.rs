@@ -97,16 +97,20 @@ struct SpanMapVisitor<'tcx> {
 }
 
 impl<'tcx> SpanMapVisitor<'tcx> {
-    fn handle_path(&mut self, path: &rustc_hir::Path<'_>, path_span: Option<Span>) -> bool {
+    /// This function is where we handle `hir::Path` elements and add them into the "span map".
+    fn handle_path(&mut self, path: &rustc_hir::Path<'_>, path_span: Option<Span>) {
         let info = match path.res {
+            // FIXME: For now, we only handle `DefKind` if it's not `DefKind::TyParam` or
+            // `DefKind::Macro`. Would be nice to support them too alongside the other `DefKind`
+            // (such as primitive types!).
             Res::Def(kind, def_id) if kind != DefKind::TyParam => {
                 if matches!(kind, DefKind::Macro(_)) {
-                    return false;
+                    return;
                 }
                 Some(def_id)
             }
             Res::Local(_) => None,
-            _ => return true,
+            _ => return,
         };
         if let Some(span) = self.tcx.hir().res_span(path.res) {
             self.matches.insert(
@@ -123,7 +127,6 @@ impl<'tcx> SpanMapVisitor<'tcx> {
                 LinkFromSrc::External(def_id),
             );
         }
-        true
     }
 }
 
