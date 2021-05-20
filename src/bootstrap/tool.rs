@@ -4,8 +4,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{exit, Command};
 
-use build_helper::t;
-
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::channel::GitInfo;
 use crate::compile;
@@ -214,10 +212,17 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            let cargo_out =
-                builder.cargo_out(compiler, self.mode, target).join(exe(tool, compiler.host));
-            let bin = builder.tools_dir(compiler).join(exe(tool, compiler.host));
+            let exe = exe(tool, compiler.host);
+            let cargo_out = builder.cargo_out(compiler, self.mode, target).join(&exe);
+            let bin = builder.tools_dir(compiler).join(&exe);
             builder.copy(&cargo_out, &bin);
+
+            // Don't create a stage0-sysroot/bin directory.
+            if compiler.stage > 0 {
+                let sysroot_bin = builder.sysroot_bindir(compiler).join(&exe);
+                builder.copy(&cargo_out, &sysroot_bin);
+            }
+
             Some(bin)
         }
     }
@@ -565,11 +570,9 @@ impl Step for Rustdoc {
             .cargo_out(build_compiler, Mode::ToolRustc, target)
             .join(exe("rustdoc_tool_binary", target_compiler.host));
 
-        // don't create a stage0-sysroot/bin directory.
+        // Don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
-            let sysroot = builder.sysroot(target_compiler);
-            let bindir = sysroot.join("bin");
-            t!(fs::create_dir_all(&bindir));
+            let bindir = builder.sysroot_bindir(target_compiler);
             let bin_rustdoc = bindir.join(exe("rustdoc", target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
             builder.copy(&tool_rustdoc, &bin_rustdoc);

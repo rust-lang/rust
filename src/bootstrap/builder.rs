@@ -613,6 +613,27 @@ impl<'a> Builder<'a> {
         self.ensure(compile::Sysroot { compiler })
     }
 
+    pub fn sysroot_bindir(&self, compiler: Compiler) -> Interned<PathBuf> {
+        #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+        struct Bindir {
+            compiler: Compiler,
+        }
+        impl Step for Bindir {
+            type Output = Interned<PathBuf>;
+
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                run.never()
+            }
+
+            fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
+                let sysroot_bindir = builder.sysroot(self.compiler).join("bin");
+                t!(fs::create_dir_all(&sysroot_bindir));
+                INTERNER.intern_path(sysroot_bindir)
+            }
+        }
+        self.ensure(Bindir { compiler })
+    }
+
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
     pub fn sysroot_libdir(&self, compiler: Compiler, target: TargetSelection) -> Interned<PathBuf> {
