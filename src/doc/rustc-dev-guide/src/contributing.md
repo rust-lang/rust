@@ -169,7 +169,8 @@ the issue in question.
 As a developer to this repository, you don't have to treat the following external projects
 differently from other crates that are directly in this repo:
 
-* Clippy
+* [Clippy](https://github.com/rust-lang/rust-clippy)
+* [rustfmt](https://github.com/rust-lang/rustfmt)
 
 They are just regular files and directories. This is in contrast to `submodule` dependencies
 (see below for those). Only tool authors will actually use any operations here.
@@ -233,7 +234,6 @@ subtrees) actually needs to use `git subtree`.
 Currently building Rust will also build the following external projects:
 
 * [miri](https://github.com/rust-lang/miri)
-* [rustfmt](https://github.com/rust-lang/rustfmt)
 * [rls](https://github.com/rust-lang/rls/)
 
 We allow breakage of these tools in the nightly channel. Maintainers of these
@@ -261,7 +261,7 @@ before the PR is merged.
 Rust's build system builds a number of tools that make use of the
 internals of the compiler. This includes
 [RLS](https://github.com/rust-lang/rls) and
-[rustfmt](https://github.com/rust-lang/rustfmt). If these tools
+[miri](https://github.com/rust-lang/miri). If these tools
 break because of your changes, you may run into a sort of "chicken and egg"
 problem. These tools rely on the latest compiler to be built so you can't update
 them to reflect your changes to the compiler until those changes are merged into
@@ -269,8 +269,8 @@ the compiler. At the same time, you can't get your changes merged into the compi
 because the rust-lang/rust build won't pass until those tools build and pass their
 tests.
 
-That means that, in the default state, you can't update the compiler without first
-fixing rustfmt, rls and the other tools that the compiler builds.
+That would mean that, in the default state, you couldn't update the compiler without first
+fixing miri, rls and the other tools that the compiler builds.
 
 Luckily, a feature was [added to Rust's build](https://github.com/rust-lang/rust/issues/45861)
 to make all of this easy to handle. The idea is that we allow these tools to be "broken",
@@ -280,7 +280,7 @@ and the tools are working again, you go back in the compiler and update the tool
 so they can be distributed again.
 
 This should avoid a bunch of synchronization dances and is also much easier on contributors as
-there's no need to block on rls/rustfmt/other tools changes going upstream.
+there's no need to block on rls/miri/other tools changes going upstream.
 
 Here are those same steps in detail:
 
@@ -290,8 +290,8 @@ Here are those same steps in detail:
    from resetting to the original branch after you make your changes. If you
    need to [update any submodules to their latest versions](#updating-submodules),
    see the section of this file about that for more information.
-2. (optional) Run `./x.py test src/tools/rustfmt` (substituting the submodule
-   that broke for `rustfmt`). Fix any errors in the submodule (and possibly others).
+2. (optional) Run `./x.py test src/tools/rls` (substituting the submodule
+   that broke for `rls`). Fix any errors in the submodule (and possibly others).
 3. (optional) Make commits for your changes and send them to upstream repositories as a PR.
 4. (optional) Maintainers of these submodules will **not** merge the PR. The PR can't be
    merged because CI will be broken. You'll want to write a message on the PR referencing
@@ -303,16 +303,16 @@ Here are those same steps in detail:
 
 #### Updating submodules
 
-These instructions are specific to updating `rustfmt`, however they may apply
+These instructions are specific to updating `rls`, however they may apply
 to the other submodules as well. Please help by improving these instructions
 if you find any discrepancies or special cases that need to be addressed.
 
-To update the `rustfmt` submodule, start by running the appropriate
+To update the `rls` submodule, start by running the appropriate
 [`git submodule` command](https://git-scm.com/book/en/v2/Git-Tools-Submodules).
 For example, to update to the latest commit on the remote master branch,
 you may want to run:
 ```
-git submodule update --remote src/tools/rustfmt
+git submodule update --remote src/tools/rls
 ```
 If you run `./x.py build` now, and you are lucky, it may just work. If you see
 an error message about patches that did not resolve to any crates, you will need
@@ -320,10 +320,10 @@ to complete a few more steps which are outlined with their rationale below.
 
 *(This error may change in the future to include more information.)*
 ```
-error: failed to resolve patches for `https://github.com/rust-lang/rustfmt`
+error: failed to resolve patches for `https://github.com/rust-lang/rls`
 
 Caused by:
-  patch for `rustfmt-nightly` in `https://github.com/rust-lang/rustfmt` did not resolve to any crates
+  patch for `rls` in `https://github.com/rust-lang/rls` did not resolve to any crates
 failed to run: ~/rust/build/x86_64-unknown-linux-gnu/stage0/bin/cargo build --manifest-path ~/rust/src/bootstrap/Cargo.toml
 ```
 
@@ -354,14 +354,14 @@ reveals what the problem is:
 > crates.io, but it's important to keep this in mind!
 
 This says that when we updated the submodule, the version number in our
-`src/tools/rustfmt/Cargo.toml` changed. The new version is different from
+`src/tools/rls/Cargo.toml` changed. The new version is different from
 the version in `Cargo.lock`, so the build can no longer continue.
 
 To resolve this, we need to update `Cargo.lock`. Luckily, cargo provides a
 command to do this easily.
 
 ```
-$ cargo update -p rustfmt-nightly
+$ cargo update -p rls
 ```
 
 This should change the version listed in `Cargo.lock` to the new version you updated

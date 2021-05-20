@@ -139,7 +139,6 @@ Changes not staged for commit:
   (use "git restore <file>..." to discard changes in working directory)
 	modified:   src/tools/cargo (new commits)
 	modified:   src/tools/rls (new commits)
-	modified:   src/tools/rustfmt (new commits)
 
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
@@ -347,9 +346,9 @@ you might want to get used to the main concepts of Git before reading this secti
 
 The `rust-lang/rust` repository uses [Git submodules] as a way to use other
 Rust projects from within the `rust` repo. Examples include Rust's fork of
-`llvm-project` and many devtools such as `cargo`, `rust-analyzer` and `rustfmt`.
+`llvm-project` and many devtools such as `cargo`, `rust-analyzer` and `rls`.
 
-Those projects are developped and maintained in an separate Git (and GitHub)
+Those projects are developed and maintained in an separate Git (and GitHub)
 repository, and they have their own Git history/commits, issue tracker and PRs.
 Submodules allow us to create some sort of embedded sub-repository inside the
 `rust` repository and use them like they were directories in the `rust` repository.
