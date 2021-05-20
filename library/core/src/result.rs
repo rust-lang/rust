@@ -1410,7 +1410,7 @@ impl<T, E: Into<!>> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(never_type)]
+    /// # #![cfg_attr(bootstrap, feature(never_type))]
     /// # #![feature(unwrap_infallible)]
     ///
     /// fn only_good_news() -> Result<String, !> {
@@ -1446,7 +1446,7 @@ impl<T: Into<!>, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// # #![feature(never_type)]
+    /// # #![cfg_attr(bootstrap, feature(never_type))]
     /// # #![feature(unwrap_infallible)]
     ///
     /// fn only_bad_news() -> Result<!, String> {

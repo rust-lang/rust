@@ -4,12 +4,12 @@ fn test() -> Option<Box<u32>> {
     let mut _0: std::option::Option<std::boxed::Box<u32>>; // return place in scope 0 at $DIR/issue-62289.rs:8:14: 8:30
     let mut _1: std::boxed::Box<u32>;    // in scope 0 at $DIR/issue-62289.rs:9:10: 9:21
     let mut _2: std::boxed::Box<u32>;    // in scope 0 at $DIR/issue-62289.rs:9:10: 9:21
-    let mut _3: std::ops::ControlFlow<std::option::Option<std::convert::Infallible>, u32>; // in scope 0 at $DIR/issue-62289.rs:9:15: 9:20
+    let mut _3: std::ops::ControlFlow<std::option::Option<!>, u32>; // in scope 0 at $DIR/issue-62289.rs:9:15: 9:20
     let mut _4: std::option::Option<u32>; // in scope 0 at $DIR/issue-62289.rs:9:15: 9:19
     let mut _5: isize;                   // in scope 0 at $DIR/issue-62289.rs:9:19: 9:20
-    let _6: std::option::Option<std::convert::Infallible>; // in scope 0 at $DIR/issue-62289.rs:9:19: 9:20
+    let _6: std::option::Option<!>;      // in scope 0 at $DIR/issue-62289.rs:9:19: 9:20
     let mut _7: !;                       // in scope 0 at $DIR/issue-62289.rs:9:19: 9:20
-    let mut _8: std::option::Option<std::convert::Infallible>; // in scope 0 at $DIR/issue-62289.rs:9:19: 9:20
+    let mut _8: std::option::Option<!>;  // in scope 0 at $DIR/issue-62289.rs:9:19: 9:20
     let _9: u32;                         // in scope 0 at $DIR/issue-62289.rs:9:15: 9:20
     scope 1 {
         debug residual => _6;            // in scope 1 at $DIR/issue-62289.rs:9:19: 9:20
@@ -56,13 +56,13 @@ fn test() -> Option<Box<u32>> {
 
     bb4: {
         StorageLive(_6);                 // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
-        _6 = ((_3 as Break).0: std::option::Option<std::convert::Infallible>); // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
+        _6 = ((_3 as Break).0: std::option::Option<!>); // scope 0 at $DIR/issue-62289.rs:9:19: 9:20
         StorageLive(_8);                 // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
         _8 = _6;                         // scope 2 at $DIR/issue-62289.rs:9:19: 9:20
-        _0 = <Option<Box<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _8) -> [return: bb5, unwind: bb11]; // scope 2 at $DIR/issue-62289.rs:9:15: 9:20
+        _0 = <Option<Box<u32>> as FromResidual<Option<!>>>::from_residual(move _8) -> [return: bb5, unwind: bb11]; // scope 2 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:19: 9:20
-                                         // + literal: Const { ty: fn(std::option::Option<std::convert::Infallible>) -> std::option::Option<std::boxed::Box<u32>> {<std::option::Option<std::boxed::Box<u32>> as std::ops::FromResidual<std::option::Option<std::convert::Infallible>>>::from_residual}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(std::option::Option<!>) -> std::option::Option<std::boxed::Box<u32>> {<std::option::Option<std::boxed::Box<u32>> as std::ops::FromResidual<std::option::Option<!>>>::from_residual}, val: Value(Scalar(<ZST>)) }
     }
 
     bb5: {

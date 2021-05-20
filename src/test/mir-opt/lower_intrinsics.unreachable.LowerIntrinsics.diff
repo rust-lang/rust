@@ -4,7 +4,7 @@
   fn unreachable() -> ! {
       let mut _0: !;                       // return place in scope 0 at $DIR/lower_intrinsics.rs:23:25: 23:26
       let mut _1: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:23:27: 25:2
-      let _2: ();                          // in scope 0 at $DIR/lower_intrinsics.rs:24:14: 24:45
+      let _2: !;                           // in scope 0 at $DIR/lower_intrinsics.rs:24:14: 24:45
       let mut _3: !;                       // in scope 0 at $DIR/lower_intrinsics.rs:24:14: 24:45
       scope 1 {
       }

@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 
 mod private {
@@ -11,11 +10,8 @@ mod private {
 
 fn main() {
     match private::DATA {
-    //~^ ERROR non-exhaustive patterns: `Some(Private { misc: true, .. })` not covered
+        //~^ ERROR non-exhaustive patterns: `Some(Private { misc: true, .. })` not covered
         None => {}
-        Some(private::Private {
-            misc: false,
-            ..
-        }) => {}
+        Some(private::Private { misc: false, .. }) => {}
     }
 }

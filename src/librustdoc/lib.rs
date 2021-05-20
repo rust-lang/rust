@@ -10,7 +10,7 @@
 #![feature(nll)]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(once_cell)]
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]

@@ -10,7 +10,7 @@ LL | |         22
 LL | |     }
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `{integer}`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `{integer}`
 note: required by `from_residual`
   --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
    |
@@ -29,7 +29,7 @@ LL | |         22_u32
 LL | |     };
    | |_____- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `u32`
 note: required by `from_residual`
   --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
    |
@@ -48,7 +48,7 @@ LL | |     22
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `u32`
 note: required by `from_residual`
   --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
    |

@@ -1,15 +1,15 @@
-error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
+error[E0277]: the `?` operator can only be used on `Result`s in a function that returns `Result`
   --> $DIR/try-on-option.rs:7:6
    |
 LL | / fn foo() -> Result<u32, ()> {
 LL | |     let x: Option<u32> = None;
 LL | |     x?;
-   | |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<u32, ()>`
+   | |      ^ this `?` produces `Option<!>`, which is incompatible with `Result<u32, ()>`
 LL | |     Ok(22)
 LL | | }
    | |_- this function returns a `Result`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u32, ()>`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `Result<u32, ()>`
 note: required by `from_residual`
   --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
    |
@@ -27,7 +27,7 @@ LL | |     22
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
    |
-   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `u32`
+   = help: the trait `FromResidual<Option<!>>` is not implemented for `u32`
 note: required by `from_residual`
   --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
    |

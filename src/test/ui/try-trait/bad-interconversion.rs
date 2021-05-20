@@ -9,7 +9,7 @@ fn result_to_result() -> Result<u64, u8> {
 
 fn option_to_result() -> Result<u64, String> {
     Some(3)?;
-    //~^ ERROR the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
+    //~^ ERROR the `?` operator can only be used on `Result`s in a function that returns `Result`
     Ok(10)
 }
 
