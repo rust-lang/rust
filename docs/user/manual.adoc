@@ -276,7 +276,7 @@ nvim_lsp.rust_analyzer.setup({
     settings = {
         ["rust-analyzer"] = {
             assist = {
-                importMergeBehavior = "last",
+                importGranularity = "module",
                 importPrefix = "by_self",
             },
             cargo = {

@@ -33,20 +33,19 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // use super::AssistContext;
 // ```
 //
-// .Merge Behavior
+// .Import Granularity
 //
-// It is possible to configure how use-trees are merged with the `importMergeBehavior` setting.
+// It is possible to configure how use-trees are merged with the `importGranularity` setting.
 // It has the following configurations:
 //
-// - `full`: This setting will cause auto-import to always completely merge use-trees that share the
-//  same path prefix while also merging inner trees that share the same path-prefix. This kind of
+// - `crate`: Merge imports from the same crate into a single use statement. This kind of
 //  nesting is only supported in Rust versions later than 1.24.
-// - `last`: This setting will cause auto-import to merge use-trees as long as the resulting tree
-//  will only contain a nesting of single segment paths at the very end.
-// - `none`: This setting will cause auto-import to never merge use-trees keeping them as simple
-//  paths.
+// - `module`: Merge imports from the same module into a single use statement.
+// - `item`: Don't merge imports at all, creating one import per item.
+// - `preserve`: Do not change the granularity of any imports. For auto-import this has the same
+//  effect as `item`.
 //
-// In `VS Code` the configuration for this is `rust-analyzer.assist.importMergeBehavior`.
+// In `VS Code` the configuration for this is `rust-analyzer.assist.importGranularity`.
 //
 // .Import Prefix
 //
