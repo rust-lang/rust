@@ -100,7 +100,7 @@ pub(super) fn collect_defs(
         proc_macros,
         exports_proc_macros: false,
         from_glob_import: Default::default(),
-        ignore_attrs_on: Default::default(),
+        skip_attrs: Default::default(),
         derive_helpers_in_scope: Default::default(),
     };
     match block {
@@ -253,7 +253,7 @@ struct DefCollector<'a> {
     ///
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
-    ignore_attrs_on: FxHashMap<InFile<ModItem>, AttrId>,
+    skip_attrs: FxHashMap<InFile<ModItem>, AttrId>,
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
     derive_helpers_in_scope: FxHashMap<AstId<ast::Item>, Vec<Name>>,
@@ -382,7 +382,7 @@ impl DefCollector<'_> {
         let mut unresolved_macros = std::mem::replace(&mut self.unresolved_macros, Vec::new());
         let pos = unresolved_macros.iter().position(|directive| {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr } = &directive.kind {
-                self.ignore_attrs_on.insert(ast_id.ast_id.with_value(*mod_item), *attr);
+                self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), *attr);
 
                 let file_id = ast_id.ast_id.file_id;
                 let item_tree = self.db.file_item_tree(file_id);
@@ -941,7 +941,7 @@ impl DefCollector<'_> {
                                 let file_id = ast_id.ast_id.file_id;
                                 let item_tree = self.db.file_item_tree(file_id);
                                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
-                                self.ignore_attrs_on.insert(InFile::new(file_id, *mod_item), *attr);
+                                self.skip_attrs.insert(InFile::new(file_id, *mod_item), *attr);
                                 ModCollector {
                                     def_collector: &mut *self,
                                     macro_depth: directive.depth,
@@ -1504,7 +1504,7 @@ impl ModCollector<'_, '_> {
         }
 
         let mut ignore_up_to =
-            self.def_collector.ignore_attrs_on.get(&InFile::new(self.file_id, mod_item)).copied();
+            self.def_collector.skip_attrs.get(&InFile::new(self.file_id, mod_item)).copied();
         for attr in attrs.iter().skip_while(|attr| match ignore_up_to {
             Some(id) if attr.id == id => {
                 ignore_up_to = None;
@@ -1779,7 +1779,7 @@ mod tests {
             proc_macros: Default::default(),
             exports_proc_macros: false,
             from_glob_import: Default::default(),
-            ignore_attrs_on: Default::default(),
+            skip_attrs: Default::default(),
             derive_helpers_in_scope: FxHashMap::default(),
         };
         collector.seed_with_top_level();
