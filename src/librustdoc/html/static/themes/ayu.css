@@ -151,16 +151,13 @@ pre, .rustdoc.source .example-wrap {
 	color: #c5c5c5;
 }
 
-.content a:hover {
+.search-results a:hover {
 	background-color: #777;
 }
 
-.content a:focus {
+.search-results a:focus {
 	color: #000 !important;
 	background-color: #c6afb3;
-}
-.content a:focus {
-	color: #000 !important;
 }
 .search-results a {
 	color: #0096cf;

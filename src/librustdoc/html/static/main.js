@@ -924,24 +924,16 @@ function hideThemeButtonState() {
             });
         }
 
-        if (hideMethodDocs) {
-            onEachLazy(document.getElementsByClassName("method"), function(e) {
-                var toggle = e.parentNode;
-                if (toggle) {
-                    toggle = toggle.parentNode;
-                }
-                if (toggle && toggle.tagName === "DETAILS") {
-                    toggle.open = false;
-                }
-            });
-        }
-
         onEachLazy(document.getElementsByTagName("details"), function (e) {
             var showLargeItem = !hideLargeItemContents && hasClass(e, "type-contents-toggle");
             var showImplementor = !hideImplementors && hasClass(e, "implementors-toggle");
             if (showLargeItem || showImplementor) {
                 e.open = true;
             }
+            if (hideMethodDocs && hasClass(e, "method-toggle")) {
+                e.open = false;
+            }
+
         });
 
         var currentType = document.getElementsByClassName("type-decl")[0];

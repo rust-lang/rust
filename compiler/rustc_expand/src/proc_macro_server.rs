@@ -1,9 +1,7 @@
 use crate::base::{ExtCtxt, ResolverExpand};
 
 use rustc_ast as ast;
-use rustc_ast::token;
-use rustc_ast::token::Nonterminal;
-use rustc_ast::token::NtIdent;
+use rustc_ast::token::{self, Nonterminal, NtIdent, TokenKind};
 use rustc_ast::tokenstream::{self, CanSynthesizeMissingTokens};
 use rustc_ast::tokenstream::{DelimSpan, Spacing::*, TokenStream, TreeAndSpacing};
 use rustc_ast_pretty::pprust;
@@ -541,6 +539,33 @@ impl server::Ident for Rustc<'_> {
 }
 
 impl server::Literal for Rustc<'_> {
+    fn from_str(&mut self, s: &str) -> Result<Self::Literal, ()> {
+        let override_span = None;
+        let stream = parse_stream_from_source_str(
+            FileName::proc_macro_source_code(s),
+            s.to_owned(),
+            self.sess,
+            override_span,
+        );
+        if stream.len() != 1 {
+            return Err(());
+        }
+        let tree = stream.into_trees().next().unwrap();
+        let token = match tree {
+            tokenstream::TokenTree::Token(token) => token,
+            tokenstream::TokenTree::Delimited { .. } => return Err(()),
+        };
+        let span_data = token.span.data();
+        if (span_data.hi.0 - span_data.lo.0) as usize != s.len() {
+            // There is a comment or whitespace adjacent to the literal.
+            return Err(());
+        }
+        let lit = match token.kind {
+            TokenKind::Literal(lit) => lit,
+            _ => return Err(()),
+        };
+        Ok(Literal { lit, span: self.call_site })
+    }
     fn debug_kind(&mut self, literal: &Self::Literal) -> String {
         format!("{:?}", literal.lit.kind)
     }
