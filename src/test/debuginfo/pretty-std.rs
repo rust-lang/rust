@@ -112,11 +112,11 @@
 // NOTE: OsString doesn't have a .natvis entry yet.
 
 // cdb-command: dx some
-// cdb-check:some             : Some [Type: _enum<core::option::Option<i16>>]
+// cdb-check:some             : Some [Type: enum$<core::option::Option<i16>>]
 // cdb-command: dx none
-// cdb-check:none             : None [Type: _enum<core::option::Option<i64>>]
+// cdb-check:none             : None [Type: enum$<core::option::Option<i64>>]
 // cdb-command: dx some_string
-// cdb-check:some_string      [Type: _enum<core::option::Option<alloc::string::String>, 1, [...], Some>]
+// cdb-check:some_string      [Type: enum$<core::option::Option<alloc::string::String>, 1, [...], Some>]
 
 #![allow(unused_variables)]
 use std::ffi::OsString;

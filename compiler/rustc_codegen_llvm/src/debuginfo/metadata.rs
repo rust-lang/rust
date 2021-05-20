@@ -1537,7 +1537,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     // For MSVC, we generate a union of structs for each variant with an explicit
                     // discriminant field roughly equivalent to the following C:
                     // ```c
-                    // union _enum<{name}> {
+                    // union enum$<{name}> {
                     //   struct {variant 0 name} {
                     //     tag$ variant$;
                     //     <variant 0 fields>
@@ -1628,7 +1628,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 // make the discriminant field that type. We then use natvis to render the enum type correctly in Windbg/VS.
                 // This will generate debuginfo roughly equivalent to the following C:
                 // ```c
-                // union _enum<{name}, {min niche}, {max niche}, {dataful variant name} {
+                // union enum$<{name}, {min niche}, {max niche}, {dataful variant name} {
                 //   struct dataful_variant {
                 //     <fields in dataful variant>
                 //   },
@@ -1639,7 +1639,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 //   }
                 // }
                 // ```
-                // The natvis in `intrinsic.natvis` matches on the type name `_enum<*, *, *, *>`
+                // The natvis in `intrinsic.natvis` matches on the type name `enum$<*, *, *, *>`
                 // and evaluates `this.discriminant$.discriminant`. If the value is between
                 // the min niche and max niche, then the enum is in the dataful variant and
                 // `this.dataful_variant` is rendered. Otherwise, the enum is in one of the

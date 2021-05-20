@@ -149,7 +149,7 @@
       <Synthetic Name="[...]"><DisplayString>...</DisplayString></Synthetic>
     </Expand>
   </Type>
-  <Type Name="_enum&lt;*&gt;">
+  <Type Name="enum$&lt;*&gt;">
     <Intrinsic Name="tag" Expression="Variant0.variant$" />
     <DisplayString Condition="tag() == 0">{tag(),en}</DisplayString>
     <DisplayString Condition="tag() == 1" Optional="true">{tag(),en}</DisplayString>
@@ -189,7 +189,7 @@
   </Type>
 
   <!-- $T1 is the name of the enum, $T2 is the low value of the dataful variant tag, $T3 is the high value of the dataful variant tag, $T4 is the name of the dataful variant -->
-  <Type Name="_enum&lt;*, *, *, *&gt;">
+  <Type Name="enum$&lt;*, *, *, *&gt;">
     <Intrinsic Name="tag" Expression="discriminant$.discriminant" />
     <Intrinsic Name="is_dataful" Expression="tag() &gt;= $T2 &amp;&amp; tag() &lt;= $T3" />
     <DisplayString Condition="is_dataful()">{"$T4",sb}({dataful_variant})</DisplayString>

@@ -267,7 +267,7 @@ pub fn push_debuginfo_type_name<'tcx>(
             let max = dataful_discriminant_range.end();
             let max = tag.value.size(&tcx).truncate(*max);
 
-            output.push_str("_enum<");
+            output.push_str("enum$<");
             push_item_name(tcx, def.did, true, output);
             push_type_params(tcx, substs, output, visited);
 
@@ -275,7 +275,7 @@ pub fn push_debuginfo_type_name<'tcx>(
 
             output.push_str(&format!(", {}, {}, {}>", min, max, dataful_variant_name));
         } else {
-            output.push_str("_enum<");
+            output.push_str("enum$<");
             push_item_name(tcx, def.did, true, output);
             push_type_params(tcx, substs, output, visited);
             output.push('>');
