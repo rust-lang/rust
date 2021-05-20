@@ -87,7 +87,7 @@ crate fn render<T: Print, S: Print>(
         {sidebar}\
     </nav>\
     <div class=\"theme-picker\">\
-        <button id=\"theme-picker\" aria-label=\"Pick another theme!\" aria-haspopup=\"menu\">\
+        <button id=\"theme-picker\" aria-label=\"Pick another theme!\" aria-haspopup=\"menu\" title=\"themes\">\
             <img src=\"{static_root_path}brush{suffix}.svg\" \
                  width=\"18\" height=\"18\" \
                  alt=\"Pick another theme!\">\
@@ -105,8 +105,8 @@ crate fn render<T: Print, S: Print>(
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                            type=\"search\">\
                 </div>\
-                <button type=\"button\" id=\"help-button\">?</button>
-                <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
+                <button type=\"button\" id=\"help-button\" title=\"help\">?</button>
+                <a id=\"settings-menu\" href=\"{root_path}settings.html\" title=\"settings\">\
                     <img src=\"{static_root_path}wheel{suffix}.svg\" \
                          width=\"18\" height=\"18\" \
                          alt=\"Change settings\">\
