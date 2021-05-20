@@ -22,6 +22,13 @@ assert: ("#help", "class", "hidden")
 assert: ("#search", "class", "content")
 assert: ("#main", "class", "content hidden")
 
-// FIXME: Once https://github.com/rust-lang/rust/pull/84462 is merged, add check to ensure
-// that Escape hides the search results when a result is focused.
-// press-key: "ArrowDown"
+// Check that Escape hides the search results when a search result is focused.
+focus: ".search-input"
+assert: ".search-input:focus"
+press-key: "ArrowDown"
+assert-false: ".search-input:focus"
+assert: "#results a:focus"
+press-key: "Escape"
+assert: ("#help", "class", "hidden")
+assert: ("#search", "class", "content hidden")
+assert: ("#main", "class", "content")

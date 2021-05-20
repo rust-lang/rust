@@ -509,44 +509,23 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             }
 
             AngleBrackets::Available => {
-                // angle brackets exist, so we insert missing arguments after the existing args
-
-                assert!(!self.gen_args.args.is_empty());
-
-                if self.num_provided_lifetime_args() > 0 {
-                    let last_lt_arg_span = self.gen_args.args
-                        [self.num_provided_lifetime_args() - 1]
-                        .span()
-                        .shrink_to_hi();
-                    let source_map = self.tcx.sess.source_map();
-
-                    if let Ok(last_gen_arg) = source_map.span_to_snippet(last_lt_arg_span) {
-                        let sugg = format!("{}, {}", last_gen_arg, suggested_args);
-
-                        err.span_suggestion_verbose(
-                            last_lt_arg_span,
-                            &msg,
-                            sugg,
-                            Applicability::HasPlaceholders,
-                        );
-                    }
+                let (sugg_span, is_first) = if self.num_provided_lifetime_args() == 0 {
+                    (self.gen_args.span().unwrap().shrink_to_lo(), true)
                 } else {
-                    // Non-lifetime arguments included in `gen_args` -> insert missing lifetimes before
-                    // existing arguments
-                    let first_arg_span = self.gen_args.args[0].span().shrink_to_lo();
-                    let source_map = self.tcx.sess.source_map();
+                    let last_lt = &self.gen_args.args[self.num_provided_lifetime_args() - 1];
+                    (last_lt.span().shrink_to_hi(), false)
+                };
+                let has_non_lt_args = self.num_provided_type_or_const_args() != 0;
+                let has_bindings = !self.gen_args.bindings.is_empty();
 
-                    if let Ok(first_gen_arg) = source_map.span_to_snippet(first_arg_span) {
-                        let sugg = format!("{}, {}", suggested_args, first_gen_arg);
+                let sugg_prefix = if is_first { "" } else { ", " };
+                let sugg_suffix =
+                    if is_first && (has_non_lt_args || has_bindings) { ", " } else { "" };
 
-                        err.span_suggestion_verbose(
-                            first_arg_span,
-                            &msg,
-                            sugg,
-                            Applicability::HasPlaceholders,
-                        );
-                    }
-                }
+                let sugg = format!("{}{}{}", sugg_prefix, suggested_args, sugg_suffix);
+                debug!("sugg: {:?}", sugg);
+
+                err.span_suggestion_verbose(sugg_span, &msg, sugg, Applicability::HasPlaceholders);
             }
             AngleBrackets::Implied => {
                 // We never encounter missing lifetimes in situations in which lifetimes are elided
