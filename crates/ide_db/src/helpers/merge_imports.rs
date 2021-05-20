@@ -292,9 +292,7 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
 pub fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
     match (vis0, vis1) {
         (None, None) => true,
-        // FIXME: Don't use the string representation to check for equality
-        // spaces inside of the node would break this comparison
-        (Some(vis0), Some(vis1)) => vis0.to_string() == vis1.to_string(),
+        (Some(vis0), Some(vis1)) => vis0.is_eq_to(&vis1),
         _ => false,
     }
 }
@@ -303,9 +301,14 @@ pub fn eq_attrs(
     attrs0: impl Iterator<Item = ast::Attr>,
     attrs1: impl Iterator<Item = ast::Attr>,
 ) -> bool {
-    let attrs0 = attrs0.map(|attr| attr.to_string());
-    let attrs1 = attrs1.map(|attr| attr.to_string());
-    attrs0.eq(attrs1)
+    // FIXME order of attributes should not matter
+    let attrs0 = attrs0
+        .flat_map(|attr| attr.syntax().descendants_with_tokens())
+        .flat_map(|it| it.into_token());
+    let attrs1 = attrs1
+        .flat_map(|attr| attr.syntax().descendants_with_tokens())
+        .flat_map(|it| it.into_token());
+    stdx::iter_eq_by(attrs0, attrs1, |tok, tok2| tok.text() == tok2.text())
 }
 
 fn path_is_self(path: &ast::Path) -> bool {

@@ -213,6 +213,20 @@ pub(crate) use std::fmt::{Debug, Display};
     }
 
     #[test]
+    fn merge_pub_in_path_crate() {
+        check_assist(
+            merge_imports,
+            r"
+pub(in this::path) use std::fmt$0::Debug;
+pub(in this::path) use std::fmt::Display;
+",
+            r"
+pub(in this::path) use std::fmt::{Debug, Display};
+",
+        )
+    }
+
+    #[test]
     fn test_merge_nested() {
         check_assist(
             merge_imports,
