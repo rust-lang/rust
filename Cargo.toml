@@ -39,6 +39,8 @@ derive-new = "0.5"
 regex = "1.4"
 quote = "1"
 syn = { version = "1", features = ["full"] }
+# This is used by the `collect-metadata` alias.
+filetime = "0.2"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
