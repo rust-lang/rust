@@ -1211,9 +1211,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn def_key(self, id: DefId) -> rustc_hir::definitions::DefKey {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
+        // Accessing the DefKey is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
-            self.hir().def_key(id)
+            self.untracked_resolutions.definitions.def_key(id)
         } else {
             self.untracked_resolutions.cstore.def_key(id)
         }
@@ -1225,9 +1225,9 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that if `id` is not local to this crate, the result will
     ///  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> rustc_hir::definitions::DefPath {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
+        // Accessing the DefPath is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
-            self.hir().def_path(id)
+            self.untracked_resolutions.definitions.def_path(id)
         } else {
             self.untracked_resolutions.cstore.def_path(id)
         }
@@ -1235,7 +1235,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> rustc_hir::definitions::DefPathHash {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
+        // Accessing the DefPathHash is ok, it is incr. comp. stable.
         if let Some(def_id) = def_id.as_local() {
             self.untracked_resolutions.definitions.def_path_hash(def_id)
         } else {

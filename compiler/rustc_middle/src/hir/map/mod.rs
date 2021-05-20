@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, Definitions};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -154,14 +154,8 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_crate(())
     }
 
-    #[inline]
-    pub fn definitions(&self) -> &'hir Definitions {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
-        &self.tcx.untracked_resolutions.definitions
-    }
-
     pub fn def_key(&self, def_id: LocalDefId) -> DefKey {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
+        // Accessing the DefKey is ok, since it is part of DefPathHash.
         self.tcx.untracked_resolutions.definitions.def_key(def_id)
     }
 
@@ -170,8 +164,14 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn def_path(&self, def_id: LocalDefId) -> DefPath {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
+        // Accessing the DefPath is ok, since it is part of DefPathHash.
         self.tcx.untracked_resolutions.definitions.def_path(def_id)
+    }
+
+    #[inline]
+    pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
+        // Accessing the DefPathHash is ok, it is incr. comp. stable.
+        self.tcx.untracked_resolutions.definitions.def_path_hash(def_id)
     }
 
     #[inline]
@@ -187,18 +187,25 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn opt_local_def_id(&self, hir_id: HirId) -> Option<LocalDefId> {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
+        // Create a dependency to the owner to ensure the query gets re-executed when the amount of
+        // children changes.
+        self.tcx.ensure().hir_owner_nodes(hir_id.owner);
         self.tcx.untracked_resolutions.definitions.opt_hir_id_to_local_def_id(hir_id)
     }
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
-        self.tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id)
+        let ret = self.tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id);
+        // Create a dependency to the owner to ensure the query gets re-executed when the amount of
+        // children changes.
+        self.tcx.ensure().hir_owner_nodes(ret.owner);
+        ret
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
-        // Accessing the definitions is ok, since all its contents are tracked by the query system.
+        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // definitions change.
+        self.tcx.ensure().hir_crate(());
         self.tcx.untracked_resolutions.definitions.iter_local_def_id()
     }
 
