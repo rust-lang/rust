@@ -384,7 +384,7 @@ impl DefCollector<'_> {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr } = &directive.kind {
                 self.ignore_attrs_on.insert(ast_id.ast_id.with_value(*mod_item), *attr);
 
-                let file_id = self.def_map[directive.module_id].definition_source(self.db).file_id;
+                let file_id = ast_id.ast_id.file_id;
                 let item_tree = self.db.file_item_tree(file_id);
                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
                 ModCollector {
@@ -938,9 +938,7 @@ impl DefCollector<'_> {
 
                                 // Resolved to derive helper. Collect the item's attributes again,
                                 // starting after the derive helper.
-                                let file_id = self.def_map[directive.module_id]
-                                    .definition_source(self.db)
-                                    .file_id;
+                                let file_id = ast_id.ast_id.file_id;
                                 let item_tree = self.db.file_item_tree(file_id);
                                 let mod_dir = self.mod_dirs[&directive.module_id].clone();
                                 self.ignore_attrs_on.insert(InFile::new(file_id, *mod_item), *attr);
