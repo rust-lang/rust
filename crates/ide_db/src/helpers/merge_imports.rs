@@ -299,7 +299,7 @@ pub fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility
     }
 }
 
-fn eq_attrs(
+pub fn eq_attrs(
     attrs0: impl Iterator<Item = ast::Attr>,
     attrs1: impl Iterator<Item = ast::Attr>,
 ) -> bool {

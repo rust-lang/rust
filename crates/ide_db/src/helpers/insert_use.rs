@@ -4,13 +4,13 @@ use std::cmp::Ordering;
 use hir::Semantics;
 use syntax::{
     algo,
-    ast::{self, make, AstNode, ModuleItemOwner, PathSegmentKind, VisibilityOwner},
+    ast::{self, make, AstNode, AttrsOwner, ModuleItemOwner, PathSegmentKind, VisibilityOwner},
     ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
 };
 
 use crate::{
     helpers::merge_imports::{
-        common_prefix, eq_visibility, try_merge_imports, use_tree_path_cmp, MergeBehavior,
+        common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_path_cmp, MergeBehavior,
     },
     RootDatabase,
 };
@@ -88,7 +88,7 @@ impl ImportScope {
         let use_stmt = |item| match item {
             ast::Item::Use(use_) => {
                 let use_tree = use_.use_tree()?;
-                Some((use_tree, use_.visibility()))
+                Some((use_tree, use_.visibility(), use_.attrs()))
             }
             _ => None,
         };
@@ -98,7 +98,7 @@ impl ImportScope {
         }
         .filter_map(use_stmt);
         let mut res = ImportGranularityGuess::Unknown;
-        let (mut prev, mut prev_vis) = match use_stmts.next() {
+        let (mut prev, mut prev_vis, mut prev_attrs) = match use_stmts.next() {
             Some(it) => it,
             None => return res,
         };
@@ -113,11 +113,12 @@ impl ImportScope {
                 }
             }
 
-            let (curr, curr_vis) = match use_stmts.next() {
+            let (curr, curr_vis, curr_attrs) = match use_stmts.next() {
                 Some(it) => it,
                 None => break res,
             };
-            if eq_visibility(prev_vis, curr_vis.clone()) {
+            if eq_visibility(prev_vis, curr_vis.clone()) && eq_attrs(prev_attrs, curr_attrs.clone())
+            {
                 if let Some((prev_path, curr_path)) = prev.path().zip(curr.path()) {
                     if let Some(_) = common_prefix(&prev_path, &curr_path) {
                         if prev.use_tree_list().is_none() && curr.use_tree_list().is_none() {
@@ -133,6 +134,7 @@ impl ImportScope {
             }
             prev = curr;
             prev_vis = curr_vis;
+            prev_attrs = curr_attrs;
         }
     }
 }

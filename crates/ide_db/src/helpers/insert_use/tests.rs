@@ -718,6 +718,18 @@ pub use foo::bar::qux;
 }
 
 #[test]
+fn guess_skips_differing_attrs() {
+    check_guess(
+        r"
+pub use foo::bar::baz;
+#[doc(hidden)]
+pub use foo::bar::qux;
+",
+        ImportGranularityGuess::Unknown,
+    );
+}
+
+#[test]
 fn guess_grouping_matters() {
     check_guess(
         r"
