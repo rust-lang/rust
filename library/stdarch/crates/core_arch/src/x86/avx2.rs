@@ -2585,44 +2585,52 @@ pub unsafe fn _mm256_slli_si256<const IMM8: i32>(a: __m256i) -> __m256i {
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_bslli_epi128<const IMM8: i32>(a: __m256i) -> __m256i {
     static_assert_imm8!(IMM8);
+    const fn mask(shift: i32, i: u32) -> u32 {
+        let shift = shift as u32 & 0xff;
+        if shift > 15 || i % 16 < shift {
+            0
+        } else {
+            32 + (i - shift)
+        }
+    }
     let a = a.as_i8x32();
     let zero = _mm256_setzero_si256().as_i8x32();
     let r: i8x32 = simd_shuffle32!(
         zero,
         a,
         <const IMM8: i32> [
-            32 - (IMM8 as u32 & 0xff),
-            33 - (IMM8 as u32 & 0xff),
-            34 - (IMM8 as u32 & 0xff),
-            35 - (IMM8 as u32 & 0xff),
-            36 - (IMM8 as u32 & 0xff),
-            37 - (IMM8 as u32 & 0xff),
-            38 - (IMM8 as u32 & 0xff),
-            39 - (IMM8 as u32 & 0xff),
-            40 - (IMM8 as u32 & 0xff),
-            41 - (IMM8 as u32 & 0xff),
-            42 - (IMM8 as u32 & 0xff),
-            43 - (IMM8 as u32 & 0xff),
-            44 - (IMM8 as u32 & 0xff),
-            45 - (IMM8 as u32 & 0xff),
-            46 - (IMM8 as u32 & 0xff),
-            47 - (IMM8 as u32 & 0xff),
-            48 - (IMM8 as u32 & 0xff) - 16,
-            49 - (IMM8 as u32 & 0xff) - 16,
-            50 - (IMM8 as u32 & 0xff) - 16,
-            51 - (IMM8 as u32 & 0xff) - 16,
-            52 - (IMM8 as u32 & 0xff) - 16,
-            53 - (IMM8 as u32 & 0xff) - 16,
-            54 - (IMM8 as u32 & 0xff) - 16,
-            55 - (IMM8 as u32 & 0xff) - 16,
-            56 - (IMM8 as u32 & 0xff) - 16,
-            57 - (IMM8 as u32 & 0xff) - 16,
-            58 - (IMM8 as u32 & 0xff) - 16,
-            59 - (IMM8 as u32 & 0xff) - 16,
-            60 - (IMM8 as u32 & 0xff) - 16,
-            61 - (IMM8 as u32 & 0xff) - 16,
-            62 - (IMM8 as u32 & 0xff) - 16,
-            63 - (IMM8 as u32 & 0xff) - 16,
+            mask(IMM8, 0),
+            mask(IMM8, 1),
+            mask(IMM8, 2),
+            mask(IMM8, 3),
+            mask(IMM8, 4),
+            mask(IMM8, 5),
+            mask(IMM8, 6),
+            mask(IMM8, 7),
+            mask(IMM8, 8),
+            mask(IMM8, 9),
+            mask(IMM8, 10),
+            mask(IMM8, 11),
+            mask(IMM8, 12),
+            mask(IMM8, 13),
+            mask(IMM8, 14),
+            mask(IMM8, 15),
+            mask(IMM8, 16),
+            mask(IMM8, 17),
+            mask(IMM8, 18),
+            mask(IMM8, 19),
+            mask(IMM8, 20),
+            mask(IMM8, 21),
+            mask(IMM8, 22),
+            mask(IMM8, 23),
+            mask(IMM8, 24),
+            mask(IMM8, 25),
+            mask(IMM8, 26),
+            mask(IMM8, 27),
+            mask(IMM8, 28),
+            mask(IMM8, 29),
+            mask(IMM8, 30),
+            mask(IMM8, 31),
         ],
     );
     transmute(r)

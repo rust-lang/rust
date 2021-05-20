@@ -425,10 +425,11 @@ pub unsafe fn _mm_slli_si128<const IMM8: i32>(a: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 unsafe fn _mm_slli_si128_impl<const IMM8: i32>(a: __m128i) -> __m128i {
     const fn mask(shift: i32, i: u32) -> u32 {
-        if (shift as u32) > 15 {
+        let shift = shift as u32 & 0xff;
+        if shift > 15 {
             i
         } else {
-            16 - (shift as u32) + i
+            16 - shift + i
         }
     }
     let zero = _mm_set1_epi8(0).as_i8x16();
