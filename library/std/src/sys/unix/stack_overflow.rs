@@ -42,6 +42,7 @@ mod imp {
     use crate::io;
     use crate::mem;
     use crate::ptr;
+    use crate::thread;
 
     use libc::MAP_FAILED;
     use libc::{mmap, munmap};
@@ -95,15 +96,16 @@ mod imp {
         info: *mut libc::siginfo_t,
         _data: *mut libc::c_void,
     ) {
-        use crate::sys_common::util::report_overflow;
-
         let guard = thread_info::stack_guard().unwrap_or(0..0);
         let addr = siginfo_si_addr(info);
 
         // If the faulting address is within the guard page, then we print a
         // message saying so and abort.
         if guard.start <= addr && addr < guard.end {
-            report_overflow();
+            rtprintpanic!(
+                "\nthread '{}' has overflowed its stack\n",
+                thread::current().name().unwrap_or("<unknown>")
+            );
             rtabort!("stack overflow");
         } else {
             // Unregister ourselves by reverting back to the default behavior.
