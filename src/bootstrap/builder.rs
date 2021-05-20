@@ -367,6 +367,7 @@ impl<'a> Builder<'a> {
                 native::Llvm,
                 native::Sanitizers,
                 tool::Rustfmt,
+                tool::Cargofmt,
                 tool::Miri,
                 tool::CargoMiri,
                 native::Lld
