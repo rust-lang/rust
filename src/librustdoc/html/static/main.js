@@ -161,7 +161,7 @@ function hideThemeButtonState() {
         outputElement: function() {
             return document.getElementById("search");
         },
-        title: null,
+        title: document.title,
         titleBeforeSearch: document.title,
         timeout: null,
         // On the search screen, so you remain on the last tab you opened.
