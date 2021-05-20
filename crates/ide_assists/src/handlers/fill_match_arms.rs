@@ -84,14 +84,26 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
         };
         missing_pats.peekable()
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
+        let mut n_arms = 1;
+        let variants_of_enums: Vec<Vec<ExtendedVariant>> = enum_defs
+            .into_iter()
+            .map(|enum_def| enum_def.variants(ctx.db()))
+            .inspect(|variants| n_arms *= variants.len())
+            .collect();
+
         // When calculating the match arms for a tuple of enums, we want
         // to create a match arm for each possible combination of enum
         // values. The `multi_cartesian_product` method transforms
         // Vec<Vec<EnumVariant>> into Vec<(EnumVariant, .., EnumVariant)>
         // where each tuple represents a proposed match arm.
-        let missing_pats = enum_defs
+
+        // A number of arms grows very fast on even a small tuple of large enums.
+        // We skip the assist beyond an arbitrary threshold.
+        if n_arms > 256 {
+            return None;
+        }
+        let missing_pats = variants_of_enums
             .into_iter()
-            .map(|enum_def| enum_def.variants(ctx.db()))
             .multi_cartesian_product()
             .map(|variants| {
                 let patterns =
