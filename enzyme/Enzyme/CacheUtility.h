@@ -169,7 +169,7 @@ public:
     return false;
   }
 
-  llvm::AllocaInst *getDynamicLoopLimit(llvm::Loop *L);
+  llvm::AllocaInst *getDynamicLoopLimit(llvm::Loop *L, bool ReverseLimit=true);
 
   /// Print out all currently cached values
   void dumpScope() {

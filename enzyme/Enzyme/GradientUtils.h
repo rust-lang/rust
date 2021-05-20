@@ -252,7 +252,7 @@ public:
     lbuilder.SetInsertPoint(lc.incvar->getNextNode());
     Value *red = lc.incvar;
     if (VectorType *VTy = dyn_cast<VectorType>(val->getType())) {
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 12
       red = lbuilder.CreateVectorSplat(VTy->getElementCount(), red);
 #else
       red = lbuilder.CreateVectorSplat(VTy->getNumElements(), red);
@@ -1644,7 +1644,7 @@ public:
 #if LLVM_VERSION_MAJOR >= 9
       AtomicRMWInst::BinOp op = AtomicRMWInst::FAdd;
       if (auto vt = dyn_cast<VectorType>(dif->getType())) {
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 12
         assert(!vt->getElementCount().isScalable());
         size_t numElems = vt->getElementCount().getKnownMinValue();
 #else

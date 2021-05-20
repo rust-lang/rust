@@ -411,7 +411,8 @@ void CanonicalizeLatches(const Loop *L, BasicBlock *Header,
   }
 }
 
-llvm::AllocaInst *CacheUtility::getDynamicLoopLimit(llvm::Loop *L) {
+llvm::AllocaInst *CacheUtility::getDynamicLoopLimit(llvm::Loop *L,
+                                                    bool ReverseLimit) {
   assert(L);
   assert(loopContexts.find(L) != loopContexts.end());
   auto &found = loopContexts[L];
@@ -419,7 +420,8 @@ llvm::AllocaInst *CacheUtility::getDynamicLoopLimit(llvm::Loop *L) {
   if (found.trueLimit)
     return cast<AllocaInst>(found.trueLimit);
 
-  LimitContext lctx(/*ReverseLimit*/ false, found.preheader);
+  LimitContext lctx(ReverseLimit,
+                    ReverseLimit ? found.preheader : &newFunc->getEntryBlock());
   AllocaInst *LimitVar =
       createCacheForScope(lctx, found.var->getType(), "loopLimit",
                           /*shouldfree*/ true);
@@ -622,7 +624,7 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
     if (assumeDynamicLoopOfSizeOne(L)) {
       LimitVar = nullptr;
     } else {
-      LimitVar = getDynamicLoopLimit(L);
+      LimitVar = getDynamicLoopLimit(L, ReverseLimit);
     }
   }
   loopContexts[L].trueLimit = LimitVar;

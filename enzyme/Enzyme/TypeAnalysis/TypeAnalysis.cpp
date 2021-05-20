@@ -1519,7 +1519,7 @@ void TypeAnalyzer::visitInsertElementInst(InsertElementInst &I) {
     }
     return;
   }
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 12
   assert(!vecType->getElementCount().isScalable());
   size_t numElems = vecType->getElementCount().getKnownMinValue();
 #else
@@ -1572,7 +1572,7 @@ void TypeAnalyzer::visitShuffleVectorInst(ShuffleVectorInst &I) {
   const size_t lhs = 0;
   const size_t rhs = 1;
 
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 12
   assert(!cast<VectorType>(I.getOperand(lhs)->getType())
               ->getElementCount()
               .isScalable());
