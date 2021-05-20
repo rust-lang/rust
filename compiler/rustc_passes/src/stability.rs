@@ -569,7 +569,7 @@ struct MissingStabilityAnnotations<'tcx> {
 
 impl<'tcx> MissingStabilityAnnotations<'tcx> {
     fn check_missing_stability(&self, def_id: LocalDefId, span: Span) {
-        let stab = self.tcx.stability().local_stability(def_id);
+        let stab = self.tcx.stability_index(()).local_stability(def_id);
         if !self.tcx.sess.opts.test && stab.is_none() && self.access_levels.is_reachable(def_id) {
             let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
             self.tcx.sess.span_err(span, &format!("{} has missing stability attribute", descr));
@@ -577,7 +577,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
-        let stab_map = self.tcx.stability();
+        let stab_map = self.tcx.stability_index(());
         let stab = stab_map.local_stability(def_id);
         if stab.map_or(false, |stab| stab.level.is_stable()) {
             let const_stab = stab_map.local_const_stability(def_id);
@@ -730,7 +730,18 @@ fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_unstable_api_usage, stability_index, ..*providers };
+    *providers = Providers {
+        check_mod_unstable_api_usage,
+        stability_index,
+        lookup_stability: |tcx, id| tcx.stability_index(()).local_stability(id.expect_local()),
+        lookup_const_stability: |tcx, id| {
+            tcx.stability_index(()).local_const_stability(id.expect_local())
+        },
+        lookup_deprecation_entry: |tcx, id| {
+            tcx.stability_index(()).local_deprecation_entry(id.expect_local())
+        },
+        ..*providers
+    };
 }
 
 struct Checker<'tcx> {
@@ -905,7 +916,7 @@ impl Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let access_levels = &tcx.privacy_access_levels(());
 
-    if tcx.stability().staged_api[&LOCAL_CRATE] {
+    if tcx.stability_index(()).staged_api[&LOCAL_CRATE] {
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };
         missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
         tcx.hir().walk_toplevel_module(&mut missing);

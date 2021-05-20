@@ -1575,7 +1575,6 @@ rustc_queries! {
 
     query stability_index(_: ()) -> stability::Index<'tcx> {
         storage(ArenaCacheSelector<'tcx>)
-        eval_always
         desc { "calculating the stability index for the local crate" }
     }
     query crates(_: ()) -> &'tcx [CrateNum] {

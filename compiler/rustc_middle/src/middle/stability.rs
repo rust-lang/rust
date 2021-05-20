@@ -424,7 +424,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
                 }
-                if self.stability().active_features.contains(&feature) {
+                if self.stability_index(()).active_features.contains(&feature) {
                     return EvalResult::Allow;
                 }
 

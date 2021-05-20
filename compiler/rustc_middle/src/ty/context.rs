@@ -7,7 +7,6 @@ use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle;
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
-use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::thir::Thir;
@@ -1240,10 +1239,6 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Check whether the diagnostic item with the given `name` has the given `DefId`.
     pub fn is_diagnostic_item(self, name: Symbol, did: DefId) -> bool {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
-    }
-
-    pub fn stability(self) -> &'tcx stability::Index<'tcx> {
-        self.stability_index(())
     }
 
     pub fn features(self) -> &'tcx rustc_feature::Features {
@@ -2856,12 +2851,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.names_imported_by_glob_use = |tcx, id| {
         tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
     };
-
-    providers.lookup_stability = |tcx, id| tcx.stability().local_stability(id.expect_local());
-    providers.lookup_const_stability =
-        |tcx, id| tcx.stability().local_const_stability(id.expect_local());
-    providers.lookup_deprecation_entry =
-        |tcx, id| tcx.stability().local_deprecation_entry(id.expect_local());
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
