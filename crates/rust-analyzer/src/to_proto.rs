@@ -270,9 +270,12 @@ pub(crate) fn completion_item(
             set_score(&mut lsp_item_with_ref, relevance);
             lsp_item_with_ref.label =
                 format!("&{}{}", mutability.as_keyword_for_ref(), lsp_item_with_ref.label);
-            if let Some(lsp_types::CompletionTextEdit::Edit(it)) = &mut lsp_item_with_ref.text_edit
-            {
-                it.new_text = format!("&{}{}", mutability.as_keyword_for_ref(), it.new_text);
+            if let Some(it) = &mut lsp_item_with_ref.text_edit {
+                let new_text = match it {
+                    lsp_types::CompletionTextEdit::Edit(it) => &mut it.new_text,
+                    lsp_types::CompletionTextEdit::InsertAndReplace(it) => &mut it.new_text,
+                };
+                *new_text = format!("&{}{}", mutability.as_keyword_for_ref(), new_text);
             }
             vec![lsp_item_with_ref, lsp_item]
         }
