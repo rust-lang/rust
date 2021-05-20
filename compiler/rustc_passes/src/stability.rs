@@ -970,7 +970,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 
     // We always collect the lib features declared in the current crate, even if there are
     // no unknown features, because the collection also does feature attribute validation.
-    let local_defined_features = tcx.lib_features().to_vec();
+    let local_defined_features = tcx.lib_features(()).to_vec();
     if !remaining_lib_features.is_empty() {
         check_features(&mut remaining_lib_features, &local_defined_features);
 

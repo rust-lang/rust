@@ -5,7 +5,6 @@ use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
-use crate::middle;
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
@@ -1215,10 +1214,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
         let cname = self.crate_name(LOCAL_CRATE).as_str();
         self.sess.consider_optimizing(&cname, msg)
-    }
-
-    pub fn lib_features(self) -> &'tcx middle::lib_features::LibFeatures {
-        self.get_lib_features(())
     }
 
     /// Obtain all lang items of this crate and all dependencies (recursively)

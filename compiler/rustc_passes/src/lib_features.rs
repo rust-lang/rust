@@ -124,12 +124,12 @@ impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
     }
 }
 
-fn get_lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
+fn lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
     tcx.hir().walk_attributes(&mut collector);
     collector.lib_features
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.get_lib_features = get_lib_features;
+    providers.lib_features = lib_features;
 }
