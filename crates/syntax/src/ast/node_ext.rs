@@ -608,6 +608,29 @@ impl ast::Visibility {
             None => VisibilityKind::Pub,
         }
     }
+
+    pub fn is_eq_to(&self, other: &Self) -> bool {
+        match (self.kind(), other.kind()) {
+            (VisibilityKind::In(this), VisibilityKind::In(other)) => {
+                stdx::iter_eq_by(this.segments(), other.segments(), |lhs, rhs| {
+                    lhs.kind().zip(rhs.kind()).map_or(false, |it| match it {
+                        (PathSegmentKind::CrateKw, PathSegmentKind::CrateKw)
+                        | (PathSegmentKind::SelfKw, PathSegmentKind::SelfKw)
+                        | (PathSegmentKind::SuperKw, PathSegmentKind::SuperKw) => true,
+                        (PathSegmentKind::Name(lhs), PathSegmentKind::Name(rhs)) => {
+                            lhs.text() == rhs.text()
+                        }
+                        _ => false,
+                    })
+                })
+            }
+            (VisibilityKind::PubSelf, VisibilityKind::PubSelf)
+            | (VisibilityKind::PubSuper, VisibilityKind::PubSuper)
+            | (VisibilityKind::PubCrate, VisibilityKind::PubCrate)
+            | (VisibilityKind::Pub, VisibilityKind::Pub) => true,
+            _ => false,
+        }
+    }
 }
 
 impl ast::LifetimeParam {
