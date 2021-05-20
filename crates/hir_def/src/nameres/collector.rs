@@ -94,7 +94,7 @@ pub(super) fn collect_defs(
         unresolved_imports: Vec::new(),
         resolved_imports: Vec::new(),
 
-        unexpanded_macros: Vec::new(),
+        unresolved_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
@@ -237,7 +237,7 @@ struct DefCollector<'a> {
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
-    unexpanded_macros: Vec<MacroDirective>,
+    unresolved_macros: Vec<MacroDirective>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
     cfg_options: &'a CfgOptions,
     /// List of procedural macros defined by this crate. This is read from the dynamic library
@@ -374,8 +374,8 @@ impl DefCollector<'_> {
         cov_mark::hit!(unresolved_attribute_fallback);
 
         let mut added_items = false;
-        let unexpanded_macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
-        for directive in &unexpanded_macros {
+        let unresolved_macros = std::mem::replace(&mut self.unresolved_macros, Vec::new());
+        for directive in &unresolved_macros {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, .. } = &directive.kind {
                 // Make sure to only add such items once.
                 if !self.ignore_attrs_on.insert(ast_id.ast_id.with_value(*mod_item)) {
@@ -399,7 +399,7 @@ impl DefCollector<'_> {
         }
 
         // The collection above might add new unresolved macros (eg. derives), so merge the lists.
-        self.unexpanded_macros.extend(unexpanded_macros);
+        self.unresolved_macros.extend(unresolved_macros);
 
         if added_items {
             // Continue name resolution with the new data.
@@ -873,7 +873,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
-        let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
+        let mut macros = std::mem::replace(&mut self.unresolved_macros, Vec::new());
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
@@ -929,7 +929,7 @@ impl DefCollector<'_> {
 
             true
         });
-        self.unexpanded_macros = macros;
+        self.unresolved_macros = macros;
 
         for (module_id, macro_call_id, depth) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, depth);
@@ -1000,7 +1000,7 @@ impl DefCollector<'_> {
     fn finish(mut self) -> DefMap {
         // Emit diagnostics for all remaining unexpanded macros.
 
-        for directive in &self.unexpanded_macros {
+        for directive in &self.unresolved_macros {
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, fragment } => match macro_call_as_call_id(
                     ast_id,
@@ -1137,7 +1137,7 @@ impl ModCollector<'_, '_> {
                 }
             }
 
-            if let Err(()) = self.resolve_attributes(&attrs, item) {
+            if let Err(()) = self.resolve_attributes(&attrs, None, item) {
                 // Do not process the item. It has at least one non-builtin attribute, so the
                 // fixed-point algorithm is required to resolve the rest of them.
                 continue;
@@ -1453,7 +1453,12 @@ impl ModCollector<'_, '_> {
     ///
     /// Returns `Err` when some attributes could not be resolved to builtins and have been
     /// registered as unresolved.
-    fn resolve_attributes(&mut self, attrs: &Attrs, mod_item: ModItem) -> Result<(), ()> {
+    fn resolve_attributes(
+        &mut self,
+        attrs: &Attrs,
+        mut ignore_up_to: Option<AttrId>,
+        mod_item: ModItem,
+    ) -> Result<(), ()> {
         fn is_builtin_attr(path: &ModPath) -> bool {
             if path.kind == PathKind::Plain {
                 if let Some(tool_module) = path.segments().first() {
@@ -1484,7 +1489,18 @@ impl ModCollector<'_, '_> {
             return Ok(());
         }
 
-        match attrs.iter().find(|attr| !is_builtin_attr(&attr.path)) {
+        match attrs
+            .iter()
+            .skip_while(|attr| match ignore_up_to {
+                Some(id) if attr.id == id => {
+                    ignore_up_to = None;
+                    false
+                }
+                Some(_) => true,
+                None => false,
+            })
+            .find(|attr| !is_builtin_attr(&attr.path))
+        {
             Some(non_builtin_attr) => {
                 log::debug!("non-builtin attribute {}", non_builtin_attr.path);
 
@@ -1493,7 +1509,7 @@ impl ModCollector<'_, '_> {
                     mod_item.ast_id(self.item_tree),
                     non_builtin_attr.path.as_ref().clone(),
                 );
-                self.def_collector.unexpanded_macros.push(MacroDirective {
+                self.def_collector.unresolved_macros.push(MacroDirective {
                     module_id: self.module_id,
                     depth: self.macro_depth + 1,
                     kind: MacroDirectiveKind::Attr { ast_id, attr: non_builtin_attr.id, mod_item },
@@ -1511,7 +1527,7 @@ impl ModCollector<'_, '_> {
                 Some(derive_macros) => {
                     for path in derive_macros {
                         let ast_id = AstIdWithPath::new(self.file_id, ast_id, path);
-                        self.def_collector.unexpanded_macros.push(MacroDirective {
+                        self.def_collector.unresolved_macros.push(MacroDirective {
                             module_id: self.module_id,
                             depth: self.macro_depth + 1,
                             kind: MacroDirectiveKind::Derive { ast_id, derive_attr: derive.id },
@@ -1686,7 +1702,7 @@ impl ModCollector<'_, '_> {
             ast_id.path.kind = PathKind::Super(0);
         }
 
-        self.def_collector.unexpanded_macros.push(MacroDirective {
+        self.def_collector.unresolved_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
             kind: MacroDirectiveKind::FnLike { ast_id, fragment: mac.fragment },
@@ -1731,7 +1747,7 @@ mod tests {
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
             resolved_imports: Vec::new(),
-            unexpanded_macros: Vec::new(),
+            unresolved_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
