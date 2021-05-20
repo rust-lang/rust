@@ -4,20 +4,36 @@ use std::cmp::Ordering;
 use hir::Semantics;
 use syntax::{
     algo,
-    ast::{self, make, AstNode, PathSegmentKind},
+    ast::{self, make, AstNode, AttrsOwner, ModuleItemOwner, PathSegmentKind, VisibilityOwner},
     ted, AstToken, Direction, NodeOrToken, SyntaxNode, SyntaxToken,
 };
 
 use crate::{
-    helpers::merge_imports::{try_merge_imports, use_tree_path_cmp, MergeBehavior},
+    helpers::merge_imports::{
+        common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_path_cmp, MergeBehavior,
+    },
     RootDatabase,
 };
 
 pub use hir::PrefixKind;
 
+/// How imports should be grouped into use statements.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ImportGranularity {
+    /// Do not change the granularity of any imports and preserve the original structure written by the developer.
+    Preserve,
+    /// Merge imports from the same crate into a single use statement.
+    Crate,
+    /// Merge imports from the same module into a single use statement.
+    Module,
+    /// Flatten imports so that each has its own use statement.
+    Item,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InsertUseConfig {
-    pub merge: Option<MergeBehavior>,
+    pub granularity: ImportGranularity,
+    pub enforce_granularity: bool,
     pub prefix_kind: PrefixKind,
     pub group: bool,
 }
@@ -65,15 +81,96 @@ impl ImportScope {
             ImportScope::Module(item_list) => ImportScope::Module(item_list.clone_for_update()),
         }
     }
+
+    fn guess_granularity_from_scope(&self) -> ImportGranularityGuess {
+        // The idea is simple, just check each import as well as the import and its precedent together for
+        // whether they fulfill a granularity criteria.
+        let use_stmt = |item| match item {
+            ast::Item::Use(use_) => {
+                let use_tree = use_.use_tree()?;
+                Some((use_tree, use_.visibility(), use_.attrs()))
+            }
+            _ => None,
+        };
+        let mut use_stmts = match self {
+            ImportScope::File(f) => f.items(),
+            ImportScope::Module(m) => m.items(),
+        }
+        .filter_map(use_stmt);
+        let mut res = ImportGranularityGuess::Unknown;
+        let (mut prev, mut prev_vis, mut prev_attrs) = match use_stmts.next() {
+            Some(it) => it,
+            None => return res,
+        };
+        loop {
+            if let Some(use_tree_list) = prev.use_tree_list() {
+                if use_tree_list.use_trees().any(|tree| tree.use_tree_list().is_some()) {
+                    // Nested tree lists can only occur in crate style, or with no proper style being enforced in the file.
+                    break ImportGranularityGuess::Crate;
+                } else {
+                    // Could still be crate-style so continue looking.
+                    res = ImportGranularityGuess::CrateOrModule;
+                }
+            }
+
+            let (curr, curr_vis, curr_attrs) = match use_stmts.next() {
+                Some(it) => it,
+                None => break res,
+            };
+            if eq_visibility(prev_vis, curr_vis.clone()) && eq_attrs(prev_attrs, curr_attrs.clone())
+            {
+                if let Some((prev_path, curr_path)) = prev.path().zip(curr.path()) {
+                    if let Some(_) = common_prefix(&prev_path, &curr_path) {
+                        if prev.use_tree_list().is_none() && curr.use_tree_list().is_none() {
+                            // Same prefix but no use tree lists so this has to be of item style.
+                            break ImportGranularityGuess::Item; // this overwrites CrateOrModule, technically the file doesn't adhere to anything here.
+                        } else {
+                            // Same prefix with item tree lists, has to be module style as it
+                            // can't be crate style since the trees wouldn't share a prefix then.
+                            break ImportGranularityGuess::Module;
+                        }
+                    }
+                }
+            }
+            prev = curr;
+            prev_vis = curr_vis;
+            prev_attrs = curr_attrs;
+        }
+    }
+}
+
+#[derive(PartialEq, PartialOrd, Debug, Clone, Copy)]
+enum ImportGranularityGuess {
+    Unknown,
+    Item,
+    Module,
+    Crate,
+    CrateOrModule,
 }
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
 pub fn insert_use<'a>(scope: &ImportScope, path: ast::Path, cfg: InsertUseConfig) {
     let _p = profile::span("insert_use");
+    let mut mb = match cfg.granularity {
+        ImportGranularity::Crate => Some(MergeBehavior::Crate),
+        ImportGranularity::Module => Some(MergeBehavior::Module),
+        ImportGranularity::Item | ImportGranularity::Preserve => None,
+    };
+    if !cfg.enforce_granularity {
+        let file_granularity = scope.guess_granularity_from_scope();
+        mb = match file_granularity {
+            ImportGranularityGuess::Unknown => mb,
+            ImportGranularityGuess::Item => None,
+            ImportGranularityGuess::Module => Some(MergeBehavior::Module),
+            ImportGranularityGuess::Crate => Some(MergeBehavior::Crate),
+            ImportGranularityGuess::CrateOrModule => mb.or(Some(MergeBehavior::Crate)),
+        };
+    }
+
     let use_item =
         make::use_(None, make::use_tree(path.clone(), None, None, false)).clone_for_update();
     // merge into existing imports if possible
-    if let Some(mb) = cfg.merge {
+    if let Some(mb) = mb {
         for existing_use in scope.as_syntax_node().children().filter_map(ast::Use::cast) {
             if let Some(merged) = try_merge_imports(&existing_use, &use_item, mb) {
                 ted::replace(existing_use.syntax(), merged.syntax());

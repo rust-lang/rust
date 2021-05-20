@@ -4,7 +4,10 @@ use expect_test::expect;
 use hir::Semantics;
 use ide_db::{
     base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
-    helpers::{insert_use::InsertUseConfig, merge_imports::MergeBehavior, SnippetCap},
+    helpers::{
+        insert_use::{ImportGranularity, InsertUseConfig},
+        SnippetCap,
+    },
     source_change::FileSystemEdit,
     RootDatabase,
 };
@@ -21,8 +24,9 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     snippet_cap: SnippetCap::new(true),
     allowed: None,
     insert_use: InsertUseConfig {
-        merge: Some(MergeBehavior::Crate),
+        granularity: ImportGranularity::Crate,
         prefix_kind: hir::PrefixKind::Plain,
+        enforce_granularity: true,
         group: true,
     },
 };

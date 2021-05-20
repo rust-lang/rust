@@ -13,7 +13,10 @@
 use std::{convert::TryFrom, sync::Arc};
 
 use ide::{Change, CompletionConfig, FilePosition, TextSize};
-use ide_db::helpers::{insert_use::InsertUseConfig, merge_imports::MergeBehavior, SnippetCap};
+use ide_db::helpers::{
+    insert_use::{ImportGranularity, InsertUseConfig},
+    SnippetCap,
+};
 use test_utils::project_root;
 use vfs::{AbsPathBuf, VfsPath};
 
@@ -133,8 +136,9 @@ fn integrated_completion_benchmark() {
             add_call_argument_snippets: true,
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
-                merge: Some(MergeBehavior::Crate),
+                granularity: ImportGranularity::Crate,
                 prefix_kind: hir::PrefixKind::ByCrate,
+                enforce_granularity: true,
                 group: true,
             },
         };
@@ -166,8 +170,9 @@ fn integrated_completion_benchmark() {
             add_call_argument_snippets: true,
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
-                merge: Some(MergeBehavior::Crate),
+                granularity: ImportGranularity::Crate,
                 prefix_kind: hir::PrefixKind::ByCrate,
+                enforce_granularity: true,
                 group: true,
             },
         };

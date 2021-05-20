@@ -12,8 +12,7 @@ use std::{ffi::OsString, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{AssistConfig, CompletionConfig, DiagnosticsConfig, HoverConfig, InlayHintsConfig};
 use ide_db::helpers::{
-    insert_use::{InsertUseConfig, PrefixKind},
-    merge_imports::MergeBehavior,
+    insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
 };
 use lsp_types::{ClientCapabilities, MarkupKind};
@@ -35,15 +34,18 @@ use crate::{
 // be specified directly in `package.json`.
 config_data! {
     struct ConfigData {
-        /// The strategy to use when inserting new imports or merging imports.
+        /// How imports should be grouped into use statements.
+        assist_importGranularity |
         assist_importMergeBehavior |
-        assist_importMergeBehaviour: MergeBehaviorDef  = "\"crate\"",
+        assist_importMergeBehaviour: ImportGranularityDef  = "\"crate\"",
+        /// Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
+        assist_importEnforceGranularity: bool              = "false",
         /// The path structure for newly inserted paths to use.
-        assist_importPrefix: ImportPrefixDef           = "\"plain\"",
+        assist_importPrefix: ImportPrefixDef               = "\"plain\"",
         /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
-        assist_importGroup: bool                       = "true",
+        assist_importGroup: bool                           = "true",
         /// Show function name and docs in parameter hints.
-        callInfo_full: bool = "true",
+        callInfo_full: bool                                = "true",
 
         /// Automatically refresh project info via `cargo metadata` on
         /// `Cargo.toml` changes.
@@ -624,11 +626,13 @@ impl Config {
     }
     fn insert_use_config(&self) -> InsertUseConfig {
         InsertUseConfig {
-            merge: match self.data.assist_importMergeBehavior {
-                MergeBehaviorDef::None => None,
-                MergeBehaviorDef::Crate => Some(MergeBehavior::Crate),
-                MergeBehaviorDef::Module => Some(MergeBehavior::Module),
+            granularity: match self.data.assist_importGranularity {
+                ImportGranularityDef::Preserve => ImportGranularity::Preserve,
+                ImportGranularityDef::Item => ImportGranularity::Item,
+                ImportGranularityDef::Crate => ImportGranularity::Crate,
+                ImportGranularityDef::Module => ImportGranularity::Module,
             },
+            enforce_granularity: self.data.assist_importEnforceGranularity,
             prefix_kind: match self.data.assist_importPrefix {
                 ImportPrefixDef::Plain => PrefixKind::Plain,
                 ImportPrefixDef::ByCrate => PrefixKind::ByCrate,
@@ -748,8 +752,10 @@ enum ManifestOrProjectJson {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
-enum MergeBehaviorDef {
-    None,
+enum ImportGranularityDef {
+    Preserve,
+    #[serde(alias = "none")]
+    Item,
     #[serde(alias = "full")]
     Crate,
     #[serde(alias = "last")]
@@ -782,7 +788,7 @@ macro_rules! _config_data {
     (struct $name:ident {
         $(
             $(#[doc=$doc:literal])*
-            $field:ident $(| $alias:ident)?: $ty:ty = $default:expr,
+            $field:ident $(| $alias:ident)*: $ty:ty = $default:expr,
         )*
     }) => {
         #[allow(non_snake_case)]
@@ -794,7 +800,7 @@ macro_rules! _config_data {
                     $field: get_field(
                         &mut json,
                         stringify!($field),
-                        None$(.or(Some(stringify!($alias))))?,
+                        None$(.or(Some(stringify!($alias))))*,
                         $default,
                     ),
                 )*}
@@ -929,6 +935,16 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Do not merge imports at all.",
                 "Merge imports from the same crate into a single `use` statement.",
                 "Merge imports from the same module into a single `use` statement."
+            ],
+        },
+        "ImportGranularityDef" => set! {
+            "type": "string",
+            "enum": ["preserve", "crate", "module", "item"],
+            "enumDescriptions": [
+                "Do not change the granularity of any imports and preserve the original structure written by the developer.",
+                "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                "Flatten imports so that each has its own use statement."
             ],
         },
         "ImportPrefixDef" => set! {

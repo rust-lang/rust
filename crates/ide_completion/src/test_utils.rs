@@ -3,7 +3,10 @@
 use hir::{PrefixKind, Semantics};
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
-    helpers::{insert_use::InsertUseConfig, merge_imports::MergeBehavior, SnippetCap},
+    helpers::{
+        insert_use::{ImportGranularity, InsertUseConfig},
+        SnippetCap,
+    },
     RootDatabase,
 };
 use itertools::Itertools;
@@ -20,8 +23,9 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     add_call_argument_snippets: true,
     snippet_cap: SnippetCap::new(true),
     insert_use: InsertUseConfig {
-        merge: Some(MergeBehavior::Crate),
+        granularity: ImportGranularity::Crate,
         prefix_kind: PrefixKind::Plain,
+        enforce_granularity: true,
         group: true,
     },
 };

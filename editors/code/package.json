@@ -385,20 +385,27 @@
                     "markdownDescription": "Optional settings passed to the debug engine. Example: `{ \"lldb\": { \"terminal\":\"external\"} }`"
                 },
                 "$generated-start": false,
-                "rust-analyzer.assist.importMergeBehavior": {
-                    "markdownDescription": "The strategy to use when inserting new imports or merging imports.",
+                "rust-analyzer.assist.importGranularity": {
+                    "markdownDescription": "How imports should be grouped into use statements.",
                     "default": "crate",
                     "type": "string",
                     "enum": [
-                        "none",
+                        "preserve",
                         "crate",
-                        "module"
+                        "module",
+                        "item"
                     ],
                     "enumDescriptions": [
-                        "Do not merge imports at all.",
-                        "Merge imports from the same crate into a single `use` statement.",
-                        "Merge imports from the same module into a single `use` statement."
+                        "Do not change the granularity of any imports and preserve the original structure written by the developer.",
+                        "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
+                        "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
+                        "Flatten imports so that each has its own use statement."
                     ]
+                },
+                "rust-analyzer.assist.importEnforceGranularity": {
+                    "markdownDescription": "Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.",
+                    "default": false,
+                    "type": "boolean"
                 },
                 "rust-analyzer.assist.importPrefix": {
                     "markdownDescription": "The path structure for newly inserted paths to use.",

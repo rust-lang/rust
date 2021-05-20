@@ -1,7 +1,12 @@
-[[rust-analyzer.assist.importMergeBehavior]]rust-analyzer.assist.importMergeBehavior (default: `"crate"`)::
+[[rust-analyzer.assist.importGranularity]]rust-analyzer.assist.importGranularity (default: `"crate"`)::
 +
 --
-The strategy to use when inserting new imports or merging imports.
+How imports should be grouped into use statements.
+--
+[[rust-analyzer.assist.importEnforceGranularity]]rust-analyzer.assist.importEnforceGranularity (default: `false`)::
++
+--
+Whether to enforce the import granularity setting for all files. If set to false rust-analyzer will try to keep import styles consistent per file.
 --
 [[rust-analyzer.assist.importPrefix]]rust-analyzer.assist.importPrefix (default: `"plain"`)::
 +

@@ -1145,7 +1145,7 @@ mod tests {
 
     use ide::Analysis;
     use ide_db::helpers::{
-        insert_use::{InsertUseConfig, PrefixKind},
+        insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
         SnippetCap,
     };
 
@@ -1177,8 +1177,9 @@ mod tests {
                     add_call_argument_snippets: true,
                     snippet_cap: SnippetCap::new(true),
                     insert_use: InsertUseConfig {
-                        merge: None,
+                        granularity: ImportGranularity::Item,
                         prefix_kind: PrefixKind::Plain,
+                        enforce_granularity: true,
                         group: true,
                     },
                 },
