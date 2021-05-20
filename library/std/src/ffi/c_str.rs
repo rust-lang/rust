@@ -10,7 +10,6 @@ use crate::error::Error;
 use crate::fmt::{self, Write};
 use crate::io;
 use crate::mem;
-use crate::memchr;
 use crate::num::NonZeroU8;
 use crate::ops;
 use crate::os::raw::c_char;
@@ -20,6 +19,7 @@ use crate::slice;
 use crate::str::{self, Utf8Error};
 use crate::sync::Arc;
 use crate::sys;
+use crate::sys_common::memchr;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.

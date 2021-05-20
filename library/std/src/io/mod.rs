@@ -253,12 +253,12 @@ mod tests;
 
 use crate::cmp;
 use crate::fmt;
-use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys;
+use crate::sys_common::memchr;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::IntoInnerError;

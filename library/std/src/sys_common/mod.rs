@@ -25,6 +25,7 @@ pub mod bytestring;
 pub mod condvar;
 pub mod fs;
 pub mod io;
+pub mod memchr;
 pub mod mutex;
 // `doc` is required because `sys/mod.rs` imports `unix/ext/mod.rs` on Windows
 // when generating documentation.
