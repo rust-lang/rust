@@ -862,6 +862,12 @@ function hideThemeButtonState() {
         displayHelp(true, ev);
     });
 
+    onEachLazy(document.getElementsByTagName("summary"), function(el) {
+        el.addEventListener("click", function(ev) {
+           addClass(el, "used");
+        });
+    })
+
     onEachLazy(document.getElementsByTagName("a"), function(el) {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
