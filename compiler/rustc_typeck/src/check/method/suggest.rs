@@ -13,7 +13,6 @@ use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::fast_reject::simplify_type;
 use rustc_middle::ty::print::with_crate_prefix;
-use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{
     self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable, WithConstness,
 };
@@ -411,20 +410,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .sum();
                                 if candidate_numbers == 0 && unsatisfied_predicates.is_empty() {
                                     if let Some((path_string, _)) = ty_str.split_once('<') {
-                                        ty_str_reported = format!("{}<", path_string);
-                                        for (index, arg) in generics.iter().enumerate() {
-                                            let arg_replace = match arg.unpack() {
-                                                GenericArgKind::Lifetime(_) => "'_",
-                                                GenericArgKind::Type(_)
-                                                | GenericArgKind::Const(_) => "_",
-                                            };
-                                            ty_str_reported =
-                                                format!("{}{}", ty_str_reported, arg_replace);
-                                            if index < generics.len() - 1 {
-                                                ty_str_reported = format!("{}, ", ty_str_reported);
-                                            }
-                                        }
-                                        ty_str_reported = format!("{}>", ty_str_reported);
+                                        ty_str_reported = path_string.to_string();
                                     }
                                 }
                             }

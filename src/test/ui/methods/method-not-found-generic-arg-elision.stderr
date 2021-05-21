@@ -9,7 +9,7 @@ LL |     let d = point_i32.distance();
    |
    = note: The method was found for Point<f64>.
 
-error[E0599]: no method named `other` found for struct `Point<_>` in the current scope
+error[E0599]: no method named `other` found for struct `Point` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:71:23
    |
 LL | struct Point<T> {
@@ -18,7 +18,7 @@ LL | struct Point<T> {
 LL |     let d = point_i32.other();
    |                       ^^^^^ method not found in `Point<i32>`
 
-error[E0599]: no method named `extend` found for struct `Map<_, _>` in the current scope
+error[E0599]: no method named `extend` found for struct `Map` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:74:29
    |
 LL |     v.iter().map(|x| x * x).extend(std::iter::once(100));
@@ -35,7 +35,7 @@ LL |     wrapper.method();
    |
    = note: The method was found for Wrapper<i8>, Wrapper<u16>, Wrapper<u16> and 3 more.
 
-error[E0599]: no method named `other` found for struct `Wrapper<_>` in the current scope
+error[E0599]: no method named `other` found for struct `Wrapper` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:79:13
    |
 LL | struct Wrapper<T>(T);
@@ -55,7 +55,7 @@ LL |     wrapper.method();
    |
    = note: The method was found for Wrapper2<'a, i8, C>, Wrapper2<'a, i32, C> and Wrapper2<'a, i32, C>.
 
-error[E0599]: no method named `other` found for struct `Wrapper2<'_, _, _>` in the current scope
+error[E0599]: no method named `other` found for struct `Wrapper2` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:85:13
    |
 LL | struct Wrapper2<'a, T, const C: usize> {
@@ -64,7 +64,7 @@ LL | struct Wrapper2<'a, T, const C: usize> {
 LL |     wrapper.other();
    |             ^^^^^ method not found in `Wrapper2<'_, bool, 3_usize>`
 
-error[E0599]: no method named `not_found` found for struct `Vec<_, _>` in the current scope
+error[E0599]: no method named `not_found` found for struct `Vec` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:88:7
    |
 LL |     a.not_found();

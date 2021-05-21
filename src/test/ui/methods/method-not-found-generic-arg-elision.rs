@@ -69,22 +69,22 @@ fn main() {
     let d = point_i32.distance();
     //~^ ERROR no method named `distance` found for struct `Point<i32>
     let d = point_i32.other();
-    //~^ ERROR no method named `other` found for struct `Point<_>
+    //~^ ERROR no method named `other` found for struct `Point
     let v = vec![1_i32, 2, 3];
     v.iter().map(|x| x * x).extend(std::iter::once(100));
-    //~^ ERROR no method named `extend` found for struct `Map<_, _>
+    //~^ ERROR no method named `extend` found for struct `Map
     let wrapper = Wrapper(true);
     wrapper.method();
     //~^ ERROR no method named `method` found for struct `Wrapper<bool>
     wrapper.other();
-    //~^ ERROR no method named `other` found for struct `Wrapper<_>
+    //~^ ERROR no method named `other` found for struct `Wrapper
     let boolean = true;
     let wrapper = Wrapper2::<'_, _, 3> {x: &boolean};
     wrapper.method();
     //~^ ERROR no method named `method` found for struct `Wrapper2<'_, bool, 3_usize>
     wrapper.other();
-    //~^ ERROR no method named `other` found for struct `Wrapper2<'_, _, _>
+    //~^ ERROR no method named `other` found for struct `Wrapper2
     let a = vec![1, 2, 3];
     a.not_found();
-    //~^ ERROR no method named `not_found` found for struct `Vec<_, _>
+    //~^ ERROR no method named `not_found` found for struct `Vec
 }
