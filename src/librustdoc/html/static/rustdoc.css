@@ -1487,8 +1487,18 @@ details.rustdoc-toggle[open] > summary.hideme > span {
 	display: none;
 }
 
-details.rustdoc-toggle[open] > summary::before {
+/* If a toggle has been used to open a section, we should make sure */
+/* there's a [-] so it can be closed again. But if a toggle is open */
+/* and has never been used, don't show it. This minimizes clutter on */
+/* the page while still supporting the "auto hide <X>" settings and */
+/* the expand/collapse all functionality. */
+details.rustdoc-toggle[open] > summary.used::before {
 	content: "[−]";
+	display: inline;
+}
+
+details.rustdoc-toggle[open] > summary::before {
+	content: "";
 	display: inline;
 }
 
