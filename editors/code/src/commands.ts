@@ -431,7 +431,7 @@ export function viewHir(ctx: Ctx): Cmd {
 
 export function viewItemTree(ctx: Ctx): Cmd {
     const tdcp = new class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse('rust-analyzer://viewItemTree/itemtree.txt');
+        readonly uri = vscode.Uri.parse('rust-analyzer://viewItemTree/itemtree.rs');
         readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
         constructor() {
             vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument, this, ctx.subscriptions);
