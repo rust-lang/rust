@@ -229,25 +229,25 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
     pub fn expr(&mut self, e: &Expr<'_>) -> Option<Constant> {
         match e.kind {
             ExprKind::Path(ref qpath) => self.fetch_path(qpath, e.hir_id, self.typeck_results.expr_ty(e)),
-            ExprKind::Block(ref block, _) => self.block(block),
+            ExprKind::Block(block, _) => self.block(block),
             ExprKind::Lit(ref lit) => Some(lit_to_constant(&lit.node, self.typeck_results.expr_ty_opt(e))),
-            ExprKind::Array(ref vec) => self.multi(vec).map(Constant::Vec),
-            ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
-            ExprKind::Repeat(ref value, _) => {
+            ExprKind::Array(vec) => self.multi(vec).map(Constant::Vec),
+            ExprKind::Tup(tup) => self.multi(tup).map(Constant::Tuple),
+            ExprKind::Repeat(value, _) => {
                 let n = match self.typeck_results.expr_ty(e).kind() {
                     ty::Array(_, n) => n.try_eval_usize(self.lcx.tcx, self.lcx.param_env)?,
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
-            ExprKind::Unary(op, ref operand) => self.expr(operand).and_then(|o| match op {
+            ExprKind::Unary(op, operand) => self.expr(operand).and_then(|o| match op {
                 UnOp::Not => self.constant_not(&o, self.typeck_results.expr_ty(e)),
                 UnOp::Neg => self.constant_negate(&o, self.typeck_results.expr_ty(e)),
                 UnOp::Deref => Some(if let Constant::Ref(r) = o { *r } else { o }),
             }),
-            ExprKind::If(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
-            ExprKind::Binary(op, ref left, ref right) => self.binop(op, left, right),
-            ExprKind::Call(ref callee, ref args) => {
+            ExprKind::If(cond, then, ref otherwise) => self.ifthenelse(cond, then, *otherwise),
+            ExprKind::Binary(op, left, right) => self.binop(op, left, right),
+            ExprKind::Call(callee, args) => {
                 // We only handle a few const functions for now.
                 if_chain! {
                     if args.is_empty();
@@ -273,8 +273,8 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     }
                 }
             },
-            ExprKind::Index(ref arr, ref index) => self.index(arr, index),
-            ExprKind::AddrOf(_, _, ref inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
+            ExprKind::Index(arr, index) => self.index(arr, index),
+            ExprKind::AddrOf(_, _, inner) => self.expr(inner).map(|r| Constant::Ref(Box::new(r))),
             // TODO: add other expressions.
             _ => None,
         }
@@ -349,7 +349,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     )
                     .ok()
                     .map(|val| rustc_middle::ty::Const::from_value(self.lcx.tcx, val, ty))?;
-                let result = miri_to_const(&result);
+                let result = miri_to_const(result);
                 if result.is_some() {
                     self.needed_resolution = true;
                 }

@@ -255,7 +255,7 @@ fn check_place(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &Body<'t
         cursor = proj_base;
         match elem {
             ProjectionElem::Field(..) => {
-                let base_ty = Place::ty_from(place.local, &proj_base, body, tcx).ty;
+                let base_ty = Place::ty_from(place.local, proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
                     // No union field accesses in `const fn`
                     if def.is_union() {
