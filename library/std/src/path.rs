@@ -2507,11 +2507,7 @@ impl Path {
     #[unstable(feature = "path_try_exists", issue = "83186")]
     #[inline]
     pub fn try_exists(&self) -> io::Result<bool> {
-        match fs::metadata(self) {
-            Ok(_) => Ok(true),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
-            Err(error) => Err(error),
-        }
+        fs::try_exists(self)
     }
 
     /// Returns `true` if the path exists on disk and is pointing at a regular file.
