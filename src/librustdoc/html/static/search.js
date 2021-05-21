@@ -885,12 +885,12 @@ window.initSearch = function(rawSearchIndex) {
         focusSearchResult();
     }
 
-    // focus the first search result on the active tab, or the result that
+    // Focus the first search result on the active tab, or the result that
     // was focused last time this tab was active.
     function focusSearchResult() {
         var target = searchState.focusedByTab[searchState.currentTab] ||
-          document.querySelectorAll(".search-results.active a").item(0) ||
-          document.querySelectorAll("#titles > button").item(searchState.currentTab);
+            document.querySelectorAll(".search-results.active a").item(0) ||
+            document.querySelectorAll("#titles > button").item(searchState.currentTab);
         if (target) {
             target.focus();
         }
@@ -1076,6 +1076,8 @@ window.initSearch = function(rawSearchIndex) {
             ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
 
         search.innerHTML = output;
+        // Reset focused elements.
+        searchState.focusedByTab = [null, null, null];
         searchState.showResults(search);
         var elems = document.getElementById("titles").childNodes;
         elems[0].onclick = function() { printTab(0); };
@@ -1365,7 +1367,6 @@ window.initSearch = function(rawSearchIndex) {
             if (e.which === 38) { // up
                 var previous = document.activeElement.previousElementSibling;
                 if (previous) {
-                    console.log("previousElementSibling", previous);
                     previous.focus();
                 } else {
                     searchState.focus();
