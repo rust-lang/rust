@@ -136,10 +136,10 @@ type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
 
 #[derive(Clone)]
 pub(crate) struct InferenceTable<'a> {
-    pub db: &'a dyn HirDatabase,
-    pub trait_env: Arc<TraitEnvironment>,
-    pub(super) var_unification_table: ChalkInferenceTable,
-    pub(super) type_variable_table: Vec<TypeVariableData>,
+    pub(crate) db: &'a dyn HirDatabase,
+    pub(crate) trait_env: Arc<TraitEnvironment>,
+    var_unification_table: ChalkInferenceTable,
+    type_variable_table: Vec<TypeVariableData>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
@@ -332,7 +332,7 @@ impl<'a> InferenceTable<'a> {
         self.var_unification_table.normalize_ty_shallow(&Interner, ty).unwrap_or_else(|| ty.clone())
     }
 
-    pub fn register_obligation(&mut self, goal: Goal) {
+    pub(crate) fn register_obligation(&mut self, goal: Goal) {
         let in_env = InEnvironment::new(&self.trait_env.env, goal);
         self.register_obligation_in_env(in_env)
     }
@@ -344,11 +344,11 @@ impl<'a> InferenceTable<'a> {
         }
     }
 
-    pub fn register_infer_ok(&mut self, infer_ok: InferOk) {
+    pub(crate) fn register_infer_ok(&mut self, infer_ok: InferOk) {
         infer_ok.goals.into_iter().for_each(|goal| self.register_obligation_in_env(goal));
     }
 
-    pub fn resolve_obligations_as_possible(&mut self) {
+    pub(crate) fn resolve_obligations_as_possible(&mut self) {
         let _span = profile::span("resolve_obligations_as_possible");
         let mut changed = true;
         let mut obligations = Vec::new();
@@ -445,9 +445,9 @@ mod resolve {
     use hir_def::type_ref::ConstScalar;
 
     pub(super) struct Resolver<'a, 'b, F> {
-        pub table: &'a mut InferenceTable<'b>,
-        pub var_stack: &'a mut Vec<InferenceVar>,
-        pub fallback: F,
+        pub(super) table: &'a mut InferenceTable<'b>,
+        pub(super) var_stack: &'a mut Vec<InferenceVar>,
+        pub(super) fallback: F,
     }
     impl<'a, 'b, 'i, F> Folder<'i, Interner> for Resolver<'a, 'b, F>
     where
