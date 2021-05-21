@@ -768,16 +768,29 @@ a {
 	display: block;
 }
 
-.search-results a {
+.search-results > a {
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
 	display: block;
 }
 
-.result-name {
+.search-results > a > div {
+	display: flex;
+}
+
+.search-results > a > div > div {
+	min-width: 50%;
+	max-width: 50%;
 	width: 50%;
-	float: left;
+}
+
+.result-name {
+	padding-right: 10px;
+}
+
+.result-name > span {
+	display: inline-block;
 }
 
 tr.result span.primitive::after {
