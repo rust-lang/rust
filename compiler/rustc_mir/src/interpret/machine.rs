@@ -132,6 +132,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
+    /// Whether function calls should be [ABI](Abi)-checked.
+    fn enforce_abi(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+
     /// Entry point for obtaining the MIR of anything that should get evaluated.
     /// So not just functions and shims, but also const/static initializers, anonymous
     /// constants, ...
@@ -442,6 +445,11 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
         false // for now, we don't enforce validity
+    }
+
+    #[inline(always)]
+    fn enforce_abi(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
+        true
     }
 
     #[inline(always)]
