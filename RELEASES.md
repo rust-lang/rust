@@ -95,7 +95,12 @@ Stabilised APIs
 
 Cargo
 -----------------------
-- [Expose build.target .cargo/config setting as packages.target in Cargo.toml][cargo/9030]
+- [Cargo now supports git repositories where the default `HEAD` branch is not
+  "master".][cargo/9392] This also includes a switch to the version 3 `Cargo.lock` format
+  which can handle default branches correctly.
+- [macOS targets now default to `unpacked` split-debuginfo.][cargo/9298]
+- [The `authors` field is no longer included in `Cargo.toml` for new
+  projects.][cargo/9282]
 
 Rustdoc
 -----------------------
@@ -140,7 +145,9 @@ related tools.
 [82834]: https://github.com/rust-lang/rust/pull/82834
 [81764]: https://github.com/rust-lang/rust/pull/81764
 [81469]: https://github.com/rust-lang/rust/pull/81469
-[cargo/9030]: https://github.com/rust-lang/cargo/pull/9030
+[cargo/9298]: https://github.com/rust-lang/cargo/pull/9298
+[cargo/9282]: https://github.com/rust-lang/cargo/pull/9282
+[cargo/9392]: https://github.com/rust-lang/cargo/pull/9392
 [`char::MAX`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.MAX
 [`char::REPLACEMENT_CHARACTER`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.REPLACEMENT_CHARACTER
 [`char::UNICODE_VERSION`]: https://doc.rust-lang.org/std/primitive.char.html#associatedconstant.UNICODE_VERSION
