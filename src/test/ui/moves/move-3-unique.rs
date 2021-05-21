@@ -1,5 +1,6 @@
 // run-pass
 #![allow(unused_mut)]
+#![allow(dead_code)]
 #![feature(box_syntax)]
 
 #[derive(Clone)]

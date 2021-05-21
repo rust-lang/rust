@@ -582,6 +582,7 @@ impl Display for Arguments<'_> {
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "debug_trait"]
+#[cfg_attr(not(bootstrap), rustc_trivial_field_reads)]
 pub trait Debug {
     /// Formats the value using the given formatter.
     ///

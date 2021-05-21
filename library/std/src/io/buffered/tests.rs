@@ -468,9 +468,6 @@ struct ProgrammableSink {
     // Writes append to this slice
     pub buffer: Vec<u8>,
 
-    // Flush sets this flag
-    pub flushed: bool,
-
     // If true, writes will always be an error
     pub always_write_error: bool,
 
@@ -520,7 +517,6 @@ impl Write for ProgrammableSink {
         if self.always_flush_error {
             Err(io::Error::new(io::ErrorKind::Other, "test - always_flush_error"))
         } else {
-            self.flushed = true;
             Ok(())
         }
     }

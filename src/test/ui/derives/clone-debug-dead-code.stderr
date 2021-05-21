@@ -1,0 +1,38 @@
+error: field is never read: `f`
+  --> $DIR/clone-debug-dead-code.rs:6:12
+   |
+LL | struct A { f: () }
+   |            ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/clone-debug-dead-code.rs:4:11
+   |
+LL | #![forbid(dead_code)]
+   |           ^^^^^^^^^
+
+error: field is never read: `f`
+  --> $DIR/clone-debug-dead-code.rs:10:12
+   |
+LL | struct B { f: () }
+   |            ^^^^^
+
+error: field is never read: `f`
+  --> $DIR/clone-debug-dead-code.rs:14:12
+   |
+LL | struct C { f: () }
+   |            ^^^^^
+
+error: field is never read: `f`
+  --> $DIR/clone-debug-dead-code.rs:18:12
+   |
+LL | struct D { f: () }
+   |            ^^^^^
+
+error: field is never read: `f`
+  --> $DIR/clone-debug-dead-code.rs:21:12
+   |
+LL | struct E { f: () }
+   |            ^^^^^
+
+error: aborting due to 5 previous errors
+

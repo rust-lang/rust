@@ -2,6 +2,7 @@
 
 // check-pass
 #![warn(unused)]
+#![allow(dead_code)]
 
 #[derive(Debug)]
 struct MyStruct {

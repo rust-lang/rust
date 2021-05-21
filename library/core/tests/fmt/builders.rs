@@ -653,6 +653,7 @@ mod debug_list {
 fn test_formatting_parameters_are_forwarded() {
     use std::collections::{BTreeMap, BTreeSet};
     #[derive(Debug)]
+    #[allow(dead_code)]
     struct Foo {
         bar: u32,
         baz: u32,

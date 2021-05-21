@@ -239,7 +239,69 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
     }
 
+    /// Automatically generated items marked with `rustc_trivial_field_reads`
+    /// will be ignored for the purposes of dead code analysis (see PR #85200
+    /// for discussion).
+    fn should_ignore_item(&self, def_id: DefId) -> bool {
+        if !self.tcx.has_attr(def_id, sym::automatically_derived)
+            && !self
+                .tcx
+                .impl_of_method(def_id)
+                .map_or(false, |impl_id| self.tcx.has_attr(impl_id, sym::automatically_derived))
+        {
+            return false;
+        }
+
+        let has_attr = |def_id| self.tcx.has_attr(def_id, sym::rustc_trivial_field_reads);
+
+        if has_attr(def_id) {
+            return true;
+        }
+
+        if let Some(impl_of) = self.tcx.impl_of_method(def_id) {
+            if has_attr(impl_of) {
+                return true;
+            }
+
+            if let Some(trait_of) = self.tcx.trait_id_of_impl(impl_of) {
+                if has_attr(trait_of) {
+                    return true;
+                }
+
+                if let Some(method_ident) = self.tcx.opt_item_name(def_id) {
+                    if let Some(trait_method) = self
+                        .tcx
+                        .associated_items(trait_of)
+                        .find_by_name_and_kind(self.tcx, method_ident, ty::AssocKind::Fn, trait_of)
+                    {
+                        if has_attr(trait_method.def_id) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        } else if let Some(trait_of) = self.tcx.trait_of_item(def_id) {
+            if has_attr(trait_of) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     fn visit_node(&mut self, node: Node<'tcx>) {
+        if let Some(item_def_id) = match node {
+            Node::Item(hir::Item { def_id, .. })
+            | Node::ForeignItem(hir::ForeignItem { def_id, .. })
+            | Node::TraitItem(hir::TraitItem { def_id, .. })
+            | Node::ImplItem(hir::ImplItem { def_id, .. }) => Some(def_id.to_def_id()),
+            _ => None,
+        } {
+            if self.should_ignore_item(item_def_id) {
+                return;
+            }
+        }
+
         let had_repr_c = self.repr_has_repr_c;
         let had_inherited_pub_visibility = self.inherited_pub_visibility;
         let had_pub_visibility = self.pub_visibility;

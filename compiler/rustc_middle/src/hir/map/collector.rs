@@ -62,13 +62,6 @@ fn hash_body(
     stable_hasher.finish()
 }
 
-/// Represents an entry and its parent `HirId`.
-#[derive(Copy, Clone, Debug)]
-pub struct Entry<'hir> {
-    parent: HirId,
-    node: Node<'hir>,
-}
-
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
     pub(super) fn root(
         sess: &'a Session,

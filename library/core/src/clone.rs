@@ -105,6 +105,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
 #[rustc_diagnostic_item = "Clone"]
+#[cfg_attr(not(bootstrap), rustc_trivial_field_reads)]
 pub trait Clone: Sized {
     /// Returns a copy of the value.
     ///

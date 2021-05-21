@@ -1,4 +1,5 @@
 // run-pass
+#![allow(dead_code)]
 #![deny(unused_mut)]
 
 #[derive(Debug)]

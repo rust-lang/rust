@@ -51,7 +51,6 @@ pub struct Feature {
     pub since: &'static str,
     issue: Option<NonZeroU32>,
     pub edition: Option<Edition>,
-    description: &'static str,
 }
 
 #[derive(Copy, Clone, Debug)]

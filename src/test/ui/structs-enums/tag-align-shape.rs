@@ -1,5 +1,6 @@
 // run-pass
 #![allow(non_camel_case_types)]
+#![allow(dead_code)]
 
 #[derive(Debug)]
 enum a_tag {
