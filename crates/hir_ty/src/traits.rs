@@ -2,7 +2,7 @@
 
 use std::env::var;
 
-use chalk_ir::cast::Cast;
+use chalk_ir::GoalData;
 use chalk_solve::{logging_db::LoggingRustIrDatabase, Solver};
 
 use base_db::CrateId;
@@ -10,7 +10,7 @@ use hir_def::{lang_item::LangItemTarget, TraitId};
 use stdx::panic_context;
 
 use crate::{
-    db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Guidance, HirDisplay, InEnvironment,
+    db::HirDatabase, AliasEq, AliasTy, Canonical, DomainGoal, Goal, Guidance, InEnvironment,
     Interner, Solution, TraitRefExt, Ty, TyKind, WhereClause,
 };
 
@@ -38,6 +38,7 @@ fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
 /// we assume that `T: Default`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitEnvironment {
+    pub krate: CrateId,
     // When we're using Chalk's Ty we can make this a BTreeMap since it's Ord,
     // but for now it's too annoying...
     pub(crate) traits_from_clauses: Vec<(Ty, TraitId)>,
@@ -45,6 +46,14 @@ pub struct TraitEnvironment {
 }
 
 impl TraitEnvironment {
+    pub fn empty(krate: CrateId) -> Self {
+        TraitEnvironment {
+            krate,
+            traits_from_clauses: Vec::new(),
+            env: chalk_ir::Environment::new(&Interner),
+        }
+    }
+
     pub(crate) fn traits_in_scope_from_clauses<'a>(
         &'a self,
         ty: &'a Ty,
@@ -59,34 +68,25 @@ impl TraitEnvironment {
     }
 }
 
-impl Default for TraitEnvironment {
-    fn default() -> Self {
-        TraitEnvironment {
-            traits_from_clauses: Vec::new(),
-            env: chalk_ir::Environment::new(&Interner),
-        }
-    }
-}
-
 /// Solve a trait goal using Chalk.
 pub(crate) fn trait_solve_query(
     db: &dyn HirDatabase,
     krate: CrateId,
-    goal: Canonical<InEnvironment<DomainGoal>>,
+    goal: Canonical<InEnvironment<Goal>>,
 ) -> Option<Solution> {
-    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal {
-        DomainGoal::Holds(WhereClause::Implemented(it)) => {
+    let _p = profile::span("trait_solve_query").detail(|| match &goal.value.goal.data(&Interner) {
+        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::Implemented(it))) => {
             db.trait_data(it.hir_trait_id()).name.to_string()
         }
-        DomainGoal::Holds(WhereClause::AliasEq(_)) => "alias_eq".to_string(),
+        GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(_))) => "alias_eq".to_string(),
         _ => "??".to_string(),
     });
-    log::info!("trait_solve_query({})", goal.value.goal.display(db));
+    log::info!("trait_solve_query({:?})", goal.value.goal);
 
-    if let DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
+    if let GoalData::DomainGoal(DomainGoal::Holds(WhereClause::AliasEq(AliasEq {
         alias: AliasTy::Projection(projection_ty),
         ..
-    })) = &goal.value.goal
+    }))) = &goal.value.goal.data(&Interner)
     {
         if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(&Interner).kind(&Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
@@ -94,11 +94,9 @@ pub(crate) fn trait_solve_query(
         }
     }
 
-    let canonical = goal.cast(&Interner);
-
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
-    let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
+    let u_canonical = chalk_ir::UCanonical { canonical: goal, universes: 1 };
     solve(db, krate, &u_canonical)
 }
 

@@ -65,7 +65,6 @@ impl<'a> InferenceContext<'a> {
         let typable: ValueTyDefId = match value {
             ValueNs::LocalBinding(pat) => {
                 let ty = self.result.type_of_pat.get(pat)?.clone();
-                let ty = self.resolve_ty_as_possible(ty);
                 return Some(ty);
             }
             ValueNs::FunctionId(it) => it.into(),
@@ -218,14 +217,14 @@ impl<'a> InferenceContext<'a> {
             return Some(result);
         }
 
-        let canonical_ty = self.canonicalizer().canonicalize_ty(ty.clone());
+        let canonical_ty = self.canonicalize(ty.clone());
         let krate = self.resolver.krate()?;
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
         method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
-            self.trait_env.clone(),
+            self.table.trait_env.clone(),
             krate,
             &traits_in_scope,
             None,
@@ -275,6 +274,7 @@ impl<'a> InferenceContext<'a> {
         name: &Name,
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substitution>)> {
+        let ty = self.resolve_ty_shallow(ty);
         let (enum_id, subst) = match ty.as_adt() {
             Some((AdtId::EnumId(e), subst)) => (e, subst),
             _ => return None,

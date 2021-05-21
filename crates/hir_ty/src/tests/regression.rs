@@ -86,8 +86,6 @@ fn bug_651() {
 
 #[test]
 fn recursive_vars() {
-    cov_mark::check!(type_var_cycles_resolve_completely);
-    cov_mark::check!(type_var_cycles_resolve_as_possible);
     check_infer(
         r#"
         fn test() {
@@ -97,12 +95,12 @@ fn recursive_vars() {
         "#,
         expect![[r#"
             10..47 '{     ...&y]; }': ()
-            20..21 'y': &{unknown}
-            24..31 'unknown': &{unknown}
-            37..44 '[y, &y]': [&&{unknown}; 2]
-            38..39 'y': &{unknown}
-            41..43 '&y': &&{unknown}
-            42..43 'y': &{unknown}
+            20..21 'y': {unknown}
+            24..31 'unknown': {unknown}
+            37..44 '[y, &y]': [{unknown}; 2]
+            38..39 'y': {unknown}
+            41..43 '&y': &{unknown}
+            42..43 'y': {unknown}
         "#]],
     );
 }
@@ -119,19 +117,19 @@ fn recursive_vars_2() {
         "#,
         expect![[r#"
             10..79 '{     ...x)]; }': ()
-            20..21 'x': &&{unknown}
-            24..31 'unknown': &&{unknown}
-            41..42 'y': &&{unknown}
-            45..52 'unknown': &&{unknown}
-            58..76 '[(x, y..., &x)]': [(&&&{unknown}, &&&{unknown}); 2]
-            59..65 '(x, y)': (&&&{unknown}, &&&{unknown})
-            60..61 'x': &&{unknown}
-            63..64 'y': &&{unknown}
-            67..75 '(&y, &x)': (&&&{unknown}, &&&{unknown})
-            68..70 '&y': &&&{unknown}
-            69..70 'y': &&{unknown}
-            72..74 '&x': &&&{unknown}
-            73..74 'x': &&{unknown}
+            20..21 'x': &{unknown}
+            24..31 'unknown': &{unknown}
+            41..42 'y': {unknown}
+            45..52 'unknown': {unknown}
+            58..76 '[(x, y..., &x)]': [(&{unknown}, {unknown}); 2]
+            59..65 '(x, y)': (&{unknown}, {unknown})
+            60..61 'x': &{unknown}
+            63..64 'y': {unknown}
+            67..75 '(&y, &x)': (&{unknown}, {unknown})
+            68..70 '&y': &{unknown}
+            69..70 'y': {unknown}
+            72..74 '&x': &&{unknown}
+            73..74 'x': &{unknown}
         "#]],
     );
 }
@@ -165,7 +163,6 @@ fn infer_std_crash_1() {
 
 #[test]
 fn infer_std_crash_2() {
-    cov_mark::check!(type_var_resolves_to_int_var);
     // caused "equating two type variables, ...", taken from std
     check_infer(
         r#"
@@ -257,27 +254,27 @@ fn infer_std_crash_5() {
         expect![[r#"
             26..322 '{     ...   } }': ()
             32..320 'for co...     }': ()
-            36..43 'content': &{unknown}
+            36..43 'content': {unknown}
             47..60 'doesnt_matter': {unknown}
             61..320 '{     ...     }': ()
-            75..79 'name': &&{unknown}
-            82..166 'if doe...     }': &&{unknown}
+            75..79 'name': &{unknown}
+            82..166 'if doe...     }': &{unknown}
             85..98 'doesnt_matter': bool
-            99..128 '{     ...     }': &&{unknown}
-            113..118 'first': &&{unknown}
-            134..166 '{     ...     }': &&{unknown}
-            148..156 '&content': &&{unknown}
-            149..156 'content': &{unknown}
+            99..128 '{     ...     }': &{unknown}
+            113..118 'first': &{unknown}
+            134..166 '{     ...     }': &{unknown}
+            148..156 '&content': &{unknown}
+            149..156 'content': {unknown}
             181..188 'content': &{unknown}
             191..313 'if ICE...     }': &{unknown}
             194..231 'ICE_RE..._VALUE': {unknown}
             194..247 'ICE_RE...&name)': bool
-            241..246 '&name': &&&{unknown}
-            242..246 'name': &&{unknown}
-            248..276 '{     ...     }': &&{unknown}
-            262..266 'name': &&{unknown}
-            282..313 '{     ...     }': &{unknown}
-            296..303 'content': &{unknown}
+            241..246 '&name': &&{unknown}
+            242..246 'name': &{unknown}
+            248..276 '{     ...     }': &{unknown}
+            262..266 'name': &{unknown}
+            282..313 '{     ...     }': {unknown}
+            296..303 'content': {unknown}
         "#]],
     );
 }

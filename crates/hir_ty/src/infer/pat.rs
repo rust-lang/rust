@@ -94,14 +94,15 @@ impl<'a> InferenceContext<'a> {
     pub(super) fn infer_pat(
         &mut self,
         pat: PatId,
-        mut expected: &Ty,
+        expected: &Ty,
         mut default_bm: BindingMode,
     ) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
+        let mut expected = self.resolve_ty_shallow(expected);
 
         if is_non_ref_pat(&body, pat) {
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
-                expected = inner;
+                expected = self.resolve_ty_shallow(inner);
                 default_bm = match default_bm {
                     BindingMode::Move => BindingMode::Ref(mutability),
                     BindingMode::Ref(Mutability::Not) => BindingMode::Ref(Mutability::Not),
@@ -147,9 +148,9 @@ impl<'a> InferenceContext<'a> {
             }
             Pat::Or(ref pats) => {
                 if let Some((first_pat, rest)) = pats.split_first() {
-                    let ty = self.infer_pat(*first_pat, expected, default_bm);
+                    let ty = self.infer_pat(*first_pat, &expected, default_bm);
                     for pat in rest {
-                        self.infer_pat(*pat, expected, default_bm);
+                        self.infer_pat(*pat, &expected, default_bm);
                     }
                     ty
                 } else {
@@ -173,13 +174,13 @@ impl<'a> InferenceContext<'a> {
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self.infer_tuple_struct_pat(
                 p.as_deref(),
                 subpats,
-                expected,
+                &expected,
                 default_bm,
                 pat,
                 *ellipsis,
             ),
             Pat::Record { path: p, args: fields, ellipsis: _ } => {
-                self.infer_record_pat(p.as_deref(), fields, expected, default_bm, pat)
+                self.infer_record_pat(p.as_deref(), fields, &expected, default_bm, pat)
             }
             Pat::Path(path) => {
                 // FIXME use correct resolver for the surrounding expression
@@ -193,7 +194,7 @@ impl<'a> InferenceContext<'a> {
                     BindingMode::convert(*mode)
                 };
                 let inner_ty = if let Some(subpat) = subpat {
-                    self.infer_pat(*subpat, expected, default_bm)
+                    self.infer_pat(*subpat, &expected, default_bm)
                 } else {
                     expected.clone()
                 };
@@ -206,7 +207,6 @@ impl<'a> InferenceContext<'a> {
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };
-                let bound_ty = self.resolve_ty_as_possible(bound_ty);
                 self.write_pat_ty(pat, bound_ty);
                 return inner_ty;
             }
@@ -265,13 +265,12 @@ impl<'a> InferenceContext<'a> {
         };
         // use a new type variable if we got error type here
         let ty = self.insert_type_vars_shallow(ty);
-        if !self.unify(&ty, expected) {
+        if !self.unify(&ty, &expected) {
             self.result.type_mismatches.insert(
                 pat.into(),
                 TypeMismatch { expected: expected.clone(), actual: ty.clone() },
             );
         }
-        let ty = self.resolve_ty_as_possible(ty);
         self.write_pat_ty(pat, ty.clone());
         ty
     }

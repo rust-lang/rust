@@ -3104,7 +3104,7 @@ fn foo() {
             568..573 'f(&s)': FnOnce::Output<dyn FnOnce(&Option<i32>), (&Option<i32>,)>
             570..572 '&s': &Option<i32>
             571..572 's': Option<i32>
-            549..562: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|_| -> ()>
+            549..562: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|{unknown}| -> ()>
         "#]],
     );
 }

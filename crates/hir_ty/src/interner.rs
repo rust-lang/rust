@@ -15,8 +15,14 @@ use std::{fmt, sync::Arc};
 #[derive(Debug, Copy, Clone, Hash, PartialOrd, Ord, PartialEq, Eq)]
 pub struct Interner;
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct InternedWrapper<T>(T);
+
+impl<T: fmt::Debug> fmt::Debug for InternedWrapper<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
 
 impl<T> std::ops::Deref for InternedWrapper<T> {
     type Target = T;
@@ -101,66 +107,65 @@ impl chalk_ir::interner::Interner for Interner {
         opaque_ty: &chalk_ir::OpaqueTy<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_opaque_ty(opaque_ty, fmt)))
+        Some(write!(fmt, "{:?}", opaque_ty.opaque_ty_id))
     }
 
     fn debug_opaque_ty_id(
         opaque_ty_id: chalk_ir::OpaqueTyId<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_opaque_ty_id(opaque_ty_id, fmt)))
+        Some(fmt.debug_struct("OpaqueTyId").field("index", &opaque_ty_id.0).finish())
     }
 
     fn debug_ty(ty: &chalk_ir::Ty<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_ty(ty, fmt)))
+        Some(write!(fmt, "{:?}", ty.data(&Interner)))
     }
 
     fn debug_lifetime(
         lifetime: &chalk_ir::Lifetime<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_lifetime(lifetime, fmt)))
+        Some(write!(fmt, "{:?}", lifetime.data(&Interner)))
     }
 
     fn debug_generic_arg(
         parameter: &GenericArg,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_generic_arg(parameter, fmt)))
+        Some(write!(fmt, "{:?}", parameter.data(&Interner).inner_debug()))
     }
 
     fn debug_goal(goal: &Goal<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_goal(goal, fmt)))
+        let goal_data = goal.data(&Interner);
+        Some(write!(fmt, "{:?}", goal_data))
     }
 
     fn debug_goals(
         goals: &chalk_ir::Goals<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_goals(goals, fmt)))
+        Some(write!(fmt, "{:?}", goals.debug(&Interner)))
     }
 
     fn debug_program_clause_implication(
         pci: &chalk_ir::ProgramClauseImplication<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_program_clause_implication(pci, fmt)))
+        Some(write!(fmt, "{:?}", pci.debug(&Interner)))
     }
 
     fn debug_substitution(
         substitution: &chalk_ir::Substitution<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_substitution(substitution, fmt)))
+        Some(write!(fmt, "{:?}", substitution.debug(&Interner)))
     }
 
     fn debug_separator_trait_ref(
         separator_trait_ref: &chalk_ir::SeparatorTraitRef<Interner>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| {
-            Some(prog?.debug_separator_trait_ref(separator_trait_ref, fmt))
-        })
+        Some(write!(fmt, "{:?}", separator_trait_ref.debug(&Interner)))
     }
 
     fn debug_fn_def_id(
@@ -173,47 +178,43 @@ impl chalk_ir::interner::Interner for Interner {
         constant: &chalk_ir::Const<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_const(constant, fmt)))
+        Some(write!(fmt, "{:?}", constant.data(&Interner)))
     }
     fn debug_variable_kinds(
         variable_kinds: &chalk_ir::VariableKinds<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_variable_kinds(variable_kinds, fmt)))
+        Some(write!(fmt, "{:?}", variable_kinds.as_slice(&Interner)))
     }
     fn debug_variable_kinds_with_angles(
         variable_kinds: &chalk_ir::VariableKinds<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| {
-            Some(prog?.debug_variable_kinds_with_angles(variable_kinds, fmt))
-        })
+        Some(write!(fmt, "{:?}", variable_kinds.inner_debug(&Interner)))
     }
     fn debug_canonical_var_kinds(
         canonical_var_kinds: &chalk_ir::CanonicalVarKinds<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| {
-            Some(prog?.debug_canonical_var_kinds(canonical_var_kinds, fmt))
-        })
+        Some(write!(fmt, "{:?}", canonical_var_kinds.as_slice(&Interner)))
     }
     fn debug_program_clause(
         clause: &chalk_ir::ProgramClause<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_program_clause(clause, fmt)))
+        Some(write!(fmt, "{:?}", clause.data(&Interner)))
     }
     fn debug_program_clauses(
         clauses: &chalk_ir::ProgramClauses<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_program_clauses(clauses, fmt)))
+        Some(write!(fmt, "{:?}", clauses.as_slice(&Interner)))
     }
     fn debug_quantified_where_clauses(
         clauses: &chalk_ir::QuantifiedWhereClauses<Self>,
         fmt: &mut fmt::Formatter<'_>,
     ) -> Option<fmt::Result> {
-        tls::with_current_program(|prog| Some(prog?.debug_quantified_where_clauses(clauses, fmt)))
+        Some(write!(fmt, "{:?}", clauses.as_slice(&Interner)))
     }
 
     fn intern_ty(&self, kind: chalk_ir::TyKind<Self>) -> Self::InternedType {

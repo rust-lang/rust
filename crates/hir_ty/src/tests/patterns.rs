@@ -747,7 +747,7 @@ fn foo(tuple: (u8, i16, f32)) {
             209..210 '_': (u8, i16, f32)
             214..216 '{}': ()
             136..142: expected (u8, i16, f32), got (u8, i16)
-            170..182: expected (u8, i16, f32), got (u8, i16, f32, _)
+            170..182: expected (u8, i16, f32), got (u8, i16, f32, {unknown})
         "#]],
     );
 }

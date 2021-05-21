@@ -18,6 +18,7 @@ pub trait TyExt {
     fn is_unit(&self) -> bool;
     fn is_never(&self) -> bool;
     fn is_unknown(&self) -> bool;
+    fn is_ty_var(&self) -> bool;
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)>;
     fn as_builtin(&self) -> Option<BuiltinType>;
@@ -53,6 +54,10 @@ impl TyExt for Ty {
 
     fn is_unknown(&self) -> bool {
         matches!(self.kind(&Interner), TyKind::Error)
+    }
+
+    fn is_ty_var(&self) -> bool {
+        matches!(self.kind(&Interner), TyKind::InferenceVar(_, _))
     }
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)> {

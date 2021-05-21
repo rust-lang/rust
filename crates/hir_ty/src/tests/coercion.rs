@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_infer_with_mismatches};
+use super::{check_infer, check_infer_with_mismatches, check_types};
 
 #[test]
 fn infer_block_expr_type_mismatch() {
@@ -857,4 +857,58 @@ fn coerce_unsize_generic() {
         expect![[r"
         "]],
     );
+}
+
+#[test]
+fn infer_two_closures_lub() {
+    check_types(
+        r#"
+fn foo(c: i32) {
+    let add = |a: i32, b: i32| a + b;
+    let sub = |a, b| a - b;
+            //^ |i32, i32| -> i32
+    if c > 42 { add } else { sub };
+  //^ fn(i32, i32) -> i32
+}
+        "#,
+    )
+}
+
+#[test]
+fn infer_match_diverging_branch_1() {
+    check_types(
+        r#"
+enum Result<T> { Ok(T), Err }
+fn parse<T>() -> T { loop {} }
+
+fn test() -> i32 {
+    let a = match parse() {
+        Ok(val) => val,
+        Err => return 0,
+    };
+    a
+  //^ i32
+}
+        "#,
+    )
+}
+
+#[test]
+fn infer_match_diverging_branch_2() {
+    // same as 1 except for order of branches
+    check_types(
+        r#"
+enum Result<T> { Ok(T), Err }
+fn parse<T>() -> T { loop {} }
+
+fn test() -> i32 {
+    let a = match parse() {
+        Err => return 0,
+        Ok(val) => val,
+    };
+    a
+  //^ i32
+}
+        "#,
+    )
 }

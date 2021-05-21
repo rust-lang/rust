@@ -344,20 +344,20 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
     }
 
     fn unification_database(&self) -> &dyn chalk_ir::UnificationDatabase<Interner> {
-        self
+        &self.db
     }
 }
 
-impl<'a> chalk_ir::UnificationDatabase<Interner> for ChalkContext<'a> {
+impl<'a> chalk_ir::UnificationDatabase<Interner> for &'a dyn HirDatabase {
     fn fn_def_variance(
         &self,
         fn_def_id: chalk_ir::FnDefId<Interner>,
     ) -> chalk_ir::Variances<Interner> {
-        self.db.fn_def_variance(self.krate, fn_def_id)
+        HirDatabase::fn_def_variance(*self, fn_def_id)
     }
 
     fn adt_variance(&self, adt_id: chalk_ir::AdtId<Interner>) -> chalk_ir::Variances<Interner> {
-        self.db.adt_variance(self.krate, adt_id)
+        HirDatabase::adt_variance(*self, adt_id)
     }
 }
 
@@ -651,11 +651,7 @@ pub(crate) fn fn_def_datum_query(
     Arc::new(datum)
 }
 
-pub(crate) fn fn_def_variance_query(
-    db: &dyn HirDatabase,
-    _krate: CrateId,
-    fn_def_id: FnDefId,
-) -> Variances {
+pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Variances {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
     let generic_params = generics(db.upcast(), callable_def.into());
     Variances::from_iter(
@@ -666,7 +662,6 @@ pub(crate) fn fn_def_variance_query(
 
 pub(crate) fn adt_variance_query(
     db: &dyn HirDatabase,
-    _krate: CrateId,
     chalk_ir::AdtId(adt_id): AdtId,
 ) -> Variances {
     let generic_params = generics(db.upcast(), adt_id.into());

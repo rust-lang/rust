@@ -1712,15 +1712,17 @@ impl Type {
         resolver: &Resolver,
         ty: Ty,
     ) -> Type {
-        let environment =
-            resolver.generic_def().map_or_else(Default::default, |d| db.trait_environment(d));
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
         Type { krate, env: environment, ty }
     }
 
     fn new(db: &dyn HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
-        let environment =
-            resolver.generic_def().map_or_else(Default::default, |d| db.trait_environment(d));
+        let environment = resolver
+            .generic_def()
+            .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
         Type { krate, env: environment, ty }
     }
 
@@ -2051,11 +2053,7 @@ impl Type {
         name: Option<&Name>,
         mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
     ) -> Option<T> {
-        // There should be no inference vars in types passed here
-        // FIXME check that?
-        // FIXME replace Unknown by bound vars here
-        let canonical =
-            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(&Interner) };
+        let canonical = hir_ty::replace_errors_with_variables(self.ty.clone());
 
         let env = self.env.clone();
         let krate = krate.id;
@@ -2223,8 +2221,9 @@ impl Type {
         walk_type(db, self, &mut cb);
     }
 
-    pub fn could_unify_with(&self, other: &Type) -> bool {
-        could_unify(&self.ty, &other.ty)
+    pub fn could_unify_with(&self, db: &dyn HirDatabase, other: &Type) -> bool {
+        let tys = hir_ty::replace_errors_with_variables((self.ty.clone(), other.ty.clone()));
+        could_unify(db, self.env.clone(), &tys)
     }
 }
 

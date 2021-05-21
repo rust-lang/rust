@@ -43,8 +43,9 @@ use hir_def::{
     type_ref::{ConstScalar, Rawness},
     TypeParamId,
 };
+use stdx::always;
 
-use crate::{db::HirDatabase, display::HirDisplay, utils::generics};
+use crate::{db::HirDatabase, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::TyBuilder;
@@ -113,6 +114,7 @@ pub type FnSig = chalk_ir::FnSig<Interner>;
 
 pub type InEnvironment<T> = chalk_ir::InEnvironment<T>;
 pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
+pub type Goal = chalk_ir::Goal<Interner>;
 pub type AliasEq = chalk_ir::AliasEq<Interner>;
 pub type Solution = chalk_solve::Solution<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
@@ -167,6 +169,7 @@ pub fn make_canonical<T: HasInterner<Interner = Interner>>(
     Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }
 
+// FIXME: get rid of this, just replace it by FnPointer
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -200,6 +203,17 @@ impl CallableSig {
                 .map(|arg| arg.assert_ty_ref(&Interner).clone())
                 .collect(),
             is_varargs: fn_ptr.sig.variadic,
+        }
+    }
+
+    pub fn to_fn_ptr(&self) -> FnPointer {
+        FnPointer {
+            num_binders: 0,
+            sig: FnSig { abi: (), safety: Safety::Safe, variadic: self.is_varargs },
+            substitution: FnSubst(Substitution::from_iter(
+                &Interner,
+                self.params_and_return.iter().cloned(),
+            )),
         }
     }
 
@@ -313,4 +327,59 @@ pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
         }
     }
     t.fold_with(&mut TyFolder(f), binders).expect("fold failed unexpectedly")
+}
+
+pub fn replace_errors_with_variables<T>(t: T) -> Canonical<T::Result>
+where
+    T: HasInterner<Interner = Interner> + Fold<Interner>,
+    T::Result: HasInterner<Interner = Interner>,
+{
+    use chalk_ir::{
+        fold::{Folder, SuperFold},
+        Fallible,
+    };
+    struct ErrorReplacer {
+        vars: usize,
+    }
+    impl<'i> Folder<'i, Interner> for ErrorReplacer {
+        fn as_dyn(&mut self) -> &mut dyn Folder<'i, Interner> {
+            self
+        }
+
+        fn interner(&self) -> &'i Interner {
+            &Interner
+        }
+
+        fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
+            if let TyKind::Error = ty.kind(&Interner) {
+                let index = self.vars;
+                self.vars += 1;
+                Ok(TyKind::BoundVar(BoundVar::new(outer_binder, index)).intern(&Interner))
+            } else {
+                let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
+                Ok(ty)
+            }
+        }
+
+        fn fold_inference_ty(
+            &mut self,
+            var: InferenceVar,
+            kind: TyVariableKind,
+            _outer_binder: DebruijnIndex,
+        ) -> Fallible<Ty> {
+            always!(false);
+            Ok(TyKind::InferenceVar(var, kind).intern(&Interner))
+        }
+    }
+    let mut error_replacer = ErrorReplacer { vars: 0 };
+    let value = t
+        .fold_with(&mut error_replacer, DebruijnIndex::INNERMOST)
+        .expect("fold failed unexpectedly");
+    let kinds = (0..error_replacer.vars).map(|_| {
+        chalk_ir::CanonicalVarKind::new(
+            chalk_ir::VariableKind::Ty(TyVariableKind::General),
+            chalk_ir::UniverseIndex::ROOT,
+        )
+    });
+    Canonical { value, binders: chalk_ir::CanonicalVarKinds::from_iter(&Interner, kinds) }
 }

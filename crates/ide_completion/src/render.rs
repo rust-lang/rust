@@ -323,7 +323,7 @@ fn compute_type_match(
 
     if completion_ty == expected_type {
         Some(CompletionRelevanceTypeMatch::Exact)
-    } else if expected_type.could_unify_with(completion_ty) {
+    } else if expected_type.could_unify_with(ctx.db, completion_ty) {
         Some(CompletionRelevanceTypeMatch::CouldUnify)
     } else {
         None

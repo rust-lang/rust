@@ -35,39 +35,43 @@ use super::{
 impl<'a> InferenceContext<'a> {
     pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
-        if ty.is_never() {
+        if self.resolve_ty_shallow(&ty).is_never() {
             // Any expression that produces a value of type `!` must have diverged
             self.diverges = Diverges::Always;
         }
-        let could_unify = self.unify(&ty, &expected.ty);
-        if !could_unify {
-            self.result.type_mismatches.insert(
-                tgt_expr.into(),
-                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
-            );
+        if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
+            let could_unify = self.unify(&ty, &expected_ty);
+            if !could_unify {
+                self.result.type_mismatches.insert(
+                    tgt_expr.into(),
+                    TypeMismatch { expected: expected_ty.clone(), actual: ty.clone() },
+                );
+            }
         }
-        self.resolve_ty_as_possible(ty)
+        ty
     }
 
     /// Infer type of expression with possibly implicit coerce to the expected type.
     /// Return the type after possible coercion.
     pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, &expected);
-        let ty = if !self.coerce(&ty, &expected.coercion_target()) {
-            self.result.type_mismatches.insert(
-                expr.into(),
-                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
-            );
-            // Return actual type when type mismatch.
-            // This is needed for diagnostic when return type mismatch.
-            ty
-        } else if expected.coercion_target().is_unknown() {
-            ty
+        let ty = if let Some(target) = expected.only_has_type(&mut self.table) {
+            if !self.coerce(&ty, &target) {
+                self.result.type_mismatches.insert(
+                    expr.into(),
+                    TypeMismatch { expected: target.clone(), actual: ty.clone() },
+                );
+                // Return actual type when type mismatch.
+                // This is needed for diagnostic when return type mismatch.
+                ty
+            } else {
+                target.clone()
+            }
         } else {
-            expected.ty.clone()
+            ty
         };
 
-        self.resolve_ty_as_possible(ty)
+        ty
     }
 
     fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
@@ -98,10 +102,10 @@ impl<'a> InferenceContext<'a> {
             goal: projection.trait_ref(self.db).cast(&Interner),
             environment: trait_env,
         };
-        let canonical = self.canonicalizer().canonicalize_obligation(obligation.clone());
-        if self.db.trait_solve(krate, canonical.value).is_some() {
+        let canonical = self.canonicalize(obligation.clone());
+        if self.db.trait_solve(krate, canonical.value.cast(&Interner)).is_some() {
             self.push_obligation(obligation.goal);
-            let return_ty = self.normalize_projection_ty(projection);
+            let return_ty = self.table.normalize_projection_ty(projection);
             Some((arg_tys, return_ty))
         } else {
             None
@@ -131,17 +135,21 @@ impl<'a> InferenceContext<'a> {
                 let condition_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
                 let mut both_arms_diverge = Diverges::Always;
 
+                let mut result_ty = self.table.new_type_var();
                 let then_ty = self.infer_expr_inner(*then_branch, &expected);
                 both_arms_diverge &= mem::replace(&mut self.diverges, Diverges::Maybe);
+                result_ty = self.coerce_merge_branch(Some(*then_branch), &result_ty, &then_ty);
                 let else_ty = match else_branch {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
                     None => TyBuilder::unit(),
                 };
                 both_arms_diverge &= self.diverges;
+                // FIXME: create a synthetic `else {}` so we have something to refer to here instead of None?
+                result_ty = self.coerce_merge_branch(*else_branch, &result_ty, &else_ty);
 
                 self.diverges = condition_diverges | both_arms_diverge;
 
-                self.coerce_merge_branch(&then_ty, &else_ty)
+                result_ty
             }
             Expr::Block { statements, tail, label, id: _ } => {
                 let old_resolver = mem::replace(
@@ -277,12 +285,13 @@ impl<'a> InferenceContext<'a> {
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
                 // infer the body.
-                self.coerce(&closure_ty, &expected.ty);
+                if let Some(t) = expected.only_has_type(&mut self.table) {
+                    self.coerce(&closure_ty, &t);
+                }
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
-                    let resolved = self.resolve_ty_as_possible(arg_ty);
-                    self.infer_pat(*arg_pat, &resolved, BindingMode::default());
+                    self.infer_pat(*arg_pat, &arg_ty, BindingMode::default());
                 }
 
                 let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
@@ -297,13 +306,13 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let canonicalized = self.canonicalizer().canonicalize_ty(callee_ty.clone());
+                let canonicalized = self.canonicalize(callee_ty.clone());
                 let mut derefs = autoderef(
                     self.db,
                     self.resolver.krate(),
                     InEnvironment {
                         goal: canonicalized.value.clone(),
-                        environment: self.trait_env.env.clone(),
+                        environment: self.table.trait_env.env.clone(),
                     },
                 );
                 let (param_tys, ret_ty): (Vec<Ty>, Ty) = derefs
@@ -350,7 +359,7 @@ impl<'a> InferenceContext<'a> {
 
                     let arm_ty = self.infer_expr_inner(arm.expr, &expected);
                     all_arms_diverge &= self.diverges;
-                    result_ty = self.coerce_merge_branch(&result_ty, &arm_ty);
+                    result_ty = self.coerce_merge_branch(Some(arm.expr), &result_ty, &arm_ty);
                 }
 
                 self.diverges = matchee_diverges | all_arms_diverge;
@@ -364,12 +373,6 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Continue { .. } => TyKind::Never.intern(&Interner),
             Expr::Break { expr, label } => {
-                let val_ty = if let Some(expr) = expr {
-                    self.infer_expr(*expr, &Expectation::none())
-                } else {
-                    TyBuilder::unit()
-                };
-
                 let last_ty =
                     if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
                         ctxt.break_ty.clone()
@@ -377,7 +380,14 @@ impl<'a> InferenceContext<'a> {
                         self.err_ty()
                     };
 
-                let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
+                let val_ty = if let Some(expr) = expr {
+                    self.infer_expr(*expr, &Expectation::none())
+                } else {
+                    TyBuilder::unit()
+                };
+
+                // FIXME: create a synthetic `()` during lowering so we have something to refer to here?
+                let merged_type = self.coerce_merge_branch(*expr, &last_ty, &val_ty);
 
                 if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
                     ctxt.break_ty = merged_type;
@@ -411,7 +421,9 @@ impl<'a> InferenceContext<'a> {
                     self.write_variant_resolution(tgt_expr.into(), variant);
                 }
 
-                self.unify(&ty, &expected.ty);
+                if let Some(t) = expected.only_has_type(&mut self.table) {
+                    self.unify(&ty, &t);
+                }
 
                 let substs = ty
                     .as_adt()
@@ -442,7 +454,7 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Field { expr, name } => {
                 let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let canonicalized = self.canonicalizer().canonicalize_ty(receiver_ty);
+                let canonicalized = self.canonicalize(receiver_ty);
                 let ty = autoderef::autoderef(
                     self.db,
                     self.resolver.krate(),
@@ -514,6 +526,7 @@ impl<'a> InferenceContext<'a> {
                 self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok())
             }
             Expr::Cast { expr, type_ref } => {
+                // FIXME: propagate the "castable to" expectation (and find a test case that shows this is necessary)
                 let _inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let cast_ty = self.make_ty(type_ref);
                 // FIXME check the cast...
@@ -521,15 +534,17 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Ref { expr, rawness, mutability } => {
                 let mutability = lower_to_chalk_mutability(*mutability);
-                let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) =
-                    &expected.ty.as_reference_or_ptr()
+                let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) = expected
+                    .only_has_type(&mut self.table)
+                    .as_ref()
+                    .and_then(|t| t.as_reference_or_ptr())
                 {
-                    if *exp_mutability == Mutability::Mut && mutability == Mutability::Not {
-                        // FIXME: throw type error - expected mut reference but found shared ref,
+                    if exp_mutability == Mutability::Mut && mutability == Mutability::Not {
+                        // FIXME: record type error - expected mut reference but found shared ref,
                         // which cannot be coerced
                     }
-                    if *exp_rawness == Rawness::Ref && *rawness == Rawness::RawPtr {
-                        // FIXME: throw type error - expected reference but found ptr,
+                    if exp_rawness == Rawness::Ref && *rawness == Rawness::RawPtr {
+                        // FIXME: record type error - expected reference but found ptr,
                         // which cannot be coerced
                     }
                     Expectation::rvalue_hint(Ty::clone(exp_inner))
@@ -556,10 +571,11 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
+                let inner_ty = self.resolve_ty_shallow(&inner_ty);
                 match op {
                     UnaryOp::Deref => match self.resolver.krate() {
                         Some(krate) => {
-                            let canonicalized = self.canonicalizer().canonicalize_ty(inner_ty);
+                            let canonicalized = self.canonicalize(inner_ty);
                             match autoderef::deref(
                                 self.db,
                                 krate,
@@ -612,8 +628,10 @@ impl<'a> InferenceContext<'a> {
                         _ => Expectation::none(),
                     };
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
+                    let lhs_ty = self.resolve_ty_shallow(&lhs_ty);
                     let rhs_expectation = op::binary_op_rhs_expectation(*op, lhs_ty.clone());
                     let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(rhs_expectation));
+                    let rhs_ty = self.resolve_ty_shallow(&rhs_ty);
 
                     let ret = op::binary_op_return_ty(*op, lhs_ty.clone(), rhs_ty.clone());
 
@@ -676,7 +694,7 @@ impl<'a> InferenceContext<'a> {
                 if let (Some(index_trait), Some(krate)) =
                     (self.resolve_ops_index(), self.resolver.krate())
                 {
-                    let canonicalized = self.canonicalizer().canonicalize_ty(base_ty);
+                    let canonicalized = self.canonicalize(base_ty);
                     let self_ty = method_resolution::resolve_indexing_op(
                         self.db,
                         &canonicalized.value,
@@ -696,8 +714,12 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Tuple { exprs } => {
-                let mut tys = match expected.ty.kind(&Interner) {
-                    TyKind::Tuple(_, substs) => substs
+                let mut tys = match expected
+                    .only_has_type(&mut self.table)
+                    .as_ref()
+                    .map(|t| t.kind(&Interner))
+                {
+                    Some(TyKind::Tuple(_, substs)) => substs
                         .iter(&Interner)
                         .map(|a| a.assert_ty_ref(&Interner).clone())
                         .chain(repeat_with(|| self.table.new_type_var()))
@@ -713,14 +735,16 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Tuple(tys.len(), Substitution::from_iter(&Interner, tys)).intern(&Interner)
             }
             Expr::Array(array) => {
-                let elem_ty = match expected.ty.kind(&Interner) {
-                    TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
-                    _ => self.table.new_type_var(),
-                };
+                let elem_ty =
+                    match expected.to_option(&mut self.table).as_ref().map(|t| t.kind(&Interner)) {
+                        Some(TyKind::Array(st, _)) | Some(TyKind::Slice(st)) => st.clone(),
+                        _ => self.table.new_type_var(),
+                    };
 
                 let len = match array {
                     Array::ElementList(items) => {
                         for expr in items.iter() {
+                            // FIXME: use CoerceMany (coerce_merge_branch)
                             self.infer_expr_coerce(*expr, &Expectation::has_type(elem_ty.clone()));
                         }
                         Some(items.len() as u64)
@@ -785,7 +809,6 @@ impl<'a> InferenceContext<'a> {
         };
         // use a new type variable if we got unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        let ty = self.resolve_ty_as_possible(ty);
         self.write_expr_ty(tgt_expr, ty.clone());
         ty
     }
@@ -813,7 +836,6 @@ impl<'a> InferenceContext<'a> {
                         }
                     }
 
-                    let ty = self.resolve_ty_as_possible(ty);
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr { expr, .. } => {
@@ -836,7 +858,9 @@ impl<'a> InferenceContext<'a> {
                 // we don't even make an attempt at coercion
                 self.table.new_maybe_never_var()
             } else {
-                self.coerce(&TyBuilder::unit(), &expected.coercion_target());
+                if let Some(t) = expected.only_has_type(&mut self.table) {
+                    self.coerce(&TyBuilder::unit(), &t);
+                }
                 TyBuilder::unit()
             }
         };
@@ -852,7 +876,7 @@ impl<'a> InferenceContext<'a> {
         generic_args: Option<&GenericArgs>,
     ) -> Ty {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
-        let canonicalized_receiver = self.canonicalizer().canonicalize_ty(receiver_ty.clone());
+        let canonicalized_receiver = self.canonicalize(receiver_ty.clone());
 
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
@@ -891,7 +915,8 @@ impl<'a> InferenceContext<'a> {
         };
         // Apply autoref so the below unification works correctly
         // FIXME: return correct autorefs from lookup_method
-        let actual_receiver_ty = match expected_receiver_ty.as_reference() {
+        let actual_receiver_ty = match self.resolve_ty_shallow(&expected_receiver_ty).as_reference()
+        {
             Some((_, lifetime, mutability)) => {
                 TyKind::Ref(mutability, lifetime, derefed_receiver_ty).intern(&Interner)
             }
@@ -971,6 +996,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
+        let callable_ty = self.resolve_ty_shallow(&callable_ty);
         if let TyKind::FnDef(fn_def, parameters) = callable_ty.kind(&Interner) {
             let def: CallableDefId = from_chalk(self.db, *fn_def);
             let generic_predicates = self.db.generic_predicates(def.into());

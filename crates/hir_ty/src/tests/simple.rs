@@ -1040,42 +1040,6 @@ fn infer_in_elseif() {
 }
 
 #[test]
-fn infer_closure_unify() {
-    check_infer(
-        r#"
-        fn foo(f: bool) {
-            let a = |x| x;
-            let b = |x| x;
-            let id = if f { a } else { b };
-            id(123);
-        }
-        "#,
-        expect![[r#"
-            7..8 'f': bool
-            16..106 '{     ...23); }': ()
-            26..27 'a': |i32| -> i32
-            30..35 '|x| x': |i32| -> i32
-            31..32 'x': i32
-            34..35 'x': i32
-            45..46 'b': |i32| -> i32
-            49..54 '|x| x': |i32| -> i32
-            50..51 'x': i32
-            53..54 'x': i32
-            64..66 'id': |i32| -> i32
-            69..90 'if f {... { b }': |i32| -> i32
-            72..73 'f': bool
-            74..79 '{ a }': |i32| -> i32
-            76..77 'a': |i32| -> i32
-            85..90 '{ b }': |i32| -> i32
-            87..88 'b': |i32| -> i32
-            96..98 'id': |i32| -> i32
-            96..103 'id(123)': i32
-            99..102 '123': i32
-        "#]],
-    )
-}
-
-#[test]
 fn infer_if_match_with_return() {
     check_infer(
         r#"
