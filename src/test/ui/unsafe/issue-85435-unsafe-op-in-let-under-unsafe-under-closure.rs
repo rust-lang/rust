@@ -15,9 +15,6 @@ fn main() {
     let u8_ptr: *const u8 = &val;
     let _closure = || {
         unsafe {
-            // Fails compilation with:
-            // error[E0133]: dereference of raw pointer is unsafe and
-            //               requires unsafe function or block
             let tmp = *u8_ptr;
             tmp
 
