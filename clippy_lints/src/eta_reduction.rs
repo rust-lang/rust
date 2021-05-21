@@ -92,17 +92,19 @@ fn check_closure(cx: &LateContext<'_>, expr: &Expr<'_>) {
         let ex = &body.value;
 
         if ex.span.ctxt() != expr.span.ctxt() {
-            if let Some(VecArgs::Vec(&[])) = higher::vec_macro(cx, ex) {
-                // replace `|| vec![]` with `Vec::new`
-                span_lint_and_sugg(
-                    cx,
-                    REDUNDANT_CLOSURE,
-                    expr.span,
-                    "redundant closure",
-                    "replace the closure with `Vec::new`",
-                    "std::vec::Vec::new".into(),
-                    Applicability::MachineApplicable,
-                );
+            if decl.inputs.is_empty() {
+                if let Some(VecArgs::Vec(&[])) = higher::vec_macro(cx, ex) {
+                    // replace `|| vec![]` with `Vec::new`
+                    span_lint_and_sugg(
+                        cx,
+                        REDUNDANT_CLOSURE,
+                        expr.span,
+                        "redundant closure",
+                        "replace the closure with `Vec::new`",
+                        "std::vec::Vec::new".into(),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
             // skip `foo(|| macro!())`
             return;
