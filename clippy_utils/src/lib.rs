@@ -861,14 +861,16 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
     })
 }
 
-/// Gets the loop enclosing the given expression, if any.
-pub fn get_enclosing_loop(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+/// Gets the loop or closure enclosing the given expression, if any.
+pub fn get_enclosing_loop_or_closure(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     let map = tcx.hir();
     for (_, node) in map.parent_iter(expr.hir_id) {
         match node {
             Node::Expr(
-                e @ Expr {
-                    kind: ExprKind::Loop(..),
+                e
+                @
+                Expr {
+                    kind: ExprKind::Loop(..) | ExprKind::Closure(..),
                     ..
                 },
             ) => return Some(e),
