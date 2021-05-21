@@ -1668,7 +1668,7 @@ impl<T, E> ops::TryV2 for Result<T, E> {
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
-    #[inline(always)]
+    #[inline]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {
             Err(e) => Err(From::from(e)),
