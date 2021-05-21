@@ -143,7 +143,7 @@ pub enum StackPopUnwind {
     NotAllowed,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
+#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
@@ -815,21 +815,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // In that case, we return early. We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
-        let (cleanup, next_block) = match frame.return_to_block {
-            StackPopCleanup::Goto { ret, unwind } => (
+        let (cleanup, next_block) = match (frame.return_to_block, unwinding) {
+            (StackPopCleanup::Goto { ret, .. }, false) => (true, Some(ret)),
+            (StackPopCleanup::Goto { unwind, .. }, true) => (
                 true,
-                Some(if unwinding {
-                    match unwind {
-                        StackPopUnwind::Cleanup(unwind) => unwind,
-                        StackPopUnwind::NotAllowed => {
-                            throw_ub_format!("unwind past a frame that does not allow unwinding")
-                        }
+                Some(match unwind {
+                    StackPopUnwind::Cleanup(unwind) => unwind,
+                    StackPopUnwind::NotAllowed => {
+                        throw_ub_format!("unwind past a frame that does not allow unwinding")
                     }
-                } else {
-                    ret
                 }),
             ),
-            StackPopCleanup::None { cleanup, .. } => (cleanup, None),
+            (StackPopCleanup::None { cleanup, .. }, _) => (cleanup, None),
         };
 
         if !cleanup {
