@@ -4,10 +4,9 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
-use rustc_index::vec::Idx;
 use rustc_middle::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
-    FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
+    FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
 use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TypeFoldable};
@@ -1274,7 +1273,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         bug!("temporary or return pointer with a name")
                     }
                     LocalKind::Var => "local variable ",
-                    LocalKind::Arg if !self.upvars.is_empty() && local == Local::new(1) => {
+                    LocalKind::Arg
+                        if !self.upvars.is_empty() && local == ty::CAPTURE_STRUCT_LOCAL =>
+                    {
                         "variable captured by `move` "
                     }
                     LocalKind::Arg => "function parameter ",
