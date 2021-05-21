@@ -228,12 +228,7 @@ impl<'a> Ctx<'a> {
         let generic_params = self.lower_generic_params(GenericsOwner::Struct, strukt);
         let fields = self.lower_fields(&strukt.kind());
         let ast_id = self.source_ast_id_map.ast_id(strukt);
-        let kind = match strukt.kind() {
-            ast::StructKind::Record(_) => StructDefKind::Record,
-            ast::StructKind::Tuple(_) => StructDefKind::Tuple,
-            ast::StructKind::Unit => StructDefKind::Unit,
-        };
-        let res = Struct { name, visibility, generic_params, fields, ast_id, kind };
+        let res = Struct { name, visibility, generic_params, fields, ast_id };
         Some(id(self.data().structs.alloc(res)))
     }
 
