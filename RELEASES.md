@@ -24,8 +24,7 @@ Language
 
 Compiler
 -----------------------
-- [Updated to build with LLVM 12 by , and enabled `mutable-noalias` when
-  built LLVM 12 or greater.][82834]
+- [Enabled `mutable-noalias` when built with LLVM 12 or greater.][82834]
 - [Updated the minimum external LLVM version to LLVM 10.][83387]
 - [Added Tier 3\* support for the `wasm64-unknown-unknown` target.][80525]
 - [Improved debuginfo for closures and async functions on Windows MSVC.][83941]
