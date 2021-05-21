@@ -105,6 +105,7 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
         let missing_pats = variants_of_enums
             .into_iter()
             .multi_cartesian_product()
+            .inspect(|_| cov_mark::hit!(fill_match_arms_lazy_computation))
             .map(|variants| {
                 let patterns =
                     variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
@@ -279,7 +280,9 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: ExtendedVariant) -> Op
 mod tests {
     use ide_db::helpers::FamousDefs;
 
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_target, check_assist_unresolved,
+    };
 
     use super::fill_match_arms;
 
@@ -1056,6 +1059,21 @@ fn foo(t: Test) {
     Test::C => {}
 });
 }"#,
+        );
+    }
+
+    #[test]
+    fn lazy_computation() {
+        // Computing a single missing arm is enough to determine applicability of the assist.
+        cov_mark::check_count!(fill_match_arms_lazy_computation, 1);
+        check_assist_unresolved(
+            fill_match_arms,
+            r#"
+enum A { One, Two, }
+fn foo(tuple: (A, A)) {
+    match $0tuple {};
+}
+"#,
         );
     }
 }
