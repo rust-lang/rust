@@ -27,8 +27,8 @@ use crate::{
     intern::Interned,
     item_scope::{ImportType, PerNsGlobImports},
     item_tree::{
-        self, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, MacroDef, MacroRules, Mod, ModItem,
-        ModKind, StructDefKind,
+        self, Fields, FileItemTreeId, ItemTree, ItemTreeId, MacroCall, MacroDef, MacroRules, Mod,
+        ModItem, ModKind,
     },
     macro_call_as_call_id,
     nameres::{
@@ -1281,7 +1281,7 @@ impl ModCollector<'_, '_> {
                             .into(),
                         name: &it.name,
                         visibility: &self.item_tree[it.visibility],
-                        has_constructor: it.kind != StructDefKind::Record,
+                        has_constructor: !matches!(it.fields, Fields::Record(_)),
                     });
                 }
                 ModItem::Union(id) => {

@@ -560,17 +560,6 @@ pub struct Struct {
     pub generic_params: Interned<GenericParams>,
     pub fields: Fields,
     pub ast_id: FileAstId<ast::Struct>,
-    pub kind: StructDefKind,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum StructDefKind {
-    /// `struct S { ... }` - type namespace only.
-    Record,
-    /// `struct S(...);`
-    Tuple,
-    /// `struct S;`
-    Unit,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
