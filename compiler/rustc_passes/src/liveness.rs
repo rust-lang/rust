@@ -977,62 +977,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Call(ref f, ref args) => {
-                let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-                let ty = self.typeck_results.expr_ty(expr);
-                let succ = if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
-                    if let LiveNodeKind::ExprNode(succ_span, succ_id) = self.ir.lnks[succ] {
-                        self.warn_about_unreachable(
-                            expr.span,
-                            ty,
-                            succ_span,
-                            succ_id,
-                            "expression",
-                        );
-                    } else if let LiveNodeKind::VarDefNode(succ_span, succ_id) = self.ir.lnks[succ]
-                    {
-                        self.warn_about_unreachable(
-                            expr.span,
-                            ty,
-                            succ_span,
-                            succ_id,
-                            "definition",
-                        );
-                    }
-                    self.exit_ln
-                } else {
-                    succ
-                };
+                let succ = self.check_is_ty_uninhabited(expr, succ);
                 let succ = self.propagate_through_exprs(args, succ);
                 self.propagate_through_expr(&f, succ)
             }
 
             hir::ExprKind::MethodCall(.., ref args, _) => {
-                let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
-                let ty = self.typeck_results.expr_ty(expr);
-                let succ = if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
-                    if let LiveNodeKind::ExprNode(succ_span, succ_id) = self.ir.lnks[succ] {
-                        self.warn_about_unreachable(
-                            expr.span,
-                            ty,
-                            succ_span,
-                            succ_id,
-                            "expression",
-                        );
-                    } else if let LiveNodeKind::VarDefNode(succ_span, succ_id) = self.ir.lnks[succ]
-                    {
-                        self.warn_about_unreachable(
-                            expr.span,
-                            ty,
-                            succ_span,
-                            succ_id,
-                            "definition",
-                        );
-                    }
-                    self.exit_ln
-                } else {
-                    succ
-                };
-
+                let succ = self.check_is_ty_uninhabited(expr, succ);
                 self.propagate_through_exprs(args, succ)
             }
 
@@ -1303,6 +1254,25 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
 
         ln
+    }
+
+    fn check_is_ty_uninhabited(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
+        let ty = self.typeck_results.expr_ty(expr);
+        let m = self.ir.tcx.parent_module(expr.hir_id).to_def_id();
+        if self.ir.tcx.is_ty_uninhabited_from(m, ty, self.param_env) {
+            match self.ir.lnks[succ] {
+                LiveNodeKind::ExprNode(succ_span, succ_id) => {
+                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "expression");
+                }
+                LiveNodeKind::VarDefNode(succ_span, succ_id) => {
+                    self.warn_about_unreachable(expr.span, ty, succ_span, succ_id, "definition");
+                }
+                _ => {}
+            };
+            self.exit_ln
+        } else {
+            succ
+        }
     }
 
     fn warn_about_unreachable(
