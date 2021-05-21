@@ -50,6 +50,7 @@ mod typing;
 mod markdown_remove;
 mod doc_links;
 mod view_crate_graph;
+mod view_item_tree;
 
 use std::sync::Arc;
 
@@ -286,6 +287,10 @@ impl Analysis {
 
     pub fn view_hir(&self, position: FilePosition) -> Cancelable<String> {
         self.with_db(|db| view_hir::view_hir(&db, position))
+    }
+
+    pub fn view_item_tree(&self, file_id: FileId) -> Cancelable<String> {
+        self.with_db(|db| view_item_tree::view_item_tree(&db, file_id))
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.

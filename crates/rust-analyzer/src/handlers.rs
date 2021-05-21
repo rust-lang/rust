@@ -117,6 +117,16 @@ pub(crate) fn handle_view_hir(
     Ok(res)
 }
 
+pub(crate) fn handle_view_item_tree(
+    snap: GlobalStateSnapshot,
+    params: lsp_ext::ViewItemTreeParams,
+) -> Result<String> {
+    let _p = profile::span("handle_view_item_tree");
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let res = snap.analysis.view_item_tree(file_id)?;
+    Ok(res)
+}
+
 pub(crate) fn handle_view_crate_graph(snap: GlobalStateSnapshot, (): ()) -> Result<String> {
     let _p = profile::span("handle_view_crate_graph");
     let dot = snap.analysis.view_crate_graph()??;

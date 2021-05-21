@@ -514,6 +514,7 @@ impl GlobalState {
             .on::<lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
             .on::<lsp_ext::ViewHir>(handlers::handle_view_hir)
             .on::<lsp_ext::ViewCrateGraph>(handlers::handle_view_crate_graph)
+            .on::<lsp_ext::ViewItemTree>(handlers::handle_view_item_tree)
             .on::<lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
             .on::<lsp_ext::ParentModule>(handlers::handle_parent_module)
             .on::<lsp_ext::Runnables>(handlers::handle_runnables)
