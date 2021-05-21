@@ -819,19 +819,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             StackPopCleanup::Goto { ret, unwind } => (
                 true,
                 Some(if unwinding {
-                    let def_id = frame.body.source.def_id();
                     match unwind {
-                        StackPopUnwind::Cleanup(unwind)
-                            // `fn_sig()` can't be used on closures, but closures always have
-                            // "rust-call" ABI, which always allows unwinding anyway.
-                            if self.tcx.is_closure(def_id) || self.fn_can_unwind(
-                                self.tcx.codegen_fn_attrs(def_id).flags,
-                                self.tcx.fn_sig(def_id).abi(),
-                            ) =>
-                        {
-                            unwind
-                        }
-                        _ => {
+                        StackPopUnwind::Cleanup(unwind) => unwind,
+                        StackPopUnwind::NotAllowed => {
                             throw_ub_format!("unwind past a frame that does not allow unwinding")
                         }
                     }

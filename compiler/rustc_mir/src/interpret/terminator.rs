@@ -17,7 +17,7 @@ use super::{
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub(super) fn fn_can_unwind(&self, attrs: CodegenFnAttrFlags, abi: Abi) -> bool {
+    fn fn_can_unwind(&self, attrs: CodegenFnAttrFlags, abi: Abi) -> bool {
         layout::fn_can_unwind(
             self.tcx.sess.panic_strategy(),
             attrs,
@@ -247,37 +247,38 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
+        let get_abi = |this: &Self, instance_ty: Ty<'tcx>| match instance_ty.kind() {
+            ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
+            ty::Closure(..) => Abi::RustCall,
+            ty::Generator(..) => Abi::Rust,
+            _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
+        };
+
         // ABI check
-        let check_abi = |this: &Self, instance_ty: Ty<'tcx>| -> InterpResult<'tcx> {
-            if M::enforce_abi(this) {
-                let callee_abi = match instance_ty.kind() {
-                    ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
-                    ty::Closure(..) => Abi::RustCall,
-                    ty::Generator(..) => Abi::Rust,
-                    _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
-                };
-                let normalize_abi = |abi| match abi {
-                    Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
-                    // These are all the same ABI, really.
-                    {
-                        Abi::Rust
-                    }
-                    abi => abi,
-                };
-                if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                    throw_ub_format!(
-                        "calling a function with ABI {} using caller ABI {}",
-                        callee_abi.name(),
-                        caller_abi.name()
-                    )
+        let check_abi = |callee_abi: Abi| -> InterpResult<'tcx> {
+            let normalize_abi = |abi| match abi {
+                Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
+                // These are all the same ABI, really.
+                {
+                    Abi::Rust
                 }
+                abi => abi,
+            };
+            if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
+                throw_ub_format!(
+                    "calling a function with ABI {} using caller ABI {}",
+                    callee_abi.name(),
+                    caller_abi.name()
+                )
             }
             Ok(())
         };
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                check_abi(self, instance.ty(*self.tcx, self.param_env))?;
+                if M::enforce_abi(self) {
+                    check_abi(get_abi(self, instance.ty(*self.tcx, self.param_env)))?;
+                }
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
                 M::call_intrinsic(self, instance, args, ret, unwind)
             }
@@ -298,7 +299,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // Check against the ABI of the MIR body we are calling (not the ABI of `instance`;
                 // these can differ when `find_mir_or_eval_fn` does something clever like resolve
                 // exported symbol names).
-                check_abi(self, self.tcx.type_of(body.source.def_id()))?;
+                let callee_def_id = body.source.def_id();
+                let callee_abi = get_abi(self, self.tcx.type_of(callee_def_id));
+
+                if M::enforce_abi(self) {
+                    check_abi(callee_abi)?;
+                }
+
+                let callee_can_unwind =
+                    self.fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi);
 
                 self.push_stack_frame(
                     instance,
@@ -306,7 +315,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ret.map(|p| p.0),
                     StackPopCleanup::Goto {
                         ret: ret.map(|p| p.1),
-                        unwind: if can_unwind {
+                        unwind: if can_unwind && callee_can_unwind {
                             StackPopUnwind::Cleanup(unwind)
                         } else {
                             StackPopUnwind::NotAllowed
