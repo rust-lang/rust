@@ -28,7 +28,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             linker_flavor: LinkerFlavor::Ld,
             linker: Some("arm-none-eabi-ld".to_string()),
-            linker_is_gnu: true,
 
             // extra args passed to the external assembler (assuming `arm-none-eabi-as`):
             // * activate t32/a32 interworking

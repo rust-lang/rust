@@ -27,7 +27,6 @@ pub fn opts() -> TargetOptions {
         executables: true,
         families: vec!["unix".to_string()],
         is_like_fuchsia: true,
-        linker_is_gnu: true,
         pre_link_args,
         pre_link_objects: crt_objects::new(&[
             (LinkOutputKind::DynamicNoPicExe, &["Scrt1.o"]),

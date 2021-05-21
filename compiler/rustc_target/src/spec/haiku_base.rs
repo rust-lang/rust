@@ -7,7 +7,6 @@ pub fn opts() -> TargetOptions {
         executables: true,
         families: vec!["unix".to_string()],
         relro_level: RelroLevel::Full,
-        linker_is_gnu: true,
         ..Default::default()
     }
 }
