@@ -1243,6 +1243,7 @@ impl ModCollector<'_, '_> {
                         status: PartialResolvedImport::Unresolved,
                     })
                 }
+                ModItem::ExternBlock(block) => self.collect(&self.item_tree[block].children),
                 ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac]),
                 ModItem::MacroRules(id) => self.collect_macro_rules(id),
                 ModItem::MacroDef(id) => self.collect_macro_def(id),

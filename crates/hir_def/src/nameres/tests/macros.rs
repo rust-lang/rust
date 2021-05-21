@@ -736,6 +736,42 @@ fn unresolved_attributes_fall_back_track_per_file_moditems() {
 }
 
 #[test]
+fn unresolved_attrs_extern_block_hang() {
+    check(
+        r#"
+#[unresolved]
+extern "C" {
+    #[unresolved]
+    fn f();
+}
+    "#,
+        expect![[r#"
+        crate
+        f: v
+    "#]],
+    );
+}
+
+#[test]
+fn macros_in_extern_block() {
+    check(
+        r#"
+macro_rules! m {
+    () => { static S: u8; };
+}
+
+extern {
+    m!();
+}
+    "#,
+        expect![[r#"
+            crate
+            S: v
+        "#]],
+    );
+}
+
+#[test]
 fn resolves_derive_helper() {
     cov_mark::check!(resolved_derive_helper);
     check(

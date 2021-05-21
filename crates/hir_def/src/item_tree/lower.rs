@@ -147,9 +147,7 @@ impl<'a> Ctx<'a> {
             ast::Item::MacroCall(ast) => self.lower_macro_call(ast).map(Into::into),
             ast::Item::MacroRules(ast) => self.lower_macro_rules(ast).map(Into::into),
             ast::Item::MacroDef(ast) => self.lower_macro_def(ast).map(Into::into),
-            ast::Item::ExternBlock(ast) => {
-                Some(ModItems(self.lower_extern_block(ast).into_iter().collect::<SmallVec<_>>()))
-            }
+            ast::Item::ExternBlock(ast) => Some(self.lower_extern_block(ast).into()),
         };
 
         if !attrs.is_empty() {
@@ -397,19 +395,7 @@ impl<'a> Ctx<'a> {
             ret_type
         };
 
-        let abi = func.abi().map(|abi| {
-            // FIXME: Abi::abi() -> Option<SyntaxToken>?
-            match abi.syntax().last_token() {
-                Some(tok) if tok.kind() == SyntaxKind::STRING => {
-                    // FIXME: Better way to unescape?
-                    Interned::new_str(tok.text().trim_matches('"'))
-                }
-                _ => {
-                    // `extern` default to be `extern "C"`.
-                    Interned::new_str("C")
-                }
-            }
-        });
+        let abi = func.abi().map(lower_abi);
 
         let ast_id = self.source_ast_id_map.ast_id(func);
 
@@ -647,8 +633,10 @@ impl<'a> Ctx<'a> {
         Some(id(self.data().macro_defs.alloc(res)))
     }
 
-    fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> Vec<ModItem> {
-        block.extern_item_list().map_or(Vec::new(), |list| {
+    fn lower_extern_block(&mut self, block: &ast::ExternBlock) -> FileItemTreeId<ExternBlock> {
+        let ast_id = self.source_ast_id_map.ast_id(block);
+        let abi = block.abi().map(lower_abi);
+        let children: Box<[_]> = block.extern_item_list().map_or(Box::new([]), |list| {
             list.extern_items()
                 .filter_map(|item| {
                     self.collect_inner_items(item.syntax());
@@ -673,13 +661,20 @@ impl<'a> Ctx<'a> {
                             self.data().type_aliases[foreign_ty.index].is_extern = true;
                             foreign_ty.into()
                         }
-                        ast::ExternItem::MacroCall(_) => return None,
+                        ast::ExternItem::MacroCall(call) => {
+                            // FIXME: we need some way of tracking that the macro call is in an
+                            // extern block
+                            self.lower_macro_call(&call)?.into()
+                        }
                     };
                     self.add_attrs(id.into(), attrs);
                     Some(id)
                 })
                 .collect()
-        })
+        });
+
+        let res = ExternBlock { abi, ast_id, children };
+        id(self.data().extern_blocks.alloc(res))
     }
 
     /// Lowers generics defined on `node` and collects inner items defined within.
@@ -878,4 +873,18 @@ fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
         known::variant_count,
     ]
     .contains(&name)
+}
+
+fn lower_abi(abi: ast::Abi) -> Interned<str> {
+    // FIXME: Abi::abi() -> Option<SyntaxToken>?
+    match abi.syntax().last_token() {
+        Some(tok) if tok.kind() == SyntaxKind::STRING => {
+            // FIXME: Better way to unescape?
+            Interned::new_str(tok.text().trim_matches('"'))
+        }
+        _ => {
+            // `extern` default to be `extern "C"`.
+            Interned::new_str("C")
+        }
+    }
 }
