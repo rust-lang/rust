@@ -6607,7 +6607,7 @@ pub unsafe fn vfma_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float3
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v2f32")]
         fn vfma_f32_(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t;
     }
-vfma_f32_(a, b, c)
+vfma_f32_(b, c, a)
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -6623,7 +6623,7 @@ pub unsafe fn vfmaq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v4f32")]
         fn vfmaq_f32_(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t;
     }
-vfmaq_f32_(a, b, c)
+vfmaq_f32_(b, c, a)
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -6633,8 +6633,7 @@ vfmaq_f32_(a, b, c)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
-    let d: float32x2_t = transmute(f32x2::new(c, c));
-    vfma_f32(b, d, a)
+    vfma_f32(a, b, vdup_n_f32(c))
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -6644,8 +6643,49 @@ pub unsafe fn vfma_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfma))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmla))]
 pub unsafe fn vfmaq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
-    let d: float32x4_t = transmute(f32x4::new(c, c, c, c));
-    vfmaq_f32(b, d, a)
+    vfmaq_f32(a, b, vdupq_n_f32(c))
+}
+
+/// Floating-point fused multiply-subtract from accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
+pub unsafe fn vfms_f32(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
+    let b: float32x2_t = simd_neg(b);
+    vfma_f32(a, b, c)
+}
+
+/// Floating-point fused multiply-subtract from accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
+pub unsafe fn vfmsq_f32(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
+    let b: float32x4_t = simd_neg(b);
+    vfmaq_f32(a, b, c)
+}
+
+/// Floating-point fused Multiply-subtract to accumulator(vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
+pub unsafe fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
+    vfms_f32(a, b, vdup_n_f32(c))
+}
+
+/// Floating-point fused Multiply-subtract to accumulator(vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vfms))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(fmls))]
+pub unsafe fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
+    vfmsq_f32(a, b, vdupq_n_f32(c))
 }
 
 /// Subtract
@@ -19484,9 +19524,9 @@ mod test {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vfma_f32() {
-        let a: f32x2 = f32x2::new(2.0, 3.0);
+        let a: f32x2 = f32x2::new(8.0, 18.0);
         let b: f32x2 = f32x2::new(6.0, 4.0);
-        let c: f32x2 = f32x2::new(8.0, 18.0);
+        let c: f32x2 = f32x2::new(2.0, 3.0);
         let e: f32x2 = f32x2::new(20.0, 30.0);
         let r: f32x2 = transmute(vfma_f32(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
@@ -19494,9 +19534,9 @@ mod test {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vfmaq_f32() {
-        let a: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
+        let a: f32x4 = f32x4::new(8.0, 18.0, 12.0, 10.0);
         let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
-        let c: f32x4 = f32x4::new(8.0, 18.0, 12.0, 10.0);
+        let c: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
         let e: f32x4 = f32x4::new(20.0, 30.0, 40.0, 50.0);
         let r: f32x4 = transmute(vfmaq_f32(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
@@ -19519,6 +19559,46 @@ mod test {
         let c: f32 = 8.0;
         let e: f32x4 = f32x4::new(50.0, 35.0, 60.0, 69.0);
         let r: f32x4 = transmute(vfmaq_n_f32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_f32() {
+        let a: f32x2 = f32x2::new(20.0, 30.0);
+        let b: f32x2 = f32x2::new(6.0, 4.0);
+        let c: f32x2 = f32x2::new(2.0, 3.0);
+        let e: f32x2 = f32x2::new(8.0, 18.0);
+        let r: f32x2 = transmute(vfms_f32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_f32() {
+        let a: f32x4 = f32x4::new(20.0, 30.0, 40.0, 50.0);
+        let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
+        let c: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
+        let e: f32x4 = f32x4::new(8.0, 18.0, 12.0, 10.0);
+        let r: f32x4 = transmute(vfmsq_f32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_n_f32() {
+        let a: f32x2 = f32x2::new(50.0, 35.0);
+        let b: f32x2 = f32x2::new(6.0, 4.0);
+        let c: f32 = 8.0;
+        let e: f32x2 = f32x2::new(2.0, 3.0);
+        let r: f32x2 = transmute(vfms_n_f32(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_n_f32() {
+        let a: f32x4 = f32x4::new(50.0, 35.0, 60.0, 69.0);
+        let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
+        let c: f32 = 8.0;
+        let e: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
+        let r: f32x4 = transmute(vfmsq_n_f32(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 

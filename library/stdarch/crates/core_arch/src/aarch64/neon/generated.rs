@@ -5021,7 +5021,7 @@ pub unsafe fn vfma_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float6
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v1f64")]
         fn vfma_f64_(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t;
     }
-    vfma_f64_(a, b, c)
+    vfma_f64_(b, c, a)
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -5034,7 +5034,7 @@ pub unsafe fn vfmaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.v2f64")]
         fn vfmaq_f64_(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t;
     }
-    vfmaq_f64_(a, b, c)
+    vfmaq_f64_(b, c, a)
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -5042,8 +5042,7 @@ pub unsafe fn vfmaq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fmadd))]
 pub unsafe fn vfma_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t {
-    let d: float64x1_t = transmute(f64x1::new(c));
-    vfma_f64(b, transmute(d), a)
+    vfma_f64(a, b, vdup_n_f64(c))
 }
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
@@ -5051,8 +5050,301 @@ pub unsafe fn vfma_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t 
 #[target_feature(enable = "neon")]
 #[cfg_attr(test, assert_instr(fmla))]
 pub unsafe fn vfmaq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t {
-    let d: float64x2_t = transmute(f64x2::new(c, c));
-    vfmaq_f64(b, d, a)
+    vfmaq_f64(a, b, vdupq_n_f64(c))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfma_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
+    static_assert_imm1!(LANE);
+    vfma_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfma_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
+    static_assert_imm2!(LANE);
+    vfma_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmaq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
+    static_assert_imm1!(LANE);
+    vfmaq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmaq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
+    static_assert_imm2!(LANE);
+    vfmaq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfma_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    vfma_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfma_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x2_t) -> float64x1_t {
+    static_assert_imm1!(LANE);
+    vfma_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmaq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x1_t) -> float64x2_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    vfmaq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmaq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
+    static_assert_imm1!(LANE);
+    vfmaq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmas_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f32")]
+        fn vfmas_lane_f32_(a: f32, b: f32, c: f32) -> f32;
+    }
+    static_assert_imm1!(LANE);
+    let c: f32 = simd_extract(c, LANE as u32);
+    vfmas_lane_f32_(b, c, a)
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmas_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f32")]
+        fn vfmas_laneq_f32_(a: f32, b: f32, c: f32) -> f32;
+    }
+    static_assert_imm2!(LANE);
+    let c: f32 = simd_extract(c, LANE as u32);
+    vfmas_laneq_f32_(b, c, a)
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmadd, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmad_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f64")]
+        fn vfmad_lane_f64_(a: f64, b: f64, c: f64) -> f64;
+    }
+    static_assert!(LANE : i32 where LANE == 0);
+    let c: f64 = simd_extract(c, LANE as u32);
+    vfmad_lane_f64_(b, c, a)
+}
+
+/// Floating-point fused multiply-add to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmla, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmad_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
+    #[allow(improper_ctypes)]
+    extern "C" {
+        #[cfg_attr(target_arch = "aarch64", link_name = "llvm.fma.f64")]
+        fn vfmad_laneq_f64_(a: f64, b: f64, c: f64) -> f64;
+    }
+    static_assert_imm1!(LANE);
+    let c: f64 = simd_extract(c, LANE as u32);
+    vfmad_laneq_f64_(b, c, a)
+}
+
+/// Floating-point fused multiply-subtract from accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmsub))]
+pub unsafe fn vfms_f64(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
+    let b: float64x1_t = simd_neg(b);
+    vfma_f64(a, b, c)
+}
+
+/// Floating-point fused multiply-subtract from accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls))]
+pub unsafe fn vfmsq_f64(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
+    let b: float64x2_t = simd_neg(b);
+    vfmaq_f64(a, b, c)
+}
+
+/// Floating-point fused Multiply-subtract to accumulator(vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmsub))]
+pub unsafe fn vfms_n_f64(a: float64x1_t, b: float64x1_t, c: f64) -> float64x1_t {
+    vfms_f64(a, b, vdup_n_f64(c))
+}
+
+/// Floating-point fused Multiply-subtract to accumulator(vector)
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls))]
+pub unsafe fn vfmsq_n_f64(a: float64x2_t, b: float64x2_t, c: f64) -> float64x2_t {
+    vfmsq_f64(a, b, vdupq_n_f64(c))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfms_lane_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x2_t) -> float32x2_t {
+    static_assert_imm1!(LANE);
+    vfms_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfms_laneq_f32<const LANE: i32>(a: float32x2_t, b: float32x2_t, c: float32x4_t) -> float32x2_t {
+    static_assert_imm2!(LANE);
+    vfms_f32(a, b, vdup_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmsq_lane_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x2_t) -> float32x4_t {
+    static_assert_imm1!(LANE);
+    vfmsq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmsq_laneq_f32<const LANE: i32>(a: float32x4_t, b: float32x4_t, c: float32x4_t) -> float32x4_t {
+    static_assert_imm2!(LANE);
+    vfmsq_f32(a, b, vdupq_n_f32(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfms_lane_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x1_t) -> float64x1_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    vfms_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfms_laneq_f64<const LANE: i32>(a: float64x1_t, b: float64x1_t, c: float64x2_t) -> float64x1_t {
+    static_assert_imm1!(LANE);
+    vfms_f64(a, b, vdup_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmsq_lane_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x1_t) -> float64x2_t {
+    static_assert!(LANE : i32 where LANE == 0);
+    vfmsq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmsq_laneq_f64<const LANE: i32>(a: float64x2_t, b: float64x2_t, c: float64x2_t) -> float64x2_t {
+    static_assert_imm1!(LANE);
+    vfmsq_f64(a, b, vdupq_n_f64(simd_extract(c, LANE as u32)))
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmss_lane_f32<const LANE: i32>(a: f32, b: f32, c: float32x2_t) -> f32 {
+    vfmas_lane_f32::<LANE>(a, -b, c)
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmss_laneq_f32<const LANE: i32>(a: f32, b: f32, c: float32x4_t) -> f32 {
+    vfmas_laneq_f32::<LANE>(a, -b, c)
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmsub, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmsd_lane_f64<const LANE: i32>(a: f64, b: f64, c: float64x1_t) -> f64 {
+    vfmad_lane_f64::<LANE>(a, -b, c)
+}
+
+/// Floating-point fused multiply-subtract to accumulator
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmls, LANE = 0))]
+#[rustc_legacy_const_generics(3)]
+pub unsafe fn vfmsd_laneq_f64<const LANE: i32>(a: f64, b: f64, c: float64x2_t) -> f64 {
+    vfmad_laneq_f64::<LANE>(a, -b, c)
 }
 
 /// Divide
@@ -13006,9 +13298,9 @@ mod test {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vfma_f64() {
-        let a: f64 = 2.0;
+        let a: f64 = 8.0;
         let b: f64 = 6.0;
-        let c: f64 = 8.0;
+        let c: f64 = 2.0;
         let e: f64 = 20.0;
         let r: f64 = transmute(vfma_f64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
@@ -13016,9 +13308,9 @@ mod test {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vfmaq_f64() {
-        let a: f64x2 = f64x2::new(2.0, 3.0);
+        let a: f64x2 = f64x2::new(8.0, 18.0);
         let b: f64x2 = f64x2::new(6.0, 4.0);
-        let c: f64x2 = f64x2::new(8.0, 18.0);
+        let c: f64x2 = f64x2::new(2.0, 3.0);
         let e: f64x2 = f64x2::new(20.0, 30.0);
         let r: f64x2 = transmute(vfmaq_f64(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
@@ -13041,6 +13333,286 @@ mod test {
         let c: f64 = 8.0;
         let e: f64x2 = f64x2::new(50.0, 35.0);
         let r: f64x2 = transmute(vfmaq_n_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfma_lane_f32() {
+        let a: f32x2 = f32x2::new(2., 3.);
+        let b: f32x2 = f32x2::new(6., 4.);
+        let c: f32x2 = f32x2::new(2., 0.);
+        let e: f32x2 = f32x2::new(14., 11.);
+        let r: f32x2 = transmute(vfma_lane_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfma_laneq_f32() {
+        let a: f32x2 = f32x2::new(2., 3.);
+        let b: f32x2 = f32x2::new(6., 4.);
+        let c: f32x4 = f32x4::new(2., 0., 0., 0.);
+        let e: f32x2 = f32x2::new(14., 11.);
+        let r: f32x2 = transmute(vfma_laneq_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmaq_lane_f32() {
+        let a: f32x4 = f32x4::new(2., 3., 4., 5.);
+        let b: f32x4 = f32x4::new(6., 4., 7., 8.);
+        let c: f32x2 = f32x2::new(2., 0.);
+        let e: f32x4 = f32x4::new(14., 11., 18., 21.);
+        let r: f32x4 = transmute(vfmaq_lane_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmaq_laneq_f32() {
+        let a: f32x4 = f32x4::new(2., 3., 4., 5.);
+        let b: f32x4 = f32x4::new(6., 4., 7., 8.);
+        let c: f32x4 = f32x4::new(2., 0., 0., 0.);
+        let e: f32x4 = f32x4::new(14., 11., 18., 21.);
+        let r: f32x4 = transmute(vfmaq_laneq_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfma_lane_f64() {
+        let a: f64 = 2.;
+        let b: f64 = 6.;
+        let c: f64 = 2.;
+        let e: f64 = 14.;
+        let r: f64 = transmute(vfma_lane_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfma_laneq_f64() {
+        let a: f64 = 2.;
+        let b: f64 = 6.;
+        let c: f64x2 = f64x2::new(2., 0.);
+        let e: f64 = 14.;
+        let r: f64 = transmute(vfma_laneq_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmaq_lane_f64() {
+        let a: f64x2 = f64x2::new(2., 3.);
+        let b: f64x2 = f64x2::new(6., 4.);
+        let c: f64 = 2.;
+        let e: f64x2 = f64x2::new(14., 11.);
+        let r: f64x2 = transmute(vfmaq_lane_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmaq_laneq_f64() {
+        let a: f64x2 = f64x2::new(2., 3.);
+        let b: f64x2 = f64x2::new(6., 4.);
+        let c: f64x2 = f64x2::new(2., 0.);
+        let e: f64x2 = f64x2::new(14., 11.);
+        let r: f64x2 = transmute(vfmaq_laneq_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmas_lane_f32() {
+        let a: f32 = 2.;
+        let b: f32 = 6.;
+        let c: f32x2 = f32x2::new(3., 0.);
+        let e: f32 = 20.;
+        let r: f32 = transmute(vfmas_lane_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmas_laneq_f32() {
+        let a: f32 = 2.;
+        let b: f32 = 6.;
+        let c: f32x4 = f32x4::new(3., 0., 0., 0.);
+        let e: f32 = 20.;
+        let r: f32 = transmute(vfmas_laneq_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmad_lane_f64() {
+        let a: f64 = 2.;
+        let b: f64 = 6.;
+        let c: f64 = 3.;
+        let e: f64 = 20.;
+        let r: f64 = transmute(vfmad_lane_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmad_laneq_f64() {
+        let a: f64 = 2.;
+        let b: f64 = 6.;
+        let c: f64x2 = f64x2::new(3., 0.);
+        let e: f64 = 20.;
+        let r: f64 = transmute(vfmad_laneq_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_f64() {
+        let a: f64 = 20.0;
+        let b: f64 = 6.0;
+        let c: f64 = 2.0;
+        let e: f64 = 8.0;
+        let r: f64 = transmute(vfms_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_f64() {
+        let a: f64x2 = f64x2::new(20.0, 30.0);
+        let b: f64x2 = f64x2::new(6.0, 4.0);
+        let c: f64x2 = f64x2::new(2.0, 3.0);
+        let e: f64x2 = f64x2::new(8.0, 18.0);
+        let r: f64x2 = transmute(vfmsq_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_n_f64() {
+        let a: f64 = 50.0;
+        let b: f64 = 6.0;
+        let c: f64 = 8.0;
+        let e: f64 = 2.0;
+        let r: f64 = transmute(vfms_n_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_n_f64() {
+        let a: f64x2 = f64x2::new(50.0, 35.0);
+        let b: f64x2 = f64x2::new(6.0, 4.0);
+        let c: f64 = 8.0;
+        let e: f64x2 = f64x2::new(2.0, 3.0);
+        let r: f64x2 = transmute(vfmsq_n_f64(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_lane_f32() {
+        let a: f32x2 = f32x2::new(14., 11.);
+        let b: f32x2 = f32x2::new(6., 4.);
+        let c: f32x2 = f32x2::new(2., 0.);
+        let e: f32x2 = f32x2::new(2., 3.);
+        let r: f32x2 = transmute(vfms_lane_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_laneq_f32() {
+        let a: f32x2 = f32x2::new(14., 11.);
+        let b: f32x2 = f32x2::new(6., 4.);
+        let c: f32x4 = f32x4::new(2., 0., 0., 0.);
+        let e: f32x2 = f32x2::new(2., 3.);
+        let r: f32x2 = transmute(vfms_laneq_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_lane_f32() {
+        let a: f32x4 = f32x4::new(14., 11., 18., 21.);
+        let b: f32x4 = f32x4::new(6., 4., 7., 8.);
+        let c: f32x2 = f32x2::new(2., 0.);
+        let e: f32x4 = f32x4::new(2., 3., 4., 5.);
+        let r: f32x4 = transmute(vfmsq_lane_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_laneq_f32() {
+        let a: f32x4 = f32x4::new(14., 11., 18., 21.);
+        let b: f32x4 = f32x4::new(6., 4., 7., 8.);
+        let c: f32x4 = f32x4::new(2., 0., 0., 0.);
+        let e: f32x4 = f32x4::new(2., 3., 4., 5.);
+        let r: f32x4 = transmute(vfmsq_laneq_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_lane_f64() {
+        let a: f64 = 14.;
+        let b: f64 = 6.;
+        let c: f64 = 2.;
+        let e: f64 = 2.;
+        let r: f64 = transmute(vfms_lane_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfms_laneq_f64() {
+        let a: f64 = 14.;
+        let b: f64 = 6.;
+        let c: f64x2 = f64x2::new(2., 0.);
+        let e: f64 = 2.;
+        let r: f64 = transmute(vfms_laneq_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_lane_f64() {
+        let a: f64x2 = f64x2::new(14., 11.);
+        let b: f64x2 = f64x2::new(6., 4.);
+        let c: f64 = 2.;
+        let e: f64x2 = f64x2::new(2., 3.);
+        let r: f64x2 = transmute(vfmsq_lane_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsq_laneq_f64() {
+        let a: f64x2 = f64x2::new(14., 11.);
+        let b: f64x2 = f64x2::new(6., 4.);
+        let c: f64x2 = f64x2::new(2., 0.);
+        let e: f64x2 = f64x2::new(2., 3.);
+        let r: f64x2 = transmute(vfmsq_laneq_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmss_lane_f32() {
+        let a: f32 = 14.;
+        let b: f32 = 6.;
+        let c: f32x2 = f32x2::new(2., 0.);
+        let e: f32 = 2.;
+        let r: f32 = transmute(vfmss_lane_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmss_laneq_f32() {
+        let a: f32 = 14.;
+        let b: f32 = 6.;
+        let c: f32x4 = f32x4::new(2., 0., 0., 0.);
+        let e: f32 = 2.;
+        let r: f32 = transmute(vfmss_laneq_f32::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsd_lane_f64() {
+        let a: f64 = 14.;
+        let b: f64 = 6.;
+        let c: f64 = 2.;
+        let e: f64 = 2.;
+        let r: f64 = transmute(vfmsd_lane_f64::<0>(transmute(a), transmute(b), transmute(c)));
+        assert_eq!(r, e);
+    }
+
+    #[simd_test(enable = "neon")]
+    unsafe fn test_vfmsd_laneq_f64() {
+        let a: f64 = 14.;
+        let b: f64 = 6.;
+        let c: f64x2 = f64x2::new(2., 0.);
+        let e: f64 = 2.;
+        let r: f64 = transmute(vfmsd_laneq_f64::<0>(transmute(a), transmute(b), transmute(c)));
         assert_eq!(r, e);
     }
 

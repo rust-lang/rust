@@ -2402,31 +2402,27 @@ generate f32:float32x2_t:f32, f32:float32x4_t:f32, f64:float64x1_t:f64, f64:floa
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
 name = vfma
-a = 2.0, 3.0, 4.0, 5.0
+multi_fn = vfma-self-_, b, c, a
+a = 8.0, 18.0, 12.0, 10.0
 b = 6.0, 4.0, 7.0, 8.0
-c = 8.0, 18.0, 12.0, 10.0
+c = 2.0, 3.0, 4.0, 5.0
 validate 20.0, 30.0, 40.0, 50.0
 
+link-aarch64 = llvm.fma._EXT_
 aarch64 = fmadd
-link-aarch64 = llvm.fma._EXT_
 generate float64x1_t
-
 aarch64 = fmla
-link-aarch64 = llvm.fma._EXT_
 generate float64x2_t
 
 target = fp-armv8
 arm = vfma
-aarch64 = fmla
 link-arm = llvm.fma._EXT_
-link-aarch64 = llvm.fma._EXT_
 generate float*_t
 
 /// Floating-point fused Multiply-Add to accumulator(vector)
 name = vfma
 n-suffix
-multi_fn = transmute, d:in_t, {f64x1::new, c}
-multi_fn = vfma-self-noext, b, transmute(d), a
+multi_fn = vfma-self-noext, a, b, {vdup-nself-noext, c}
 a = 2.0, 3.0, 4.0, 5.0
 b = 6.0, 4.0, 7.0, 8.0
 c = 8.0
@@ -2434,49 +2430,126 @@ validate 50.0, 35.0, 60.0, 69.0
 
 aarch64 = fmadd
 generate float64x1_t:float64x1_t:f64:float64x1_t
-
-/// Floating-point fused Multiply-Add to accumulator(vector)
-name = vfma
-n-suffix
-multi_fn = transmute, d:in_t, {f64x2::new, c, c}
-multi_fn = vfma-self-noext, b, d, a
-a = 2.0, 3.0, 4.0, 5.0
-b = 6.0, 4.0, 7.0, 8.0
-c = 8.0
-validate 50.0, 35.0, 60.0, 69.0
-
 aarch64 = fmla
 generate float64x2_t:float64x2_t:f64:float64x2_t
 
-/// Floating-point fused Multiply-Add to accumulator(vector)
-name = vfma
-n-suffix
-multi_fn = transmute, d:in_t, {f32x2::new, c, c}
-multi_fn = vfma-self-noext, b, d, a
-a = 2.0, 3.0, 4.0, 5.0
-b = 6.0, 4.0, 7.0, 8.0
-c = 8.0
-validate 50.0, 35.0, 60.0, 69.0
-
 target = fp-armv8
 arm = vfma
-aarch64 = fmla
-generate float32x2_t:float32x2_t:f32:float32x2_t
+generate float32x2_t:float32x2_t:f32:float32x2_t, float32x4_t:float32x4_t:f32:float32x4_t
 
-/// Floating-point fused Multiply-Add to accumulator(vector)
+/// Floating-point fused multiply-add to accumulator
 name = vfma
-n-suffix
-multi_fn = transmute, d:in_t, {f32x4::new, c, c, c, c}
-multi_fn = vfma-self-noext, b, d, a
-a = 2.0, 3.0, 4.0, 5.0
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vfma-out-noext, a, b, {vdup-nout-noext, {simd_extract, c, LANE as u32}}
+a = 2., 3., 4., 5.
+b = 6., 4., 7., 8.
+c = 2., 0., 0., 0.
+n = 0
+validate 14., 11., 18., 21.
+
+aarch64 = fmla
+generate float32x2_t, float32x2_t:float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x4_t:float32x2_t:float32x4_t, float32x4_t
+aarch64 = fmadd
+generate float64x1_t
+aarch64 = fmla
+generate float64x1_t:float64x1_t:float64x2_t:float64x1_t, float64x2_t:float64x2_t:float64x1_t:float64x2_t, float64x2_t
+
+/// Floating-point fused multiply-add to accumulator
+name = vfma
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = simd_extract, c:out_t, c, LANE as u32
+multi_fn = vfma-in2lane-_, b, c, a
+a = 2.
+b = 6.
+c = 3., 0., 0., 0.
+n = 0
+validate 20.
+
+aarch64 = fmla
+link-aarch64 = llvm.fma._EXT_:f32:f32:f32:f32
+generate f32:f32:float32x2_t:f32, f32:f32:float32x4_t:f32
+link-aarch64 = llvm.fma._EXT_:f64:f64:f64:f64
+aarch64 = fmadd
+generate f64:f64:float64x1_t:f64
+aarch64 = fmla
+generate f64:f64:float64x2_t:f64
+
+/// Floating-point fused multiply-subtract from accumulator
+name = vfms
+multi_fn = simd_neg, b:in_t, b
+multi_fn = vfma-self-noext, a, b, c
+a = 20.0, 30.0, 40.0, 50.0
 b = 6.0, 4.0, 7.0, 8.0
-c = 8.0
-validate 50.0, 35.0, 60.0, 69.0
+c = 2.0, 3.0, 4.0, 5.0
+validate 8.0, 18.0, 12.0, 10.0
+
+aarch64 = fmsub
+generate float64x1_t
+aarch64 = fmls
+generate float64x2_t
 
 target = fp-armv8
-arm = vfma
-aarch64 = fmla
-generate float32x4_t:float32x4_t:f32:float32x4_t
+arm = vfms
+generate float*_t
+
+/// Floating-point fused Multiply-subtract to accumulator(vector)
+name = vfms
+n-suffix
+multi_fn = vfms-self-noext, a, b, {vdup-nself-noext, c}
+a = 50.0, 35.0, 60.0, 69.0
+b = 6.0, 4.0, 7.0, 8.0
+c = 8.0
+validate 2.0, 3.0, 4.0, 5.0
+
+aarch64 = fmsub
+generate float64x1_t:float64x1_t:f64:float64x1_t
+aarch64 = fmls
+generate float64x2_t:float64x2_t:f64:float64x2_t
+
+target = fp-armv8
+arm = vfms
+generate float32x2_t:float32x2_t:f32:float32x2_t, float32x4_t:float32x4_t:f32:float32x4_t
+
+/// Floating-point fused multiply-subtract to accumulator
+name = vfms
+in2-lane-suffixes
+constn = LANE
+multi_fn = static_assert_imm-in2_exp_len-LANE
+multi_fn = vfms-out-noext, a, b, {vdup-nout-noext, {simd_extract, c, LANE as u32}}
+a = 14., 11., 18., 21.
+b = 6., 4., 7., 8.
+c = 2., 0., 0., 0.
+n = 0
+validate 2., 3., 4., 5.
+
+aarch64 = fmls
+generate float32x2_t, float32x2_t:float32x2_t:float32x4_t:float32x2_t, float32x4_t:float32x4_t:float32x2_t:float32x4_t, float32x4_t
+aarch64 = fmsub
+generate float64x1_t
+aarch64 = fmls
+generate float64x1_t:float64x1_t:float64x2_t:float64x1_t, float64x2_t:float64x2_t:float64x1_t:float64x2_t, float64x2_t
+
+/// Floating-point fused multiply-subtract to accumulator
+name = vfms
+in2-lane-suffixes
+constn = LANE
+multi_fn = vfma-in2lane-::<LANE>, a, -b, c
+a = 14.
+b = 6.
+c = 2., 0., 0., 0.
+n = 0
+validate 2.
+
+aarch64 = fmls
+generate f32:f32:float32x2_t:f32, f32:f32:float32x4_t:f32
+aarch64 = fmsub
+generate f64:f64:float64x1_t:f64
+aarch64 = fmls
+generate f64:f64:float64x2_t:f64
 
 /// Divide
 name = vdiv

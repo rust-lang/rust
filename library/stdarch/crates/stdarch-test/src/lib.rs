@@ -122,7 +122,7 @@ pub fn assert(shim_addr: usize, fnname: &str, expected: &str) {
                 "cvtpi2ps" => 25,
                 // core_arch/src/arm_shared/simd32
                 // vfmaq_n_f32_vfma : #instructions = 26 >= 22 (limit)
-                "usad8" | "vfma" => 27,
+                "usad8" | "vfma" | "vfms" => 27,
                 "qadd8" | "qsub8" | "sadd8" | "sel" | "shadd8" | "shsub8" | "usub8" | "ssub8" => 29,
 
                 // Original limit was 20 instructions, but ARM DSP Intrinsics

@@ -37,7 +37,6 @@
     external_doc,
     allow_internal_unstable,
     decl_macro,
-    extended_key_value_attributes,
     bench_black_box
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall))]
