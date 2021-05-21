@@ -89,11 +89,13 @@ impl UnixListener {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixListener, SocketAddr};
+    /// use std::os::unix::net::{UnixListener};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let addr = SocketAddr::from_abstract_namespace(b"namespace")?; // Linux only
-    ///     let listener = match UnixListener::bind_addr(&addr) {
+    ///     let listener1 = UnixListener::bind("path/to/socket")?;
+    ///     let addr = listener1.local_addr()?;
+    ///
+    ///     let listener2 = match UnixListener::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
     ///             println!("Couldn't bind: {:?}", err);

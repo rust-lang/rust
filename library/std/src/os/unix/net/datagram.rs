@@ -118,11 +118,13 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixDatagram, SocketAddr};
+    /// use std::os::unix::net::{UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let addr = SocketAddr::from_abstract_namespace(b"hidden")?; // Linux only
-    ///     let sock = match UnixDatagram::bind_addr(&addr) {
+    ///     let sock1 = UnixDatagram::bind("path/to/socket")?;
+    ///     let addr = sock1.local_addr()?;
+    ///
+    ///     let sock2 = match UnixDatagram::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
     ///             println!("Couldn't bind: {:?}", err);
@@ -231,10 +233,12 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixDatagram, SocketAddr};
+    /// use std::os::unix::net::{UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let addr = SocketAddr::from_abstract_namespace(b"hidden")?; // Linux only
+    ///     let bound = UnixDatagram::bind("/path/to/socket")?;
+    ///     let addr = bound.local_addr()?;
+    ///
     ///     let sock = UnixDatagram::unbound()?;
     ///     match sock.connect_addr(&addr) {
     ///         Ok(sock) => sock,
@@ -549,10 +553,12 @@ impl UnixDatagram {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixDatagram, SocketAddr};
+    /// use std::os::unix::net::{UnixDatagram};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let addr = SocketAddr::from_abstract_namespace(b"hidden")?;
+    ///     let bound = UnixDatagram::bind("/path/to/socket")?;
+    ///     let addr = bound.local_addr()?;
+    ///
     ///     let sock = UnixDatagram::unbound()?;
     ///     sock.send_to_addr(b"bacon egg and cheese", &addr).expect("send_to_addr function failed");
     ///     Ok(())

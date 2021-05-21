@@ -214,6 +214,7 @@ impl SocketAddr {
     ///     Ok(())
     /// }
     /// ```
+    #[doc(cfg(any(target_os = "android", target_os = "linux")))]
     #[cfg(any(doc, target_os = "android", target_os = "linux",))]
     #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn as_abstract_namespace(&self) -> Option<&[u8]> {
@@ -271,6 +272,7 @@ impl SocketAddr {
     ///     Ok(())
     /// }
     /// ```
+    #[doc(cfg(any(target_os = "android", target_os = "linux")))]
     #[cfg(any(doc, target_os = "android", target_os = "linux",))]
     #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn from_abstract_namespace(namespace: &[u8]) -> io::Result<SocketAddr> {

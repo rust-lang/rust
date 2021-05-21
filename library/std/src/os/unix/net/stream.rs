@@ -114,11 +114,13 @@ impl UnixStream {
     ///
     /// ```no_run
     /// #![feature(unix_socket_abstract)]
-    /// use std::os::unix::net::{UnixStream, SocketAddr};
+    /// use std::os::unix::net::{UnixListener, UnixStream};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let addr = SocketAddr::from_abstract_namespace(b"hidden")?; // Linux only
-    ///     match UnixStream::connect_addr(&addr) {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
+    ///     let addr = listener.local_addr()?;
+    ///
+    ///     let sock = match UnixStream::connect_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(e) => {
     ///             println!("Couldn't connect: {:?}", e);
