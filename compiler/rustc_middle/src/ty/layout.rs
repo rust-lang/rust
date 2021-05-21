@@ -2579,7 +2579,7 @@ where
     fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
-fn fn_can_unwind(
+pub fn fn_can_unwind(
     panic_strategy: PanicStrategy,
     codegen_fn_attr_flags: CodegenFnAttrFlags,
     call_conv: Conv,
@@ -2641,6 +2641,43 @@ fn fn_can_unwind(
     }
 }
 
+pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
+    use rustc_target::spec::abi::Abi::*;
+    match tcx.sess.target.adjust_abi(abi) {
+        RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
+
+        // It's the ABI's job to select this, not ours.
+        System { .. } => bug!("system abi should be selected elsewhere"),
+        EfiApi => bug!("eficall abi should be selected elsewhere"),
+
+        Stdcall { .. } => Conv::X86Stdcall,
+        Fastcall => Conv::X86Fastcall,
+        Vectorcall => Conv::X86VectorCall,
+        Thiscall { .. } => Conv::X86ThisCall,
+        C { .. } => Conv::C,
+        Unadjusted => Conv::C,
+        Win64 => Conv::X86_64Win64,
+        SysV64 => Conv::X86_64SysV,
+        Aapcs => Conv::ArmAapcs,
+        CCmseNonSecureCall => Conv::CCmseNonSecureCall,
+        PtxKernel => Conv::PtxKernel,
+        Msp430Interrupt => Conv::Msp430Intr,
+        X86Interrupt => Conv::X86Intr,
+        AmdGpuKernel => Conv::AmdGpuKernel,
+        AvrInterrupt => Conv::AvrInterrupt,
+        AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
+        Wasm => Conv::C,
+
+        // These API constants ought to be more specific...
+        Cdecl => Conv::C,
+    }
+}
+
+pub fn fn_ptr_codegen_fn_attr_flags() -> CodegenFnAttrFlags {
+    // Assume that fn pointers may always unwind
+    CodegenFnAttrFlags::UNWIND
+}
+
 impl<'tcx, C> FnAbiExt<'tcx, C> for call::FnAbi<'tcx, Ty<'tcx>>
 where
     C: LayoutOf<Ty = Ty<'tcx>, TyAndLayout = TyAndLayout<'tcx>>
@@ -2650,10 +2687,7 @@ where
         + HasParamEnv<'tcx>,
 {
     fn of_fn_ptr(cx: &C, sig: ty::PolyFnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
-        // Assume that fn pointers may always unwind
-        let codegen_fn_attr_flags = CodegenFnAttrFlags::UNWIND;
-
-        call::FnAbi::new_internal(cx, sig, extra_args, None, codegen_fn_attr_flags, false)
+        call::FnAbi::new_internal(cx, sig, extra_args, None, fn_ptr_codegen_fn_attr_flags(), false)
     }
 
     fn of_instance(cx: &C, instance: ty::Instance<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
@@ -2689,35 +2723,7 @@ where
 
         let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
 
-        use rustc_target::spec::abi::Abi::*;
-        let conv = match cx.tcx().sess.target.adjust_abi(sig.abi) {
-            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
-
-            // It's the ABI's job to select this, not ours.
-            System { .. } => bug!("system abi should be selected elsewhere"),
-            EfiApi => bug!("eficall abi should be selected elsewhere"),
-
-            Stdcall { .. } => Conv::X86Stdcall,
-            Fastcall => Conv::X86Fastcall,
-            Vectorcall => Conv::X86VectorCall,
-            Thiscall { .. } => Conv::X86ThisCall,
-            C { .. } => Conv::C,
-            Unadjusted => Conv::C,
-            Win64 => Conv::X86_64Win64,
-            SysV64 => Conv::X86_64SysV,
-            Aapcs => Conv::ArmAapcs,
-            CCmseNonSecureCall => Conv::CCmseNonSecureCall,
-            PtxKernel => Conv::PtxKernel,
-            Msp430Interrupt => Conv::Msp430Intr,
-            X86Interrupt => Conv::X86Intr,
-            AmdGpuKernel => Conv::AmdGpuKernel,
-            AvrInterrupt => Conv::AvrInterrupt,
-            AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
-            Wasm => Conv::C,
-
-            // These API constants ought to be more specific...
-            Cdecl => Conv::C,
-        };
+        let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
 
         let mut inputs = sig.inputs();
         let extra_args = if sig.abi == RustCall {
@@ -2753,6 +2759,7 @@ where
             target.os == "linux" && target.arch == "sparc64" && target_env_gnu_like;
         let linux_powerpc_gnu_like =
             target.os == "linux" && target.arch == "powerpc" && target_env_gnu_like;
+        use SpecAbi::*;
         let rust_abi = matches!(sig.abi, RustIntrinsic | PlatformIntrinsic | Rust | RustCall);
 
         // Handle safe Rust thin and fat pointers.

@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::ty::layout::{self, TyAndLayout};
 use rustc_middle::ty::Instance;
 use rustc_middle::{
     mir,
@@ -12,9 +13,19 @@ use rustc_target::spec::abi::Abi;
 
 use super::{
     FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, StackPopCleanup,
+    StackPopUnwind,
 };
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    pub(super) fn fn_can_unwind(&self, attrs: CodegenFnAttrFlags, abi: Abi) -> bool {
+        layout::fn_can_unwind(
+            self.tcx.sess.panic_strategy(),
+            attrs,
+            layout::conv_from_spec_abi(*self.tcx, abi),
+            abi,
+        )
+    }
+
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
@@ -58,12 +69,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi) = match *func.layout.ty.kind() {
+                let (fn_val, abi, can_unwind) = match *func.layout.ty.kind() {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(&func)?.check_init()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
-                        (fn_val, caller_abi)
+                        (
+                            fn_val,
+                            caller_abi,
+                            self.fn_can_unwind(layout::fn_ptr_codegen_fn_attr_flags(), caller_abi),
+                        )
                     }
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
@@ -72,6 +87,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 self.resolve(ty::WithOptConstParam::unknown(def_id), substs)?,
                             ),
                             sig.abi(),
+                            self.fn_can_unwind(self.tcx.codegen_fn_attrs(def_id).flags, sig.abi()),
                         )
                     }
                     _ => span_bug!(
@@ -89,7 +105,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     None => None,
                 };
-                self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup)?;
+                self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup, can_unwind)?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block.
                 if self.frame_idx() == old_stack && self.frame().loc == old_loc {
@@ -220,6 +236,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
+        can_unwind: bool,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
@@ -287,7 +304,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     instance,
                     body,
                     ret.map(|p| p.0),
-                    StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
+                    StackPopCleanup::Goto {
+                        ret: ret.map(|p| p.1),
+                        unwind: if can_unwind {
+                            StackPopUnwind::Cleanup(unwind)
+                        } else {
+                            StackPopUnwind::NotAllowed
+                        },
+                    },
                 )?;
 
                 // If an error is raised here, pop the frame again to get an accurate backtrace.
@@ -432,7 +456,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     OpTy::from(ImmTy::from_immediate(receiver_place.ptr.into(), this_receiver_ptr));
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind)
+                self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind, can_unwind)
             }
         }
     }
@@ -472,6 +496,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             &[arg.into()],
             Some((&dest.into(), target)),
             unwind,
+            true,
         )
     }
 }

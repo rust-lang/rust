@@ -134,6 +134,15 @@ pub struct FrameInfo<'tcx> {
     pub lint_root: Option<hir::HirId>,
 }
 
+/// Unwind information.
+#[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)]
+pub enum StackPopUnwind {
+    /// The cleanup block.
+    Cleanup(Option<mir::BasicBlock>),
+    /// Unwinding is not allowed (UB).
+    NotAllowed,
+}
+
 #[derive(Clone, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
@@ -141,7 +150,7 @@ pub enum StackPopCleanup {
     /// we can validate it at that layout.
     /// `ret` stores the block we jump to on a normal return, while `unwind`
     /// stores the block used for cleanup during unwinding.
-    Goto { ret: Option<mir::BasicBlock>, unwind: Option<mir::BasicBlock> },
+    Goto { ret: Option<mir::BasicBlock>, unwind: StackPopUnwind },
     /// Just do nothing: Used by Main and for the `box_alloc` hook in miri.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
@@ -807,9 +816,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // In that case, we return early. We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
         let (cleanup, next_block) = match frame.return_to_block {
-            StackPopCleanup::Goto { ret, unwind } => {
-                (true, Some(if unwinding { unwind } else { ret }))
-            }
+            StackPopCleanup::Goto { ret, unwind } => (
+                true,
+                Some(if unwinding {
+                    let def_id = frame.body.source.def_id();
+                    match unwind {
+                        StackPopUnwind::Cleanup(unwind)
+                            // `fn_sig()` can't be used on closures, but closures always have
+                            // "rust-call" ABI, which always allows unwinding anyway.
+                            if self.tcx.is_closure(def_id) || self.fn_can_unwind(
+                                self.tcx.codegen_fn_attrs(def_id).flags,
+                                self.tcx.fn_sig(def_id).abi(),
+                            ) =>
+                        {
+                            unwind
+                        }
+                        _ => {
+                            throw_ub_format!("unwind past a frame that does not allow unwinding")
+                        }
+                    }
+                } else {
+                    ret
+                }),
+            ),
             StackPopCleanup::None { cleanup, .. } => (cleanup, None),
         };
 
