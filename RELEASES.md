@@ -30,6 +30,9 @@ Compiler
 - [Added Tier 3\* support for the `wasm64-unknown-unknown` target.][80525]
 - [Improved debuginfo for closures and async functions on Windows MSVC.][83941]
 
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+information on Rust's tiered platform support.
+
 Libraries
 -----------------------
 - [Abort messages will now forward to `android_set_abort_message` on
@@ -108,6 +111,10 @@ Compatibility Notes
 
 Internal Only
 -------------
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc and
+related tools.
+
 - [Rework the `std::sys::windows::alloc` implementation.][83065]
 - [rustdoc: Don't enter an infer_ctxt in get_blanket_impls for impls that aren't blanket impls.][82864]
 - [rustdoc: Only look at blanket impls in `get_blanket_impls`][83681]
