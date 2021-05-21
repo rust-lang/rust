@@ -1641,9 +1641,11 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 #[rustc_diagnostic_item = "none_error"]
 #[unstable(feature = "try_trait", issue = "42327")]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[cfg(bootstrap)]
 pub struct NoneError;
 
 #[unstable(feature = "try_trait", issue = "42327")]
+#[cfg(bootstrap)]
 impl<T> ops::TryV1 for Option<T> {
     type Output = T;
     type Error = NoneError;

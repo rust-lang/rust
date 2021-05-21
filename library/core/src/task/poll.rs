@@ -129,6 +129,7 @@ impl<T> From<T> for Poll<T> {
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
+#[cfg(bootstrap)]
 impl<T, E> ops::TryV1 for Poll<Result<T, E>> {
     type Output = Poll<T>;
     type Error = E;
@@ -184,6 +185,7 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Pol
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
+#[cfg(bootstrap)]
 impl<T, E> ops::TryV1 for Poll<Option<Result<T, E>>> {
     type Output = Poll<Option<T>>;
     type Error = E;
