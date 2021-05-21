@@ -132,6 +132,7 @@ impl ItemTree {
             let ItemTreeData {
                 imports,
                 extern_crates,
+                extern_blocks,
                 functions,
                 params,
                 structs,
@@ -154,6 +155,7 @@ impl ItemTree {
 
             imports.shrink_to_fit();
             extern_crates.shrink_to_fit();
+            extern_blocks.shrink_to_fit();
             functions.shrink_to_fit();
             params.shrink_to_fit();
             structs.shrink_to_fit();
@@ -239,6 +241,7 @@ static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(ModPath::from_kind(P
 struct ItemTreeData {
     imports: Arena<Import>,
     extern_crates: Arena<ExternCrate>,
+    extern_blocks: Arena<ExternBlock>,
     functions: Arena<Function>,
     params: Arena<Param>,
     structs: Arena<Struct>,
@@ -432,6 +435,7 @@ macro_rules! mod_items {
 mod_items! {
     Import in imports -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
+    ExternBlock in extern_blocks -> ast::ExternBlock,
     Function in functions -> ast::Fn,
     Struct in structs -> ast::Struct,
     Union in unions -> ast::Union,
@@ -505,6 +509,13 @@ pub struct ExternCrate {
     pub alias: Option<ImportAlias>,
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::ExternCrate>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ExternBlock {
+    pub abi: Option<Interned<str>>,
+    pub ast_id: FileAstId<ast::ExternBlock>,
+    pub children: Box<[ModItem]>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -691,6 +702,7 @@ impl ModItem {
         match self {
             ModItem::Import(_)
             | ModItem::ExternCrate(_)
+            | ModItem::ExternBlock(_)
             | ModItem::Struct(_)
             | ModItem::Union(_)
             | ModItem::Enum(_)
@@ -715,6 +727,7 @@ impl ModItem {
         match self {
             ModItem::Import(it) => tree[it.index].ast_id().upcast(),
             ModItem::ExternCrate(it) => tree[it.index].ast_id().upcast(),
+            ModItem::ExternBlock(it) => tree[it.index].ast_id().upcast(),
             ModItem::Function(it) => tree[it.index].ast_id().upcast(),
             ModItem::Struct(it) => tree[it.index].ast_id().upcast(),
             ModItem::Union(it) => tree[it.index].ast_id().upcast(),
