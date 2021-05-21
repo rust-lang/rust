@@ -373,10 +373,6 @@ impl<'a> InferenceContext<'a> {
         self.table.unify(ty1, ty2)
     }
 
-    fn unify_inner(&mut self, ty1: &Ty, ty2: &Ty) -> InferResult {
-        self.table.unify_inner(ty1, ty2)
-    }
-
     fn resolve_ty_shallow(&mut self, ty: &Ty) -> Ty {
         self.resolve_obligations_as_possible();
         self.table.resolve_ty_shallow(ty)

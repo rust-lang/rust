@@ -70,7 +70,7 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
                 let ty = ctx.normalize_associated_types_in(new_vars.apply(ty.clone(), &Interner));
                 ctx.unify(var.assert_ty_ref(&Interner), &ty);
             } else {
-                let _ = ctx.unify_inner(&var, &new_vars.apply(v.clone(), &Interner));
+                let _ = ctx.try_unify(&var, &new_vars.apply(v.clone(), &Interner));
             }
         }
     }
@@ -300,9 +300,8 @@ impl<'a> InferenceTable<'a> {
     }
 
     /// Unify two types and register new trait goals that arise from that.
-    // TODO give these two functions better names
     pub(crate) fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        let result = if let Ok(r) = self.unify_inner(ty1, ty2) {
+        let result = if let Ok(r) = self.try_unify(ty1, ty2) {
             r
         } else {
             return false;
@@ -313,7 +312,7 @@ impl<'a> InferenceTable<'a> {
 
     /// Unify two types and return new trait goals arising from it, so the
     /// caller needs to deal with them.
-    pub(crate) fn unify_inner<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult {
+    pub(crate) fn try_unify<T: Zip<Interner>>(&mut self, t1: &T, t2: &T) -> InferResult {
         match self.var_unification_table.relate(
             &Interner,
             &self.db,

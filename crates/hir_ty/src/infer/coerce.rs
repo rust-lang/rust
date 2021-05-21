@@ -146,7 +146,7 @@ impl<'a> InferenceContext<'a> {
             }
             _ => {
                 // Otherwise, just use unification rules.
-                self.unify_inner(&from_ty, to_ty)
+                self.table.try_unify(&from_ty, to_ty)
             }
         }
     }
@@ -155,7 +155,7 @@ impl<'a> InferenceContext<'a> {
         let (_is_ref, from_mt, from_inner) = match from_ty.kind(&Interner) {
             TyKind::Ref(mt, _, ty) => (true, mt, ty),
             TyKind::Raw(mt, ty) => (false, mt, ty),
-            _ => return self.unify_inner(&from_ty, to_ty),
+            _ => return self.table.try_unify(&from_ty, to_ty),
         };
 
         coerce_mutabilities(*from_mt, to_mt)?;
@@ -163,7 +163,7 @@ impl<'a> InferenceContext<'a> {
         // Check that the types which they point at are compatible.
         let from_raw = TyKind::Raw(to_mt, from_inner.clone()).intern(&Interner);
         // FIXME: behavior differs based on is_ref once we're computing adjustments
-        self.unify_inner(&from_raw, to_ty)
+        self.table.try_unify(&from_raw, to_ty)
     }
 
     /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
@@ -174,7 +174,7 @@ impl<'a> InferenceContext<'a> {
             TyKind::Ref(mt, _, _) => {
                 coerce_mutabilities(*mt, to_mt)?;
             }
-            _ => return self.unify_inner(&from_ty, to_ty),
+            _ => return self.table.try_unify(&from_ty, to_ty),
         };
 
         // NOTE: this code is mostly copied and adapted from rustc, and
@@ -228,7 +228,7 @@ impl<'a> InferenceContext<'a> {
             // from `&mut T` to `&U`.
             let lt = static_lifetime(); // FIXME: handle lifetimes correctly, see rustc
             let derefd_from_ty = TyKind::Ref(to_mt, lt, referent_ty).intern(&Interner);
-            match self.unify_inner(&derefd_from_ty, to_ty) {
+            match self.table.try_unify(&derefd_from_ty, to_ty) {
                 Ok(result) => {
                     found = Some(result);
                     break;
@@ -274,7 +274,7 @@ impl<'a> InferenceContext<'a> {
 
                 Ok(ok)
             }
-            _ => self.unify_inner(&from_ty, to_ty),
+            _ => self.table.try_unify(&from_ty, to_ty),
         }
     }
 
@@ -299,10 +299,10 @@ impl<'a> InferenceContext<'a> {
             {
                 let from_unsafe =
                     TyKind::Function(safe_to_unsafe_fn_ty(from_fn_ptr.clone())).intern(&Interner);
-                return self.unify_inner(&from_unsafe, to_ty);
+                return self.table.try_unify(&from_unsafe, to_ty);
             }
         }
-        self.unify_inner(&from_ty, to_ty)
+        self.table.try_unify(&from_ty, to_ty)
     }
 
     /// Attempts to coerce from the type of a non-capturing closure into a
@@ -323,9 +323,9 @@ impl<'a> InferenceContext<'a> {
                 //     `unsafe fn(arg0,arg1,...) -> _`
                 let safety = fn_ty.sig.safety;
                 let pointer_ty = coerce_closure_fn_ty(from_substs, safety);
-                self.unify_inner(&pointer_ty, to_ty)
+                self.table.try_unify(&pointer_ty, to_ty)
             }
-            _ => self.unify_inner(&from_ty, to_ty),
+            _ => self.table.try_unify(&from_ty, to_ty),
         }
     }
 
