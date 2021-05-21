@@ -783,15 +783,14 @@ a {
 	flex-flow: row wrap;
 }
 
-.search-results > a > div > div {
+.search-results .result-name, .search-results > a > div > div:nth-child(2), .search-results .result-description {
 	width: 50%;
 }
-
-.result-name {
+.search-results .result-name {
 	padding-right: 1em;
 }
 
-.result-name > span {
+.search-results .result-name > span {
 	display: inline-block;
 }
 
@@ -1753,10 +1752,10 @@ details.undocumented[open] > summary::before {
 	.search-results > a {
 		border-bottom: 1px solid #aaa9;
 	}
-	.search-results > a > div > div {
+	.search-results .result-name {
 		width: 100%;
 	}
-	.search-results > a > div > div:nth-child(2) {
+	.search-results > a > div > div:nth-child(2), .search-results .result-description {
 		padding-left: 2em;
 	}
 }
