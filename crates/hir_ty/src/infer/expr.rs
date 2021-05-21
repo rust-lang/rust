@@ -138,13 +138,14 @@ impl<'a> InferenceContext<'a> {
                 let mut result_ty = self.table.new_type_var();
                 let then_ty = self.infer_expr_inner(*then_branch, &expected);
                 both_arms_diverge &= mem::replace(&mut self.diverges, Diverges::Maybe);
-                result_ty = self.coerce_merge_branch(&result_ty, &then_ty);
+                result_ty = self.coerce_merge_branch(Some(*then_branch), &result_ty, &then_ty);
                 let else_ty = match else_branch {
                     Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
                     None => TyBuilder::unit(),
                 };
                 both_arms_diverge &= self.diverges;
-                result_ty = self.coerce_merge_branch(&result_ty, &else_ty);
+                // FIXME: create a synthetic `else {}` so we have something to refer to here instead of None?
+                result_ty = self.coerce_merge_branch(*else_branch, &result_ty, &else_ty);
 
                 self.diverges = condition_diverges | both_arms_diverge;
 
@@ -358,7 +359,7 @@ impl<'a> InferenceContext<'a> {
 
                     let arm_ty = self.infer_expr_inner(arm.expr, &expected);
                     all_arms_diverge &= self.diverges;
-                    result_ty = self.coerce_merge_branch(&result_ty, &arm_ty);
+                    result_ty = self.coerce_merge_branch(Some(arm.expr), &result_ty, &arm_ty);
                 }
 
                 self.diverges = matchee_diverges | all_arms_diverge;
@@ -372,12 +373,6 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Continue { .. } => TyKind::Never.intern(&Interner),
             Expr::Break { expr, label } => {
-                let val_ty = if let Some(expr) = expr {
-                    self.infer_expr(*expr, &Expectation::none())
-                } else {
-                    TyBuilder::unit()
-                };
-
                 let last_ty =
                     if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
                         ctxt.break_ty.clone()
@@ -385,7 +380,14 @@ impl<'a> InferenceContext<'a> {
                         self.err_ty()
                     };
 
-                let merged_type = self.coerce_merge_branch(&last_ty, &val_ty);
+                let val_ty = if let Some(expr) = expr {
+                    self.infer_expr(*expr, &Expectation::none())
+                } else {
+                    TyBuilder::unit()
+                };
+
+                // FIXME: create a synthetic `()` during lowering so we have something to refer to here?
+                let merged_type = self.coerce_merge_branch(*expr, &last_ty, &val_ty);
 
                 if let Some(ctxt) = find_breakable(&mut self.breakables, label.as_ref()) {
                     ctxt.break_ty = merged_type;

@@ -6,11 +6,11 @@
 //! librustc_typeck/check/coercion.rs.
 
 use chalk_ir::{cast::Cast, Mutability, TyVariableKind};
-use hir_def::lang_item::LangItemTarget;
+use hir_def::{expr::ExprId, lang_item::LangItemTarget};
 
 use crate::{
-    autoderef, static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Interner, Solution,
-    Substitution, Ty, TyBuilder, TyExt, TyKind,
+    autoderef, infer::TypeMismatch, static_lifetime, Canonical, DomainGoal, FnPointer, FnSig,
+    Interner, Solution, Substitution, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{InEnvironment, InferOk, InferResult, InferenceContext, TypeError};
@@ -40,7 +40,7 @@ impl<'a> InferenceContext<'a> {
     ///    coerce both to function pointers;
     ///  - if we were concerned with lifetime subtyping, we'd need to look for a
     ///    least upper bound.
-    pub(super) fn coerce_merge_branch(&mut self, ty1: &Ty, ty2: &Ty) -> Ty {
+    pub(super) fn coerce_merge_branch(&mut self, id: Option<ExprId>, ty1: &Ty, ty2: &Ty) -> Ty {
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
         // Special case: two function types. Try to coerce both to
@@ -80,7 +80,11 @@ impl<'a> InferenceContext<'a> {
         } else if self.coerce(&ty1, &ty2) {
             ty2.clone()
         } else {
-            // TODO record a type mismatch
+            if let Some(id) = id {
+                self.result
+                    .type_mismatches
+                    .insert(id.into(), TypeMismatch { expected: ty1.clone(), actual: ty2.clone() });
+            }
             cov_mark::hit!(coerce_merge_fail_fallback);
             ty1.clone()
         }
