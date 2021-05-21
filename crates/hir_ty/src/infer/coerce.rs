@@ -21,10 +21,6 @@ impl<'a> InferenceContext<'a> {
     pub(super) fn coerce(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
         let from_ty = self.resolve_ty_shallow(from_ty);
         let to_ty = self.resolve_ty_shallow(to_ty);
-        // TODO handle expectations properly
-        if to_ty.is_unknown() {
-            return true;
-        }
         match self.coerce_inner(from_ty, &to_ty) {
             Ok(result) => {
                 self.table.register_infer_ok(result);

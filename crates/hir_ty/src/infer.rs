@@ -370,10 +370,6 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn unify(&mut self, ty1: &Ty, ty2: &Ty) -> bool {
-        // TODO handle expectations properly
-        if ty2.is_unknown() {
-            return true;
-        }
         self.table.unify(ty1, ty2)
     }
 
@@ -679,17 +675,23 @@ impl<'a> InferenceContext<'a> {
 /// When inferring an expression, we propagate downward whatever type hint we
 /// are able in the form of an `Expectation`.
 #[derive(Clone, PartialEq, Eq, Debug)]
-struct Expectation {
-    ty: Ty,
-    /// See the `rvalue_hint` method.
-    rvalue_hint: bool,
+enum Expectation {
+    None,
+    HasType(Ty),
+    // Castable(Ty), // rustc has this, we currently just don't propagate an expectation for casts
+    RValueLikeUnsized(Ty),
 }
 
 impl Expectation {
     /// The expectation that the type of the expression needs to equal the given
     /// type.
     fn has_type(ty: Ty) -> Self {
-        Expectation { ty, rvalue_hint: false }
+        if ty.is_unknown() {
+            // FIXME: get rid of this?
+            Expectation::None
+        } else {
+            Expectation::HasType(ty)
+        }
     }
 
     /// The following explanation is copied straight from rustc:
@@ -713,24 +715,41 @@ impl Expectation {
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     fn rvalue_hint(ty: Ty) -> Self {
-        Expectation { ty, rvalue_hint: true }
+        match ty.strip_references().kind(&Interner) {
+            TyKind::Slice(_) | TyKind::Str | TyKind::Dyn(_) => Expectation::RValueLikeUnsized(ty),
+            _ => Expectation::has_type(ty),
+        }
     }
 
     /// This expresses no expectation on the type.
     fn none() -> Self {
-        Expectation {
-            // FIXME
-            ty: TyKind::Error.intern(&Interner),
-            rvalue_hint: false,
+        Expectation::None
+    }
+
+    fn resolve(&self, table: &mut unify::InferenceTable) -> Expectation {
+        match self {
+            Expectation::None => Expectation::None,
+            Expectation::HasType(t) => Expectation::HasType(table.resolve_ty_shallow(t)),
+            Expectation::RValueLikeUnsized(t) => {
+                Expectation::RValueLikeUnsized(table.resolve_ty_shallow(t))
+            }
         }
     }
 
-    fn coercion_target(&self) -> Ty {
-        if self.rvalue_hint {
-            // FIXME
-            TyKind::Error.intern(&Interner)
-        } else {
-            self.ty.clone()
+    fn to_option(&self, table: &mut unify::InferenceTable) -> Option<Ty> {
+        match self.resolve(table) {
+            Expectation::None => None,
+            Expectation::HasType(t) |
+            // Expectation::Castable(t) |
+            Expectation::RValueLikeUnsized(t) => Some(t),
+        }
+    }
+
+    fn only_has_type(&self, table: &mut unify::InferenceTable) -> Option<Ty> {
+        match self {
+            Expectation::HasType(t) => Some(table.resolve_ty_shallow(t)),
+            // Expectation::Castable(_) |
+            Expectation::RValueLikeUnsized(_) | Expectation::None => None,
         }
     }
 }

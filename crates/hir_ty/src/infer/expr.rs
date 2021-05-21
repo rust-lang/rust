@@ -39,12 +39,14 @@ impl<'a> InferenceContext<'a> {
             // Any expression that produces a value of type `!` must have diverged
             self.diverges = Diverges::Always;
         }
-        let could_unify = self.unify(&ty, &expected.ty);
-        if !could_unify {
-            self.result.type_mismatches.insert(
-                tgt_expr.into(),
-                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
-            );
+        if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
+            let could_unify = self.unify(&ty, &expected_ty);
+            if !could_unify {
+                self.result.type_mismatches.insert(
+                    tgt_expr.into(),
+                    TypeMismatch { expected: expected_ty.clone(), actual: ty.clone() },
+                );
+            }
         }
         ty
     }
@@ -53,18 +55,20 @@ impl<'a> InferenceContext<'a> {
     /// Return the type after possible coercion.
     pub(super) fn infer_expr_coerce(&mut self, expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(expr, &expected);
-        let ty = if !self.coerce(&ty, &expected.coercion_target()) {
-            self.result.type_mismatches.insert(
-                expr.into(),
-                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
-            );
-            // Return actual type when type mismatch.
-            // This is needed for diagnostic when return type mismatch.
-            ty
-        } else if expected.coercion_target().is_unknown() {
-            ty
+        let ty = if let Some(target) = expected.only_has_type(&mut self.table) {
+            if !self.coerce(&ty, &target) {
+                self.result.type_mismatches.insert(
+                    expr.into(),
+                    TypeMismatch { expected: target.clone(), actual: ty.clone() },
+                );
+                // Return actual type when type mismatch.
+                // This is needed for diagnostic when return type mismatch.
+                ty
+            } else {
+                target.clone()
+            }
         } else {
-            expected.ty.clone()
+            ty
         };
 
         ty
@@ -280,7 +284,9 @@ impl<'a> InferenceContext<'a> {
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
                 // infer the body.
-                self.coerce(&closure_ty, &expected.ty);
+                if let Some(t) = expected.only_has_type(&mut self.table) {
+                    self.coerce(&closure_ty, &t);
+                }
 
                 // Now go through the argument patterns
                 for (arg_pat, arg_ty) in args.iter().zip(sig_tys) {
@@ -413,7 +419,9 @@ impl<'a> InferenceContext<'a> {
                     self.write_variant_resolution(tgt_expr.into(), variant);
                 }
 
-                self.unify(&ty, &expected.ty);
+                if let Some(t) = expected.only_has_type(&mut self.table) {
+                    self.unify(&ty, &t);
+                }
 
                 let substs = ty
                     .as_adt()
@@ -516,6 +524,7 @@ impl<'a> InferenceContext<'a> {
                 self.resolve_associated_type(inner_ty, self.resolve_ops_try_ok())
             }
             Expr::Cast { expr, type_ref } => {
+                // FIXME: propagate the "castable to" expectation (and find a test case that shows this is necessary)
                 let _inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let cast_ty = self.make_ty(type_ref);
                 // FIXME check the cast...
@@ -523,14 +532,16 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Ref { expr, rawness, mutability } => {
                 let mutability = lower_to_chalk_mutability(*mutability);
-                let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) =
-                    &self.resolve_ty_shallow(&expected.ty).as_reference_or_ptr()
+                let expectation = if let Some((exp_inner, exp_rawness, exp_mutability)) = expected
+                    .only_has_type(&mut self.table)
+                    .as_ref()
+                    .and_then(|t| t.as_reference_or_ptr())
                 {
-                    if *exp_mutability == Mutability::Mut && mutability == Mutability::Not {
+                    if exp_mutability == Mutability::Mut && mutability == Mutability::Not {
                         // FIXME: record type error - expected mut reference but found shared ref,
                         // which cannot be coerced
                     }
-                    if *exp_rawness == Rawness::Ref && *rawness == Rawness::RawPtr {
+                    if exp_rawness == Rawness::Ref && *rawness == Rawness::RawPtr {
                         // FIXME: record type error - expected reference but found ptr,
                         // which cannot be coerced
                     }
@@ -701,8 +712,12 @@ impl<'a> InferenceContext<'a> {
                 }
             }
             Expr::Tuple { exprs } => {
-                let mut tys = match self.resolve_ty_shallow(&expected.ty).kind(&Interner) {
-                    TyKind::Tuple(_, substs) => substs
+                let mut tys = match expected
+                    .only_has_type(&mut self.table)
+                    .as_ref()
+                    .map(|t| t.kind(&Interner))
+                {
+                    Some(TyKind::Tuple(_, substs)) => substs
                         .iter(&Interner)
                         .map(|a| a.assert_ty_ref(&Interner).clone())
                         .chain(repeat_with(|| self.table.new_type_var()))
@@ -718,14 +733,16 @@ impl<'a> InferenceContext<'a> {
                 TyKind::Tuple(tys.len(), Substitution::from_iter(&Interner, tys)).intern(&Interner)
             }
             Expr::Array(array) => {
-                let elem_ty = match self.resolve_ty_shallow(&expected.ty).kind(&Interner) {
-                    TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
-                    _ => self.table.new_type_var(),
-                };
+                let elem_ty =
+                    match expected.to_option(&mut self.table).as_ref().map(|t| t.kind(&Interner)) {
+                        Some(TyKind::Array(st, _)) | Some(TyKind::Slice(st)) => st.clone(),
+                        _ => self.table.new_type_var(),
+                    };
 
                 let len = match array {
                     Array::ElementList(items) => {
                         for expr in items.iter() {
+                            // FIXME: use CoerceMany (coerce_merge_branch)
                             self.infer_expr_coerce(*expr, &Expectation::has_type(elem_ty.clone()));
                         }
                         Some(items.len() as u64)
@@ -839,7 +856,9 @@ impl<'a> InferenceContext<'a> {
                 // we don't even make an attempt at coercion
                 self.table.new_maybe_never_var()
             } else {
-                self.coerce(&TyBuilder::unit(), &expected.coercion_target());
+                if let Some(t) = expected.only_has_type(&mut self.table) {
+                    self.coerce(&TyBuilder::unit(), &t);
+                }
                 TyBuilder::unit()
             }
         };
