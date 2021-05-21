@@ -70,7 +70,7 @@ pub fn range<'a>(expr: &'a hir::Expr<'_>) -> Option<Range<'a>> {
                 limits: ast::RangeLimits::Closed,
             })
         },
-        hir::ExprKind::Struct(ref path, ref fields, None) => match path {
+        hir::ExprKind::Struct(path, ref fields, None) => match path {
             hir::QPath::LangItem(hir::LangItem::RangeFull, _) => Some(Range {
                 start: None,
                 end: None,
