@@ -110,6 +110,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.viewItemTree",
+                "title": "Debug ItemTree",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.viewCrateGraph",
                 "title": "View Crate Graph",
                 "category": "Rust Analyzer"

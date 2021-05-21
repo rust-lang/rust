@@ -70,6 +70,20 @@ impl Request for ViewCrateGraph {
     const METHOD: &'static str = "rust-analyzer/viewCrateGraph";
 }
 
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ViewItemTreeParams {
+    pub text_document: TextDocumentIdentifier,
+}
+
+pub enum ViewItemTree {}
+
+impl Request for ViewItemTree {
+    type Params = ViewItemTreeParams;
+    type Result = String;
+    const METHOD: &'static str = "rust-analyzer/viewItemTree";
+}
+
 pub enum ExpandMacro {}
 
 impl Request for ExpandMacro {

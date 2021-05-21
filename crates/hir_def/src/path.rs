@@ -46,6 +46,15 @@ pub enum ImportAlias {
     Alias(Name),
 }
 
+impl Display for ImportAlias {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ImportAlias::Underscore => f.write_str("_"),
+            ImportAlias::Alias(name) => f.write_str(&name.to_string()),
+        }
+    }
+}
+
 impl ModPath {
     pub fn from_src(db: &dyn DefDatabase, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
         let ctx = LowerCtx::with_hygiene(db, hygiene);

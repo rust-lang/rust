@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 10a8988e6893e6b2
+lsp_ext.rs hash: 49f253e4a9307d4f
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -464,7 +464,7 @@ Clients are discouraged from but are allowed to use the `health` status to decid
 **Request:**
 
 ```typescript
-interface SyntaxTeeParams {
+interface SyntaxTreeParams {
     textDocument: TextDocumentIdentifier,
     range?: Range,
 }
@@ -485,6 +485,22 @@ Primarily for debugging, but very useful for all people working on rust-analyzer
 
 Returns a textual representation of the HIR of the function containing the cursor.
 For debugging or when working on rust-analyzer itself.
+
+## View ItemTree
+
+**Method:** `rust-analyzer/viewItemTree`
+
+**Request:**
+
+```typescript
+interface ViewItemTreeParams {
+    textDocument: TextDocumentIdentifier,
+}
+```
+
+**Response:** `string`
+
+Returns a textual representation of the `ItemTree` of the currently open file, for debugging.
 
 ## View Crate Graph
 
