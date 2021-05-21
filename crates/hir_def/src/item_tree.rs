@@ -1,6 +1,9 @@
 //! A simplified AST that only contains items.
 
 mod lower;
+mod pretty;
+#[cfg(test)]
+mod tests;
 
 use std::{
     any::type_name,
@@ -203,6 +206,10 @@ impl ItemTree {
             Some(data) => data.inner_items.get(&block).map(|it| &**it).unwrap_or(&[]),
             None => &[],
         }
+    }
+
+    pub fn pretty_print(&self) -> String {
+        pretty::print_item_tree(self)
     }
 
     fn data(&self) -> &ItemTreeData {
@@ -775,6 +782,10 @@ pub struct IdRange<T> {
 impl<T> IdRange<T> {
     fn new(range: Range<Idx<T>>) -> Self {
         Self { range: range.start.into_raw().into()..range.end.into_raw().into(), _p: PhantomData }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.range.is_empty()
     }
 }
 
