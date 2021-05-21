@@ -68,7 +68,7 @@ LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
    |                  --  -- lifetime `'b` defined here
    |                  |
    |                  lifetime `'a` defined here
-LL |     <Evil>::inherent_evil(b) // bug? shouldn't this be an error
+LL |     <Evil>::inherent_evil(b)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
