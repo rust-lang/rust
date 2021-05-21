@@ -762,7 +762,6 @@ impl MacroArgKind {
 #[derive(Debug, Clone)]
 struct ParsedMacroArg {
     kind: MacroArgKind,
-    span: Span,
 }
 
 impl ParsedMacroArg {
@@ -780,14 +779,10 @@ impl ParsedMacroArg {
 struct MacroArgParser {
     /// Either a name of the next metavariable, a separator, or junk.
     buf: String,
-    /// The start position on the current buffer.
-    lo: BytePos,
     /// The first token of the current buffer.
     start_tok: Token,
     /// `true` if we are parsing a metavariable or a repeat.
     is_meta_var: bool,
-    /// The position of the last token.
-    hi: BytePos,
     /// The last token parsed.
     last_tok: Token,
     /// Holds the parsed arguments.
@@ -807,8 +802,6 @@ fn last_tok(tt: &TokenTree) -> Token {
 impl MacroArgParser {
     fn new() -> MacroArgParser {
         MacroArgParser {
-            lo: BytePos(0),
-            hi: BytePos(0),
             buf: String::new(),
             is_meta_var: false,
             last_tok: Token {
@@ -824,7 +817,6 @@ impl MacroArgParser {
     }
 
     fn set_last_tok(&mut self, tok: &TokenTree) {
-        self.hi = tok.span().hi();
         self.last_tok = last_tok(tok);
     }
 
@@ -836,7 +828,6 @@ impl MacroArgParser {
         };
         self.result.push(ParsedMacroArg {
             kind: MacroArgKind::Separator(self.buf.clone(), prefix),
-            span: mk_sp(self.lo, self.hi),
         });
         self.buf.clear();
     }
@@ -849,7 +840,6 @@ impl MacroArgParser {
         };
         self.result.push(ParsedMacroArg {
             kind: MacroArgKind::Other(self.buf.clone(), prefix),
-            span: mk_sp(self.lo, self.hi),
         });
         self.buf.clear();
     }
@@ -858,11 +848,10 @@ impl MacroArgParser {
         match iter.next() {
             Some(TokenTree::Token(Token {
                 kind: TokenKind::Ident(name, _),
-                span,
+                ..
             })) => {
                 self.result.push(ParsedMacroArg {
                     kind: MacroArgKind::MetaVariable(name, self.buf.clone()),
-                    span: mk_sp(self.lo, span.hi()),
                 });
 
                 self.buf.clear();
@@ -873,10 +862,9 @@ impl MacroArgParser {
         }
     }
 
-    fn add_delimited(&mut self, inner: Vec<ParsedMacroArg>, delim: DelimToken, span: Span) {
+    fn add_delimited(&mut self, inner: Vec<ParsedMacroArg>, delim: DelimToken) {
         self.result.push(ParsedMacroArg {
             kind: MacroArgKind::Delimited(delim, inner),
-            span,
         });
     }
 
@@ -886,19 +874,15 @@ impl MacroArgParser {
         inner: Vec<ParsedMacroArg>,
         delim: DelimToken,
         iter: &mut Cursor,
-        span: Span,
     ) -> Option<()> {
         let mut buffer = String::new();
         let mut first = true;
-        let mut lo = span.lo();
-        let mut hi = span.hi();
 
         // Parse '*', '+' or '?.
         for tok in iter {
             self.set_last_tok(&tok);
             if first {
                 first = false;
-                lo = tok.span().lo();
             }
 
             match tok {
@@ -918,7 +902,6 @@ impl MacroArgParser {
                 }
                 TokenTree::Token(ref t) => {
                     buffer.push_str(&pprust::token_to_string(&t));
-                    hi = t.span.hi();
                 }
                 _ => return None,
             }
@@ -930,20 +913,17 @@ impl MacroArgParser {
         } else {
             Some(Box::new(ParsedMacroArg {
                 kind: MacroArgKind::Other(buffer, "".to_owned()),
-                span: mk_sp(lo, hi),
             }))
         };
 
         self.result.push(ParsedMacroArg {
             kind: MacroArgKind::Repeat(delim, inner, another, self.last_tok.clone()),
-            span: mk_sp(self.lo, self.hi),
         });
         Some(())
     }
 
     fn update_buffer(&mut self, t: &Token) {
         if self.buf.is_empty() {
-            self.lo = t.span.lo();
             self.start_tok = t.clone();
         } else {
             let needs_space = match next_space(&self.last_tok.kind) {
@@ -999,7 +979,6 @@ impl MacroArgParser {
 
                     // Start keeping the name of this metavariable in the buffer.
                     self.is_meta_var = true;
-                    self.lo = span.lo();
                     self.start_tok = Token {
                         kind: TokenKind::Dollar,
                         span,
@@ -1012,7 +991,7 @@ impl MacroArgParser {
                     self.add_meta_variable(&mut iter)?;
                 }
                 TokenTree::Token(ref t) => self.update_buffer(t),
-                TokenTree::Delimited(delimited_span, delimited, ref tts) => {
+                TokenTree::Delimited(_delimited_span, delimited, ref tts) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok.kind) == SpaceState::Always {
                             self.add_separator();
@@ -1022,16 +1001,14 @@ impl MacroArgParser {
                     }
 
                     // Parse the stuff inside delimiters.
-                    let mut parser = MacroArgParser::new();
-                    parser.lo = delimited_span.open.lo();
+                    let parser = MacroArgParser::new();
                     let delimited_arg = parser.parse(tts.clone())?;
 
-                    let span = delimited_span.entire();
                     if self.is_meta_var {
-                        self.add_repeat(delimited_arg, delimited, &mut iter, span)?;
+                        self.add_repeat(delimited_arg, delimited, &mut iter)?;
                         self.is_meta_var = false;
                     } else {
-                        self.add_delimited(delimited_arg, delimited, span);
+                        self.add_delimited(delimited_arg, delimited);
                     }
                 }
             }
