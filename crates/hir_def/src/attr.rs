@@ -2,7 +2,7 @@
 
 use std::{
     convert::{TryFrom, TryInto},
-    ops,
+    fmt, ops,
     sync::Arc,
 };
 
@@ -646,6 +646,15 @@ pub enum AttrInput {
     Literal(SmolStr),
     /// `#[attr(subtree)]`
     TokenTree(Subtree),
+}
+
+impl fmt::Display for AttrInput {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AttrInput::Literal(lit) => write!(f, " = \"{}\"", lit.escape_debug()),
+            AttrInput::TokenTree(subtree) => subtree.fmt(f),
+        }
+    }
 }
 
 impl Attr {
