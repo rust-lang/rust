@@ -1,8 +1,8 @@
 error[E0133]: initializing type with `rustc_layout_scalar_valid_range` attr is unsafe and requires unsafe function or block
-  --> $DIR/ranged_ints.rs:7:14
+  --> $DIR/ranged_ints_const.rs:11:34
    |
-LL |     let _x = NonZero(0);
-   |              ^^^^^^^^^^ initializing type with `rustc_layout_scalar_valid_range` attr
+LL | const fn foo() -> NonZero<u32> { NonZero(0) }
+   |                                  ^^^^^^^^^^ initializing type with `rustc_layout_scalar_valid_range` attr
    |
    = note: initializing a layout restricted type's field with a value outside the valid range is undefined behavior
 

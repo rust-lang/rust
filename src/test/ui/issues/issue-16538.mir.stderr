@@ -1,11 +1,11 @@
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-16538.rs:11:27
+  --> $DIR/issue-16538.rs:14:27
    |
 LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `*const usize` cannot be shared between threads safely
-  --> $DIR/issue-16538.rs:11:1
+  --> $DIR/issue-16538.rs:14:1
    |
 LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `*const usize` cannot be shared between threads safely
@@ -14,7 +14,7 @@ LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
    = note: shared static variables must have a type that implements `Sync`
 
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
-  --> $DIR/issue-16538.rs:11:34
+  --> $DIR/issue-16538.rs:14:34
    |
 LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
    |                                  ^^^^ use of extern static
