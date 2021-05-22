@@ -65,7 +65,6 @@ use std::{
     cell::{Cell, Ref, RefCell, RefMut},
     fmt::Debug,
     mem,
-    rc::Rc,
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -80,7 +79,7 @@ use crate::{
 };
 
 pub type AllocExtra = VClockAlloc;
-pub type MemoryExtra = Rc<GlobalState>;
+pub type MemoryExtra = GlobalState;
 
 /// Valid atomic read-write operations, alias of atomic::Ordering (not non-exhaustive).
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -488,7 +487,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
         let this = self.eval_context_ref();
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(&place.into()))?;
-        self.validate_atomic_load(place, atomic)?;
+        this.validate_atomic_load(place, atomic)?;
         Ok(scalar)
     }
 
@@ -501,7 +500,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         this.allow_data_races_mut(move |this| this.write_scalar(val, &(*dest).into()))?;
-        self.validate_atomic_store(dest, atomic)
+        this.validate_atomic_store(dest, atomic)
     }
 
     /// Perform a atomic operation on a memory location.
@@ -733,9 +732,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
 pub struct VClockAlloc {
     /// Assigning each byte a MemoryCellClocks.
     alloc_ranges: RefCell<RangeMap<MemoryCellClocks>>,
-
-    /// Pointer to global state.
-    global: MemoryExtra,
 }
 
 impl VClockAlloc {
@@ -767,7 +763,6 @@ impl VClockAlloc {
             | MemoryKind::Vtable => (0, VectorIdx::MAX_INDEX),
         };
         VClockAlloc {
-            global: Rc::clone(global),
             alloc_ranges: RefCell::new(RangeMap::new(
                 len,
                 MemoryCellClocks::new(alloc_timestamp, alloc_index),
@@ -888,21 +883,19 @@ impl VClockAlloc {
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation for which data-race detection is handled separately, for example
     /// atomic read operations.
-    pub fn read<'tcx>(&self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
-        if self.global.multi_threaded.get() {
-            let (index, clocks) = self.global.current_thread_state();
+    pub fn read<'tcx>(
+        &self,
+        pointer: Pointer<Tag>,
+        len: Size,
+        global: &GlobalState,
+    ) -> InterpResult<'tcx> {
+        if global.multi_threaded.get() {
+            let (index, clocks) = global.current_thread_state();
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (_, range) in alloc_ranges.iter_mut(pointer.offset, len) {
                 if let Err(DataRace) = range.read_race_detect(&*clocks, index) {
                     // Report data-race.
-                    return Self::report_data_race(
-                        &self.global,
-                        range,
-                        "Read",
-                        false,
-                        pointer,
-                        len,
-                    );
+                    return Self::report_data_race(global, range, "Read", false, pointer, len);
                 }
             }
             Ok(())
@@ -917,14 +910,15 @@ impl VClockAlloc {
         pointer: Pointer<Tag>,
         len: Size,
         write_type: WriteType,
+        global: &mut GlobalState,
     ) -> InterpResult<'tcx> {
-        if self.global.multi_threaded.get() {
-            let (index, clocks) = self.global.current_thread_state();
+        if global.multi_threaded.get() {
+            let (index, clocks) = global.current_thread_state();
             for (_, range) in self.alloc_ranges.get_mut().iter_mut(pointer.offset, len) {
                 if let Err(DataRace) = range.write_race_detect(&*clocks, index, write_type) {
                     // Report data-race
                     return Self::report_data_race(
-                        &self.global,
+                        global,
                         range,
                         write_type.get_descriptor(),
                         false,
@@ -943,16 +937,26 @@ impl VClockAlloc {
     /// data-race threads if `multi-threaded` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
-    pub fn write<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
-        self.unique_access(pointer, len, WriteType::Write)
+    pub fn write<'tcx>(
+        &mut self,
+        pointer: Pointer<Tag>,
+        len: Size,
+        global: &mut GlobalState,
+    ) -> InterpResult<'tcx> {
+        self.unique_access(pointer, len, WriteType::Write, global)
     }
 
     /// Detect data-races for an unsynchronized deallocate operation, will not perform
     /// data-race threads if `multi-threaded` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
-    pub fn deallocate<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size) -> InterpResult<'tcx> {
-        self.unique_access(pointer, len, WriteType::Deallocate)
+    pub fn deallocate<'tcx>(
+        &mut self,
+        pointer: Pointer<Tag>,
+        len: Size,
+        global: &mut GlobalState,
+    ) -> InterpResult<'tcx> {
+        self.unique_access(pointer, len, WriteType::Deallocate, global)
     }
 }
 
@@ -1035,7 +1039,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                 );
 
                 // Perform the atomic operation.
-                let data_race = &alloc_meta.global;
                 data_race.maybe_perform_sync_operation(|index, mut clocks| {
                     for (_, range) in
                         alloc_meta.alloc_ranges.borrow_mut().iter_mut(place_ptr.offset, size)
@@ -1043,7 +1046,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
                         if let Err(DataRace) = op(range, &mut *clocks, index, atomic) {
                             mem::drop(clocks);
                             return VClockAlloc::report_data_race(
-                                &alloc_meta.global,
+                                data_race,
                                 range,
                                 description,
                                 true,
