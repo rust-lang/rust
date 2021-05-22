@@ -10,8 +10,8 @@
 )]
 #![feature(box_syntax)]
 #![feature(box_patterns)]
+// On bootstrap bump, this will likely have to become const_fn_unsize
 #![cfg_attr(bootstrap, feature(const_fn))] // For the `transmute` in `P::new`
-#![cfg_attr(not(bootstrap), feature(const_fn_unsize))] // For the `transmute` in `P::new`
 #![feature(const_fn_transmute)]
 #![feature(const_panic)]
 #![feature(crate_visibility_modifier)]

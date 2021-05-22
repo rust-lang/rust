@@ -644,9 +644,6 @@ declare_features! (
     /// Allows trait bounds in `const fn`.
     (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
 
-    /// Allows unsizing coercions in `const fn`.
-    (active, const_fn_unsize, "1.53.0", Some(64992), None),
-
     /// Allows `async {}` expressions in const contexts.
     (active, const_async_blocks, "1.53.0", Some(85368), None),
 

@@ -541,30 +541,6 @@ impl NonConstOp for UnionAccess {
     }
 }
 
-/// See [#64992].
-///
-/// [#64992]: https://github.com/rust-lang/rust/issues/64992
-#[derive(Debug)]
-pub struct UnsizingCast;
-impl NonConstOp for UnsizingCast {
-    fn status_in_item(&self, ccx: &ConstCx<'_, '_>) -> Status {
-        if ccx.const_kind() != hir::ConstContext::ConstFn {
-            Status::Allowed
-        } else {
-            Status::Unstable(sym::const_fn_unsize)
-        }
-    }
-
-    fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_fn_unsize,
-            span,
-            "unsizing casts to types besides slices are not allowed in const fn",
-        )
-    }
-}
-
 // Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;
