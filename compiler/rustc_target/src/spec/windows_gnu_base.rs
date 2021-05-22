@@ -66,7 +66,6 @@ pub fn opts() -> TargetOptions {
         // FIXME(#13846) this should be enabled for windows
         function_sections: false,
         linker: Some("gcc".to_string()),
-        linker_is_gnu: true,
         dynamic_linking: true,
         executables: true,
         dll_prefix: String::new(),

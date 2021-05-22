@@ -6,7 +6,6 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         families: vec!["unix".to_string()],
-        linker_is_gnu: true,
         has_rpath: true,
         abi_return_struct_as_int: true,
         position_independent_executables: true,

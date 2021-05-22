@@ -16,6 +16,7 @@ pub fn opts() -> TargetOptions {
         is_like_windows: true,
         is_like_msvc: true,
         lld_flavor: LldFlavor::Link,
+        linker_is_gnu: false,
         pre_link_args,
         abi_return_struct_as_int: true,
         emit_debug_gdb_scripts: false,
