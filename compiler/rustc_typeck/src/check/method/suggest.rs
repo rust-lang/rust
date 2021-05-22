@@ -384,7 +384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     } else {
                         span = item_name.span;
 
-                        // issue #81576, elision of generic argument when no methode can be found in any implementation
+                        // Don't show generic arguments when the method can't be found in any implementation (#81576).
                         let mut ty_str_reported = ty_str.clone();
                         if let ty::Adt(_, ref generics) = actual.kind() {
                             if generics.len() > 0 {
@@ -493,22 +493,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         self.associated_item(*def_id, item_name, Namespace::ValueNS)
                                     {
                                         // Check for both mode is the same so we avoid suggesting
-                                        // incorect associated item.
-                                        match (mode, assoc.fn_has_self_parameter) {
-                                            (Mode::MethodCall, true) => {
-                                                if let SelfSource::MethodCall(_) = source {
-                                                    // We check that the suggest type is actually
-                                                    // different from the received one
-                                                    // So we avoid suggestion method with Box<Self>
-                                                    // for instance
-                                                    self.tcx.at(span).type_of(*def_id) != actual
-                                                        && self.tcx.at(span).type_of(*def_id)
-                                                            != rcvr_ty
-                                                } else {
-                                                    false
-                                                }
+                                        // incorrect associated item.
+                                        match (mode, assoc.fn_has_self_parameter, source) {
+                                            (Mode::MethodCall, true, SelfSource::MethodCall(_)) => {
+                                                // We check that the suggest type is actually
+                                                // different from the received one
+                                                // So we avoid suggestion method with Box<Self>
+                                                // for instance
+                                                self.tcx.at(span).type_of(*def_id) != actual
+                                                    && self.tcx.at(span).type_of(*def_id)
+                                                        != rcvr_ty
                                             }
-                                            (Mode::Path, false) => true,
+                                            (Mode::Path, false, _) => true,
                                             _ => false,
                                         }
                                     } else {
@@ -521,7 +517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 inherent_impls_candidate.dedup();
                                 // number of type to shows at most.
                                 const LIMIT: usize = 3;
-                                let mut note = format!("The {item_kind} was found for");
+                                let mut note = format!("the {item_kind} was found for");
                                 if inherent_impls_candidate.len() > 1 {
                                     for impl_item in inherent_impls_candidate.iter().take(LIMIT - 2)
                                     {
