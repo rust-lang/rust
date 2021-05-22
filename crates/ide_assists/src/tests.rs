@@ -65,6 +65,12 @@ pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
     check(assist, ra_fixture, ExpectedResult::NotApplicable, None);
 }
 
+/// Check assist in unresolved state. Useful to check assists for lazy computation.
+#[track_caller]
+pub(crate) fn check_assist_unresolved(assist: Handler, ra_fixture: &str) {
+    check(assist, ra_fixture, ExpectedResult::Unresolved, None);
+}
+
 #[track_caller]
 fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let after = trim_indent(after);
@@ -101,6 +107,7 @@ fn check_doc_test(assist_id: &str, before: &str, after: &str) {
 
 enum ExpectedResult<'a> {
     NotApplicable,
+    Unresolved,
     After(&'a str),
     Target(&'a str),
 }
@@ -115,7 +122,11 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
     let sema = Semantics::new(&db);
     let config = TEST_CONFIG;
     let ctx = AssistContext::new(sema, &config, frange);
-    let mut acc = Assists::new(&ctx, AssistResolveStrategy::All);
+    let resolve = match expected {
+        ExpectedResult::Unresolved => AssistResolveStrategy::None,
+        _ => AssistResolveStrategy::All,
+    };
+    let mut acc = Assists::new(&ctx, resolve);
     handler(&mut acc, &ctx);
     let mut res = acc.finish();
 
@@ -163,8 +174,14 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
             let range = assist.target;
             assert_eq_text!(&text_without_caret[range], target);
         }
+        (Some(assist), ExpectedResult::Unresolved) => assert!(
+            assist.source_change.is_none(),
+            "unresolved assist should not contain source changes"
+        ),
         (Some(_), ExpectedResult::NotApplicable) => panic!("assist should not be applicable!"),
-        (None, ExpectedResult::After(_)) | (None, ExpectedResult::Target(_)) => {
+        (None, ExpectedResult::After(_))
+        | (None, ExpectedResult::Target(_))
+        | (None, ExpectedResult::Unresolved) => {
             panic!("code action is not applicable")
         }
         (None, ExpectedResult::NotApplicable) => (),

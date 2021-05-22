@@ -1,4 +1,4 @@
-use std::iter;
+use std::iter::{self, Peekable};
 
 use either::Either;
 use hir::{Adt, HasSource, ModuleDef, Semantics};
@@ -63,50 +63,61 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
 
     let module = ctx.sema.scope(expr.syntax()).module()?;
 
-    let missing_arms: Vec<MatchArm> = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
+    let mut missing_pats: Peekable<Box<dyn Iterator<Item = ast::Pat>>> = if let Some(enum_def) =
+        resolve_enum_def(&ctx.sema, &expr)
+    {
         let variants = enum_def.variants(ctx.db());
 
-        let mut variants = variants
+        let missing_pats = variants
             .into_iter()
             .filter_map(|variant| build_pat(ctx.db(), module, variant))
-            .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat))
-            .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
-            .map(|it| it.clone_for_update())
-            .collect::<Vec<_>>();
-        if Some(enum_def)
-            == FamousDefs(&ctx.sema, Some(module.krate()))
-                .core_option_Option()
-                .map(|x| lift_enum(x))
+            .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat));
+
+        let missing_pats: Box<dyn Iterator<Item = _>> = if Some(enum_def)
+            == FamousDefs(&ctx.sema, Some(module.krate())).core_option_Option().map(lift_enum)
         {
             // Match `Some` variant first.
             cov_mark::hit!(option_order);
-            variants.reverse()
-        }
-        variants
+            Box::new(missing_pats.rev())
+        } else {
+            Box::new(missing_pats)
+        };
+        missing_pats.peekable()
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
+        let mut n_arms = 1;
+        let variants_of_enums: Vec<Vec<ExtendedVariant>> = enum_defs
+            .into_iter()
+            .map(|enum_def| enum_def.variants(ctx.db()))
+            .inspect(|variants| n_arms *= variants.len())
+            .collect();
+
         // When calculating the match arms for a tuple of enums, we want
         // to create a match arm for each possible combination of enum
         // values. The `multi_cartesian_product` method transforms
         // Vec<Vec<EnumVariant>> into Vec<(EnumVariant, .., EnumVariant)>
         // where each tuple represents a proposed match arm.
-        enum_defs
+
+        // A number of arms grows very fast on even a small tuple of large enums.
+        // We skip the assist beyond an arbitrary threshold.
+        if n_arms > 256 {
+            return None;
+        }
+        let missing_pats = variants_of_enums
             .into_iter()
-            .map(|enum_def| enum_def.variants(ctx.db()))
             .multi_cartesian_product()
+            .inspect(|_| cov_mark::hit!(fill_match_arms_lazy_computation))
             .map(|variants| {
                 let patterns =
                     variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
                 ast::Pat::from(make::tuple_pat(patterns))
             })
-            .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat))
-            .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
-            .map(|it| it.clone_for_update())
-            .collect()
+            .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat));
+        (Box::new(missing_pats) as Box<dyn Iterator<Item = _>>).peekable()
     } else {
         return None;
     };
 
-    if missing_arms.is_empty() {
+    if missing_pats.peek().is_none() {
         return None;
     }
 
@@ -117,6 +128,9 @@ pub(crate) fn fill_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option<
         target,
         |builder| {
             let new_match_arm_list = match_arm_list.clone_for_update();
+            let missing_arms = missing_pats
+                .map(|pat| make::match_arm(iter::once(pat), make::expr_empty_block()))
+                .map(|it| it.clone_for_update());
 
             let catch_all_arm = new_match_arm_list
                 .arms()
@@ -167,13 +181,13 @@ fn does_pat_match_variant(pat: &Pat, var: &Pat) -> bool {
     }
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 enum ExtendedEnum {
     Bool,
     Enum(hir::Enum),
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 enum ExtendedVariant {
     True,
     False,
@@ -185,7 +199,7 @@ fn lift_enum(e: hir::Enum) -> ExtendedEnum {
 }
 
 impl ExtendedEnum {
-    fn variants(&self, db: &RootDatabase) -> Vec<ExtendedVariant> {
+    fn variants(self, db: &RootDatabase) -> Vec<ExtendedVariant> {
         match self {
             ExtendedEnum::Enum(e) => {
                 e.variants(db).into_iter().map(|x| ExtendedVariant::Variant(x)).collect::<Vec<_>>()
@@ -266,7 +280,9 @@ fn build_pat(db: &RootDatabase, module: hir::Module, var: ExtendedVariant) -> Op
 mod tests {
     use ide_db::helpers::FamousDefs;
 
-    use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_target, check_assist_unresolved,
+    };
 
     use super::fill_match_arms;
 
@@ -1043,6 +1059,21 @@ fn foo(t: Test) {
     Test::C => {}
 });
 }"#,
+        );
+    }
+
+    #[test]
+    fn lazy_computation() {
+        // Computing a single missing arm is enough to determine applicability of the assist.
+        cov_mark::check_count!(fill_match_arms_lazy_computation, 1);
+        check_assist_unresolved(
+            fill_match_arms,
+            r#"
+enum A { One, Two, }
+fn foo(tuple: (A, A)) {
+    match $0tuple {};
+}
+"#,
         );
     }
 }
