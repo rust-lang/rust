@@ -2,6 +2,7 @@
 //! documentation generated so we can test each different features.
 
 #![crate_name = "test_docs"]
+#![feature(doc_keyword)]
 
 use std::fmt;
 
@@ -91,3 +92,6 @@ pub fn check_list_code_block() {}
 pub enum AnEnum {
     WithVariants { and: usize, sub: usize, variants: usize },
 }
+
+#[doc(keyword = "CookieMonster")]
+pub mod keyword {}

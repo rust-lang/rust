@@ -1,0 +1,11 @@
+goto: file://|DOC_PATH|/test_docs/index.html
+write: (".search-input", "CookieMonster")
+// Waiting for the search results to appear...
+wait-for: "#titles"
+// Note: The two next assert commands could be merged as one but readability would be
+// less good.
+//
+// Checking that the CSS is displaying " (keyword)"...
+assert: (".result-name span.keyword::after", {"content": '" (keyword)"'})
+// ... in italic.
+assert: (".result-name span.keyword::after", {"font-style": "italic"})

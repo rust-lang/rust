@@ -780,12 +780,12 @@ a {
 	float: left;
 }
 
-tr.result span.primitive::after {
+.result-name span.primitive::after {
 	content: ' (primitive type)';
 	font-style: italic;
 }
 
-tr.result span.keyword::after {
+.result-name span.keyword::after {
 	content: ' (keyword)';
 	font-style: italic;
 }
