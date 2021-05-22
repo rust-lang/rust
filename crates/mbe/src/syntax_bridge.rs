@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
 use parser::{FragmentKind, ParseError, TreeSink};
 use rustc_hash::FxHashMap;

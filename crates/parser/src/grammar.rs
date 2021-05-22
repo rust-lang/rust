@@ -27,6 +27,7 @@
 //! node or an error, rules like `opt_where_clause` may produce nothing.
 //! Non-opt rules typically start with `assert!(p.at(FIRST_TOKEN))`, the
 //! caller is responsible for branching on the first token.
+
 mod attributes;
 mod expressions;
 mod items;

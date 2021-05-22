@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! Our parser is generic over the source of tokens it parses.
+//!
+//! This module defines tokens sourced from declarative macros.
 
 use parser::{Token, TokenSource};
 use syntax::{lex_single_syntax_kind, SmolStr, SyntaxKind, SyntaxKind::*, T};

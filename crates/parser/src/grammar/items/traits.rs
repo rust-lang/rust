@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use super::*;
 
 // test trait_item

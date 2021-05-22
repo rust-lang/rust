@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! See [`Parser`].
 
 use std::cell::Cell;
 
