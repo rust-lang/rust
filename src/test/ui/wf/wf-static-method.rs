@@ -50,5 +50,19 @@ fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
     <Evil>::inherent_evil(b) // bug? shouldn't this be an error
 }
 
+pub enum Bar<'string> {
+    String(&'string str),
+}
+
+impl<'a> Bar<'a> {
+    fn f<'b>(self, other: Bar<'b>) {
+        match (self, other) {
+            // Important: a and b swap between the two patterns, and one pattern uses `Self`
+            // Possibly should be an error: Self::String(b) means that `b` has
+            // lifetime 'a, but in the other branch it has lifetime 'b.
+            (Bar::String(a), Bar::String(b)) | (Self::String(b), Bar::String(a)) => {}
+        }
+    }
+}
 
 fn main() {}
