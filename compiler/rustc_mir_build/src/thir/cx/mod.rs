@@ -23,6 +23,9 @@ crate fn thir_body<'tcx>(
     let hir = tcx.hir();
     let body = hir.body(hir.body_owned_by(hir.local_def_id_to_hir_id(owner_def.did)));
     let mut cx = Cx::new(tcx, owner_def);
+    if cx.typeck_results.tainted_by_errors.is_some() {
+        return (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0));
+    }
     let expr = cx.mirror_expr(&body.value);
     (tcx.alloc_steal_thir(cx.thir), expr)
 }

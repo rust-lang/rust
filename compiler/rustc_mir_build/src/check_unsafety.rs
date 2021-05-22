@@ -331,6 +331,11 @@ impl UnsafeOpKind {
 pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) {
     let (thir, expr) = tcx.thir_body(def);
     let thir = &thir.borrow();
+    // If `thir` is empty, a type error occured, skip this body.
+    if thir.exprs.is_empty() {
+        return;
+    }
+
     let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_unsafety = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(BodyUnsafety::Safe, |fn_sig| {
         if fn_sig.header.unsafety == hir::Unsafety::Unsafe {
