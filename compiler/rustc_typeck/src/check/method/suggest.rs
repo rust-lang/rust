@@ -388,27 +388,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut ty_str_reported = ty_str.clone();
                         if let ty::Adt(_, ref generics) = actual.kind() {
                             if generics.len() > 0 {
-                                let candidate_numbers: usize = self
-                                    .autoderef(span, actual)
-                                    .map(|(ty, _)| {
-                                        if let ty::Adt(ref adt_deref, _) = ty.kind() {
-                                            self.tcx
-                                                .inherent_impls(adt_deref.did)
-                                                .iter()
-                                                .filter_map(|def_id| {
-                                                    self.associated_item(
-                                                        *def_id,
-                                                        item_name,
-                                                        Namespace::ValueNS,
-                                                    )
-                                                })
-                                                .count()
-                                        } else {
-                                            0
-                                        }
-                                    })
-                                    .sum();
-                                if candidate_numbers == 0 && unsatisfied_predicates.is_empty() {
+                                let mut autoderef = self.autoderef(span, actual);
+                                let candidate_found = autoderef.any(|(ty, _)| {
+                                    if let ty::Adt(ref adt_deref, _) = ty.kind() {
+                                        self.tcx
+                                            .inherent_impls(adt_deref.did)
+                                            .iter()
+                                            .filter_map(|def_id| {
+                                                self.associated_item(
+                                                    *def_id,
+                                                    item_name,
+                                                    Namespace::ValueNS,
+                                                )
+                                            })
+                                            .count()
+                                            >= 1
+                                    } else {
+                                        false
+                                    }
+                                });
+                                let has_deref = autoderef.step_count() > 0;
+                                if !candidate_found
+                                    && !has_deref
+                                    && unsatisfied_predicates.is_empty()
+                                {
                                     if let Some((path_string, _)) = ty_str.split_once('<') {
                                         ty_str_reported = path_string.to_string();
                                     }
@@ -501,8 +504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 // So we avoid suggestion method with Box<Self>
                                                 // for instance
                                                 self.tcx.at(span).type_of(*def_id) != actual
-                                                    && self.tcx.at(span).type_of(*def_id)
-                                                        != rcvr_ty
+                                                    && self.tcx.at(span).type_of(*def_id) != rcvr_ty
                                             }
                                             (Mode::Path, false, _) => true,
                                             _ => false,
@@ -515,38 +517,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if inherent_impls_candidate.len() > 0 {
                                 inherent_impls_candidate.sort();
                                 inherent_impls_candidate.dedup();
+                                let type_candidates = inherent_impls_candidate
+                                    .iter()
+                                    .map(|impl_item| self.tcx.at(span).type_of(*impl_item))
+                                    .collect::<Vec<_>>();
                                 // number of type to shows at most.
-                                const LIMIT: usize = 3;
-                                let mut note = format!("the {item_kind} was found for");
-                                if inherent_impls_candidate.len() > 1 {
-                                    for impl_item in inherent_impls_candidate.iter().take(LIMIT - 2)
-                                    {
-                                        let impl_ty = self.tcx.at(span).type_of(*impl_item);
-                                        note = format!("{} {},", note, impl_ty);
-                                    }
-                                    let impl_ty = self.tcx.at(span).type_of(
-                                        inherent_impls_candidate
-                                            [inherent_impls_candidate.len() - 1],
-                                    );
-                                    if inherent_impls_candidate.len() > LIMIT {
-                                        note = format!("{} {},", note, impl_ty);
-                                    } else {
-                                        note = format!("{} {} and", note, impl_ty);
-                                    }
+                                let limit = if type_candidates.len() == 4 { 4 } else { 3 };
+                                for ty in type_candidates.iter().take(limit) {
+                                    err.note(&format!("the {item_kind} was found for {}", ty));
                                 }
-                                let impl_ty = self
-                                    .tcx
-                                    .at(span)
-                                    .type_of(*inherent_impls_candidate.last().unwrap());
-                                note = format!("{} {}", note, impl_ty);
-                                if inherent_impls_candidate.len() > LIMIT {
-                                    note = format!(
-                                        "{} and {} more",
-                                        note,
-                                        inherent_impls_candidate.len() - LIMIT
-                                    );
+                                if type_candidates.len() > limit {
+                                    err.note(&format!(
+                                        "the {item_kind} was found for {} more types",
+                                        type_candidates.len() - limit
+                                    ));
                                 }
-                                err.note(&format!("{}.", note));
                             }
                         }
                     } else {

@@ -1,6 +1,7 @@
 // Test for issue 81576
 // Remove generic arguments if no method is found for all possible generic argument
 
+use std::marker::PhantomData;
 
 struct Wrapper2<'a, T, const C: usize> {
     x: &'a T,
@@ -18,8 +19,6 @@ impl<'a, const C: usize> Wrapper2<'a, i32, C> {
     fn method(&self) {}
 }
 struct Wrapper<T>(T);
-
-
 
 impl Wrapper<i8> {
     fn method(&self) {}
@@ -62,6 +61,20 @@ impl Other {
     fn other(&self) {}
 }
 
+struct Struct<T>{
+    _phatom: PhantomData<T>
+}
+
+impl<T> Default for Struct<T> {
+    fn default() -> Self {
+        Self{ _phatom: PhantomData }
+    }
+}
+
+impl<T: Clone + Copy + PartialEq + Eq + PartialOrd + Ord> Struct<T> {
+    fn method(&self) {}
+}
+
 fn main() {
     let point_f64 = Point{ x: 1_f64, y: 1_f64};
     let d = point_f64.distance();
@@ -87,4 +100,7 @@ fn main() {
     let a = vec![1, 2, 3];
     a.not_found();
     //~^ ERROR no method named `not_found` found for struct `Vec
+    let s = Struct::<f64>::default();
+    s.method();
+    //~^ ERROR the method `method` exists for struct `Struct<f64>`, but its trait bounds were not satisfied
 }

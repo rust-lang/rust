@@ -1,4 +1,4 @@
-error[E0599]: no method named `test_mut` found for struct `Vec` in the current scope
+error[E0599]: no method named `test_mut` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:7:7
    |
 LL |     a.test_mut();
@@ -11,7 +11,7 @@ note: `MyIter` defines an item `test_mut`, perhaps you need to implement it
 LL | trait MyIter {
    | ^^^^^^^^^^^^
 
-error[E0599]: no method named `test` found for struct `Vec` in the current scope
+error[E0599]: no method named `test` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/auto-ref-slice-plus-ref.rs:8:7
    |
 LL |     a.test();
