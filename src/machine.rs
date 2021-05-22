@@ -116,7 +116,7 @@ pub struct AllocExtra {
 }
 
 /// Extra global memory data
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct MemoryExtra {
     pub stacked_borrows: Option<stacked_borrows::MemoryExtra>,
     pub data_race: Option<data_race::MemoryExtra>,
@@ -144,11 +144,11 @@ impl MemoryExtra {
     pub fn new(config: &MiriConfig) -> Self {
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
         let stacked_borrows = if config.stacked_borrows {
-            Some(Rc::new(RefCell::new(stacked_borrows::GlobalState::new(
+            Some(RefCell::new(stacked_borrows::GlobalState::new(
                 config.tracked_pointer_tag,
                 config.tracked_call_id,
                 config.track_raw,
-            ))))
+            )))
         } else {
             None
         };
@@ -478,7 +478,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         let alloc = alloc.into_owned();
         let (stacks, base_tag) = if let Some(stacked_borrows) = &memory_extra.stacked_borrows {
             let (stacks, base_tag) =
-                Stacks::new_allocation(id, alloc.size(), Rc::clone(stacked_borrows), kind);
+                Stacks::new_allocation(id, alloc.size(), stacked_borrows, kind);
             (Some(stacks), base_tag)
         } else {
             // No stacks, no tag.
@@ -507,7 +507,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn memory_read(
-        _memory_extra: &Self::MemoryExtra,
+        memory_extra: &Self::MemoryExtra,
         alloc_extra: &AllocExtra,
         ptr: Pointer<Tag>,
         size: Size,
@@ -516,7 +516,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.read(ptr, size)?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
-            stacked_borrows.memory_read(ptr, size)
+            stacked_borrows.memory_read(ptr, size, memory_extra.stacked_borrows.as_ref().unwrap())
         } else {
             Ok(())
         }
@@ -524,7 +524,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn memory_written(
-        _memory_extra: &mut Self::MemoryExtra,
+        memory_extra: &mut Self::MemoryExtra,
         alloc_extra: &mut AllocExtra,
         ptr: Pointer<Tag>,
         size: Size,
@@ -533,7 +533,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.write(ptr, size)?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.memory_written(ptr, size)
+            stacked_borrows.memory_written(ptr, size, memory_extra.stacked_borrows.as_mut().unwrap())
         } else {
             Ok(())
         }
@@ -553,7 +553,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.deallocate(ptr, size)?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.memory_deallocated(ptr, size)
+            stacked_borrows.memory_deallocated(ptr, size, memory_extra.stacked_borrows.as_mut().unwrap())
         } else {
             Ok(())
         }
