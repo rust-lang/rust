@@ -242,3 +242,49 @@ m!();
         "#]],
     );
 }
+
+#[test]
+fn mod_paths() {
+    check(
+        r#"
+struct S {
+    a: self::Ty,
+    b: super::SuperTy,
+    c: super::super::SuperSuperTy,
+    d: ::abs::Path,
+    e: crate::Crate,
+    f: plain::path::Ty,
+}
+        "#,
+        expect![[r#"
+            pub(self) struct S {
+                pub(self) a: self::Ty,
+                pub(self) b: super::SuperTy,
+                pub(self) c: super::super::SuperSuperTy,
+                pub(self) d: ::abs::Path,
+                pub(self) e: crate::Crate,
+                pub(self) f: plain::path::Ty,
+            }
+        "#]],
+    )
+}
+
+#[test]
+fn types() {
+    check(
+        r#"
+struct S {
+    a: Mixed<'a, T, Item=(), OtherItem=u8>,
+    b: <Fully as Qualified>::Syntax,
+    c: <TypeAnchored>::Path::<'a>,
+}
+        "#,
+        expect![[r#"
+            pub(self) struct S {
+                pub(self) a: Mixed<'a, T, Item = (), OtherItem = u8>,
+                pub(self) b: Qualified<Self=Fully>::Syntax,
+                pub(self) c: <TypeAnchored>::Path<'a>,
+            }
+        "#]],
+    )
+}
