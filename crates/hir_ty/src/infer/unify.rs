@@ -435,7 +435,7 @@ mod resolve {
     use super::InferenceTable;
     use crate::{
         ConcreteConst, Const, ConstData, ConstValue, DebruijnIndex, GenericArg, InferenceVar,
-        Interner, Ty, TyVariableKind, VariableKind,
+        Interner, Lifetime, Ty, TyVariableKind, VariableKind,
     };
     use chalk_ir::{
         cast::Cast,
@@ -523,6 +523,18 @@ mod resolve {
                     .clone()
             };
             Ok(result)
+        }
+
+        fn fold_inference_lifetime(
+            &mut self,
+            _var: InferenceVar,
+            _outer_binder: DebruijnIndex,
+        ) -> Fallible<Lifetime> {
+            // fall back all lifetimes to 'static -- currently we don't deal
+            // with any lifetimes, but we can sometimes get some lifetime
+            // variables through Chalk's unification, and this at least makes
+            // sure we don't leak them outside of inference
+            Ok(crate::static_lifetime())
         }
     }
 }
