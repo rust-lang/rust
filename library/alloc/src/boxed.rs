@@ -1021,7 +1021,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// # Errors
     ///
-    /// This function fails if `T` and `U` do not have the same [memory layout](Layout).
+    /// This function fails if `T` and `U` do not have the same [memory layout](Layout). If you
+    /// instead want to create a new `Box` in this case, use [`Box::set`].
     ///
     /// # Examples
     ///
@@ -1080,7 +1081,13 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         Ok(())
     }
 
-    /// Sets the value inside the box, reusing the existing storage if possible.
+    /// Sets the value inside the box, reusing the existing storage if possible and reallocating if
+    /// not.
+    ///
+    /// If the old and new values stored in the box have the same [memory layout](Layout), then the
+    /// contents of the `Box` will be updated in-place and no memory allocation will occur.
+    /// Otherwise, a new `Box` will be created to replace the old one, causing a memory allocation.
+    /// To instead return an error if this happens, use [`Box::reuse`].
     ///
     /// # Examples
     ///
@@ -1111,8 +1118,13 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         }
     }
 
-    /// Sets the value inside the box, reusing the existing storage if possible and returning an
-    /// error if the allocation fails.
+    /// Sets the value inside the box, reusing the existing storage if possible and reallocating if
+    /// not, returning an error if reallocation failed.
+    ///
+    /// If the old and new values stored in the box have the same [memory layout](Layout), then the
+    /// contents of the `Box` will be updated in-place and no memory allocation will occur.
+    /// Otherwise, a new `Box` will be created to replace the old one, causing a memory allocation.
+    /// To instead return an error if this happens, use [`Box::reuse`].
     ///
     /// # Examples
     ///
