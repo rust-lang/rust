@@ -1100,6 +1100,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// assert_eq!(&*numbers, &[4, 5, 6, 7]);
     /// ```
     #[unstable(feature = "box_reuse", issue = "none")]
+    #[cfg(not(no_global_oom_handling))]
     pub fn set<U>(b: &mut Box<T, A>, val: U)
     where
         U: Unsize<T>,
