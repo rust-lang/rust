@@ -1,4 +1,5 @@
-//! See `PathTransform`
+//! See [`PathTransform`].
+
 use hir::{HirDisplay, SemanticsScope};
 use ide_db::helpers::mod_path_to_ast;
 use rustc_hash::FxHashMap;

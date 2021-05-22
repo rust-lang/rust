@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! See [`CargoWorkspace`].
 
 use std::path::PathBuf;
 use std::{convert::TryInto, ops, process::Command, sync::Arc};
@@ -12,10 +12,9 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
-use crate::build_data::BuildDataConfig;
-use crate::utf8_stdout;
+use crate::{build_data::BuildDataConfig, utf8_stdout};
 
-/// `CargoWorkspace` represents the logical structure of, well, a Cargo
+/// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
 ///
 /// Note that internally, rust analyzer uses a different structure:

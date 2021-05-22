@@ -1,4 +1,4 @@
-//! See `AssistContext`
+//! See [`AssistContext`].
 
 use std::mem;
 

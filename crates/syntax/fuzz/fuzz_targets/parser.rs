@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Fuzzing for from-scratch parsing.
 
 #![no_main]
 use libfuzzer_sys::fuzz_target;

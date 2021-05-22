@@ -44,7 +44,7 @@ impl StopWatch {
     }
     pub fn memory(mut self, yes: bool) -> StopWatch {
         if yes {
-            self.memory = Some(MemoryUsage::current());
+            self.memory = Some(MemoryUsage::now());
         }
         self
     }
@@ -58,7 +58,7 @@ impl StopWatch {
         #[cfg(not(target_os = "linux"))]
         let instructions = None;
 
-        let memory = self.memory.map(|it| MemoryUsage::current() - it);
+        let memory = self.memory.map(|it| MemoryUsage::now() - it);
         StopWatchSpan { time, instructions, memory }
     }
 }

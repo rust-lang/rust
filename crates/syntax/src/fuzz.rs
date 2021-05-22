@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! Some infrastructure for fuzzy testing.
+//!
+//! We don't normally run fuzzying, so this is hopelessly bitrotten :(
 
 use std::{
     convert::TryInto,

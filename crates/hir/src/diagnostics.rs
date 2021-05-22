@@ -1,4 +1,8 @@
-//! FIXME: write short doc here
+//! Re-export diagnostics such that clients of `hir` don't have to depend on
+//! low-level crates.
+//!
+//! This probably isn't the best way to do this -- ideally, diagnistics should
+//! be expressed in terms of hir types themselves.
 pub use hir_def::diagnostics::{
     InactiveCode, UnresolvedMacroCall, UnresolvedModule, UnresolvedProcMacro,
 };

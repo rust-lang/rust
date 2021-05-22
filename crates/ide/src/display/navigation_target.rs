@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! See [`NavigationTarget`].
 
 use std::fmt;
 

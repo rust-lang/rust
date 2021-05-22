@@ -1,4 +1,13 @@
-//! FIXME: write short doc here
+//! In rust-analyzer, syntax trees are transient objects.
+//!
+//! That means that we create trees when we need them, and tear them down to
+//! save memory. In this architecture, hanging on to a particular syntax node
+//! for a long time is ill-advisable, as that keeps the whole tree resident.
+//!
+//! Instead, we provide a [`SyntaxNodePtr`] type, which stores information about
+//! *location* of a particular syntax node in a tree. Its a small type which can
+//! be cheaply stored, and which can be resolved to a real [`SyntaxNode`] when
+//! necessary.
 
 use std::{
     hash::{Hash, Hasher},

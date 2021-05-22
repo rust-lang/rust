@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Collection of assorted algorithms for syntax trees.
 
 use std::{hash::BuildHasherDefault, ops::RangeInclusive};
 
