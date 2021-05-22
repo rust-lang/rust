@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use rustc_hash::FxHashSet;
 
 use syntax::{
@@ -29,6 +27,10 @@ pub struct Fold {
     pub kind: FoldKind,
 }
 
+// Feature: Folding
+//
+// Defines folding regions for curly braced blocks, runs of consecutive import
+// statements, and `region` / `endregion` comment markers.
 pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();

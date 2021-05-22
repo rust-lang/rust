@@ -1,4 +1,19 @@
-//! FIXME: write short doc here
+//! In rust-analyzer, we maintain a strict separation between pure abstract
+//! semantic project model and a concrete model of a particular build system.
+//!
+//! Pure model is represented by the [`base_db::CrateGraph`] from another crate.
+//!
+//! In this crate, we are conserned with "real world" project models.
+//!
+//! Specifically, here we have a representation for a Cargo project
+//! ([`CargoWorkspace`]) and for manually specified layout ([`ProjectJson`]).
+//!
+//! Roughly, the things we do here are:
+//!
+//! * Project discovery (where's the relevant Cargo.toml for the current dir).
+//! * Custom build steps (`build.rs` code generation and compilation of
+//!   procedural macros).
+//! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
 mod cargo_workspace;
 mod cfg_flag;

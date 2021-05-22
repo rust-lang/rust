@@ -124,5 +124,5 @@ impl Drop for CpuSpan {
 }
 
 pub fn memory_usage() -> MemoryUsage {
-    MemoryUsage::current()
+    MemoryUsage::now()
 }

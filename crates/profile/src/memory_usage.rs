@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! Like [`std::time::Instant`], but for memory.
+//!
+//! Measures the total size of all currently allocated objects.
 use std::fmt;
 
 use cfg_if::cfg_if;
@@ -22,7 +24,7 @@ impl std::ops::Sub for MemoryUsage {
 }
 
 impl MemoryUsage {
-    pub fn current() -> MemoryUsage {
+    pub fn now() -> MemoryUsage {
         cfg_if! {
             if #[cfg(all(feature = "jemalloc", not(target_env = "msvc")))] {
                 jemalloc_ctl::epoch::advance().unwrap();

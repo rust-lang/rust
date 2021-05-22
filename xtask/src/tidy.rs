@@ -392,18 +392,7 @@ impl TidyDocs {
             )
         }
 
-        let poorly_documented = [
-            "hir",
-            "hir_expand",
-            "ide",
-            "mbe",
-            "parser",
-            "profile",
-            "project_model",
-            "syntax",
-            "tt",
-            "hir_ty",
-        ];
+        let poorly_documented = ["hir_expand", "mbe", "parser", "hir_ty"];
 
         let mut has_fixmes =
             poorly_documented.iter().map(|it| (*it, false)).collect::<HashMap<&str, bool>>();
