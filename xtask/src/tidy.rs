@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use xshell::{cmd, pushd, pushenv, read_file};
 
@@ -392,24 +389,8 @@ impl TidyDocs {
             )
         }
 
-        let poorly_documented = ["hir_ty"];
-
-        let mut has_fixmes =
-            poorly_documented.iter().map(|it| (*it, false)).collect::<HashMap<&str, bool>>();
-        'outer: for path in self.contains_fixme {
-            for krate in poorly_documented.iter() {
-                if path.components().any(|it| it.as_os_str() == *krate) {
-                    has_fixmes.insert(krate, true);
-                    continue 'outer;
-                }
-            }
+        for path in self.contains_fixme {
             panic!("FIXME doc in a fully-documented crate: {}", path.display())
-        }
-
-        for (krate, has_fixme) in has_fixmes.iter() {
-            if !has_fixme {
-                panic!("crate {} is fully documented :tada:, remove it from the list of poorly documented crates", krate)
-            }
         }
     }
 }

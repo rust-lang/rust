@@ -1,4 +1,6 @@
-//! FIXME: write short doc here
+//! Various diagnostics for expressions that are collected together in one pass
+//! through the body using inference results: mismatched arg counts, missing
+//! fields, etc.
 
 use std::sync::Arc;
 
