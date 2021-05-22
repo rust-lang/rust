@@ -306,8 +306,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     check_abi(callee_abi)?;
                 }
 
-                let callee_can_unwind =
-                    self.fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi);
+                let can_unwind = can_unwind
+                    && self
+                        .fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi);
 
                 self.push_stack_frame(
                     instance,
@@ -315,7 +316,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ret.map(|p| p.0),
                     StackPopCleanup::Goto {
                         ret: ret.map(|p| p.1),
-                        unwind: if can_unwind && callee_can_unwind {
+                        unwind: if can_unwind {
                             StackPopUnwind::Cleanup(unwind)
                         } else {
                             StackPopUnwind::NotAllowed
