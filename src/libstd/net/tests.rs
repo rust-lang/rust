@@ -110,7 +110,6 @@ fn test_from_str_socket_addr() {
 
 #[test]
 fn ipv4_addr_to_string() {
-    assert_eq!(Ipv4Addr::new(127, 0, 0, 1).to_string(), "127.0.0.1");
     // Short address
     assert_eq!(Ipv4Addr::new(1, 1, 1, 1).to_string(), "1.1.1.1");
     // Long address
@@ -128,10 +127,8 @@ fn ipv6_addr_to_string() {
     assert_eq!(a1.to_string(), "::ffff:192.0.2.128");
 
     // ipv4-compatible address
-    // not recognized as special by rust
     let a1 = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x280);
-    assert_ne!(a1.to_string(), "::192.0.2.128");
-    assert_eq!(a1.to_string(), "::c000:280");
+    assert_eq!(a1.to_string(), "::192.0.2.128");
 
     // v6 address with no zero segments
     assert_eq!(Ipv6Addr::new(8, 9, 10, 11, 12, 13, 14, 15).to_string(), "8:9:a:b:c:d:e:f");
@@ -168,9 +165,6 @@ fn ipv6_addr_to_string() {
 
     // two runs of zeros, equal length
     assert_eq!("1::4:5:0:0:8", Ipv6Addr::new(1, 0, 0, 4, 5, 0, 0, 8).to_string());
-
-    // don't prefix `0x` to each segment in `dbg!`.
-    assert_eq!("1::4:5:0:0:8", &format!("{:#?}", Ipv6Addr::new(1, 0, 0, 4, 5, 0, 0, 8)));
 }
 
 #[test]
@@ -191,19 +185,9 @@ fn ipv6_to_ipv4() {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4(),
         Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
     );
-
-    assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4(), None);
-
-    assert_eq!(
-        Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678).to_ipv4(),
-        Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
-    );
-
     assert_eq!(
         Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x1234, 0x5678).to_ipv4(),
-        // IPv4-Compatible IPv6 addresses are unrecognized
-        // Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
-        None
+        Some(Ipv4Addr::new(0x12, 0x34, 0x56, 0x78))
     );
     assert_eq!(Ipv6Addr::new(0, 0, 1, 0, 0, 0, 0x1234, 0x5678).to_ipv4(), None);
 }
@@ -472,141 +456,157 @@ fn ipv6_properties() {
     }
 
     macro_rules! check {
-        ($s:expr, &[$($octet:expr),*], $mask:expr) => {
-            assert_eq!($s, ip!($s).to_string());
-            let octets = &[$($octet),*];
-            assert_eq!(&ip!($s).octets(), octets);
-            assert_eq!(Ipv6Addr::from(*octets), ip!($s));
+            ($s:expr, &[$($octet:expr),*], $mask:expr) => {
+                assert_eq!($s, ip!($s).to_string());
+                let octets = &[$($octet),*];
+                assert_eq!(&ip!($s).octets(), octets);
+                assert_eq!(Ipv6Addr::from(*octets), ip!($s));
 
-            let unspecified: u16 = 1 << 0;
-            let loopback: u16 = 1 << 1;
-            let unique_local: u16 = 1 << 2;
-            let global: u16 = 1 << 3;
-            let unicast_link_local: u16 = 1 << 5;
-            let unicast_site_local: u16 = 1 << 6;
-            let unicast_global: u16 = 1 << 7;
-            let documentation: u16 = 1 << 8;
-            let multicast_interface_local: u16 = 1 << 9;
-            let multicast_link_local: u16 = 1 << 10;
-            let multicast_realm_local: u16 = 1 << 11;
-            let multicast_admin_local: u16 = 1 << 12;
-            let multicast_site_local: u16 = 1 << 13;
-            let multicast_organization_local: u16 = 1 << 14;
-            let multicast_global: u16 = 1 << 15;
-            let multicast: u16 = multicast_interface_local
-                | multicast_admin_local
-                | multicast_global
-                | multicast_link_local
-                | multicast_realm_local
-                | multicast_site_local
-                | multicast_organization_local;
+                let unspecified: u32 = 1 << 0;
+                let loopback: u32 = 1 << 1;
+                let unique_local: u32 = 1 << 2;
+                let global: u32 = 1 << 3;
+                let unicast_link_local: u32 = 1 << 4;
+                let unicast_link_local_strict: u32 = 1 << 5;
+                let unicast_site_local: u32 = 1 << 6;
+                let unicast_global: u32 = 1 << 7;
+                let documentation: u32 = 1 << 8;
+                let multicast_interface_local: u32 = 1 << 9;
+                let multicast_link_local: u32 = 1 << 10;
+                let multicast_realm_local: u32 = 1 << 11;
+                let multicast_admin_local: u32 = 1 << 12;
+                let multicast_site_local: u32 = 1 << 13;
+                let multicast_organization_local: u32 = 1 << 14;
+                let multicast_global: u32 = 1 << 15;
+                let multicast_reserved: u32 = 1 << 16;
+                let multicast_unassigned: u32 = 1 << 17;
+                let multicast: u32 = multicast_interface_local
+                    | multicast_admin_local
+                    | multicast_global
+                    | multicast_link_local
+                    | multicast_realm_local
+                    | multicast_site_local
+                    | multicast_organization_local
+                    | multicast_reserved
+                    | multicast_unassigned;
 
-            if ($mask & unspecified) == unspecified {
-                assert!(ip!($s).is_unspecified());
-            } else {
-                assert!(!ip!($s).is_unspecified());
-            }
-            if ($mask & loopback) == loopback {
-                assert!(ip!($s).is_loopback());
-            } else {
-                assert!(!ip!($s).is_loopback());
-            }
-            if ($mask & unique_local) == unique_local {
-                assert!(ip!($s).is_unique_local());
-            } else {
-                assert!(!ip!($s).is_unique_local());
-            }
-            if ($mask & global) == global {
-                assert!(ip!($s).is_global());
-            } else {
-                assert!(!ip!($s).is_global());
-            }
-            if ($mask & unicast_link_local) == unicast_link_local {
-                assert!(ip!($s).is_unicast_link_local());
-            } else {
-                assert!(!ip!($s).is_unicast_link_local());
-            }
-            if ($mask & unicast_site_local) == unicast_site_local {
-                assert!(ip!($s).is_unicast_site_local());
-            } else {
-                assert!(!ip!($s).is_unicast_site_local());
-            }
-            if ($mask & unicast_global) == unicast_global {
-                assert!(ip!($s).is_unicast_global());
-            } else {
-                assert!(!ip!($s).is_unicast_global());
-            }
-            if ($mask & documentation) == documentation {
-                assert!(ip!($s).is_documentation());
-            } else {
-                assert!(!ip!($s).is_documentation());
-            }
-            if ($mask & multicast) != 0 {
-                assert!(ip!($s).multicast_scope().is_some());
-                assert!(ip!($s).is_multicast());
-            } else {
-                assert!(ip!($s).multicast_scope().is_none());
-                assert!(!ip!($s).is_multicast());
-            }
-            if ($mask & multicast_interface_local) == multicast_interface_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
-                           Ipv6MulticastScope::InterfaceLocal);
-            }
-            if ($mask & multicast_link_local) == multicast_link_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
-                           Ipv6MulticastScope::LinkLocal);
-            }
-            if ($mask & multicast_realm_local) == multicast_realm_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
-                           Ipv6MulticastScope::RealmLocal);
-            }
-            if ($mask & multicast_admin_local) == multicast_admin_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
-                           Ipv6MulticastScope::AdminLocal);
-            }
-            if ($mask & multicast_site_local) == multicast_site_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
-                           Ipv6MulticastScope::SiteLocal);
-            }
-            if ($mask & multicast_organization_local) == multicast_organization_local {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
-                           Ipv6MulticastScope::OrganizationLocal);
-            }
-            if ($mask & multicast_global) == multicast_global {
-                assert_eq!(ip!($s).multicast_scope().unwrap(),
-                           Ipv6MulticastScope::Global);
+                if ($mask & unspecified) == unspecified {
+                    assert!(ip!($s).is_unspecified());
+                } else {
+                    assert!(!ip!($s).is_unspecified());
+                }
+                if ($mask & loopback) == loopback {
+                    assert!(ip!($s).is_loopback());
+                } else {
+                    assert!(!ip!($s).is_loopback());
+                }
+                if ($mask & unique_local) == unique_local {
+                    assert!(ip!($s).is_unique_local());
+                } else {
+                    assert!(!ip!($s).is_unique_local());
+                }
+                if ($mask & global) == global {
+                    assert!(ip!($s).is_global());
+                } else {
+                    assert!(!ip!($s).is_global());
+                }
+                if ($mask & unicast_link_local) == unicast_link_local {
+                    assert!(ip!($s).is_unicast_link_local());
+                } else {
+                    assert!(!ip!($s).is_unicast_link_local());
+                }
+                if ($mask & unicast_link_local_strict) == unicast_link_local_strict {
+                    assert!(ip!($s).is_unicast_link_local_strict());
+                } else {
+                    assert!(!ip!($s).is_unicast_link_local_strict());
+                }
+                if ($mask & unicast_site_local) == unicast_site_local {
+                    assert!(ip!($s).is_unicast_site_local());
+                } else {
+                    assert!(!ip!($s).is_unicast_site_local());
+                }
+                if ($mask & unicast_global) == unicast_global {
+                    assert!(ip!($s).is_unicast_global());
+                } else {
+                    assert!(!ip!($s).is_unicast_global());
+                }
+                if ($mask & documentation) == documentation {
+                    assert!(ip!($s).is_documentation());
+                } else {
+                    assert!(!ip!($s).is_documentation());
+                }
+                if ($mask & multicast) != 0 {
+                    assert!(ip!($s).multicast_scope().is_some());
+                    assert!(ip!($s).is_multicast());
+                } else {
+                    assert!(ip!($s).multicast_scope().is_none());
+                    assert!(!ip!($s).is_multicast());
+                }
+                if ($mask & multicast_interface_local) == multicast_interface_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::InterfaceLocal);
+                }
+                if ($mask & multicast_link_local) == multicast_link_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::LinkLocal);
+                }
+                if ($mask & multicast_realm_local) == multicast_realm_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::RealmLocal);
+                }
+                if ($mask & multicast_admin_local) == multicast_admin_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::AdminLocal);
+                }
+                if ($mask & multicast_site_local) == multicast_site_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::SiteLocal);
+                }
+                if ($mask & multicast_organization_local) == multicast_organization_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::OrganizationLocal);
+                }
+                if ($mask & multicast_global) == multicast_global {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::Global);
+                }
+                if ($mask & multicast_reserved) == multicast_reserved {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::Reserved);
+                }
+                if ($mask & multicast_unassigned) == multicast_unassigned {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::Unassigned);
+                }
             }
         }
-    }
 
-    let unspecified: u16 = 1 << 0;
-    let loopback: u16 = 1 << 1;
-    let unique_local: u16 = 1 << 2;
-    let global: u16 = 1 << 3;
-    let unicast_link_local: u16 = 1 << 5;
-    let unicast_site_local: u16 = 1 << 6;
-    let unicast_global: u16 = 1 << 7;
-    let documentation: u16 = 1 << 8;
-    let multicast_interface_local: u16 = 1 << 9;
-    let multicast_link_local: u16 = 1 << 10;
-    let multicast_realm_local: u16 = 1 << 11;
-    let multicast_admin_local: u16 = 1 << 12;
-    let multicast_site_local: u16 = 1 << 13;
-    let multicast_organization_local: u16 = 1 << 14;
-    let multicast_global: u16 = 1 << 15;
+    let unspecified: u32 = 1 << 0;
+    let loopback: u32 = 1 << 1;
+    let unique_local: u32 = 1 << 2;
+    let global: u32 = 1 << 3;
+    let unicast_link_local: u32 = 1 << 4;
+    let unicast_link_local_strict: u32 = 1 << 5;
+    let unicast_site_local: u32 = 1 << 6;
+    let unicast_global: u32 = 1 << 7;
+    let documentation: u32 = 1 << 8;
+    let multicast_interface_local: u32 = 1 << 9;
+    let multicast_link_local: u32 = 1 << 10;
+    let multicast_realm_local: u32 = 1 << 11;
+    let multicast_admin_local: u32 = 1 << 12;
+    let multicast_site_local: u32 = 1 << 13;
+    let multicast_organization_local: u32 = 1 << 14;
+    let multicast_global: u32 = 1 << 15;
+    let multicast_reserved: u32 = 1 << 16;
+    let multicast_unassigned: u32 = 1 << 17;
 
     check!("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unspecified);
 
     check!("::1", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1], loopback);
 
-    check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
+    check!("::0.0.0.2", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2], global | unicast_global);
 
-    // all methods work on ipv4-mapped addresses as well
-    check!(
-        "::ffff:0.0.0.2",
-        &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0, 0, 0, 2],
-        global | unicast_global
-    );
+    check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
 
     check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
 
@@ -622,7 +622,11 @@ fn ipv6_properties() {
         unicast_link_local
     );
 
-    check!("fe80::", &[0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_link_local);
+    check!(
+        "fe80::",
+        &[0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        unicast_link_local | unicast_link_local_strict
+    );
 
     check!(
         "febf:ffff::",
@@ -647,7 +651,7 @@ fn ipv6_properties() {
             0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
             0xff, 0xff
         ],
-        unicast_link_local
+        unicast_link_local | unicast_link_local_strict
     );
 
     check!(
@@ -661,6 +665,8 @@ fn ipv6_properties() {
         &[0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         unicast_site_local | unicast_global | global
     );
+
+    check!("ff00::", &[0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_reserved);
 
     check!(
         "ff01::",
@@ -676,17 +682,23 @@ fn ipv6_properties() {
 
     check!("ff05::", &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_site_local);
 
+    check!("ff06::", &[0xff, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_unassigned);
+
     check!(
         "ff08::",
         &[0xff, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         multicast_organization_local
     );
 
+    check!("ff0a::", &[0xff, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_unassigned);
+
     check!(
         "ff0e::",
         &[0xff, 0xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         multicast_global | global
     );
+
+    check!("ff0f::", &[0xff, 0xf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], multicast_reserved);
 
     check!(
         "2001:db8:85a3::8a2e:370:7334",
@@ -699,60 +711,6 @@ fn ipv6_properties() {
         &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         global | unicast_global
     );
-}
-
-#[test]
-fn ipv4_mapped() {
-    // assert that IPv4-mapped addresses are correctly identified and methods apply to them,
-    // and that IPv4-compatible addresses are treated as standard IPv6 addresses
-
-    let v4_unspecified = Ipv4Addr::new(0, 0, 0, 0);
-    let compatible_unspecified = v4_unspecified.to_ipv6_compatible();
-
-    assert!(v4_unspecified.is_unspecified());
-    // this one just happens to meet the criteria, but not because it is treated specially!
-    assert!(compatible_unspecified.is_unspecified());
-
-    let v4_loopback = Ipv4Addr::LOCALHOST;
-    let mapped_loopback = v4_loopback.to_ipv6_mapped();
-    let compatible_loopback = v4_loopback.to_ipv6_compatible();
-
-    assert!(v4_loopback.is_loopback());
-    assert!(mapped_loopback.is_loopback());
-    assert!(!compatible_loopback.is_loopback());
-
-    let v4_global = Ipv4Addr::new(192, 1, 2, 183);
-    let mapped_global = v4_global.to_ipv6_mapped();
-    let compatible_global = v4_global.to_ipv6_compatible();
-
-    assert!(v4_global.is_global());
-    assert!(mapped_global.is_global());
-    // this one just happens to meet the criteria, but not because it is treated specially!
-    assert!(compatible_global.is_global());
-
-    let v4_link_local = Ipv4Addr::new(169, 254, 253, 242);
-    let mapped_link_local = v4_link_local.to_ipv6_mapped();
-    let compatible_link_local = v4_link_local.to_ipv6_compatible();
-
-    assert!(v4_link_local.is_link_local());
-    assert!(mapped_link_local.is_unicast_link_local());
-    assert!(!compatible_link_local.is_unicast_link_local());
-
-    let v4_documentation = Ipv4Addr::new(203, 0, 113, 0);
-    let mapped_documentation = v4_documentation.to_ipv6_mapped();
-    let compatible_documentation = v4_documentation.to_ipv6_compatible();
-
-    assert!(v4_documentation.is_documentation());
-    assert!(mapped_documentation.is_documentation());
-    assert!(!compatible_documentation.is_documentation());
-
-    let v4_multicast = Ipv4Addr::new(224, 0, 0, 0);
-    let mapped_multicast = v4_multicast.to_ipv6_mapped();
-    let compatible_multicast = v4_multicast.to_ipv6_compatible();
-
-    assert!(v4_multicast.is_multicast());
-    assert!(mapped_multicast.is_multicast());
-    assert!(!compatible_multicast.is_multicast());
 }
 
 #[test]
@@ -862,135 +820,4 @@ fn is_v6() {
     let ip = IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x1234, 0x5678));
     assert!(!ip.is_ipv4());
     assert!(ip.is_ipv6());
-}
-
-#[test]
-fn ipv4_const() {
-    // test that the methods of `Ipv4Addr` are usable in a const context
-
-    const IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 1);
-    assert_eq!(IP_ADDRESS, Ipv4Addr::LOCALHOST);
-
-    const OCTETS: [u8; 4] = IP_ADDRESS.octets();
-    assert_eq!(OCTETS, [127, 0, 0, 1]);
-
-    const IS_UNSPECIFIED: bool = IP_ADDRESS.is_unspecified();
-    assert!(!IS_UNSPECIFIED);
-
-    const IS_LOOPBACK: bool = IP_ADDRESS.is_loopback();
-    assert!(IS_LOOPBACK);
-
-    const IS_PRIVATE: bool = IP_ADDRESS.is_private();
-    assert!(!IS_PRIVATE);
-
-    const IS_LINK_LOCAL: bool = IP_ADDRESS.is_link_local();
-    assert!(!IS_LINK_LOCAL);
-
-    const IS_GLOBAL: bool = IP_ADDRESS.is_global();
-    assert!(!IS_GLOBAL);
-
-    const IS_SHARED: bool = IP_ADDRESS.is_shared();
-    assert!(!IS_SHARED);
-
-    const IS_IETF_PROTOCOL_ASSIGNMENT: bool = IP_ADDRESS.is_ietf_protocol_assignment();
-    assert!(!IS_IETF_PROTOCOL_ASSIGNMENT);
-
-    const IS_BENCHMARKING: bool = IP_ADDRESS.is_benchmarking();
-    assert!(!IS_BENCHMARKING);
-
-    const IS_RESERVED: bool = IP_ADDRESS.is_reserved();
-    assert!(!IS_RESERVED);
-
-    const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
-    assert!(!IS_MULTICAST);
-
-    const IS_BROADCAST: bool = IP_ADDRESS.is_broadcast();
-    assert!(!IS_BROADCAST);
-
-    const IS_DOCUMENTATION: bool = IP_ADDRESS.is_documentation();
-    assert!(!IS_DOCUMENTATION);
-
-    const IP_V6_COMPATIBLE: Ipv6Addr = IP_ADDRESS.to_ipv6_compatible();
-    assert_eq!(
-        IP_V6_COMPATIBLE,
-        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 0, 0, 1])
-    );
-
-    const IP_V6_MAPPED: Ipv6Addr = IP_ADDRESS.to_ipv6_mapped();
-    assert_eq!(
-        IP_V6_MAPPED,
-        Ipv6Addr::from([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255, 127, 0, 0, 1])
-    );
-}
-
-#[test]
-fn ipv6_const() {
-    // test that the methods of `Ipv6Addr` are usable in a const context
-
-    const IP_ADDRESS: Ipv6Addr = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
-    assert_eq!(IP_ADDRESS, Ipv6Addr::LOCALHOST);
-
-    const SEGMENTS: [u16; 8] = IP_ADDRESS.segments();
-    assert_eq!(SEGMENTS, [0, 0, 0, 0, 0, 0, 0, 1]);
-
-    const OCTETS: [u8; 16] = IP_ADDRESS.octets();
-    assert_eq!(OCTETS, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
-
-    const IS_UNSPECIFIED: bool = IP_ADDRESS.is_unspecified();
-    assert!(!IS_UNSPECIFIED);
-
-    const IS_LOOPBACK: bool = IP_ADDRESS.is_loopback();
-    assert!(IS_LOOPBACK);
-
-    const IS_GLOBAL: bool = IP_ADDRESS.is_global();
-    assert!(!IS_GLOBAL);
-
-    const IS_UNIQUE_LOCAL: bool = IP_ADDRESS.is_unique_local();
-    assert!(!IS_UNIQUE_LOCAL);
-
-    const IS_UNICAST_LINK_LOCAL: bool = IP_ADDRESS.is_unicast_link_local();
-    assert!(!IS_UNICAST_LINK_LOCAL);
-
-    const IS_UNICAST_SITE_LOCAL: bool = IP_ADDRESS.is_unicast_site_local();
-    assert!(!IS_UNICAST_SITE_LOCAL);
-
-    const IS_DOCUMENTATION: bool = IP_ADDRESS.is_documentation();
-    assert!(!IS_DOCUMENTATION);
-
-    const IS_UNICAST_GLOBAL: bool = IP_ADDRESS.is_unicast_global();
-    assert!(!IS_UNICAST_GLOBAL);
-
-    const MULTICAST_SCOPE: Option<Ipv6MulticastScope> = IP_ADDRESS.multicast_scope();
-    assert_eq!(MULTICAST_SCOPE, None);
-
-    const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
-    assert!(!IS_MULTICAST);
-
-    const IP_V4: Option<Ipv4Addr> = IP_ADDRESS.to_ipv4();
-    assert!(IP_V4.is_none());
-}
-
-#[test]
-fn ip_const() {
-    // test that the methods of `IpAddr` are usable in a const context
-
-    const IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
-
-    const IS_UNSPECIFIED: bool = IP_ADDRESS.is_unspecified();
-    assert!(!IS_UNSPECIFIED);
-
-    const IS_LOOPBACK: bool = IP_ADDRESS.is_loopback();
-    assert!(IS_LOOPBACK);
-
-    const IS_GLOBAL: bool = IP_ADDRESS.is_global();
-    assert!(!IS_GLOBAL);
-
-    const IS_MULTICAST: bool = IP_ADDRESS.is_multicast();
-    assert!(!IS_MULTICAST);
-
-    const IS_IP_V4: bool = IP_ADDRESS.is_ipv4();
-    assert!(IS_IP_V4);
-
-    const IS_IP_V6: bool = IP_ADDRESS.is_ipv6();
-    assert!(!IS_IP_V6);
 }

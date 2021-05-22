@@ -63,7 +63,7 @@ mod ip;
 mod parser;
 mod tcp;
 #[cfg(test)]
-mod test;
+mod tests;
 mod udp;
 
 /// Possible values which can be passed to the [`shutdown`] method of
