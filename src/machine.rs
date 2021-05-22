@@ -5,7 +5,6 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::fmt;
 use std::num::NonZeroU64;
-use std::rc::Rc;
 use std::time::Instant;
 
 use log::trace;
@@ -153,7 +152,7 @@ impl MemoryExtra {
             None
         };
         let data_race = if config.data_race_detector {
-            Some(Rc::new(data_race::GlobalState::new()))
+            Some(data_race::GlobalState::new())
         } else {
             None
         };
@@ -513,7 +512,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         size: Size,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &alloc_extra.data_race {
-            data_race.read(ptr, size)?;
+            data_race.read(ptr, size, memory_extra.data_race.as_ref().unwrap())?;
         }
         if let Some(stacked_borrows) = &alloc_extra.stacked_borrows {
             stacked_borrows.memory_read(ptr, size, memory_extra.stacked_borrows.as_ref().unwrap())
@@ -530,7 +529,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
         size: Size,
     ) -> InterpResult<'tcx> {
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.write(ptr, size)?;
+            data_race.write(ptr, size, memory_extra.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.memory_written(ptr, size, memory_extra.stacked_borrows.as_mut().unwrap())
@@ -550,7 +549,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             register_diagnostic(NonHaltingDiagnostic::FreedAlloc(ptr.alloc_id));
         }
         if let Some(data_race) = &mut alloc_extra.data_race {
-            data_race.deallocate(ptr, size)?;
+            data_race.deallocate(ptr, size, memory_extra.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
             stacked_borrows.memory_deallocated(ptr, size, memory_extra.stacked_borrows.as_mut().unwrap())

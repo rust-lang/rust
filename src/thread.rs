@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::convert::TryFrom;
 use std::num::TryFromIntError;
-use std::rc::Rc;
 use std::time::{Duration, Instant, SystemTime};
 
 use log::trace;
@@ -333,7 +332,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn join_thread(
         &mut self,
         joined_thread_id: ThreadId,
-        data_race: &Option<Rc<data_race::GlobalState>>,
+        data_race: &Option<data_race::GlobalState>,
     ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status != ThreadJoinStatus::Joinable {
             throw_ub_format!("trying to join a detached or already joined thread");
@@ -439,7 +438,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// The `AllocId` that can now be freed is returned.
     fn thread_terminated(
         &mut self,
-        data_race: &Option<Rc<data_race::GlobalState>>,
+        data_race: &Option<data_race::GlobalState>,
     ) -> Vec<AllocId> {
         let mut free_tls_statics = Vec::new();
         {
@@ -481,7 +480,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     /// blocked, terminated, or has explicitly asked to be preempted).
     fn schedule(
         &mut self,
-        data_race: &Option<Rc<data_race::GlobalState>>,
+        data_race: &Option<data_race::GlobalState>,
     ) -> InterpResult<'tcx, SchedulingAction> {
         // Check whether the thread has **just** terminated (`check_terminated`
         // checks whether the thread has popped all its stack and if yes, sets
