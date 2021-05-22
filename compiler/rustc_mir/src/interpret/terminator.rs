@@ -105,7 +105,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                     None => None,
                 };
-                self.eval_fn_call(fn_val, abi, &args[..], ret, *cleanup, can_unwind)?;
+                self.eval_fn_call(
+                    fn_val,
+                    abi,
+                    &args[..],
+                    ret,
+                    if can_unwind {
+                        cleanup.map_or(StackPopUnwind::Skip, StackPopUnwind::Cleanup)
+                    } else {
+                        StackPopUnwind::NotAllowed
+                    },
+                )?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block.
                 if self.frame_idx() == old_stack && self.frame().loc == old_loc {
@@ -235,8 +245,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
-        can_unwind: bool,
+        mut unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
@@ -306,22 +315,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     check_abi(callee_abi)?;
                 }
 
-                let can_unwind = can_unwind
+                if !matches!(unwind, StackPopUnwind::NotAllowed)
                     && self
-                        .fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi);
+                        .fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi)
+                {
+                    unwind = StackPopUnwind::NotAllowed;
+                }
 
                 self.push_stack_frame(
                     instance,
                     body,
                     ret.map(|p| p.0),
-                    StackPopCleanup::Goto {
-                        ret: ret.map(|p| p.1),
-                        unwind: match (unwind, can_unwind) {
-                            (Some(unwind), true) => StackPopUnwind::Cleanup(unwind),
-                            (None, true) => StackPopUnwind::Skip,
-                            (_, false) => StackPopUnwind::NotAllowed,
-                        },
-                    },
+                    StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind },
                 )?;
 
                 // If an error is raised here, pop the frame again to get an accurate backtrace.
@@ -466,7 +471,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     OpTy::from(ImmTy::from_immediate(receiver_place.ptr.into(), this_receiver_ptr));
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind, can_unwind)
+                self.eval_fn_call(drop_fn, caller_abi, &args, ret, unwind)
             }
         }
     }
@@ -505,8 +510,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Rust,
             &[arg.into()],
             Some((&dest.into(), target)),
-            unwind,
-            true,
+            unwind.map_or(StackPopUnwind::Skip, StackPopUnwind::Cleanup),
         )
     }
 }

@@ -33,6 +33,7 @@ use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
     Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, Memory, MemoryKind, OpTy,
     Operand as InterpOperand, PlaceTy, Pointer, Scalar, ScalarMaybeUninit, StackPopCleanup,
+    StackPopUnwind,
 };
 use crate::transform::MirPass;
 
@@ -198,7 +199,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _abi: Abi,
         _args: &[OpTy<'tcx>],
         _ret: Option<(&PlaceTy<'tcx>, BasicBlock)>,
-        _unwind: Option<BasicBlock>,
+        _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         Ok(None)
     }
@@ -208,7 +209,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
         _ret: Option<(&PlaceTy<'tcx>, BasicBlock)>,
-        _unwind: Option<BasicBlock>,
+        _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         throw_machine_stop_str!("calling intrinsics isn't supported in ConstProp")
     }

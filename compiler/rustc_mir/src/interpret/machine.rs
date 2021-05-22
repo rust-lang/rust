@@ -14,7 +14,7 @@ use rustc_target::spec::abi::Abi;
 
 use super::{
     AllocId, Allocation, CheckInAllocMsg, Frame, ImmTy, InterpCx, InterpResult, LocalValue,
-    MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar,
+    MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -163,7 +163,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
     /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
@@ -174,7 +174,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         abi: Abi,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
 
     /// Directly process an intrinsic without pushing a stack frame. It is the hook's
@@ -184,7 +184,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(&PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
-        unwind: Option<mir::BasicBlock>,
+        unwind: StackPopUnwind,
     ) -> InterpResult<'tcx>;
 
     /// Called to evaluate `Assert` MIR terminators that trigger a panic.
@@ -456,7 +456,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         _abi: Abi,
         _args: &[OpTy<$tcx>],
         _ret: Option<(&PlaceTy<$tcx>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>,
+        _unwind: StackPopUnwind,
     ) -> InterpResult<$tcx> {
         match fn_val {}
     }

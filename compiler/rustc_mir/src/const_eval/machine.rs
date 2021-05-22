@@ -17,7 +17,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, Allocation, Frame, ImmTy, InterpCx, InterpResult, Memory,
-    OpTy, PlaceTy, Pointer, Scalar,
+    OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 use super::error::*;
@@ -223,7 +223,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _abi: Abi,
         args: &[OpTy<'tcx>],
         _ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>, // unwinding is not supported in consts
+        _unwind: StackPopUnwind, // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
 
@@ -263,7 +263,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         ret: Option<(&PlaceTy<'tcx>, mir::BasicBlock)>,
-        _unwind: Option<mir::BasicBlock>,
+        _unwind: StackPopUnwind,
     ) -> InterpResult<'tcx> {
         // Shared intrinsics.
         if ecx.emulate_intrinsic(instance, args, ret)? {
