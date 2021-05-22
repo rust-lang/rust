@@ -8,7 +8,7 @@ Language
   such as `◆` or `🦀`. More specifically you can now use any identifier that
   matches the UAX #31 "Unicode Identifier and Pattern Syntax" standard. This
   is the same standard as languages like Python, however Rust uses NFC
-  normalisation which may be different from other languages.
+  normalization which may be different from other languages.
 - [You can now specify "or patterns" inside pattern matches.][79278]
   Previously you could only use `|` (OR) on complete patterns. E.g.
   ```rust
