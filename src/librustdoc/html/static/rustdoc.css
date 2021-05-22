@@ -772,6 +772,7 @@ a {
 
 .search-results > a {
 	display: block;
+	width: 100%;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
@@ -1751,6 +1752,7 @@ details.undocumented[open] > summary::before {
 	/* Display an alternating layout on tablets and phones */
 	.search-results > a {
 		border-bottom: 1px solid #aaa9;
+		padding: 5px 0px;
 	}
 	.search-results .result-name {
 		width: 100%;
