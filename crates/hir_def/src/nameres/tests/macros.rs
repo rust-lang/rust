@@ -737,6 +737,7 @@ fn unresolved_attributes_fall_back_track_per_file_moditems() {
 
 #[test]
 fn unresolved_attrs_extern_block_hang() {
+    // Regression test for https://github.com/rust-analyzer/rust-analyzer/issues/8905
     check(
         r#"
 #[unresolved]
@@ -790,7 +791,22 @@ fn derive() {}
             crate
             S: t v
         "#]],
-    )
+    );
+}
+
+#[test]
+fn unresolved_attr_with_cfg_attr_hang() {
+    // Another regression test for https://github.com/rust-analyzer/rust-analyzer/issues/8905
+    check(
+        r#"
+#[cfg_attr(not(off), unresolved, unresolved)]
+struct S;
+        "#,
+        expect![[r#"
+            crate
+            S: t v
+        "#]],
+    );
 }
 
 #[test]
