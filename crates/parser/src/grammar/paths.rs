@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use super::*;
 
 pub(super) const PATH_FIRST: TokenSet =

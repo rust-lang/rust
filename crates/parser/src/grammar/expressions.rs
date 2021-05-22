@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 mod atom;
 
 pub(crate) use self::atom::{block_expr, match_arm_list};

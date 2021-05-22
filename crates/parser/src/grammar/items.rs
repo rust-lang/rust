@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 mod consts;
 mod adt;
 mod traits;

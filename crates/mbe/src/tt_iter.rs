@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! A "Parser" structure for token trees. We use this when parsing a declarative
+//! macro definition into a list of patterns and templates.
 
 use crate::{subtree_source::SubtreeTokenSource, ExpandError, ExpandResult};
 

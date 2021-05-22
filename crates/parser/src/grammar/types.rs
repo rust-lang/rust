@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use super::*;
 
 pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[

@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use super::*;
 
 pub(super) fn inner_attrs(p: &mut Parser) {

@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Defines [`SyntaxKind`] -- a fieldless enum of all possible syntactic
+//! constructs of the Rust language.
 
 #[macro_use]
 mod generated;

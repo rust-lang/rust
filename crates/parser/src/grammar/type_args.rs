@@ -1,5 +1,3 @@
-//! FIXME: write short doc here
-
 use super::*;
 
 pub(super) fn opt_generic_arg_list(p: &mut Parser, colon_colon_required: bool) {

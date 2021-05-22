@@ -348,7 +348,7 @@ struct TidyDocs {
 impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
         // Tests and diagnostic fixes don't need module level comments.
-        if is_exclude_dir(path, &["tests", "test_data", "fixes"]) {
+        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar"]) {
             return;
         }
 
@@ -392,7 +392,7 @@ impl TidyDocs {
             )
         }
 
-        let poorly_documented = ["hir_expand", "mbe", "parser", "hir_ty"];
+        let poorly_documented = ["hir_ty"];
 
         let mut has_fixmes =
             poorly_documented.iter().map(|it| (*it, false)).collect::<HashMap<&str, bool>>();
