@@ -1754,7 +1754,7 @@ details.undocumented[open] > summary::before {
 		border-bottom: 1px solid #aaa9;
 		padding: 5px 0px;
 	}
-	.search-results .result-name {
+	.search-results .result-name, .search-results > a > div > div:nth-child(2), .search-results .result-description {
 		width: 100%;
 	}
 	.search-results > a > div > div:nth-child(2), .search-results .result-description {
