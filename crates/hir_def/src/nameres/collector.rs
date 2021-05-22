@@ -16,6 +16,7 @@ use hir_expand::{
     FragmentKind, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use hir_expand::{InFile, MacroCallLoc};
+use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 
@@ -1516,14 +1517,27 @@ impl ModCollector<'_, '_> {
     fn resolve_attributes(&mut self, attrs: &Attrs, mod_item: ModItem) -> Result<(), ()> {
         let mut ignore_up_to =
             self.def_collector.skip_attrs.get(&InFile::new(self.file_id, mod_item)).copied();
-        for attr in attrs.iter().skip_while(|attr| match ignore_up_to {
-            Some(id) if attr.id == id => {
-                ignore_up_to = None;
-                true
-            }
-            Some(_) => true,
-            None => false,
-        }) {
+        let iter = attrs
+            .iter()
+            .dedup_by(|a, b| {
+                // FIXME: this should not be required, all attributes on an item should have a
+                // unique ID!
+                // Still, this occurs because `#[cfg_attr]` can "expand" to multiple attributes:
+                //     #[cfg_attr(not(off), unresolved, unresolved)]
+                //     struct S;
+                // We should come up with a different way to ID attributes.
+                a.id == b.id
+            })
+            .skip_while(|attr| match ignore_up_to {
+                Some(id) if attr.id == id => {
+                    ignore_up_to = None;
+                    true
+                }
+                Some(_) => true,
+                None => false,
+            });
+
+        for attr in iter {
             if attr.path.as_ident() == Some(&hir_expand::name![derive]) {
                 self.collect_derive(attr, mod_item);
             } else if self.is_builtin_or_registered_attr(&attr.path) {
