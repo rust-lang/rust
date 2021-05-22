@@ -994,8 +994,8 @@ window.initSearch = function(rawSearchIndex) {
                            ("<span class=\"alias\"><b>" + item.alias + " </b></span><span " +
                               "class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>") : "") +
                           item.displayPath + "<span class=\"" + type + "\">" +
-                          name + "</span></div><div>" +
-                          "<span class=\"desc\">" + item.desc +
+                          name + "</span></div><div class=\"desc\">" +
+                          "<span>" + item.desc +
                           "&nbsp;</span></div></div></a>";
             });
             output += "</div>";

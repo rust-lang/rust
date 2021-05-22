@@ -763,7 +763,7 @@ a {
 	clear: both;
 }
 
-.search-results .desc {
+.search-results .desc > span {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
@@ -784,7 +784,7 @@ a {
 	flex-flow: row wrap;
 }
 
-.search-results .result-name, .search-results > a > div > div:nth-child(2), .search-results .result-description {
+.search-results .result-name, .search-results div.desc, .search-results .result-description {
 	width: 50%;
 }
 .search-results .result-name {
@@ -1754,10 +1754,10 @@ details.undocumented[open] > summary::before {
 		border-bottom: 1px solid #aaa9;
 		padding: 5px 0px;
 	}
-	.search-results .result-name, .search-results > a > div > div:nth-child(2), .search-results .result-description {
+	.search-results .result-name, .search-results div.desc, .search-results .result-description {
 		width: 100%;
 	}
-	.search-results > a > div > div:nth-child(2), .search-results .result-description {
+	.search-results div.desc, .search-results .result-description {
 		padding-left: 2em;
 	}
 }
