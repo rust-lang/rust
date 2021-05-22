@@ -9,7 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_hir::itemlikevisit::{ItemLikeVisitor, ParItemLikeVisitor};
 use rustc_hir::*;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
@@ -549,6 +549,32 @@ impl<'hir> Map<'hir> {
         });
     }
 
+    pub fn par_body_owners_in_module<F: Fn(LocalDefId) + Sync + Send>(
+        self,
+        module: LocalDefId,
+        f: F,
+    ) {
+        use rustc_data_structures::sync::{par_iter, ParallelIterator};
+        #[cfg(parallel_compiler)]
+        use rustc_rayon::iter::IndexedParallelIterator;
+
+        let module = self.tcx.hir_module_items(module);
+
+        let handle_item_like = |owner: LocalDefId| {
+            let Some(nodes) = self.tcx.hir_owner_nodes(owner) else { return };
+            par_iter(nodes.bodies.range(..)).for_each(|(local_id, _)| {
+                let hir_id = HirId { owner, local_id: *local_id };
+                let body_id = BodyId { hir_id };
+                f(self.body_owner_def_id(body_id))
+            })
+        };
+
+        par_for_each_in(&*module.items, |id| handle_item_like(id.def_id));
+        par_for_each_in(&*module.impl_items, |id| handle_item_like(id.def_id));
+        par_for_each_in(&*module.trait_items, |id| handle_item_like(id.def_id));
+        par_for_each_in(&*module.foreign_items, |id| handle_item_like(id.def_id));
+    }
+
     pub fn ty_param_owner(&self, id: HirId) -> LocalDefId {
         match self.get(id) {
             Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => {
@@ -672,6 +698,32 @@ impl<'hir> Map<'hir> {
         for id in module.foreign_items.iter() {
             visitor.visit_foreign_item(self.foreign_item(*id));
         }
+    }
+
+    pub fn par_visit_item_likes_in_module<V>(&self, module: LocalDefId, visitor: &V)
+    where
+        V: ParItemLikeVisitor<'hir>,
+    {
+        let module = self.tcx.hir_module_items(module);
+
+        parallel!(
+            { par_for_each_in(&*module.items, |id| { visitor.visit_item(self.item(*id)) }) },
+            {
+                par_for_each_in(&*module.trait_items, |id| {
+                    visitor.visit_trait_item(self.trait_item(*id))
+                })
+            },
+            {
+                par_for_each_in(&*module.impl_items, |id| {
+                    visitor.visit_impl_item(self.impl_item(*id))
+                })
+            },
+            {
+                par_for_each_in(&*module.foreign_items, |id| {
+                    visitor.visit_foreign_item(self.foreign_item(*id))
+                })
+            }
+        );
     }
 
     pub fn for_each_module(&self, f: impl Fn(LocalDefId)) {
