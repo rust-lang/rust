@@ -1,0 +1,31 @@
+// run-rustfix
+
+#![warn(clippy::manual_str_repeat)]
+
+use std::iter::repeat;
+
+fn main() {
+    let _: String = "test".repeat(10);
+    let _: String = "x".repeat(10);
+    let _: String = "'".repeat(10);
+    let _: String = "\"".repeat(10);
+
+    let x = "test";
+    let count = 10;
+    let _ = x.repeat(count + 2);
+
+    macro_rules! m {
+        ($e:expr) => {{ $e }};
+    }
+
+    let _: String = m!("test").repeat(m!(count));
+
+    let x = &x;
+    let _: String = (*x).repeat(count);
+
+    macro_rules! repeat_m {
+        ($e:expr) => {{ repeat($e) }};
+    }
+    // Don't lint, repeat is from a macro.
+    let _: String = repeat_m!("test").take(count).collect();
+}
