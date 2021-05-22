@@ -6,14 +6,12 @@ use std::{
     ops::{self, RangeInclusive},
 };
 
-use arrayvec::ArrayVec;
-
 use crate::{
     algo,
     ast::{self, make, AstNode},
-    ted, AstToken, InsertPosition, NodeOrToken, SyntaxElement, SyntaxKind,
+    ted, AstToken, NodeOrToken, SyntaxElement, SyntaxKind,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
-    SyntaxNode, SyntaxToken, T,
+    SyntaxNode, SyntaxToken,
 };
 
 impl ast::BinExpr {
@@ -22,46 +20,6 @@ impl ast::BinExpr {
         let op_node: SyntaxElement = self.op_details()?.0.into();
         let to_insert: Option<SyntaxElement> = Some(make::token(op).into());
         Some(self.replace_children(single_node(op_node), to_insert))
-    }
-}
-
-impl ast::Path {
-    #[must_use]
-    pub fn with_segment(&self, segment: ast::PathSegment) -> ast::Path {
-        if let Some(old) = self.segment() {
-            return self.replace_children(
-                single_node(old.syntax().clone()),
-                iter::once(segment.syntax().clone().into()),
-            );
-        }
-        self.clone()
-    }
-}
-
-impl ast::PathSegment {
-    #[must_use]
-    pub fn with_generic_args(&self, type_args: ast::GenericArgList) -> ast::PathSegment {
-        self._with_generic_args(type_args, false)
-    }
-
-    #[must_use]
-    pub fn with_turbo_fish(&self, type_args: ast::GenericArgList) -> ast::PathSegment {
-        self._with_generic_args(type_args, true)
-    }
-
-    fn _with_generic_args(&self, type_args: ast::GenericArgList, turbo: bool) -> ast::PathSegment {
-        if let Some(old) = self.generic_arg_list() {
-            return self.replace_children(
-                single_node(old.syntax().clone()),
-                iter::once(type_args.syntax().clone().into()),
-            );
-        }
-        let mut to_insert: ArrayVec<SyntaxElement, 2> = ArrayVec::new();
-        if turbo {
-            to_insert.push(make::token(T![::]).into());
-        }
-        to_insert.push(type_args.syntax().clone().into());
-        self.insert_children(InsertPosition::Last, to_insert)
     }
 }
 
@@ -233,16 +191,6 @@ fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
 }
 
 pub trait AstNodeEdit: AstNode + Clone + Sized {
-    #[must_use]
-    fn insert_children(
-        &self,
-        position: InsertPosition<SyntaxElement>,
-        to_insert: impl IntoIterator<Item = SyntaxElement>,
-    ) -> Self {
-        let new_syntax = algo::insert_children(self.syntax(), position, to_insert);
-        Self::cast(new_syntax).unwrap()
-    }
-
     #[must_use]
     fn replace_children(
         &self,
