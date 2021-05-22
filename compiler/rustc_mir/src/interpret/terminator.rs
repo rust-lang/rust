@@ -316,10 +316,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ret.map(|p| p.0),
                     StackPopCleanup::Goto {
                         ret: ret.map(|p| p.1),
-                        unwind: if can_unwind {
-                            StackPopUnwind::Cleanup(unwind)
-                        } else {
-                            StackPopUnwind::NotAllowed
+                        unwind: match (unwind, can_unwind) {
+                            (Some(unwind), true) => StackPopUnwind::Cleanup(unwind),
+                            (None, true) => StackPopUnwind::Skip,
+                            (_, false) => StackPopUnwind::NotAllowed,
                         },
                     },
                 )?;

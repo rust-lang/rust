@@ -138,7 +138,9 @@ pub struct FrameInfo<'tcx> {
 #[derive(Clone, Copy, Eq, PartialEq, Debug, HashStable)]
 pub enum StackPopUnwind {
     /// The cleanup block.
-    Cleanup(Option<mir::BasicBlock>),
+    Cleanup(mir::BasicBlock),
+    /// No cleanup needs to be done.
+    Skip,
     /// Unwinding is not allowed (UB).
     NotAllowed,
 }
@@ -820,7 +822,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             (StackPopCleanup::Goto { unwind, .. }, true) => (
                 true,
                 Some(match unwind {
-                    StackPopUnwind::Cleanup(unwind) => unwind,
+                    StackPopUnwind::Cleanup(unwind) => Some(unwind),
+                    StackPopUnwind::Skip => None,
                     StackPopUnwind::NotAllowed => {
                         throw_ub_format!("unwind past a frame that does not allow unwinding")
                     }
