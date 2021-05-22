@@ -1,4 +1,4 @@
-//! `AstTransformer`s are functions that replace nodes in an AST and can be easily combined.
+//! See `PathTransform`
 use hir::{HirDisplay, SemanticsScope};
 use ide_db::helpers::mod_path_to_ast;
 use rustc_hash::FxHashMap;
@@ -7,7 +7,7 @@ use syntax::{
     ted,
 };
 
-/// `AstTransform` helps with applying bulk transformations to syntax nodes.
+/// `PathTransform` substitutes path in SyntaxNodes in bulk.
 ///
 /// This is mostly useful for IDE code generation. If you paste some existing
 /// code into a new context (for example, to add method overrides to an `impl`
@@ -30,18 +30,13 @@ use syntax::{
 ///   }
 /// }
 /// ```
-///
-/// So, a single `AstTransform` describes such function from `SyntaxNode` to
-/// `SyntaxNode`. Note that the API here is a bit too high-order and high-brow.
-/// We'd want to somehow express this concept simpler, but so far nobody got to
-/// simplifying this!
-pub(crate) struct AstTransform<'a> {
+pub(crate) struct PathTransform<'a> {
     pub(crate) subst: (hir::Trait, ast::Impl),
     pub(crate) target_scope: &'a SemanticsScope<'a>,
     pub(crate) source_scope: &'a SemanticsScope<'a>,
 }
 
-impl<'a> AstTransform<'a> {
+impl<'a> PathTransform<'a> {
     pub(crate) fn apply(&self, item: ast::AssocItem) {
         if let Some(ctx) = self.build_ctx() {
             ctx.apply(item)

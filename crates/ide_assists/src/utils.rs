@@ -24,7 +24,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistBuilder, AssistContext},
-    ast_transform::AstTransform,
+    path_transform::PathTransform,
 };
 
 pub(crate) fn unwrap_trivial_block(block: ast::BlockExpr) -> ast::Expr {
@@ -133,7 +133,7 @@ pub fn add_trait_assoc_items_to_impl(
 ) -> (ast::Impl, ast::AssocItem) {
     let source_scope = sema.scope_for_def(trait_);
 
-    let transform = AstTransform {
+    let transform = PathTransform {
         subst: (trait_, impl_.clone()),
         source_scope: &source_scope,
         target_scope: &target_scope,

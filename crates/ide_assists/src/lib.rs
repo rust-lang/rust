@@ -15,7 +15,7 @@ mod assist_context;
 #[cfg(test)]
 mod tests;
 pub mod utils;
-pub mod ast_transform;
+pub mod path_transform;
 
 use std::str::FromStr;
 
