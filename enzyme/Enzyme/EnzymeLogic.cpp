@@ -205,6 +205,14 @@ struct CacheAnalysis {
           EmitWarning("UncacheableOrigin", sli->getDebugLoc(), oldFunc,
                       sli->getParent(), "origin load may need caching ", *sli);
         }
+      } else if (auto EI = dyn_cast<ExtractValueInst>(obj)) {
+        if (is_value_mustcache_from_origin(EI->getAggregateOperand())) {
+          mustcache = true;
+          EmitWarning("UncacheableOrigin",
+                      cast<Instruction>(obj)->getDebugLoc(), oldFunc,
+                      cast<Instruction>(obj)->getParent(),
+                      "unknown EVI origin may need caching ", *obj);
+        }
       } else {
         // In absence of more information, assume that the underlying object for
         // pointer operand is uncacheable in caller.
