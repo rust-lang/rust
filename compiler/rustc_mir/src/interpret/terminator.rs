@@ -232,26 +232,28 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // ABI check
         let check_abi = |this: &Self, instance_ty: Ty<'tcx>| -> InterpResult<'tcx> {
-            let callee_abi = match instance_ty.kind() {
-                ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
-                ty::Closure(..) => Abi::RustCall,
-                ty::Generator(..) => Abi::Rust,
-                _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
-            };
-            let normalize_abi = |abi| match abi {
-                Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
-                // These are all the same ABI, really.
-                {
-                    Abi::Rust
+            if M::enforce_abi(this) {
+                let callee_abi = match instance_ty.kind() {
+                    ty::FnDef(..) => instance_ty.fn_sig(*this.tcx).abi(),
+                    ty::Closure(..) => Abi::RustCall,
+                    ty::Generator(..) => Abi::Rust,
+                    _ => span_bug!(this.cur_span(), "unexpected callee ty: {:?}", instance_ty),
+                };
+                let normalize_abi = |abi| match abi {
+                    Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
+                    // These are all the same ABI, really.
+                    {
+                        Abi::Rust
+                    }
+                    abi => abi,
+                };
+                if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
+                    throw_ub_format!(
+                        "calling a function with ABI {} using caller ABI {}",
+                        callee_abi.name(),
+                        caller_abi.name()
+                    )
                 }
-                abi => abi,
-            };
-            if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                throw_ub_format!(
-                    "calling a function with ABI {} using caller ABI {}",
-                    callee_abi.name(),
-                    caller_abi.name()
-                )
             }
             Ok(())
         };
