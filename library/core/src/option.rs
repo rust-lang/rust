@@ -1658,7 +1658,7 @@ impl<T> ops::TryV1 for Option<T> {
         Some(v)
     }
 
-    #[inline)]
+    #[inline]
     fn from_error(_: NoneError) -> Self {
         None
     }
