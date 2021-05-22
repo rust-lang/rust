@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 use flate2::{write::GzEncoder, Compression};
-use xshell::{cmd, cp, mkdir_p, pushd, pushenv, read_file, rm_rf, write_file};
+use xshell::{cmd, mkdir_p, pushd, pushenv, read_file, rm_rf, write_file};
 
 use crate::{date_iso, flags, project_root};
 
@@ -80,24 +80,6 @@ fn dist_server(release_channel: &str) -> Result<()> {
         Path::new("target").join(&target).join("release").join(format!("rust-analyzer{}", suffix));
     let dst = Path::new("dist").join(format!("rust-analyzer-{}{}", target, suffix));
     gzip(&src, &dst.with_extension("gz"))?;
-
-    // FIXME: the old names are temporarily kept for client compatibility, but they should be removed
-    // Remove this block after a couple of releases
-    match target.as_ref() {
-        "x86_64-unknown-linux-gnu" => {
-            cp(&src, "dist/rust-analyzer-linux")?;
-            gzip(&src, Path::new("dist/rust-analyzer-linux.gz"))?;
-        }
-        "x86_64-pc-windows-msvc" => {
-            cp(&src, "dist/rust-analyzer-windows.exe")?;
-            gzip(&src, Path::new("dist/rust-analyzer-windows.gz"))?;
-        }
-        "x86_64-apple-darwin" => {
-            cp(&src, "dist/rust-analyzer-mac")?;
-            gzip(&src, Path::new("dist/rust-analyzer-mac.gz"))?;
-        }
-        _ => {}
-    }
 
     Ok(())
 }
