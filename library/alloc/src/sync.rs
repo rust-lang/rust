@@ -489,7 +489,7 @@ impl<T> Arc<T> {
     pub fn pin(data: T) -> Pin<Arc<T>> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
-    
+
     /// Constructs a new `Pin<Arc<T>>, return an error if allocation fails.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
