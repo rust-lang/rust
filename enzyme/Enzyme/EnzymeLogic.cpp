@@ -550,6 +550,9 @@ struct CacheAnalysis {
       if (unnecessaryInstructions.count(inst2))
         return false;
 
+      if (!inst2->mayWriteToMemory())
+        return false;
+
       for (unsigned i = 0; i < args.size(); ++i) {
         if (llvm::isModSet(AA.getModRefInfo(
                 inst2, MemoryLocation::getForArgument(callsite_op, i, TLI)))) {

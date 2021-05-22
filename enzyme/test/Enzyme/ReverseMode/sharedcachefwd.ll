@@ -293,10 +293,10 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   br label %if.end
 
 ; CHECK: if.end:                                           ; preds = %if.then, %for.cond.cleanup
-; CHECK-NEXT:   %or.cond.pr = phi i1 [ %or.cond, %if.then ], [ false, %for.cond.cleanup ]
+; OPTIONAL-NEXT:   %or.cond.pr = phi i1 [ %or.cond, %if.then ], [ false, %for.cond.cleanup ]
+; CHECK:        call void @llvm.nvvm.barrier0()
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
-; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
-; CHECK-NEXT:   br i1 %or.cond.pr, label %invertif.then, label %invertfor.cond.cleanup
+; CHECK-NEXT:   br i1 %{{or.cond|or.cond.pr}}, label %invertif.then, label %invertfor.cond.cleanup
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body, %invertfor.cond.cleanup
 ; CHECK-NEXT:   ret void

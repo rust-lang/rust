@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -simplifycfg -instcombine -early-cse -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -simplifycfg -instsimplify -early-cse -adce -S | FileCheck %s
 
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
@@ -85,7 +85,7 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %mul.i.i.i.i = shl i64 %z0, 3
 ; CHECK-NEXT:   %call.i.i4.i.i.i.i = call noalias i8* @malloc(i64 %mul.i.i.i.i) #3
 ; CHECK-NEXT:   %"call.i.i4.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 %mul.i.i.i.i) #3
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call.i.i4.i.i.i.i'mi", i8 0, i64 %mul.i.i.i.i, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"call.i.i4.i.i.i.i'mi", i8 0, i64 %mul.i.i.i.i, i1 false)
 ; CHECK-NEXT:   %[[resipc:.+]] = bitcast i8* %"call.i.i4.i.i.i.i'mi" to double*
 ; CHECK-NEXT:   %res = bitcast i8* %call.i.i4.i.i.i.i to double*
 ; CHECK-NEXT:   %div.i.i.i.i = sdiv i64 %z0, 2
@@ -111,25 +111,33 @@ attributes #2 = { nounwind }
 ; CHECK: define internal void @diffesubfn(i64* %lhs, i64* %"lhs'", double* %argres, double* %"argres'", i1 %cmp.i.i.i)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %a0 = ptrtoint double* %argres to i64
-; CHECK-NEXT:   %0 = bitcast i64* %"lhs'" to double**
-; CHECK-NEXT:   %[[a2p:.+]] = load double*, double** %0, align 8
+; CHECK-NEXT:   %[[a2p:.+]] = load i64, i64* %"lhs'", align 8
 ; CHECK-NEXT:   %a2 = load i64, i64* %lhs, align 8
+; CHECK-NEXT:   %[[a3p:.+]] = inttoptr i64 %[[a2p]] to double*
 ; CHECK-NEXT:   %a3 = inttoptr i64 %a2 to double*
 ; CHECK-NEXT:   %cond.i.i.i = select i1 %cmp.i.i.i, i64 %a2, i64 0
 ; CHECK-NEXT:   %cmp17 = icmp eq i64 %cond.i.i.i, %a0
 ; CHECK-NEXT:   %idx = zext i1 %cmp17 to i64
-; CHECK-NEXT:   %[[arrayidxi814ipge:.+]] = getelementptr inbounds double, double* %[[a2p]], i64 %idx
+; CHECK-NEXT:   %[[arrayidxi814ipge:.+]] = getelementptr inbounds double, double* %[[a3p]], i64 %idx
 ; CHECK-NEXT:   %arrayidx.i.i814 = getelementptr inbounds double, double* %a3, i64 %idx
+; CHECK-NEXT:   %[[a4p:.+]] = bitcast double* %[[arrayidxi814ipge]] to i64*
 ; CHECK-NEXT:   %a4 = bitcast double* %arrayidx.i.i814 to i64*
 ; CHECK-NEXT:   %a51 = load i64, i64* %a4, align 8
 ; CHECK-NEXT:   %[[a5ipc:.+]] = bitcast double* %"argres'" to i64*
 ; CHECK-NEXT:   %a5 = bitcast double* %argres to i64*
 ; CHECK-NEXT:   store i64 %a51, i64* %a5, align 8
-; CHECK-NEXT:   %1 = load double, double* %"argres'", align 8
+
+; CHECK-NEXT:   %[[lres:.+]] = load i64, i64* %[[a5ipc]], align 8
 ; CHECK-NEXT:   store i64 0, i64* %[[a5ipc]], align 8
-; CHECK-NEXT:   %2 = load double, double* %[[arrayidxi814ipge]], align 8
-; CHECK-NEXT:   %3 = fadd fast double %2, %1
-; CHECK-NEXT:   store double %3, double* %[[arrayidxi814ipge]], align 8
+; CHECK-NEXT:   %[[tload:.+]] = load i64, i64* %[[a4p]], align 8
+
+; CHECK-NEXT:   %[[lresd:.+]] = bitcast i64 %[[lres]] to double
+; CHECK-NEXT:   %[[tloadd:.+]] = bitcast i64 %[[tload]] to double
+
+; CHECK-NEXT:   %[[fld:.+]] = fadd fast double %[[tloadd]], %[[lresd]]
+; CHECK-NEXT:   %[[fldi:.+]] = bitcast double %[[fld]] to i64
+
+; CHECK-NEXT:   store i64 %[[fldi]], i64* %[[a4p]], align 8
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
