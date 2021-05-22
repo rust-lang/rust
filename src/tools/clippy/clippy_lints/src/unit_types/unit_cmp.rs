@@ -8,7 +8,12 @@ use super::UNIT_CMP;
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if expr.span.from_expansion() {
         if let Some(callee) = expr.span.source_callee() {
-            if let ExpnKind::Macro { kind: MacroKind::Bang, name: symbol, proc_macro: _ } = callee.kind {
+            if let ExpnKind::Macro {
+                kind: MacroKind::Bang,
+                name: symbol,
+                proc_macro: _,
+            } = callee.kind
+            {
                 if let ExprKind::Binary(ref cmp, left, _) = expr.kind {
                     let op = cmp.node;
                     if op.is_comparison() && cx.typeck_results().expr_ty(left).is_unit() {

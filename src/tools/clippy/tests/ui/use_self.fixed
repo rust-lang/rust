@@ -462,3 +462,33 @@ mod issue6818 {
         a: i32,
     }
 }
+
+mod issue7206 {
+    struct MyStruct<const C: char>;
+    impl From<MyStruct<'a'>> for MyStruct<'b'> {
+        fn from(_s: MyStruct<'a'>) -> Self {
+            Self
+        }
+    }
+
+    // keep linting non-`Const` generic args
+    struct S<'a> {
+        inner: &'a str,
+    }
+
+    struct S2<T> {
+        inner: T,
+    }
+
+    impl<T> S2<T> {
+        fn new() -> Self {
+            unimplemented!();
+        }
+    }
+
+    impl<'a> S2<S<'a>> {
+        fn new_again() -> Self {
+            Self::new()
+        }
+    }
+}

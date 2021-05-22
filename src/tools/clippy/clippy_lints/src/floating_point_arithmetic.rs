@@ -323,7 +323,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                         cx,
                         SUBOPTIMAL_FLOPS,
                         parent.span,
-                        "square can be computed more efficiently",
+                        "multiply and add expressions can be calculated more efficiently and accurately",
                         "consider using",
                         format!(
                             "{}.mul_add({}, {})",
@@ -337,16 +337,6 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>]) {
                     return;
                 }
             }
-
-            span_lint_and_sugg(
-                cx,
-                SUBOPTIMAL_FLOPS,
-                expr.span,
-                "square can be computed more efficiently",
-                "consider using",
-                format!("{} * {}", Sugg::hir(cx, &args[0], ".."), Sugg::hir(cx, &args[0], "..")),
-                Applicability::MachineApplicable,
-            );
         }
     }
 }

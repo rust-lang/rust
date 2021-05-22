@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![warn(clippy::while_let_on_iterator)]
-#![allow(clippy::never_loop, unreachable_code, unused_mut)]
+#![allow(clippy::never_loop, unreachable_code, unused_mut, dead_code)]
 
 fn base() {
     let mut iter = 1..20;
@@ -37,13 +37,6 @@ fn base() {
     while let Some(_) = iter.next() {
         println!("next: {:?}", iter.next());
     }
-
-    // or this
-    let mut iter = 1u32..20;
-    while let Some(_) = iter.next() {
-        break;
-    }
-    println!("Remaining iter {:?}", iter);
 
     // or this
     let mut iter = 1u32..20;
@@ -135,18 +128,6 @@ fn refutable2() {
 
 fn nested_loops() {
     let a = [42, 1337];
-    let mut y = a.iter();
-    loop {
-        // x is reused, so don't lint here
-        while let Some(_) = y.next() {}
-    }
-
-    let mut y = a.iter();
-    for _ in 0..2 {
-        while let Some(_) = y.next() {
-            // y is reused, don't lint
-        }
-    }
 
     loop {
         let mut y = a.iter();
@@ -167,10 +148,8 @@ fn issue1121() {
 }
 
 fn issue2965() {
-    // This should not cause an ICE and suggest:
-    //
-    // for _ in values.iter() {}
-    //
+    // This should not cause an ICE
+
     use std::collections::HashSet;
     let mut values = HashSet::new();
     values.insert(1);
@@ -205,13 +184,145 @@ fn issue1654() {
     }
 }
 
+fn issue6491() {
+    // Used in outer loop, needs &mut
+    let mut it = 1..40;
+    while let Some(n) = it.next() {
+        while let Some(m) = it.next() {
+            if m % 10 == 0 {
+                break;
+            }
+            println!("doing something with m: {}", m);
+        }
+        println!("n still is {}", n);
+    }
+
+    // This is fine, inner loop uses a new iterator.
+    let mut it = 1..40;
+    while let Some(n) = it.next() {
+        let mut it = 1..40;
+        while let Some(m) = it.next() {
+            if m % 10 == 0 {
+                break;
+            }
+            println!("doing something with m: {}", m);
+        }
+
+        // Weird binding shouldn't change anything.
+        let (mut it, _) = (1..40, 0);
+        while let Some(m) = it.next() {
+            if m % 10 == 0 {
+                break;
+            }
+            println!("doing something with m: {}", m);
+        }
+
+        // Used after the loop, needs &mut.
+        let mut it = 1..40;
+        while let Some(m) = it.next() {
+            if m % 10 == 0 {
+                break;
+            }
+            println!("doing something with m: {}", m);
+        }
+        println!("next item {}", it.next().unwrap());
+
+        println!("n still is {}", n);
+    }
+}
+
+fn issue6231() {
+    // Closure in the outer loop, needs &mut
+    let mut it = 1..40;
+    let mut opt = Some(0);
+    while let Some(n) = opt.take().or_else(|| it.next()) {
+        while let Some(m) = it.next() {
+            if n % 10 == 0 {
+                break;
+            }
+            println!("doing something with m: {}", m);
+        }
+        println!("n still is {}", n);
+    }
+}
+
+fn issue1924() {
+    struct S<T>(T);
+    impl<T: Iterator<Item = u32>> S<T> {
+        fn f(&mut self) -> Option<u32> {
+            // Used as a field.
+            while let Some(i) = self.0.next() {
+                if i < 3 || i > 7 {
+                    return Some(i);
+                }
+            }
+            None
+        }
+
+        fn f2(&mut self) -> Option<u32> {
+            // Don't lint, self borrowed inside the loop
+            while let Some(i) = self.0.next() {
+                if i == 1 {
+                    return self.f();
+                }
+            }
+            None
+        }
+    }
+    impl<T: Iterator<Item = u32>> S<(S<T>, Option<u32>)> {
+        fn f3(&mut self) -> Option<u32> {
+            // Don't lint, self borrowed inside the loop
+            while let Some(i) = self.0.0.0.next() {
+                if i == 1 {
+                    return self.0.0.f();
+                }
+            }
+            while let Some(i) = self.0.0.0.next() {
+                if i == 1 {
+                    return self.f3();
+                }
+            }
+            // This one is fine, a different field is borrowed
+            while let Some(i) = self.0.0.0.next() {
+                if i == 1 {
+                    return self.0.1.take();
+                } else {
+                    self.0.1 = Some(i);
+                }
+            }
+            None
+        }
+    }
+
+    struct S2<T>(T, u32);
+    impl<T: Iterator<Item = u32>> Iterator for S2<T> {
+        type Item = u32;
+        fn next(&mut self) -> Option<u32> {
+            self.0.next()
+        }
+    }
+
+    // Don't lint, field of the iterator is accessed in the loop
+    let mut it = S2(1..40, 0);
+    while let Some(n) = it.next() {
+        if n == it.1 {
+            break;
+        }
+    }
+
+    // Needs &mut, field of the iterator is accessed after the loop
+    let mut it = S2(1..40, 0);
+    while let Some(n) = it.next() {
+        if n == 0 {
+            break;
+        }
+    }
+    println!("iterator field {}", it.1);
+}
+
 fn main() {
-    base();
-    refutable();
-    refutable2();
-    nested_loops();
-    issue1121();
-    issue2965();
-    issue3670();
-    issue1654();
+    let mut it = 0..20;
+    while let Some(..) = it.next() {
+        println!("test");
+    }
 }

@@ -163,6 +163,8 @@ macro_rules! extract_msrv_attr {
 mod consts;
 #[macro_use]
 mod utils;
+#[cfg(feature = "metadata-collector-lint")]
+mod deprecated_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absurd_extreme_comparisons;
@@ -289,6 +291,7 @@ mod mut_reference;
 mod mutable_debug_assertion;
 mod mutex_atomic;
 mod needless_arbitrary_self_type;
+mod needless_bitwise_bool;
 mod needless_bool;
 mod needless_borrow;
 mod needless_borrowed_ref;
@@ -363,6 +366,7 @@ mod unnecessary_sort_by;
 mod unnecessary_wraps;
 mod unnested_or_patterns;
 mod unsafe_removed_from_name;
+mod unused_async;
 mod unused_io_amount;
 mod unused_self;
 mod unused_unit;
@@ -834,6 +838,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         mutex_atomic::MUTEX_ATOMIC,
         mutex_atomic::MUTEX_INTEGER,
         needless_arbitrary_self_type::NEEDLESS_ARBITRARY_SELF_TYPE,
+        needless_bitwise_bool::NEEDLESS_BITWISE_BOOL,
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
         needless_borrow::NEEDLESS_BORROW,
@@ -960,6 +965,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         unnecessary_wraps::UNNECESSARY_WRAPS,
         unnested_or_patterns::UNNESTED_OR_PATTERNS,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
+        unused_async::UNUSED_ASYNC,
         unused_io_amount::UNUSED_IO_AMOUNT,
         unused_self::UNUSED_SELF,
         unused_unit::UNUSED_UNIT,
@@ -1008,7 +1014,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     #[cfg(feature = "metadata-collector-lint")]
     {
         if std::env::var("ENABLE_METADATA_COLLECTION").eq(&Ok("1".to_string())) {
-            store.register_late_pass(|| box utils::internal_lints::metadata_collector::MetadataCollector::default());
+            store.register_late_pass(|| box utils::internal_lints::metadata_collector::MetadataCollector::new());
         }
     }
 
@@ -1019,6 +1025,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let type_complexity_threshold = conf.type_complexity_threshold;
     store.register_late_pass(move || box types::Types::new(vec_box_size_threshold, type_complexity_threshold));
     store.register_late_pass(|| box booleans::NonminimalBool);
+    store.register_late_pass(|| box needless_bitwise_bool::NeedlessBitwiseBool);
     store.register_late_pass(|| box eq_op::EqOp);
     store.register_late_pass(|| box enum_clike::UnportableVariant);
     store.register_late_pass(|| box float_literal::FloatLiteral);
@@ -1155,7 +1162,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| box suspicious_operation_groupings::SuspiciousOperationGroupings);
     store.register_late_pass(|| box suspicious_trait_impl::SuspiciousImpl);
     store.register_late_pass(|| box map_unit_fn::MapUnit);
-    store.register_late_pass(|| box inherent_impl::MultipleInherentImpl::default());
+    store.register_late_pass(|| box inherent_impl::MultipleInherentImpl);
     store.register_late_pass(|| box neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd);
     store.register_late_pass(|| box unwrap::Unwrap);
     store.register_late_pass(|| box duration_subsec::DurationSubsec);
@@ -1272,6 +1279,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box manual_map::ManualMap);
     store.register_late_pass(move || box if_then_some_else_none::IfThenSomeElseNone::new(msrv));
     store.register_early_pass(|| box bool_assert_comparison::BoolAssertComparison);
+    store.register_late_pass(|| box unused_async::UnusedAsync);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(arithmetic::FLOAT_ARITHMETIC),
@@ -1365,6 +1373,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(if_not_else::IF_NOT_ELSE),
         LintId::of(implicit_hasher::IMPLICIT_HASHER),
         LintId::of(implicit_saturating_sub::IMPLICIT_SATURATING_SUB),
+        LintId::of(inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR),
         LintId::of(infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(invalid_upcast_comparisons::INVALID_UPCAST_COMPARISONS),
         LintId::of(items_after_statements::ITEMS_AFTER_STATEMENTS),
@@ -1392,6 +1401,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(misc::USED_UNDERSCORE_BINDING),
         LintId::of(misc_early::UNSEPARATED_LITERAL_SUFFIX),
         LintId::of(mut_mut::MUT_MUT),
+        LintId::of(needless_bitwise_bool::NEEDLESS_BITWISE_BOOL),
         LintId::of(needless_continue::NEEDLESS_CONTINUE),
         LintId::of(needless_for_each::NEEDLESS_FOR_EACH),
         LintId::of(needless_pass_by_value::NEEDLESS_PASS_BY_VALUE),
@@ -1415,6 +1425,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(unit_types::LET_UNIT_VALUE),
         LintId::of(unnecessary_wraps::UNNECESSARY_WRAPS),
         LintId::of(unnested_or_patterns::UNNESTED_OR_PATTERNS),
+        LintId::of(unused_async::UNUSED_ASYNC),
         LintId::of(unused_self::UNUSED_SELF),
         LintId::of(wildcard_imports::ENUM_GLOB_USE),
         LintId::of(wildcard_imports::WILDCARD_IMPORTS),
@@ -1511,7 +1522,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(identity_op::IDENTITY_OP),
         LintId::of(if_let_mutex::IF_LET_MUTEX),
         LintId::of(if_let_some_result::IF_LET_SOME_RESULT),
-        LintId::of(inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR),
         LintId::of(indexing_slicing::OUT_OF_BOUNDS_INDEXING),
         LintId::of(infinite_iter::INFINITE_ITER),
         LintId::of(inherent_to_string::INHERENT_TO_STRING),
@@ -1764,7 +1774,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(functions::MUST_USE_UNIT),
         LintId::of(functions::RESULT_UNIT_ERR),
         LintId::of(if_let_some_result::IF_LET_SOME_RESULT),
-        LintId::of(inconsistent_struct_constructor::INCONSISTENT_STRUCT_CONSTRUCTOR),
         LintId::of(inherent_to_string::INHERENT_TO_STRING),
         LintId::of(len_zero::COMPARISON_TO_EMPTY),
         LintId::of(len_zero::LEN_WITHOUT_IS_EMPTY),
