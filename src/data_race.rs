@@ -883,21 +883,19 @@ impl VClockAlloc {
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation for which data-race detection is handled separately, for example
     /// atomic read operations.
-    pub fn read<'tcx>(&self, pointer: Pointer<Tag>, len: Size, global: &GlobalState) -> InterpResult<'tcx> {
+    pub fn read<'tcx>(
+        &self,
+        pointer: Pointer<Tag>,
+        len: Size,
+        global: &GlobalState,
+    ) -> InterpResult<'tcx> {
         if global.multi_threaded.get() {
             let (index, clocks) = global.current_thread_state();
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (_, range) in alloc_ranges.iter_mut(pointer.offset, len) {
                 if let Err(DataRace) = range.read_race_detect(&*clocks, index) {
                     // Report data-race.
-                    return Self::report_data_race(
-                        global,
-                        range,
-                        "Read",
-                        false,
-                        pointer,
-                        len,
-                    );
+                    return Self::report_data_race(global, range, "Read", false, pointer, len);
                 }
             }
             Ok(())
@@ -939,7 +937,12 @@ impl VClockAlloc {
     /// data-race threads if `multi-threaded` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
-    pub fn write<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size, global: &mut GlobalState) -> InterpResult<'tcx> {
+    pub fn write<'tcx>(
+        &mut self,
+        pointer: Pointer<Tag>,
+        len: Size,
+        global: &mut GlobalState,
+    ) -> InterpResult<'tcx> {
         self.unique_access(pointer, len, WriteType::Write, global)
     }
 
@@ -947,7 +950,12 @@ impl VClockAlloc {
     /// data-race threads if `multi-threaded` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
     /// operation
-    pub fn deallocate<'tcx>(&mut self, pointer: Pointer<Tag>, len: Size, global: &mut GlobalState) -> InterpResult<'tcx> {
+    pub fn deallocate<'tcx>(
+        &mut self,
+        pointer: Pointer<Tag>,
+        len: Size,
+        global: &mut GlobalState,
+    ) -> InterpResult<'tcx> {
         self.unique_access(pointer, len, WriteType::Deallocate, global)
     }
 }

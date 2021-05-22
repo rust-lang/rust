@@ -151,11 +151,8 @@ impl MemoryExtra {
         } else {
             None
         };
-        let data_race = if config.data_race_detector {
-            Some(data_race::GlobalState::new())
-        } else {
-            None
-        };
+        let data_race =
+            if config.data_race_detector { Some(data_race::GlobalState::new()) } else { None };
         MemoryExtra {
             stacked_borrows,
             data_race,
@@ -532,7 +529,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.write(ptr, size, memory_extra.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.memory_written(ptr, size, memory_extra.stacked_borrows.as_mut().unwrap())
+            stacked_borrows.memory_written(
+                ptr,
+                size,
+                memory_extra.stacked_borrows.as_mut().unwrap(),
+            )
         } else {
             Ok(())
         }
@@ -552,7 +553,11 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
             data_race.deallocate(ptr, size, memory_extra.data_race.as_mut().unwrap())?;
         }
         if let Some(stacked_borrows) = &mut alloc_extra.stacked_borrows {
-            stacked_borrows.memory_deallocated(ptr, size, memory_extra.stacked_borrows.as_mut().unwrap())
+            stacked_borrows.memory_deallocated(
+                ptr,
+                size,
+                memory_extra.stacked_borrows.as_mut().unwrap(),
+            )
         } else {
             Ok(())
         }

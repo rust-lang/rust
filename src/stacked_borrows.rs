@@ -1,10 +1,10 @@
 //! Implements "Stacked Borrows".  See <https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md>
 //! for further information.
 
+use log::trace;
 use std::cell::RefCell;
 use std::fmt;
 use std::num::NonZeroU64;
-use log::trace;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::Mutability;
@@ -509,15 +509,29 @@ impl Stacks {
     }
 
     #[inline(always)]
-    pub fn memory_read<'tcx>(&self, ptr: Pointer<Tag>, size: Size, extra: &MemoryExtra) -> InterpResult<'tcx> {
+    pub fn memory_read<'tcx>(
+        &self,
+        ptr: Pointer<Tag>,
+        size: Size,
+        extra: &MemoryExtra,
+    ) -> InterpResult<'tcx> {
         trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, &*extra.borrow(), |ptr, stack, global| stack.access(AccessKind::Read, ptr, global))
+        self.for_each(ptr, size, &*extra.borrow(), |ptr, stack, global| {
+            stack.access(AccessKind::Read, ptr, global)
+        })
     }
 
     #[inline(always)]
-    pub fn memory_written<'tcx>(&mut self, ptr: Pointer<Tag>, size: Size, extra: &mut MemoryExtra) -> InterpResult<'tcx> {
+    pub fn memory_written<'tcx>(
+        &mut self,
+        ptr: Pointer<Tag>,
+        size: Size,
+        extra: &mut MemoryExtra,
+    ) -> InterpResult<'tcx> {
         trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, extra.get_mut(), |ptr, stack, global| stack.access(AccessKind::Write, ptr, global))
+        self.for_each(ptr, size, extra.get_mut(), |ptr, stack, global| {
+            stack.access(AccessKind::Write, ptr, global)
+        })
     }
 
     #[inline(always)]
@@ -589,7 +603,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         };
         let item = Item { perm, tag: new_tag, protector };
-        stacked_borrows.for_each(ptr, size, &*global, |ptr, stack, global| stack.grant(ptr, item, global))
+        stacked_borrows
+            .for_each(ptr, size, &*global, |ptr, stack, global| stack.grant(ptr, item, global))
     }
 
     /// Retags an indidual pointer, returning the retagged version.

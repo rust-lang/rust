@@ -436,10 +436,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Wakes up threads joining on the active one and deallocates thread-local statics.
     /// The `AllocId` that can now be freed is returned.
-    fn thread_terminated(
-        &mut self,
-        data_race: &Option<data_race::GlobalState>,
-    ) -> Vec<AllocId> {
+    fn thread_terminated(&mut self, data_race: &Option<data_race::GlobalState>) -> Vec<AllocId> {
         let mut free_tls_statics = Vec::new();
         {
             let mut thread_local_statics = self.thread_local_alloc_ids.borrow_mut();
