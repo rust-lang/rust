@@ -1545,7 +1545,7 @@ fn render_impl(
     let open_details = |close_tags: &mut String| {
         if toggled {
             close_tags.insert_str(0, "</details>");
-            "<details class=\"rustdoc-toggle implementors-toggle\" open><summary>"
+            "<details class=\"rustdoc-toggle implementors-toggle\"><summary>"
         } else {
             ""
         }
