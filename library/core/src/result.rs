@@ -1631,17 +1631,17 @@ impl<T, E> ops::TryV1 for Result<T, E> {
     type Output = T;
     type Error = E;
 
-    #[inline(always)]
+    #[inline]
     fn into_result(self) -> Self {
         self
     }
 
-    #[inline(always)]
+    #[inline]
     fn from_ok(v: T) -> Self {
         Ok(v)
     }
 
-    #[inline(always)]
+    #[inline]
     fn from_error(v: E) -> Self {
         Err(v)
     }
@@ -1652,7 +1652,7 @@ impl<T, E> ops::TryV2 for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
 
-    #[inline(always)]
+    #[inline]
     fn from_output(output: Self::Output) -> Self {
         Ok(output)
     }
