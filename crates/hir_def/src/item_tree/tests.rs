@@ -288,3 +288,36 @@ struct S {
         "#]],
     )
 }
+
+#[test]
+fn generics() {
+    check(
+        r#"
+struct S<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> {}
+
+impl<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> S<'a, 'b, T, K> {
+    fn f<G: 'a>(arg: impl Copy) -> impl Copy {}
+}
+
+enum Enum<'a, T, const U: u8> {}
+union Union<'a, T, const U: u8> {}
+        "#,
+        expect![[r#"
+            pub(self) struct S<'a, 'b, T, const K: u8> {
+            }
+
+            impl<'a, 'b, T, const K: u8> S<'a, 'b, T, K> {
+                // flags = 0x2
+                pub(self) fn f<G>(
+                    _: impl Copy,
+                ) -> impl Copy;
+            }
+
+            pub(self) enum Enum<'a, T, const U: u8> {
+            }
+
+            pub(self) union Union<'a, T, const U: u8> {
+            }
+        "#]],
+    )
+}
