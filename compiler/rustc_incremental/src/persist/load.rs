@@ -2,7 +2,7 @@
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::definitions::DefPathTable;
-use rustc_middle::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc_middle::dep_graph::{SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc_middle::ty::query::OnDiskCache;
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable;
@@ -22,8 +22,8 @@ pub enum LoadResult<T> {
     Error { message: String },
 }
 
-impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
-    pub fn open(self, sess: &Session) -> (PreviousDepGraph, WorkProductMap) {
+impl LoadResult<(SerializedDepGraph, WorkProductMap)> {
+    pub fn open(self, sess: &Session) -> (SerializedDepGraph, WorkProductMap) {
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
@@ -84,7 +84,7 @@ impl<T> MaybeAsync<T> {
     }
 }
 
-pub type DepGraphFuture = MaybeAsync<LoadResult<(PreviousDepGraph, WorkProductMap)>>;
+pub type DepGraphFuture = MaybeAsync<LoadResult<(SerializedDepGraph, WorkProductMap)>>;
 
 /// Launch a thread and load the dependency graph in the background.
 pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
@@ -185,7 +185,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 let dep_graph = SerializedDepGraph::decode(&mut decoder)
                     .expect("Error reading cached dep-graph");
 
-                LoadResult::Ok { data: (PreviousDepGraph::new(dep_graph), prev_work_products) }
+                LoadResult::Ok { data: (dep_graph, prev_work_products) }
             }
         }
     }))
