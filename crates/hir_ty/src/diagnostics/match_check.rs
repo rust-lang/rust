@@ -24,6 +24,7 @@ pub(crate) type PatId = Idx<Pat>;
 pub(crate) enum PatternError {
     Unimplemented,
     UnresolvedVariant,
+    MissingField,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -105,7 +106,7 @@ impl<'a> PatCtxt<'a> {
     }
 
     fn lower_pattern_unadjusted(&mut self, pat: hir_def::expr::PatId) -> Pat {
-        let ty = &self.infer[pat];
+        let mut ty = &self.infer[pat];
         let variant = self.infer.variant_resolution_for_pat(pat);
 
         let kind = match self.body[pat] {
@@ -127,6 +128,9 @@ impl<'a> PatCtxt<'a> {
             }
 
             hir_def::expr::Pat::Bind { subpat, .. } => {
+                if let TyKind::Ref(.., rty) = ty.kind(&Interner) {
+                    ty = rty;
+                }
                 PatKind::Binding { subpattern: self.lower_opt_pattern(subpat) }
             }
 
@@ -140,13 +144,21 @@ impl<'a> PatCtxt<'a> {
                 let variant_data = variant.unwrap().variant_data(self.db.upcast());
                 let subpatterns = args
                     .iter()
-                    .map(|field| FieldPat {
+                    .map(|field| {
                         // XXX(iDawer): field lookup is inefficient
-                        field: variant_data.field(&field.name).unwrap(),
-                        pattern: self.lower_pattern(field.pat),
+                        variant_data.field(&field.name).map(|lfield_id| FieldPat {
+                            field: lfield_id,
+                            pattern: self.lower_pattern(field.pat),
+                        })
                     })
                     .collect();
-                self.lower_variant_or_leaf(pat, ty, subpatterns)
+                match subpatterns {
+                    Some(subpatterns) => self.lower_variant_or_leaf(pat, ty, subpatterns),
+                    None => {
+                        self.errors.push(PatternError::MissingField);
+                        PatKind::Wild
+                    }
+                }
             }
             hir_def::expr::Pat::TupleStruct { .. } | hir_def::expr::Pat::Record { .. } => {
                 self.errors.push(PatternError::UnresolvedVariant);
@@ -1091,6 +1103,31 @@ fn main() {
     }
 
     #[test]
+    fn binding_ref_has_correct_type() {
+        // Asserts `PatKind::Binding(ref _x): bool`, not &bool.
+        // If that's not true match checking will panic with "incompatible constructors"
+        // FIXME: make facilities to test this directly like `tests::check_infer(..)`
+        check_diagnostics(
+            r#"
+enum Foo { A }
+fn main() {
+    // FIXME: this should not bail out but current behavior is such as the old algorithm.
+    // ExprValidator::validate_match(..) checks types of top level patterns incorrecly.
+    match Foo::A {
+        ref _x => {}
+    //  ^^^^^^ Internal: match check bailed out
+        Foo::A => {}
+    }
+    match (true,) {
+        (ref _x,) => {}
+        (true,) => {}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn enum_non_exhaustive() {
         check_diagnostics(
             r#"
@@ -1156,6 +1193,19 @@ fn main() {
     match Foo(Bar) {
         _ | Foo(Bar) => {}
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn record_struct_no_such_field() {
+        check_diagnostics(
+            r#"
+struct Foo { }
+fn main(f: Foo) {
+    match f { Foo { bar } => () }
+    //        ^^^^^^^^^^^ Internal: match check bailed out
 }
 "#,
         );
