@@ -673,8 +673,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn get_alloc_extra_mut<'a>(
         &'a mut self,
         id: AllocId,
-    ) -> InterpResult<'tcx, &'a mut M::AllocExtra> {
-        Ok(&mut self.get_raw_mut(id)?.0.extra)
+    ) -> InterpResult<'tcx, (&'a mut M::AllocExtra, &'a mut M::MemoryExtra)> {
+        let (alloc, memory_extra) = self.get_raw_mut(id)?;
+        Ok((&mut alloc.extra, memory_extra))
     }
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
