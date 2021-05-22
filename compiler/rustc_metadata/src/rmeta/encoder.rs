@@ -447,9 +447,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_def_path_table(&mut self) {
         let table = self.tcx.hir().definitions().def_path_table();
         if self.is_proc_macro {
-            for def_index in std::iter::once(CRATE_DEF_INDEX)
-                .chain(self.tcx.hir().krate().proc_macros.iter().map(|p| p.owner.local_def_index))
-            {
+            for def_index in std::iter::once(CRATE_DEF_INDEX).chain(
+                self.tcx.hir().krate().proc_macros.iter().map(|p| p.owner.def_id.local_def_index),
+            ) {
                 let def_key = self.lazy(table.def_key(def_index));
                 let def_path_hash = self.lazy(table.def_path_hash(def_index));
                 self.tables.def_keys.set(def_index, def_key);
@@ -1071,7 +1071,7 @@ impl EncodeContext<'a, 'tcx> {
             record!(self.tables.children[def_id] <- &[]);
         } else {
             record!(self.tables.children[def_id] <- md.item_ids.iter().map(|item_id| {
-                item_id.def_id.local_def_index
+                item_id.def_id.def_id.local_def_index
             }));
         }
     }
@@ -1363,7 +1363,7 @@ impl EncodeContext<'a, 'tcx> {
                 EntryKind::Fn(self.lazy(data))
             }
             hir::ItemKind::Mod(ref m) => {
-                return self.encode_info_for_mod(item.def_id, m);
+                return self.encode_info_for_mod(item.def_id.def_id, m);
             }
             hir::ItemKind::ForeignMod { .. } => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
@@ -1462,7 +1462,7 @@ impl EncodeContext<'a, 'tcx> {
             hir::ItemKind::ForeignMod { items, .. } => record!(self.tables.children[def_id] <-
                 items
                     .iter()
-                    .map(|foreign_item| foreign_item.id.def_id.local_def_index)
+                    .map(|foreign_item| foreign_item.id.def_id.def_id.local_def_index)
             ),
             hir::ItemKind::Enum(..) => record!(self.tables.children[def_id] <-
                 self.tcx.adt_def(def_id).variants.iter().map(|v| {
@@ -1601,7 +1601,8 @@ impl EncodeContext<'a, 'tcx> {
 
             let proc_macro_decls_static = tcx.proc_macro_decls_static(()).unwrap().local_def_index;
             let stability = tcx.lookup_stability(DefId::local(CRATE_DEF_INDEX)).copied();
-            let macros = self.lazy(hir.krate().proc_macros.iter().map(|p| p.owner.local_def_index));
+            let macros =
+                self.lazy(hir.krate().proc_macros.iter().map(|p| p.owner.def_id.local_def_index));
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
             for (i, span) in spans.into_iter().enumerate() {
                 let span = self.lazy(span);
@@ -1621,7 +1622,7 @@ impl EncodeContext<'a, 'tcx> {
             // defined in this crate. However, we skip doing that for proc-macro crates,
             // so we manually encode just the information that we need
             for proc_macro in &hir.krate().proc_macros {
-                let id = proc_macro.owner.local_def_index;
+                let id = proc_macro.owner.def_id.local_def_index;
                 let mut name = hir.name(*proc_macro);
                 let span = hir.span(*proc_macro);
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
@@ -1644,7 +1645,7 @@ impl EncodeContext<'a, 'tcx> {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
 
-                let mut def_key = self.tcx.hir().def_key(proc_macro.owner);
+                let mut def_key = self.tcx.hir().def_key(proc_macro.owner.def_id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = DefId::local(id);
@@ -2004,7 +2005,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
                 self.impls
                     .entry(trait_ref.def_id)
                     .or_default()
-                    .push((item.def_id.local_def_index, simplified_self_ty));
+                    .push((item.def_id.def_id.local_def_index, simplified_self_ty));
             }
         }
     }

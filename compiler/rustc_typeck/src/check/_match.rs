@@ -598,8 +598,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (Expectation::ExpectHasType(expected), Some((id, ty)))
                 if self.in_tail_expr && self.can_coerce(outer_ty, expected) =>
             {
-                let impl_trait_ret_ty =
-                    self.infcx.instantiate_opaque_types(id, self.body_id, self.param_env, ty, span);
+                let impl_trait_ret_ty = self.infcx.instantiate_opaque_types(
+                    id.def_id,
+                    self.body_id,
+                    self.param_env,
+                    ty,
+                    span,
+                );
                 let mut suggest_box = !impl_trait_ret_ty.obligations.is_empty();
                 for o in impl_trait_ret_ty.obligations {
                     match o.predicate.kind().skip_binder() {

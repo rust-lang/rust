@@ -51,7 +51,7 @@ use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
-use rustc_hir::{ConstArg, GenericArg, ParamName};
+use rustc_hir::{ConstArg, GenericArg, HirOwner, ParamName};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
@@ -166,7 +166,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     type_def_lifetime_params: DefIdMap<usize>,
 
-    current_hir_id_owner: (LocalDefId, u32),
+    current_hir_id_owner: (HirOwner, u32),
     item_local_id_counters: NodeMap<u32>,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
@@ -223,7 +223,7 @@ enum ImplTraitContext<'b, 'a> {
     /// equivalent to a fresh universal parameter like `fn foo<T: Debug>(x: T)`.
     ///
     /// Newly generated parameters should be inserted into the given `Vec`.
-    Universal(&'b mut Vec<hir::GenericParam<'a>>, LocalDefId),
+    Universal(&'b mut Vec<hir::GenericParam<'a>>, HirOwner),
 
     /// Treat `impl Trait` as shorthand for a new opaque type.
     /// Example: `fn foo() -> impl Debug`, where `impl Debug` is conceptually
@@ -322,7 +322,7 @@ pub fn lower_crate<'a, 'hir>(
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
         current_module: CRATE_DEF_ID,
-        current_hir_id_owner: (CRATE_DEF_ID, 0),
+        current_hir_id_owner: (HirOwner { def_id: CRATE_DEF_ID }, 0),
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,
@@ -594,7 +594,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .item_local_id_counters
             .insert(owner, HIR_ID_COUNTER_LOCKED)
             .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
-        let def_id = self.resolver.local_def_id(owner);
+        let def_id = HirOwner { def_id: self.resolver.local_def_id(owner) };
         let old_owner = std::mem::replace(&mut self.current_hir_id_owner, (def_id, counter));
         let ret = f(self);
         let (new_def_id, new_counter) =
@@ -637,10 +637,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug_assert!(local_id != HIR_ID_COUNTER_LOCKED);
 
             *local_id_counter += 1;
-            let owner = this.resolver.opt_local_def_id(owner).expect(
-                "you forgot to call `create_def` or are lowering node-IDs \
+            let owner = HirOwner {
+                def_id: this.resolver.opt_local_def_id(owner).expect(
+                    "you forgot to call `create_def` or are lowering node-IDs \
                  that do not belong to the current owner",
-            );
+                ),
+            };
 
             hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
         })
@@ -1133,7 +1135,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                     let impl_trait_node_id = self.resolver.next_node_id();
                     self.resolver.create_def(
-                        parent_def_id,
+                        parent_def_id.def_id,
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
@@ -1201,7 +1203,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             // Add a definition for the in-band const def.
                             self.resolver.create_def(
-                                parent_def_id,
+                                parent_def_id.def_id,
                                 node_id,
                                 DefPathData::AnonConst,
                                 ExpnId::root(),
@@ -1512,10 +1514,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_id);
-            lctx.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
+            lctx.generate_opaque_type(
+                HirOwner { def_id: opaque_ty_def_id },
+                opaque_ty_item,
+                span,
+                opaque_ty_span,
+            );
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, lifetimes)
+            hir::TyKind::OpaqueDef(
+                hir::ItemId { def_id: HirOwner { def_id: opaque_ty_def_id } },
+                lifetimes,
+            )
         })
     }
 
@@ -1523,7 +1533,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// returns the lowered node-ID for the opaque type.
     fn generate_opaque_type(
         &mut self,
-        opaque_ty_id: LocalDefId,
+        opaque_ty_id: HirOwner,
         opaque_ty_item: hir::OpaqueTy<'hir>,
         span: Span,
         opaque_ty_span: Span,
@@ -2015,7 +2025,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             };
 
             trace!("exist ty from async fn def id: {:#?}", opaque_ty_def_id);
-            this.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span);
+            this.generate_opaque_type(
+                HirOwner { def_id: opaque_ty_def_id },
+                opaque_ty_item,
+                span,
+                opaque_ty_span,
+            );
 
             lifetime_params
         });
@@ -2060,8 +2075,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
-        let opaque_ty_ref =
-            hir::TyKind::OpaqueDef(hir::ItemId { def_id: opaque_ty_def_id }, generic_args);
+        let opaque_ty_ref = hir::TyKind::OpaqueDef(
+            hir::ItemId { def_id: HirOwner { def_id: opaque_ty_def_id } },
+            generic_args,
+        );
         let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
         hir::FnRetTy::Return(self.arena.alloc(opaque_ty))
     }

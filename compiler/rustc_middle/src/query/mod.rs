@@ -47,27 +47,27 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner(key: LocalDefId) -> Option<&'tcx crate::hir::Owner<'tcx>> {
+    query hir_owner(key: HirOwner ) -> Option<&'tcx crate::hir::Owner<'tcx>> {
         eval_always
-        desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.def_id.to_def_id()) }
     }
 
     /// Gives access to the HIR node's parent for the HIR owner `key`.
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner_parent(key: LocalDefId) -> hir::HirId {
+    query hir_owner_parent(key: HirOwner ) -> hir::HirId {
         eval_always
-        desc { |tcx| "HIR parent of `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { |tcx| "HIR parent of `{}`", tcx.def_path_str(key.def_id.to_def_id()) }
     }
 
     /// Gives access to the HIR nodes and bodies inside the HIR owner `key`.
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner_nodes(key: LocalDefId) -> Option<&'tcx crate::hir::OwnerNodes<'tcx>> {
+    query hir_owner_nodes(key: HirOwner) -> Option<&'tcx crate::hir::OwnerNodes<'tcx>> {
         eval_always
-        desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.to_def_id()) }
+        desc { |tcx| "HIR owner items in `{}`", tcx.def_path_str(key.def_id.to_def_id()) }
     }
 
     /// Gives access to the HIR attributes inside the HIR owner `key`.

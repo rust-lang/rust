@@ -13,7 +13,8 @@ use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId};
+use rustc_hir::hir_id::HirOwner;
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
 use rustc_span::DUMMY_SP;
@@ -27,8 +28,8 @@ struct HirOwnerData<'hir> {
 
 #[derive(Debug)]
 pub struct IndexedHir<'hir> {
-    map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
-    parenting: FxHashMap<LocalDefId, HirId>,
+    map: IndexVec<HirOwner, HirOwnerData<'hir>>,
+    parenting: FxHashMap<HirOwner, HirId>,
 }
 
 #[derive(Debug)]
@@ -94,15 +95,21 @@ impl<'tcx> std::fmt::Debug for AttributeMap<'tcx> {
 
 impl<'tcx> AttributeMap<'tcx> {
     fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
-        self.map.get(&HirId { owner: self.prefix, local_id: id }).copied().unwrap_or(&[])
+        self.map
+            .get(&HirId { owner: HirOwner { def_id: self.prefix }, local_id: id })
+            .copied()
+            .unwrap_or(&[])
     }
 
     fn range(&self) -> std::collections::btree_map::Range<'_, rustc_hir::HirId, &[Attribute]> {
         let local_zero = ItemLocalId::from_u32(0);
-        let range = HirId { owner: self.prefix, local_id: local_zero }..HirId {
-            owner: LocalDefId { local_def_index: self.prefix.local_def_index + 1 },
-            local_id: local_zero,
-        };
+        let range = HirId { owner: HirOwner { def_id: self.prefix }, local_id: local_zero }
+            ..HirId {
+                owner: HirOwner {
+                    def_id: LocalDefId { local_def_index: self.prefix.local_def_index + 1 },
+                },
+                local_id: local_zero,
+            };
         self.map.range(range)
     }
 }
@@ -114,7 +121,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn parent_module(self, id: HirId) -> LocalDefId {
-        self.parent_module_from_def_id(id.owner)
+        self.parent_module_from_def_id(id.owner.def_id)
     }
 }
 

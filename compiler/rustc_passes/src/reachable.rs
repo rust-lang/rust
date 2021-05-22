@@ -344,7 +344,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         if codegen_attrs.contains_extern_indicator()
             || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         {
-            self.worklist.push(item.def_id);
+            self.worklist.push(item.def_id.def_id);
         }
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
@@ -354,7 +354,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
             if !self.access_levels.is_reachable(item.hir_id()) {
                 // FIXME(#53488) remove `let`
                 let tcx = self.tcx;
-                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
+                self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id.def_id));
 
                 let trait_def_id = match trait_ref.path.res {
                     Res::Def(DefKind::Trait, def_id) => def_id,

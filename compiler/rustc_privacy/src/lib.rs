@@ -1343,7 +1343,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
 
     // Check types in item interfaces.
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        let orig_current_item = mem::replace(&mut self.current_item, item.def_id);
+        let orig_current_item = mem::replace(&mut self.current_item, item.def_id.def_id);
         let old_maybe_typeck_results = self.maybe_typeck_results.take();
         intravisit::walk_item(self, item);
         self.maybe_typeck_results = old_maybe_typeck_results;

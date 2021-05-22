@@ -53,7 +53,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
                     ItemKind::Mod(..) => {
                         let def_id = this.lctx.lower_node_id(item.id).expect_owner();
                         let old_current_module =
-                            mem::replace(&mut this.lctx.current_module, def_id);
+                            mem::replace(&mut this.lctx.current_module, def_id.def_id);
                         visit::walk_item(this, item);
                         this.lctx.current_module = old_current_module;
                     }
@@ -404,7 +404,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let lowered_trait_def_id = self.lower_node_id(id).expect_owner();
                 let (generics, (trait_ref, lowered_ty)) = self.add_in_band_defs(
                     ast_generics,
-                    lowered_trait_def_id,
+                    lowered_trait_def_id.def_id,
                     AnonymousLifetimeMode::CreateParameter,
                     |this, _| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
@@ -416,7 +416,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 this.trait_impls
                                     .entry(def_id)
                                     .or_default()
-                                    .push(lowered_trait_def_id);
+                                    .push(lowered_trait_def_id.def_id);
                             }
                         }
 
@@ -714,7 +714,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let fdec = &sig.decl;
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
                         generics,
-                        def_id,
+                        def_id.def_id,
                         AnonymousLifetimeMode::PassThrough,
                         |this, _| {
                             (
@@ -832,8 +832,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Fn(box FnKind(_, ref sig, ref generics, None)) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
-                let (generics, sig) =
-                    self.lower_method_sig(generics, sig, trait_item_def_id, false, None, i.id);
+                let (generics, sig) = self.lower_method_sig(
+                    generics,
+                    sig,
+                    trait_item_def_id.def_id,
+                    false,
+                    None,
+                    i.id,
+                );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)))
             }
             AssocItemKind::Fn(box FnKind(_, ref sig, ref generics, Some(ref body))) => {
@@ -843,7 +849,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let (generics, sig) = self.lower_method_sig(
                     generics,
                     sig,
-                    trait_item_def_id,
+                    trait_item_def_id.def_id,
                     false,
                     asyncness.opt_return_id(),
                     i.id,

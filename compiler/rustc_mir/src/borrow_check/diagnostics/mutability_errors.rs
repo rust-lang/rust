@@ -698,7 +698,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             {
                 let opt_suggestions = path_segment
                     .hir_id
-                    .map(|path_hir_id| self.infcx.tcx.typeck(path_hir_id.owner))
+                    .map(|path_hir_id| self.infcx.tcx.typeck(path_hir_id.owner.def_id))
                     .and_then(|typeck| typeck.type_dependent_def_id(*hir_id))
                     .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
                     .map(|def_id| self.infcx.tcx.associated_items(def_id))

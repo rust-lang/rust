@@ -1,10 +1,10 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_iter, Lock, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_hir::intravisit;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
-use rustc_hir::{HirId, ItemLocalId};
+use rustc_hir::{HirId, HirOwner, ItemLocalId};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 
@@ -29,7 +29,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
 struct HirIdValidator<'a, 'hir> {
     hir_map: Map<'hir>,
-    owner: Option<LocalDefId>,
+    owner: Option<HirOwner>,
     hir_ids_seen: FxHashSet<ItemLocalId>,
     errors: &'a Lock<Vec<String>>,
 }
@@ -82,7 +82,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
     fn check<F: FnOnce(&mut HirIdValidator<'a, 'hir>)>(&mut self, hir_id: HirId, walk: F) {
         assert!(self.owner.is_none());
         let owner = self.hir_map.local_def_id(hir_id);
-        self.owner = Some(owner);
+        self.owner = Some(HirOwner { def_id: owner });
         walk(self);
 
         if owner.local_def_index == CRATE_DEF_INDEX {
@@ -107,7 +107,10 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             let mut missing_items = Vec::with_capacity(missing.len());
 
             for local_id in missing {
-                let hir_id = HirId { owner, local_id: ItemLocalId::from_u32(local_id) };
+                let hir_id = HirId {
+                    owner: HirOwner { def_id: owner },
+                    local_id: ItemLocalId::from_u32(local_id),
+                };
 
                 trace!("missing hir id {:#?}", hir_id);
 
@@ -126,7 +129,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
                     missing_items,
                     self.hir_ids_seen
                         .iter()
-                        .map(|&local_id| HirId { owner, local_id })
+                        .map(|&local_id| HirId { owner: HirOwner { def_id: owner }, local_id })
                         .map(|h| format!("({:?} {})", h, self.hir_map.node_to_string(h)))
                         .collect::<Vec<_>>()
                 )
@@ -150,8 +153,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
                     self.hir_map.node_to_string(hir_id),
-                    self.hir_map.def_path(hir_id.owner).to_string_no_crate_verbose(),
-                    self.hir_map.def_path(owner).to_string_no_crate_verbose()
+                    self.hir_map.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
+                    self.hir_map.def_path(owner.def_id).to_string_no_crate_verbose()
                 )
             });
         }

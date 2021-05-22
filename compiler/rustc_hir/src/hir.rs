@@ -1,7 +1,7 @@
 // ignore-tidy-filelength
 use crate::def::{CtorKind, DefKind, Res};
 use crate::def_id::DefId;
-crate use crate::hir_id::HirId;
+crate use crate::hir_id::{HirId, HirOwner};
 use crate::{itemlikevisit, LangItem};
 
 use rustc_ast::util::parser::ExprPrecedence;
@@ -753,7 +753,7 @@ impl Crate<'_> {
 pub struct MacroDef<'hir> {
     pub ident: Ident,
     pub vis: Visibility<'hir>,
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
     pub span: Span,
     pub ast: ast::MacroDef,
 }
@@ -1994,7 +1994,7 @@ pub struct FnSig<'hir> {
 // so it can fetched later.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct TraitItemId {
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
 }
 
 impl TraitItemId {
@@ -2012,7 +2012,7 @@ impl TraitItemId {
 #[derive(Debug)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
     pub generics: Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
@@ -2055,9 +2055,10 @@ pub enum TraitItemKind<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
+/// TODO review
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ImplItemId {
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
 }
 
 impl ImplItemId {
@@ -2072,7 +2073,7 @@ impl ImplItemId {
 #[derive(Debug)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
     pub vis: Visibility<'hir>,
     pub defaultness: Defaultness,
     pub generics: Generics<'hir>,
@@ -2653,9 +2654,10 @@ impl VariantData<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
+/// TODO review
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug, Hash)]
 pub struct ItemId {
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
 }
 
 impl ItemId {
@@ -2672,7 +2674,7 @@ impl ItemId {
 #[derive(Debug)]
 pub struct Item<'hir> {
     pub ident: Ident,
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
     pub kind: ItemKind<'hir>,
     pub vis: Visibility<'hir>,
     pub span: Span,
@@ -2858,9 +2860,10 @@ pub enum AssocItemKind {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
+// TODO review
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, Debug)]
 pub struct ForeignItemId {
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
 }
 
 impl ForeignItemId {
@@ -2890,7 +2893,7 @@ pub struct ForeignItemRef<'hir> {
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
     pub kind: ForeignItemKind<'hir>,
-    pub def_id: LocalDefId,
+    pub def_id: HirOwner,
     pub span: Span,
     pub vis: Visibility<'hir>,
 }

@@ -341,7 +341,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Add a definition for the in-band const def.
                 self.resolver.create_def(
-                    parent_def_id,
+                    parent_def_id.def_id,
                     node_id,
                     DefPathData::AnonConst,
                     ExpnId::root(),

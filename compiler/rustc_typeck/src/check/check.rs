@@ -755,15 +755,15 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
     match it.kind {
         // Consts can play a role in type-checking, so they are included here.
         hir::ItemKind::Static(..) => {
-            tcx.ensure().typeck(it.def_id);
-            maybe_check_static_with_link_section(tcx, it.def_id, it.span);
-            check_static_inhabited(tcx, it.def_id, it.span);
+            tcx.ensure().typeck(it.def_id.def_id);
+            maybe_check_static_with_link_section(tcx, it.def_id.def_id, it.span);
+            check_static_inhabited(tcx, it.def_id.def_id, it.span);
         }
         hir::ItemKind::Const(..) => {
-            tcx.ensure().typeck(it.def_id);
+            tcx.ensure().typeck(it.def_id.def_id);
         }
         hir::ItemKind::Enum(ref enum_definition, _) => {
-            check_enum(tcx, it.span, &enum_definition.variants, it.def_id);
+            check_enum(tcx, it.span, &enum_definition.variants, it.def_id.def_id);
         }
         hir::ItemKind::Fn(..) => {} // entirely within check_item_body
         hir::ItemKind::Impl(ref impl_) => {
@@ -772,7 +772,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                 check_impl_items_against_trait(
                     tcx,
                     it.span,
-                    it.def_id,
+                    it.def_id.def_id,
                     impl_trait_ref,
                     &impl_.items,
                 );
@@ -807,10 +807,10 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             }
         }
         hir::ItemKind::Struct(..) => {
-            check_struct(tcx, it.def_id, it.span);
+            check_struct(tcx, it.def_id.def_id, it.span);
         }
         hir::ItemKind::Union(..) => {
-            check_union(tcx, it.def_id, it.span);
+            check_union(tcx, it.def_id.def_id, it.span);
         }
         hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
             // HACK(jynelson): trying to infer the type of `impl trait` breaks documenting
@@ -819,7 +819,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             // See https://github.com/rust-lang/rust/issues/75100
             if !tcx.sess.opts.actually_rustdoc {
                 let substs = InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
-                check_opaque(tcx, it.def_id, substs, it.span, &origin);
+                check_opaque(tcx, it.def_id.def_id, substs, it.span, &origin);
             }
         }
         hir::ItemKind::TyAlias(..) => {
@@ -880,7 +880,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                             require_c_abi_if_c_variadic(tcx, fn_decl, abi, item.span);
                         }
                         hir::ForeignItemKind::Static(..) => {
-                            check_static_inhabited(tcx, def_id, item.span);
+                            check_static_inhabited(tcx, def_id.def_id, item.span);
                         }
                         _ => {}
                     }

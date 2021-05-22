@@ -1145,7 +1145,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
                 }
             }
             hir::ItemKind::Fn(..) => {
-                self.push_if_root(item.def_id);
+                self.push_if_root(item.def_id.def_id);
             }
         }
     }
@@ -1157,7 +1157,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         if let hir::ImplItemKind::Fn(hir::FnSig { .. }, _) = ii.kind {
-            self.push_if_root(ii.def_id);
+            self.push_if_root(ii.def_id.def_id);
         }
     }
 

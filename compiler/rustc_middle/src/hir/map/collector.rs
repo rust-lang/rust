@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_hir::definitions;
+use rustc_hir::hir_id::HirOwner;
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
@@ -28,13 +29,13 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// Source map
     source_map: &'a SourceMap,
 
-    map: IndexVec<LocalDefId, HirOwnerData<'hir>>,
-    parenting: FxHashMap<LocalDefId, HirId>,
+    map: IndexVec<HirOwner, HirOwnerData<'hir>>,
+    parenting: FxHashMap<HirOwner, HirId>,
 
     /// The parent of this node
     parent_node: hir::HirId,
 
-    current_dep_node_owner: LocalDefId,
+    current_dep_node_owner: HirOwner,
 
     definitions: &'a definitions::Definitions,
 
@@ -104,7 +105,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             krate,
             source_map: sess.source_map(),
             parent_node: hir::CRATE_HIR_ID,
-            current_dep_node_owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
+            current_dep_node_owner: HirOwner {
+                def_id: LocalDefId { local_def_index: CRATE_DEF_INDEX },
+            },
             definitions,
             hcx,
             map: (0..definitions.def_index_count())
@@ -154,7 +157,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             debug_assert!(data.signature.is_none());
             data.signature = Some(self.arena.alloc(Owner { node: entry.node }));
 
-            let dk_parent = self.definitions.def_key(id.owner).parent;
+            let dk_parent = self.definitions.def_key(id.owner.def_id).parent;
             if let Some(dk_parent) = dk_parent {
                 let dk_parent = LocalDefId { local_def_index: dk_parent };
                 let dk_parent = self.definitions.local_def_id_to_hir_id(dk_parent);
@@ -200,10 +203,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                     self.source_map.span_to_diagnostic_string(span),
                     node_str,
                     self.definitions
-                        .def_path(self.current_dep_node_owner)
+                        .def_path(self.current_dep_node_owner.def_id)
                         .to_string_no_crate_verbose(),
                     self.current_dep_node_owner,
-                    self.definitions.def_path(hir_id.owner).to_string_no_crate_verbose(),
+                    self.definitions.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
                     hir_id.owner,
                 )
             }
@@ -224,7 +227,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         F: FnOnce(&mut Self, Fingerprint),
     >(
         &mut self,
-        dep_node_owner: LocalDefId,
+        dep_node_owner: HirOwner,
         item_like: &T,
         f: F,
     ) {
@@ -236,7 +239,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         self.current_dep_node_owner = prev_owner;
     }
 
-    fn insert_nested(&mut self, item: LocalDefId) {
+    fn insert_nested(&mut self, item: HirOwner) {
         #[cfg(debug_assertions)]
         {
             let dk_parent = self.definitions.def_key(item).parent.unwrap();
@@ -464,7 +467,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         // Exported macros are visited directly from the crate root,
         // so they do not have `parent_node` set.
         // Find the correct enclosing module from their DefKey.
-        let def_key = self.definitions.def_key(macro_def.def_id);
+        let def_key = self.definitions.def_key(macro_def.def_id.def_id);
         let parent = def_key.parent.map_or(hir::CRATE_HIR_ID, |local_def_index| {
             self.definitions.local_def_id_to_hir_id(LocalDefId { local_def_index })
         });

@@ -483,7 +483,7 @@ impl<'tcx> DepNodeParams<TyCtxt<'tcx>> for HirId {
     fn to_fingerprint(&self, tcx: TyCtxt<'tcx>) -> Fingerprint {
         let HirId { owner, local_id } = *self;
 
-        let def_path_hash = tcx.def_path_hash(owner.to_def_id());
+        let def_path_hash = tcx.def_path_hash(owner.def_id.to_def_id());
         let local_id = Fingerprint::from_smaller_hash(local_id.as_u32().into());
 
         def_path_hash.0.combine(local_id)

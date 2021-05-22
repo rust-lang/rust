@@ -68,7 +68,7 @@ impl QueryContext for QueryCtxt<'tcx> {
                 if let Some(def_id) = dep_node.extract_def_id(**self) {
                     let def_id = def_id.expect_local();
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                    if def_id != hir_id.owner {
+                    if def_id != hir_id.owner.def_id {
                         // This `DefPath` does not have a
                         // corresponding `DepNode` (e.g. a
                         // struct field), and the ` DefPath`

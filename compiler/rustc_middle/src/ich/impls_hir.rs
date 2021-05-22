@@ -8,6 +8,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHas
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::definitions::DefPathHash;
+use rustc_hir::hir_id::HirOwner;
 use smallvec::SmallVec;
 use std::mem;
 
@@ -22,7 +23,7 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
             NodeIdHashingMode::HashDefPath => {
                 let hir::HirId { owner, local_id } = hir_id;
 
-                hcx.local_def_path_hash(owner).hash_stable(hcx, hasher);
+                hcx.local_def_path_hash(owner.def_id).hash_stable(hcx, hasher);
                 local_id.hash_stable(hcx, hasher);
             }
         }
@@ -115,8 +116,8 @@ impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
     }
 
     #[inline]
-    fn local_def_path_hash(&self, def_id: LocalDefId) -> DefPathHash {
-        self.local_def_path_hash(def_id)
+    fn local_def_path_hash(&self, def_id: HirOwner) -> DefPathHash {
+        self.local_def_path_hash(def_id.def_id)
     }
 }
 
@@ -136,12 +137,29 @@ impl<'a> HashStable<StableHashingContext<'a>> for LocalDefId {
     }
 }
 
+impl<'a> HashStable<StableHashingContext<'a>> for HirOwner {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.def_id.hash_stable(hcx, hasher);
+    }
+}
+
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for LocalDefId {
     type KeyType = DefPathHash;
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> DefPathHash {
         hcx.def_path_hash(self.to_def_id())
+    }
+}
+
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for HirOwner {
+    type KeyType =
+        <rustc_span::def_id::LocalDefId as ToStableHashKey<StableHashingContext<'a>>>::KeyType;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> DefPathHash {
+        self.def_id.to_stable_hash_key(hcx)
     }
 }
 

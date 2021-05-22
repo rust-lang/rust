@@ -81,10 +81,10 @@ struct ImplWfCheck<'tcx> {
 impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let hir::ItemKind::Impl(ref impl_) = item.kind {
-            enforce_impl_params_are_constrained(self.tcx, item.def_id, impl_.items);
+            enforce_impl_params_are_constrained(self.tcx, item.def_id.def_id, impl_.items);
             enforce_impl_items_are_distinct(self.tcx, impl_.items);
             if self.min_specialization {
-                check_min_specialization(self.tcx, item.def_id.to_def_id(), item.span);
+                check_min_specialization(self.tcx, item.def_id.def_id.to_def_id(), item.span);
             }
         }
     }

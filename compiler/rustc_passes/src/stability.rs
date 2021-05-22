@@ -730,7 +730,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
                     return;
                 }
 
-                let cnum = match self.tcx.extern_mod_stmt_cnum(item.def_id) {
+                let cnum = match self.tcx.extern_mod_stmt_cnum(item.def_id.def_id) {
                     Some(cnum) => cnum,
                     None => return,
                 };

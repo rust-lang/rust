@@ -18,7 +18,7 @@ use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyOwnerKind, HirId};
+use rustc_hir::{BodyOwnerKind, HirId, HirOwner};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -804,7 +804,7 @@ fn for_each_late_bound_region_defined_on<'tcx>(
 ) {
     if let Some((owner, late_bounds)) = tcx.is_late_bound_map(fn_def_id.expect_local()) {
         for &late_bound in late_bounds.iter() {
-            let hir_id = HirId { owner, local_id: late_bound };
+            let hir_id = HirId { owner: HirOwner { def_id: owner }, local_id: late_bound };
             let name = tcx.hir().name(hir_id);
             let region_def_id = tcx.hir().local_def_id(hir_id);
             let liberated_region = tcx.mk_region(ty::ReFree(ty::FreeRegion {

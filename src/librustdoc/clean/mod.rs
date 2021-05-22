@@ -1975,7 +1975,7 @@ fn clean_extern_crate(
     cx: &mut DocContext<'_>,
 ) -> Vec<Item> {
     // this is the ID of the `extern crate` statement
-    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id).unwrap_or(LOCAL_CRATE);
+    let cnum = cx.tcx.extern_mod_stmt_cnum(krate.def_id.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
     let attrs = cx.tcx.hir().attrs(krate.hir_id());

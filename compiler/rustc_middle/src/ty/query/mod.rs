@@ -43,7 +43,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
+use rustc_hir::{Crate, HirOwner, ItemLocalId, TraitCandidate};
 use rustc_index::{bit_set::FiniteBitSet, vec::IndexVec};
 use rustc_serialize::opaque;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
@@ -285,7 +285,7 @@ macro_rules! define_callbacks {
 rustc_query_append! { [define_callbacks!][<'tcx>] }
 
 mod sealed {
-    use super::{DefId, LocalDefId};
+    use super::{DefId, HirOwner, LocalDefId};
 
     /// An analogue of the `Into` trait that's intended only for query paramaters.
     ///
@@ -306,6 +306,13 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> DefId {
             self.to_def_id()
+        }
+    }
+
+    impl IntoQueryParam<DefId> for HirOwner {
+        #[inline(always)]
+        fn into_query_param(self) -> DefId {
+            self.def_id.into_query_param()
         }
     }
 }

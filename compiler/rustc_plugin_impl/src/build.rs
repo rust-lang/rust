@@ -18,7 +18,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for RegistrarFinder<'tcx> {
         if let hir::ItemKind::Fn(..) = item.kind {
             let attrs = self.tcx.hir().attrs(item.hir_id());
             if self.tcx.sess.contains_name(attrs, sym::plugin_registrar) {
-                self.registrars.push((item.def_id, item.span));
+                self.registrars.push((item.def_id.def_id, item.span));
             }
         }
     }

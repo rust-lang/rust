@@ -817,7 +817,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             debug!("{:?}", self.impling_types);
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.def_id) {
+        if !self.impling_types.as_ref().unwrap().contains(&item.def_id.def_id) {
             cx.struct_span_lint(MISSING_DEBUG_IMPLEMENTATIONS, item.span, |lint| {
                 lint.build(&format!(
                     "type does not implement `{}`; consider adding `#[derive(Debug)]` \
@@ -1830,7 +1830,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
             if let hir::ItemKind::Mod(..) = it.kind {
             } else {
                 self.items_nameable = false;
-                self.boundary = Some(it.def_id);
+                self.boundary = Some(it.def_id.def_id);
             }
             return;
         }
@@ -1844,7 +1844,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
     }
 
     fn check_item_post(&mut self, _cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if !self.items_nameable && self.boundary == Some(it.def_id) {
+        if !self.items_nameable && self.boundary == Some(it.def_id.def_id) {
             self.items_nameable = true;
         }
     }

@@ -1,6 +1,7 @@
 //! Defines the set of legal keys that can be used in queries.
 
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::hir_id::HirOwner;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -86,6 +87,15 @@ impl Key for LocalDefId {
     }
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.to_def_id().default_span(tcx)
+    }
+}
+
+impl Key for HirOwner {
+    fn query_crate(&self) -> CrateNum {
+        self.def_id.to_def_id().query_crate()
+    }
+    fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
+        self.def_id.to_def_id().default_span(tcx)
     }
 }
 

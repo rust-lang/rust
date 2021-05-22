@@ -224,18 +224,18 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
     let mut trait_should_be_self = vec![];
     match &item.kind {
         hir::TraitItemKind::Const(ty, _) | hir::TraitItemKind::Type(_, Some(ty))
-            if could_be_self(trait_def_id, ty) =>
+            if could_be_self(trait_def_id.def_id, ty) =>
         {
             trait_should_be_self.push(ty.span)
         }
         hir::TraitItemKind::Fn(sig, _) => {
             for ty in sig.decl.inputs {
-                if could_be_self(trait_def_id, ty) {
+                if could_be_self(trait_def_id.def_id, ty) {
                     trait_should_be_self.push(ty.span);
                 }
             }
             match sig.decl.output {
-                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id, ty) => {
+                hir::FnRetTy::Return(ty) if could_be_self(trait_def_id.def_id, ty) => {
                     trait_should_be_self.push(ty.span);
                 }
                 _ => {}
@@ -1385,19 +1385,19 @@ impl Visitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
         debug!("visit_item: {:?}", i);
-        self.tcx.ensure().check_item_well_formed(i.def_id);
+        self.tcx.ensure().check_item_well_formed(i.def_id.def_id);
         hir_visit::walk_item(self, i);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         debug!("visit_trait_item: {:?}", trait_item);
-        self.tcx.ensure().check_trait_item_well_formed(trait_item.def_id);
+        self.tcx.ensure().check_trait_item_well_formed(trait_item.def_id.def_id);
         hir_visit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         debug!("visit_impl_item: {:?}", impl_item);
-        self.tcx.ensure().check_impl_item_well_formed(impl_item.def_id);
+        self.tcx.ensure().check_impl_item_well_formed(impl_item.def_id.def_id);
         hir_visit::walk_impl_item(self, impl_item);
     }
 

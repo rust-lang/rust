@@ -14,7 +14,8 @@ use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
+use rustc_hir::hir_id::HirOwner;
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
@@ -546,7 +547,7 @@ impl TyCtxtInferExt<'tcx> for TyCtxt<'tcx> {
 impl<'tcx> InferCtxtBuilder<'tcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_typeck_results` with fresh `TypeckResults`.
-    pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: LocalDefId) -> Self {
+    pub fn with_fresh_in_progress_typeck_results(mut self, table_owner: HirOwner) -> Self {
         self.fresh_typeck_results = Some(RefCell::new(ty::TypeckResults::new(table_owner)));
         self
     }

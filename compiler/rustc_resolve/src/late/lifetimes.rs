@@ -13,7 +13,7 @@ use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefIdMap, LocalDefId};
-use rustc_hir::hir_id::ItemLocalId;
+use rustc_hir::hir_id::{HirOwner, ItemLocalId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
 use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
@@ -473,15 +473,15 @@ fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetime
     let mut rl = ResolveLifetimes::default();
 
     for (hir_id, v) in named_region_map.defs {
-        let map = rl.defs.entry(hir_id.owner).or_default();
+        let map = rl.defs.entry(hir_id.owner.def_id).or_default();
         map.insert(hir_id.local_id, v);
     }
     for hir_id in named_region_map.late_bound {
-        let map = rl.late_bound.entry(hir_id.owner).or_default();
+        let map = rl.late_bound.entry(hir_id.owner.def_id).or_default();
         map.insert(hir_id.local_id);
     }
     for (hir_id, v) in named_region_map.late_bound_vars {
-        let map = rl.late_bound_vars.entry(hir_id.owner).or_default();
+        let map = rl.late_bound_vars.entry(hir_id.owner.def_id).or_default();
         map.insert(hir_id.local_id, v);
     }
 
@@ -502,7 +502,7 @@ fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetime
 fn resolve_lifetimes_for<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ResolveLifetimes {
     let item_id = item_for(tcx, def_id);
     if item_id == def_id {
-        let item = tcx.hir().item(hir::ItemId { def_id: item_id });
+        let item = tcx.hir().item(hir::ItemId { def_id: HirOwner { def_id: item_id } });
         match item.kind {
             hir::ItemKind::Trait(..) => tcx.resolve_lifetimes_trait_definition(item_id),
             _ => tcx.resolve_lifetimes(item_id),
@@ -517,7 +517,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
     let hir_id = tcx.hir().local_def_id_to_hir_id(local_def_id);
     match tcx.hir().find(hir_id) {
         Some(Node::Item(item)) => {
-            return item.def_id;
+            return item.def_id.def_id;
         }
         _ => {}
     }
@@ -533,7 +533,7 @@ fn item_for(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> LocalDefId {
             }
         }
     };
-    item
+    item.def_id
 }
 
 fn is_late_bound_map<'tcx>(
@@ -760,22 +760,31 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // their owner, we can keep going until we find the Item that owns that. We then
                 // conservatively add all resolved lifetimes. Otherwise we run into problems in
                 // cases like `type Foo<'a> = impl Bar<As = impl Baz + 'a>`.
-                for (_hir_id, node) in
-                    self.tcx.hir().parent_iter(self.tcx.hir().local_def_id_to_hir_id(item.def_id))
+                for (_hir_id, node) in self
+                    .tcx
+                    .hir()
+                    .parent_iter(self.tcx.hir().local_def_id_to_hir_id(item.def_id.def_id))
                 {
                     match node {
                         hir::Node::Item(parent_item) => {
-                            let resolved_lifetimes: &ResolveLifetimes =
-                                self.tcx.resolve_lifetimes(item_for(self.tcx, parent_item.def_id));
+                            let resolved_lifetimes: &ResolveLifetimes = self
+                                .tcx
+                                .resolve_lifetimes(item_for(self.tcx, parent_item.def_id.def_id));
                             // We need to add *all* deps, since opaque tys may want them from *us*
                             for (&owner, defs) in resolved_lifetimes.defs.iter() {
                                 defs.iter().for_each(|(&local_id, region)| {
-                                    self.map.defs.insert(hir::HirId { owner, local_id }, *region);
+                                    self.map.defs.insert(
+                                        hir::HirId { owner: HirOwner { def_id: owner }, local_id },
+                                        *region,
+                                    );
                                 });
                             }
                             for (&owner, late_bound) in resolved_lifetimes.late_bound.iter() {
                                 late_bound.iter().for_each(|&local_id| {
-                                    self.map.late_bound.insert(hir::HirId { owner, local_id });
+                                    self.map.late_bound.insert(hir::HirId {
+                                        owner: HirOwner { def_id: owner },
+                                        local_id,
+                                    });
                                 });
                             }
                             for (&owner, late_bound_vars) in
@@ -783,7 +792,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             {
                                 late_bound_vars.iter().for_each(|(&local_id, late_bound_vars)| {
                                     self.map.late_bound_vars.insert(
-                                        hir::HirId { owner, local_id },
+                                        hir::HirId { owner: HirOwner { def_id: owner }, local_id },
                                         late_bound_vars.clone(),
                                     );
                                 });
@@ -1295,7 +1304,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             // We add lifetime scope information for `Ident`s in associated type bindings and use
             // the `HirId` of the type binding as the key in `LifetimeMap`
             let lifetime_scope = get_lifetime_scopes_for_path(scope);
-            let map = scope_for_path.entry(type_binding.hir_id.owner).or_default();
+            let map = scope_for_path.entry(type_binding.hir_id.owner.def_id).or_default();
             map.insert(type_binding.hir_id.local_id, lifetime_scope);
         }
         hir::intravisit::walk_assoc_type_binding(self, type_binding);
@@ -1316,7 +1325,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // processed using `visit_segment_args`.
                 let lifetime_scope = get_lifetime_scopes_for_path(scope);
                 if let Some(hir_id) = segment.hir_id {
-                    let map = scope_for_path.entry(hir_id.owner).or_default();
+                    let map = scope_for_path.entry(hir_id.owner.def_id).or_default();
                     map.insert(hir_id.local_id, lifetime_scope);
                 }
             }
@@ -1328,7 +1337,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         if let Some(scope_for_path) = self.map.scope_for_path.as_mut() {
             let lifetime_scope = get_lifetime_scopes_for_path(scope);
             if let Some(hir_id) = path_segment.hir_id {
-                let map = scope_for_path.entry(hir_id.owner).or_default();
+                let map = scope_for_path.entry(hir_id.owner.def_id).or_default();
                 map.insert(hir_id.local_id, lifetime_scope);
             }
         }

@@ -364,7 +364,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         body: hir::BodyId,
     ) {
         let map = &self.tcx.hir();
-        self.nest_typeck_results(item.def_id, |v| {
+        self.nest_typeck_results(item.def_id.def_id, |v| {
             let body = map.body(body);
             if let Some(fn_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(fn_data, DefData, item.span);
@@ -392,7 +392,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         typ: &'tcx hir::Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) {
-        self.nest_typeck_results(item.def_id, |v| {
+        self.nest_typeck_results(item.def_id.def_id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
                 v.dumper.dump_def(&access_from!(v.save_ctxt, item, item.hir_id()), var_data);
@@ -507,7 +507,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             );
         }
 
-        self.nest_typeck_results(item.def_id, |v| {
+        self.nest_typeck_results(item.def_id.def_id, |v| {
             for field in def.fields() {
                 v.process_struct_field_def(field, item.hir_id());
                 v.visit_ty(&field.ty);
@@ -629,7 +629,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
 
         let map = &self.tcx.hir();
-        self.nest_typeck_results(item.def_id, |v| {
+        self.nest_typeck_results(item.def_id.def_id, |v| {
             v.visit_ty(&impl_.self_ty);
             if let Some(trait_ref) = &impl_.of_trait {
                 v.process_path(trait_ref.hir_ref_id, &hir::QPath::Resolved(None, &trait_ref.path));
@@ -1171,7 +1171,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             }
             hir::ItemKind::Use(path, hir::UseKind::Glob) => {
                 // Make a comma-separated list of names of imported modules.
-                let names = self.tcx.names_imported_by_glob_use(item.def_id);
+                let names = self.tcx.names_imported_by_glob_use(item.def_id.def_id);
                 let names: Vec<_> = names.iter().map(|n| n.to_string()).collect();
 
                 // Otherwise it's a span with wrong macro expansion info, which
@@ -1335,7 +1335,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             }
             hir::TyKind::OpaqueDef(item_id, _) => {
                 let item = self.tcx.hir().item(item_id);
-                self.nest_typeck_results(item_id.def_id, |v| v.visit_item(item));
+                self.nest_typeck_results(item_id.def_id.def_id, |v| v.visit_item(item));
             }
             _ => intravisit::walk_ty(self, t),
         }

@@ -2239,7 +2239,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
             continue;
         }
 
-        let def_id = item.def_id.to_def_id();
+        let def_id = item.def_id.def_id.to_def_id();
         let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
         collect_fn(&item.ident, ns, def_id);
     }

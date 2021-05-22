@@ -46,11 +46,11 @@ struct CheckVisitor<'tcx> {
 
 impl CheckVisitor<'tcx> {
     fn check_import(&self, item_id: hir::ItemId, span: Span) {
-        if !self.tcx.maybe_unused_trait_import(item_id.def_id) {
+        if !self.tcx.maybe_unused_trait_import(item_id.def_id.def_id) {
             return;
         }
 
-        if self.used_trait_imports.contains(&item_id.def_id) {
+        if self.used_trait_imports.contains(&item_id.def_id.def_id) {
             return;
         }
 

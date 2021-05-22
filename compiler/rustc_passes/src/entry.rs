@@ -30,7 +30,7 @@ struct EntryContext<'a, 'tcx> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
-        let def_key = self.map.def_key(item.def_id);
+        let def_key = self.map.def_key(item.def_id.def_id);
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
     }

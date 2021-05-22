@@ -5,7 +5,7 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::hir_id::HirOwner;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -32,11 +32,11 @@ struct SymbolNamesTest<'tcx> {
 }
 
 impl SymbolNamesTest<'tcx> {
-    fn process_attrs(&mut self, def_id: LocalDefId) {
+    fn process_attrs(&mut self, def_id: HirOwner) {
         let tcx = self.tcx;
         for attr in tcx.get_attrs(def_id.to_def_id()).iter() {
             if tcx.sess.check_name(attr, SYMBOL_NAME) {
-                let def_id = def_id.to_def_id();
+                let def_id = def_id.def_id.to_def_id();
                 let instance = Instance::new(
                     def_id,
                     tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
