@@ -1016,6 +1016,164 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         // additional requirements.
         unsafe { Pin::new_unchecked(boxed) }
     }
+
+    /// Attempts to reuse the storage allocated for this box to store a new value.
+    ///
+    /// # Errors
+    ///
+    /// This function fails if `T` and `U` do not have the same [memory layout](Layout).
+    ///
+    /// # Examples
+    ///
+    /// Reuse a boxed slice:
+    ///
+    /// ```
+    /// #![feature(box_reuse)]
+    ///
+    /// let mut numbers: Box<[i32]> = Box::new([1, 2, 3, 4, 5]);
+    /// Box::reuse(&mut numbers, [6, 7, 8, 9, 10]).unwrap();
+    /// assert_eq!(&*numbers, &[6, 7, 8, 9, 10]);
+    /// ```
+    ///
+    /// Reuse a box to store an opaque type:
+    ///
+    /// ```
+    /// #![feature(box_reuse)]
+    ///
+    /// fn iterate() -> impl Iterator<Item = i32> {
+    ///     0..3
+    /// }
+    ///
+    /// let mut iterator: Box<dyn Iterator<Item = i32>> = Box::new(iterate());
+    /// assert_eq!(iterator.by_ref().collect::<Vec<_>>(), [0, 1, 2]);
+    ///
+    /// assert!(Box::reuse(&mut iterator, iterate()).is_ok());
+    /// assert_eq!(iterator.collect::<Vec<_>>(), [0, 1, 2]);
+    /// ```
+    #[unstable(feature = "box_reuse", issue = "none")]
+    pub fn reuse<U>(b: &mut Box<T, A>, val: U) -> Result<(), U>
+    where
+        U: Unsize<T>,
+    {
+        if Layout::for_value(&**b) != Layout::new::<U>() {
+            return Err(val);
+        }
+
+        struct Guard<'a, T: ?Sized, A: Allocator, U: Unsize<T>> {
+            b: &'a mut Box<T, A>,
+            val: mem::ManuallyDrop<U>,
+        }
+        impl<T: ?Sized, A: Allocator, U: Unsize<T>> Drop for Guard<'_, T, A, U> {
+            fn drop(&mut self) {
+                let ptr: Unique<U> = self.b.0.cast();
+                unsafe { ptr::write(ptr.as_ptr(), mem::ManuallyDrop::take(&mut self.val)) };
+                self.b.0 = ptr;
+            }
+        }
+
+        // Even if dropping the old value panics, this guard ensures that the new value will always
+        // be written.
+        let guard = Guard { b, val: mem::ManuallyDrop::new(val) };
+
+        unsafe { ptr::drop_in_place(&mut **guard.b) };
+
+        Ok(())
+    }
+
+    /// Sets the value inside the box, reusing the existing storage if possible.
+    ///
+    /// # Examples
+    ///
+    /// Reuse a boxed slice:
+    ///
+    /// ```
+    /// #![feature(box_reuse)]
+    ///
+    /// let mut numbers: Box<[i32]> = Box::new([1, 2, 3]);
+    ///
+    /// // This will not reallocate.
+    /// Box::set(&mut numbers, [4, 5, 6]);
+    /// assert_eq!(&*numbers, &[4, 5, 6]);
+    ///
+    /// // This will reallocate.
+    /// Box::set(&mut numbers, [4, 5, 6, 7]);
+    /// assert_eq!(&*numbers, &[4, 5, 6, 7]);
+    /// ```
+    #[unstable(feature = "box_reuse", issue = "none")]
+    pub fn set<U>(b: &mut Box<T, A>, val: U)
+    where
+        U: Unsize<T>,
+    {
+        let layout = Layout::new::<U>();
+        if Box::try_set(b, val).is_err() {
+            handle_alloc_error(layout);
+        }
+    }
+
+    /// Sets the value inside the box, reusing the existing storage if possible and returning an
+    /// error if the allocation fails.
+    ///
+    /// # Examples
+    ///
+    /// Reuse a boxed slice:
+    ///
+    /// ```
+    /// #![feature(allocator_api, box_reuse)]
+    ///
+    /// let mut numbers: Box<[i32]> = Box::try_new([1, 2, 3])?;
+    ///
+    /// // This will not reallocate.
+    /// Box::try_set(&mut numbers, [4, 5, 6])?;
+    /// assert_eq!(&*numbers, &[4, 5, 6]);
+    ///
+    /// // This will reallocate.
+    /// Box::try_set(&mut numbers, [4, 5, 6, 7])?;
+    /// assert_eq!(&*numbers, &[4, 5, 6, 7]);
+    /// # Ok::<(), std::alloc::AllocError>(())
+    /// ```
+    #[unstable(feature = "box_reuse", issue = "none")]
+    // #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn try_set<U>(b: &mut Box<T, A>, val: U) -> Result<(), AllocError>
+    where
+        U: Unsize<T>,
+    {
+        if let Err(val) = Box::reuse(b, val) {
+            // Due to https://github.com/rust-lang/rust/issues/78459, it is not currently possible
+            // to use a `Box<T, &A>`, so we have to work around it.
+
+            // Allocate the replacement box now so we don't have to deal with code panicking later.
+            let alloc = Box::allocator(b);
+            // Use allocation methods directly instead of `Box::try_new_in` so ownership of the
+            // allocator is not lost if allocation errors or panics.
+            let ptr: *mut U = alloc.allocate(Layout::new::<U>())?.cast().as_ptr();
+            unsafe { ptr::write(ptr, val) };
+            let new_b = unsafe { Box::from_raw_in(ptr, ptr::read(alloc)) };
+
+            let old_b = mem::replace(b, new_b);
+
+            // Drop the old box without dropping its allocator, as the allocator has been moved
+            // into the new box.
+            struct DeallocGuard<A: Allocator> {
+                alloc: A,
+                ptr: ptr::NonNull<u8>,
+                layout: Layout,
+            }
+            impl<A: Allocator> Drop for DeallocGuard<A> {
+                fn drop(&mut self) {
+                    unsafe { self.alloc.deallocate(self.ptr, self.layout) };
+                }
+            }
+
+            let old_val = Box::leak(old_b);
+            let _dealloc_guard = DeallocGuard {
+                alloc: Box::allocator(&b),
+                ptr: ptr::NonNull::from(&mut *old_val).cast(),
+                layout: Layout::for_value(old_val),
+            };
+            unsafe { ptr::drop_in_place(old_val) };
+        }
+        Ok(())
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

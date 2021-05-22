@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 #![feature(box_syntax)]
+#![feature(box_reuse)]
 #![feature(cow_is_borrowed)]
 #![feature(const_cow_is_borrowed)]
 #![feature(drain_filter)]
