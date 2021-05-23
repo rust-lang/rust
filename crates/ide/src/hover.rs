@@ -3957,4 +3957,24 @@ mod string {
             "#]],
         )
     }
+
+    #[test]
+    fn function_doesnt_shadow_crate_in_use_tree() {
+        check(
+            r#"
+//- /main.rs crate:main deps:foo
+use foo$0::{foo};
+
+//- /foo.rs crate:foo
+pub fn foo() {}
+"#,
+            expect![[r#"
+                *foo*
+
+                ```rust
+                extern crate foo
+                ```
+            "#]],
+        )
+    }
 }

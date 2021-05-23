@@ -286,11 +286,20 @@ impl SourceAnalyzer {
         let ctx = body::LowerCtx::with_hygiene(db.upcast(), &hygiene);
         let hir_path = Path::from_src(path.clone(), &ctx)?;
 
-        // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we
+        // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
         // trying to resolve foo::bar.
         if let Some(outer_path) = parent().and_then(ast::Path::cast) {
             if let Some(qualifier) = outer_path.qualifier() {
                 if path == &qualifier {
+                    return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
+                }
+            }
+        }
+        // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
+        // trying to resolve foo::bar.
+        if let Some(use_tree) = parent().and_then(ast::UseTree::cast) {
+            if let Some(qualifier) = use_tree.path() {
+                if path == &qualifier && use_tree.coloncolon_token().is_some() {
                     return resolve_hir_path_qualifier(db, &self.resolver, &hir_path);
                 }
             }
