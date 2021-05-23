@@ -337,25 +337,25 @@ impl<'a> CompletionContext<'a> {
                     },
                     ast::RecordExprFieldList(_it) => {
                         cov_mark::hit!(expected_type_struct_field_without_leading_char);
-                        self.token.prev_sibling_or_token()
-                            .and_then(|se| se.into_node())
-                            .and_then(|node| ast::RecordExprField::cast(node))
-                            .and_then(|rf| self.sema.resolve_record_field(&rf).zip(Some(rf)))
-                            .map(|(f, rf)|(
-                                Some(f.0.ty(self.db)),
-                                rf.field_name().map(NameOrNameRef::NameRef),
+                        // wouldn't try {} be nice...
+                        (|| {
+                            let record_ty = self.sema.type_of_expr(&ast::Expr::cast(node.parent()?)?)?;
+                            let expr_field = self.token.prev_sibling_or_token()?
+                            .into_node()
+                                      .and_then(|node| ast::RecordExprField::cast(node))?;
+                            let field = self.sema.resolve_record_field(&expr_field)?.0;
+                            Some((
+                                record_ty.field_type(self.db, field),
+                                expr_field.field_name().map(NameOrNameRef::NameRef),
                             ))
-                            .unwrap_or((None, None))
+                        })().unwrap_or((None, None))
                     },
                     ast::RecordExprField(it) => {
                         cov_mark::hit!(expected_type_struct_field_with_leading_char);
-                        self.sema
-                            .resolve_record_field(&it)
-                            .map(|f|(
-                                Some(f.0.ty(self.db)),
-                                it.field_name().map(NameOrNameRef::NameRef),
-                            ))
-                            .unwrap_or((None, None))
+                        (
+                            it.expr().as_ref().and_then(|e| self.sema.type_of_expr(e)),
+                            it.field_name().map(NameOrNameRef::NameRef),
+                        )
                     },
                     ast::MatchExpr(it) => {
                         cov_mark::hit!(expected_type_match_arm_without_leading_char);
@@ -910,7 +910,7 @@ fn foo() -> u32 {
     }
 
     #[test]
-    fn expected_type_closure_param() {
+    fn expected_type_closure_param_return() {
         check_expected_type_and_name(
             r#"
 fn foo() {

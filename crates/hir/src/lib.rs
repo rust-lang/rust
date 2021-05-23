@@ -513,9 +513,9 @@ impl Field {
     }
 
     /// Returns the type as in the signature of the struct (i.e., with
-    /// placeholder types for type parameters). This is good for showing
-    /// signature help, but not so good to actually get the type of the field
-    /// when you actually have a variable of the struct.
+    /// placeholder types for type parameters). Only use this in the context of
+    /// the field *definition*; if you've already got a variable of the struct
+    /// type, use `Type::field_type` to get to the field type.
     pub fn ty(&self, db: &dyn HirDatabase) -> Type {
         let var_id = self.parent.into();
         let generic_def_id: GenericDefId = match self.parent {
@@ -1942,6 +1942,18 @@ impl Type {
                 | TyKind::GeneratorWitness(..) => false,
             }
         }
+    }
+
+    pub fn field_type(&self, db: &dyn HirDatabase, field: Field) -> Option<Type> {
+        let (adt_id, substs) = self.ty.as_adt()?;
+        let variant_id: hir_def::VariantId = field.parent.into();
+        if variant_id.adt_id() != adt_id {
+            return None;
+        }
+
+        let ty = db.field_types(variant_id).get(field.id)?.clone();
+        let ty = ty.substitute(&Interner, substs);
+        Some(self.derived(ty))
     }
 
     pub fn fields(&self, db: &dyn HirDatabase) -> Vec<(Field, Type)> {
