@@ -47,9 +47,9 @@ async function tryActivate(context: vscode.ExtensionContext) {
 
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder === undefined) {
-        let rustDocuments = vscode.workspace.textDocuments.filter(document => isRustDocument(document));
+        const rustDocuments = vscode.workspace.textDocuments.filter(document => isRustDocument(document));
         if (rustDocuments.length > 0) {
-            ctx = await Ctx.create(config, context, serverPath, { kind: 'Detached files', files: rustDocuments });
+            ctx = await Ctx.create(config, context, serverPath, { kind: 'Detached Files', files: rustDocuments });
         } else {
             throw new Error("no rust files are opened");
         }

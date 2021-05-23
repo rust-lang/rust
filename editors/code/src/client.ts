@@ -33,7 +33,7 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
     Object.assign(newEnv, extraEnv);
 
     let cwd = undefined;
-    if (workspace.kind == "Workspace Folder") {
+    if (workspace.kind === "Workspace Folder") {
         cwd = workspace.folder.fsPath;
     };
 
@@ -50,7 +50,7 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
     );
 
     let initializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
-    if (workspace.kind == "Detached files") {
+    if (workspace.kind === "Detached Files") {
         initializationOptions = { "detachedFiles": workspace.files.map(file => file.uri.fsPath), ...initializationOptions };
     }
 

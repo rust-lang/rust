@@ -9,12 +9,12 @@ import { ServerStatusParams } from './lsp_ext';
 
 export type Workspace =
     {
-        kind: 'Workspace Folder',
-        folder: vscode.Uri,
+        kind: 'Workspace Folder';
+        folder: vscode.Uri;
     }
     | {
-        kind: 'Detached files',
-        files: vscode.TextDocument[],
+        kind: 'Detached Files';
+        files: vscode.TextDocument[];
     };
 
 export class Ctx {
