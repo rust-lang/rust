@@ -49,7 +49,8 @@ pub enum ProjectWorkspace {
     },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson, sysroot: Option<Sysroot>, rustc_cfg: Vec<CfgFlag> },
-    /// TODO kb docs
+    /// Project with a set of disjoint files, not belonging to any particular workspace.
+    /// Backed by basic sysroot crates for basic completion and highlighting.
     DetachedFiles { files: Vec<AbsPathBuf>, sysroot: Sysroot, rustc_cfg: Vec<CfgFlag> },
 }
 
@@ -509,7 +510,6 @@ fn cargo_to_crate_graph(
     crate_graph
 }
 
-// TODO kb refactor and check for correctness
 fn detached_files_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
@@ -525,11 +525,21 @@ fn detached_files_to_crate_graph(
     cfg_options.extend(rustc_cfg);
 
     for detached_file in detached_files {
-        let file_id = load(&detached_file).unwrap();
+        let file_id = match load(&detached_file) {
+            Some(file_id) => file_id,
+            None => {
+                log::error!("Failed to load detached file {:?}", detached_file);
+                continue;
+            }
+        };
+        let display_name = detached_file
+            .file_stem()
+            .and_then(|os_str| os_str.to_str())
+            .map(|file_stem| CrateDisplayName::from_canonical_name(file_stem.to_string()));
         let detached_file_crate = crate_graph.add_crate_root(
             file_id,
             Edition::Edition2018,
-            None,
+            display_name,
             cfg_options.clone(),
             Env::default(),
             Vec::new(),
