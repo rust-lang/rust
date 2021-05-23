@@ -65,7 +65,11 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
     }
 }
 
-fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[hir::ImplItemRef<'_>]) {
+fn lint_impl_body<'tcx>(
+    cx: &LateContext<'tcx>,
+    impl_span: Span,
+    impl_items: &[hir::ImplItemRef<'_>],
+) {
     use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
     use rustc_hir::{Expr, ExprKind, ImplItemKind, QPath};
 
@@ -120,7 +124,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_items: &[h
                 let body = cx.tcx.hir().body(body_id);
                 let mut fpu = FindPanicUnwrap {
                     lcx: cx,
-                    typeck_results: cx.tcx.typeck(impl_item.id.def_id),
+                    typeck_results: cx.tcx.typeck(impl_item.id.def_id.def_id),
                     result: Vec::new(),
                 };
                 fpu.visit_expr(&body.value);

@@ -1,6 +1,8 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty};
+use clippy_utils::{
+    is_entrypoint_fn, is_expn_of, match_panic_def_id, method_chain_args, return_ty,
+};
 use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{Async, AttrKind, Attribute, FnKind, FnRetTy, ItemKind};
@@ -195,10 +197,7 @@ pub struct DocMarkdown {
 
 impl DocMarkdown {
     pub fn new(valid_idents: FxHashSet<String>) -> Self {
-        Self {
-            valid_idents,
-            in_trait_impl: false,
-        }
+        Self { valid_idents, in_trait_impl: false }
     }
 }
 
@@ -217,11 +216,13 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
         let headers = check_attrs(cx, &self.valid_idents, attrs);
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
+                if !(is_entrypoint_fn(cx, item.def_id.to_def_id())
+                    || in_external_macro(cx.tcx.sess, item.span))
+                {
                     let body = cx.tcx.hir().body(body_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
-                        typeck_results: cx.tcx.typeck(item.def_id),
+                        typeck_results: cx.tcx.typeck(item.def_id.def_id),
                         panic_span: None,
                     };
                     fpu.visit_expr(&body.value);
@@ -235,11 +236,11 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
                         fpu.panic_span,
                     );
                 }
-            },
+            }
             hir::ItemKind::Impl(ref impl_) => {
                 self.in_trait_impl = impl_.of_trait.is_some();
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -269,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             let body = cx.tcx.hir().body(body_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(item.def_id),
+                typeck_results: cx.tcx.typeck(item.def_id.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(&body.value);
@@ -299,12 +300,7 @@ fn lint_for_missing_headers<'tcx>(
         return; // Private functions do not require doc comments
     }
     if !headers.safety && sig.header.unsafety == hir::Unsafety::Unsafe {
-        span_lint(
-            cx,
-            MISSING_SAFETY_DOC,
-            span,
-            "unsafe function's docs miss `# Safety` section",
-        );
+        span_lint(cx, MISSING_SAFETY_DOC, span, "unsafe function's docs miss `# Safety` section");
     }
     if !headers.panics && panic_span.is_some() {
         span_lint_and_note(
@@ -357,7 +353,11 @@ fn lint_for_missing_headers<'tcx>(
 /// the spans but this function is inspired from the later.
 #[allow(clippy::cast_possible_truncation)]
 #[must_use]
-pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: Span) -> (String, Vec<(usize, Span)>) {
+pub fn strip_doc_comment_decoration(
+    doc: &str,
+    comment_kind: CommentKind,
+    span: Span,
+) -> (String, Vec<(usize, Span)>) {
     // one-line comments lose their prefix
     if comment_kind == CommentKind::Line {
         let mut doc = doc.to_owned();
@@ -405,23 +405,24 @@ struct DocHeaders {
     panics: bool,
 }
 
-fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [Attribute]) -> DocHeaders {
+fn check_attrs<'a>(
+    cx: &LateContext<'_>,
+    valid_idents: &FxHashSet<String>,
+    attrs: &'a [Attribute],
+) -> DocHeaders {
     let mut doc = String::new();
     let mut spans = vec![];
 
     for attr in attrs {
         if let AttrKind::DocComment(comment_kind, comment) = attr.kind {
-            let (comment, current_spans) = strip_doc_comment_decoration(&comment.as_str(), comment_kind, attr.span);
+            let (comment, current_spans) =
+                strip_doc_comment_decoration(&comment.as_str(), comment_kind, attr.span);
             spans.extend_from_slice(&current_spans);
             doc.push_str(&comment);
         } else if attr.has_name(sym::doc) {
             // ignore mix of sugared and non-sugared doc
             // don't trigger the safety or errors check
-            return DocHeaders {
-                safety: true,
-                errors: true,
-                panics: true,
-            };
+            return DocHeaders { safety: true, errors: true, panics: true };
         }
     }
 
@@ -433,11 +434,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     }
 
     if doc.is_empty() {
-        return DocHeaders {
-            safety: false,
-            errors: false,
-            panics: false,
-        };
+        return DocHeaders { safety: false, errors: false, panics: false };
     }
 
     let parser = pulldown_cmark::Parser::new(&doc).into_offset_iter();
@@ -453,7 +450,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
                 let mut previous = previous.to_string();
                 previous.push_str(&current);
                 Ok((Text(previous.into()), previous_range))
-            },
+            }
             (previous, current) => Err(((previous, previous_range), (current, current_range))),
         }
     });
@@ -475,11 +472,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     };
     use pulldown_cmark::Tag::{CodeBlock, Heading, Link};
 
-    let mut headers = DocHeaders {
-        safety: false,
-        errors: false,
-        panics: false,
-    };
+    let mut headers = DocHeaders { safety: false, errors: false, panics: false };
     let mut in_code = false;
     let mut in_link = None;
     let mut in_heading = false;
@@ -503,11 +496,11 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         }
                     }
                 }
-            },
+            }
             End(CodeBlock(_)) => {
                 in_code = false;
                 is_rust = false;
-            },
+            }
             Start(Link(_, url, _)) => in_link = Some(url),
             End(Link(..)) => in_link = None,
             Start(Heading(_)) => in_heading = true,
@@ -541,7 +534,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 
                     check_text(cx, valid_idents, &text, span);
                 }
-            },
+            }
         }
     }
     headers
@@ -554,19 +547,21 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let filename = FileName::anon_source_code(code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+                let emitter =
+                    EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
                 let handler = Handler::with_emitter(false, None, box emitter);
                 let sess = ParseSess::with_span_handler(handler, sm);
 
-                let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
-                    Ok(p) => p,
-                    Err(errs) => {
-                        for mut err in errs {
-                            err.cancel();
+                let mut parser =
+                    match maybe_new_parser_from_source_str(&sess, filename, code.into()) {
+                        Ok(p) => p,
+                        Err(errs) => {
+                            for mut err in errs {
+                                err.cancel();
+                            }
+                            return false;
                         }
-                        return false;
-                    },
-                };
+                    };
 
                 let mut relevant_main_found = false;
                 loop {
@@ -578,7 +573,9 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                             | ItemKind::ExternCrate(..)
                             | ItemKind::ForeignMod(..) => return false,
                             // We found a main function ...
-                            ItemKind::Fn(box FnKind(_, sig, _, Some(block))) if item.ident.name == sym::main => {
+                            ItemKind::Fn(box FnKind(_, sig, _, Some(block)))
+                                if item.ident.name == sym::main =>
+                            {
                                 let is_async = matches!(sig.header.asyncness, Async::Yes { .. });
                                 let returns_nothing = match &sig.decl.output {
                                     FnRetTy::Default(..) => true,
@@ -593,16 +590,16 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                                     // This main function should not be linted, we're done
                                     return false;
                                 }
-                            },
+                            }
                             // Another function was found; this case is ignored too
                             ItemKind::Fn(..) => return false,
-                            _ => {},
+                            _ => {}
                         },
                         Ok(None) => break,
                         Err(mut e) => {
                             e.cancel();
                             return false;
-                        },
+                        }
                     }
                 }
 
@@ -722,7 +719,9 @@ impl<'a, 'tcx> Visitor<'tcx> for FindPanicUnwrap<'a, 'tcx> {
         }
 
         // check for `assert_eq` or `assert_ne`
-        if is_expn_of(expr.span, "assert_eq").is_some() || is_expn_of(expr.span, "assert_ne").is_some() {
+        if is_expn_of(expr.span, "assert_eq").is_some()
+            || is_expn_of(expr.span, "assert_ne").is_some()
+        {
             self.panic_span = Some(expr.span);
         }
 

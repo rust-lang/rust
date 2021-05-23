@@ -51,14 +51,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = e.kind {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
-                    if let [Adjustment {
-                        kind: Adjust::Deref(_), ..
-                    }, Adjustment {
-                        kind: Adjust::Deref(_), ..
-                    }, Adjustment {
-                        kind: Adjust::Borrow(_),
-                        ..
-                    }] = *adj3
+                    if let [Adjustment { kind: Adjust::Deref(_), .. }, Adjustment { kind: Adjust::Deref(_), .. }, Adjustment { kind: Adjust::Borrow(_), .. }] =
+                        *adj3
                     {
                         span_lint_and_then(
                             cx,
@@ -121,13 +115,13 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         if is_automatically_derived(attrs) {
             debug_assert!(self.derived_item.is_none());
-            self.derived_item = Some(item.def_id);
+            self.derived_item = Some(item.def_id.def_id);
         }
     }
 
     fn check_item_post(&mut self, _: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let Some(id) = self.derived_item {
-            if item.def_id == id {
+            if item.def_id.def_id == id {
                 self.derived_item = None;
             }
         }

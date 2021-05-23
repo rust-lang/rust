@@ -13,7 +13,11 @@ use rustc_typeck::check::{cast::CastCheck, FnCtxt, Inherited};
 /// the type's `ToString` implementation. In weird cases it could lead to types
 /// with invalid `'_`
 /// lifetime, but it should be rare.
-pub(super) fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty: Ty<'_>) -> String {
+pub(super) fn get_type_snippet(
+    cx: &LateContext<'_>,
+    path: &QPath<'_>,
+    to_ref_ty: Ty<'_>,
+) -> String {
     let seg = last_path_segment(path);
     if_chain! {
         if let Some(params) = seg.args;
@@ -33,7 +37,11 @@ pub(super) fn get_type_snippet(cx: &LateContext<'_>, path: &QPath<'_>, to_ref_ty
 
 // check if the component types of the transmuted collection and the result have different ABI,
 // size or alignment
-pub(super) fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx>, to: Ty<'tcx>) -> bool {
+pub(super) fn is_layout_incompatible<'tcx>(
+    cx: &LateContext<'tcx>,
+    from: Ty<'tcx>,
+    to: Ty<'tcx>,
+) -> bool {
     let empty_param_env = ty::ParamEnv::empty();
     // check if `from` and `to` are normalizable to avoid ICE (#4968)
     if !(is_normalizable(cx, empty_param_env, from) && is_normalizable(cx, empty_param_env, to)) {
@@ -42,7 +50,9 @@ pub(super) fn is_layout_incompatible<'tcx>(cx: &LateContext<'tcx>, from: Ty<'tcx
     let from_ty_layout = cx.tcx.layout_of(empty_param_env.and(from));
     let to_ty_layout = cx.tcx.layout_of(empty_param_env.and(to));
     if let (Ok(from_layout), Ok(to_layout)) = (from_ty_layout, to_ty_layout) {
-        from_layout.size != to_layout.size || from_layout.align != to_layout.align || from_layout.abi != to_layout.abi
+        from_layout.size != to_layout.size
+            || from_layout.align != to_layout.align
+            || from_layout.abi != to_layout.abi
     } else {
         // no idea about layout, so don't lint
         false
@@ -59,7 +69,9 @@ pub(super) fn can_be_expressed_as_pointer_cast<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
 ) -> bool {
-    use CastKind::{AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast};
+    use CastKind::{
+        AddrPtrCast, ArrayPtrCast, FnPtrAddrCast, FnPtrPtrCast, PtrAddrCast, PtrPtrCast,
+    };
     matches!(
         check_cast(cx, e, from_ty, to_ty),
         Some(PtrPtrCast | PtrAddrCast | AddrPtrCast | ArrayPtrCast | FnPtrPtrCast | FnPtrAddrCast)
@@ -70,18 +82,20 @@ pub(super) fn can_be_expressed_as_pointer_cast<'tcx>(
 /// the cast. In certain cases, including some invalid casts from array references
 /// to pointers, this may cause additional errors to be emitted and/or ICE error
 /// messages. This function will panic if that occurs.
-fn check_cast<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> Option<CastKind> {
+fn check_cast<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    from_ty: Ty<'tcx>,
+    to_ty: Ty<'tcx>,
+) -> Option<CastKind> {
     let hir_id = e.hir_id;
-    let local_def_id = hir_id.owner;
+    let local_def_id = hir_id.owner.def_id;
 
     Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
         let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, hir_id);
 
         // If we already have errors, we can't be sure we can pointer cast.
-        assert!(
-            !fn_ctxt.errors_reported_since_creation(),
-            "Newly created FnCtxt contained errors"
-        );
+        assert!(!fn_ctxt.errors_reported_since_creation(), "Newly created FnCtxt contained errors");
 
         if let Ok(check) = CastCheck::new(
             &fn_ctxt, e, from_ty, to_ty,

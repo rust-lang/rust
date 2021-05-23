@@ -10,19 +10,18 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty;
-use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
+use rustc_typeck::expr_use_visitor::{
+    ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId,
+};
 
 /// Returns a set of mutated local variable IDs, or `None` if mutations could not be determined.
 pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> Option<HirIdSet> {
-    let mut delegate = MutVarsDelegate {
-        used_mutably: HirIdSet::default(),
-        skip: false,
-    };
+    let mut delegate = MutVarsDelegate { used_mutably: HirIdSet::default(), skip: false };
     cx.tcx.infer_ctxt().enter(|infcx| {
         ExprUseVisitor::new(
             &mut delegate,
             &infcx,
-            expr.hir_id.owner,
+            expr.hir_id.owner.def_id,
             cx.param_env,
             cx.typeck_results(),
         )
@@ -35,7 +34,11 @@ pub fn mutated_variables<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> 
     Some(delegate.used_mutably)
 }
 
-pub fn is_potentially_mutated<'tcx>(variable: &'tcx Path<'_>, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
+pub fn is_potentially_mutated<'tcx>(
+    variable: &'tcx Path<'_>,
+    expr: &'tcx Expr<'_>,
+    cx: &LateContext<'tcx>,
+) -> bool {
     if let Res::Local(id) = variable.res {
         mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
     } else {
@@ -54,14 +57,14 @@ impl<'tcx> MutVarsDelegate {
         match cat.place.base {
             PlaceBase::Local(id) => {
                 self.used_mutably.insert(id);
-            },
+            }
             PlaceBase::Upvar(_) => {
                 //FIXME: This causes false negatives. We can't get the `NodeId` from
                 //`Categorization::Upvar(_)`. So we search for any `Upvar`s in the
                 //`while`-body, not just the ones in the condition.
                 self.skip = true
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }
@@ -79,7 +82,13 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
         self.update(&cmt)
     }
 
-    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(
+        &mut self,
+        _: rustc_typeck::expr_use_visitor::Place<'tcx>,
+        _: FakeReadCause,
+        _: HirId,
+    ) {
+    }
 }
 
 pub struct ParamBindingIdCollector {
@@ -89,9 +98,7 @@ impl<'tcx> ParamBindingIdCollector {
     fn collect_binding_hir_ids(body: &'tcx hir::Body<'tcx>) -> Vec<hir::HirId> {
         let mut hir_ids: Vec<hir::HirId> = Vec::new();
         for param in body.params.iter() {
-            let mut finder = ParamBindingIdCollector {
-                binding_hir_ids: Vec::new(),
-            };
+            let mut finder = ParamBindingIdCollector { binding_hir_ids: Vec::new() };
             finder.visit_param(param);
             for hir_id in &finder.binding_hir_ids {
                 hir_ids.push(*hir_id);
@@ -159,9 +166,7 @@ struct ReturnBreakContinueMacroVisitor {
 
 impl ReturnBreakContinueMacroVisitor {
     fn new() -> ReturnBreakContinueMacroVisitor {
-        ReturnBreakContinueMacroVisitor {
-            seen_return_break_continue: false,
-        }
+        ReturnBreakContinueMacroVisitor { seen_return_break_continue: false }
     }
 }
 
@@ -179,7 +184,7 @@ impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
         match &ex.kind {
             ExprKind::Ret(..) | ExprKind::Break(..) | ExprKind::Continue(..) => {
                 self.seen_return_break_continue = true;
-            },
+            }
             // Something special could be done here to handle while or for loop
             // desugaring, as this will detect a break if there's a while loop
             // or a for loop inside the expression.
@@ -189,7 +194,7 @@ impl<'tcx> Visitor<'tcx> for ReturnBreakContinueMacroVisitor {
                 } else {
                     rustc_hir::intravisit::walk_expr(self, ex);
                 }
-            },
+            }
         }
     }
 }
