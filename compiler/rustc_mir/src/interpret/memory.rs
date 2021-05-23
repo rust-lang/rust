@@ -321,6 +321,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         };
 
+        if alloc.mutability == Mutability::Not {
+            throw_ub_format!("deallocating immutable allocation {}", ptr.alloc_id);
+        }
         if alloc_kind != kind {
             throw_ub_format!(
                 "deallocating {}, which is {} memory, using {} deallocation operation",
