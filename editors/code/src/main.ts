@@ -160,7 +160,7 @@ export async function deactivate() {
 }
 
 async function bootstrap(config: Config, state: PersistentState): Promise<string> {
-    await fs.mkdir(config.globalStoragePath, { recursive: true });
+    await vscode.workspace.fs.createDirectory(config.globalStorageUri);
 
     if (!config.currentExtensionIsNightly) {
         await state.updateNightlyReleaseId(undefined);
@@ -222,7 +222,7 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     const artifact = latestNightlyRelease.assets.find(artifact => artifact.name === "rust-analyzer.vsix");
     assert(!!artifact, `Bad release: ${JSON.stringify(latestNightlyRelease)}`);
 
-    const dest = path.join(config.globalStoragePath, "rust-analyzer.vsix");
+    const dest = path.join(config.globalStorageUri.path, "rust-analyzer.vsix");
 
     await downloadWithRetryDialog(state, async () => {
         await download({
@@ -334,7 +334,7 @@ async function getServer(config: Config, state: PersistentState): Promise<string
         platform = "x86_64-unknown-linux-musl";
     }
     const ext = platform.indexOf("-windows-") !== -1 ? ".exe" : "";
-    const dest = path.join(config.globalStoragePath, `rust-analyzer-${platform}${ext}`);
+    const dest = path.join(config.globalStorageUri.path, `rust-analyzer-${platform}${ext}`);
     const exists = await fs.stat(dest).then(() => true, () => false);
     if (!exists) {
         await state.updateServerVersion(undefined);
