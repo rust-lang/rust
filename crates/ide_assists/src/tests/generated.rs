@@ -786,8 +786,8 @@ struct Person {
 
 impl Person {
     /// Get a reference to the person's name.
-    fn $0name(&self) -> &String {
-        &self.name
+    fn $0name(&self) -> &str {
+        self.name.as_str()
     }
 }
 "#####,
