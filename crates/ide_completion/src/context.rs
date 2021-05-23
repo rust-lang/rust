@@ -785,6 +785,19 @@ fn foo() {
     }
 
     #[test]
+    fn expected_type_generic_struct_field() {
+        check_expected_type_and_name(
+            r#"
+struct Foo<T> { a: T }
+fn foo() -> Foo<u32> {
+    Foo { a: $0 }
+}
+"#,
+            expect![[r#"ty: u32, name: a"#]],
+        )
+    }
+
+    #[test]
     fn expected_type_struct_field_with_leading_char() {
         cov_mark::check!(expected_type_struct_field_with_leading_char);
         check_expected_type_and_name(
@@ -894,5 +907,52 @@ fn foo() -> u32 {
 "#,
             expect![[r#"ty: u32, name: ?"#]],
         )
+    }
+
+    #[test]
+    fn expected_type_closure_param() {
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    bar(|| $0);
+}
+
+fn bar(f: impl FnOnce() -> u32) {}
+#[lang = "fn_once"]
+trait FnOnce { type Output; }
+"#,
+            expect![[r#"ty: u32, name: ?"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_generic_function() {
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    bar::<u32>($0);
+}
+
+fn bar<T>(t: T) {}
+"#,
+            expect![[r#"ty: u32, name: t"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_generic_method() {
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    S(1u32).bar($0);
+}
+
+struct S<T>(T);
+impl<T> S<T> {
+    fn bar(self, t: T) {}
+}
+"#,
+            expect![[r#"ty: u32, name: t"#]],
+        );
     }
 }

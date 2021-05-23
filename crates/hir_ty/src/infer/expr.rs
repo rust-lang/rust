@@ -891,17 +891,21 @@ impl<'a> InferenceContext<'a> {
                 method_name,
             )
         });
-        let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
+        let (derefed_receiver_ty, method_ty, substs) = match resolved {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);
-                self.write_method_resolution(tgt_expr, func);
-                (ty, self.db.value_ty(func.into()), Some(generics(self.db.upcast(), func.into())))
+                let generics = generics(self.db.upcast(), func.into());
+                let substs = self.substs_for_method_call(generics, generic_args, &ty);
+                self.write_method_resolution(tgt_expr, func, substs.clone());
+                (ty, self.db.value_ty(func.into()), substs)
             }
-            None => (receiver_ty, Binders::empty(&Interner, self.err_ty()), None),
+            None => (
+                receiver_ty,
+                Binders::empty(&Interner, self.err_ty()),
+                Substitution::empty(&Interner),
+            ),
         };
-        let substs = self.substs_for_method_call(def_generics, generic_args, &derefed_receiver_ty);
         let method_ty = method_ty.substitute(&Interner, &substs);
-        let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
         let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
             Some(sig) => {
@@ -950,23 +954,21 @@ impl<'a> InferenceContext<'a> {
 
     fn substs_for_method_call(
         &mut self,
-        def_generics: Option<Generics>,
+        def_generics: Generics,
         generic_args: Option<&GenericArgs>,
         receiver_ty: &Ty,
     ) -> Substitution {
         let (parent_params, self_params, type_params, impl_trait_params) =
-            def_generics.as_ref().map_or((0, 0, 0, 0), |g| g.provenance_split());
+            def_generics.provenance_split();
         assert_eq!(self_params, 0); // method shouldn't have another Self param
         let total_len = parent_params + type_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown, except for the receiver type
-        if let Some(parent_generics) = def_generics.as_ref().map(|p| p.iter_parent()) {
-            for (_id, param) in parent_generics {
-                if param.provenance == hir_def::generics::TypeParamProvenance::TraitSelf {
-                    substs.push(receiver_ty.clone());
-                } else {
-                    substs.push(self.err_ty());
-                }
+        for (_id, param) in def_generics.iter_parent() {
+            if param.provenance == hir_def::generics::TypeParamProvenance::TraitSelf {
+                substs.push(receiver_ty.clone());
+            } else {
+                substs.push(self.table.new_type_var());
             }
         }
         // handle provided type arguments
@@ -989,7 +991,7 @@ impl<'a> InferenceContext<'a> {
         };
         let supplied_params = substs.len();
         for _ in supplied_params..total_len {
-            substs.push(self.err_ty());
+            substs.push(self.table.new_type_var());
         }
         assert_eq!(substs.len(), total_len);
         Substitution::from_iter(&Interner, substs)

@@ -37,8 +37,8 @@ use syntax::SmolStr;
 use super::{DomainGoal, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty};
 use crate::{
     db::HirDatabase, fold_tys, infer::diagnostics::InferenceDiagnostic,
-    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Goal, Interner, TyBuilder,
-    TyExt, TyKind,
+    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Goal, Interner, Substitution,
+    TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -132,7 +132,7 @@ impl Default for InternedStandardTypes {
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct InferenceResult {
     /// For each method call expr, records the function it resolves to.
-    method_resolutions: FxHashMap<ExprId, FunctionId>,
+    method_resolutions: FxHashMap<ExprId, (FunctionId, Substitution)>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, FieldId>,
     /// For each struct literal or pattern, records the variant it resolves to.
@@ -152,8 +152,8 @@ pub struct InferenceResult {
 }
 
 impl InferenceResult {
-    pub fn method_resolution(&self, expr: ExprId) -> Option<FunctionId> {
-        self.method_resolutions.get(&expr).copied()
+    pub fn method_resolution(&self, expr: ExprId) -> Option<(FunctionId, Substitution)> {
+        self.method_resolutions.get(&expr).cloned()
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<FieldId> {
         self.field_resolutions.get(&expr).copied()
@@ -284,14 +284,17 @@ impl<'a> InferenceContext<'a> {
         self.table.propagate_diverging_flag();
         let mut result = std::mem::take(&mut self.result);
         for ty in result.type_of_expr.values_mut() {
-            *ty = self.table.resolve_ty_completely(ty.clone());
+            *ty = self.table.resolve_completely(ty.clone());
         }
         for ty in result.type_of_pat.values_mut() {
-            *ty = self.table.resolve_ty_completely(ty.clone());
+            *ty = self.table.resolve_completely(ty.clone());
         }
         for mismatch in result.type_mismatches.values_mut() {
-            mismatch.expected = self.table.resolve_ty_completely(mismatch.expected.clone());
-            mismatch.actual = self.table.resolve_ty_completely(mismatch.actual.clone());
+            mismatch.expected = self.table.resolve_completely(mismatch.expected.clone());
+            mismatch.actual = self.table.resolve_completely(mismatch.actual.clone());
+        }
+        for (_, subst) in result.method_resolutions.values_mut() {
+            *subst = self.table.resolve_completely(subst.clone());
         }
         result
     }
@@ -300,8 +303,8 @@ impl<'a> InferenceContext<'a> {
         self.result.type_of_expr.insert(expr, ty);
     }
 
-    fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId) {
-        self.result.method_resolutions.insert(expr, func);
+    fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId, subst: Substitution) {
+        self.result.method_resolutions.insert(expr, (func, subst));
     }
 
     fn write_field_resolution(&mut self, expr: ExprId, field: FieldId) {

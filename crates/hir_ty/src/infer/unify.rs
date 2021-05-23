@@ -295,8 +295,11 @@ impl<'a> InferenceTable<'a> {
         .expect("fold failed unexpectedly")
     }
 
-    pub(crate) fn resolve_ty_completely(&mut self, ty: Ty) -> Ty {
-        self.resolve_with_fallback(ty, |_, _, d, _| d)
+    pub(crate) fn resolve_completely<T>(&mut self, t: T) -> T::Result
+    where
+        T: HasInterner<Interner = Interner> + Fold<Interner>,
+    {
+        self.resolve_with_fallback(t, |_, _, d, _| d)
     }
 
     /// Unify two types and register new trait goals that arise from that.

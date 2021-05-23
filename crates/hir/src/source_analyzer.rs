@@ -143,7 +143,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
-    ) -> Option<FunctionId> {
+    ) -> Option<(FunctionId, Substitution)> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         self.infer.as_ref()?.method_resolution(expr_id)
     }

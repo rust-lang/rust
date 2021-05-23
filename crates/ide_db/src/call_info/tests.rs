@@ -189,6 +189,24 @@ fn main() { S.foo($0); }
 }
 
 #[test]
+fn test_fn_signature_for_generic_method() {
+    check(
+        r#"
+struct S<T>(T);
+impl<T> S<T> {
+    fn foo(&self, x: T) {}
+}
+
+fn main() { S(1u32).foo($0); }
+"#,
+        expect![[r#"
+                fn foo(&self, x: u32)
+                (<x: u32>)
+            "#]],
+    );
+}
+
+#[test]
 fn test_fn_signature_for_method_with_arg_as_assoc_fn() {
     check(
         r#"
