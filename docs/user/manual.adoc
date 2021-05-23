@@ -293,6 +293,8 @@ EOF
 
 See https://sharksforarms.dev/posts/neovim-rust/ for more tips on getting started.
 
+Check out https://github.com/simrat39/rust-tools.nvim for a batteries included rust-analyzer setup for neovim.
+
 ==== vim-lsp
 
 vim-lsp is installed by following https://github.com/prabirshrestha/vim-lsp[the plugin instructions].
