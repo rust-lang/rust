@@ -3,8 +3,8 @@ import { log } from './util';
 
 export class PersistentState {
     constructor(private readonly globalState: vscode.Memento) {
-        const { lastCheck, releaseId, serverVersion } = this;
-        log.info("PersistentState:", { lastCheck, releaseId, serverVersion });
+        const { lastCheck, nightlyReleaseId, serverVersion } = this;
+        log.info("PersistentState:", { lastCheck, nightlyReleaseId, serverVersion });
     }
 
     /**
@@ -21,10 +21,10 @@ export class PersistentState {
      * Release id of the *nightly* extension.
      * Used to check if we should update.
      */
-    get releaseId(): number | undefined {
+    get nightlyReleaseId(): number | undefined {
         return this.globalState.get("releaseId");
     }
-    async updateReleaseId(value: number) {
+    async updateNightlyReleaseId(value: number | undefined) {
         await this.globalState.update("releaseId", value);
     }
 
