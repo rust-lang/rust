@@ -1,40 +1,49 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_context;
+use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item, match_type};
 use clippy_utils::{is_expr_path_def_path, paths};
 use if_chain::if_chain;
-use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_middle::ty::{self, Ty, TyS};
+use rustc_span::symbol::sym;
+use std::borrow::Cow;
 
 use super::MANUAL_STR_REPEAT;
 
 enum RepeatKind {
-    Str,
     String,
-    Char,
+    Char(char),
+}
+
+fn get_ty_param(ty: Ty<'_>) -> Option<Ty<'_>> {
+    if let ty::Adt(_, subs) = ty.kind() {
+        subs.types().next()
+    } else {
+        None
+    }
 }
 
 fn parse_repeat_arg(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<RepeatKind> {
     if let ExprKind::Lit(lit) = &e.kind {
         match lit.node {
-            LitKind::Str(..) => Some(RepeatKind::Str),
-            LitKind::Char(_) => Some(RepeatKind::Char),
+            LitKind::Str(..) => Some(RepeatKind::String),
+            LitKind::Char(c) => Some(RepeatKind::Char(c)),
             _ => None,
         }
     } else {
         let ty = cx.typeck_results().expr_ty(e);
         if is_type_diagnostic_item(cx, ty, sym::string_type)
-            || is_type_lang_item(cx, ty, LangItem::OwnedBox)
-            || match_type(cx, ty, &paths::COW)
+            || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).map_or(false, TyS::is_str))
+            || (match_type(cx, ty, &paths::COW) && get_ty_param(ty).map_or(false, TyS::is_str))
         {
             Some(RepeatKind::String)
         } else {
             let ty = ty.peel_refs();
-            (ty.is_str() || is_type_diagnostic_item(cx, ty, sym::string_type)).then(|| RepeatKind::Str)
+            (ty.is_str() || is_type_diagnostic_item(cx, ty, sym::string_type)).then(|| RepeatKind::String)
         }
     }
 }
@@ -61,18 +70,19 @@ pub(super) fn check(
         if ctxt == take_self_arg.span.ctxt();
         then {
             let mut app = Applicability::MachineApplicable;
-            let (val_snip, val_is_mac) = snippet_with_context(cx, repeat_arg.span, ctxt, "..", &mut app);
             let count_snip = snippet_with_context(cx, take_arg.span, ctxt, "..", &mut app).0;
 
             let val_str = match repeat_kind {
-                RepeatKind::String => format!("(&{})", val_snip),
-                RepeatKind::Str if !val_is_mac && repeat_arg.precedence().order() < PREC_POSTFIX => {
-                    format!("({})", val_snip)
-                },
-                RepeatKind::Str => val_snip.into(),
-                RepeatKind::Char if val_snip == r#"'"'"# => r#""\"""#.into(),
-                RepeatKind::Char if val_snip == r#"'\''"# => r#""'""#.into(),
-                RepeatKind::Char => format!("\"{}\"", &val_snip[1..val_snip.len() - 1]),
+                RepeatKind::Char(_) if repeat_arg.span.ctxt() != ctxt => return,
+                RepeatKind::Char('\'') => r#""'""#.into(),
+                RepeatKind::Char('"') => r#""\"""#.into(),
+                RepeatKind::Char(_) =>
+                    match snippet_with_applicability(cx, repeat_arg.span, "..", &mut app) {
+                        Cow::Owned(s) => Cow::Owned(format!("\"{}\"", &s[1..s.len() - 1])),
+                        s @ Cow::Borrowed(_) => s,
+                    },
+                RepeatKind::String =>
+                    Sugg::hir_with_context(cx, repeat_arg, ctxt, "..", &mut app).maybe_par().to_string().into(),
             };
 
             span_lint_and_sugg(
