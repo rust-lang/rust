@@ -1085,6 +1085,10 @@ impl Trait {
     pub fn is_auto(self, db: &dyn HirDatabase) -> bool {
         db.trait_data(self.id).is_auto
     }
+
+    pub fn is_unsafe(&self, db: &dyn HirDatabase) -> bool {
+        db.trait_data(self.id).is_unsafe
+    }
 }
 
 impl HasVisibility for Trait {
