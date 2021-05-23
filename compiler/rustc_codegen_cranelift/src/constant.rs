@@ -2,6 +2,7 @@
 
 use rustc_span::DUMMY_SP;
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -175,6 +176,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                 let mut alloc = Allocation::from_bytes(
                     std::iter::repeat(0).take(size.bytes_usize()).collect::<Vec<u8>>(),
                     align,
+                    Mutability::Not,
                 );
                 alloc.write_scalar(fx, alloc_range(Size::ZERO, size), x.into()).unwrap();
                 let alloc = fx.tcx.intern_const_alloc(alloc);
