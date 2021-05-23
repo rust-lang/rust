@@ -299,10 +299,10 @@ fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::Expect;
     use ide_assists::AssistResolveStrategy;
     use stdx::trim_indent;
-    use test_utils::assert_eq_text;
+    use test_utils::{assert_eq_text, extract_annotations};
 
     use crate::{fixture, DiagnosticsConfig};
 
@@ -396,26 +396,51 @@ mod tests {
         expect.assert_debug_eq(&diagnostics)
     }
 
+    pub(crate) fn check_diagnostics(ra_fixture: &str) {
+        let (analysis, file_id) = fixture::file(ra_fixture);
+        let diagnostics = analysis
+            .diagnostics(&DiagnosticsConfig::default(), AssistResolveStrategy::All, file_id)
+            .unwrap();
+
+        let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
+        let actual = diagnostics.into_iter().map(|d| (d.range, d.message)).collect::<Vec<_>>();
+        assert_eq!(expected, actual);
+    }
+
     #[test]
     fn test_unresolved_macro_range() {
-        check_expect(
-            r#"foo::bar!(92);"#,
-            expect![[r#"
-                [
-                    Diagnostic {
-                        message: "unresolved macro `foo::bar!`",
-                        range: 5..8,
-                        severity: Error,
-                        fixes: None,
-                        unused: false,
-                        code: Some(
-                            DiagnosticCode(
-                                "unresolved-macro-call",
-                            ),
-                        ),
-                    },
-                ]
-            "#]],
+        check_diagnostics(
+            r#"
+foo::bar!(92);
+   //^^^ unresolved macro `foo::bar!`
+"#,
+        );
+    }
+
+    #[test]
+    fn unresolved_import_in_use_tree() {
+        // Only the relevant part of a nested `use` item should be highlighted.
+        check_diagnostics(
+            r#"
+use does_exist::{Exists, DoesntExist};
+                       //^^^^^^^^^^^ unresolved import
+
+use {does_not_exist::*, does_exist};
+   //^^^^^^^^^^^^^^^^^ unresolved import
+
+use does_not_exist::{
+    a,
+  //^ unresolved import
+    b,
+  //^ unresolved import
+    c,
+  //^ unresolved import
+};
+
+mod does_exist {
+    pub struct Exists;
+}
+"#,
         );
     }
 

@@ -71,7 +71,7 @@ impl ModPath {
     }
 
     /// Calls `cb` with all paths, represented by this use item.
-    pub(crate) fn expand_use_item(
+    pub fn expand_use_item(
         db: &dyn DefDatabase,
         item_src: InFile<ast::Use>,
         hygiene: &Hygiene,

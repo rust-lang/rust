@@ -19,10 +19,7 @@ use hir_def::{
     src::HasSource,
     AdtId, AttrDefId, ConstId, EnumId, FunctionId, Lookup, ModuleDefId, StaticId, StructId,
 };
-use hir_expand::{
-    diagnostics::DiagnosticSink,
-    name::{AsName, Name},
-};
+use hir_expand::name::{AsName, Name};
 use stdx::{always, never};
 use syntax::{
     ast::{self, NameOwner},
@@ -32,6 +29,7 @@ use syntax::{
 use crate::{
     db::HirDatabase,
     diagnostics::{decl_check::case_conv::*, CaseType, IdentType, IncorrectCase},
+    diagnostics_sink::DiagnosticSink,
 };
 
 mod allow {

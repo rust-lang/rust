@@ -9,10 +9,10 @@ use hir_def::{
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
     DefWithBodyId,
 };
-use hir_expand::diagnostics::DiagnosticSink;
 
 use crate::{
-    db::HirDatabase, diagnostics::MissingUnsafe, InferenceResult, Interner, TyExt, TyKind,
+    db::HirDatabase, diagnostics::MissingUnsafe, diagnostics_sink::DiagnosticSink, InferenceResult,
+    Interner, TyExt, TyKind,
 };
 
 pub(super) struct UnsafeValidator<'a, 'b: 'a> {

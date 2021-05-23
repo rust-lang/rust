@@ -186,7 +186,7 @@ fn parse_macro_expansion(
         // The final goal we would like to make all parse_macro success,
         // such that the following log will not call anyway.
         let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
-        let node = loc.kind.node(db);
+        let node = loc.kind.to_node(db);
 
         // collect parent information for warning log
         let parents =

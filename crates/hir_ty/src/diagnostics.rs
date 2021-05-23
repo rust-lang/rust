@@ -8,12 +8,14 @@ use std::{any::Any, fmt};
 
 use base_db::CrateId;
 use hir_def::{DefWithBodyId, ModuleDefId};
-use hir_expand::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticSink};
 use hir_expand::{name::Name, HirFileId, InFile};
 use stdx::format_to;
 use syntax::{ast, AstPtr, SyntaxNodePtr};
 
-use crate::db::HirDatabase;
+use crate::{
+    db::HirDatabase,
+    diagnostics_sink::{Diagnostic, DiagnosticCode, DiagnosticSink},
+};
 
 pub use crate::diagnostics::expr::{record_literal_missing_fields, record_pattern_missing_fields};
 
@@ -446,15 +448,13 @@ impl Diagnostic for ReplaceFilterMapNextWithFindMap {
 mod tests {
     use base_db::{fixture::WithFixture, FileId, SourceDatabase, SourceDatabaseExt};
     use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId};
-    use hir_expand::{
-        db::AstDatabase,
-        diagnostics::{Diagnostic, DiagnosticSinkBuilder},
-    };
+    use hir_expand::db::AstDatabase;
     use rustc_hash::FxHashMap;
     use syntax::{TextRange, TextSize};
 
     use crate::{
         diagnostics::{validate_body, validate_module_item},
+        diagnostics_sink::{Diagnostic, DiagnosticSinkBuilder},
         test_db::TestDB,
     };
 

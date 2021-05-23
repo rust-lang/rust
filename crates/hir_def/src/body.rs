@@ -1,7 +1,6 @@
 //! Defines `Body`: a lowered representation of bodies of functions, statics and
 //! consts.
 mod lower;
-mod diagnostics;
 #[cfg(test)]
 mod tests;
 pub mod scope;
@@ -9,17 +8,16 @@ pub mod scope;
 use std::{mem, ops::Index, sync::Arc};
 
 use base_db::CrateId;
-use cfg::CfgOptions;
+use cfg::{CfgExpr, CfgOptions};
 use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{
-    ast_id_map::AstIdMap, diagnostics::DiagnosticSink, hygiene::Hygiene, AstId, ExpandResult,
-    HirFileId, InFile, MacroDefId,
+    ast_id_map::AstIdMap, hygiene::Hygiene, AstId, ExpandResult, HirFileId, InFile, MacroDefId,
 };
 use la_arena::{Arena, ArenaMap};
 use profile::Count;
 use rustc_hash::FxHashMap;
-use syntax::{ast, AstNode, AstPtr};
+use syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 
 use crate::{
     attr::{Attrs, RawAttrs},
@@ -273,11 +271,19 @@ pub struct BodySourceMap {
 
     /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
     /// the source map (since they're just as volatile).
-    diagnostics: Vec<diagnostics::BodyDiagnostic>,
+    diagnostics: Vec<BodyDiagnostic>,
 }
 
 #[derive(Default, Debug, Eq, PartialEq, Clone, Copy)]
 pub struct SyntheticSyntax;
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum BodyDiagnostic {
+    InactiveCode { node: InFile<SyntaxNodePtr>, cfg: CfgExpr, opts: CfgOptions },
+    MacroError { node: InFile<AstPtr<ast::MacroCall>>, message: String },
+    UnresolvedProcMacro { node: InFile<AstPtr<ast::MacroCall>> },
+    UnresolvedMacroCall { node: InFile<AstPtr<ast::MacroCall>>, path: ModPath },
+}
 
 impl Body {
     pub(crate) fn body_with_source_map_query(
@@ -416,9 +422,8 @@ impl BodySourceMap {
         self.field_map.get(&src).cloned()
     }
 
-    pub(crate) fn add_diagnostics(&self, _db: &dyn DefDatabase, sink: &mut DiagnosticSink<'_>) {
-        for diag in &self.diagnostics {
-            diag.add_to(sink);
-        }
+    /// Get a reference to the body source map's diagnostics.
+    pub fn diagnostics(&self) -> &[BodyDiagnostic] {
+        &self.diagnostics
     }
 }

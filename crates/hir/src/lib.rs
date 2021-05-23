@@ -35,12 +35,18 @@ use std::{iter, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, Edition, FileId};
+use diagnostics::{
+    InactiveCode, MacroError, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
+    UnresolvedModule, UnresolvedProcMacro,
+};
 use either::Either;
 use hir_def::{
     adt::{ReprKind, VariantData},
+    body::BodyDiagnostic,
     expr::{BindingAnnotation, LabelId, Pat, PatId},
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
+    nameres,
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
@@ -50,11 +56,12 @@ use hir_def::{
     LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
     TypeParamId, UnionId,
 };
-use hir_expand::{diagnostics::DiagnosticSink, name::name, MacroDefKind};
+use hir_expand::{name::name, MacroCallKind, MacroDefKind};
 use hir_ty::{
     autoderef,
     consteval::ConstExt,
     could_unify,
+    diagnostics_sink::DiagnosticSink,
     method_resolution::{self, def_crates, TyFingerprint},
     primitive::UintTy,
     subst_prefix,
@@ -65,11 +72,12 @@ use hir_ty::{
     WhereClause,
 };
 use itertools::Itertools;
+use nameres::diagnostics::DefDiagnosticKind;
 use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
 use syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, SmolStr,
+    AstNode, AstPtr, SmolStr, SyntaxKind, SyntaxNodePtr,
 };
 use tt::{Ident, Leaf, Literal, TokenTree};
 
@@ -442,7 +450,137 @@ impl Module {
             format!("{:?}", self.name(db).map_or("<unknown>".into(), |name| name.to_string()))
         });
         let def_map = self.id.def_map(db.upcast());
-        def_map.add_diagnostics(db.upcast(), self.id.local_id, sink);
+        for diag in def_map.diagnostics() {
+            if diag.in_module != self.id.local_id {
+                // FIXME: This is accidentally quadratic.
+                continue;
+            }
+            match &diag.kind {
+                DefDiagnosticKind::UnresolvedModule { ast: declaration, candidate } => {
+                    let decl = declaration.to_node(db.upcast());
+                    sink.push(UnresolvedModule {
+                        file: declaration.file_id,
+                        decl: AstPtr::new(&decl),
+                        candidate: candidate.clone(),
+                    })
+                }
+                DefDiagnosticKind::UnresolvedExternCrate { ast } => {
+                    let item = ast.to_node(db.upcast());
+                    sink.push(UnresolvedExternCrate {
+                        file: ast.file_id,
+                        item: AstPtr::new(&item),
+                    });
+                }
+
+                DefDiagnosticKind::UnresolvedImport { ast, index } => {
+                    let use_item = ast.to_node(db.upcast());
+                    let hygiene = Hygiene::new(db.upcast(), ast.file_id);
+                    let mut cur = 0;
+                    let mut tree = None;
+                    ModPath::expand_use_item(
+                        db.upcast(),
+                        InFile::new(ast.file_id, use_item),
+                        &hygiene,
+                        |_mod_path, use_tree, _is_glob, _alias| {
+                            if cur == *index {
+                                tree = Some(use_tree.clone());
+                            }
+
+                            cur += 1;
+                        },
+                    );
+
+                    if let Some(tree) = tree {
+                        sink.push(UnresolvedImport { file: ast.file_id, node: AstPtr::new(&tree) });
+                    }
+                }
+
+                DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
+                    let item = ast.to_node(db.upcast());
+                    sink.push(InactiveCode {
+                        file: ast.file_id,
+                        node: AstPtr::new(&item).into(),
+                        cfg: cfg.clone(),
+                        opts: opts.clone(),
+                    });
+                }
+
+                DefDiagnosticKind::UnresolvedProcMacro { ast } => {
+                    let mut precise_location = None;
+                    let (file, ast, name) = match ast {
+                        MacroCallKind::FnLike { ast_id, .. } => {
+                            let node = ast_id.to_node(db.upcast());
+                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)), None)
+                        }
+                        MacroCallKind::Derive { ast_id, derive_name, .. } => {
+                            let node = ast_id.to_node(db.upcast());
+
+                            // Compute the precise location of the macro name's token in the derive
+                            // list.
+                            // FIXME: This does not handle paths to the macro, but neither does the
+                            // rest of r-a.
+                            let derive_attrs =
+                                node.attrs().filter_map(|attr| match attr.as_simple_call() {
+                                    Some((name, args)) if name == "derive" => Some(args),
+                                    _ => None,
+                                });
+                            'outer: for attr in derive_attrs {
+                                let tokens =
+                                    attr.syntax().children_with_tokens().filter_map(|elem| {
+                                        match elem {
+                                            syntax::NodeOrToken::Node(_) => None,
+                                            syntax::NodeOrToken::Token(tok) => Some(tok),
+                                        }
+                                    });
+                                for token in tokens {
+                                    if token.kind() == SyntaxKind::IDENT
+                                        && token.text() == derive_name.as_str()
+                                    {
+                                        precise_location = Some(token.text_range());
+                                        break 'outer;
+                                    }
+                                }
+                            }
+
+                            (
+                                ast_id.file_id,
+                                SyntaxNodePtr::from(AstPtr::new(&node)),
+                                Some(derive_name.clone()),
+                            )
+                        }
+                    };
+                    sink.push(UnresolvedProcMacro {
+                        file,
+                        node: ast,
+                        precise_location,
+                        macro_name: name,
+                    });
+                }
+
+                DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {
+                    let node = ast.to_node(db.upcast());
+                    sink.push(UnresolvedMacroCall {
+                        file: ast.file_id,
+                        node: AstPtr::new(&node),
+                        path: path.clone(),
+                    });
+                }
+
+                DefDiagnosticKind::MacroError { ast, message } => {
+                    let (file, ast) = match ast {
+                        MacroCallKind::FnLike { ast_id, .. } => {
+                            let node = ast_id.to_node(db.upcast());
+                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
+                        }
+                        MacroCallKind::Derive { ast_id, .. } => {
+                            let node = ast_id.to_node(db.upcast());
+                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
+                        }
+                    };
+                    sink.push(MacroError { file, node: ast, message: message.clone() });
+                }
+            }
+        }
         for decl in self.declarations(db) {
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
@@ -865,7 +1003,37 @@ impl Function {
 
     pub fn diagnostics(self, db: &dyn HirDatabase, sink: &mut DiagnosticSink) {
         let krate = self.module(db).id.krate();
-        hir_def::diagnostics::validate_body(db.upcast(), self.id.into(), sink);
+
+        let source_map = db.body_with_source_map(self.id.into()).1;
+        for diag in source_map.diagnostics() {
+            match diag {
+                BodyDiagnostic::InactiveCode { node, cfg, opts } => sink.push(InactiveCode {
+                    file: node.file_id,
+                    node: node.value.clone(),
+                    cfg: cfg.clone(),
+                    opts: opts.clone(),
+                }),
+                BodyDiagnostic::MacroError { node, message } => sink.push(MacroError {
+                    file: node.file_id,
+                    node: node.value.clone().into(),
+                    message: message.to_string(),
+                }),
+                BodyDiagnostic::UnresolvedProcMacro { node } => sink.push(UnresolvedProcMacro {
+                    file: node.file_id,
+                    node: node.value.clone().into(),
+                    precise_location: None,
+                    macro_name: None,
+                }),
+                BodyDiagnostic::UnresolvedMacroCall { node, path } => {
+                    sink.push(UnresolvedMacroCall {
+                        file: node.file_id,
+                        node: node.value.clone(),
+                        path: path.clone(),
+                    })
+                }
+            }
+        }
+
         hir_ty::diagnostics::validate_module_item(db, krate, self.id.into(), sink);
         hir_ty::diagnostics::validate_body(db, self.id.into(), sink);
     }

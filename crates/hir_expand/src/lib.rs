@@ -8,7 +8,6 @@ pub mod db;
 pub mod ast_id_map;
 pub mod name;
 pub mod hygiene;
-pub mod diagnostics;
 pub mod builtin_derive;
 pub mod builtin_macro;
 pub mod proc_macro;
@@ -108,7 +107,7 @@ impl HirFileId {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
-                Some(loc.kind.node(db))
+                Some(loc.kind.to_node(db))
             }
         }
     }
@@ -153,7 +152,7 @@ impl HirFileId {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
                 let item = match loc.def.kind {
-                    MacroDefKind::BuiltInDerive(..) => loc.kind.node(db),
+                    MacroDefKind::BuiltInDerive(..) => loc.kind.to_node(db),
                     _ => return None,
                 };
                 Some(item.with_value(ast::Item::cast(item.value.clone())?))
@@ -269,7 +268,7 @@ impl MacroCallKind {
         }
     }
 
-    fn node(&self, db: &dyn db::AstDatabase) -> InFile<SyntaxNode> {
+    pub fn to_node(&self, db: &dyn db::AstDatabase) -> InFile<SyntaxNode> {
         match self {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
