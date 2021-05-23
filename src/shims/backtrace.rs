@@ -119,8 +119,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // `lo.col` is 0-based - add 1 to make it 1-based for the caller.
         let colno: u32 = lo.col.0 as u32 + 1;
 
-        let name_alloc = this.allocate_str(&name, MiriMemoryKind::Rust.into());
-        let filename_alloc = this.allocate_str(&filename, MiriMemoryKind::Rust.into());
+        // These are "mutable" allocations as we consider them to be owned by the callee.
+        let name_alloc = this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut);
+        let filename_alloc =
+            this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut);
         let lineno_alloc = Scalar::from_u32(lineno);
         let colno_alloc = Scalar::from_u32(colno);
 

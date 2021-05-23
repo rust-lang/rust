@@ -13,6 +13,7 @@
 
 use log::trace;
 
+use rustc_ast::Mutability;
 use rustc_middle::{mir, ty};
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::PanicStrategy;
@@ -169,7 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         // First arg: message.
-        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into());
+        let msg = this.allocate_str(msg, MiriMemoryKind::Machine.into(), Mutability::Not);
 
         // Call the lang item.
         let panic = this.tcx.lang_items().panic_fn().unwrap();

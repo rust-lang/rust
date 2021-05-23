@@ -58,7 +58,7 @@ fn mutexattr_set_kind<'mir, 'tcx: 'mir>(
 // (the kind has to be at its offset for compatibility with static initializer macros)
 
 fn mutex_get_kind<'mir, 'tcx: 'mir>(
-    ecx: &mut MiriEvalContext<'mir, 'tcx>,
+    ecx: &MiriEvalContext<'mir, 'tcx>,
     mutex_op: &OpTy<'tcx, Tag>,
 ) -> InterpResult<'tcx, ScalarMaybeUninit<Tag>> {
     let offset = if ecx.pointer_size().bytes() == 8 { 16 } else { 12 };

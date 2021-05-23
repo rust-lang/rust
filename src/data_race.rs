@@ -598,7 +598,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // of the time, based on `rate`.
         let rate = this.memory.extra.cmpxchg_weak_failure_rate;
         let cmpxchg_success = eq.to_bool()?
-            && (!can_fail_spuriously || this.memory.extra.rng.borrow_mut().gen::<f64>() < rate);
+            && (!can_fail_spuriously || this.memory.extra.rng.get_mut().gen::<f64>() < rate);
         let res = Immediate::ScalarPair(
             old.to_scalar_or_uninit(),
             Scalar::from_bool(cmpxchg_success).into(),
@@ -647,7 +647,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         place: &MPlaceTy<'tcx, Tag>,
         atomic: AtomicWriteOp,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let this = self.eval_context_mut();
         this.validate_atomic_op(
             place,
             atomic,
@@ -672,7 +672,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         use AtomicRwOp::*;
         let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
         let release = matches!(atomic, Release | AcqRel | SeqCst);
-        let this = self.eval_context_ref();
+        let this = self.eval_context_mut();
         this.validate_atomic_op(place, atomic, "Atomic RMW", move |memory, clocks, index, _| {
             if acquire {
                 memory.load_acquire(clocks, index)?;
@@ -690,7 +690,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
     /// Update the data-race detector for an atomic fence on the current thread.
     fn validate_atomic_fence(&mut self, atomic: AtomicFenceOp) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if let Some(data_race) = &this.memory.extra.data_race {
+        if let Some(data_race) = &mut this.memory.extra.data_race {
             data_race.maybe_perform_sync_operation(move |index, mut clocks| {
                 log::trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
 
@@ -771,7 +771,7 @@ impl VClockAlloc {
     }
 
     fn reset_clocks(&mut self, offset: Size, len: Size) {
-        let mut alloc_ranges = self.alloc_ranges.borrow_mut();
+        let alloc_ranges = self.alloc_ranges.get_mut();
         for (_, range) in alloc_ranges.iter_mut(offset, len) {
             // Reset the portion of the range
             *range = MemoryCellClocks::new(0, VectorIdx::MAX_INDEX);
@@ -1025,6 +1025,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         if let Some(data_race) = &this.memory.extra.data_race {
             if data_race.multi_threaded.get() {
                 // Load and log the atomic operation.
+                // Note that atomic loads are possible even from read-only allocations, so `get_alloc_extra_mut` is not an option.
                 let place_ptr = place.ptr.assert_ptr();
                 let size = place.layout.size;
                 let alloc_meta =
@@ -1105,6 +1106,7 @@ struct ThreadExtraState {
 /// Global data-race detection state, contains the currently
 /// executing thread as well as the vector-clocks associated
 /// with each of the threads.
+// FIXME: it is probably better to have one large RefCell, than to have so many small ones.
 #[derive(Debug, Clone)]
 pub struct GlobalState {
     /// Set to true once the first additional
@@ -1158,7 +1160,7 @@ impl GlobalState {
     /// Create a new global state, setup with just thread-id=0
     /// advanced to timestamp = 1.
     pub fn new() -> Self {
-        let global_state = GlobalState {
+        let mut global_state = GlobalState {
             multi_threaded: Cell::new(false),
             vector_clocks: RefCell::new(IndexVec::new()),
             vector_info: RefCell::new(IndexVec::new()),
@@ -1172,9 +1174,9 @@ impl GlobalState {
         // Setup the main-thread since it is not explicitly created:
         // uses vector index and thread-id 0, also the rust runtime gives
         // the main-thread a name of "main".
-        let index = global_state.vector_clocks.borrow_mut().push(ThreadClockSet::default());
-        global_state.vector_info.borrow_mut().push(ThreadId::new(0));
-        global_state.thread_info.borrow_mut().push(ThreadExtraState {
+        let index = global_state.vector_clocks.get_mut().push(ThreadClockSet::default());
+        global_state.vector_info.get_mut().push(ThreadId::new(0));
+        global_state.thread_info.get_mut().push(ThreadExtraState {
             vector_index: Some(index),
             thread_name: Some("main".to_string().into_boxed_str()),
             termination_vector_clock: None,
@@ -1221,7 +1223,7 @@ impl GlobalState {
     // Hook for thread creation, enabled multi-threaded execution and marks
     // the current thread timestamp as happening-before the current thread.
     #[inline]
-    pub fn thread_created(&self, thread: ThreadId) {
+    pub fn thread_created(&mut self, thread: ThreadId) {
         let current_index = self.current_index();
 
         // Increment the number of active threads.
@@ -1241,12 +1243,12 @@ impl GlobalState {
         let created_index = if let Some(reuse_index) = self.find_vector_index_reuse_candidate() {
             // Now re-configure the re-use candidate, increment the clock
             // for the new sync use of the vector.
-            let mut vector_clocks = self.vector_clocks.borrow_mut();
+            let vector_clocks = self.vector_clocks.get_mut();
             vector_clocks[reuse_index].increment_clock(reuse_index);
 
             // Locate the old thread the vector was associated with and update
             // it to represent the new thread instead.
-            let mut vector_info = self.vector_info.borrow_mut();
+            let vector_info = self.vector_info.get_mut();
             let old_thread = vector_info[reuse_index];
             vector_info[reuse_index] = thread;
 
@@ -1258,7 +1260,7 @@ impl GlobalState {
         } else {
             // No vector re-use candidates available, instead create
             // a new vector index.
-            let mut vector_info = self.vector_info.borrow_mut();
+            let vector_info = self.vector_info.get_mut();
             vector_info.push(thread)
         };
 
@@ -1268,7 +1270,7 @@ impl GlobalState {
         thread_info[thread].vector_index = Some(created_index);
 
         // Create a thread clock set if applicable.
-        let mut vector_clocks = self.vector_clocks.borrow_mut();
+        let vector_clocks = self.vector_clocks.get_mut();
         if created_index == vector_clocks.next_index() {
             vector_clocks.push(ThreadClockSet::default());
         }
@@ -1289,9 +1291,9 @@ impl GlobalState {
     /// Hook on a thread join to update the implicit happens-before relation
     /// between the joined thread and the current thread.
     #[inline]
-    pub fn thread_joined(&self, current_thread: ThreadId, join_thread: ThreadId) {
-        let mut clocks_vec = self.vector_clocks.borrow_mut();
-        let thread_info = self.thread_info.borrow();
+    pub fn thread_joined(&mut self, current_thread: ThreadId, join_thread: ThreadId) {
+        let clocks_vec = self.vector_clocks.get_mut();
+        let thread_info = self.thread_info.get_mut();
 
         // Load the vector clock of the current thread.
         let current_index = thread_info[current_thread]
@@ -1329,9 +1331,9 @@ impl GlobalState {
 
         // If the thread is marked as terminated but not joined
         // then move the thread to the re-use set.
-        let mut termination = self.terminated_threads.borrow_mut();
+        let termination = self.terminated_threads.get_mut();
         if let Some(index) = termination.remove(&join_thread) {
-            let mut reuse = self.reuse_candidates.borrow_mut();
+            let reuse = self.reuse_candidates.get_mut();
             reuse.insert(index);
         }
     }
@@ -1344,28 +1346,28 @@ impl GlobalState {
     /// This should be called strictly before any calls to
     /// `thread_joined`.
     #[inline]
-    pub fn thread_terminated(&self) {
+    pub fn thread_terminated(&mut self) {
         let current_index = self.current_index();
 
         // Increment the clock to a unique termination timestamp.
-        let mut vector_clocks = self.vector_clocks.borrow_mut();
+        let vector_clocks = self.vector_clocks.get_mut();
         let current_clocks = &mut vector_clocks[current_index];
         current_clocks.increment_clock(current_index);
 
         // Load the current thread id for the executing vector.
-        let vector_info = self.vector_info.borrow();
+        let vector_info = self.vector_info.get_mut();
         let current_thread = vector_info[current_index];
 
         // Load the current thread metadata, and move to a terminated
         // vector state. Setting up the vector clock all join operations
         // will use.
-        let mut thread_info = self.thread_info.borrow_mut();
+        let thread_info = self.thread_info.get_mut();
         let current = &mut thread_info[current_thread];
         current.termination_vector_clock = Some(current_clocks.clock.clone());
 
         // Add this thread as a candidate for re-use after a thread join
         // occurs.
-        let mut termination = self.terminated_threads.borrow_mut();
+        let termination = self.terminated_threads.get_mut();
         termination.insert(current_thread, current_index);
 
         // Reduce the number of active threads, now that a thread has
@@ -1392,9 +1394,9 @@ impl GlobalState {
     /// the thread name is used for improved diagnostics
     /// during a data-race.
     #[inline]
-    pub fn thread_set_name(&self, thread: ThreadId, name: String) {
+    pub fn thread_set_name(&mut self, thread: ThreadId, name: String) {
         let name = name.into_boxed_str();
-        let mut thread_info = self.thread_info.borrow_mut();
+        let thread_info = self.thread_info.get_mut();
         thread_info[thread].thread_name = Some(name);
     }
 
