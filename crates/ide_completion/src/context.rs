@@ -382,6 +382,12 @@ impl<'a> CompletionContext<'a> {
                         let def = self.sema.to_def(&it);
                         (def.map(|def| def.ret_type(self.db)), None)
                     },
+                    ast::ClosureExpr(it) => {
+                        let ty = self.sema.type_of_expr(&it.into());
+                        ty.and_then(|ty| ty.as_callable(self.db))
+                            .map(|c| (Some(c.return_type()), None))
+                            .unwrap_or((None, None))
+                    },
                     ast::Stmt(_it) => (None, None),
                     _ => {
                         match node.parent() {
@@ -911,10 +917,11 @@ fn foo() -> u32 {
 
     #[test]
     fn expected_type_closure_param_return() {
+        // FIXME: make this work with `|| $0`
         check_expected_type_and_name(
             r#"
 fn foo() {
-    bar(|| $0);
+    bar(|| a$0);
 }
 
 fn bar(f: impl FnOnce() -> u32) {}
