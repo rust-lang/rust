@@ -1245,12 +1245,13 @@ impl<'a> Formatter<'a> {
     ///         // We need to remove "-" from the number output.
     ///         let tmp = self.nb.abs().to_string();
     ///
-    ///         formatter.pad_integral(self.nb > 0, "Foo ", &tmp)
+    ///         formatter.pad_integral(self.nb >= 0, "Foo ", &tmp)
     ///     }
     /// }
     ///
     /// assert_eq!(&format!("{}", Foo::new(2)), "2");
     /// assert_eq!(&format!("{}", Foo::new(-1)), "-1");
+    /// assert_eq!(&format!("{}", Foo::new(0)), "0");
     /// assert_eq!(&format!("{:#}", Foo::new(-1)), "-Foo 1");
     /// assert_eq!(&format!("{:0>#8}", Foo::new(-1)), "00-Foo 1");
     /// ```
