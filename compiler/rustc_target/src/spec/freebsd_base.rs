@@ -5,8 +5,7 @@ pub fn opts() -> TargetOptions {
         os: "freebsd".to_string(),
         dynamic_linking: true,
         executables: true,
-        os_family: Some("unix".to_string()),
-        linker_is_gnu: true,
+        families: vec!["unix".to_string()],
         has_rpath: true,
         position_independent_executables: true,
         eliminate_frame_pointer: false, // FIXME 43575

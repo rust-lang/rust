@@ -345,6 +345,9 @@ mod prim_never {}
 mod prim_char {}
 
 #[doc(primitive = "unit")]
+#[doc(alias = "(")]
+#[doc(alias = ")")]
+#[doc(alias = "()")]
 //
 /// The `()` type, also called "unit".
 ///
@@ -445,7 +448,27 @@ mod prim_unit {}
 /// Note that here the call to [`drop`] is for clarity - it indicates
 /// that we are done with the given value and it should be destroyed.
 ///
-/// ## 3. Get it from C.
+/// ## 3. Create it using `ptr::addr_of!`
+///
+/// Instead of coercing a reference to a raw pointer, you can use the macros
+/// [`ptr::addr_of!`] (for `*const T`) and [`ptr::addr_of_mut!`] (for `*mut T`).
+/// These macros allow you to create raw pointers to fields to which you cannot
+/// create a reference (without causing undefined behaviour), such as an
+/// unaligned field. This might be necessary if packed structs or uninitialized
+/// memory is involved.
+///
+/// ```
+/// #[derive(Debug, Default, Copy, Clone)]
+/// #[repr(C, packed)]
+/// struct S {
+///     aligned: u8,
+///     unaligned: u32,
+/// }
+/// let s = S::default();
+/// let p = std::ptr::addr_of!(s.unaligned); // not allowed with coercion
+/// ```
+///
+/// ## 4. Get it from C.
 ///
 /// ```
 /// # #![feature(rustc_private)]
@@ -553,8 +576,10 @@ mod prim_pointer {}
 /// # Editions
 ///
 /// Prior to Rust 1.53, arrays did not implement `IntoIterator` by value, so the method call
-/// `array.into_iter()` auto-referenced into a slice iterator. That behavior is preserved in the
-/// 2015 and 2018 editions of Rust for compatability, ignoring `IntoIterator` by value.
+/// `array.into_iter()` auto-referenced into a slice iterator. Right now, the old behavior
+/// is preserved in the 2015 and 2018 editions of Rust for compatibility, ignoring
+/// `IntoIterator` by value. In the future, the behavior on the 2015 and 2018 edition
+/// might be made consistent to the behavior of later editions.
 ///
 #[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
 #[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
@@ -596,6 +621,49 @@ mod prim_pointer {}
 ///
 /// // This iterates by value:
 /// for item in array.into_iter().enumerate() {
+///     let (i, x): (usize, i32) = item;
+///     println!("array[{}] = {}", i, x);
+/// }
+/// ```
+///
+/// Future language versions might start treating the `array.into_iter()`
+/// syntax on editions 2015 and 2018 the same as on edition 2021. So code using
+/// those older editions should still be written with this change in mind, to
+/// prevent breakage in the future. The safest way to accomplish this is to
+/// avoid the `into_iter` syntax on those editions. If an edition update is not
+/// viable/desired, there are multiple alternatives:
+/// * use `iter`, equivalent to the old behavior, creating references
+/// * use [`array::IntoIter`], equivalent to the post-2021 behavior (Rust 1.51+)
+/// * replace `for ... in array.into_iter() {` with `for ... in array {`,
+///   equivalent to the post-2021 behavior (Rust 1.53+)
+///
+#[cfg_attr(bootstrap, doc = "```rust,edition2018,ignore")]
+#[cfg_attr(not(bootstrap), doc = "```rust,edition2018")]
+/// use std::array::IntoIter;
+///
+/// let array: [i32; 3] = [0; 3];
+///
+/// // This iterates by reference:
+/// for item in array.iter() {
+///     let x: &i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // This iterates by value:
+/// for item in IntoIter::new(array) {
+///     let x: i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // This iterates by value:
+/// for item in array {
+///     let x: i32 = item;
+///     println!("{}", x);
+/// }
+///
+/// // IntoIter can also start a chain.
+/// // This iterates by value:
+/// for item in IntoIter::new(array).enumerate() {
 ///     let (i, x): (usize, i32) = item;
 ///     println!("array[{}] = {}", i, x);
 /// }

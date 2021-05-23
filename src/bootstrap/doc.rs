@@ -451,6 +451,22 @@ impl Step for Std {
 
             builder.run(&mut cargo.into());
         };
+
+        let paths = builder
+            .paths
+            .iter()
+            .map(components_simplified)
+            .filter_map(|path| {
+                if path.get(0) == Some(&"library") {
+                    Some(path[1].to_owned())
+                } else if !path.is_empty() {
+                    Some(path[0].to_owned())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
         // Only build the following crates. While we could just iterate over the
         // folder structure, that would also build internal crates that we do
         // not want to show in documentation. These crates will later be visited
@@ -464,20 +480,17 @@ impl Step for Std {
         let krates = ["core", "alloc", "std", "proc_macro", "test"];
         for krate in &krates {
             run_cargo_rustdoc_for(krate);
+            if paths.iter().any(|p| p == krate) {
+                // No need to document more of the libraries if we have the one we want.
+                break;
+            }
         }
         builder.cp_r(&out_dir, &out);
 
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
-        for path in builder.paths.iter().map(components_simplified) {
-            let requested_crate = if path.get(0) == Some(&"library") {
-                &path[1]
-            } else if !path.is_empty() {
-                &path[0]
-            } else {
-                continue;
-            };
-            if krates.contains(&requested_crate) {
+        for requested_crate in paths {
+            if krates.iter().any(|k| *k == requested_crate.as_str()) {
                 let index = out.join(requested_crate).join("index.html");
                 open(builder, &index);
             }
@@ -549,6 +562,7 @@ impl Step for Rustc {
         cargo.rustdocflag("--enable-index-page");
         cargo.rustdocflag("-Zunstable-options");
         cargo.rustdocflag("-Znormalize-docs");
+        cargo.rustdocflag("--show-type-layout");
         compile::rustc_cargo(builder, &mut cargo, target);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -648,6 +662,7 @@ impl Step for Rustdoc {
 
         cargo.rustdocflag("--document-private-items");
         cargo.rustdocflag("--enable-index-page");
+        cargo.rustdocflag("--show-type-layout");
         cargo.rustdocflag("-Zunstable-options");
         builder.run(&mut cargo.into());
     }

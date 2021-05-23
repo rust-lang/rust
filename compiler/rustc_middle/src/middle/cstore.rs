@@ -94,6 +94,7 @@ pub struct NativeLib {
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,
     pub wasm_import_module: Option<Symbol>,
+    pub verbatim: Option<bool>,
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
@@ -250,7 +251,7 @@ pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum,
             Some((cnum, path))
         })
         .collect::<Vec<_>>();
-    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE).to_owned();
+    let mut ordering = tcx.postorder_cnums(()).to_owned();
     ordering.reverse();
     libs.sort_by_cached_key(|&(a, _)| ordering.iter().position(|x| *x == a));
     libs

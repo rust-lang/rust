@@ -263,7 +263,13 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             }
             if !self.span.is_dummy() {
                 let lo = tcx.sess.source_map().lookup_char_pos(self.span.lo());
-                write!(f, " at {}:{}:{}", lo.file.name, lo.line, lo.col.to_usize() + 1)?;
+                write!(
+                    f,
+                    " at {}:{}:{}",
+                    lo.file.name.prefer_local(),
+                    lo.line,
+                    lo.col.to_usize() + 1
+                )?;
             }
             Ok(())
         })

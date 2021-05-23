@@ -17,7 +17,7 @@ error: dereference of raw pointer is unsafe and requires unsafe block (error E01
 LL |     *PTR;
    |     ^^^^ dereference of raw pointer
    |
-   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
 error: use of mutable static is unsafe and requires unsafe block (error E0133)
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:13:5
@@ -59,7 +59,7 @@ error: dereference of raw pointer is unsafe and requires unsafe block (error E01
 LL |     *PTR;
    |     ^^^^ dereference of raw pointer
    |
-   = note: raw pointers may be NULL, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
+   = note: raw pointers may be null, dangling or unaligned; they can violate aliasing rules and cause data races: all of these are undefined behavior
 
 error: use of mutable static is unsafe and requires unsafe block (error E0133)
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:28:5

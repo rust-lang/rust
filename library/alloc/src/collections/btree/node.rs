@@ -89,7 +89,7 @@ impl<K, V> LeafNode<K, V> {
 
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
 /// behind `BoxedNode`s to prevent dropping uninitialized keys and values. Any pointer to an
-/// `InternalNode` can be directly casted to a pointer to the underlying `LeafNode` portion of the
+/// `InternalNode` can be directly cast to a pointer to the underlying `LeafNode` portion of the
 /// node, allowing code to act on leaf and internal nodes generically without having to even check
 /// which of the two a pointer is pointing at. This property is enabled by the use of `repr(C)`.
 #[repr(C)]
@@ -408,7 +408,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
 }
 
 impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
-    /// Temporarily takes out another, mutable reference to the same node. Beware, as
+    /// Temporarily takes out another mutable reference to the same node. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
     ///
@@ -422,16 +422,25 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         NodeRef { height: self.height, node: self.node, _marker: PhantomData }
     }
 
-    /// Borrows exclusive access to the leaf portion of any leaf or internal node.
+    /// Borrows exclusive access to the leaf portion of a leaf or internal node.
     fn as_leaf_mut(&mut self) -> &mut LeafNode<K, V> {
         let ptr = Self::as_leaf_ptr(self);
         // SAFETY: we have exclusive access to the entire node.
         unsafe { &mut *ptr }
     }
 
-    /// Offers exclusive access to the leaf portion of any leaf or internal node.
+    /// Offers exclusive access to the leaf portion of a leaf or internal node.
     fn into_leaf_mut(mut self) -> &'a mut LeafNode<K, V> {
         let ptr = Self::as_leaf_ptr(&mut self);
+        // SAFETY: we have exclusive access to the entire node.
+        unsafe { &mut *ptr }
+    }
+}
+
+impl<K, V, Type> NodeRef<marker::Dying, K, V, Type> {
+    /// Borrows exclusive access to the leaf portion of a dying leaf or internal node.
+    fn as_leaf_dying(&mut self) -> &mut LeafNode<K, V> {
+        let ptr = Self::as_leaf_ptr(self);
         // SAFETY: we have exclusive access to the entire node.
         unsafe { &mut *ptr }
     }
@@ -759,7 +768,7 @@ impl<BorrowType, K, V, NodeType, HandleType> PartialEq
 impl<BorrowType, K, V, NodeType, HandleType>
     Handle<NodeRef<BorrowType, K, V, NodeType>, HandleType>
 {
-    /// Temporarily takes out another, immutable handle on the same location.
+    /// Temporarily takes out another immutable handle on the same location.
     pub fn reborrow(&self) -> Handle<NodeRef<marker::Immut<'_>, K, V, NodeType>, HandleType> {
         // We can't use Handle::new_kv or Handle::new_edge because we don't know our type
         Handle { node: self.node.reborrow(), idx: self.idx, _marker: PhantomData }
@@ -767,7 +776,7 @@ impl<BorrowType, K, V, NodeType, HandleType>
 }
 
 impl<'a, K, V, NodeType, HandleType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, HandleType> {
-    /// Temporarily takes out another, mutable handle on the same location. Beware, as
+    /// Temporarily takes out another mutable handle on the same location. Beware, as
     /// this method is very dangerous, doubly so since it may not immediately appear
     /// dangerous.
     ///
@@ -1040,10 +1049,34 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>
         }
     }
 
-    /// Replace the key and value that the KV handle refers to.
+    /// Replaces the key and value that the KV handle refers to.
     pub fn replace_kv(&mut self, k: K, v: V) -> (K, V) {
         let (key, val) = self.kv_mut();
         (mem::replace(key, k), mem::replace(val, v))
+    }
+}
+
+impl<K, V, NodeType> Handle<NodeRef<marker::Dying, K, V, NodeType>, marker::KV> {
+    /// Extracts the key and value that the KV handle refers to.
+    pub fn into_key_val(mut self) -> (K, V) {
+        debug_assert!(self.idx < self.node.len());
+        let leaf = self.node.as_leaf_dying();
+        unsafe {
+            let key = leaf.keys.get_unchecked_mut(self.idx).assume_init_read();
+            let val = leaf.vals.get_unchecked_mut(self.idx).assume_init_read();
+            (key, val)
+        }
+    }
+
+    /// Drops the key and value that the KV handle refers to.
+    #[inline]
+    pub fn drop_key_val(mut self) {
+        debug_assert!(self.idx < self.node.len());
+        let leaf = self.node.as_leaf_dying();
+        unsafe {
+            leaf.keys.get_unchecked_mut(self.idx).assume_init_drop();
+            leaf.vals.get_unchecked_mut(self.idx).assume_init_drop();
+        }
     }
 }
 

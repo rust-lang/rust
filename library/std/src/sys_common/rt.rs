@@ -1,4 +1,5 @@
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(unused_macros)]
 
 use crate::sync::Once;
 use crate::sys;
@@ -38,8 +39,25 @@ pub fn cleanup() {
     });
 }
 
+// Prints to the "panic output", depending on the platform this may be:
+// - the standard error output
+// - some dedicated platform specific output
+// - nothing (so this macro is a no-op)
+macro_rules! rtprintpanic {
+    ($($t:tt)*) => {
+        if let Some(mut out) = crate::sys::stdio::panic_output() {
+            let _ = crate::io::Write::write_fmt(&mut out, format_args!($($t)*));
+        }
+    }
+}
+
 macro_rules! rtabort {
-    ($($t:tt)*) => (crate::sys_common::util::abort(format_args!($($t)*)))
+    ($($t:tt)*) => {
+        {
+            rtprintpanic!("fatal runtime error: {}\n", format_args!($($t)*));
+            crate::sys::abort_internal();
+        }
+    }
 }
 
 macro_rules! rtassert {
@@ -50,7 +68,6 @@ macro_rules! rtassert {
     };
 }
 
-#[allow(unused_macros)] // not used on all platforms
 macro_rules! rtunwrap {
     ($ok:ident, $e:expr) => {
         match $e {

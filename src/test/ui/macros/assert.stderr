@@ -16,7 +16,7 @@ error: macro requires a boolean expression as an argument
 LL |     debug_assert!();
    |     ^^^^^^^^^^^^^^^^ boolean expression required
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `debug_assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected expression, found keyword `struct`
   --> $DIR/assert.rs:5:19

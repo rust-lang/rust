@@ -21,5 +21,6 @@ fn main() {
 
 #[inline(always)]
 unsafe fn inline_me() -> Simd2 {
-    simd_shuffle2(Simd2(10, 11), Simd2(12, 13), [0, 3])
+    const IDX: [u32; 2] = [0, 3];
+    simd_shuffle2(Simd2(10, 11), Simd2(12, 13), IDX)
 }

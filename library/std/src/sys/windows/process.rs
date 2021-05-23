@@ -5,6 +5,7 @@ mod tests;
 
 use crate::borrow::Borrow;
 use crate::collections::BTreeMap;
+use crate::convert::{TryFrom, TryInto};
 use crate::env;
 use crate::env::split_paths;
 use crate::ffi::{OsStr, OsString};
@@ -12,16 +13,18 @@ use crate::fmt;
 use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
+use crate::num::NonZeroI32;
 use crate::os::windows::ffi::OsStrExt;
 use crate::path::Path;
 use crate::ptr;
 use crate::sys::c;
+use crate::sys::c::NonZeroDWORD;
 use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
-use crate::sys::mutex::Mutex;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
+use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::AsInner;
 
@@ -92,10 +95,6 @@ pub struct StdioPipes {
     pub stdin: Option<AnonPipe>,
     pub stdout: Option<AnonPipe>,
     pub stderr: Option<AnonPipe>,
-}
-
-struct DropGuard<'a> {
-    lock: &'a Mutex,
 }
 
 impl Command {
@@ -209,8 +208,9 @@ impl Command {
         //
         // For more information, msdn also has an article about this race:
         // http://support.microsoft.com/kb/315939
-        static CREATE_PROCESS_LOCK: Mutex = Mutex::new();
-        let _guard = DropGuard::new(&CREATE_PROCESS_LOCK);
+        static CREATE_PROCESS_LOCK: StaticMutex = StaticMutex::new();
+
+        let _guard = unsafe { CREATE_PROCESS_LOCK.lock() };
 
         let mut pipes = StdioPipes { stdin: None, stdout: None, stderr: None };
         let null = Stdio::Null;
@@ -256,23 +256,6 @@ impl fmt::Debug for Command {
             write!(f, " {:?}", arg)?;
         }
         Ok(())
-    }
-}
-
-impl<'a> DropGuard<'a> {
-    fn new(lock: &'a Mutex) -> DropGuard<'a> {
-        unsafe {
-            lock.lock();
-            DropGuard { lock }
-        }
-    }
-}
-
-impl<'a> Drop for DropGuard<'a> {
-    fn drop(&mut self) {
-        unsafe {
-            self.lock.unlock();
-        }
     }
 }
 
@@ -396,8 +379,11 @@ impl Process {
 pub struct ExitStatus(c::DWORD);
 
 impl ExitStatus {
-    pub fn success(&self) -> bool {
-        self.0 == 0
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        match NonZeroDWORD::try_from(self.0) {
+            /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
+            /* was zero, couldn't convert */ Err(_) => Ok(()),
+        }
     }
     pub fn code(&self) -> Option<i32> {
         Some(self.0 as i32)
@@ -423,6 +409,21 @@ impl fmt::Display for ExitStatus {
         } else {
             write!(f, "exit code: {}", self.0)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatusError(c::NonZeroDWORD);
+
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+impl ExitStatusError {
+    pub fn code(self) -> Option<NonZeroI32> {
+        Some((u32::from(self.0) as i32).try_into().unwrap())
     }
 }
 

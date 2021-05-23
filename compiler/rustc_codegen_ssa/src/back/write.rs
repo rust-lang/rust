@@ -84,6 +84,8 @@ pub struct ModuleConfig {
 
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
+    pub instrument_coverage: bool,
+    pub instrument_gcov: bool,
 
     pub sanitizer: SanitizerSet,
     pub sanitizer_recover: SanitizerSet,
@@ -108,7 +110,7 @@ pub struct ModuleConfig {
     pub vectorize_slp: bool,
     pub merge_functions: bool,
     pub inline_threshold: Option<u32>,
-    pub new_llvm_pass_manager: bool,
+    pub new_llvm_pass_manager: Option<bool>,
     pub emit_lifetime_markers: bool,
 }
 
@@ -165,25 +167,7 @@ impl ModuleConfig {
         };
 
         ModuleConfig {
-            passes: if_regular!(
-                {
-                    let mut passes = sess.opts.cg.passes.clone();
-                    // compiler_builtins overrides the codegen-units settings,
-                    // which is incompatible with -Zprofile which requires that
-                    // only a single codegen unit is used per crate.
-                    if sess.opts.debugging_opts.profile && !is_compiler_builtins {
-                        passes.push("insert-gcov-profiling".to_owned());
-                    }
-
-                    // The rustc option `-Zinstrument_coverage` injects intrinsic calls to
-                    // `llvm.instrprof.increment()`, which requires the LLVM `instrprof` pass.
-                    if sess.instrument_coverage() {
-                        passes.push("instrprof".to_owned());
-                    }
-                    passes
-                },
-                vec![]
-            ),
+            passes: if_regular!(sess.opts.cg.passes.clone(), vec![]),
 
             opt_level: opt_level_and_size,
             opt_size: opt_level_and_size,
@@ -193,6 +177,14 @@ impl ModuleConfig {
                 SwitchWithOptPath::Disabled
             ),
             pgo_use: if_regular!(sess.opts.cg.profile_use.clone(), None),
+            instrument_coverage: if_regular!(sess.instrument_coverage(), false),
+            instrument_gcov: if_regular!(
+                // compiler_builtins overrides the codegen-units settings,
+                // which is incompatible with -Zprofile which requires that
+                // only a single codegen unit is used per crate.
+                sess.opts.debugging_opts.profile && !is_compiler_builtins,
+                false
+            ),
 
             sanitizer: if_regular!(sess.opts.debugging_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(
@@ -427,6 +419,7 @@ fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
 pub fn start_async_codegen<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
+    target_cpu: String,
     metadata: EncodedMetadata,
     total_cgus: usize,
 ) -> OngoingCodegen<B> {
@@ -449,7 +442,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         subsystem.to_string()
     });
 
-    let linker_info = LinkerInfo::new(tcx);
+    let linker_info = LinkerInfo::new(tcx, target_cpu);
     let crate_info = CrateInfo::new(tcx);
 
     let regular_config =
@@ -489,7 +482,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         codegen_worker_receive,
         shared_emitter_main,
         future: coordinator_thread,
-        output_filenames: tcx.output_filenames(LOCAL_CRATE),
+        output_filenames: tcx.output_filenames(()),
     }
 }
 
@@ -1049,7 +1042,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // If we know that we won’t be doing codegen, create target machines without optimisation.
         config::OptLevel::No
     } else {
-        tcx.backend_optimization_level(LOCAL_CRATE)
+        tcx.backend_optimization_level(())
     };
     let cgcx = CodegenContext::<B> {
         backend: backend.clone(),
@@ -1068,7 +1061,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
-        output_filenames: tcx.output_filenames(LOCAL_CRATE),
+        output_filenames: tcx.output_filenames(()),
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,

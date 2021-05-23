@@ -148,15 +148,11 @@ impl<'a> StringReader<'a> {
                         None => "unterminated block comment",
                     };
                     let last_bpos = self.pos;
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_fatal_with_code(
-                            self.mk_sp(start, last_bpos),
-                            msg,
-                            error_code!(E0758),
-                        )
-                        .emit();
-                    FatalError.raise();
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start, last_bpos),
+                        msg,
+                        error_code!(E0758),
+                    );
                 }
 
                 // Skip non-doc comments
@@ -315,57 +311,41 @@ impl<'a> StringReader<'a> {
         let (lit_kind, mode, prefix_len, postfix_len) = match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_fatal_with_code(
-                            self.mk_sp(start, suffix_start),
-                            "unterminated character literal",
-                            error_code!(E0762),
-                        )
-                        .emit();
-                    FatalError.raise();
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start, suffix_start),
+                        "unterminated character literal",
+                        error_code!(E0762),
+                    )
                 }
                 (token::Char, Mode::Char, 1, 1) // ' '
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_fatal_with_code(
-                            self.mk_sp(start + BytePos(1), suffix_start),
-                            "unterminated byte constant",
-                            error_code!(E0763),
-                        )
-                        .emit();
-                    FatalError.raise();
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start + BytePos(1), suffix_start),
+                        "unterminated byte constant",
+                        error_code!(E0763),
+                    )
                 }
                 (token::Byte, Mode::Byte, 2, 1) // b' '
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_fatal_with_code(
-                            self.mk_sp(start, suffix_start),
-                            "unterminated double quote string",
-                            error_code!(E0765),
-                        )
-                        .emit();
-                    FatalError.raise();
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start, suffix_start),
+                        "unterminated double quote string",
+                        error_code!(E0765),
+                    )
                 }
                 (token::Str, Mode::Str, 1, 1) // " "
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
-                    self.sess
-                        .span_diagnostic
-                        .struct_span_fatal_with_code(
-                            self.mk_sp(start + BytePos(1), suffix_start),
-                            "unterminated double quote byte string",
-                            error_code!(E0766),
-                        )
-                        .emit();
-                    FatalError.raise();
+                    self.sess.span_diagnostic.span_fatal_with_code(
+                        self.mk_sp(start + BytePos(1), suffix_start),
+                        "unterminated double quote byte string",
+                        error_code!(E0766),
+                    )
                 }
                 (token::ByteStr, Mode::ByteStr, 2, 1) // b" "
             }

@@ -7,7 +7,7 @@ LL |
 LL |     let x = move || {
    |             ^^^^^^^ move out of `fancy_num` occurs here
 LL |         println!("child function: {}", fancy_num.num);
-   |                                        --------- move occurs due to use in closure
+   |                                        ------------- move occurs due to use in closure
 ...
 LL |     println!("main function: {}", fancy_ref.num);
    |                                   ------------- borrow later used here

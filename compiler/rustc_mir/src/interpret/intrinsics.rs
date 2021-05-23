@@ -14,7 +14,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, LayoutOf as _, Primitive, Size};
+use rustc_target::abi::{Abi, Align, LayoutOf as _, Primitive, Size};
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -323,7 +323,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(result, dest)?;
             }
             sym::copy => {
-                self.copy(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
+                self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
             sym::offset => {
                 let ptr = self.read_scalar(&args[0])?.check_init()?;
@@ -348,8 +348,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let b = self.read_immediate(&args[1])?.to_scalar()?;
 
                 // Special case: if both scalars are *equal integers*
-                // and not NULL, we pretend there is an allocation of size 0 right there,
-                // and their offset is 0. (There's never a valid object at NULL, making it an
+                // and not null, we pretend there is an allocation of size 0 right there,
+                // and their offset is 0. (There's never a valid object at null, making it an
                 // exception from the exception.)
                 // This is the dual to the special exception for offset-by-0
                 // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
@@ -501,7 +501,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its
     /// allocation. For integer pointers, we consider each of them their own tiny allocation of size
-    /// 0, so offset-by-0 (and only 0) is okay -- except that NULL cannot be offset by _any_ value.
+    /// 0, so offset-by-0 (and only 0) is okay -- except that null cannot be offset by _any_ value.
     pub fn ptr_offset_inbounds(
         &self,
         ptr: Scalar<M::PointerTag>,
@@ -521,13 +521,37 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // pointers to be properly aligned (unlike a read/write operation).
         let min_ptr = if offset_bytes >= 0 { ptr } else { offset_ptr };
         let size = offset_bytes.unsigned_abs();
-        // This call handles checking for integer/NULL pointers.
+        // This call handles checking for integer/null pointers.
         self.memory.check_ptr_access_align(
             min_ptr,
             Size::from_bytes(size),
-            None,
-            CheckInAllocMsg::InboundsTest,
+            Align::ONE,
+            CheckInAllocMsg::PointerArithmeticTest,
         )?;
         Ok(offset_ptr)
+    }
+
+    /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
+    pub(crate) fn copy_intrinsic(
+        &mut self,
+        src: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
+        nonoverlapping: bool,
+    ) -> InterpResult<'tcx> {
+        let count = self.read_scalar(&count)?.to_machine_usize(self)?;
+        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
+        let (size, align) = (layout.size, layout.align.abi);
+        let size = size.checked_mul(count, self).ok_or_else(|| {
+            err_ub_format!(
+                "overflow computing total size of `{}`",
+                if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
+            )
+        })?;
+
+        let src = self.read_scalar(&src)?.check_init()?;
+        let dst = self.read_scalar(&dst)?.check_init()?;
+
+        self.memory.copy(src, align, dst, align, size, nonoverlapping)
     }
 }

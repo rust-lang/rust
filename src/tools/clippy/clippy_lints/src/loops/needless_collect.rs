@@ -1,13 +1,13 @@
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
-use clippy_utils::{is_trait_method, path_to_local_id, paths};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_trait_method, path_to_local_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{Block, Expr, ExprKind, GenericArg, HirId, Local, Pat, PatKind, QPath, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, GenericArg, GenericArgs, HirId, Local, Pat, PatKind, QPath, StmtKind, Ty};
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
 use rustc_span::symbol::{sym, Ident};
@@ -26,24 +26,38 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
         if let Some(generic_args) = chain_method.args;
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
-        let ty = cx.typeck_results().node_type(ty.hir_id);
-        if is_type_diagnostic_item(cx, ty, sym::vec_type)
-            || is_type_diagnostic_item(cx, ty, sym::vecdeque_type)
-            || match_type(cx, ty, &paths::BTREEMAP)
-            || is_type_diagnostic_item(cx, ty, sym::hashmap_type);
-        if let Some(sugg) = match &*method.ident.name.as_str() {
-            "len" => Some("count()".to_string()),
-            "is_empty" => Some("next().is_none()".to_string()),
-            "contains" => {
-                let contains_arg = snippet(cx, args[1].span, "??");
-                let (arg, pred) = contains_arg
-                    .strip_prefix('&')
-                    .map_or(("&x", &*contains_arg), |s| ("x", s));
-                Some(format!("any(|{}| x == {})", arg, pred))
-            }
-            _ => None,
-        };
+        if let Some(ty) = cx.typeck_results().node_type_opt(ty.hir_id);
         then {
+            let mut applicability = Applicability::MachineApplicable;
+            let is_empty_sugg = "next().is_none()".to_string();
+            let method_name = &*method.ident.name.as_str();
+            let sugg = if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
+                        is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
+                        is_type_diagnostic_item(cx, ty, sym::LinkedList) ||
+                        is_type_diagnostic_item(cx, ty, sym::BinaryHeap) {
+                match method_name {
+                    "len" => "count()".to_string(),
+                    "is_empty" => is_empty_sugg,
+                    "contains" => {
+                        let contains_arg = snippet_with_applicability(cx, args[1].span, "??", &mut applicability);
+                        let (arg, pred) = contains_arg
+                            .strip_prefix('&')
+                            .map_or(("&x", &*contains_arg), |s| ("x", s));
+                        format!("any(|{}| x == {})", arg, pred)
+                    }
+                    _ => return,
+                }
+            }
+            else if is_type_diagnostic_item(cx, ty, sym::BTreeMap) ||
+                is_type_diagnostic_item(cx, ty, sym::hashmap_type) {
+                match method_name {
+                    "is_empty" => is_empty_sugg,
+                    _ => return,
+                }
+            }
+            else {
+                return;
+            };
             span_lint_and_sugg(
                 cx,
                 NEEDLESS_COLLECT,
@@ -51,28 +65,41 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
                 NEEDLESS_COLLECT_MSG,
                 "replace with",
                 sugg,
-                Applicability::MachineApplicable,
+                applicability,
             );
         }
     }
 }
 
 fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
+    fn get_hir_id<'tcx>(ty: Option<&Ty<'tcx>>, method_args: Option<&GenericArgs<'tcx>>) -> Option<HirId> {
+        if let Some(ty) = ty {
+            return Some(ty.hir_id);
+        }
+
+        if let Some(generic_args) = method_args {
+            if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0) {
+                return Some(ty.hir_id);
+            }
+        }
+
+        None
+    }
     if let ExprKind::Block(block, _) = expr.kind {
         for stmt in block.stmts {
             if_chain! {
                 if let StmtKind::Local(
                     Local { pat: Pat { hir_id: pat_id, kind: PatKind::Binding(_, _, ident, .. ), .. },
-                    init: Some(init_expr), .. }
+                    init: Some(init_expr), ty, .. }
                 ) = stmt.kind;
                 if let ExprKind::MethodCall(method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
                 if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
-                if let Some(generic_args) = method_name.args;
-                if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
-                if let ty = cx.typeck_results().node_type(ty.hir_id);
+                if let Some(hir_id) = get_hir_id(*ty, method_name.args);
+                if let Some(ty) = cx.typeck_results().node_type_opt(hir_id);
                 if is_type_diagnostic_item(cx, ty, sym::vec_type) ||
                     is_type_diagnostic_item(cx, ty, sym::vecdeque_type) ||
-                    match_type(cx, ty, &paths::LINKED_LIST);
+                    is_type_diagnostic_item(cx, ty, sym::BinaryHeap) ||
+                    is_type_diagnostic_item(cx, ty, sym::LinkedList);
                 if let Some(iter_calls) = detect_iter_and_into_iters(block, *ident);
                 if let [iter_call] = &*iter_calls;
                 then {

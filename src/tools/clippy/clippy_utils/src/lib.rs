@@ -4,7 +4,14 @@
 #![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc, clippy::must_use_candidate)]
+// warn on the same lints as `clippy_lints`
+#![warn(trivial_casts, trivial_numeric_casts)]
+// warn on lints, that are included in `rust-lang/rust`s bootstrap
+#![warn(rust_2018_idioms, unused_lifetimes)]
+// warn on rustc internal lints
+#![warn(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -60,13 +67,13 @@ use rustc_ast::ast::{self, Attribute, BorrowKind, LitKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_hir::intravisit::{self, walk_expr, ErasedMap, NestedVisitorMap, Visitor};
+use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::{self, walk_expr, ErasedMap, FnKind, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{
     def, Arm, BindingAnnotation, Block, Body, Constness, Destination, Expr, ExprKind, FnDecl, GenericArgs, HirId, Impl,
-    ImplItem, ImplItemKind, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path, PathSegment,
-    QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
+    ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource, Node, Param, Pat, PatKind, Path,
+    PathSegment, QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitRef, TyKind,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::exports::Export;
@@ -677,8 +684,8 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
 /// Returns `true` if the provided `def_id` is an entrypoint to a program.
 pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
     cx.tcx
-        .entry_fn(LOCAL_CRATE)
-        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id.to_def_id())
+        .entry_fn(())
+        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id)
 }
 
 /// Returns `true` if the expression is in the program's `#[panic_handler]`.
@@ -821,7 +828,13 @@ pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
 pub fn get_parent_expr<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    match get_parent_node(cx.tcx, e.hir_id) {
+    get_parent_expr_for_hir(cx, e.hir_id)
+}
+
+/// This retrieves the parent for the given `HirId` if it's an expression. This is useful for
+/// constraint lints
+pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId) -> Option<&'tcx Expr<'tcx>> {
+    match get_parent_node(cx.tcx, hir_id) {
         Some(Node::Expr(parent)) => Some(parent),
         _ => None,
     }
@@ -847,6 +860,24 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         },
         _ => None,
     })
+}
+
+/// Gets the loop enclosing the given expression, if any.
+pub fn get_enclosing_loop(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    let map = tcx.hir();
+    for (_, node) in map.parent_iter(expr.hir_id) {
+        match node {
+            Node::Expr(
+                e @ Expr {
+                    kind: ExprKind::Loop(..),
+                    ..
+                },
+            ) => return Some(e),
+            Node::Expr(_) | Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
+            _ => break,
+        }
+    }
+    None
 }
 
 /// Gets the parent node if it's an impl block.
@@ -941,7 +972,12 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
             let data = span.ctxt().outer_expn_data();
             let new_span = data.call_site;
 
-            if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+            if let ExpnKind::Macro {
+                kind: MacroKind::Bang,
+                name: mac_name,
+                proc_macro: _,
+            } = data.kind
+            {
                 if mac_name.as_str() == name {
                     return Some(new_span);
                 }
@@ -969,7 +1005,12 @@ pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
         let data = span.ctxt().outer_expn_data();
         let new_span = data.call_site;
 
-        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = data.kind {
+        if let ExpnKind::Macro {
+            kind: MacroKind::Bang,
+            name: mac_name,
+            proc_macro: _,
+        } = data.kind
+        {
             if mac_name.as_str() == name {
                 return Some(new_span);
             }
@@ -1299,6 +1340,40 @@ pub fn if_sequence<'tcx>(mut expr: &'tcx Expr<'tcx>) -> (Vec<&'tcx Expr<'tcx>>, 
     }
 
     (conds, blocks)
+}
+
+/// Checks if the given function kind is an async function.
+pub fn is_async_fn(kind: FnKind<'_>) -> bool {
+    matches!(kind, FnKind::ItemFn(_, _, header, _) if header.asyncness == IsAsync::Async)
+}
+
+/// Peels away all the compiler generated code surrounding the body of an async function,
+pub fn get_async_fn_body(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Call(
+        _,
+        &[Expr {
+            kind: ExprKind::Closure(_, _, body, _, _),
+            ..
+        }],
+    ) = body.value.kind
+    {
+        if let ExprKind::Block(
+            Block {
+                stmts: [],
+                expr:
+                    Some(Expr {
+                        kind: ExprKind::DropTemps(expr),
+                        ..
+                    }),
+                ..
+            },
+            _,
+        ) = tcx.hir().body(body).value.kind
+        {
+            return Some(expr);
+        }
+    };
+    None
 }
 
 // Finds the `#[must_use]` attribute, if any

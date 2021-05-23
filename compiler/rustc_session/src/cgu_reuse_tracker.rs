@@ -112,7 +112,7 @@ impl CguReuseTracker {
                                        not recorded",
                         cgu_user_name, cgu_name
                     );
-                    diag.span_fatal(error_span.0, &msg).raise();
+                    diag.span_fatal(error_span.0, &msg)
                 }
             }
         }

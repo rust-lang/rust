@@ -2,7 +2,7 @@
 
 // Set of test cases that don't need migrations
 
-#![deny(disjoint_capture_drop_reorder)]
+#![deny(disjoint_capture_migration)]
 
 
 // Copy types as copied by the closure instead of being moved into the closure

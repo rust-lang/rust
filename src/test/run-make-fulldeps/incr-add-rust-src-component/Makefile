@@ -1,7 +1,7 @@
 -include ../tools.mk
 
 # rust-lang/rust#70924: Test that if we add rust-src component in between two
-# incremetnal compiles, the compiler does not ICE on the second.
+# incremental compiles, the compiler does not ICE on the second.
 
 # This test uses `ln -s` rather than copying to save testing time, but its
 # usage doesn't work on windows. So ignore windows.

@@ -4,7 +4,7 @@ error[E0583]: file not found for module `not_a_real_file`
 LL | mod not_a_real_file;
    | ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: to create the module `not_a_real_file`, create file "$DIR/not_a_real_file.rs"
+   = help: to create the module `not_a_real_file`, create file "$DIR/not_a_real_file.rs" or "$DIR/not_a_real_file/mod.rs"
 
 error[E0433]: failed to resolve: use of undeclared crate or module `mod_file_aux`
   --> $DIR/mod_file_not_exist_windows.rs:7:16

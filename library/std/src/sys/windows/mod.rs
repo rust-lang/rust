@@ -18,7 +18,6 @@ pub mod c;
 pub mod cmath;
 pub mod condvar;
 pub mod env;
-pub mod ext;
 pub mod fs;
 pub mod handle;
 pub mod io;
@@ -71,6 +70,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_PATH_NOT_FOUND => return ErrorKind::NotFound,
         c::ERROR_NO_DATA => return ErrorKind::BrokenPipe,
         c::ERROR_INVALID_PARAMETER => return ErrorKind::InvalidInput,
+        c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return ErrorKind::OutOfMemory,
         c::ERROR_SEM_TIMEOUT
         | c::WAIT_TIMEOUT
         | c::ERROR_DRIVER_CANCEL_TIMEOUT
@@ -280,18 +280,4 @@ pub fn abort_internal() -> ! {
         }
     }
     crate::intrinsics::abort();
-}
-
-cfg_if::cfg_if! {
-    if #[cfg(target_vendor = "uwp")] {
-        #[link(name = "ws2_32")]
-        // For BCryptGenRandom
-        #[link(name = "bcrypt")]
-        extern "C" {}
-    } else {
-        #[link(name = "advapi32")]
-        #[link(name = "ws2_32")]
-        #[link(name = "userenv")]
-        extern "C" {}
-    }
 }

@@ -25,9 +25,8 @@ pub fn opts() -> TargetOptions {
         linker: Some("rust-lld".to_owned()),
         dynamic_linking: true,
         executables: true,
-        os_family: Some("unix".to_string()),
+        families: vec!["unix".to_string()],
         is_like_fuchsia: true,
-        linker_is_gnu: true,
         pre_link_args,
         pre_link_objects: crt_objects::new(&[
             (LinkOutputKind::DynamicNoPicExe, &["Scrt1.o"]),

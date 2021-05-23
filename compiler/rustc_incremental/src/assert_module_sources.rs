@@ -36,7 +36,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
         }
 
         let available_cgus = tcx
-            .collect_and_partition_mono_items(LOCAL_CRATE)
+            .collect_and_partition_mono_items(())
             .1
             .iter()
             .map(|cgu| cgu.name().to_string())

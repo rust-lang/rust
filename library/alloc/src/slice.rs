@@ -83,11 +83,19 @@
 #![cfg_attr(test, allow(unused_imports, dead_code))]
 
 use core::borrow::{Borrow, BorrowMut};
+#[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
-use core::mem::{self, size_of};
+#[cfg(not(no_global_oom_handling))]
+use core::mem;
+#[cfg(not(no_global_oom_handling))]
+use core::mem::size_of;
+#[cfg(not(no_global_oom_handling))]
 use core::ptr;
 
-use crate::alloc::{Allocator, Global};
+use crate::alloc::Allocator;
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::Global;
+#[cfg(not(no_global_oom_handling))]
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
@@ -158,17 +166,20 @@ mod hack {
         }
     }
 
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
         T::to_vec(s, alloc)
     }
 
+    #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
         where
             Self: Sized;
     }
 
+    #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
         default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
@@ -205,6 +216,7 @@ mod hack {
         }
     }
 
+    #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
         fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
@@ -250,6 +262,7 @@ impl<T> [T] {
     /// v.sort();
     /// assert!(v == [-5, -3, 1, 2, 4]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sort(&mut self)
@@ -304,6 +317,7 @@ impl<T> [T] {
     /// v.sort_by(|a, b| b.cmp(a));
     /// assert!(v == [5, 4, 3, 2, 1]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sort_by<F>(&mut self, mut compare: F)
@@ -344,6 +358,7 @@ impl<T> [T] {
     /// v.sort_by_key(|k| k.abs());
     /// assert!(v == [1, 2, -3, 4, -5]);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
     pub fn sort_by_key<K, F>(&mut self, mut f: F)
@@ -386,6 +401,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "slice_sort_by_cached_key", since = "1.34.0")]
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
@@ -443,6 +459,7 @@ impl<T> [T] {
     /// let x = s.to_vec();
     /// // Here, `s` and `x` can be modified independently.
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[rustc_conversion_suggestion]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -466,6 +483,7 @@ impl<T> [T] {
     /// let x = s.to_vec_in(System);
     /// // Here, `s` and `x` can be modified independently.
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
@@ -517,6 +535,7 @@ impl<T> [T] {
     /// // this will panic at runtime
     /// b"0123456789abcdef".repeat(usize::MAX);
     /// ```
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "repeat_generic_slice", since = "1.40.0")]
     pub fn repeat(&self, n: usize) -> Vec<T>
     where
@@ -642,6 +661,7 @@ impl [u8] {
     /// To uppercase the value in-place, use [`make_ascii_uppercase`].
     ///
     /// [`make_ascii_uppercase`]: slice::make_ascii_uppercase
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Vec<u8> {
@@ -659,6 +679,7 @@ impl [u8] {
     /// To lowercase the value in-place, use [`make_ascii_lowercase`].
     ///
     /// [`make_ascii_lowercase`]: slice::make_ascii_lowercase
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Vec<u8> {
@@ -724,6 +745,7 @@ pub trait Join<Separator> {
     fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     type Output = Vec<T>;
@@ -738,6 +760,7 @@ impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     type Output = Vec<T>;
@@ -760,6 +783,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
     type Output = Vec<T>;
@@ -801,6 +825,7 @@ impl<T> BorrowMut<[T]> for Vec<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> ToOwned for [T] {
     type Owned = Vec<T>;
@@ -835,6 +860,7 @@ impl<T: Clone> ToOwned for [T] {
 /// Inserts `v[0]` into pre-sorted sequence `v[1..]` so that whole `v[..]` becomes sorted.
 ///
 /// This is the integral subroutine of insertion sort.
+#[cfg(not(no_global_oom_handling))]
 fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -906,6 +932,7 @@ where
 ///
 /// The two slices must be non-empty and `mid` must be in bounds. Buffer `buf` must be long enough
 /// to hold a copy of the shorter slice. Also, `T` must not be a zero-sized type.
+#[cfg(not(no_global_oom_handling))]
 unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
@@ -1026,6 +1053,7 @@ where
 /// 2. for every `i` in `2..runs.len()`: `runs[i - 2].len > runs[i - 1].len + runs[i].len`
 ///
 /// The invariants ensure that the total running time is *O*(*n* \* log(*n*)) worst-case.
+#[cfg(not(no_global_oom_handling))]
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 where
     F: FnMut(&T, &T) -> bool,

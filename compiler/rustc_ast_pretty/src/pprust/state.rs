@@ -140,12 +140,15 @@ pub fn print_crate<'a>(
 // and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token) = prev {
+        if matches!(token.kind, token::Dot) {
+            return false;
+        }
         if let token::DocComment(comment_kind, ..) = token.kind {
             return comment_kind != CommentKind::Line;
         }
     }
     match tt {
-        TokenTree::Token(token) => token.kind != token::Comma,
+        TokenTree::Token(token) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
         TokenTree::Delimited(_, DelimToken::Paren, _) => {
             !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }))
         }
@@ -364,10 +367,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
-    }
-
-    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) {
-        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
     }
 
     fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) {
@@ -955,6 +954,14 @@ impl<'a> State<'a> {
                 }
                 self.pclose();
             }
+            ast::TyKind::AnonymousStruct(ref fields, ..) => {
+                self.s.word("struct");
+                self.print_record_struct_body(fields, ty.span);
+            }
+            ast::TyKind::AnonymousUnion(ref fields, ..) => {
+                self.s.word("union");
+                self.print_record_struct_body(fields, ty.span);
+            }
             ast::TyKind::Paren(ref typ) => {
                 self.popen();
                 self.print_type(typ);
@@ -1168,9 +1175,9 @@ impl<'a> State<'a> {
                 self.print_foreign_mod(nmod, &item.attrs);
                 self.bclose(item.span);
             }
-            ast::ItemKind::GlobalAsm(ref ga) => {
+            ast::ItemKind::GlobalAsm(ref asm) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"));
-                self.s.word(ga.asm.to_string());
+                self.print_inline_asm(asm);
                 self.end();
             }
             ast::ItemKind::TyAlias(box ast::TyAliasKind(def, ref generics, ref bounds, ref ty)) => {
@@ -1390,6 +1397,29 @@ impl<'a> State<'a> {
         }
     }
 
+    crate fn print_record_struct_body(
+        &mut self,
+        fields: &Vec<ast::FieldDef>,
+        span: rustc_span::Span,
+    ) {
+        self.nbsp();
+        self.bopen();
+        self.hardbreak_if_not_bol();
+
+        for field in fields {
+            self.hardbreak_if_not_bol();
+            self.maybe_print_comment(field.span.lo());
+            self.print_outer_attributes(&field.attrs);
+            self.print_visibility(&field.vis);
+            self.print_ident(field.ident.unwrap());
+            self.word_nbsp(":");
+            self.print_type(&field.ty);
+            self.s.word(",");
+        }
+
+        self.bclose(span)
+    }
+
     crate fn print_struct(
         &mut self,
         struct_def: &ast::VariantData,
@@ -1419,24 +1449,9 @@ impl<'a> State<'a> {
                 self.end();
                 self.end(); // Close the outer-box.
             }
-            ast::VariantData::Struct(..) => {
+            ast::VariantData::Struct(ref fields, ..) => {
                 self.print_where_clause(&generics.where_clause);
-                self.nbsp();
-                self.bopen();
-                self.hardbreak_if_not_bol();
-
-                for field in struct_def.fields() {
-                    self.hardbreak_if_not_bol();
-                    self.maybe_print_comment(field.span.lo());
-                    self.print_outer_attributes(&field.attrs);
-                    self.print_visibility(&field.vis);
-                    self.print_ident(field.ident.unwrap());
-                    self.word_nbsp(":");
-                    self.print_type(&field.ty);
-                    self.s.word(",");
-                }
-
-                self.bclose(span)
+                self.print_record_struct_body(fields, span);
             }
         }
     }
@@ -1675,32 +1690,24 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
+    fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>]) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
-        self.print_inner_attributes_inline(attrs);
         self.commasep_exprs(Inconsistent, exprs);
         self.s.word("]");
         self.end();
     }
 
-    fn print_expr_anon_const(&mut self, expr: &ast::AnonConst, attrs: &[ast::Attribute]) {
+    fn print_expr_anon_const(&mut self, expr: &ast::AnonConst) {
         self.ibox(INDENT_UNIT);
         self.s.word("const");
-        self.print_inner_attributes_inline(attrs);
         self.print_expr(&expr.value);
         self.end();
     }
 
-    fn print_expr_repeat(
-        &mut self,
-        element: &ast::Expr,
-        count: &ast::AnonConst,
-        attrs: &[ast::Attribute],
-    ) {
+    fn print_expr_repeat(&mut self, element: &ast::Expr, count: &ast::AnonConst) {
         self.ibox(INDENT_UNIT);
         self.s.word("[");
-        self.print_inner_attributes_inline(attrs);
         self.print_expr(element);
         self.word_space(";");
         self.print_expr(&count.value);
@@ -1713,11 +1720,9 @@ impl<'a> State<'a> {
         path: &ast::Path,
         fields: &[ast::ExprField],
         rest: &ast::StructRest,
-        attrs: &[ast::Attribute],
     ) {
         self.print_path(path, true, 0);
         self.s.word("{");
-        self.print_inner_attributes_inline(attrs);
         self.commasep_cmnt(
             Consistent,
             fields,
@@ -1752,9 +1757,8 @@ impl<'a> State<'a> {
         self.s.word("}");
     }
 
-    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>], attrs: &[ast::Attribute]) {
+    fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>]) {
         self.popen();
-        self.print_inner_attributes_inline(attrs);
         self.commasep_exprs(Inconsistent, exprs);
         if exprs.len() == 1 {
             self.s.word(",");
@@ -1865,19 +1869,19 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX);
             }
             ast::ExprKind::Array(ref exprs) => {
-                self.print_expr_vec(&exprs[..], attrs);
+                self.print_expr_vec(exprs);
             }
             ast::ExprKind::ConstBlock(ref anon_const) => {
-                self.print_expr_anon_const(anon_const, attrs);
+                self.print_expr_anon_const(anon_const);
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
-                self.print_expr_repeat(element, count, attrs);
+                self.print_expr_repeat(element, count);
             }
             ast::ExprKind::Struct(ref se) => {
-                self.print_expr_struct(&se.path, &se.fields, &se.rest, attrs);
+                self.print_expr_struct(&se.path, &se.fields, &se.rest);
             }
             ast::ExprKind::Tup(ref exprs) => {
-                self.print_expr_tup(&exprs[..], attrs);
+                self.print_expr_tup(exprs);
             }
             ast::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(func, &args[..]);
@@ -1955,7 +1959,6 @@ impl<'a> State<'a> {
                 self.print_expr_as_cond(expr);
                 self.s.space();
                 self.bopen();
-                self.print_inner_attributes_no_trailing_hardbreak(attrs);
                 for arm in arms {
                     self.print_arm(arm);
                 }
@@ -2082,117 +2085,8 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::InlineAsm(ref a) => {
-                enum AsmArg<'a> {
-                    Template(String),
-                    Operand(&'a InlineAsmOperand),
-                    Options(InlineAsmOptions),
-                }
-
-                let mut args = vec![];
-                args.push(AsmArg::Template(InlineAsmTemplatePiece::to_string(&a.template)));
-                args.extend(a.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
-                if !a.options.is_empty() {
-                    args.push(AsmArg::Options(a.options));
-                }
-
                 self.word("asm!");
-                self.popen();
-                self.commasep(Consistent, &args, |s, arg| match arg {
-                    AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
-                    AsmArg::Operand(op) => {
-                        let print_reg_or_class = |s: &mut Self, r: &InlineAsmRegOrRegClass| match r
-                        {
-                            InlineAsmRegOrRegClass::Reg(r) => {
-                                s.print_symbol(*r, ast::StrStyle::Cooked)
-                            }
-                            InlineAsmRegOrRegClass::RegClass(r) => s.word(r.to_string()),
-                        };
-                        match op {
-                            InlineAsmOperand::In { reg, expr } => {
-                                s.word("in");
-                                s.popen();
-                                print_reg_or_class(s, reg);
-                                s.pclose();
-                                s.space();
-                                s.print_expr(expr);
-                            }
-                            InlineAsmOperand::Out { reg, late, expr } => {
-                                s.word(if *late { "lateout" } else { "out" });
-                                s.popen();
-                                print_reg_or_class(s, reg);
-                                s.pclose();
-                                s.space();
-                                match expr {
-                                    Some(expr) => s.print_expr(expr),
-                                    None => s.word("_"),
-                                }
-                            }
-                            InlineAsmOperand::InOut { reg, late, expr } => {
-                                s.word(if *late { "inlateout" } else { "inout" });
-                                s.popen();
-                                print_reg_or_class(s, reg);
-                                s.pclose();
-                                s.space();
-                                s.print_expr(expr);
-                            }
-                            InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
-                                s.word(if *late { "inlateout" } else { "inout" });
-                                s.popen();
-                                print_reg_or_class(s, reg);
-                                s.pclose();
-                                s.space();
-                                s.print_expr(in_expr);
-                                s.space();
-                                s.word_space("=>");
-                                match out_expr {
-                                    Some(out_expr) => s.print_expr(out_expr),
-                                    None => s.word("_"),
-                                }
-                            }
-                            InlineAsmOperand::Const { anon_const } => {
-                                s.word("const");
-                                s.space();
-                                s.print_expr(&anon_const.value);
-                            }
-                            InlineAsmOperand::Sym { expr } => {
-                                s.word("sym");
-                                s.space();
-                                s.print_expr(expr);
-                            }
-                        }
-                    }
-                    AsmArg::Options(opts) => {
-                        s.word("options");
-                        s.popen();
-                        let mut options = vec![];
-                        if opts.contains(InlineAsmOptions::PURE) {
-                            options.push("pure");
-                        }
-                        if opts.contains(InlineAsmOptions::NOMEM) {
-                            options.push("nomem");
-                        }
-                        if opts.contains(InlineAsmOptions::READONLY) {
-                            options.push("readonly");
-                        }
-                        if opts.contains(InlineAsmOptions::PRESERVES_FLAGS) {
-                            options.push("preserves_flags");
-                        }
-                        if opts.contains(InlineAsmOptions::NORETURN) {
-                            options.push("noreturn");
-                        }
-                        if opts.contains(InlineAsmOptions::NOSTACK) {
-                            options.push("nostack");
-                        }
-                        if opts.contains(InlineAsmOptions::ATT_SYNTAX) {
-                            options.push("att_syntax");
-                        }
-                        s.commasep(Inconsistent, &options, |s, &opt| {
-                            s.word(opt);
-                        });
-                        s.pclose();
-                    }
-                });
-                self.pclose();
+                self.print_inline_asm(a);
             }
             ast::ExprKind::LlvmInlineAsm(ref a) => {
                 self.s.word("llvm_asm!");
@@ -2253,7 +2147,6 @@ impl<'a> State<'a> {
             ast::ExprKind::MacCall(ref m) => self.print_mac(m),
             ast::ExprKind::Paren(ref e) => {
                 self.popen();
-                self.print_inner_attributes_inline(attrs);
                 self.print_expr(e);
                 self.pclose();
             }
@@ -2282,6 +2175,116 @@ impl<'a> State<'a> {
         }
         self.ann.post(self, AnnNode::Expr(expr));
         self.end();
+    }
+
+    fn print_inline_asm(&mut self, asm: &ast::InlineAsm) {
+        enum AsmArg<'a> {
+            Template(String),
+            Operand(&'a InlineAsmOperand),
+            Options(InlineAsmOptions),
+        }
+
+        let mut args = vec![];
+        args.push(AsmArg::Template(InlineAsmTemplatePiece::to_string(&asm.template)));
+        args.extend(asm.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
+        if !asm.options.is_empty() {
+            args.push(AsmArg::Options(asm.options));
+        }
+
+        self.popen();
+        self.commasep(Consistent, &args, |s, arg| match arg {
+            AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
+            AsmArg::Operand(op) => {
+                let print_reg_or_class = |s: &mut Self, r: &InlineAsmRegOrRegClass| match r {
+                    InlineAsmRegOrRegClass::Reg(r) => s.print_symbol(*r, ast::StrStyle::Cooked),
+                    InlineAsmRegOrRegClass::RegClass(r) => s.word(r.to_string()),
+                };
+                match op {
+                    InlineAsmOperand::In { reg, expr } => {
+                        s.word("in");
+                        s.popen();
+                        print_reg_or_class(s, reg);
+                        s.pclose();
+                        s.space();
+                        s.print_expr(expr);
+                    }
+                    InlineAsmOperand::Out { reg, late, expr } => {
+                        s.word(if *late { "lateout" } else { "out" });
+                        s.popen();
+                        print_reg_or_class(s, reg);
+                        s.pclose();
+                        s.space();
+                        match expr {
+                            Some(expr) => s.print_expr(expr),
+                            None => s.word("_"),
+                        }
+                    }
+                    InlineAsmOperand::InOut { reg, late, expr } => {
+                        s.word(if *late { "inlateout" } else { "inout" });
+                        s.popen();
+                        print_reg_or_class(s, reg);
+                        s.pclose();
+                        s.space();
+                        s.print_expr(expr);
+                    }
+                    InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                        s.word(if *late { "inlateout" } else { "inout" });
+                        s.popen();
+                        print_reg_or_class(s, reg);
+                        s.pclose();
+                        s.space();
+                        s.print_expr(in_expr);
+                        s.space();
+                        s.word_space("=>");
+                        match out_expr {
+                            Some(out_expr) => s.print_expr(out_expr),
+                            None => s.word("_"),
+                        }
+                    }
+                    InlineAsmOperand::Const { anon_const } => {
+                        s.word("const");
+                        s.space();
+                        s.print_expr(&anon_const.value);
+                    }
+                    InlineAsmOperand::Sym { expr } => {
+                        s.word("sym");
+                        s.space();
+                        s.print_expr(expr);
+                    }
+                }
+            }
+            AsmArg::Options(opts) => {
+                s.word("options");
+                s.popen();
+                let mut options = vec![];
+                if opts.contains(InlineAsmOptions::PURE) {
+                    options.push("pure");
+                }
+                if opts.contains(InlineAsmOptions::NOMEM) {
+                    options.push("nomem");
+                }
+                if opts.contains(InlineAsmOptions::READONLY) {
+                    options.push("readonly");
+                }
+                if opts.contains(InlineAsmOptions::PRESERVES_FLAGS) {
+                    options.push("preserves_flags");
+                }
+                if opts.contains(InlineAsmOptions::NORETURN) {
+                    options.push("noreturn");
+                }
+                if opts.contains(InlineAsmOptions::NOSTACK) {
+                    options.push("nostack");
+                }
+                if opts.contains(InlineAsmOptions::ATT_SYNTAX) {
+                    options.push("att_syntax");
+                }
+                s.commasep(Inconsistent, &options, |s, &opt| {
+                    s.word(opt);
+                });
+                s.pclose();
+            }
+        });
+        self.pclose();
     }
 
     crate fn print_local_decl(&mut self, loc: &ast::Local) {

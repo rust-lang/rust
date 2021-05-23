@@ -170,24 +170,25 @@ impl fmt::Display for InvalidProgramInfo<'_> {
 /// Details of why a pointer had to be in-bounds.
 #[derive(Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum CheckInAllocMsg {
+    /// We are access memory.
     MemoryAccessTest,
-    NullPointerTest,
+    /// We are doing pointer arithmetic.
     PointerArithmeticTest,
+    /// None of the above -- generic/unspecific inbounds test.
     InboundsTest,
 }
 
 impl fmt::Display for CheckInAllocMsg {
     /// When this is printed as an error the context looks like this
-    /// "{test name} failed: pointer must be in-bounds at offset..."
+    /// "{msg}pointer must be in-bounds at offset..."
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
             match *self {
-                CheckInAllocMsg::MemoryAccessTest => "memory access",
-                CheckInAllocMsg::NullPointerTest => "NULL pointer test",
-                CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic",
-                CheckInAllocMsg::InboundsTest => "inbounds test",
+                CheckInAllocMsg::MemoryAccessTest => "memory access failed: ",
+                CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic failed: ",
+                CheckInAllocMsg::InboundsTest => "",
             }
         )
     }
@@ -197,11 +198,11 @@ impl fmt::Display for CheckInAllocMsg {
 #[derive(Debug)]
 pub struct UninitBytesAccess {
     /// Location of the original memory access.
-    pub access_ptr: Pointer,
+    pub access_offset: Size,
     /// Size of the original memory access.
     pub access_size: Size,
     /// Location of the first uninitialized byte that was accessed.
-    pub uninit_ptr: Pointer,
+    pub uninit_offset: Size,
     /// Number of consecutive uninitialized bytes that were accessed.
     pub uninit_size: Size,
 }
@@ -263,7 +264,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.
-    InvalidUninitBytes(Option<UninitBytesAccess>),
+    InvalidUninitBytes(Option<(AllocId, UninitBytesAccess)>),
     /// Working with a local that is not currently live.
     DeadLocal,
     /// Data size is not equal to target size.
@@ -301,18 +302,18 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             }
             PointerOutOfBounds { ptr, msg, allocation_size } => write!(
                 f,
-                "{} failed: pointer must be in-bounds at offset {}, \
+                "{}pointer must be in-bounds at offset {}, \
                            but is outside bounds of {} which has size {}",
                 msg,
                 ptr.offset.bytes(),
                 ptr.alloc_id,
                 allocation_size.bytes()
             ),
-            DanglingIntPointer(_, CheckInAllocMsg::NullPointerTest) => {
-                write!(f, "NULL pointer is not allowed for this operation")
+            DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
+                write!(f, "null pointer is not a valid pointer for this operation")
             }
             DanglingIntPointer(i, msg) => {
-                write!(f, "{} failed: 0x{:x} is not a valid pointer", msg, i)
+                write!(f, "{}0x{:x} is not a valid pointer", msg, i)
             }
             AlignmentCheckFailed { required, has } => write!(
                 f,
@@ -334,18 +335,18 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 write!(f, "using {} as function pointer but it does not point to a function", p)
             }
             InvalidStr(err) => write!(f, "this string is not valid UTF-8: {}", err),
-            InvalidUninitBytes(Some(access)) => write!(
+            InvalidUninitBytes(Some((alloc, access))) => write!(
                 f,
                 "reading {} byte{} of memory starting at {}, \
                  but {} byte{} {} uninitialized starting at {}, \
                  and this operation requires initialized memory",
                 access.access_size.bytes(),
                 pluralize!(access.access_size.bytes()),
-                access.access_ptr,
+                Pointer::new(*alloc, access.access_offset),
                 access.uninit_size.bytes(),
                 pluralize!(access.uninit_size.bytes()),
                 if access.uninit_size.bytes() != 1 { "are" } else { "is" },
-                access.uninit_ptr,
+                Pointer::new(*alloc, access.uninit_offset),
             ),
             InvalidUninitBytes(None) => write!(
                 f,
@@ -445,7 +446,7 @@ impl dyn MachineStopType {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(InterpError<'_>, 72);
+static_assert_size!(InterpError<'_>, 64);
 
 pub enum InterpError<'tcx> {
     /// The program caused undefined behavior.

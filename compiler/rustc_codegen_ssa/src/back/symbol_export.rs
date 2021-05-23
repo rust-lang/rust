@@ -4,7 +4,7 @@ use rustc_ast::expand::allocator::ALLOCATOR_METHODS;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -60,7 +60,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
         tcx.is_panic_runtime(LOCAL_CRATE) || tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
-        .reachable_set(LOCAL_CRATE)
+        .reachable_set(())
         .iter()
         .filter_map(|&def_id| {
             // We want to ignore some FFI functions that are not exposed from
@@ -133,12 +133,12 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
         })
         .collect();
 
-    if let Some(id) = tcx.proc_macro_decls_static(LOCAL_CRATE) {
-        reachable_non_generics.insert(id, SymbolExportLevel::C);
+    if let Some(id) = tcx.proc_macro_decls_static(()) {
+        reachable_non_generics.insert(id.to_def_id(), SymbolExportLevel::C);
     }
 
-    if let Some(id) = tcx.plugin_registrar_fn(LOCAL_CRATE) {
-        reachable_non_generics.insert(id, SymbolExportLevel::C);
+    if let Some(id) = tcx.plugin_registrar_fn(()) {
+        reachable_non_generics.insert(id.to_def_id(), SymbolExportLevel::C);
     }
 
     reachable_non_generics
@@ -174,7 +174,7 @@ fn exported_symbols_provider_local(
         .map(|(&def_id, &level)| (ExportedSymbol::NonGeneric(def_id), level))
         .collect();
 
-    if tcx.entry_fn(LOCAL_CRATE).is_some() {
+    if tcx.entry_fn(()).is_some() {
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
 
         symbols.push((exported_symbol, SymbolExportLevel::C));
@@ -230,7 +230,7 @@ fn exported_symbols_provider_local(
         // external linkage is enough for monomorphization to be linked to.
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
-        let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (_, cgus) = tcx.collect_and_partition_mono_items(());
 
         for (mono_item, &(linkage, visibility)) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if linkage != Linkage::External {
@@ -275,11 +275,9 @@ fn exported_symbols_provider_local(
 
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
-    cnum: CrateNum,
+    (): (),
 ) -> DefIdMap<FxHashMap<SubstsRef<'_>, CrateNum>> {
-    debug_assert!(cnum == LOCAL_CRATE);
-
-    let cnums = tcx.all_crate_nums(LOCAL_CRATE);
+    let cnums = tcx.all_crate_nums(());
 
     let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
 
@@ -341,7 +339,7 @@ fn upstream_monomorphizations_for_provider(
     def_id: DefId,
 ) -> Option<&FxHashMap<SubstsRef<'_>, CrateNum>> {
     debug_assert!(!def_id.is_local());
-    tcx.upstream_monomorphizations(LOCAL_CRATE).get(&def_id)
+    tcx.upstream_monomorphizations(()).get(&def_id)
 }
 
 fn upstream_drop_glue_for_provider<'tcx>(
@@ -355,12 +353,8 @@ fn upstream_drop_glue_for_provider<'tcx>(
     }
 }
 
-fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(def_id) = def_id.as_local() {
-        !tcx.reachable_set(LOCAL_CRATE).contains(&def_id)
-    } else {
-        bug!("is_unreachable_local_definition called with non-local DefId: {:?}", def_id)
-    }
+fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    !tcx.reachable_set(()).contains(&def_id)
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -370,11 +364,13 @@ pub fn provide(providers: &mut Providers) {
     providers.upstream_monomorphizations = upstream_monomorphizations_provider;
     providers.is_unreachable_local_definition = is_unreachable_local_definition_provider;
     providers.upstream_drop_glue_for = upstream_drop_glue_for_provider;
+    providers.wasm_import_module_map = wasm_import_module_map;
 }
 
 pub fn provide_extern(providers: &mut Providers) {
     providers.is_reachable_non_generic = is_reachable_non_generic_provider_extern;
     providers.upstream_monomorphizations_for = upstream_monomorphizations_for_provider;
+    providers.wasm_import_module_map = wasm_import_module_map;
 }
 
 fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel {
@@ -441,4 +437,31 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
         ),
         ExportedSymbol::NoDefId(symbol_name) => symbol_name.to_string(),
     }
+}
+
+fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, String> {
+    // Build up a map from DefId to a `NativeLib` structure, where
+    // `NativeLib` internally contains information about
+    // `#[link(wasm_import_module = "...")]` for example.
+    let native_libs = tcx.native_libraries(cnum);
+
+    let def_id_to_native_lib = native_libs
+        .iter()
+        .filter_map(|lib| lib.foreign_module.map(|id| (id, lib)))
+        .collect::<FxHashMap<_, _>>();
+
+    let mut ret = FxHashMap::default();
+    for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
+        let module = def_id_to_native_lib.get(&def_id).and_then(|s| s.wasm_import_module);
+        let module = match module {
+            Some(s) => s,
+            None => continue,
+        };
+        ret.extend(lib.foreign_items.iter().map(|id| {
+            assert_eq!(id.krate, cnum);
+            (*id, module.to_string())
+        }));
+    }
+
+    ret
 }

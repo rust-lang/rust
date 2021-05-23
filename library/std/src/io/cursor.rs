@@ -71,7 +71,7 @@ use core::convert::TryInto;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct Cursor<T> {
     inner: T,
     pos: u64,
@@ -202,6 +202,23 @@ impl<T> Cursor<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_position(&mut self, pos: u64) {
         self.pos = pos;
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Clone for Cursor<T>
+where
+    T: Clone,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        Cursor { inner: self.inner.clone(), pos: self.pos }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, other: &Self) {
+        self.inner.clone_from(&other.inner);
+        self.pos = other.pos;
     }
 }
 

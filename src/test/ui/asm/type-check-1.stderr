@@ -64,7 +64,37 @@ LL |         asm!("{}", inout(reg) v[..]);
    = help: the trait `Sized` is not implemented for `[u64]`
    = note: all inline asm arguments must have a statically known size
 
-error: aborting due to 8 previous errors
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:48:26
+   |
+LL |         asm!("{}", const 0f32);
+   |                          ^^^^ expected integer, found `f32`
 
-Some errors have detailed explanations: E0277, E0435.
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:50:26
+   |
+LL |         asm!("{}", const 0 as *mut u8);
+   |                          ^^^^^^^^^^^^ expected integer, found *-ptr
+   |
+   = note:     expected type `{integer}`
+           found raw pointer `*mut u8`
+
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:60:25
+   |
+LL | global_asm!("{}", const 0f32);
+   |                         ^^^^ expected integer, found `f32`
+
+error[E0308]: mismatched types
+  --> $DIR/type-check-1.rs:62:25
+   |
+LL | global_asm!("{}", const 0 as *mut u8);
+   |                         ^^^^^^^^^^^^ expected integer, found *-ptr
+   |
+   = note:     expected type `{integer}`
+           found raw pointer `*mut u8`
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0435.
 For more information about an error, try `rustc --explain E0277`.

@@ -20,7 +20,7 @@ use crate::mem;
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
-#[path = "../unsupported/cmath.rs"]
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 #[path = "../unsupported/condvar.rs"]
 pub mod condvar;
@@ -33,7 +33,6 @@ pub mod mutex;
 pub mod net;
 pub mod os;
 pub use crate::sys_common::os_str_bytes as os_str;
-pub mod ext;
 #[path = "../unix/path.rs"]
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
@@ -77,6 +76,7 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
         wasi::ERRNO_EXIST => AlreadyExists,
         wasi::ERRNO_AGAIN => WouldBlock,
         wasi::ERRNO_NOSYS => Unsupported,
+        wasi::ERRNO_NOMEM => OutOfMemory,
         _ => Other,
     }
 }

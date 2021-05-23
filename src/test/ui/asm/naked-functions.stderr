@@ -233,7 +233,7 @@ LL |     llvm_asm!("");
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
    = help: use the new asm! syntax specified in RFC 2873
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `llvm_asm` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:108:1

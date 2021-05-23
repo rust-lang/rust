@@ -14,6 +14,7 @@ pub fn target() -> Target {
             linker_flavor: LinkerFlavor::PtxLinker,
             // The linker can be installed from `crates.io`.
             linker: Some("rust-ptx-linker".to_string()),
+            linker_is_gnu: false,
 
             // With `ptx-linker` approach, it can be later overridden via link flags.
             cpu: "sm_30".to_string(),

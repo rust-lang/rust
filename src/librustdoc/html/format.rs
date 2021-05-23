@@ -12,11 +12,14 @@ use std::iter;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_target::spec::abi::Abi;
 
-use crate::clean::{self, utils::find_nearest_parent_module, PrimitiveType};
+use crate::clean::{
+    self, utils::find_nearest_parent_module, ExternalCrate, FakeDefId, PrimitiveType,
+};
 use crate::formats::item_type::ItemType;
 use crate::html::escape::Escape;
 use crate::html::render::cache::ExternalLocation;
@@ -465,14 +468,14 @@ crate fn href(did: DefId, cx: &Context<'_>) -> Option<(String, ItemType, Vec<Str
                 fqp,
                 shortty,
                 match cache.extern_locations[&did.krate] {
-                    (.., ExternalLocation::Remote(ref s)) => {
+                    ExternalLocation::Remote(ref s) => {
                         let s = s.trim_end_matches('/');
                         let mut s = vec![&s[..]];
                         s.extend(module_fqp[..].iter().map(String::as_str));
                         s
                     }
-                    (.., ExternalLocation::Local) => href_relative_parts(module_fqp, relative_to),
-                    (.., ExternalLocation::Unknown) => return None,
+                    ExternalLocation::Local => href_relative_parts(module_fqp, relative_to),
+                    ExternalLocation::Unknown => return None,
                 },
             )
         }
@@ -578,12 +581,14 @@ fn primitive_link(
             Some(&def_id) => {
                 let cname_str;
                 let loc = match m.extern_locations[&def_id.krate] {
-                    (ref cname, _, ExternalLocation::Remote(ref s)) => {
-                        cname_str = cname.as_str();
+                    ExternalLocation::Remote(ref s) => {
+                        cname_str =
+                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
                         Some(vec![s.trim_end_matches('/'), &cname_str[..]])
                     }
-                    (ref cname, _, ExternalLocation::Local) => {
-                        cname_str = cname.as_str();
+                    ExternalLocation::Local => {
+                        cname_str =
+                            ExternalCrate { crate_num: def_id.krate }.name(cx.tcx()).as_str();
                         Some(if cx.current.first().map(|x| &x[..]) == Some(&cname_str[..]) {
                             iter::repeat("..").take(cx.current.len() - 1).collect()
                         } else {
@@ -591,7 +596,7 @@ fn primitive_link(
                             iter::repeat("..").take(cx.current.len()).chain(cname).collect()
                         })
                     }
-                    (.., ExternalLocation::Unknown) => None,
+                    ExternalLocation::Unknown => None,
                 };
                 if let Some(loc) = loc {
                     write!(
@@ -635,7 +640,7 @@ crate fn anchor<'a, 'cx: 'a>(
     text: &'a str,
     cx: &'cx Context<'_>,
 ) -> impl fmt::Display + 'a {
-    let parts = href(did, cx);
+    let parts = href(did.into(), cx);
     display_fn(move |f| {
         if let Some((url, short_ty, fqp)) = parts {
             write!(
@@ -863,7 +868,7 @@ fn fmt_type<'cx>(
                 //        everything comes in as a fully resolved QPath (hard to
                 //        look at).
                 box clean::ResolvedPath { did, ref param_names, .. } => {
-                    match href(did, cx) {
+                    match href(did.into(), cx) {
                         Some((ref url, _, ref path)) if !f.alternate() => {
                             write!(
                                 f,
@@ -1141,7 +1146,7 @@ impl clean::FnDecl {
 impl clean::Visibility {
     crate fn print_with_space<'a, 'tcx: 'a>(
         self,
-        item_did: DefId,
+        item_did: FakeDefId,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         let to_print = match self {
@@ -1151,7 +1156,7 @@ impl clean::Visibility {
                 // FIXME(camelid): This may not work correctly if `item_did` is a module.
                 //                 However, rustdoc currently never displays a module's
                 //                 visibility, so it shouldn't matter.
-                let parent_module = find_nearest_parent_module(cx.tcx(), item_did);
+                let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_real());
 
                 if vis_did.index == CRATE_DEF_INDEX {
                     "pub(crate) ".to_owned()

@@ -345,10 +345,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 };
 
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
-                // FIXME(project-rfc-2229#8): Improve borrow-check diagnostics in case of precise
-                //                            capture.
                 let upvar_hir_id = upvar.place.get_root_variable();
-                let upvar_name = upvar.name;
+                let upvar_name = upvar.place.to_string(self.infcx.tcx);
                 let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
 
                 let place_name = self.describe_any_place(move_place.as_ref());
@@ -478,8 +476,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span), "");
 
                 use_spans.args_span_label(err, format!("move out of {} occurs here", place_desc));
-                use_spans
-                    .var_span_label(err, format!("move occurs due to use{}", use_spans.describe()));
+                use_spans.var_span_label(
+                    err,
+                    format!("move occurs due to use{}", use_spans.describe()),
+                    "moved",
+                );
             }
         }
     }

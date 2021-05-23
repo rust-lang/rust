@@ -152,6 +152,12 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
         ("x86", "avx512vpclmulqdq") => "vpclmulqdq",
         ("aarch64", "fp") => "fp-armv8",
         ("aarch64", "fp16") => "fullfp16",
+        ("aarch64", "fhm") => "fp16fml",
+        ("aarch64", "rcpc2") => "rcpc-immo",
+        ("aarch64", "dpb") => "ccpp",
+        ("aarch64", "dpb2") => "ccdp",
+        ("aarch64", "frintts") => "fptoint",
+        ("aarch64", "fcma") => "complxnum",
         (_, s) => s,
     }
 }
@@ -339,24 +345,32 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
         Some(_) | None => {}
     };
 
+    let filter = |s: &str| {
+        if s.is_empty() {
+            return None;
+        }
+        let feature = if s.starts_with("+") || s.starts_with("-") {
+            &s[1..]
+        } else {
+            return Some(s.to_string());
+        };
+        // Rustc-specific feature requests like `+crt-static` or `-crt-static`
+        // are not passed down to LLVM.
+        if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
+            return None;
+        }
+        // ... otherwise though we run through `to_llvm_feature` feature when
+        // passing requests down to LLVM. This means that all in-language
+        // features also work on the command line instead of having two
+        // different names when the LLVM name and the Rust name differ.
+        Some(format!("{}{}", &s[..1], to_llvm_feature(sess, feature)))
+    };
+
     // Features implied by an implicit or explicit `--target`.
-    features.extend(
-        sess.target
-            .features
-            .split(',')
-            .filter(|f| !f.is_empty() && !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)))
-            .map(String::from),
-    );
+    features.extend(sess.target.features.split(',').filter_map(&filter));
 
     // -Ctarget-features
-    features.extend(
-        sess.opts
-            .cg
-            .target_feature
-            .split(',')
-            .filter(|f| !f.is_empty() && !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)))
-            .map(String::from),
-    );
+    features.extend(sess.opts.cg.target_feature.split(',').filter_map(&filter));
 
     features
 }

@@ -1042,8 +1042,12 @@ pub struct TargetOptions {
     pub staticlib_prefix: String,
     /// String to append to the name of every static library. Defaults to ".a".
     pub staticlib_suffix: String,
-    /// OS family to use for conditional compilation. Valid options: "unix", "windows".
-    pub os_family: Option<String>,
+    /// Values of the `target_family` cfg set for this target.
+    ///
+    /// Common options are: "unix", "windows". Defaults to no families.
+    ///
+    /// See <https://doc.rust-lang.org/reference/conditional-compilation.html#target_family>.
+    pub families: Vec<String>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
@@ -1082,7 +1086,7 @@ pub struct TargetOptions {
     /// Version of DWARF to use if not using the default.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub dwarf_version: Option<u32>,
-    /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
+    /// Whether the linker support GNU-like arguments such as -O. Defaults to true.
     pub linker_is_gnu: bool,
     /// The MinGW toolchain has a known issue that prevents it from correctly
     /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
@@ -1293,7 +1297,7 @@ impl Default for TargetOptions {
             exe_suffix: String::new(),
             staticlib_prefix: "lib".to_string(),
             staticlib_suffix: ".a".to_string(),
-            os_family: None,
+            families: Vec::new(),
             abi_return_struct_as_int: false,
             is_like_osx: false,
             is_like_solaris: false,
@@ -1303,7 +1307,7 @@ impl Default for TargetOptions {
             is_like_fuchsia: false,
             is_like_wasm: false,
             dwarf_version: None,
-            linker_is_gnu: false,
+            linker_is_gnu: true,
             allows_weak_linkage: true,
             has_rpath: false,
             no_default_libraries: true,
@@ -1605,14 +1609,6 @@ impl Target {
                         .map(|s| s.to_string() );
                 }
             } );
-            ($key_name:ident = $json_name:expr, optional) => ( {
-                let name = $json_name;
-                if let Some(o) = obj.find(name) {
-                    base.$key_name = o
-                        .as_string()
-                        .map(|s| s.to_string() );
-                }
-            } );
             ($key_name:ident, LldFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
@@ -1759,6 +1755,16 @@ impl Target {
                     Some(Ok(()))
                 })).unwrap_or(Ok(()))
             } );
+            ($key_name:ident, TargetFamilies) => ( {
+                let value = obj.find("target-family");
+                if let Some(v) = value.and_then(Json::as_array) {
+                    base.$key_name = v.iter()
+                        .map(|a| a.as_string().unwrap().to_string())
+                        .collect();
+                } else if let Some(v) = value.and_then(Json::as_string) {
+                    base.$key_name = vec![v.to_string()];
+                }
+            } );
         }
 
         if let Some(s) = obj.find("target-endian").and_then(Json::as_string) {
@@ -1802,7 +1808,7 @@ impl Target {
         key!(exe_suffix);
         key!(staticlib_prefix);
         key!(staticlib_suffix);
-        key!(os_family = "target-family", optional);
+        key!(families, TargetFamilies);
         key!(abi_return_struct_as_int, bool);
         key!(is_like_osx, bool);
         key!(is_like_solaris, bool);
@@ -1891,14 +1897,16 @@ impl Target {
         Ok(base)
     }
 
-    /// Search RUST_TARGET_PATH for a JSON file specifying the given target
-    /// triple. Note that it could also just be a bare filename already, so also
-    /// check for that. If one of the hardcoded targets we know about, just
-    /// return it directly.
+    /// Search for a JSON file specifying the given target triple.
     ///
-    /// The error string could come from any of the APIs called, including
-    /// filesystem access and JSON decoding.
-    pub fn search(target_triple: &TargetTriple) -> Result<Target, String> {
+    /// If none is found in `$RUST_TARGET_PATH`, look for a file called `target.json` inside the
+    /// sysroot under the target-triple's `rustlib` directory.  Note that it could also just be a
+    /// bare filename already, so also check for that. If one of the hardcoded targets we know
+    /// about, just return it directly.
+    ///
+    /// The error string could come from any of the APIs called, including filesystem access and
+    /// JSON decoding.
+    pub fn search(target_triple: &TargetTriple, sysroot: &PathBuf) -> Result<Target, String> {
         use rustc_serialize::json;
         use std::env;
         use std::fs;
@@ -1925,14 +1933,26 @@ impl Target {
 
                 let target_path = env::var_os("RUST_TARGET_PATH").unwrap_or_default();
 
-                // FIXME 16351: add a sane default search path?
-
                 for dir in env::split_paths(&target_path) {
                     let p = dir.join(&path);
                     if p.is_file() {
                         return load_file(&p);
                     }
                 }
+
+                // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
+                // as a fallback.
+                let rustlib_path = crate::target_rustlib_path(&sysroot, &target_triple);
+                let p = std::array::IntoIter::new([
+                    Path::new(sysroot),
+                    Path::new(&rustlib_path),
+                    Path::new("target.json"),
+                ])
+                .collect::<PathBuf>();
+                if p.is_file() {
+                    return load_file(&p);
+                }
+
                 Err(format!("Could not find specification for target {:?}", target_triple))
             }
             TargetTriple::TargetPath(ref target_path) => {
@@ -2042,7 +2062,7 @@ impl ToJson for Target {
         target_option_val!(exe_suffix);
         target_option_val!(staticlib_prefix);
         target_option_val!(staticlib_suffix);
-        target_option_val!(os_family, "target-family");
+        target_option_val!(families, "target-family");
         target_option_val!(abi_return_struct_as_int);
         target_option_val!(is_like_osx);
         target_option_val!(is_like_solaris);

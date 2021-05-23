@@ -50,7 +50,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     codegen_results: &CodegenResults,
     outputs: &OutputFilenames,
     crate_name: &str,
-    target_cpu: &str,
 ) {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
@@ -100,7 +99,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
                         &out_filename,
                         codegen_results,
                         path.as_ref(),
-                        target_cpu,
                     );
                 }
             }
@@ -329,15 +327,15 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     // metadata of the rlib we're generating somehow.
     for lib in codegen_results.crate_info.used_libraries.iter() {
         match lib.kind {
-            NativeLibKind::StaticBundle => {}
-            NativeLibKind::StaticNoBundle
-            | NativeLibKind::Dylib
-            | NativeLibKind::Framework
+            NativeLibKind::Static { bundle: None | Some(true), .. } => {}
+            NativeLibKind::Static { bundle: Some(false), .. }
+            | NativeLibKind::Dylib { .. }
+            | NativeLibKind::Framework { .. }
             | NativeLibKind::RawDylib
             | NativeLibKind::Unspecified => continue,
         }
         if let Some(name) = lib.name {
-            ab.add_native_library(name);
+            ab.add_native_library(name, lib.verbatim.unwrap_or(false));
         }
     }
 
@@ -430,9 +428,10 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         // Clearly this is not sufficient for a general purpose feature, and
         // we'd want to read from the library's metadata to determine which
         // object files come from where and selectively skip them.
-        let skip_object_files = native_libs
-            .iter()
-            .any(|lib| lib.kind == NativeLibKind::StaticBundle && !relevant_lib(sess, lib));
+        let skip_object_files = native_libs.iter().any(|lib| {
+            matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
+                && !relevant_lib(sess, lib)
+        });
         ab.add_rlib(
             path,
             &name.as_str(),
@@ -531,7 +530,6 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
-    target_cpu: &str,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
@@ -543,7 +541,6 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         tmpdir,
         out_filename,
         codegen_results,
-        target_cpu,
     );
 
     linker::disable_localization(&mut cmd);
@@ -931,7 +928,7 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         let path = find_sanitizer_runtime(&sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-        linker.link_dylib(Symbol::intern(&filename));
+        linker.link_dylib(Symbol::intern(&filename), false, true);
     } else {
         let filename = format!("librustc{}_rt.{}.a", channel, name);
         let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
@@ -1080,21 +1077,25 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
         .filter_map(|lib| {
             let name = lib.name?;
             match lib.kind {
-                NativeLibKind::StaticNoBundle
-                | NativeLibKind::Dylib
+                NativeLibKind::Static { bundle: Some(false), .. }
+                | NativeLibKind::Dylib { .. }
                 | NativeLibKind::Unspecified => {
+                    let verbatim = lib.verbatim.unwrap_or(false);
                     if sess.target.is_like_msvc {
-                        Some(format!("{}.lib", name))
+                        Some(format!("{}{}", name, if verbatim { "" } else { ".lib" }))
+                    } else if sess.target.linker_is_gnu {
+                        Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))
                     } else {
                         Some(format!("-l{}", name))
                     }
                 }
-                NativeLibKind::Framework => {
+                NativeLibKind::Framework { .. } => {
                     // ld-only syntax, since there are no frameworks in MSVC
                     Some(format!("-framework {}", name))
                 }
                 // These are included, no need to print them
-                NativeLibKind::StaticBundle | NativeLibKind::RawDylib => None,
+                NativeLibKind::Static { bundle: None | Some(true), .. }
+                | NativeLibKind::RawDylib => None,
             }
         })
         .collect();
@@ -1571,7 +1572,7 @@ fn add_rpath_args(
         let target_triple = sess.opts.target_triple.triple();
         let mut get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
-            let tlib = filesearch::relative_target_lib_path(&sess.sysroot, target_triple);
+            let tlib = rustc_target::target_rustlib_path(&sess.sysroot, target_triple).join("lib");
             let mut path = PathBuf::from(install_prefix);
             path.push(&tlib);
 
@@ -1604,14 +1605,13 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     tmpdir: &Path,
     out_filename: &Path,
     codegen_results: &CodegenResults,
-    target_cpu: &str,
 ) -> Command {
     let crt_objects_fallback = crt_objects_fallback(sess, crate_type);
     let base_cmd = get_linker(sess, path, flavor, crt_objects_fallback);
     // FIXME: Move `/LIBPATH` addition for uwp targets from the linker construction
     // to the linker args construction.
     assert!(base_cmd.get_args().is_empty() || sess.target.vendor == "uwp");
-    let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor, target_cpu);
+    let cmd = &mut *codegen_results.linker_info.to_linker(base_cmd, &sess, flavor);
     let link_output_kind = link_output_kind(sess, crate_type);
 
     // NO-OPT-OUT, OBJECT-FILES-MAYBE, CUSTOMIZATION-POINT
@@ -1803,16 +1803,29 @@ fn add_local_native_libraries(
         codegen_results.crate_info.used_libraries.iter().filter(|l| relevant_lib(sess, l));
 
     let search_path = archive_search_paths(sess);
+    let mut last = (NativeLibKind::Unspecified, None);
     for lib in relevant_libs {
+        // Skip if this library is the same as the last.
+        last = if (lib.kind, lib.name) == last { continue } else { (lib.kind, lib.name) };
+
         let name = match lib.name {
             Some(l) => l,
             None => continue,
         };
+        let verbatim = lib.verbatim.unwrap_or(false);
         match lib.kind {
-            NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
-            NativeLibKind::Framework => cmd.link_framework(name),
-            NativeLibKind::StaticNoBundle => cmd.link_staticlib(name),
-            NativeLibKind::StaticBundle => cmd.link_whole_staticlib(name, &search_path),
+            NativeLibKind::Dylib { as_needed } => {
+                cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
+            }
+            NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
+            NativeLibKind::Framework { as_needed } => {
+                cmd.link_framework(name, as_needed.unwrap_or(true))
+            }
+            NativeLibKind::Static { bundle: None | Some(true), .. }
+            | NativeLibKind::Static { whole_archive: Some(true), .. } => {
+                cmd.link_whole_staticlib(name, verbatim, &search_path);
+            }
+            NativeLibKind::Static { .. } => cmd.link_staticlib(name, verbatim),
             NativeLibKind::RawDylib => {
                 // FIXME(#58713): Proper handling for raw dylibs.
                 bug!("raw_dylib feature not yet implemented");
@@ -1996,9 +2009,10 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         // there's a static library that's not relevant we skip all object
         // files.
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
-        let skip_native = native_libs
-            .iter()
-            .any(|lib| lib.kind == NativeLibKind::StaticBundle && !relevant_lib(sess, lib));
+        let skip_native = native_libs.iter().any(|lib| {
+            matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
+                && !relevant_lib(sess, lib)
+        });
 
         if (!are_upstream_rust_objects_already_included(sess)
             || ignored_for_lto(sess, &codegen_results.crate_info, cnum))
@@ -2127,8 +2141,12 @@ fn add_upstream_native_libraries(
         .expect("failed to find crate type in dependency format list");
 
     let crates = &codegen_results.crate_info.used_crates_static;
+    let mut last = (NativeLibKind::Unspecified, None);
     for &(cnum, _) in crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
+            // Skip if this library is the same as the last.
+            last = if (lib.kind, lib.name) == last { continue } else { (lib.kind, lib.name) };
+
             let name = match lib.name {
                 Some(l) => l,
                 None => continue,
@@ -2136,22 +2154,28 @@ fn add_upstream_native_libraries(
             if !relevant_lib(sess, &lib) {
                 continue;
             }
+            let verbatim = lib.verbatim.unwrap_or(false);
             match lib.kind {
-                NativeLibKind::Dylib | NativeLibKind::Unspecified => cmd.link_dylib(name),
-                NativeLibKind::Framework => cmd.link_framework(name),
-                NativeLibKind::StaticNoBundle => {
+                NativeLibKind::Dylib { as_needed } => {
+                    cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
+                }
+                NativeLibKind::Unspecified => cmd.link_dylib(name, verbatim, true),
+                NativeLibKind::Framework { as_needed } => {
+                    cmd.link_framework(name, as_needed.unwrap_or(true))
+                }
+                NativeLibKind::Static { bundle: Some(false), .. } => {
                     // Link "static-nobundle" native libs only if the crate they originate from
                     // is being linked statically to the current crate.  If it's linked dynamically
                     // or is an rlib already included via some other dylib crate, the symbols from
                     // native libs will have already been included in that dylib.
                     if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(name)
+                        cmd.link_staticlib(name, verbatim)
                     }
                 }
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously
-                NativeLibKind::StaticBundle => {}
+                NativeLibKind::Static { bundle: None | Some(true), .. } => {}
                 NativeLibKind::RawDylib => {
                     // FIXME(#58713): Proper handling for raw dylibs.
                     bug!("raw_dylib feature not yet implemented");

@@ -1,8 +1,10 @@
 // min-llvm-version: 10.0.1
 // only-x86_64
 // run-pass
+// revisions: mirunsafeck thirunsafeck
+// [thirunsafeck]compile-flags: -Z thir-unsafeck
 
-#![feature(asm)]
+#![feature(asm, global_asm)]
 
 fn const_generic<const X: usize>() -> usize {
     unsafe {
@@ -34,3 +36,7 @@ fn main() {
     let d = const_generic::<5>();
     assert_eq!(d, 5);
 }
+
+global_asm!("mov eax, {}", const 5);
+global_asm!("mov eax, {}", const constfn(5));
+global_asm!("mov eax, {}", const constfn(5) + constfn(5));

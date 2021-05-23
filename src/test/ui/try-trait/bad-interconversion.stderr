@@ -1,0 +1,115 @@
+error[E0277]: `?` couldn't convert the error to `u8`
+  --> $DIR/bad-interconversion.rs:6:20
+   |
+LL | fn result_to_result() -> Result<u64, u8> {
+   |                          --------------- expected `u8` because of this
+LL |     Ok(Err(123_i32)?)
+   |                    ^ the trait `From<i32>` is not implemented for `u8`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the following implementations were found:
+             <u8 as From<NonZeroU8>>
+             <u8 as From<bool>>
+   = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, i32>>` for `Result<u64, u8>`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
+  --> $DIR/bad-interconversion.rs:11:12
+   |
+LL | / fn option_to_result() -> Result<u64, String> {
+LL | |     Some(3)?;
+   | |            ^ use `.ok_or(...)?` to provide an error compatible with `Result<u64, String>`
+LL | |
+LL | |     Ok(10)
+LL | | }
+   | |_- this function returns a `Result`
+   |
+   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u64, String>`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `Result`s in a function that returns `Result`
+  --> $DIR/bad-interconversion.rs:17:31
+   |
+LL | / fn control_flow_to_result() -> Result<u64, String> {
+LL | |     Ok(ControlFlow::Break(123)?)
+   | |                               ^ this `?` produces `ControlFlow<{integer}, Infallible>`, which is incompatible with `Result<u64, String>`
+LL | |
+LL | | }
+   | |_- this function returns a `Result`
+   |
+   = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Result<u64, String>`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
+  --> $DIR/bad-interconversion.rs:22:22
+   |
+LL | / fn result_to_option() -> Option<u16> {
+LL | |     Some(Err("hello")?)
+   | |                      ^ this `?` produces `Result<Infallible, &str>`, which is incompatible with `Option<u16>`
+LL | |
+LL | | }
+   | |_- this function returns an `Option`
+   |
+   = help: the trait `FromResidual<Result<Infallible, &str>>` is not implemented for `Option<u16>`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
+  --> $DIR/bad-interconversion.rs:27:33
+   |
+LL | / fn control_flow_to_option() -> Option<u64> {
+LL | |     Some(ControlFlow::Break(123)?)
+   | |                                 ^ this `?` produces `ControlFlow<{integer}, Infallible>`, which is incompatible with `Option<u64>`
+LL | |
+LL | | }
+   | |_- this function returns an `Option`
+   |
+   = help: the trait `FromResidual<ControlFlow<{integer}, Infallible>>` is not implemented for `Option<u64>`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `ControlFlow<B, _>`s in a function that returns `ControlFlow<B, _>`
+  --> $DIR/bad-interconversion.rs:32:39
+   |
+LL | / fn result_to_control_flow() -> ControlFlow<String> {
+LL | |     ControlFlow::Continue(Err("hello")?)
+   | |                                       ^ this `?` produces `Result<Infallible, &str>`, which is incompatible with `ControlFlow<String>`
+LL | |
+LL | | }
+   | |_- this function returns a `ControlFlow`
+   |
+   = help: the trait `FromResidual<Result<Infallible, &str>>` is not implemented for `ControlFlow<String>`
+   = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `ControlFlow<B, _>`s in a function that returns `ControlFlow<B, _>`
+  --> $DIR/bad-interconversion.rs:37:12
+   |
+LL | / fn option_to_control_flow() -> ControlFlow<u64> {
+LL | |     Some(3)?;
+   | |            ^ this `?` produces `Option<Infallible>`, which is incompatible with `ControlFlow<u64>`
+LL | |
+LL | |     ControlFlow::Break(10)
+LL | | }
+   | |_- this function returns a `ControlFlow`
+   |
+   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `ControlFlow<u64>`
+   = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `ControlFlow<B, _>`s in a function that returns `ControlFlow<B, _>`
+  --> $DIR/bad-interconversion.rs:43:29
+   |
+LL | / fn control_flow_to_control_flow() -> ControlFlow<i64> {
+LL | |     ControlFlow::Break(4_u8)?;
+   | |                             ^ this `?` produces `ControlFlow<u8, Infallible>`, which is incompatible with `ControlFlow<i64>`
+LL | |
+LL | |     ControlFlow::Continue(())
+LL | | }
+   | |_- this function returns a `ControlFlow`
+   |
+   = help: the trait `FromResidual<ControlFlow<u8, Infallible>>` is not implemented for `ControlFlow<i64>`
+   = note: unlike `Result`, there's no `From`-conversion performed for `ControlFlow`
+   = note: required by `from_residual`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -955,15 +955,15 @@ fn check_matcher_core(
             if let TokenTree::MetaVarDecl(span, name, Some(kind)) = *token {
                 for next_token in &suffix_first.tokens {
                     // Check if the old pat is used and the next token is `|`.
-                    if let NonterminalKind::Pat2015 { inferred: true } = kind {
+                    if let NonterminalKind::PatParam { inferred: true } = kind {
                         if let TokenTree::Token(token) = next_token {
                             if let BinOp(token) = token.kind {
                                 if let token::BinOpToken::Or = token {
-                                    // It is suggestion to use pat2015, for example: $x:pat -> $x:pat2015.
+                                    // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
                                     let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
                                         span,
                                         name,
-                                        Some(NonterminalKind::Pat2015 { inferred: false }),
+                                        Some(NonterminalKind::PatParam { inferred: false }),
                                     ));
                                     sess.buffer_lint_with_diagnostic(
                                         &OR_PATTERNS_BACK_COMPAT,
@@ -1105,7 +1105,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::Pat2015 { .. } => {
+            NonterminalKind::PatParam { .. } => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
@@ -1116,7 +1116,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::Pat2021 { .. } => {
+            NonterminalKind::PatWithOr { .. } => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {

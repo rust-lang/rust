@@ -1,7 +1,9 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 #![stable(feature = "foo", since = "1.33.0")]
 #![feature(staged_api)]
 #![feature(const_raw_ptr_deref)]
-#![feature(const_fn)]
 
 #[stable(feature = "foo", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_foo", issue = "none")]

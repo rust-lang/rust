@@ -106,7 +106,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (
-            Symbol::intern(&caller.file.name.to_string()),
+            Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
             u32::try_from(caller.line).unwrap(),
             u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
         )

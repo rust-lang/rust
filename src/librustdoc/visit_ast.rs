@@ -8,9 +8,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 use rustc_middle::middle::privacy::AccessLevel;
 use rustc_middle::ty::TyCtxt;
+use rustc_span;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{self, Span};
 
 use std::mem;
 
@@ -73,7 +73,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     crate fn visit(mut self, krate: &'tcx hir::Crate<'_>) -> Module<'tcx> {
         let span = krate.item.inner;
         let mut top_level_module = self.visit_mod_contents(
-            span,
             &Spanned { span, node: hir::VisibilityKind::Public },
             hir::CRATE_HIR_ID,
             &krate.item,
@@ -129,16 +128,12 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     fn visit_mod_contents(
         &mut self,
-        span: Span,
         vis: &hir::Visibility<'_>,
         id: hir::HirId,
         m: &'tcx hir::Mod<'tcx>,
         name: Symbol,
     ) -> Module<'tcx> {
-        let mut om = Module::new(name);
-        om.where_outer = span;
-        om.where_inner = m.inner;
-        om.id = id;
+        let mut om = Module::new(name, id, m.inner);
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
@@ -196,7 +191,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         // All items need to be handled here in case someone wishes to link
                         // to them with intra-doc links
-                        self.cx.cache.access_levels.map.insert(did, AccessLevel::Public);
+                        self.cx.cache.access_levels.map.insert(did.into(), AccessLevel::Public);
                     }
                 }
             }
@@ -208,7 +203,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false,
         };
 
-        let is_private = !self.cx.cache.access_levels.is_public(res_did);
+        let is_private = !self.cx.cache.access_levels.is_public(res_did.into());
         let is_hidden = inherits_doc_hidden(self.cx.tcx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
@@ -312,7 +307,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.items.push((item, renamed))
             }
             hir::ItemKind::Mod(ref m) => {
-                om.mods.push(self.visit_mod_contents(item.span, &item.vis, item.hir_id(), m, name));
+                om.mods.push(self.visit_mod_contents(&item.vis, item.hir_id(), m, name));
             }
             hir::ItemKind::Fn(..)
             | hir::ItemKind::ExternCrate(..)

@@ -3,7 +3,6 @@
 use self::CombineMapType::*;
 use self::UndoLog::*;
 
-use super::unify_key;
 use super::{
     InferCtxtUndoLogs, MiscVariable, RegionVariableOrigin, Rollback, Snapshot, SubregionOrigin,
 };
@@ -12,9 +11,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
-use rustc_data_structures::unify::UnifyKey;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::IndexVec;
+use rustc_middle::infer::unify_key::{RegionVidKey, UnifiedRegion};
 use rustc_middle::ty::ReStatic;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReLateBound, ReVar};
@@ -54,7 +53,7 @@ pub struct RegionConstraintStorage<'tcx> {
     /// code is iterating to a fixed point, because otherwise we sometimes
     /// would wind up with a fresh stream of region variables that have been
     /// equated but appear distinct.
-    pub(super) unification_table: ut::UnificationTableStorage<ty::RegionVid>,
+    pub(super) unification_table: ut::UnificationTableStorage<RegionVidKey<'tcx>>,
 
     /// a flag set to true when we perform any unifications; this is used
     /// to micro-optimize `take_and_reset_data`
@@ -407,8 +406,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // `RegionConstraintData` contains the relationship here.
         if *any_unifications {
             *any_unifications = false;
-            self.unification_table()
-                .reset_unifications(|vid| unify_key::RegionVidKey { min_vid: vid });
+            self.unification_table().reset_unifications(|_| UnifiedRegion(None));
         }
 
         data
@@ -435,8 +433,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self.unification_table().new_key(unify_key::RegionVidKey { min_vid: vid });
-        assert_eq!(vid, u_vid);
+        let u_vid = self.unification_table().new_key(UnifiedRegion(None));
+        assert_eq!(vid, u_vid.vid);
         self.undo_log.push(AddVar(vid));
         debug!("created new region variable {:?} in {:?} with origin {:?}", vid, universe, origin);
         vid
@@ -498,10 +496,18 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             self.make_subregion(origin.clone(), sub, sup);
             self.make_subregion(origin, sup, sub);
 
-            if let (ty::ReVar(sub), ty::ReVar(sup)) = (*sub, *sup) {
-                debug!("make_eqregion: uniying {:?} with {:?}", sub, sup);
-                self.unification_table().union(sub, sup);
-                self.any_unifications = true;
+            match (sub, sup) {
+                (&ty::ReVar(sub), &ty::ReVar(sup)) => {
+                    debug!("make_eqregion: unifying {:?} with {:?}", sub, sup);
+                    self.unification_table().union(sub, sup);
+                    self.any_unifications = true;
+                }
+                (&ty::ReVar(vid), value) | (value, &ty::ReVar(vid)) => {
+                    debug!("make_eqregion: unifying {:?} with {:?}", vid, value);
+                    self.unification_table().union_value(vid, UnifiedRegion(Some(value)));
+                    self.any_unifications = true;
+                }
+                (_, _) => {}
             }
         }
     }
@@ -617,8 +623,29 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn opportunistic_resolve_var(&mut self, rid: RegionVid) -> ty::RegionVid {
-        self.unification_table().probe_value(rid).min_vid
+    /// Resolves the passed RegionVid to the root RegionVid in the unification table
+    pub fn opportunistic_resolve_var(&mut self, rid: ty::RegionVid) -> ty::RegionVid {
+        self.unification_table().find(rid).vid
+    }
+
+    /// If the Region is a `ReVar`, then resolves it either to the root value in
+    /// the unification table, if it exists, or to the root `ReVar` in the table.
+    /// If the Region is not a `ReVar`, just returns the Region itself.
+    pub fn opportunistic_resolve_region(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        region: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        match region {
+            ty::ReVar(rid) => {
+                let unified_region = self.unification_table().probe_value(*rid);
+                unified_region.0.unwrap_or_else(|| {
+                    let root = self.unification_table().find(*rid).vid;
+                    tcx.reuse_or_mk_region(region, ty::ReVar(root))
+                })
+            }
+            _ => region,
+        }
     }
 
     fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {
@@ -673,8 +700,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         &self,
         value_count: usize,
     ) -> (Range<RegionVid>, Vec<RegionVariableOrigin>) {
-        let range = RegionVid::from_index(value_count as u32)
-            ..RegionVid::from_index(self.unification_table.len() as u32);
+        let range = RegionVid::from(value_count)..RegionVid::from(self.unification_table.len());
         (
             range.clone(),
             (range.start.index()..range.end.index())
@@ -696,7 +722,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     }
 
     #[inline]
-    fn unification_table(&mut self) -> super::UnificationTable<'_, 'tcx, ty::RegionVid> {
+    fn unification_table(&mut self) -> super::UnificationTable<'_, 'tcx, RegionVidKey<'tcx>> {
         ut::UnificationTable::with_log(&mut self.storage.unification_table, self.undo_log)
     }
 }

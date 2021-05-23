@@ -423,8 +423,7 @@ pub fn get_codegen_sysroot(
         .iter()
         .chain(sysroot_candidates.iter())
         .map(|sysroot| {
-            let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir).with_file_name("codegen-backends")
+            filesearch::make_target_lib_path(&sysroot, &target).with_file_name("codegen-backends")
         })
         .find(|f| {
             info!("codegen backend candidate: {}", f.display());
@@ -923,7 +922,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     }
 }
 
-/// Returns a version string such as "rustc 1.46.0 (04488afe3 2020-08-24)"
+/// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)"
 pub fn version_str() -> Option<&'static str> {
     option_env!("CFG_VERSION")
 }

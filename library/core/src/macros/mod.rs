@@ -1358,7 +1358,10 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! global_asm {
-        ("assembly") => {
+        ("assembly template",
+            $(operands,)*
+            $(options($(option),*))?
+        ) => {
             /* compiler built-in */
         };
     }

@@ -3,9 +3,9 @@
     3|       |use std::fmt::Debug;
     4|       |
     5|      1|pub fn used_function() {
-    6|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-    7|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-    8|       |    // dependent conditions.
+    6|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+    7|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+    8|      1|    // dependent conditions.
     9|      1|    let is_true = std::env::args().len() == 1;
    10|      1|    let mut countdown = 0;
    11|      1|    if is_true {
@@ -36,12 +36,12 @@
    22|      2|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
    23|      2|}
   ------------------
-  | used_crate::used_only_from_this_lib_crate_generic_function::<&str>:
+  | used_crate::used_only_from_this_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
   |   21|      1|pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
   |   22|      1|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
   |   23|      1|}
   ------------------
-  | used_crate::used_only_from_this_lib_crate_generic_function::<alloc::vec::Vec<i32>>:
+  | used_crate::used_only_from_this_lib_crate_generic_function::<&str>:
   |   21|      1|pub fn used_only_from_this_lib_crate_generic_function<T: Debug>(arg: T) {
   |   22|      1|    println!("used_only_from_this_lib_crate_generic_function with {:?}", arg);
   |   23|      1|}

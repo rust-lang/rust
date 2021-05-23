@@ -414,10 +414,13 @@ class RustBuild(object):
             filename = "rustc-{}-{}{}".format(rustc_channel, self.build,
                                               tarball_suffix)
             self._download_component_helper(filename, "rustc", tarball_suffix, stage0)
-            filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
-                                              tarball_suffix)
-            self._download_component_helper(filename, "cargo", tarball_suffix)
-            if not stage0:
+            # download-rustc doesn't need its own cargo, it can just use beta's.
+            if stage0:
+                filename = "cargo-{}-{}{}".format(rustc_channel, self.build,
+                                                tarball_suffix)
+                self._download_component_helper(filename, "cargo", tarball_suffix)
+                self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
+            else:
                 filename = "rustc-dev-{}-{}{}".format(rustc_channel, self.build, tarball_suffix)
                 self._download_component_helper(
                     filename, "rustc-dev", tarball_suffix, stage0
@@ -425,7 +428,6 @@ class RustBuild(object):
 
             self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
             self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
-            self.fix_bin_or_dylib("{}/bin/cargo".format(bin_root))
             lib_dir = "{}/lib".format(bin_root)
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
@@ -898,8 +900,8 @@ class RustBuild(object):
         target_linker = self.get_toml("linker", build_section)
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
-        # cfg(bootstrap): Add `-Wsemicolon_in_expressions_from_macros` after the next beta bump
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
+        env["RUSTFLAGS"] += " -Wsemicolon_in_expressions_from_macros"
         if self.get_toml("deny-warnings", "rust") != "false":
             env["RUSTFLAGS"] += " -Dwarnings"
 
@@ -989,28 +991,20 @@ class RustBuild(object):
         ).decode(default_encoding).splitlines()]
         filtered_submodules = []
         submodules_names = []
-        llvm_checked_out = os.path.exists(os.path.join(self.rust_root, "src/llvm-project/.git"))
-        external_llvm_provided = self.get_toml('llvm-config') or self.downloading_llvm()
-        llvm_needed = not self.get_toml('codegen-backends', 'rust') \
-            or "llvm" in self.get_toml('codegen-backends', 'rust')
         for module in submodules:
+            # This is handled by native::Llvm in rustbuild, not here
             if module.endswith("llvm-project"):
-                # Don't sync the llvm-project submodule if an external LLVM was
-                # provided, if we are downloading LLVM or if the LLVM backend is
-                # not being built. Also, if the submodule has been initialized
-                # already, sync it anyways so that it doesn't mess up contributor
-                # pull requests.
-                if external_llvm_provided or not llvm_needed:
-                    if self.get_toml('lld') != 'true' and not llvm_checked_out:
-                        continue
+                continue
             check = self.check_submodule(module, slow_submodules)
             filtered_submodules.append((module, check))
             submodules_names.append(module)
         recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
                                     cwd=self.rust_root, stdout=subprocess.PIPE)
         recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
+        # { filename: hash }
         recorded_submodules = {}
         for data in recorded:
+            # [mode, kind, hash, filename]
             data = data.split()
             recorded_submodules[data[3]] = data[2]
         for module in filtered_submodules:

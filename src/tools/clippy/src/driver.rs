@@ -4,7 +4,7 @@
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 // warn on rustc internal lints
-#![deny(rustc::internal)]
+#![warn(rustc::internal)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -106,7 +106,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
                 (previous)(sess, lint_store);
             }
 
-            let conf = clippy_lints::read_conf(&[], sess);
+            let conf = clippy_lints::read_conf(sess);
             clippy_lints::register_plugins(lint_store, sess, &conf);
             clippy_lints::register_pre_expansion_lints(lint_store);
             clippy_lints::register_renamed(lint_store);

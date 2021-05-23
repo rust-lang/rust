@@ -10,7 +10,7 @@ use crate::ptr;
 ///
 /// The compiler, in general, assumes that a variable is properly initialized
 /// according to the requirements of the variable's type. For example, a variable of
-/// reference type must be aligned and non-NULL. This is an invariant that must
+/// reference type must be aligned and non-null. This is an invariant that must
 /// *always* be upheld, even in unsafe code. As a consequence, zero-initializing a
 /// variable of reference type causes instantaneous [undefined behavior][ub],
 /// no matter whether that reference ever gets used to access memory:
@@ -870,7 +870,7 @@ impl<T> MaybeUninit<T> {
         // SAFETY:
         // * The caller guarantees that all elements of the array are initialized
         // * `MaybeUninit<T>` and T are guaranteed to have the same layout
-        // * MaybeUnint does not drop, so there are no double-frees
+        // * `MaybeUninit` does not drop, so there are no double-frees
         // And thus the conversion is safe
         unsafe {
             intrinsics::assert_inhabited::<[T; N]>();

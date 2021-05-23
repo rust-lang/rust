@@ -61,6 +61,7 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// assert!(env::set_current_dir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
+#[doc(alias = "chdir")]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn set_current_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     os_imp::chdir(path.as_ref())
@@ -124,6 +125,10 @@ pub fn vars() -> Vars {
 /// variables at the time of this invocation. Modifications to environment
 /// variables afterwards will not be reflected in the returned iterator.
 ///
+/// Note that the returned iterator will not check if the environment variables
+/// are valid Unicode. If you want to panic on invalid UTF-8,
+/// use the [`vars`] function instead.
+///
 /// # Examples
 ///
 /// ```
@@ -180,8 +185,9 @@ impl fmt::Debug for VarsOs {
 ///
 /// # Errors
 ///
-/// * Environment variable is not present
-/// * Environment variable is not valid unicode
+/// Errors if the environment variable is not present.
+/// Errors if the environment variable is not valid Unicode. If this is not desired, consider using
+/// [`var_os`].
 ///
 /// # Panics
 ///
@@ -220,6 +226,10 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// This function may panic if `key` is empty, contains an ASCII equals sign
 /// `'='` or the NUL character `'\0'`, or when the value contains the NUL
 /// character.
+///
+/// Note that the method will not check if the environment variable
+/// is valid Unicode. If you want to have an error on invalid UTF-8,
+/// use the [`var`] function instead.
 ///
 /// # Examples
 ///
@@ -314,13 +324,13 @@ impl Error for VarError {
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
-    _set_var(k.as_ref(), v.as_ref())
+pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
+    _set_var(key.as_ref(), value.as_ref())
 }
 
-fn _set_var(k: &OsStr, v: &OsStr) {
-    os_imp::setenv(k, v).unwrap_or_else(|e| {
-        panic!("failed to set environment variable `{:?}` to `{:?}`: {}", k, v, e)
+fn _set_var(key: &OsStr, value: &OsStr) {
+    os_imp::setenv(key, value).unwrap_or_else(|e| {
+        panic!("failed to set environment variable `{:?}` to `{:?}`: {}", key, value, e)
     })
 }
 
@@ -356,13 +366,13 @@ fn _set_var(k: &OsStr, v: &OsStr) {
 /// assert!(env::var(key).is_err());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn remove_var<K: AsRef<OsStr>>(k: K) {
-    _remove_var(k.as_ref())
+pub fn remove_var<K: AsRef<OsStr>>(key: K) {
+    _remove_var(key.as_ref())
 }
 
-fn _remove_var(k: &OsStr) {
-    os_imp::unsetenv(k)
-        .unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", k, e))
+fn _remove_var(key: &OsStr) {
+    os_imp::unsetenv(key)
+        .unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", key, e))
 }
 
 /// An iterator that splits an environment variable into paths according to

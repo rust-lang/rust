@@ -1,7 +1,6 @@
 // build-fail
 // compile-flags: -Zunleash-the-miri-inside-of-you
 
-#![feature(const_fn)]
 #![allow(const_err)]
 
 fn double(x: usize) -> usize {

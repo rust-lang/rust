@@ -1,6 +1,6 @@
 // Regression test for #69615.
 
-#![feature(const_trait_impl, const_fn)]
+#![feature(const_trait_impl)]
 #![allow(incomplete_features)]
 
 pub trait MyTrait {

@@ -3,7 +3,7 @@ use required_consts::RequiredConstsVisitor;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
@@ -98,14 +98,13 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    tcx.mir_keys(def_id.krate).contains(&def_id.expect_local())
+    let def_id = def_id.expect_local();
+    tcx.mir_keys(()).contains(&def_id)
 }
 
 /// Finds the full set of `DefId`s within the current crate that have
 /// MIR associated with them.
-fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> FxHashSet<LocalDefId> {
-    assert_eq!(krate, LOCAL_CRATE);
-
+fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
     let mut set = FxHashSet::default();
 
     // All body-owners have MIR associated with them.

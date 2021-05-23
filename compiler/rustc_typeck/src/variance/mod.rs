@@ -6,7 +6,7 @@
 use hir::Node;
 use rustc_arena::DroplessArena;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CrateVariancesMap, TyCtxt};
 
@@ -30,8 +30,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { variances_of, crate_variances, ..*providers };
 }
 
-fn crate_variances(tcx: TyCtxt<'_>, crate_num: CrateNum) -> CrateVariancesMap<'_> {
-    assert_eq!(crate_num, LOCAL_CRATE);
+fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
     let arena = DroplessArena::default();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &arena);
     let constraints_cx = constraints::add_constraints_from_crate(terms_cx);
@@ -79,6 +78,6 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
 
     // Everything else must be inferred.
 
-    let crate_map = tcx.crate_variances(LOCAL_CRATE);
+    let crate_map = tcx.crate_variances(());
     crate_map.variances.get(&item_def_id).copied().unwrap_or(&[])
 }

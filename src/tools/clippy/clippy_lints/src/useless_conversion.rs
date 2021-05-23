@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, match_def_path, match_trait_method, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, TyS};
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 if match_trait_method(cx, e, &paths::INTO) && &*name.ident.as_str() == "into" {
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
-                    if TyS::same_type(a, b) {
+                    if same_type_and_consts(a, b) {
                         let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
                         span_lint_and_sugg(
                             cx,
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     }
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(&args[0]);
-                    if TyS::same_type(a, b) {
+                    if same_type_and_consts(a, b) {
                         let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
                         span_lint_and_sugg(
                             cx,
@@ -110,7 +110,8 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     if is_type_diagnostic_item(cx, a, sym::result_type);
                     if let ty::Adt(_, substs) = a.kind();
                     if let Some(a_type) = substs.types().next();
-                    if TyS::same_type(a_type, b);
+                    if same_type_and_consts(a_type, b);
+
                     then {
                         span_lint_and_help(
                             cx,
@@ -137,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             if is_type_diagnostic_item(cx, a, sym::result_type);
                             if let ty::Adt(_, substs) = a.kind();
                             if let Some(a_type) = substs.types().next();
-                            if TyS::same_type(a_type, b);
+                            if same_type_and_consts(a_type, b);
 
                             then {
                                 let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
@@ -154,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
                         if_chain! {
                             if match_def_path(cx, def_id, &paths::FROM_FROM);
-                            if TyS::same_type(a, b);
+                            if same_type_and_consts(a, b);
 
                             then {
                                 let sugg = Sugg::hir_with_macro_callsite(cx, &args[0], "<expr>").maybe_par();

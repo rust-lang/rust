@@ -62,32 +62,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let drop = Instance::resolve_drop_in_place(tcx, ty);
         let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
 
+        // Prepare the fn ptrs we will write into the vtable later.
+        let fn_ptrs = methods
+            .iter()
+            .enumerate() // remember the original position
+            .filter_map(|(i, method)| {
+                if let Some((def_id, substs)) = method { Some((i, def_id, substs)) } else { None }
+            })
+            .map(|(i, def_id, substs)| {
+                let instance =
+                    ty::Instance::resolve_for_vtable(tcx, self.param_env, *def_id, substs)
+                        .ok_or_else(|| err_inval!(TooGeneric))?;
+                Ok((i, self.memory.create_fn_alloc(FnVal::Instance(instance))))
+            })
+            .collect::<InterpResult<'tcx, Vec<(usize, Pointer<M::PointerTag>)>>>()?;
+
         // No need to do any alignment checks on the memory accesses below, because we know the
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
         // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
-        let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
-        vtable_alloc.write_ptr_sized(&tcx, vtable, drop.into())?;
+        let mut vtable_alloc =
+            self.memory.get_mut(vtable.into(), vtable_size, ptr_align)?.expect("not a ZST");
+        vtable_alloc.write_ptr_sized(ptr_size * 0, drop.into())?;
+        vtable_alloc.write_ptr_sized(ptr_size * 1, Scalar::from_uint(size, ptr_size).into())?;
+        vtable_alloc.write_ptr_sized(ptr_size * 2, Scalar::from_uint(align, ptr_size).into())?;
 
-        let size_ptr = vtable.offset(ptr_size, &tcx)?;
-        vtable_alloc.write_ptr_sized(&tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
-        let align_ptr = vtable.offset(ptr_size * 2, &tcx)?;
-        vtable_alloc.write_ptr_sized(&tcx, align_ptr, Scalar::from_uint(align, ptr_size).into())?;
-
-        for (i, method) in methods.iter().enumerate() {
-            if let Some((def_id, substs)) = *method {
-                // resolve for vtable: insert shims where needed
-                let instance =
-                    ty::Instance::resolve_for_vtable(tcx, self.param_env, def_id, substs)
-                        .ok_or_else(|| err_inval!(TooGeneric))?;
-                let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
-                let method_ptr = vtable.offset(ptr_size * (3 + i as u64), &tcx)?;
-                self.memory.get_raw_mut(vtable.alloc_id)?.write_ptr_sized(
-                    &tcx,
-                    method_ptr,
-                    fn_ptr.into(),
-                )?;
-            }
+        for (i, fn_ptr) in fn_ptrs.into_iter() {
+            vtable_alloc.write_ptr_sized(ptr_size * (3 + i as u64), fn_ptr.into())?;
         }
 
         M::after_static_mem_initialized(self, vtable, vtable_size)?;
@@ -111,13 +111,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable_slot = vtable.ptr_offset(ptr_size * idx.checked_add(3).unwrap(), self)?;
         let vtable_slot = self
             .memory
-            .check_ptr_access(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
+            .get(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
-        let fn_ptr = self
-            .memory
-            .get_raw(vtable_slot.alloc_id)?
-            .read_ptr_sized(self, vtable_slot)?
-            .check_init()?;
+        let fn_ptr = vtable_slot.read_ptr_sized(Size::ZERO)?.check_init()?;
         self.memory.get_fn(fn_ptr)
     }
 
@@ -129,14 +125,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // We don't care about the pointee type; we just want a pointer.
         let vtable = self
             .memory
-            .check_ptr_access(
-                vtable,
-                self.tcx.data_layout.pointer_size,
-                self.tcx.data_layout.pointer_align.abi,
-            )?
+            .get(vtable, self.tcx.data_layout.pointer_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
-        let drop_fn =
-            self.memory.get_raw(vtable.alloc_id)?.read_ptr_sized(self, vtable)?.check_init()?;
+        let drop_fn = vtable.read_ptr_sized(Size::ZERO)?.check_init()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
         let drop_instance = self.memory.get_fn(drop_fn)?.as_instance()?;
@@ -161,13 +152,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // the size, and the align (which we read below).
         let vtable = self
             .memory
-            .check_ptr_access(vtable, 3 * pointer_size, self.tcx.data_layout.pointer_align.abi)?
+            .get(vtable, 3 * pointer_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
-        let alloc = self.memory.get_raw(vtable.alloc_id)?;
-        let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?.check_init()?;
+        let size = vtable.read_ptr_sized(pointer_size)?.check_init()?;
         let size = u64::try_from(self.force_bits(size, pointer_size)?).unwrap();
-        let align =
-            alloc.read_ptr_sized(self, vtable.offset(pointer_size * 2, self)?)?.check_init()?;
+        let align = vtable.read_ptr_sized(pointer_size * 2)?.check_init()?;
         let align = u64::try_from(self.force_bits(align, pointer_size)?).unwrap();
 
         if size >= self.tcx.data_layout.obj_size_bound() {

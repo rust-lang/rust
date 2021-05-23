@@ -22,7 +22,6 @@ pub type mode_t = u32;
 #[stable(feature = "pthread_t", since = "1.8.0")]
 pub type pthread_t = c_ulong;
 
-#[doc(inline)]
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub type blkcnt_t = u64;
 #[stable(feature = "raw_ext", since = "1.1.0")]

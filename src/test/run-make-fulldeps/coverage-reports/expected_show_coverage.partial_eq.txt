@@ -2,7 +2,7 @@
     2|       |// structure of this test.
     3|       |
     4|      2|#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-                       ^0            ^0      ^0 ^0  ^1       ^1 ^0^0
+                       ^0            ^0      ^0     ^1       ^1 ^0^0
   ------------------
   | Unexecuted instantiation: <partial_eq::Version as core::cmp::PartialEq>::ne
   ------------------

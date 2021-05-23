@@ -76,7 +76,6 @@ crate fn run(options: Options) -> Result<(), ErrorReported> {
         externs: options.externs.clone(),
         unstable_features: options.render_options.unstable_features,
         actually_rustdoc: true,
-        debugging_opts: config::DebuggingOptions { ..config::basic_debugging_options() },
         edition: options.edition,
         target_triple: options.target.clone(),
         crate_name: options.crate_name.clone(),
@@ -840,7 +839,7 @@ impl Collector {
         if !item_path.is_empty() {
             item_path.push(' ');
         }
-        format!("{} - {}(line {})", filename, item_path, line)
+        format!("{} - {}(line {})", filename.prefer_local(), item_path, line)
     }
 
     crate fn set_position(&mut self, position: Span) {
@@ -852,8 +851,10 @@ impl Collector {
             let filename = source_map.span_to_filename(self.position);
             if let FileName::Real(ref filename) = filename {
                 if let Ok(cur_dir) = env::current_dir() {
-                    if let Ok(path) = filename.local_path().strip_prefix(&cur_dir) {
-                        return path.to_owned().into();
+                    if let Some(local_path) = filename.local_path() {
+                        if let Ok(path) = local_path.strip_prefix(&cur_dir) {
+                            return path.to_owned().into();
+                        }
                     }
                 }
             }
@@ -883,16 +884,22 @@ impl Tester for Collector {
             self.compiling_test_count.fetch_add(1, Ordering::SeqCst);
         }
 
-        // FIXME(#44940): if doctests ever support path remapping, then this filename
-        // needs to be the result of `SourceMap::span_to_unmapped_path`.
         let path = match &filename {
-            FileName::Real(path) => path.local_path().to_path_buf(),
+            FileName::Real(path) => {
+                if let Some(local_path) = path.local_path() {
+                    local_path.to_path_buf()
+                } else {
+                    // Somehow we got the filename from the metadata of another crate, should never happen
+                    unreachable!("doctest from a different crate");
+                }
+            }
             _ => PathBuf::from(r"doctest.rs"),
         };
 
         // For example `module/file.rs` would become `module_file_rs`
         let file = filename
-            .to_string()
+            .prefer_local()
+            .to_string_lossy()
             .chars()
             .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
             .collect::<String>();
@@ -940,13 +947,14 @@ impl Tester for Collector {
                 let report_unused_externs = |uext| {
                     unused_externs.lock().unwrap().push(uext);
                 };
+                let no_run = config.no_run || options.no_run;
                 let res = run_test(
                     &test,
                     &cratename,
                     line,
                     options,
                     config.should_panic,
-                    config.no_run,
+                    no_run,
                     config.test_harness,
                     runtool,
                     runtool_args,
@@ -1095,7 +1103,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         let ast_attrs = self.tcx.hir().attrs(hir_id);
         let mut attrs = Attributes::from_ast(ast_attrs, None);
 
-        if let Some(ref cfg) = ast_attrs.cfg(self.sess.diagnostic()) {
+        if let Some(ref cfg) = ast_attrs.cfg(self.sess) {
             if !cfg.matches(&self.sess.parse_sess, Some(&self.sess.features_untracked())) {
                 return;
             }

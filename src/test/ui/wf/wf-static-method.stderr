@@ -103,7 +103,34 @@ note: ...so that reference does not outlive borrowed content
 LL |     <IndirectEvil>::static_evil(b)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+  --> $DIR/wf-static-method.rs:50:5
+   |
+LL |     <Evil>::inherent_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'b` as defined on the function body at 49:22...
+  --> $DIR/wf-static-method.rs:49:22
+   |
+LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                      ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/wf-static-method.rs:50:27
+   |
+LL |     <Evil>::inherent_evil(b)
+   |                           ^
+note: but, the lifetime must be valid for the lifetime `'a` as defined on the function body at 49:18...
+  --> $DIR/wf-static-method.rs:49:18
+   |
+LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  ^^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/wf-static-method.rs:50:5
+   |
+LL |     <Evil>::inherent_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0312, E0478, E0495.
 For more information about an error, try `rustc --explain E0312`.

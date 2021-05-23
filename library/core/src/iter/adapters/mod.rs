@@ -88,6 +88,7 @@ pub use self::zip::zip;
 /// [`FromIterator`]: crate::iter::FromIterator
 /// [`as_inner`]: SourceIter::as_inner
 #[unstable(issue = "none", feature = "inplace_iteration")]
+#[doc(hidden)]
 pub unsafe trait SourceIter {
     /// A source stage in an iterator pipeline.
     type Source: Iterator;
@@ -167,7 +168,7 @@ where
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
         F: FnMut(B, Self::Item) -> R,
-        R: Try<Ok = B>,
+        R: Try<Output = B>,
     {
         let error = &mut *self.error;
         self.iter

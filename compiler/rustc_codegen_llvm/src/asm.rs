@@ -283,6 +283,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 }
                 InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {}
                 InlineAsmArch::Nvptx64 => {}
+                InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {}
                 InlineAsmArch::Hexagon => {}
                 InlineAsmArch::Mips | InlineAsmArch::Mips64 => {}
                 InlineAsmArch::SpirV => {}
@@ -355,10 +356,49 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 }
 
 impl AsmMethods for CodegenCx<'ll, 'tcx> {
-    fn codegen_global_asm(&self, ga: &hir::GlobalAsm) {
-        let asm = ga.asm.as_str();
+    fn codegen_global_asm(
+        &self,
+        template: &[InlineAsmTemplatePiece],
+        operands: &[GlobalAsmOperandRef],
+        options: InlineAsmOptions,
+        _line_spans: &[Span],
+    ) {
+        let asm_arch = self.tcx.sess.asm_arch.unwrap();
+
+        // Default to Intel syntax on x86
+        let intel_syntax = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
+            && !options.contains(InlineAsmOptions::ATT_SYNTAX);
+
+        // Build the template string
+        let mut template_str = String::new();
+        if intel_syntax {
+            template_str.push_str(".intel_syntax\n");
+        }
+        for piece in template {
+            match *piece {
+                InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
+                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
+                    match operands[operand_idx] {
+                        GlobalAsmOperandRef::Const { ref string } => {
+                            // Const operands get injected directly into the
+                            // template. Note that we don't need to escape $
+                            // here unlike normal inline assembly.
+                            template_str.push_str(string);
+                        }
+                    }
+                }
+            }
+        }
+        if intel_syntax {
+            template_str.push_str("\n.att_syntax\n");
+        }
+
         unsafe {
-            llvm::LLVMRustAppendModuleInlineAsm(self.llmod, asm.as_ptr().cast(), asm.len());
+            llvm::LLVMRustAppendModuleInlineAsm(
+                self.llmod,
+                template_str.as_ptr().cast(),
+                template_str.len(),
+            );
         }
     }
 }
@@ -540,6 +580,9 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'tcx>>) 
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => "h",
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => "r",
             InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => "l",
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => "b",
+            InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::X86(X86InlineAsmRegClass::reg) => "r",
@@ -590,6 +633,7 @@ fn modifier_to_llvm(
         InlineAsmRegClass::Hexagon(_) => None,
         InlineAsmRegClass::Mips(_) => None,
         InlineAsmRegClass::Nvptx(_) => None,
+        InlineAsmRegClass::PowerPC(_) => None,
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg)
         | InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => None,
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)
@@ -651,6 +695,9 @@ fn dummy_output_type(cx: &CodegenCx<'ll, 'tcx>, reg: InlineAsmRegClass) -> &'ll 
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg16) => cx.type_i16(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg32) => cx.type_i32(),
         InlineAsmRegClass::Nvptx(NvptxInlineAsmRegClass::reg64) => cx.type_i64(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::reg_nonzero) => cx.type_i32(),
+        InlineAsmRegClass::PowerPC(PowerPCInlineAsmRegClass::freg) => cx.type_f64(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::RiscV(RiscVInlineAsmRegClass::freg) => cx.type_f32(),
         InlineAsmRegClass::X86(X86InlineAsmRegClass::reg)

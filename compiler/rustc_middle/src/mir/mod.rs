@@ -461,7 +461,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     #[inline]
-    pub fn predecessors(&self) -> impl std::ops::Deref<Target = Predecessors> + '_ {
+    pub fn predecessors(&self) -> &Predecessors {
         self.predecessor_cache.compute(&self.basic_blocks)
     }
 
@@ -681,6 +681,15 @@ impl BorrowKind {
         match *self {
             BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
             BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
+        }
+    }
+
+    pub fn describe_mutability(&self) -> String {
+        match *self {
+            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => {
+                "immutable".to_string()
+            }
+            BorrowKind::Mut { .. } => "mutable".to_string(),
         }
     }
 }
@@ -1340,7 +1349,7 @@ impl<O> AssertKind<O> {
     }
 
     /// Format the message arguments for the `assert(cond, msg..)` terminator in MIR printing.
-    fn fmt_assert_args<W: Write>(&self, f: &mut W) -> fmt::Result
+    pub fn fmt_assert_args<W: Write>(&self, f: &mut W) -> fmt::Result
     where
         O: Debug,
     {
@@ -2365,10 +2374,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                 )
                             } else {
                                 let span = tcx.hir().span(hir_id);
-                                format!("[closure@{}]", tcx.sess.source_map().span_to_string(span))
+                                format!(
+                                    "[closure@{}]",
+                                    tcx.sess.source_map().span_to_diagnostic_string(span)
+                                )
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
+                            // FIXME(project-rfc-2229#48): This should be a list of capture names/places
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
@@ -2388,6 +2401,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             let name = format!("[generator@{:?}]", tcx.hir().span(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
+                            // FIXME(project-rfc-2229#48): This should be a list of capture names/places
                             if let Some(upvars) = tcx.upvars_mentioned(def_id) {
                                 for (&var_id, place) in iter::zip(upvars.keys(), places) {
                                     let var_name = tcx.hir().name(var_id);
@@ -2804,13 +2818,13 @@ impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
 
 impl graph::GraphPredecessors<'graph> for Body<'tcx> {
     type Item = BasicBlock;
-    type Iter = smallvec::IntoIter<[BasicBlock; 4]>;
+    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicBlock>>;
 }
 
 impl graph::WithPredecessors for Body<'tcx> {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
-        self.predecessors()[node].clone().into_iter()
+        self.predecessors()[node].iter().copied()
     }
 }
 

@@ -3,7 +3,7 @@
             we're apparently really bad at it",
             issue = "none")]
 
-#![feature(const_fn, const_fn_floating_point_arithmetic, foo, foo2)]
+#![feature(const_fn_floating_point_arithmetic, foo, foo2)]
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -66,7 +66,7 @@ impl<T: ?Sized> *const T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be properly aligned.
@@ -130,7 +130,7 @@ impl<T: ?Sized> *const T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be properly aligned.
@@ -974,7 +974,7 @@ impl<T> *const [T] {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
     /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,

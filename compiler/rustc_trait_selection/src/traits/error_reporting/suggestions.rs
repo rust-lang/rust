@@ -686,17 +686,36 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         }
 
+        // Blacklist traits for which it would be nonsensical to suggest borrowing.
+        // For instance, immutable references are always Copy, so suggesting to
+        // borrow would always succeed, but it's probably not what the user wanted.
+        let blacklist: Vec<_> =
+            [LangItem::Copy, LangItem::Clone, LangItem::Unpin, LangItem::Sized, LangItem::Send]
+                .iter()
+                .filter_map(|lang_item| self.tcx.lang_items().require(*lang_item).ok())
+                .collect();
+
         let span = obligation.cause.span;
         let param_env = obligation.param_env;
         let trait_ref = trait_ref.skip_binder();
 
-        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &obligation.cause.code {
-            // Try to apply the original trait binding obligation by borrowing.
-            let self_ty = trait_ref.self_ty();
-            let found = self_ty.to_string();
-            let new_self_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, self_ty);
-            let substs = self.tcx.mk_substs_trait(new_self_ty, &[]);
-            let new_trait_ref = ty::TraitRef::new(obligation.parent_trait_ref.def_id(), substs);
+        let found_ty = trait_ref.self_ty();
+        let found_ty_str = found_ty.to_string();
+        let imm_borrowed_found_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, found_ty);
+        let imm_substs = self.tcx.mk_substs_trait(imm_borrowed_found_ty, &[]);
+        let mut_borrowed_found_ty = self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, found_ty);
+        let mut_substs = self.tcx.mk_substs_trait(mut_borrowed_found_ty, &[]);
+
+        // Try to apply the original trait binding obligation by borrowing.
+        let mut try_borrowing = |new_trait_ref: ty::TraitRef<'tcx>,
+                                 expected_trait_ref: ty::TraitRef<'tcx>,
+                                 mtbl: bool,
+                                 blacklist: &[DefId]|
+         -> bool {
+            if blacklist.contains(&expected_trait_ref.def_id) {
+                return false;
+            }
+
             let new_obligation = Obligation::new(
                 ObligationCause::dummy(),
                 param_env,
@@ -713,8 +732,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                     let msg = format!(
                         "the trait bound `{}: {}` is not satisfied",
-                        found,
-                        obligation.parent_trait_ref.skip_binder().print_only_trait_path(),
+                        found_ty_str,
+                        expected_trait_ref.print_only_trait_path(),
                     );
                     if has_custom_message {
                         err.note(&msg);
@@ -730,7 +749,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span,
                         &format!(
                             "expected an implementor of trait `{}`",
-                            obligation.parent_trait_ref.skip_binder().print_only_trait_path(),
+                            expected_trait_ref.print_only_trait_path(),
                         ),
                     );
 
@@ -745,16 +764,52 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                         err.span_suggestion(
                             span,
-                            "consider borrowing here",
-                            format!("&{}", snippet),
+                            &format!(
+                                "consider{} borrowing here",
+                                if mtbl { " mutably" } else { "" }
+                            ),
+                            format!("&{}{}", if mtbl { "mut " } else { "" }, snippet),
                             Applicability::MaybeIncorrect,
                         );
                     }
                     return true;
                 }
             }
+            return false;
+        };
+
+        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &obligation.cause.code {
+            let expected_trait_ref = obligation.parent_trait_ref.skip_binder();
+            let new_imm_trait_ref =
+                ty::TraitRef::new(obligation.parent_trait_ref.def_id(), imm_substs);
+            let new_mut_trait_ref =
+                ty::TraitRef::new(obligation.parent_trait_ref.def_id(), mut_substs);
+            if try_borrowing(new_imm_trait_ref, expected_trait_ref, false, &[]) {
+                return true;
+            } else {
+                return try_borrowing(new_mut_trait_ref, expected_trait_ref, true, &[]);
+            }
+        } else if let ObligationCauseCode::BindingObligation(_, _)
+        | ObligationCauseCode::ItemObligation(_) = &obligation.cause.code
+        {
+            if try_borrowing(
+                ty::TraitRef::new(trait_ref.def_id, imm_substs),
+                trait_ref,
+                false,
+                &blacklist[..],
+            ) {
+                return true;
+            } else {
+                return try_borrowing(
+                    ty::TraitRef::new(trait_ref.def_id, mut_substs),
+                    trait_ref,
+                    true,
+                    &blacklist[..],
+                );
+            }
+        } else {
+            false
         }
-        false
     }
 
     /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,

@@ -10,6 +10,8 @@ impl<T> PrintName<T> {
 
 const fn no_codegen<T>() {
     if false {
+        // This bad constant is only used in dead code in a no-codegen function... and yet we still
+        // must make sure that the build fails.
         let _ = PrintName::<T>::VOID; //~ERROR could not evaluate static initializer
     }
 }

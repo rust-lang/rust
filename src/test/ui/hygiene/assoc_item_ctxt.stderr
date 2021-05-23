@@ -7,7 +7,7 @@ LL |             fn method() {}
 LL |     mac_trait_impl!();
    |     ------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mac_trait_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0046]: not all trait items implemented, missing: `method`
   --> $DIR/assoc_item_ctxt.rs:34:9
@@ -21,7 +21,7 @@ LL |         impl Tr for u8 {
 LL |     mac_trait_impl!();
    |     ------------------ in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `mac_trait_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -1,0 +1,31 @@
+error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
+  --> $DIR/option-to-result.rs:5:6
+   |
+LL | / fn test_result() -> Result<(),()> {
+LL | |     let a:Option<()> = Some(());
+LL | |     a?;
+   | |      ^ use `.ok_or(...)?` to provide an error compatible with `Result<(), ()>`
+LL | |     Ok(())
+LL | | }
+   | |_- this function returns a `Result`
+   |
+   = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<(), ()>`
+   = note: required by `from_residual`
+
+error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
+  --> $DIR/option-to-result.rs:11:6
+   |
+LL | / fn test_option() -> Option<i32>{
+LL | |     let a:Result<i32, i32> = Ok(5);
+LL | |     a?;
+   | |      ^ this `?` produces `Result<Infallible, i32>`, which is incompatible with `Option<i32>`
+LL | |     Some(5)
+LL | | }
+   | |_- this function returns an `Option`
+   |
+   = help: the trait `FromResidual<Result<Infallible, i32>>` is not implemented for `Option<i32>`
+   = note: required by `from_residual`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

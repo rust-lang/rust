@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -347,26 +347,31 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
 ) -> Option<Bx::Function> {
-    let main_def_id = cx.tcx().entry_fn(LOCAL_CRATE).map(|(def_id, _)| def_id)?;
-    let instance = Instance::mono(cx.tcx(), main_def_id.to_def_id());
+    let (main_def_id, entry_type) = cx.tcx().entry_fn(())?;
+    let main_is_local = main_def_id.is_local();
+    let instance = Instance::mono(cx.tcx(), main_def_id);
 
-    if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
+    if main_is_local {
         // We want to create the wrapper in the same codegen unit as Rust's main
         // function.
+        if !cx.codegen_unit().contains_item(&MonoItem::Fn(instance)) {
+            return None;
+        }
+    } else if !cx.codegen_unit().is_primary() {
+        // We want to create the wrapper only when the codegen unit is the primary one
         return None;
     }
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    return cx.tcx().entry_fn(LOCAL_CRATE).map(|(_, et)| {
-        let use_start_lang_item = EntryFnType::Start != et;
-        create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item)
-    });
+    let use_start_lang_item = EntryFnType::Start != entry_type;
+    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item);
+    return Some(entry_fn);
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         rust_main: Bx::Value,
-        rust_main_def_id: LocalDefId,
+        rust_main_def_id: DefId,
         use_start_lang_item: bool,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
@@ -403,7 +408,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx.set_frame_pointer_elimination(llfn);
         cx.apply_target_cpu_attr(llfn);
 
-        let mut bx = Bx::new_block(&cx, llfn, "top");
+        let llbb = Bx::append_block(&cx, llfn, "top");
+        let mut bx = Bx::build(&cx, llbb);
 
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
@@ -461,12 +467,13 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'tcx>,
+    target_cpu: String,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, metadata, 1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, 1);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -479,7 +486,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(LOCAL_CRATE).1;
+    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -492,7 +499,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, metadata, codegen_units.len());
+    let ongoing_codegen =
+        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, codegen_units.len());
     let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.
@@ -503,7 +511,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // linkage, then it's already got an allocator shim and we'll be using that
     // one instead. If nothing exists then it's our job to generate the
     // allocator!
-    let any_dynamic_crate = tcx.dependency_formats(LOCAL_CRATE).iter().any(|(_, list)| {
+    let any_dynamic_crate = tcx.dependency_formats(()).iter().any(|(_, list)| {
         use rustc_middle::middle::dependency_format::Linkage;
         list.iter().any(|&linkage| linkage == Linkage::Dynamic)
     });
@@ -760,7 +768,7 @@ impl CrateInfo {
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
-            dependency_formats: tcx.dependency_formats(LOCAL_CRATE),
+            dependency_formats: tcx.dependency_formats(()),
         };
         let lang_items = tcx.lang_items();
 

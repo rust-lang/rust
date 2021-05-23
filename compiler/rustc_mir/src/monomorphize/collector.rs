@@ -184,7 +184,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
 use rustc_errors::{ErrorReported, FatalError};
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
@@ -322,7 +322,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
     let mut roots = Vec::new();
 
     {
-        let entry_fn = tcx.entry_fn(LOCAL_CRATE);
+        let entry_fn = tcx.entry_fn(());
 
         debug!("collect_roots: entry_fn = {:?}", entry_fn);
 
@@ -390,8 +390,24 @@ fn collect_items_rec<'tcx>(
                 collect_neighbours(tcx, instance, &mut neighbors);
             });
         }
-        MonoItem::GlobalAsm(..) => {
+        MonoItem::GlobalAsm(item_id) => {
             recursion_depth_reset = None;
+
+            let item = tcx.hir().item(item_id);
+            if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+                for (op, op_sp) in asm.operands {
+                    match op {
+                        hir::InlineAsmOperand::Const { .. } => {
+                            // Only constants which resolve to a plain integer
+                            // are supported. Therefore the value should not
+                            // depend on any other items.
+                        }
+                        _ => span_bug!(*op_sp, "invalid operand type for global_asm!"),
+                    }
+                }
+            } else {
+                span_bug!(item.span, "Mismatch between hir::Item type and MonoItem type")
+            }
         }
     }
 
@@ -452,7 +468,7 @@ fn shrunk_instance_name(
             after = &s[positions().rev().nth(after).unwrap_or(0)..],
         );
 
-        let path = tcx.output_filenames(LOCAL_CRATE).temp_path_ext("long-type.txt", None);
+        let path = tcx.output_filenames(()).temp_path_ext("long-type.txt", None);
         let written_to_path = std::fs::write(&path, s).ok().map(|_| path);
 
         (shrunk, written_to_path)
@@ -1066,7 +1082,7 @@ struct RootCollector<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mode: MonoItemCollectionMode,
     output: &'a mut Vec<Spanned<MonoItem<'tcx>>>,
-    entry_fn: Option<(LocalDefId, EntryFnType)>,
+    entry_fn: Option<(DefId, EntryFnType)>,
 }
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
@@ -1154,7 +1170,7 @@ impl RootCollector<'_, 'v> {
             && match self.mode {
                 MonoItemCollectionMode::Eager => true,
                 MonoItemCollectionMode::Lazy => {
-                    self.entry_fn.map(|(id, _)| id) == Some(def_id)
+                    self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
                         || self
                             .tcx

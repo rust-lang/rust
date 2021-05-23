@@ -119,7 +119,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
             &self
                 .items
                 .iter()
-                .map(|(k, v)| (k.to_string(), v))
+                .map(|(k, v)| (k.prefer_local().to_string(), v))
                 .collect::<BTreeMap<String, &ItemCount>>(),
         )
         .expect("failed to convert JSON data to string")
@@ -159,7 +159,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
         for (file, &count) in &self.items {
             if let Some(percentage) = count.percentage() {
                 print_table_record(
-                    &limit_filename_len(file.to_string()),
+                    &limit_filename_len(file.prefer_local().to_string_lossy().into()),
                     count,
                     percentage,
                     count.examples_percentage().unwrap_or(0.),
@@ -213,13 +213,19 @@ impl<'a, 'b> fold::DocFolder for CoverageCalculator<'a, 'b> {
 
                 let filename = i.span(self.ctx.tcx).filename(self.ctx.sess());
                 let has_doc_example = tests.found_tests != 0;
-                let hir_id = self.ctx.tcx.hir().local_def_id_to_hir_id(i.def_id.expect_local());
+                // The `expect_real()` should be okay because `local_def_id_to_hir_id`
+                // would presumably panic if a fake `DefIndex` were passed.
+                let hir_id = self
+                    .ctx
+                    .tcx
+                    .hir()
+                    .local_def_id_to_hir_id(i.def_id.expect_real().expect_local());
                 let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
                 // `missing_docs` is allow-by-default, so don't treat this as ignoring the item
                 // unless the user had an explicit `allow`
                 let should_have_docs =
                     level != lint::Level::Allow || matches!(source, LintLevelSource::Default);
-                debug!("counting {:?} {:?} in {}", i.type_(), i.name, filename);
+                debug!("counting {:?} {:?} in {:?}", i.type_(), i.name, filename);
                 self.items.entry(filename).or_default().count_item(
                     has_docs,
                     has_doc_example,

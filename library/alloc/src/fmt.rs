@@ -546,6 +546,7 @@ pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerHex, Pointer, UpperHex};
 
+#[cfg(not(no_global_oom_handling))]
 use crate::string;
 
 /// The `format` function takes an [`Arguments`] struct and returns the resulting
@@ -574,6 +575,7 @@ use crate::string;
 ///
 /// [`format_args!`]: core::format_args
 /// [`format!`]: crate::format
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments<'_>) -> string::String {
     let capacity = args.estimated_capacity();

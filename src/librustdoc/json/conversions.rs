@@ -9,13 +9,13 @@ use std::convert::From;
 use rustc_ast::ast;
 use rustc_hir::def::CtorKind;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_span::Pos;
 
 use rustdoc_json_types::*;
 
-use crate::clean;
 use crate::clean::utils::print_const_expr;
+use crate::clean::{self, FakeDefId};
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
 use std::collections::HashSet;
@@ -30,7 +30,7 @@ impl JsonRenderer<'_> {
             .into_iter()
             .flatten()
             .filter_map(|clean::ItemLink { link, did, .. }| {
-                did.map(|did| (link.clone(), from_def_id(did)))
+                did.map(|did| (link.clone(), from_def_id(did.into())))
             })
             .collect();
         let docs = item.attrs.collapsed_doc_value();
@@ -48,7 +48,7 @@ impl JsonRenderer<'_> {
         };
         Some(Item {
             id: from_def_id(def_id),
-            crate_id: def_id.krate.as_u32(),
+            crate_id: def_id.krate().as_u32(),
             name: name.map(|sym| sym.to_string()),
             span: self.convert_span(span),
             visibility: self.convert_visibility(visibility),
@@ -63,18 +63,17 @@ impl JsonRenderer<'_> {
     fn convert_span(&self, span: clean::Span) -> Option<Span> {
         match span.filename(self.sess()) {
             rustc_span::FileName::Real(name) => {
-                let hi = span.hi(self.sess());
-                let lo = span.lo(self.sess());
-                Some(Span {
-                    filename: match name {
-                        rustc_span::RealFileName::Named(path) => path,
-                        rustc_span::RealFileName::Devirtualized { local_path, virtual_name: _ } => {
-                            local_path
-                        }
-                    },
-                    begin: (lo.line, lo.col.to_usize()),
-                    end: (hi.line, hi.col.to_usize()),
-                })
+                if let Some(local_path) = name.into_local_path() {
+                    let hi = span.hi(self.sess());
+                    let lo = span.lo(self.sess());
+                    Some(Span {
+                        filename: local_path,
+                        begin: (lo.line, lo.col.to_usize()),
+                        end: (hi.line, hi.col.to_usize()),
+                    })
+                } else {
+                    None
+                }
             }
             _ => None,
         }
@@ -87,7 +86,7 @@ impl JsonRenderer<'_> {
             Inherited => Visibility::Default,
             Restricted(did) if did.index == CRATE_DEF_INDEX => Visibility::Crate,
             Restricted(did) => Visibility::Restricted {
-                parent: from_def_id(did),
+                parent: from_def_id(did.into()),
                 path: self.tcx.def_path(did).to_string_no_crate_verbose(),
             },
         }
@@ -171,8 +170,13 @@ impl FromWithTcx<clean::TypeBindingKind> for TypeBindingKind {
     }
 }
 
-crate fn from_def_id(did: DefId) -> Id {
-    Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index)))
+crate fn from_def_id(did: FakeDefId) -> Id {
+    match did {
+        FakeDefId::Real(did) => Id(format!("{}:{}", did.krate.as_u32(), u32::from(did.index))),
+        // We need to differentiate real and fake ids, because the indices might overlap for fake
+        // and real DefId's, which would cause two different Id's treated as they were the same.
+        FakeDefId::Fake(idx, krate) => Id(format!("F{}:{}", krate.as_u32(), u32::from(idx))),
+    }
 }
 
 fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
@@ -368,7 +372,7 @@ impl FromWithTcx<clean::Type> for Type {
         match ty {
             ResolvedPath { path, param_names, did, is_generic: _ } => Type::ResolvedPath {
                 name: path.whole_name(),
-                id: from_def_id(did),
+                id: from_def_id(did.into()),
                 args: path.segments.last().map(|args| Box::new(args.clone().args.into_tcx(tcx))),
                 param_names: param_names
                     .map(|v| v.into_iter().map(|x| x.into_tcx(tcx)).collect())
@@ -453,10 +457,10 @@ impl FromWithTcx<clean::Trait> for Trait {
 
 impl FromWithTcx<clean::Impl> for Impl {
     fn from_tcx(impl_: clean::Impl, tcx: TyCtxt<'_>) -> Self {
+        let provided_trait_methods = impl_.provided_trait_methods(tcx);
         let clean::Impl {
             unsafety,
             generics,
-            provided_trait_methods,
             trait_,
             for_,
             items,
@@ -477,7 +481,7 @@ impl FromWithTcx<clean::Impl> for Impl {
             items: ids(items),
             negative: negative_polarity,
             synthetic,
-            blanket_impl: blanket_impl.map(|x| x.into_tcx(tcx)),
+            blanket_impl: blanket_impl.map(|x| (*x).into_tcx(tcx)),
         }
     }
 }
@@ -540,13 +544,13 @@ impl FromWithTcx<clean::Import> for Import {
             Simple(s) => Import {
                 source: import.source.path.whole_name(),
                 name: s.to_string(),
-                id: import.source.did.map(from_def_id),
+                id: import.source.did.map(FakeDefId::from).map(from_def_id),
                 glob: false,
             },
             Glob => Import {
                 source: import.source.path.whole_name(),
                 name: import.source.path.last_name().to_string(),
-                id: import.source.did.map(from_def_id),
+                id: import.source.did.map(FakeDefId::from).map(from_def_id),
                 glob: true,
             },
         }

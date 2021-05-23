@@ -14,7 +14,7 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 use core::str::lossy::Utf8Lossy;
 
-#[derive(Clone, Hash)]
+#[derive(Hash)]
 pub(crate) struct Buf {
     pub inner: Vec<u8>,
 }
@@ -50,6 +50,18 @@ impl fmt::Debug for Buf {
 impl fmt::Display for Buf {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.as_slice(), formatter)
+    }
+}
+
+impl Clone for Buf {
+    #[inline]
+    fn clone(&self) -> Self {
+        Buf { inner: self.inner.clone() }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.inner.clone_from(&source.inner)
     }
 }
 

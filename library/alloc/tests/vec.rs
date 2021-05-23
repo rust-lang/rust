@@ -1002,7 +1002,6 @@ fn test_from_iter_specialization_with_iterator_adapters() {
         .zip(std::iter::repeat(1usize))
         .map(|(a, b)| a + b)
         .map_while(Option::Some)
-        .peekable()
         .skip(1)
         .map(|e| if e != usize::MAX { Ok(std::num::NonZeroUsize::new(e)) } else { Err(()) });
     assert_in_place_trait(&iter);
@@ -1095,6 +1094,18 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
     }
 }
 
+// regression test for issue #85322. Peekable previously implemented InPlaceIterable,
+// but due to an interaction with IntoIter's current Clone implementation it failed to uphold
+// the contract.
+#[test]
+fn test_collect_after_iterator_clone() {
+    let v = vec![0; 5];
+    let mut i = v.into_iter().map(|i| i + 1).peekable();
+    i.peek();
+    let v = i.clone().collect::<Vec<_>>();
+    assert_eq!(v, [1, 1, 1, 1, 1]);
+    assert!(v.len() <= v.capacity());
+}
 #[test]
 fn test_cow_from() {
     let borrowed: &[_] = &["borrowed", "(slice)"];

@@ -1,0 +1,13 @@
+error: unused `async` for function with no await statements
+  --> $DIR/unused_async.rs:4:1
+   |
+LL | / async fn foo() -> i32 {
+LL | |     4
+LL | | }
+   | |_^
+   |
+   = note: `-D clippy::unused-async` implied by `-D warnings`
+   = help: consider removing the `async` from this function
+
+error: aborting due to previous error
+

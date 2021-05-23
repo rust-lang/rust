@@ -191,7 +191,25 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
                     Res::Def(DefKind::Ctor(..), def_id) => {
                         tcx.generics_of(tcx.parent(def_id).unwrap())
                     }
-                    Res::Def(_, def_id) => tcx.generics_of(def_id),
+                    // Other `DefKind`s don't have generics and would ICE when calling
+                    // `generics_of`.
+                    Res::Def(
+                        DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Variant
+                        | DefKind::Trait
+                        | DefKind::OpaqueTy
+                        | DefKind::TyAlias
+                        | DefKind::ForeignTy
+                        | DefKind::TraitAlias
+                        | DefKind::AssocTy
+                        | DefKind::Fn
+                        | DefKind::AssocFn
+                        | DefKind::AssocConst
+                        | DefKind::Impl,
+                        def_id,
+                    ) => tcx.generics_of(def_id),
                     Res::Err => {
                         tcx.sess.delay_span_bug(tcx.def_span(def_id), "anon const with Res::Err");
                         return None;
@@ -432,8 +450,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     tcx.typeck(def_id).node_type(anon_const.hir_id)
                 }
 
-                Node::Expr(&Expr { kind: ExprKind::InlineAsm(ia), .. })
-                    if ia.operands.iter().any(|(op, _op_sp)| match op {
+                Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
+                | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
+                    if asm.operands.iter().any(|(op, _op_sp)| match op {
                         hir::InlineAsmOperand::Const { anon_const } => anon_const.hir_id == hir_id,
                         _ => false,
                     }) =>

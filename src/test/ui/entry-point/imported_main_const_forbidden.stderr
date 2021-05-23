@@ -1,0 +1,17 @@
+error[E0601]: `main` function not found in crate `imported_main_const_forbidden`
+  --> $DIR/imported_main_const_forbidden.rs:1:1
+   |
+LL | / #![feature(imported_main)]
+LL | |
+LL | | pub mod foo {
+LL | |     pub const BAR: usize = 42;
+LL | | }
+LL | |
+LL | | use foo::BAR as main;
+   | |_____----------------^ consider adding a `main` function to `$DIR/imported_main_const_forbidden.rs`
+   |       |
+   |       non-function item at `crate::main` is found
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0601`.

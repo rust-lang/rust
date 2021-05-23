@@ -88,7 +88,7 @@
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
-#![feature(const_btree_new)]
+#![cfg_attr(not(no_global_oom_handling), feature(const_btree_new))]
 #![cfg_attr(bootstrap, feature(const_fn))]
 #![cfg_attr(not(bootstrap), feature(const_fn_trait_bound))]
 #![feature(cow_is_borrowed)]
@@ -141,7 +141,8 @@
 #![feature(maybe_uninit_extra, maybe_uninit_slice, maybe_uninit_uninit_array)]
 #![feature(alloc_layout_extra)]
 #![feature(trusted_random_access)]
-#![feature(try_trait)]
+#![cfg_attr(bootstrap, feature(try_trait))]
+#![cfg_attr(not(bootstrap), feature(try_trait_v2))]
 #![feature(min_type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
 #![feature(slice_group_by)]
@@ -184,7 +185,7 @@ pub mod str;
 pub mod string;
 #[cfg(target_has_atomic = "ptr")]
 pub mod sync;
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_global_oom_handling), target_has_atomic = "ptr"))]
 pub mod task;
 #[cfg(test)]
 mod tests;

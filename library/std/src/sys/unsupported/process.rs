@@ -2,6 +2,7 @@ use crate::ffi::OsStr;
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
+use crate::num::NonZeroI32;
 use crate::path::Path;
 use crate::sys::fs::File;
 use crate::sys::pipe::AnonPipe;
@@ -97,7 +98,7 @@ impl fmt::Debug for Command {
 pub struct ExitStatus(!);
 
 impl ExitStatus {
-    pub fn success(&self) -> bool {
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
         self.0
     }
 
@@ -131,6 +132,21 @@ impl fmt::Debug for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatusError(ExitStatus);
+
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        self.0.0
+    }
+}
+
+impl ExitStatusError {
+    pub fn code(self) -> Option<NonZeroI32> {
+        self.0.0
     }
 }
 

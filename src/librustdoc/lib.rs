@@ -16,7 +16,7 @@
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
-#![deny(rustc::internal)]
+#![warn(rustc::internal)]
 
 #[macro_use]
 extern crate lazy_static;
@@ -81,8 +81,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::getopts;
 use rustc_session::{early_error, early_warn};
-
-use crate::clean::utils::doc_rust_lang_org_channel;
 
 /// A macro to create a FxHashMap.
 ///
@@ -595,6 +593,10 @@ fn opts() -> Vec<RustcOptGroup> {
                 "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
             )
         }),
+        unstable("no-run", |o| o.optflag("", "no-run", "Compile doctests without running them")),
+        unstable("show-type-layout", |o| {
+            o.optflag("", "show-type-layout", "Include the memory layout of types in the docs")
+        }),
     ]
 }
 
@@ -605,10 +607,7 @@ fn usage(argv0: &str) {
     }
     println!("{}", options.usage(&format!("{} [options] <input>", argv0)));
     println!("    @path               Read newline separated options from `path`\n");
-    println!(
-        "More information available at https://doc.rust-lang.org/{}/rustdoc/what-is-rustdoc.html",
-        doc_rust_lang_org_channel()
-    );
+    println!("More information available at https://doc.rust-lang.org/rustdoc/what-is-rustdoc.html")
 }
 
 /// A result type used by several functions under `main()`.

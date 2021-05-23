@@ -4,14 +4,13 @@ use crate::ty::fast_reject;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_macros::HashStable;
-use std::collections::BTreeMap;
 
 /// A trait's definition with type information.
 #[derive(HashStable)]
@@ -207,14 +206,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         blanket_impls.iter().chain(non_blanket_impls.iter().map(|(_, v)| v).flatten()).cloned()
     }
-}
-
-// Query provider for `all_local_trait_impls`.
-pub(super) fn all_local_trait_impls<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    krate: CrateNum,
-) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
-    &tcx.hir_crate(krate).trait_impls
 }
 
 // Query provider for `trait_impls_of`.

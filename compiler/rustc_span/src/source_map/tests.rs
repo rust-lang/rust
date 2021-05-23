@@ -193,7 +193,7 @@ fn t8() {
 fn t9() {
     let sm = init_source_map();
     let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
-    let sstr = sm.span_to_string(span);
+    let sstr = sm.span_to_diagnostic_string(span);
 
     assert_eq!(sstr, "blork.rs:2:1: 2:12");
 }
@@ -229,7 +229,6 @@ fn t10() {
 
     let SourceFile {
         name,
-        name_was_remapped,
         src_hash,
         start_pos,
         end_pos,
@@ -243,7 +242,6 @@ fn t10() {
 
     let imported_src_file = sm.new_imported_source_file(
         name,
-        name_was_remapped,
         src_hash,
         name_hash,
         (end_pos - start_pos).to_usize(),

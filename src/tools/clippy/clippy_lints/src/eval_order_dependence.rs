@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
+use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -70,20 +71,19 @@ declare_lint_pass!(EvalOrderDependence => [EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_
 impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Find a write to a local variable.
-        match expr.kind {
-            ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) => {
-                if let Some(var) = path_to_local(lhs) {
-                    let mut visitor = ReadVisitor {
-                        cx,
-                        var,
-                        write_expr: expr,
-                        last_expr: expr,
-                    };
-                    check_for_unsequenced_reads(&mut visitor);
-                }
-            },
-            _ => {},
-        }
+        let var = if_chain! {
+            if let ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) = expr.kind;
+            if let Some(var) = path_to_local(lhs);
+            if expr.span.desugaring_kind().is_none();
+            then { var } else { return; }
+        };
+        let mut visitor = ReadVisitor {
+            cx,
+            var,
+            write_expr: expr,
+            last_expr: expr,
+        };
+        check_for_unsequenced_reads(&mut visitor);
     }
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
@@ -305,7 +305,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
                     self.cx,
                     EVAL_ORDER_DEPENDENCE,
                     expr.span,
-                    "unsequenced read of a variable",
+                    &format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
                     Some(self.write_expr.span),
                     "whether read occurs before this write depends on evaluation order",
                 );

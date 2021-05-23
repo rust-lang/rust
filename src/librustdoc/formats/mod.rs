@@ -2,9 +2,9 @@ crate mod cache;
 crate mod item_type;
 crate mod renderer;
 
-crate use renderer::{run_format, FormatRenderer};
+use rustc_hir::def_id::DefId;
 
-use rustc_span::def_id::DefId;
+crate use renderer::{run_format, FormatRenderer};
 
 use crate::clean;
 use crate::clean::types::GetDefId;

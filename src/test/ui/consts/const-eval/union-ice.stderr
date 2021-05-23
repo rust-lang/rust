@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ice.rs:15:1
+  --> $DIR/union-ice.rs:14:1
    |
 LL | const FIELD3: Field3 = unsafe { UNION.field3 };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes
@@ -10,7 +10,7 @@ LL | const FIELD3: Field3 = unsafe { UNION.field3 };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ice.rs:17:1
+  --> $DIR/union-ice.rs:16:1
    |
 LL | / const FIELD_PATH: Struct = Struct {
 LL | |     a: 42,
@@ -24,7 +24,7 @@ LL | | };
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ice.rs:27:1
+  --> $DIR/union-ice.rs:26:1
    |
 LL | / const FIELD_PATH2: Struct2 = Struct2 {
 LL | |     b: [

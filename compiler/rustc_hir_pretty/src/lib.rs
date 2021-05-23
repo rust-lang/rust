@@ -660,9 +660,9 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::GlobalAsm(ref ga) => {
-                self.head(visibility_qualified(&item.vis, "global asm"));
-                self.s.word(ga.asm.to_string());
+            hir::ItemKind::GlobalAsm(ref asm) => {
+                self.head(visibility_qualified(&item.vis, "global_asm!"));
+                self.print_inline_asm(asm);
                 self.end()
             }
             hir::ItemKind::TyAlias(ref ty, ref generics) => {
@@ -1352,6 +1352,110 @@ impl<'a> State<'a> {
         self.word(lit.node.to_lit_token().to_string())
     }
 
+    fn print_inline_asm(&mut self, asm: &hir::InlineAsm<'_>) {
+        enum AsmArg<'a> {
+            Template(String),
+            Operand(&'a hir::InlineAsmOperand<'a>),
+            Options(ast::InlineAsmOptions),
+        }
+
+        let mut args = vec![];
+        args.push(AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&asm.template)));
+        args.extend(asm.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
+        if !asm.options.is_empty() {
+            args.push(AsmArg::Options(asm.options));
+        }
+
+        self.popen();
+        self.commasep(Consistent, &args, |s, arg| match arg {
+            AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
+            AsmArg::Operand(op) => match op {
+                hir::InlineAsmOperand::In { reg, expr } => {
+                    s.word("in");
+                    s.popen();
+                    s.word(format!("{}", reg));
+                    s.pclose();
+                    s.space();
+                    s.print_expr(expr);
+                }
+                hir::InlineAsmOperand::Out { reg, late, expr } => {
+                    s.word(if *late { "lateout" } else { "out" });
+                    s.popen();
+                    s.word(format!("{}", reg));
+                    s.pclose();
+                    s.space();
+                    match expr {
+                        Some(expr) => s.print_expr(expr),
+                        None => s.word("_"),
+                    }
+                }
+                hir::InlineAsmOperand::InOut { reg, late, expr } => {
+                    s.word(if *late { "inlateout" } else { "inout" });
+                    s.popen();
+                    s.word(format!("{}", reg));
+                    s.pclose();
+                    s.space();
+                    s.print_expr(expr);
+                }
+                hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
+                    s.word(if *late { "inlateout" } else { "inout" });
+                    s.popen();
+                    s.word(format!("{}", reg));
+                    s.pclose();
+                    s.space();
+                    s.print_expr(in_expr);
+                    s.space();
+                    s.word_space("=>");
+                    match out_expr {
+                        Some(out_expr) => s.print_expr(out_expr),
+                        None => s.word("_"),
+                    }
+                }
+                hir::InlineAsmOperand::Const { anon_const } => {
+                    s.word("const");
+                    s.space();
+                    s.print_anon_const(anon_const);
+                }
+                hir::InlineAsmOperand::Sym { expr } => {
+                    s.word("sym");
+                    s.space();
+                    s.print_expr(expr);
+                }
+            },
+            AsmArg::Options(opts) => {
+                s.word("options");
+                s.popen();
+                let mut options = vec![];
+                if opts.contains(ast::InlineAsmOptions::PURE) {
+                    options.push("pure");
+                }
+                if opts.contains(ast::InlineAsmOptions::NOMEM) {
+                    options.push("nomem");
+                }
+                if opts.contains(ast::InlineAsmOptions::READONLY) {
+                    options.push("readonly");
+                }
+                if opts.contains(ast::InlineAsmOptions::PRESERVES_FLAGS) {
+                    options.push("preserves_flags");
+                }
+                if opts.contains(ast::InlineAsmOptions::NORETURN) {
+                    options.push("noreturn");
+                }
+                if opts.contains(ast::InlineAsmOptions::NOSTACK) {
+                    options.push("nostack");
+                }
+                if opts.contains(ast::InlineAsmOptions::ATT_SYNTAX) {
+                    options.push("att_syntax");
+                }
+                s.commasep(Inconsistent, &options, |s, &opt| {
+                    s.word(opt);
+                });
+                s.pclose();
+            }
+        });
+        self.pclose();
+    }
+
     pub fn print_expr(&mut self, expr: &hir::Expr<'_>) {
         self.maybe_print_comment(expr.span.lo());
         self.print_outer_attributes(self.attrs(expr.hir_id));
@@ -1530,109 +1634,9 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(&expr, parser::PREC_JUMP);
                 }
             }
-            hir::ExprKind::InlineAsm(ref a) => {
-                enum AsmArg<'a> {
-                    Template(String),
-                    Operand(&'a hir::InlineAsmOperand<'a>),
-                    Options(ast::InlineAsmOptions),
-                }
-
-                let mut args = vec![];
-                args.push(AsmArg::Template(ast::InlineAsmTemplatePiece::to_string(&a.template)));
-                args.extend(a.operands.iter().map(|(o, _)| AsmArg::Operand(o)));
-                if !a.options.is_empty() {
-                    args.push(AsmArg::Options(a.options));
-                }
-
+            hir::ExprKind::InlineAsm(ref asm) => {
                 self.word("asm!");
-                self.popen();
-                self.commasep(Consistent, &args, |s, arg| match arg {
-                    AsmArg::Template(template) => s.print_string(&template, ast::StrStyle::Cooked),
-                    AsmArg::Operand(op) => match op {
-                        hir::InlineAsmOperand::In { reg, expr } => {
-                            s.word("in");
-                            s.popen();
-                            s.word(format!("{}", reg));
-                            s.pclose();
-                            s.space();
-                            s.print_expr(expr);
-                        }
-                        hir::InlineAsmOperand::Out { reg, late, expr } => {
-                            s.word(if *late { "lateout" } else { "out" });
-                            s.popen();
-                            s.word(format!("{}", reg));
-                            s.pclose();
-                            s.space();
-                            match expr {
-                                Some(expr) => s.print_expr(expr),
-                                None => s.word("_"),
-                            }
-                        }
-                        hir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            s.word(if *late { "inlateout" } else { "inout" });
-                            s.popen();
-                            s.word(format!("{}", reg));
-                            s.pclose();
-                            s.space();
-                            s.print_expr(expr);
-                        }
-                        hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
-                            s.word(if *late { "inlateout" } else { "inout" });
-                            s.popen();
-                            s.word(format!("{}", reg));
-                            s.pclose();
-                            s.space();
-                            s.print_expr(in_expr);
-                            s.space();
-                            s.word_space("=>");
-                            match out_expr {
-                                Some(out_expr) => s.print_expr(out_expr),
-                                None => s.word("_"),
-                            }
-                        }
-                        hir::InlineAsmOperand::Const { anon_const } => {
-                            s.word("const");
-                            s.space();
-                            s.print_anon_const(anon_const);
-                        }
-                        hir::InlineAsmOperand::Sym { expr } => {
-                            s.word("sym");
-                            s.space();
-                            s.print_expr(expr);
-                        }
-                    },
-                    AsmArg::Options(opts) => {
-                        s.word("options");
-                        s.popen();
-                        let mut options = vec![];
-                        if opts.contains(ast::InlineAsmOptions::PURE) {
-                            options.push("pure");
-                        }
-                        if opts.contains(ast::InlineAsmOptions::NOMEM) {
-                            options.push("nomem");
-                        }
-                        if opts.contains(ast::InlineAsmOptions::READONLY) {
-                            options.push("readonly");
-                        }
-                        if opts.contains(ast::InlineAsmOptions::PRESERVES_FLAGS) {
-                            options.push("preserves_flags");
-                        }
-                        if opts.contains(ast::InlineAsmOptions::NORETURN) {
-                            options.push("noreturn");
-                        }
-                        if opts.contains(ast::InlineAsmOptions::NOSTACK) {
-                            options.push("nostack");
-                        }
-                        if opts.contains(ast::InlineAsmOptions::ATT_SYNTAX) {
-                            options.push("att_syntax");
-                        }
-                        s.commasep(Inconsistent, &options, |s, &opt| {
-                            s.word(opt);
-                        });
-                        s.pclose();
-                    }
-                });
-                self.pclose();
+                self.print_inline_asm(asm);
             }
             hir::ExprKind::LlvmInlineAsm(ref a) => {
                 let i = &a.inner;

@@ -10,7 +10,7 @@ use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
 use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
-use super::{AllocId, Allocation, InterpResult, Pointer, PointerArithmetic};
+use super::{AllocId, AllocRange, Allocation, InterpResult, Pointer, PointerArithmetic};
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 #[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
@@ -661,9 +661,7 @@ pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> 
         let len = end - start;
         data.get_bytes(
             cx,
-            // invent a pointer, only the offset is relevant anyway
-            Pointer::new(AllocId(0), Size::from_bytes(start)),
-            Size::from_bytes(len),
+            AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
         )
         .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
     } else {

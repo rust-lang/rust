@@ -21,7 +21,8 @@
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(nll)]
 #![feature(staged_api)]
-#![feature(const_fn)]
+#![cfg_attr(bootstrap, feature(const_fn))]
+#![cfg_attr(not(bootstrap), feature(const_fn_trait_bound))]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
@@ -88,6 +89,12 @@ impl !Sync for TokenStream {}
 #[derive(Debug)]
 pub struct LexError {
     _inner: (),
+}
+
+impl LexError {
+    fn new() -> Self {
+        LexError { _inner: () }
+    }
 }
 
 #[stable(feature = "proc_macro_lexerror_impls", since = "1.44.0")]
@@ -264,7 +271,7 @@ pub mod token_stream {
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-#[allow_internal_unstable(proc_macro_def_site)]
+#[allow_internal_unstable(proc_macro_def_site, proc_macro_internals)]
 #[rustc_builtin_macro]
 pub macro quote($($t:tt)*) {
     /* compiler built-in */
@@ -391,6 +398,20 @@ impl Span {
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn source_text(&self) -> Option<String> {
         self.0.source_text()
+    }
+
+    // Used by the implementation of `Span::quote`
+    #[doc(hidden)]
+    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    pub fn save_span(&self) -> usize {
+        self.0.save_span()
+    }
+
+    // Used by the implementation of `Span::quote`
+    #[doc(hidden)]
+    #[unstable(feature = "proc_macro_internals", issue = "27812")]
+    pub fn recover_proc_macro_span(id: usize) -> Span {
+        Span(bridge::client::Span::recover_proc_macro_span(id))
     }
 
     diagnostic_method!(error, Level::Error);
@@ -1153,6 +1174,28 @@ impl Literal {
         }
 
         self.0.subspan(cloned_bound(range.start_bound()), cloned_bound(range.end_bound())).map(Span)
+    }
+}
+
+/// Parse a single literal from its stringified representation.
+///
+/// In order to parse successfully, the input string must not contain anything
+/// but the literal token. Specifically, it must not contain whitespace or
+/// comments in addition to the literal.
+///
+/// The resulting literal token will have a `Span::call_site()` span.
+///
+/// NOTE: some errors may cause panics instead of returning `LexError`. We
+/// reserve the right to change these errors into `LexError`s later.
+#[stable(feature = "proc_macro_literal_parse", since = "1.54.0")]
+impl FromStr for Literal {
+    type Err = LexError;
+
+    fn from_str(src: &str) -> Result<Self, LexError> {
+        match bridge::client::Literal::from_str(src) {
+            Ok(literal) => Ok(Literal(literal)),
+            Err(()) => Err(LexError::new()),
+        }
     }
 }
 

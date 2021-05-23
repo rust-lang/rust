@@ -20,10 +20,10 @@ use crate::os::raw::c_char;
 
 pub mod alloc;
 pub mod args;
+#[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod condvar;
 pub mod env;
-pub mod ext;
 pub mod fd;
 pub mod fs;
 #[path = "../unsupported/io.rs"]

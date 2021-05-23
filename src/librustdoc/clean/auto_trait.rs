@@ -113,12 +113,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             name: None,
             attrs: Default::default(),
             visibility: Inherited,
-            def_id: self.cx.next_def_id(item_def_id.krate),
+            def_id: FakeDefId::new_fake(item_def_id.krate),
             kind: box ImplItem(Impl {
                 span: Span::dummy(),
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
-                provided_trait_methods: Default::default(),
                 trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
                 for_: ty.clean(self.cx),
                 items: Vec::new(),

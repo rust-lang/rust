@@ -7,6 +7,7 @@ members = [
   "src/rustdoc-json-types",
   "src/tools/cargotest",
   "src/tools/clippy",
+  "src/tools/clippy/clippy_dev",
   "src/tools/compiletest",
   "src/tools/error_index_generator",
   "src/tools/linkchecker",

@@ -274,6 +274,7 @@ pub trait Eq: PartialEq<Self> {
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
+    #[cfg_attr(not(bootstrap), no_coverage)] // rust-lang/rust#84605
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
@@ -282,7 +283,7 @@ pub trait Eq: PartialEq<Self> {
 /// Derive macro generating an impl of the trait `Eq`.
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match)]
+#[allow_internal_unstable(core_intrinsics, derive_eq, structural_match, no_coverage)]
 pub macro Eq($item:item) {
     /* compiler built-in */
 }
@@ -577,7 +578,7 @@ impl Ordering {
 /// v.sort_by_key(|&num| (num > 3, Reverse(num)));
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Hash)]
+#[derive(PartialEq, Eq, Debug, Copy, Default, Hash)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 #[repr(transparent)]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
@@ -612,6 +613,19 @@ impl<T: Ord> Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
         other.0.cmp(&self.0)
+    }
+}
+
+#[stable(feature = "reverse_cmp_key", since = "1.19.0")]
+impl<T: Clone> Clone for Reverse<T> {
+    #[inline]
+    fn clone(&self) -> Reverse<T> {
+        Reverse(self.0.clone())
+    }
+
+    #[inline]
+    fn clone_from(&mut self, other: &Self) {
+        self.0.clone_from(&other.0)
     }
 }
 

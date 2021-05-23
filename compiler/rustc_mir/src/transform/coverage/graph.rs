@@ -269,13 +269,13 @@ impl graph::WithSuccessors for CoverageGraph {
 
 impl graph::GraphPredecessors<'graph> for CoverageGraph {
     type Item = BasicCoverageBlock;
-    type Iter = std::vec::IntoIter<BasicCoverageBlock>;
+    type Iter = std::iter::Copied<std::slice::Iter<'graph, BasicCoverageBlock>>;
 }
 
 impl graph::WithPredecessors for CoverageGraph {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> <Self as graph::GraphPredecessors<'_>>::Iter {
-        self.predecessors[node].clone().into_iter()
+        self.predecessors[node].iter().copied()
     }
 }
 

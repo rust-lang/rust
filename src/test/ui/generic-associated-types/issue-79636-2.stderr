@@ -1,18 +1,18 @@
 error[E0107]: missing generics for associated type `SomeTrait::Wrapped`
-  --> $DIR/issue-79636-2.rs:5:10
+  --> $DIR/issue-79636-2.rs:12:18
    |
-LL |     type Wrapped<A>: SomeTrait;
-   |          ^^^^^^^ expected 1 type argument
+LL |     W: SomeTrait<Wrapped = W>,
+   |                  ^^^^^^^ expected 1 generic argument
    |
-note: associated type defined here, with 1 type parameter: `A`
+note: associated type defined here, with 1 generic parameter: `A`
   --> $DIR/issue-79636-2.rs:5:10
    |
 LL |     type Wrapped<A>: SomeTrait;
    |          ^^^^^^^ -
-help: use angle brackets to add missing type argument
+help: add missing generic argument
    |
-LL |     type Wrapped<A><A>: SomeTrait;
-   |                 ^^^
+LL |     W: SomeTrait<Wrapped<A> = W>,
+   |                  ^^^^^^^^^^
 
 error: aborting due to previous error
 

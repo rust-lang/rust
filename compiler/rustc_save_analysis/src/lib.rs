@@ -80,7 +80,7 @@ impl<'tcx> SaveContext<'tcx> {
         let end = sm.lookup_char_pos(span.hi());
 
         SpanData {
-            file_name: start.file.name.to_string().into(),
+            file_name: start.file.name.prefer_remapped().to_string().into(),
             byte_start: span.lo().0,
             byte_end: span.hi().0,
             line_start: Row::new_one_indexed(start.line as u32),
@@ -95,7 +95,7 @@ impl<'tcx> SaveContext<'tcx> {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
         let crate_type = sess.crate_types()[0];
-        let outputs = &*self.tcx.output_filenames(LOCAL_CRATE);
+        let outputs = &*self.tcx.output_filenames(());
 
         if outputs.outputs.contains_key(&OutputType::Metadata) {
             filename_for_metadata(sess, crate_name, outputs)
@@ -290,7 +290,7 @@ impl<'tcx> SaveContext<'tcx> {
                     name: item.ident.to_string(),
                     qualname,
                     span: self.span_from_span(item.ident.span),
-                    value: filename.to_string(),
+                    value: filename.prefer_remapped().to_string(),
                     parent: None,
                     children: m
                         .item_ids
@@ -786,7 +786,7 @@ impl<'tcx> SaveContext<'tcx> {
         let callee = span.source_callee()?;
 
         let mac_name = match callee.kind {
-            ExpnKind::Macro(kind, name) => match kind {
+            ExpnKind::Macro { kind, name, proc_macro: _ } => match kind {
                 MacroKind::Bang => name,
 
                 // Ignore attribute macros, their spans are usually mangled
@@ -1000,7 +1000,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             // Privacy checking requires and is done after type checking; use a
             // fallback in case the access levels couldn't have been correctly computed.
             let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
+                Ok(..) => tcx.privacy_access_levels(()),
                 Err(..) => tcx.arena.alloc(AccessLevels::default()),
             };
 

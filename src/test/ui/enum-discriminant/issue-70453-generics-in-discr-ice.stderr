@@ -14,6 +14,7 @@ LL | enum MyWeirdOption<T> {
    |                    ^ unused parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: usize` instead
 
 error: aborting due to 2 previous errors
 

@@ -209,7 +209,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.is_none(), true);
     /// ```
     #[must_use = "if you intended to assert that this doesn't have a value, consider \
-                  `.and_then(|| panic!(\"`Option` had a value when expected `None`\"))` instead"]
+                  `.and_then(|_| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
     #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1641,11 +1641,13 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 #[rustc_diagnostic_item = "none_error"]
 #[unstable(feature = "try_trait", issue = "42327")]
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[cfg(bootstrap)]
 pub struct NoneError;
 
 #[unstable(feature = "try_trait", issue = "42327")]
-impl<T> ops::Try for Option<T> {
-    type Ok = T;
+#[cfg(bootstrap)]
+impl<T> ops::TryV1 for Option<T> {
+    type Output = T;
     type Error = NoneError;
 
     #[inline]

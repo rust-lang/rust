@@ -192,14 +192,26 @@ impl str {
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
     #[inline]
     pub fn is_char_boundary(&self, index: usize) -> bool {
-        // 0 and len are always ok.
+        // 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
-        if index == 0 || index == self.len() {
+        // Note that optimizing `self.get(..index)` relies on this.
+        if index == 0 {
             return true;
         }
+
         match self.as_bytes().get(index) {
-            None => false,
+            // For `None` we have two options:
+            //
+            // - index == self.len()
+            //   Empty strings are valid, so return true
+            // - index > self.len()
+            //   In this case return false
+            //
+            // The check is placed exactly here, because it improves generated
+            // code on higher opt-levels. See PR #84751 for more details.
+            None => index == self.len(),
+
             // This is bit magic equivalent to: b < 128 || b >= 192
             Some(&b) => (b as i8) >= -0x40,
         }

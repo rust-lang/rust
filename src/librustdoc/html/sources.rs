@@ -56,7 +56,11 @@ impl DocFolder for SourceCollector<'_, '_> {
                 Err(e) => {
                     self.scx.tcx.sess.span_err(
                         item.span(self.scx.tcx).inner(),
-                        &format!("failed to render source code for `{}`: {}", filename, e),
+                        &format!(
+                            "failed to render source code for `{}`: {}",
+                            filename.prefer_local(),
+                            e
+                        ),
                     );
                     false
                 }
@@ -76,7 +80,13 @@ impl SourceCollector<'_, 'tcx> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
         let p = match *filename {
-            FileName::Real(ref file) => file.local_path().to_path_buf(),
+            FileName::Real(ref file) => {
+                if let Some(local_path) = file.local_path() {
+                    local_path.to_path_buf()
+                } else {
+                    unreachable!("only the current crate should have sources emitted");
+                }
+            }
             _ => return Ok(()),
         };
         if self.scx.local_sources.contains_key(&*p) {
@@ -113,7 +123,7 @@ impl SourceCollector<'_, 'tcx> {
         href.push_str(&fname.to_string_lossy());
 
         let title = format!("{} - source", src_fname.to_string_lossy());
-        let desc = format!("Source of the Rust file `{}`.", filename);
+        let desc = format!("Source of the Rust file `{}`.", filename.prefer_remapped());
         let page = layout::Page {
             title: &title,
             css_class: "source",
@@ -169,16 +179,17 @@ where
 /// adding line numbers to the left-hand side.
 fn print_src(buf: &mut Buffer, s: &str, edition: Edition) {
     let lines = s.lines().count();
+    let mut line_numbers = Buffer::empty_from(buf);
     let mut cols = 0;
     let mut tmp = lines;
     while tmp > 0 {
         cols += 1;
         tmp /= 10;
     }
-    buf.write_str("<pre class=\"line-numbers\">");
+    line_numbers.write_str("<pre class=\"line-numbers\">");
     for i in 1..=lines {
-        write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
+        writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols);
     }
-    buf.write_str("</pre>");
-    highlight::render_with_highlighting(s, buf, None, None, None, edition);
+    line_numbers.write_str("</pre>");
+    highlight::render_with_highlighting(s, buf, None, None, None, edition, Some(line_numbers));
 }

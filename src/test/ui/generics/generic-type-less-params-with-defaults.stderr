@@ -2,17 +2,17 @@ error[E0107]: missing generics for struct `Vec`
   --> $DIR/generic-type-less-params-with-defaults.rs:9:12
    |
 LL |     let _: Vec;
-   |            ^^^ expected at least 1 type argument
+   |            ^^^ expected at least 1 generic argument
    |
-note: struct defined here, with at least 1 type parameter: `T`
+note: struct defined here, with at least 1 generic parameter: `T`
   --> $DIR/generic-type-less-params-with-defaults.rs:5:8
    |
 LL | struct Vec<T, A = Heap>(
    |        ^^^ -
-help: use angle brackets to add missing type argument
+help: add missing generic argument
    |
 LL |     let _: Vec<T>;
-   |               ^^^
+   |            ^^^^^^
 
 error: aborting due to previous error
 

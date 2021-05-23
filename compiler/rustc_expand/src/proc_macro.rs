@@ -9,12 +9,14 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorReported;
 use rustc_parse::nt_to_tokenstream;
 use rustc_parse::parser::ForceCollect;
+use rustc_span::def_id::CrateNum;
 use rustc_span::{Span, DUMMY_SP};
 
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
 
 pub struct BangProcMacro {
     pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
+    pub krate: CrateNum,
 }
 
 impl base::ProcMacro for BangProcMacro {
@@ -24,7 +26,7 @@ impl base::ProcMacro for BangProcMacro {
         span: Span,
         input: TokenStream,
     ) -> Result<TokenStream, ErrorReported> {
-        let server = proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx, self.krate);
         self.client.run(&EXEC_STRATEGY, server, input, ecx.ecfg.proc_macro_backtrace).map_err(|e| {
             let mut err = ecx.struct_span_err(span, "proc macro panicked");
             if let Some(s) = e.as_str() {
@@ -38,6 +40,7 @@ impl base::ProcMacro for BangProcMacro {
 
 pub struct AttrProcMacro {
     pub client: pm::bridge::client::Client<fn(pm::TokenStream, pm::TokenStream) -> pm::TokenStream>,
+    pub krate: CrateNum,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -48,7 +51,7 @@ impl base::AttrProcMacro for AttrProcMacro {
         annotation: TokenStream,
         annotated: TokenStream,
     ) -> Result<TokenStream, ErrorReported> {
-        let server = proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx, self.krate);
         self.client
             .run(&EXEC_STRATEGY, server, annotation, annotated, ecx.ecfg.proc_macro_backtrace)
             .map_err(|e| {
@@ -64,6 +67,7 @@ impl base::AttrProcMacro for AttrProcMacro {
 
 pub struct ProcMacroDerive {
     pub client: pm::bridge::client::Client<fn(pm::TokenStream) -> pm::TokenStream>,
+    pub krate: CrateNum,
 }
 
 impl MultiItemModifier for ProcMacroDerive {
@@ -97,7 +101,7 @@ impl MultiItemModifier for ProcMacroDerive {
             nt_to_tokenstream(&item, &ecx.sess.parse_sess, CanSynthesizeMissingTokens::No)
         };
 
-        let server = proc_macro_server::Rustc::new(ecx);
+        let server = proc_macro_server::Rustc::new(ecx, self.krate);
         let stream =
             match self.client.run(&EXEC_STRATEGY, server, input, ecx.ecfg.proc_macro_backtrace) {
                 Ok(stream) => stream,

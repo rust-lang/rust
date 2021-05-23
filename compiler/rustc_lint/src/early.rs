@@ -367,11 +367,11 @@ pub fn check_ast_crate<T: EarlyLintPass>(
                 krate,
                 EarlyLintPassObjects { lints: &mut passes[..] },
                 buffered,
-                pre_expansion,
+                false,
             );
         }
     } else {
-        for pass in &mut passes {
+        for (i, pass) in passes.iter_mut().enumerate() {
             buffered =
                 sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
                     early_lint_crate(
@@ -380,7 +380,7 @@ pub fn check_ast_crate<T: EarlyLintPass>(
                         krate,
                         EarlyLintPassObjects { lints: slice::from_mut(pass) },
                         buffered,
-                        pre_expansion,
+                        pre_expansion && i == 0,
                     )
                 });
         }

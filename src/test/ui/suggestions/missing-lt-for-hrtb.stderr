@@ -44,6 +44,10 @@ note: these named lifetimes are available to use
    |
 LL | struct V<'a>(&'a dyn for<'b> Fn(&X) -> &X);
    |          ^^              ^^
+help: consider using one of the available lifetimes here
+   |
+LL | struct V<'a>(&'a dyn for<'b> Fn(&X) -> &'lifetime X);
+   |                                        ^^^^^^^^^^
 
 error[E0106]: missing lifetime specifier
   --> $DIR/missing-lt-for-hrtb.rs:5:41

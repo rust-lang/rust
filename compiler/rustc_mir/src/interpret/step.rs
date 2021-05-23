@@ -2,7 +2,6 @@
 //!
 //! The main entry point is the `step` method.
 
-use crate::interpret::OpTy;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_target::abi::LayoutOf;
@@ -119,7 +118,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let src = self.eval_operand(src, None)?;
                 let dst = self.eval_operand(dst, None)?;
                 let count = self.eval_operand(count, None)?;
-                self.copy(&src, &dst, &count, /* nonoverlapping */ true)?;
+                self.copy_intrinsic(&src, &dst, &count, /* nonoverlapping */ true)?;
             }
 
             // Statements we do not track.
@@ -146,37 +145,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         self.stack_mut()[frame_idx].loc.as_mut().unwrap().statement_index += 1;
-        Ok(())
-    }
-
-    pub(crate) fn copy(
-        &mut self,
-        src: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        dst: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        count: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        nonoverlapping: bool,
-    ) -> InterpResult<'tcx> {
-        let count = self.read_scalar(&count)?.to_machine_usize(self)?;
-        let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
-        let (size, align) = (layout.size, layout.align.abi);
-        let size = size.checked_mul(count, self).ok_or_else(|| {
-            err_ub_format!(
-                "overflow computing total size of `{}`",
-                if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
-            )
-        })?;
-
-        // Make sure we check both pointers for an access of the total size and aligment,
-        // *even if* the total size is 0.
-        let src =
-            self.memory.check_ptr_access(self.read_scalar(&src)?.check_init()?, size, align)?;
-
-        let dst =
-            self.memory.check_ptr_access(self.read_scalar(&dst)?.check_init()?, size, align)?;
-
-        if let (Some(src), Some(dst)) = (src, dst) {
-            self.memory.copy(src, dst, size, nonoverlapping)?;
-        }
         Ok(())
     }
 
@@ -254,28 +222,34 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             Repeat(ref operand, _) => {
-                let op = self.eval_operand(operand, None)?;
+                let src = self.eval_operand(operand, None)?;
+                assert!(!src.layout.is_unsized());
                 let dest = self.force_allocation(&dest)?;
                 let length = dest.len(self)?;
 
-                if let Some(first_ptr) = self.check_mplace_access(&dest, None)? {
-                    // Write the first.
+                if length == 0 {
+                    // Nothing to copy... but let's still make sure that `dest` as a place is valid.
+                    self.get_alloc_mut(&dest)?;
+                } else {
+                    // Write the src to the first element.
                     let first = self.mplace_field(&dest, 0)?;
-                    self.copy_op(&op, &first.into())?;
+                    self.copy_op(&src, &first.into())?;
 
-                    if length > 1 {
-                        let elem_size = first.layout.size;
-                        // Copy the rest. This is performance-sensitive code
-                        // for big static/const arrays!
-                        let rest_ptr = first_ptr.offset(elem_size, self)?;
-                        self.memory.copy_repeatedly(
-                            first_ptr,
-                            rest_ptr,
-                            elem_size,
-                            length - 1,
-                            /*nonoverlapping:*/ true,
-                        )?;
-                    }
+                    // This is performance-sensitive code for big static/const arrays! So we
+                    // avoid writing each operand individually and instead just make many copies
+                    // of the first element.
+                    let elem_size = first.layout.size;
+                    let first_ptr = first.ptr;
+                    let rest_ptr = first_ptr.ptr_offset(elem_size, self)?;
+                    self.memory.copy_repeatedly(
+                        first_ptr,
+                        first.align,
+                        rest_ptr,
+                        first.align,
+                        elem_size,
+                        length - 1,
+                        /*nonoverlapping:*/ true,
+                    )?;
                 }
             }
 

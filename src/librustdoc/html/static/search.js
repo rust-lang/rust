@@ -1,3 +1,6 @@
+/* global addClass, getNakedUrl, getSettingValue, hasOwnPropertyRustdoc, initSearch, onEach */
+/* global onEachLazy, removeClass, searchState, updateLocalStorage */
+
 (function() {
 // This mapping table should match the discriminants of
 // `rustdoc::html::item_type::ItemType` type in Rust.
@@ -48,9 +51,9 @@ function printTab(nb) {
     });
     onEachLazy(document.getElementById("results").childNodes, function(elem) {
         if (nb === 0) {
-            elem.style.display = "";
+            addClass(elem, "active");
         } else {
-            elem.style.display = "none";
+            removeClass(elem, "active");
         }
         nb -= 1;
     });
@@ -146,23 +149,21 @@ window.initSearch = function(rawSearchIndex) {
 
         removeEmptyStringsFromArray(split);
 
-        function transformResults(results, isType) {
+        function transformResults(results) {
             var out = [];
             for (var i = 0, len = results.length; i < len; ++i) {
                 if (results[i].id > -1) {
                     var obj = searchIndex[results[i].id];
                     obj.lev = results[i].lev;
-                    if (isType !== true || obj.type) {
-                        var res = buildHrefAndPath(obj);
-                        obj.displayPath = pathSplitter(res[0]);
-                        obj.fullPath = obj.displayPath + obj.name;
-                        // To be sure than it some items aren't considered as duplicate.
-                        obj.fullPath += "|" + obj.ty;
-                        obj.href = res[1];
-                        out.push(obj);
-                        if (out.length >= MAX_RESULTS) {
-                            break;
-                        }
+                    var res = buildHrefAndPath(obj);
+                    obj.displayPath = pathSplitter(res[0]);
+                    obj.fullPath = obj.displayPath + obj.name;
+                    // To be sure than it some items aren't considered as duplicate.
+                    obj.fullPath += "|" + obj.ty;
+                    obj.href = res[1];
+                    out.push(obj);
+                    if (out.length >= MAX_RESULTS) {
+                        break;
                     }
                 }
             }
@@ -172,7 +173,7 @@ window.initSearch = function(rawSearchIndex) {
         function sortResults(results, isType) {
             var ar = [];
             for (var entry in results) {
-                if (hasOwnProperty(results, entry)) {
+                if (hasOwnPropertyRustdoc(results, entry)) {
                     ar.push(results[entry]);
                 }
             }
@@ -256,7 +257,7 @@ window.initSearch = function(rawSearchIndex) {
             });
 
             for (i = 0, len = results.length; i < len; ++i) {
-                var result = results[i];
+                result = results[i];
 
                 // this validation does not make sense when searching by types
                 if (result.dontValidate) {
@@ -266,9 +267,7 @@ window.initSearch = function(rawSearchIndex) {
                     path = result.item.path.toLowerCase(),
                     parent = result.item.parent;
 
-                if (isType !== true &&
-                    validateResult(name, path, split, parent) === false)
-                {
+                if (!isType && !validateResult(name, path, split, parent)) {
                     result.id = -1;
                 }
             }
@@ -305,7 +304,7 @@ window.initSearch = function(rawSearchIndex) {
                 if (obj.length > GENERICS_DATA &&
                       obj[GENERICS_DATA].length >= val.generics.length) {
                     var elems = Object.create(null);
-                    var elength = object[GENERICS_DATA].length;
+                    var elength = obj[GENERICS_DATA].length;
                     for (var x = 0; x < elength; ++x) {
                         elems[getObjectNameFromId(obj[GENERICS_DATA][x])] += 1;
                     }
@@ -352,7 +351,7 @@ window.initSearch = function(rawSearchIndex) {
             var lev_distance = MAX_LEV_DISTANCE + 1;
             var len, x, firstGeneric;
             if (obj[NAME] === val.name) {
-                if (literalSearch === true) {
+                if (literalSearch) {
                     if (val.generics && val.generics.length !== 0) {
                         if (obj.length > GENERICS_DATA &&
                               obj[GENERICS_DATA].length >= val.generics.length) {
@@ -373,7 +372,7 @@ window.initSearch = function(rawSearchIndex) {
                                     break;
                                 }
                             }
-                            if (allFound === true) {
+                            if (allFound) {
                                 return true;
                             }
                         } else {
@@ -394,7 +393,7 @@ window.initSearch = function(rawSearchIndex) {
                 }
             }
             // Names didn't match so let's check if one of the generic types could.
-            if (literalSearch === true) {
+            if (literalSearch) {
                  if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     return obj[GENERICS_DATA].some(
                         function(name) {
@@ -429,12 +428,12 @@ window.initSearch = function(rawSearchIndex) {
                 var length = obj.type[INPUTS_DATA].length;
                 for (var i = 0; i < length; i++) {
                     var tmp = obj.type[INPUTS_DATA][i];
-                    if (typePassesFilter(typeFilter, tmp[1]) === false) {
+                    if (!typePassesFilter(typeFilter, tmp[1])) {
                         continue;
                     }
                     tmp = checkType(tmp, val, literalSearch);
-                    if (literalSearch === true) {
-                        if (tmp === true) {
+                    if (literalSearch) {
+                        if (tmp) {
                             return true;
                         }
                         continue;
@@ -445,7 +444,7 @@ window.initSearch = function(rawSearchIndex) {
                     }
                 }
             }
-            return literalSearch === true ? false : lev_distance;
+            return literalSearch ? false : lev_distance;
         }
 
         function checkReturned(obj, val, literalSearch, typeFilter) {
@@ -458,12 +457,12 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 for (var x = 0, len = ret.length; x < len; ++x) {
                     var tmp = ret[x];
-                    if (typePassesFilter(typeFilter, tmp[1]) === false) {
+                    if (!typePassesFilter(typeFilter, tmp[1])) {
                         continue;
                     }
                     tmp = checkType(tmp, val, literalSearch);
-                    if (literalSearch === true) {
-                        if (tmp === true) {
+                    if (literalSearch) {
+                        if (tmp) {
                             return true;
                         }
                         continue;
@@ -474,7 +473,7 @@ window.initSearch = function(rawSearchIndex) {
                     }
                 }
             }
-            return literalSearch === true ? false : lev_distance;
+            return literalSearch ? false : lev_distance;
         }
 
         function checkPath(contains, lastElem, ty) {
@@ -507,7 +506,7 @@ window.initSearch = function(rawSearchIndex) {
                     }
                     lev_total += lev;
                 }
-                if (aborted === false) {
+                if (!aborted) {
                     ret_lev = Math.min(ret_lev, Math.round(lev_total / clength));
                 }
             }
@@ -634,14 +633,14 @@ window.initSearch = function(rawSearchIndex) {
                         dontValidate: true,
                     };
                 }
-                if (in_args === true && results_in_args[fullId] === undefined) {
+                if (in_args && results_in_args[fullId] === undefined) {
                     results_in_args[fullId] = {
                         id: i,
                         index: -1,
                         dontValidate: true,
                     };
                 }
-                if (returned === true && results_returned[fullId] === undefined) {
+                if (returned && results_returned[fullId] === undefined) {
                     results_returned[fullId] = {
                         id: i,
                         index: -1,
@@ -676,7 +675,7 @@ window.initSearch = function(rawSearchIndex) {
                 fullId = ty.id;
 
                 returned = checkReturned(ty, output, true, NO_TYPE_FILTER);
-                if (output.name === "*" || returned === true) {
+                if (output.name === "*" || returned) {
                     in_args = false;
                     var is_module = false;
 
@@ -684,26 +683,26 @@ window.initSearch = function(rawSearchIndex) {
                         is_module = true;
                     } else {
                         var allFound = true;
-                        for (it = 0, len = inputs.length; allFound === true && it < len; it++) {
+                        for (it = 0, len = inputs.length; allFound && it < len; it++) {
                             allFound = checkType(type, inputs[it], true);
                         }
                         in_args = allFound;
                     }
-                    if (in_args === true) {
+                    if (in_args) {
                         results_in_args[fullId] = {
                             id: i,
                             index: -1,
                             dontValidate: true,
                         };
                     }
-                    if (returned === true) {
+                    if (returned) {
                         results_returned[fullId] = {
                             id: i,
                             index: -1,
                             dontValidate: true,
                         };
                     }
-                    if (is_module === true) {
+                    if (is_module) {
                         results[fullId] = {
                             id: i,
                             index: -1,
@@ -721,7 +720,7 @@ window.initSearch = function(rawSearchIndex) {
             query.output = val;
             query.search = val;
             // gather matching search results up to a certain maximum
-            val = val.replace(/\_/g, "");
+            val = val.replace(/_/g, "");
 
             var valGenerics = extractGenerics(val);
 
@@ -763,10 +762,10 @@ window.initSearch = function(rawSearchIndex) {
                     }
                 }
                 if ((lev = levenshtein(searchWords[j], val)) <= MAX_LEV_DISTANCE) {
-                    if (typePassesFilter(typeFilter, ty.ty) === false) {
-                        lev = MAX_LEV_DISTANCE + 1;
-                    } else {
+                    if (typePassesFilter(typeFilter, ty.ty)) {
                         lev += 1;
+                    } else {
+                        lev = MAX_LEV_DISTANCE + 1;
                     }
                 }
                 in_args = findArg(ty, valGenerics, false, typeFilter);
@@ -821,7 +820,7 @@ window.initSearch = function(rawSearchIndex) {
         var ret = {
             "in_args": sortResults(results_in_args, true),
             "returned": sortResults(results_returned, true),
-            "others": sortResults(results),
+            "others": sortResults(results, false),
         };
         handleAliases(ret, query, filterCrates);
         return ret;
@@ -879,106 +878,22 @@ window.initSearch = function(rawSearchIndex) {
         };
     }
 
-    function initSearchNav() {
-        var hoverTimeout;
+    function nextTab(direction) {
+        var next = (searchState.currentTab + direction + 3) % searchState.focusedByTab.length;
+        searchState.focusedByTab[searchState.currentTab] = document.activeElement;
+        printTab(next);
+        focusSearchResult();
+    }
 
-        var click_func = function(e) {
-            var el = e.target;
-            // to retrieve the real "owner" of the event.
-            while (el.tagName !== "TR") {
-                el = el.parentNode;
-            }
-            var dst = e.target.getElementsByTagName("a");
-            if (dst.length < 1) {
-                return;
-            }
-            dst = dst[0];
-            if (window.location.pathname === dst.pathname) {
-                searchState.hideResults();
-                document.location.href = dst.href;
-            }
-        };
-        var mouseover_func = function(e) {
-            if (searchState.mouseMovedAfterSearch) {
-                var el = e.target;
-                // to retrieve the real "owner" of the event.
-                while (el.tagName !== "TR") {
-                    el = el.parentNode;
-                }
-                clearTimeout(hoverTimeout);
-                hoverTimeout = setTimeout(function() {
-                    onEachLazy(document.getElementsByClassName("search-results"), function(e) {
-                        onEachLazy(e.getElementsByClassName("result"), function(i_e) {
-                            removeClass(i_e, "highlighted");
-                        });
-                    });
-                    addClass(el, "highlighted");
-                }, 20);
-            }
-        };
-        onEachLazy(document.getElementsByClassName("search-results"), function(e) {
-            onEachLazy(e.getElementsByClassName("result"), function(i_e) {
-                i_e.onclick = click_func;
-                i_e.onmouseover = mouseover_func;
-            });
-        });
-
-        searchState.input.onkeydown = function(e) {
-            // "actives" references the currently highlighted item in each search tab.
-            // Each array in "actives" represents a tab.
-            var actives = [[], [], []];
-            // "current" is used to know which tab we're looking into.
-            var current = 0;
-            onEachLazy(document.getElementById("results").childNodes, function(e) {
-                onEachLazy(e.getElementsByClassName("highlighted"), function(h_e) {
-                    actives[current].push(h_e);
-                });
-                current += 1;
-            });
-            var SHIFT = 16;
-            var CTRL = 17;
-            var ALT = 18;
-
-            var currentTab = searchState.currentTab;
-            if (e.which === 38) { // up
-                if (e.ctrlKey) { // Going through result tabs.
-                    printTab(currentTab > 0 ? currentTab - 1 : 2);
-                } else {
-                    if (!actives[currentTab].length ||
-                        !actives[currentTab][0].previousElementSibling) {
-                        return;
-                    }
-                    addClass(actives[currentTab][0].previousElementSibling, "highlighted");
-                    removeClass(actives[currentTab][0], "highlighted");
-                }
-                e.preventDefault();
-            } else if (e.which === 40) { // down
-                if (e.ctrlKey) { // Going through result tabs.
-                    printTab(currentTab > 1 ? 0 : currentTab + 1);
-                } else if (!actives[currentTab].length) {
-                    var results = document.getElementById("results").childNodes;
-                    if (results.length > 0) {
-                        var res = results[currentTab].getElementsByClassName("result");
-                        if (res.length > 0) {
-                            addClass(res[0], "highlighted");
-                        }
-                    }
-                } else if (actives[currentTab][0].nextElementSibling) {
-                    addClass(actives[currentTab][0].nextElementSibling, "highlighted");
-                    removeClass(actives[currentTab][0], "highlighted");
-                }
-                e.preventDefault();
-            } else if (e.which === 13) { // return
-                if (actives[currentTab].length) {
-                    var elem = actives[currentTab][0].getElementsByTagName("a")[0];
-                    document.location.href = elem.href;
-                }
-            } else if ([SHIFT, CTRL, ALT].indexOf(e.which) !== -1) {
-                // Does nothing, it's just to avoid losing "focus" on the highlighted element.
-            } else if (actives[currentTab].length > 0) {
-                removeClass(actives[currentTab][0], "highlighted");
-            }
-        };
+    // Focus the first search result on the active tab, or the result that
+    // was focused last time this tab was active.
+    function focusSearchResult() {
+        var target = searchState.focusedByTab[searchState.currentTab] ||
+            document.querySelectorAll(".search-results.active a").item(0) ||
+            document.querySelectorAll("#titles > button").item(searchState.currentTab);
+        if (target) {
+            target.focus();
+        }
     }
 
     function buildHrefAndPath(item) {
@@ -1048,16 +963,16 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function addTab(array, query, display) {
-        var extraStyle = "";
-        if (display === false) {
-            extraStyle = " style=\"display: none;\"";
+        var extraClass = "";
+        if (display === true) {
+            extraClass = " active";
         }
 
         var output = "";
         var duplicates = {};
         var length = 0;
         if (array.length > 0) {
-            output = "<table class=\"search-results\"" + extraStyle + ">";
+            output = "<div class=\"search-results " + extraClass + "\">";
 
             array.forEach(function(item) {
                 var name, type;
@@ -1073,20 +988,19 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 length += 1;
 
-                output += "<tr class=\"" + type + " result\"><td>" +
-                          "<a href=\"" + item.href + "\">" +
+                output += "<a class=\"result-" + type + "\" href=\"" + item.href + "\">" +
+                          "<div><div class=\"result-name\">" +
                           (item.is_alias === true ?
                            ("<span class=\"alias\"><b>" + item.alias + " </b></span><span " +
                               "class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>") : "") +
                           item.displayPath + "<span class=\"" + type + "\">" +
-                          name + "</span></a></td><td>" +
-                          "<a href=\"" + item.href + "\">" +
+                          name + "</span></div><div>" +
                           "<span class=\"desc\">" + item.desc +
-                          "&nbsp;</span></a></td></tr>";
+                          "&nbsp;</span></div></div></a>";
             });
-            output += "</table>";
+            output += "</div>";
         } else {
-            output = "<div class=\"search-failed\"" + extraStyle + ">No results :(<br/>" +
+            output = "<div class=\"search-failed\"" + extraClass + ">No results :(<br/>" +
                 "Try on <a href=\"https://duckduckgo.com/?q=" +
                 encodeURIComponent("rust " + query.query) +
                 "\">DuckDuckGo</a>?<br/><br/>" +
@@ -1122,7 +1036,7 @@ window.initSearch = function(rawSearchIndex) {
         {
             var elem = document.createElement("a");
             elem.href = results.others[0].href;
-            elem.style.display = "none";
+            removeClass(elem, "active");
             // For firefox, we need the element to be in the DOM so it can be clicked.
             document.body.appendChild(elem);
             elem.click();
@@ -1162,8 +1076,9 @@ window.initSearch = function(rawSearchIndex) {
             ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
 
         search.innerHTML = output;
+        // Reset focused elements.
+        searchState.focusedByTab = [null, null, null];
         searchState.showResults(search);
-        initSearchNav();
         var elems = document.getElementById("titles").childNodes;
         elems[0].onclick = function() { printTab(0); };
         elems[1].onclick = function() { printTab(1); };
@@ -1246,7 +1161,9 @@ window.initSearch = function(rawSearchIndex) {
     function getFilterCrates() {
         var elem = document.getElementById("crate-search");
 
-        if (elem && elem.value !== "All crates" && hasOwnProperty(rawSearchIndex, elem.value)) {
+        if (elem && elem.value !== "All crates" &&
+            hasOwnPropertyRustdoc(rawSearchIndex, elem.value))
+        {
             return elem.value;
         }
         return undefined;
@@ -1263,7 +1180,7 @@ window.initSearch = function(rawSearchIndex) {
         if (query.query.length === 0) {
             return;
         }
-        if (forced !== true && query.id === currentResults) {
+        if (!forced && query.id === currentResults) {
             if (query.query.length > 0) {
                 searchState.putBackSearch(searchState.input);
             }
@@ -1297,14 +1214,13 @@ window.initSearch = function(rawSearchIndex) {
         var id = 0;
 
         for (var crate in rawSearchIndex) {
-            if (!hasOwnProperty(rawSearchIndex, crate)) { continue; }
+            if (!hasOwnPropertyRustdoc(rawSearchIndex, crate)) {
+                continue;
+            }
 
             var crateSize = 0;
 
             searchWords.push(crate);
-            var normalizedName = crate.indexOf("_") === -1
-                ? crate
-                : crate.replace(/_/g, "");
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
@@ -1317,7 +1233,7 @@ window.initSearch = function(rawSearchIndex) {
                 parent: undefined,
                 type: null,
                 id: id,
-                normalizedName: normalizedName,
+                normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
             };
             id += 1;
             searchIndex.push(crateRow);
@@ -1367,9 +1283,6 @@ window.initSearch = function(rawSearchIndex) {
                     word = "";
                     searchWords.push("");
                 }
-                var normalizedName = word.indexOf("_") === -1
-                    ? word
-                    : word.replace(/_/g, "");
                 var row = {
                     crate: crate,
                     ty: itemTypes[i],
@@ -1379,7 +1292,7 @@ window.initSearch = function(rawSearchIndex) {
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type: itemFunctionSearchTypes[i],
                     id: id,
-                    normalizedName: normalizedName,
+                    normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
                 };
                 id += 1;
                 searchIndex.push(row);
@@ -1391,9 +1304,11 @@ window.initSearch = function(rawSearchIndex) {
                 ALIASES[crate] = {};
                 var j, local_aliases;
                 for (var alias_name in aliases) {
-                    if (!aliases.hasOwnProperty(alias_name)) { continue; }
+                    if (!hasOwnPropertyRustdoc(aliases, alias_name)) {
+                        continue;
+                    }
 
-                    if (!ALIASES[crate].hasOwnProperty(alias_name)) {
+                    if (!hasOwnPropertyRustdoc(ALIASES[crate], alias_name)) {
                         ALIASES[crate][alias_name] = [];
                     }
                     local_aliases = aliases[alias_name];
@@ -1440,6 +1355,49 @@ window.initSearch = function(rawSearchIndex) {
             setTimeout(search, 0);
         };
         searchState.input.onpaste = searchState.input.onchange;
+
+        searchState.outputElement().addEventListener("keydown", function(e) {
+            // We only handle unmodified keystrokes here. We don't want to interfere with,
+            // for instance, alt-left and alt-right for history navigation.
+            if (e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
+                return;
+            }
+            // up and down arrow select next/previous search result, or the
+            // search box if we're already at the top.
+            if (e.which === 38) { // up
+                var previous = document.activeElement.previousElementSibling;
+                if (previous) {
+                    previous.focus();
+                } else {
+                    searchState.focus();
+                }
+                e.preventDefault();
+            } else if (e.which === 40) { // down
+                var next = document.activeElement.nextElementSibling;
+                if (next) {
+                    next.focus();
+                }
+                var rect = document.activeElement.getBoundingClientRect();
+                if (window.innerHeight - rect.bottom < rect.height) {
+                    window.scrollBy(0, rect.height);
+                }
+                e.preventDefault();
+            } else if (e.which === 37) { // left
+                nextTab(-1);
+                e.preventDefault();
+            } else if (e.which === 39) { // right
+                nextTab(1);
+                e.preventDefault();
+            }
+        });
+
+        searchState.input.addEventListener("keydown", function(e) {
+            if (e.which === 40) { // down
+                focusSearchResult();
+                e.preventDefault();
+            }
+        });
+
 
         var selectCrate = document.getElementById("crate-search");
         if (selectCrate) {
@@ -1509,7 +1467,7 @@ window.initSearch = function(rawSearchIndex) {
 };
 
 if (window.searchIndex !== undefined) {
-  initSearch(window.searchIndex);
+    initSearch(window.searchIndex);
 }
 
 })();

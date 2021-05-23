@@ -91,6 +91,7 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Format {
+        paths: Vec<PathBuf>,
         check: bool,
     },
     Doc {
@@ -103,6 +104,7 @@ pub enum Subcommand {
         bless: bool,
         compare_mode: Option<String>,
         pass: Option<String>,
+        run: Option<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
@@ -222,8 +224,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
              VALUE overrides the skip-rebuild option in config.toml.",
             "VALUE",
         );
-        opts.optopt("", "rust-profile-generate", "rustc error format", "FORMAT");
-        opts.optopt("", "rust-profile-use", "rustc error format", "FORMAT");
+        opts.optopt("", "rust-profile-generate", "generate PGO profile with rustc build", "FORMAT");
+        opts.optopt("", "rust-profile-use", "use PGO profile for rustc build", "FORMAT");
 
         // We can't use getopt to parse the options until we have completed specifying which
         // options are valid, but under the current implementation, some options are conditional on
@@ -293,6 +295,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
                     "force {check,build,run}-pass tests to this mode.",
                     "check | build | run",
                 );
+                opts.optopt("", "run", "whether to execute run-* tests", "auto | always | never");
                 opts.optflag(
                     "",
                     "rustfix-coverage",
@@ -556,6 +559,7 @@ Arguments:
                 bless: matches.opt_present("bless"),
                 compare_mode: matches.opt_str("compare-mode"),
                 pass: matches.opt_str("pass"),
+                run: matches.opt_str("run"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
@@ -578,7 +582,7 @@ Arguments:
 
                 Subcommand::Clean { all: matches.opt_present("all") }
             }
-            "fmt" => Subcommand::Format { check: matches.opt_present("check") },
+            "fmt" => Subcommand::Format { check: matches.opt_present("check"), paths },
             "dist" => Subcommand::Dist { paths },
             "install" => Subcommand::Install { paths },
             "run" | "r" => {
@@ -738,6 +742,13 @@ impl Subcommand {
     pub fn pass(&self) -> Option<&str> {
         match *self {
             Subcommand::Test { ref pass, .. } => pass.as_ref().map(|s| &s[..]),
+            _ => None,
+        }
+    }
+
+    pub fn run(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test { ref run, .. } => run.as_ref().map(|s| &s[..]),
             _ => None,
         }
     }

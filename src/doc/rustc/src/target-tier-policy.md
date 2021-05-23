@@ -1,5 +1,16 @@
 # Target Tier Policy
 
+## Table of Contents
+
+* [General](#general)
+* [Tier 3 target policy](#tier-3-target-policy)
+* [Tier 2 target policy](#tier-2-target-policy)
+  * [Tier 2 with host tools](#tier-2-with-host-tools)
+* [Tier 1 target policy](#tier-1-target-policy)
+  * [Tier 1 with host tools](#tier-1-with-host-tools)
+
+## General
+
 Rust provides three tiers of target support:
 
 - Rust provides no guarantees about tier 3 targets; they exist in the codebase,
@@ -91,7 +102,7 @@ place minimal requirements on the introduction of targets.
 
 A proposed new tier 3 target must be reviewed and approved by a member of the
 compiler team based on these requirements. The reviewer may choose to gauge
-broader compiler team consensus via a Major Change Proposal (MCP).
+broader compiler team consensus via a [Major Change Proposal (MCP)][MCP].
 
 A proposed target or target-specific patch that substantially changes code
 shared with other targets (not just target-specific code) must be reviewed and
@@ -212,8 +223,8 @@ patches that fail to build on a target. Thus, we place requirements that ensure
 the target will not block forward progress of the Rust project.
 
 A proposed new tier 2 target must be reviewed and approved by the compiler team
-based on these requirements. Such review and approval may occur via a Major
-Change Proposal (MCP).
+based on these requirements. Such review and approval may occur via a [Major
+Change Proposal (MCP)][MCP].
 
 In addition, the infrastructure team must approve the integration of the target
 into Continuous Integration (CI), and the tier 2 CI-related requirements. This
@@ -380,7 +391,7 @@ development platform, not just a compilation target.
 
 A proposed new tier 2 target with host tools must be reviewed and approved by
 the compiler team based on these requirements. Such review and approval may
-occur via a Major Change Proposal (MCP).
+occur via a [Major Change Proposal (MCP)][MCP].
 
 In addition, the infrastructure team must approve the integration of the
 target's host tools into Continuous Integration (CI), and the CI-related
@@ -637,3 +648,5 @@ for demotion of a tier 1 target (with or without host tools) requires a full
 RFC process, with approval by the compiler and release teams. Any such proposal
 will be communicated widely to the Rust community, both when initially proposed
 and before being dropped from a stable release.
+
+[MCP]: https://forge.rust-lang.org/compiler/mcp.html

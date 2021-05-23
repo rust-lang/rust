@@ -90,8 +90,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         span: Span,
         mut block: BasicBlock,
-        scrutinee: &Expr<'_, 'tcx>,
-        arms: &[Arm<'_, 'tcx>],
+        scrutinee: &Expr<'tcx>,
+        arms: &[ArmId],
     ) -> BlockAnd<()> {
         let scrutinee_span = scrutinee.span;
         let scrutinee_place =
@@ -99,7 +99,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut arm_candidates = self.create_match_candidates(scrutinee_place.clone(), &arms);
 
-        let match_has_guard = arms.iter().any(|arm| arm.guard.is_some());
+        let match_has_guard = arms.iter().copied().any(|arm| self.thir[arm].guard.is_some());
         let mut candidates =
             arm_candidates.iter_mut().map(|(_, candidate)| candidate).collect::<Vec<_>>();
 
@@ -120,7 +120,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_scrutinee(
         &mut self,
         mut block: BasicBlock,
-        scrutinee: &Expr<'_, 'tcx>,
+        scrutinee: &Expr<'tcx>,
         scrutinee_span: Span,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         let scrutinee_place_builder = unpack!(block = self.as_place_builder(block, scrutinee));
@@ -156,12 +156,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_match_candidates<'pat>(
         &mut self,
         scrutinee: PlaceBuilder<'tcx>,
-        arms: &'pat [Arm<'pat, 'tcx>],
-    ) -> Vec<(&'pat Arm<'pat, 'tcx>, Candidate<'pat, 'tcx>)> {
+        arms: &'pat [ArmId],
+    ) -> Vec<(&'pat Arm<'tcx>, Candidate<'pat, 'tcx>)>
+    where
+        'a: 'pat,
+    {
         // Assemble a list of candidates: there is one candidate per pattern,
         // which means there may be more than one candidate *per arm*.
         arms.iter()
+            .copied()
             .map(|arm| {
+                let arm = &self.thir[arm];
                 let arm_has_guard = arm.guard.is_some();
                 let arm_candidate = Candidate::new(scrutinee.clone(), &arm.pattern, arm_has_guard);
                 (arm, arm_candidate)
@@ -231,7 +236,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         scrutinee_place_builder: PlaceBuilder<'tcx>,
         scrutinee_span: Span,
-        arm_candidates: Vec<(&'_ Arm<'_, 'tcx>, Candidate<'_, 'tcx>)>,
+        arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
         outer_source_info: SourceInfo,
         fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
     ) -> BlockAnd<()> {
@@ -286,7 +291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.source_scope = source_scope;
                     }
 
-                    this.expr_into_dest(destination, arm_block, &arm.body)
+                    this.expr_into_dest(destination, arm_block, &&this.thir[arm.body])
                 })
             })
             .collect();
@@ -313,7 +318,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        guard: Option<&Guard<'_, 'tcx>>,
+        guard: Option<&Guard<'tcx>>,
         fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_span: Option<Span>,
@@ -389,7 +394,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         irrefutable_pat: Pat<'tcx>,
-        initializer: &Expr<'_, 'tcx>,
+        initializer: &Expr<'tcx>,
     ) -> BlockAnd<()> {
         match *irrefutable_pat.kind {
             // Optimize the case of `let x = ...` to write directly into `x`
@@ -1665,7 +1670,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
-        guard: Option<&Guard<'_, 'tcx>>,
+        guard: Option<&Guard<'tcx>>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_span: Option<Span>,
@@ -1799,12 +1804,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.push_assign(block, scrutinee_source_info, Place::from(temp), borrow);
             }
 
-            let (guard_span, (post_guard_block, otherwise_post_guard_block)) = match guard {
+            let (guard_span, (post_guard_block, otherwise_post_guard_block)) = match *guard {
                 Guard::If(e) => {
+                    let e = &self.thir[e];
                     let source_info = self.source_info(e.span);
                     (e.span, self.test_bool(block, e, source_info))
                 }
-                Guard::IfLet(pat, scrutinee) => {
+                Guard::IfLet(ref pat, scrutinee) => {
+                    let scrutinee = &self.thir[scrutinee];
                     let scrutinee_span = scrutinee.span;
                     let scrutinee_place_builder =
                         unpack!(block = self.lower_scrutinee(block, scrutinee, scrutinee_span));
@@ -1840,7 +1847,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         guard_candidate,
                         None,
                         &fake_borrow_temps,
-                        scrutinee.span,
+                        scrutinee_span,
                         None,
                         None,
                     );

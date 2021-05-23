@@ -315,6 +315,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             playground_button.as_deref(),
             tooltip,
             edition,
+            None,
         );
         Some(Event::Html(s.into_inner().into()))
     }
@@ -1346,6 +1347,7 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("theme-picker".to_owned(), 1);
     map.insert("theme-choices".to_owned(), 1);
     map.insert("settings-menu".to_owned(), 1);
+    map.insert("help-button".to_owned(), 1);
     map.insert("main".to_owned(), 1);
     map.insert("search".to_owned(), 1);
     map.insert("crate-search".to_owned(), 1);

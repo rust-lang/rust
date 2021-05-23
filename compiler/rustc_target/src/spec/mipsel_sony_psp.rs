@@ -21,7 +21,6 @@ pub fn target() -> Target {
             cpu: "mips2".to_string(),
             executables: true,
             linker: Some("rust-lld".to_owned()),
-            linker_is_gnu: true,
             relocation_model: RelocModel::Static,
 
             // PSP FPU only supports single precision floats.

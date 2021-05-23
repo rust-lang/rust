@@ -1,5 +1,3 @@
-#![feature(const_fn)]
-
 struct WithDtor;
 
 impl Drop for WithDtor {

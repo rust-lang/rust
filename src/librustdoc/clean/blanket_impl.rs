@@ -1,6 +1,5 @@
 use crate::rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_hir as hir;
-use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits;
 use rustc_middle::ty::subst::Subst;
@@ -20,7 +19,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
         debug!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
-        for &trait_def_id in self.cx.tcx.all_traits(LOCAL_CRATE).iter() {
+        for &trait_def_id in self.cx.tcx.all_traits(()).iter() {
             if !self.cx.cache.access_levels.is_public(trait_def_id)
                 || self.cx.generated_synthetics.get(&(ty, trait_def_id)).is_some()
             {
@@ -92,18 +91,12 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 }
 
                 self.cx.generated_synthetics.insert((ty, trait_def_id));
-                let provided_trait_methods = self
-                    .cx
-                    .tcx
-                    .provided_trait_methods(trait_def_id)
-                    .map(|meth| meth.ident.name)
-                    .collect();
 
                 impls.push(Item {
                     name: None,
                     attrs: Default::default(),
                     visibility: Inherited,
-                    def_id: self.cx.next_def_id(impl_def_id.krate),
+                    def_id: FakeDefId::new_fake(item_def_id.krate),
                     kind: box ImplItem(Impl {
                         span: self.cx.tcx.def_span(impl_def_id).clean(self.cx),
                         unsafety: hir::Unsafety::Normal,
@@ -112,7 +105,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             self.cx.tcx.explicit_predicates_of(impl_def_id),
                         )
                             .clean(self.cx),
-                        provided_trait_methods,
                         // FIXME(eddyb) compute both `trait_` and `for_` from
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
@@ -126,7 +118,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .clean(self.cx),
                         negative_polarity: false,
                         synthetic: false,
-                        blanket_impl: Some(trait_ref.self_ty().clean(self.cx)),
+                        blanket_impl: Some(box trait_ref.self_ty().clean(self.cx)),
                     }),
                     cfg: None,
                 });

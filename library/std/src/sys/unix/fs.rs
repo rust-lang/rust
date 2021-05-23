@@ -48,7 +48,7 @@ use libc::{
     dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, readdir64_r, stat64,
 };
 
-pub use crate::sys_common::fs::remove_dir_all;
+pub use crate::sys_common::fs::{remove_dir_all, try_exists};
 
 pub struct File(FileDesc);
 
@@ -116,7 +116,7 @@ cfg_has_statx! {{
 
         match STATX_STATE.load(Ordering::Relaxed) {
             0 => {
-                // It is a trick to call `statx` with NULL pointers to check if the syscall
+                // It is a trick to call `statx` with null pointers to check if the syscall
                 // is available. According to the manual, it is expected to fail with EFAULT.
                 // We do this mainly for performance, since it is nearly hundreds times
                 // faster than a normal successful call.
@@ -450,7 +450,7 @@ impl Iterator for ReadDir {
                 super::os::set_errno(0);
                 let entry_ptr = libc::readdir(self.inner.dirp.0);
                 if entry_ptr.is_null() {
-                    // NULL can mean either the end is reached or an error occurred.
+                    // null can mean either the end is reached or an error occurred.
                     // So we had to clear errno beforehand to check for an error now.
                     return match super::os::errno() {
                         0 => None,
@@ -1327,4 +1327,11 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         )
     })?;
     Ok(bytes_copied as u64)
+}
+
+#[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
+pub fn chroot(dir: &Path) -> io::Result<()> {
+    let dir = cstr(dir)?;
+    cvt(unsafe { libc::chroot(dir.as_ptr()) })?;
+    Ok(())
 }

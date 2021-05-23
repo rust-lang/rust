@@ -1,7 +1,7 @@
 // only-x86_64
 // run-rustfix
 
-#![feature(asm)]
+#![feature(asm, global_asm)]
 
 fn main() {
     unsafe {
@@ -24,3 +24,6 @@ fn main() {
         );
     }
 }
+
+global_asm!("", options(att_syntax, att_syntax));
+//~^ ERROR the `att_syntax` option was already provided

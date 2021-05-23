@@ -3,7 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #![feature(staged_api)]
-#![feature(const_transmute, const_fn)]
+#![feature(const_transmute)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "rust1", since = "1.0.0")]

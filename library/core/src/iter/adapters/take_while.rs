@@ -68,9 +68,9 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
-        fn check<'a, T, Acc, R: Try<Ok = Acc>>(
+        fn check<'a, T, Acc, R: Try<Output = Acc>>(
             flag: &'a mut bool,
             p: &'a mut impl FnMut(&T) -> bool,
             mut fold: impl FnMut(Acc, T) -> R + 'a,

@@ -12,18 +12,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: Place<'tcx>,
         block: BasicBlock,
-        ast_block: &Block<'_, 'tcx>,
+        ast_block: &Block,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let Block {
             region_scope,
             opt_destruction_scope,
             span,
-            stmts,
+            ref stmts,
             expr,
             targeted_by_break,
             safety_mode,
         } = *ast_block;
+        let expr = expr.map(|expr| &self.thir[expr]);
         self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
@@ -32,13 +33,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             destination,
                             block,
                             span,
-                            stmts,
+                            &stmts,
                             expr,
                             safety_mode,
                         ))
                     })
                 } else {
-                    this.ast_block_stmts(destination, block, span, stmts, expr, safety_mode)
+                    this.ast_block_stmts(destination, block, span, &stmts, expr, safety_mode)
                 }
             })
         })
@@ -49,8 +50,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         destination: Place<'tcx>,
         mut block: BasicBlock,
         span: Span,
-        stmts: &[Stmt<'_, 'tcx>],
-        expr: Option<&Expr<'_, 'tcx>>,
+        stmts: &[StmtId],
+        expr: Option<&Expr<'tcx>>,
         safety_mode: BlockSafety,
     ) -> BlockAnd<()> {
         let this = self;
@@ -78,23 +79,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         this.update_source_scope_for_safety_mode(span, safety_mode);
 
         let source_info = this.source_info(span);
-        for Stmt { kind, opt_destruction_scope } in stmts {
+        for stmt in stmts {
+            let Stmt { ref kind, opt_destruction_scope } = this.thir[*stmt];
             match kind {
-                &StmtKind::Expr { scope, expr } => {
+                StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
                     unpack!(
                         block = this.in_opt_scope(
                             opt_destruction_scope.map(|de| (de, source_info)),
                             |this| {
-                                let si = (scope, source_info);
+                                let si = (*scope, source_info);
                                 this.in_scope(si, LintLevel::Inherited, |this| {
-                                    this.stmt_expr(block, expr, Some(scope))
+                                    this.stmt_expr(block, &this.thir[*expr], Some(*scope))
                                 })
                             }
                         )
                     );
                 }
-                StmtKind::Let { remainder_scope, init_scope, pattern, initializer, lint_level } => {
+                StmtKind::Let {
+                    remainder_scope,
+                    init_scope,
+                    ref pattern,
+                    initializer,
+                    lint_level,
+                } => {
                     let ignores_expr_result = matches!(*pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
@@ -110,6 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = initializer {
+                        let init = &this.thir[*init];
                         let initializer_span = init.span;
 
                         unpack!(
@@ -145,7 +154,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_primary_bindings(
-                            &pattern,
+                            pattern,
                             UserTypeProjections::none(),
                             &mut |this, _, _, _, node, span, _, _| {
                                 this.storage_live_binding(block, node, span, OutsideGuard, true);

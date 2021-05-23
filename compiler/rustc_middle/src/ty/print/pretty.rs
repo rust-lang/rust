@@ -1,5 +1,5 @@
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
-use crate::mir::interpret::{AllocId, ConstValue, GlobalAlloc, Pointer, Scalar};
+use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
@@ -7,7 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::ItemKind;
 use rustc_session::config::TrimmedDefPaths;
@@ -55,10 +55,10 @@ macro_rules! define_scoped_cx {
 }
 
 thread_local! {
-    static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
-    static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = Cell::new(false);
-    static NO_TRIMMED_PATH: Cell<bool> = Cell::new(false);
-    static NO_QUERIES: Cell<bool> = Cell::new(false);
+    static FORCE_IMPL_FILENAME_LINE: Cell<bool> = const { Cell::new(false) };
+    static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
+    static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
+    static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Avoids running any queries during any prints that occur
@@ -285,7 +285,7 @@ pub trait PrettyPrinter<'tcx>:
             return Ok((self, false));
         }
 
-        match self.tcx().trimmed_def_paths(LOCAL_CRATE).get(&def_id) {
+        match self.tcx().trimmed_def_paths(()).get(&def_id) {
             None => Ok((self, false)),
             Some(symbol) => {
                 self.write_str(&symbol.as_str())?;
@@ -361,7 +361,7 @@ pub trait PrettyPrinter<'tcx>:
             return Ok((self, false));
         }
 
-        let visible_parent_map = self.tcx().visible_parent_map(LOCAL_CRATE);
+        let visible_parent_map = self.tcx().visible_parent_map(());
 
         let mut cur_def_key = self.tcx().def_key(def_id);
         debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
@@ -667,7 +667,12 @@ pub trait PrettyPrinter<'tcx>:
                     if let Some(did) = did.as_local() {
                         let hir_id = self.tcx().hir().local_def_id_to_hir_id(did);
                         let span = self.tcx().hir().span(hir_id);
-                        p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
+                        p!(write(
+                            "@{}",
+                            // This may end up in stderr diagnostics but it may also be emitted
+                            // into MIR. Hence we use the remapped path if available
+                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                        ));
                     } else {
                         p!(write("@"), print_def_path(did, substs));
                     }
@@ -702,7 +707,12 @@ pub trait PrettyPrinter<'tcx>:
                             p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
                             let span = self.tcx().hir().span(hir_id);
-                            p!(write("@{}", self.tcx().sess.source_map().span_to_string(span)));
+                            p!(write(
+                                "@{}",
+                                // This may end up in stderr diagnostics but it may also be emitted
+                                // into MIR. Hence we use the remapped path if available
+                                self.tcx().sess.source_map().span_to_embeddable_string(span)
+                            ));
                         }
                     } else {
                         p!(write("@"), print_def_path(did, substs));
@@ -994,9 +1004,9 @@ pub trait PrettyPrinter<'tcx>:
                 _,
             ) => match self.tcx().get_global_alloc(ptr.alloc_id) {
                 Some(GlobalAlloc::Memory(alloc)) => {
-                    let bytes = int.assert_bits(self.tcx().data_layout.pointer_size);
-                    let size = Size::from_bytes(bytes);
-                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), ptr, size) {
+                    let len = int.assert_bits(self.tcx().data_layout.pointer_size);
+                    let range = AllocRange { start: ptr.offset, size: Size::from_bytes(len) };
+                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), range) {
                         p!(pretty_print_byte_str(byte_str))
                     } else {
                         p!("<too short allocation>")
@@ -1171,10 +1181,9 @@ pub trait PrettyPrinter<'tcx>:
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
                 let n = n.val.try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
-                let n = Size::from_bytes(n);
-                let ptr = Pointer::new(AllocId(0), offset);
+                let range = AllocRange { start: offset, size: Size::from_bytes(n) };
 
-                let byte_str = alloc.get_bytes(&self.tcx(), ptr, n).unwrap();
+                let byte_str = alloc.get_bytes(&self.tcx(), range).unwrap();
                 p!("*");
                 p!(pretty_print_byte_str(byte_str));
                 Ok(self)
@@ -1407,7 +1416,13 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
                 if !self.empty_path {
                     write!(self, "::")?;
                 }
-                write!(self, "<impl at {}>", self.tcx.sess.source_map().span_to_string(span))?;
+                write!(
+                    self,
+                    "<impl at {}>",
+                    // This may end up in stderr diagnostics but it may also be emitted
+                    // into MIR. Hence we use the remapped path if available
+                    self.tcx.sess.source_map().span_to_embeddable_string(span)
+                )?;
                 self.empty_path = false;
 
                 return Ok(self);
@@ -2286,9 +2301,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 /// `std::vec::Vec` to just `Vec`, as long as there is no other `Vec` importable anywhere.
 ///
 /// The implementation uses similar import discovery logic to that of 'use' suggestions.
-fn trimmed_def_paths(tcx: TyCtxt<'_>, crate_num: CrateNum) -> FxHashMap<DefId, Symbol> {
-    assert_eq!(crate_num, LOCAL_CRATE);
-
+fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     let mut map = FxHashMap::default();
 
     if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {

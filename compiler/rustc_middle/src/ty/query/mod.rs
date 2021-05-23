@@ -1,6 +1,5 @@
 use crate::dep_graph;
 use crate::hir::exports::Export;
-use crate::hir::map;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -10,7 +9,9 @@ use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::AccessLevels;
 use crate::middle::region;
-use crate::middle::resolve_lifetime::{ObjectLifetimeDefault, Region, ResolveLifetimes};
+use crate::middle::resolve_lifetime::{
+    LifetimeScopeForPath, ObjectLifetimeDefault, Region, ResolveLifetimes,
+};
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
@@ -233,6 +234,7 @@ macro_rules! define_callbacks {
         }
 
         pub trait QueryEngine<'tcx>: rustc_data_structures::sync::Sync {
+            #[cfg(parallel_compiler)]
             unsafe fn deadlock(&'tcx self, tcx: TyCtxt<'tcx>, registry: &rustc_rayon_core::Registry);
 
             fn encode_query_results(

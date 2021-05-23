@@ -71,7 +71,6 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// [`&str`]: str
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
-#[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "OsString")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
@@ -421,6 +420,19 @@ impl Default for OsString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for OsString {
+    #[inline]
+    fn clone(&self) -> Self {
+        OsString { inner: self.inner.clone() }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.inner.clone_from(&source.inner)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for OsString {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, formatter)
@@ -589,7 +601,7 @@ impl OsStr {
     /// // sequences simply through collecting user command line arguments, for
     /// // example.
     ///
-    /// #[cfg(any(unix, target_os = "redox"))] {
+    /// #[cfg(unix)] {
     ///     use std::ffi::OsStr;
     ///     use std::os::unix::ffi::OsStrExt;
     ///

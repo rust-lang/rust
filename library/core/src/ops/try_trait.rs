@@ -41,8 +41,7 @@ use crate::ops::ControlFlow;
 /// output type that we want:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
-/// # use std::ops::TryV2 as Try;
+/// # use std::ops::Try;
 /// fn simple_try_fold_1<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -56,9 +55,8 @@ use crate::ops::ControlFlow;
 /// into the return type using [`Try::from_output`]:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
 /// # #![feature(control_flow_enum)]
-/// # use std::ops::{ControlFlow, TryV2 as Try};
+/// # use std::ops::{ControlFlow, Try};
 /// fn simple_try_fold_2<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -81,9 +79,8 @@ use crate::ops::ControlFlow;
 /// recreated from their corresponding residual, so we'll just call it:
 /// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
 /// # #![feature(control_flow_enum)]
-/// # use std::ops::{ControlFlow, TryV2 as Try};
+/// # use std::ops::{ControlFlow, Try};
 /// pub fn simple_try_fold_3<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -103,10 +100,9 @@ use crate::ops::ControlFlow;
 /// But this "call `branch`, then `match` on it, and `return` if it was a
 /// `Break`" is exactly what happens inside the `?` operator.  So rather than
 /// do all this manually, we can just use `?` instead:
-/// ```compile_fail (enable again once ? converts to the new trait)
+/// ```
 /// # #![feature(try_trait_v2)]
-/// # #![feature(try_trait_transition)]
-/// # use std::ops::TryV2 as Try;
+/// # use std::ops::Try;
 /// fn simple_try_fold<A, T, R: Try<Output = A>>(
 ///     iter: impl Iterator<Item = T>,
 ///     mut accum: A,
@@ -119,6 +115,22 @@ use crate::ops::ControlFlow;
 /// }
 /// ```
 #[unstable(feature = "try_trait_v2", issue = "84277")]
+#[rustc_on_unimplemented(
+    on(
+        all(from_method = "from_output", from_desugaring = "TryBlock"),
+        message = "a `try` block must return `Result` or `Option` \
+                    (or another type that implements `{Try}`)",
+        label = "could not wrap the final value of the block as `{Self}` doesn't implement `Try`",
+    ),
+    on(
+        all(from_method = "branch", from_desugaring = "QuestionMark"),
+        message = "the `?` operator can only be applied to values \
+                    that implement `{Try}`",
+        label = "the `?` operator cannot be applied to type `{Self}`"
+    )
+)]
+#[doc(alias = "?")]
+#[cfg_attr(not(bootstrap), lang = "Try")]
 pub trait Try: FromResidual {
     /// The type of the value produced by `?` when *not* short-circuiting.
     #[unstable(feature = "try_trait_v2", issue = "84277")]
@@ -159,8 +171,7 @@ pub trait Try: FromResidual {
     /// ```
     /// #![feature(try_trait_v2)]
     /// #![feature(control_flow_enum)]
-    /// #![feature(try_trait_transition)]
-    /// use std::ops::TryV2 as Try;
+    /// use std::ops::Try;
     ///
     /// assert_eq!(<Result<_, String> as Try>::from_output(3), Ok(3));
     /// assert_eq!(<Option<_> as Try>::from_output(4), Some(4));
@@ -178,6 +189,7 @@ pub trait Try: FromResidual {
     /// let r = std::iter::empty().try_fold(4, |_, ()| -> Option<_> { unreachable!() });
     /// assert_eq!(r, Some(4));
     /// ```
+    #[cfg_attr(not(bootstrap), lang = "from_output")]
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn from_output(output: Self::Output) -> Self;
 
@@ -191,8 +203,7 @@ pub trait Try: FromResidual {
     /// ```
     /// #![feature(try_trait_v2)]
     /// #![feature(control_flow_enum)]
-    /// #![feature(try_trait_transition)]
-    /// use std::ops::{ControlFlow, TryV2 as Try};
+    /// use std::ops::{ControlFlow, Try};
     ///
     /// assert_eq!(Ok::<_, String>(3).branch(), ControlFlow::Continue(3));
     /// assert_eq!(Err::<String, _>(3).branch(), ControlFlow::Break(Err(3)));
@@ -206,15 +217,80 @@ pub trait Try: FromResidual {
     ///     ControlFlow::Break(ControlFlow::Break(3)),
     /// );
     /// ```
+    #[cfg_attr(not(bootstrap), lang = "branch")]
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
 
-/// Used to specify which residuals can be converted into which [`Try`] types.
+/// Used to specify which residuals can be converted into which [`crate::ops::Try`] types.
 ///
 /// Every `Try` type needs to be recreatable from its own associated
 /// `Residual` type, but can also have additional `FromResidual` implementations
 /// to support interconversion with other `Try` types.
+#[rustc_on_unimplemented(
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::result::Result<T, E>",
+            R = "std::option::Option<std::convert::Infallible>"
+        ),
+        message = "the `?` operator can only be used on `Result`s, not `Option`s, \
+            in {ItemContext} that returns `Result`",
+        label = "use `.ok_or(...)?` to provide an error compatible with `{Self}`",
+        enclosing_scope = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::result::Result<T, E>",
+        ),
+        // There's a special error message in the trait selection code for
+        // `From` in `?`, so this is not shown for result-in-result errors,
+        // and thus it can be phrased more strongly than `ControlFlow`'s.
+        message = "the `?` operator can only be used on `Result`s \
+            in {ItemContext} that returns `Result`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        enclosing_scope = "this function returns a `Result`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::option::Option<T>",
+        ),
+        // `Option`-in-`Option` always works, as there's only one possible
+        // residual, so this can also be phrased strongly.
+        message = "the `?` operator can only be used on `Option`s \
+            in {ItemContext} that returns `Option`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        enclosing_scope = "this function returns an `Option`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::ops::ControlFlow<B, C>",
+        ),
+        message = "the `?` operator can only be used on `ControlFlow<B, _>`s \
+            in {ItemContext} that returns `ControlFlow<B, _>`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        enclosing_scope = "this function returns a `ControlFlow`",
+        note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark"
+        ),
+        message = "the `?` operator can only be used in {ItemContext} \
+                    that returns `Result` or `Option` \
+                    (or another type that implements `{FromResidual}`)",
+        label = "cannot use the `?` operator in {ItemContext} that returns `{Self}`",
+        enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
+    ),
+)]
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.
@@ -238,6 +314,7 @@ pub trait FromResidual<R = <Self as Try>::Residual> {
     ///     ControlFlow::Break(5),
     /// );
     /// ```
+    #[cfg_attr(not(bootstrap), lang = "from_residual")]
     #[unstable(feature = "try_trait_v2", issue = "84277")]
     fn from_residual(residual: R) -> Self;
 }

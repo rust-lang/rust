@@ -23,8 +23,8 @@ use rustc_errors::registry::Registry;
 use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_lint_defs::FutureBreakage;
 pub use rustc_span::crate_disambiguator::CrateDisambiguator;
-use rustc_span::edition::Edition;
 use rustc_span::source_map::{FileLoader, MultiSpan, RealFileLoader, SourceMap, Span};
+use rustc_span::{edition::Edition, RealFileName};
 use rustc_span::{sym, SourceFileHashAlgorithm, Symbol};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{CodeModel, PanicStrategy, RelocModel, RelroLevel};
@@ -125,9 +125,8 @@ pub struct Session {
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
     pub local_crate_source_file: Option<PathBuf>,
-    /// The directory the compiler has been executed in plus a flag indicating
-    /// if the value stored here has been affected by path remapping.
-    pub working_dir: (PathBuf, bool),
+    /// The directory the compiler has been executed in
+    pub working_dir: RealFileName,
 
     /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
@@ -213,15 +212,6 @@ pub struct Session {
     /// warn about unleashing, but with a single diagnostic instead of dozens that
     /// drown everything else in noise.
     miri_unleashed_features: Lock<Vec<(Span, Option<Symbol>)>>,
-
-    /// Base directory containing the `src/` for the Rust standard library, and
-    /// potentially `rustc` as well, if we can can find it. Right now it's always
-    /// `$sysroot/lib/rustlib/src/rust` (i.e. the `rustup` `rust-src` component).
-    ///
-    /// This directory is what the virtual `/rustc/$hash` is translated back to,
-    /// if Rust was built with path remapping to `/rustc/$hash` enabled
-    /// (the `rust.remap-debuginfo` option in `config.toml`).
-    pub real_rust_source_base_dir: Option<PathBuf>,
 
     /// Architecture to use for interpreting asm!.
     pub asm_arch: Option<InlineAsmArch>,
@@ -430,7 +420,7 @@ impl Session {
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_fatal(sp, msg).raise()
+        self.diagnostic().span_fatal(sp, msg)
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
@@ -438,7 +428,7 @@ impl Session {
         msg: &str,
         code: DiagnosticId,
     ) -> ! {
-        self.diagnostic().span_fatal_with_code(sp, msg, code).raise()
+        self.diagnostic().span_fatal_with_code(sp, msg, code)
     }
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().fatal(msg).raise()
@@ -500,12 +490,6 @@ impl Session {
     }
     pub fn warn(&self, msg: &str) {
         self.diagnostic().warn(msg)
-    }
-    pub fn opt_span_warn<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) {
-        match opt_sp {
-            Some(sp) => self.span_warn(sp, msg),
-            None => self.warn(msg),
-        }
     }
     /// Delay a span_bug() call until abort_if_errors()
     #[track_caller]
@@ -1291,9 +1275,14 @@ pub fn build_session(
         DiagnosticOutput::Raw(write) => Some(write),
     };
 
-    let target_cfg = config::build_target_config(&sopts, target_override);
+    let sysroot = match &sopts.maybe_sysroot {
+        Some(sysroot) => sysroot.clone(),
+        None => filesearch::get_or_default_sysroot(),
+    };
+
+    let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
-    let host = Target::search(&host_triple).unwrap_or_else(|e| {
+    let host = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
         early_error(sopts.error_format, &format!("Error loading host specification: {}", e))
     });
 
@@ -1340,10 +1329,6 @@ pub fn build_session(
 
     let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
     parse_sess.assume_incomplete_release = sopts.debugging_opts.assume_incomplete_release;
-    let sysroot = match &sopts.maybe_sysroot {
-        Some(sysroot) => sysroot.clone(),
-        None => filesearch::get_or_default_sysroot(),
-    };
 
     let host_triple = config::host_triple();
     let target_triple = sopts.target_triple.triple();
@@ -1370,7 +1355,12 @@ pub fn build_session(
     let working_dir = env::current_dir().unwrap_or_else(|e| {
         parse_sess.span_diagnostic.fatal(&format!("Current directory is invalid: {}", e)).raise()
     });
-    let working_dir = file_path_mapping.map_prefix(working_dir);
+    let (path, remapped) = file_path_mapping.map_prefix(working_dir.clone());
+    let working_dir = if remapped {
+        RealFileName::Remapped { local_path: Some(working_dir), virtual_name: path }
+    } else {
+        RealFileName::LocalPath(path)
+    };
 
     let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
         CguReuseTracker::new()
@@ -1389,26 +1379,6 @@ pub fn build_session(
         Ok(ref val) if val != "0" => CtfeBacktrace::Capture,
         _ => CtfeBacktrace::Disabled,
     });
-
-    // Try to find a directory containing the Rust `src`, for more details see
-    // the doc comment on the `real_rust_source_base_dir` field.
-    let real_rust_source_base_dir = {
-        // This is the location used by the `rust-src` `rustup` component.
-        let mut candidate = sysroot.join("lib/rustlib/src/rust");
-        if let Ok(metadata) = candidate.symlink_metadata() {
-            // Replace the symlink rustbuild creates, with its destination.
-            // We could try to use `fs::canonicalize` instead, but that might
-            // produce unnecessarily verbose path.
-            if metadata.file_type().is_symlink() {
-                if let Ok(symlink_dest) = std::fs::read_link(&candidate) {
-                    candidate = symlink_dest;
-                }
-            }
-        }
-
-        // Only use this directory if it has a file we can expect to always find.
-        if candidate.join("library/std/src/lib.rs").is_file() { Some(candidate) } else { None }
-    };
 
     let asm_arch =
         if target_cfg.allow_asm { InlineAsmArch::from_str(&target_cfg.arch).ok() } else { None };
@@ -1453,7 +1423,6 @@ pub fn build_session(
         system_library_path: OneThread::new(RefCell::new(Default::default())),
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),
-        real_rust_source_base_dir,
         asm_arch,
         target_features: FxHashSet::default(),
         known_attrs: Lock::new(MarkedAttrs::new()),
@@ -1563,7 +1532,7 @@ pub enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
+pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1575,6 +1544,10 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_fatal(msg).emit();
+}
+
+pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
+    early_error_no_abort(output, msg);
     rustc_errors::FatalError.raise();
 }
 

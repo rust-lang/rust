@@ -381,7 +381,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_place(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_place_builder(block, expr));
         block.and(place_builder.into_place(self.tcx, self.typeck_results))
@@ -392,7 +392,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_place_builder(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         self.expr_as_place(block, expr, Mutability::Mut, None)
     }
@@ -405,7 +405,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn as_read_only_place(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
     ) -> BlockAnd<Place<'tcx>> {
         let place_builder = unpack!(block = self.as_read_only_place_builder(block, expr));
         block.and(place_builder.into_place(self.tcx, self.typeck_results))
@@ -420,7 +420,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn as_read_only_place_builder(
         &mut self,
         block: BasicBlock,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
         self.expr_as_place(block, expr, Mutability::Not, None)
     }
@@ -428,7 +428,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn expr_as_place(
         &mut self,
         mut block: BasicBlock,
-        expr: &Expr<'_, 'tcx>,
+        expr: &Expr<'tcx>,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
@@ -440,23 +440,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match expr.kind {
             ExprKind::Scope { region_scope, lint_level, value } => {
                 this.in_scope((region_scope, source_info), lint_level, |this| {
-                    this.expr_as_place(block, value, mutability, fake_borrow_temps)
+                    this.expr_as_place(block, &this.thir[value], mutability, fake_borrow_temps)
                 })
             }
             ExprKind::Field { lhs, name } => {
-                let place_builder =
-                    unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
+                let place_builder = unpack!(
+                    block =
+                        this.expr_as_place(block, &this.thir[lhs], mutability, fake_borrow_temps,)
+                );
                 block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {
-                let place_builder =
-                    unpack!(block = this.expr_as_place(block, arg, mutability, fake_borrow_temps,));
+                let place_builder = unpack!(
+                    block =
+                        this.expr_as_place(block, &this.thir[arg], mutability, fake_borrow_temps,)
+                );
                 block.and(place_builder.deref())
             }
             ExprKind::Index { lhs, index } => this.lower_index_expression(
                 block,
-                lhs,
-                index,
+                &this.thir[lhs],
+                &this.thir[index],
                 mutability,
                 fake_borrow_temps,
                 expr.temp_lifetime,
@@ -481,7 +485,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place_builder = unpack!(
-                    block = this.expr_as_place(block, source, mutability, fake_borrow_temps,)
+                    block = this.expr_as_place(
+                        block,
+                        &this.thir[source],
+                        mutability,
+                        fake_borrow_temps,
+                    )
                 );
                 if let Some(user_ty) = user_ty {
                     let annotation_index =
@@ -509,6 +518,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(place_builder)
             }
             ExprKind::ValueTypeAscription { source, user_ty } => {
+                let source = &this.thir[source];
                 let temp =
                     unpack!(block = this.as_temp(block, source.temp_lifetime, source, mutability));
                 if let Some(user_ty) = user_ty {
@@ -613,8 +623,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn lower_index_expression(
         &mut self,
         mut block: BasicBlock,
-        base: &Expr<'_, 'tcx>,
-        index: &Expr<'_, 'tcx>,
+        base: &Expr<'tcx>,
+        index: &Expr<'tcx>,
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
         temp_lifetime: Option<region::Scope>,

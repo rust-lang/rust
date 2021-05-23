@@ -7,7 +7,6 @@ use rustc_middle::mir::CastKind;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
-use rustc_span::symbol::sym;
 use rustc_target::abi::{Integer, LayoutOf, Variants};
 
 use super::{
@@ -48,13 +47,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     ty::FnDef(def_id, substs) => {
                         // All reifications must be monomorphic, bail out otherwise.
                         ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
-
-                        if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
-                            span_bug!(
-                                self.cur_span(),
-                                "reifying a fn ptr that requires const arguments"
-                            );
-                        }
 
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,

@@ -273,6 +273,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, memory, thread"),
         experimental!(no_sanitize)
     ),
+    gated!(no_coverage, AssumedUsed, template!(Word), experimental!(no_coverage)),
 
     // FIXME: #14408 assume docs are used since rustdoc looks at them.
     ungated!(doc, AssumedUsed, template!(List: "hidden|inline|...", NameValueStr: "string")),
@@ -468,7 +469,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     rustc_attr!(rustc_promotable, AssumedUsed, template!(Word), IMPL_DETAIL),
-    rustc_attr!(rustc_args_required_const, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
     rustc_attr!(rustc_legacy_const_generics, AssumedUsed, template!(List: "N"), INTERNAL_UNSTABLE),
 
     // ==========================================================================
@@ -556,6 +556,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(TEST, rustc_outlives, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_capture_analysis, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word)),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ...")),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word)),
@@ -564,6 +565,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: "delay_span_bug_from_inside_query")
     ),
     rustc_attr!(TEST, rustc_dump_user_substs, AssumedUsed, template!(Word)),
+    rustc_attr!(TEST, rustc_evaluate_where_clauses, AssumedUsed, template!(Word)),
     rustc_attr!(TEST, rustc_if_this_changed, AssumedUsed, template!(Word, List: "DepNode")),
     rustc_attr!(TEST, rustc_then_this_would_need, AssumedUsed, template!(List: "DepNode")),
     rustc_attr!(

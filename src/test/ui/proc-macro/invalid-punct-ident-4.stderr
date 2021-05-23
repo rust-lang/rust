@@ -4,7 +4,7 @@ error: unexpected closing delimiter: `)`
 LL | lexer_failure!();
    | ^^^^^^^^^^^^^^^^^ unexpected closing delimiter
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `lexer_failure` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: proc macro panicked
   --> $DIR/invalid-punct-ident-4.rs:6:1

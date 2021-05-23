@@ -85,7 +85,9 @@ fn main() {
     let cargo = &Path::new(cargo);
 
     for test in TEST_REPOS.iter().rev() {
-        test_repo(cargo, out_dir, test);
+        if args[3..].is_empty() || args[3..].iter().any(|s| s.contains(test.name)) {
+            test_repo(cargo, out_dir, test);
+        }
     }
 }
 

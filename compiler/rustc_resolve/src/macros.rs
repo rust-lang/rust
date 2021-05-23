@@ -20,7 +20,7 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{AstFragment, Invocation, InvocationKind, SupportsMacroExpansion};
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
-use rustc_hir::def_id;
+use rustc_hir::def_id::{self, CrateNum};
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
 use rustc_middle::ty;
@@ -325,7 +325,11 @@ impl<'a> ResolverExpand for Resolver<'a> {
                         let expn_data = expn_id.expn_data();
                         match expn_data.kind {
                             ExpnKind::Root
-                            | ExpnKind::Macro(MacroKind::Bang | MacroKind::Derive, _) => {
+                            | ExpnKind::Macro {
+                                name: _,
+                                kind: MacroKind::Bang | MacroKind::Derive,
+                                proc_macro: _,
+                            } => {
                                 break;
                             }
                             _ => expn_id = expn_data.parent,
@@ -461,6 +465,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
             .span_note(span, "`cfg_accessible` is not fully implemented")
             .emit();
         Ok(false)
+    }
+
+    fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
+        self.crate_loader.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.session)
     }
 }
 

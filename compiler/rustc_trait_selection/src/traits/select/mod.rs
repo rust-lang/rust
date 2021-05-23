@@ -636,8 +636,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if let Some(result) = stack.cache().get_provisional(fresh_trait_ref) {
             debug!(?result, "PROVISIONAL CACHE HIT");
-            stack.update_reached_depth(stack.cache().current_reached_depth());
-            return Ok(result);
+            stack.update_reached_depth(result.reached_depth);
+            return Ok(result.result);
         }
 
         // Check if this is a match for something already on the
@@ -661,7 +661,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             debug!(?result, "CACHE MISS");
             self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
 
-            stack.cache().on_completion(stack.depth, |fresh_trait_ref, provisional_result| {
+            stack.cache().on_completion(stack.dfn, |fresh_trait_ref, provisional_result| {
                 self.insert_evaluation_cache(
                     obligation.param_env,
                     fresh_trait_ref,
@@ -1044,8 +1044,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     /// Returns `true` if the global caches can be used.
-    /// Do note that if the type itself is not in the
-    /// global tcx, the local caches will be used.
     fn can_use_global_caches(&self, param_env: ty::ParamEnv<'tcx>) -> bool {
         // If there are any inference variables in the `ParamEnv`, then we
         // always use a cache local to this particular scope. Otherwise, we
@@ -1361,7 +1359,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
-                if other.value == victim.value && victim.constness == Constness::NotConst {
+                let value_same_except_bound_vars = other.value.skip_binder()
+                    == victim.value.skip_binder()
+                    && !other.value.skip_binder().has_escaping_bound_vars();
+                if value_same_except_bound_vars {
+                    // See issue #84398. In short, we can generate multiple ParamCandidates which are
+                    // the same except for unused bound vars. Just pick the one with the fewest bound vars
+                    // or the current one if tied (they should both evaluate to the same answer). This is
+                    // probably best characterized as a "hack", since we might prefer to just do our
+                    // best to *not* create essentially duplicate candidates in the first place.
+                    other.value.bound_vars().len() <= victim.value.bound_vars().len()
+                } else if other.value == victim.value && victim.constness == Constness::NotConst {
                     // Drop otherwise equivalent non-const candidates in favor of const candidates.
                     true
                 } else {
@@ -2154,7 +2162,7 @@ impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
     /// required accessing something from the stack at depth `reached_depth`.
     fn update_reached_depth(&self, reached_depth: usize) {
         assert!(
-            self.depth > reached_depth,
+            self.depth >= reached_depth,
             "invoked `update_reached_depth` with something under this stack: \
              self.depth={} reached_depth={}",
             self.depth,
@@ -2227,23 +2235,6 @@ struct ProvisionalEvaluationCache<'tcx> {
     /// next "depth first number" to issue -- just a counter
     dfn: Cell<usize>,
 
-    /// Stores the "coldest" depth (bottom of stack) reached by any of
-    /// the evaluation entries. The idea here is that all things in the provisional
-    /// cache are always dependent on *something* that is colder in the stack:
-    /// therefore, if we add a new entry that is dependent on something *colder still*,
-    /// we have to modify the depth for all entries at once.
-    ///
-    /// Example:
-    ///
-    /// Imagine we have a stack `A B C D E` (with `E` being the top of
-    /// the stack).  We cache something with depth 2, which means that
-    /// it was dependent on C.  Then we pop E but go on and process a
-    /// new node F: A B C D F.  Now F adds something to the cache with
-    /// depth 1, meaning it is dependent on B.  Our original cache
-    /// entry is also dependent on B, because there is a path from E
-    /// to C and then from C to F and from F to B.
-    reached_depth: Cell<usize>,
-
     /// Map from cache key to the provisionally evaluated thing.
     /// The cache entries contain the result but also the DFN in which they
     /// were added. The DFN is used to clear out values on failure.
@@ -2267,12 +2258,13 @@ struct ProvisionalEvaluationCache<'tcx> {
 #[derive(Copy, Clone, Debug)]
 struct ProvisionalEvaluation {
     from_dfn: usize,
+    reached_depth: usize,
     result: EvaluationResult,
 }
 
 impl<'tcx> Default for ProvisionalEvaluationCache<'tcx> {
     fn default() -> Self {
-        Self { dfn: Cell::new(0), reached_depth: Cell::new(usize::MAX), map: Default::default() }
+        Self { dfn: Cell::new(0), map: Default::default() }
     }
 }
 
@@ -2287,22 +2279,17 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// Check the provisional cache for any result for
     /// `fresh_trait_ref`. If there is a hit, then you must consider
     /// it an access to the stack slots at depth
-    /// `self.current_reached_depth()` and above.
-    fn get_provisional(&self, fresh_trait_ref: ty::PolyTraitRef<'tcx>) -> Option<EvaluationResult> {
+    /// `reached_depth` (from the returned value).
+    fn get_provisional(
+        &self,
+        fresh_trait_ref: ty::PolyTraitRef<'tcx>,
+    ) -> Option<ProvisionalEvaluation> {
         debug!(
             ?fresh_trait_ref,
-            reached_depth = ?self.reached_depth.get(),
             "get_provisional = {:#?}",
             self.map.borrow().get(&fresh_trait_ref),
         );
-        Some(self.map.borrow().get(&fresh_trait_ref)?.result)
-    }
-
-    /// Current value of the `reached_depth` counter -- all the
-    /// provisional cache entries are dependent on the item at this
-    /// depth.
-    fn current_reached_depth(&self) -> usize {
-        self.reached_depth.get()
+        Some(self.map.borrow().get(&fresh_trait_ref)?.clone())
     }
 
     /// Insert a provisional result into the cache. The result came
@@ -2316,13 +2303,31 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
         fresh_trait_ref: ty::PolyTraitRef<'tcx>,
         result: EvaluationResult,
     ) {
-        debug!(?from_dfn, ?reached_depth, ?fresh_trait_ref, ?result, "insert_provisional");
-        let r_d = self.reached_depth.get();
-        self.reached_depth.set(r_d.min(reached_depth));
+        debug!(?from_dfn, ?fresh_trait_ref, ?result, "insert_provisional");
 
-        debug!(reached_depth = self.reached_depth.get());
+        let mut map = self.map.borrow_mut();
 
-        self.map.borrow_mut().insert(fresh_trait_ref, ProvisionalEvaluation { from_dfn, result });
+        // Subtle: when we complete working on the DFN `from_dfn`, anything
+        // that remains in the provisional cache must be dependent on some older
+        // stack entry than `from_dfn`. We have to update their depth with our transitive
+        // depth in that case or else it would be referring to some popped note.
+        //
+        // Example:
+        // A (reached depth 0)
+        //   ...
+        //      B // depth 1 -- reached depth = 0
+        //          C // depth 2 -- reached depth = 1 (should be 0)
+        //              B
+        //          A // depth 0
+        //   D (reached depth 1)
+        //      C (cache -- reached depth = 2)
+        for (_k, v) in &mut *map {
+            if v.from_dfn >= from_dfn {
+                v.reached_depth = reached_depth.min(v.reached_depth);
+            }
+        }
+
+        map.insert(fresh_trait_ref, ProvisionalEvaluation { from_dfn, reached_depth, result });
     }
 
     /// Invoked when the node with dfn `dfn` does not get a successful
@@ -2350,25 +2355,40 @@ impl<'tcx> ProvisionalEvaluationCache<'tcx> {
     /// was a failure, then `on_failure` should have been invoked
     /// already). The callback `op` will be invoked for each
     /// provisional entry that we can now confirm.
+    ///
+    /// Note that we may still have provisional cache items remaining
+    /// in the cache when this is done. For example, if there is a
+    /// cycle:
+    ///
+    /// * A depends on...
+    ///     * B depends on A
+    ///     * C depends on...
+    ///         * D depends on C
+    ///     * ...
+    ///
+    /// Then as we complete the C node we will have a provisional cache
+    /// with results for A, B, C, and D. This method would clear out
+    /// the C and D results, but leave A and B provisional.
+    ///
+    /// This is determined based on the DFN: we remove any provisional
+    /// results created since `dfn` started (e.g., in our example, dfn
+    /// would be 2, representing the C node, and hence we would
+    /// remove the result for D, which has DFN 3, but not the results for
+    /// A and B, which have DFNs 0 and 1 respectively).
     fn on_completion(
         &self,
-        depth: usize,
+        dfn: usize,
         mut op: impl FnMut(ty::PolyTraitRef<'tcx>, EvaluationResult),
     ) {
-        debug!(?depth, reached_depth = ?self.reached_depth.get(), "on_completion");
+        debug!(?dfn, "on_completion");
 
-        if self.reached_depth.get() < depth {
-            debug!("on_completion: did not yet reach depth to complete");
-            return;
-        }
-
-        for (fresh_trait_ref, eval) in self.map.borrow_mut().drain() {
+        for (fresh_trait_ref, eval) in
+            self.map.borrow_mut().drain_filter(|_k, eval| eval.from_dfn >= dfn)
+        {
             debug!(?fresh_trait_ref, ?eval, "on_completion");
 
             op(fresh_trait_ref, eval.result);
         }
-
-        self.reached_depth.set(usize::MAX);
     }
 }
 

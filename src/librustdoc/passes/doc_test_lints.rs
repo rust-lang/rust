@@ -53,7 +53,7 @@ impl crate::doctest::Tester for Tests {
 }
 
 crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.cache.access_levels.is_public(item.def_id)
+    if !cx.cache.access_levels.is_public(item.def_id.expect_real())
         || matches!(
             *item.kind,
             clean::StructFieldItem(_)
@@ -71,7 +71,9 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
     {
         return false;
     }
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_local());
+    // The `expect_real()` should be okay because `local_def_id_to_hir_id`
+    // would presumably panic if a fake `DefIndex` were passed.
+    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_real().expect_local());
     if cx.tcx.hir().attrs(hir_id).lists(sym::doc).has_word(sym::hidden)
         || inherits_doc_hidden(cx.tcx, hir_id)
     {
@@ -105,7 +107,8 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
                 |lint| lint.build("missing code example in this documentation").emit(),
             );
         }
-    } else if tests.found_tests > 0 && !cx.cache.access_levels.is_public(item.def_id) {
+    } else if tests.found_tests > 0 && !cx.cache.access_levels.is_public(item.def_id.expect_real())
+    {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,

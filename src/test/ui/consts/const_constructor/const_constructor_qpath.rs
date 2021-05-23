@@ -1,7 +1,4 @@
-// revisions: min_const_fn const_fn
 // run-pass
-
-#![cfg_attr(const_fn, feature(const_fn))]
 
 trait ConstDefault {
     const DEFAULT: Self;

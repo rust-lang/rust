@@ -347,7 +347,7 @@ impl ExprVisitor<'tcx> {
     }
 
     fn check_asm(&self, asm: &hir::InlineAsm<'tcx>) {
-        for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {
+        for (idx, (op, _)) in asm.operands.iter().enumerate() {
             match *op {
                 hir::InlineAsmOperand::In { reg, ref expr } => {
                     self.check_asm_operand_type(idx, reg, expr, asm.template, None);
@@ -372,19 +372,7 @@ impl ExprVisitor<'tcx> {
                         );
                     }
                 }
-                hir::InlineAsmOperand::Const { ref anon_const } => {
-                    let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-                    let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
-                    match value.ty.kind() {
-                        ty::Int(_) | ty::Uint(_) | ty::Float(_) => {}
-                        _ => {
-                            let msg =
-                                "asm `const` arguments must be integer or floating-point values";
-                            self.tcx.sess.span_err(*op_sp, msg);
-                        }
-                    }
-                }
-                hir::InlineAsmOperand::Sym { .. } => {}
+                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::Sym { .. } => {}
             }
         }
     }

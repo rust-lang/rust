@@ -12,12 +12,14 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
 use rustdoc_json_types as types;
 
 use crate::clean;
+use crate::clean::ExternalCrate;
 use crate::config::RenderOptions;
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -41,7 +43,7 @@ impl JsonRenderer<'tcx> {
         self.tcx.sess
     }
 
-    fn get_trait_implementors(&mut self, id: rustc_span::def_id::DefId) -> Vec<types::Id> {
+    fn get_trait_implementors(&mut self, id: DefId) -> Vec<types::Id> {
         Rc::clone(&self.cache)
             .implementors
             .get(&id)
@@ -58,7 +60,7 @@ impl JsonRenderer<'tcx> {
             .unwrap_or_default()
     }
 
-    fn get_impls(&mut self, id: rustc_span::def_id::DefId) -> Vec<types::Id> {
+    fn get_impls(&mut self, id: DefId) -> Vec<types::Id> {
         Rc::clone(&self.cache)
             .impls
             .get(&id)
@@ -89,9 +91,9 @@ impl JsonRenderer<'tcx> {
                     let trait_item = &trait_item.trait_;
                     trait_item.items.clone().into_iter().for_each(|i| self.item(i).unwrap());
                     Some((
-                        from_def_id(id),
+                        from_def_id(id.into()),
                         types::Item {
-                            id: from_def_id(id),
+                            id: from_def_id(id.into()),
                             crate_id: id.krate.as_u32(),
                             name: self
                                 .cache
@@ -162,11 +164,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let id = item.def_id;
         if let Some(mut new_item) = self.convert_item(item) {
             if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
-                t.implementors = self.get_trait_implementors(id)
+                t.implementors = self.get_trait_implementors(id.expect_real())
             } else if let types::ItemEnum::Struct(ref mut s) = new_item.inner {
-                s.impls = self.get_impls(id)
+                s.impls = self.get_impls(id.expect_real())
             } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {
-                e.impls = self.get_impls(id)
+                e.impls = self.get_impls(id.expect_real())
             }
             let removed = self.index.borrow_mut().insert(from_def_id(id), new_item.clone());
 
@@ -205,7 +207,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .chain(self.cache.external_paths.clone().into_iter())
                 .map(|(k, (path, kind))| {
                     (
-                        from_def_id(k),
+                        from_def_id(k.into()),
                         types::ItemSummary {
                             crate_id: k.krate.as_u32(),
                             path,
@@ -218,12 +220,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .cache
                 .extern_locations
                 .iter()
-                .map(|(k, v)| {
+                .map(|(crate_num, external_location)| {
+                    let e = ExternalCrate { crate_num: *crate_num };
                     (
-                        k.as_u32(),
+                        crate_num.as_u32(),
                         types::ExternalCrate {
-                            name: v.0.to_string(),
-                            html_root_url: match &v.2 {
+                            name: e.name(self.tcx).to_string(),
+                            html_root_url: match external_location {
                                 ExternalLocation::Remote(s) => Some(s.clone()),
                                 _ => None,
                             },

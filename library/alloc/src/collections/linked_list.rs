@@ -442,27 +442,6 @@ impl<T> LinkedList<T> {
         }
     }
 
-    /// Moves all elements from `other` to the begin of the list.
-    #[unstable(feature = "linked_list_prepend", issue = "none")]
-    pub fn prepend(&mut self, other: &mut Self) {
-        match self.head {
-            None => mem::swap(self, other),
-            Some(mut head) => {
-                // `as_mut` is okay here because we have exclusive access to the entirety
-                // of both lists.
-                if let Some(mut other_tail) = other.tail.take() {
-                    unsafe {
-                        head.as_mut().prev = Some(other_tail);
-                        other_tail.as_mut().next = Some(head);
-                    }
-
-                    self.head = other.head.take();
-                    self.len += mem::replace(&mut other.len, 0);
-                }
-            }
-        }
-    }
-
     /// Provides a forward iterator.
     ///
     /// # Examples

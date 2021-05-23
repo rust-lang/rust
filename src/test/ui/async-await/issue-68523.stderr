@@ -1,18 +1,9 @@
-error[E0277]: `main` has invalid return type `impl Future`
-  --> $DIR/issue-68523.rs:3:20
-   |
-LL | async fn main() -> Result<i32, ()> {
-   |                    ^^^^^^^^^^^^^^^ `main` can only return types that implement `Termination`
-   |
-   = help: consider using `()`, or a `Result`
-
 error[E0752]: `main` function is not allowed to be `async`
   --> $DIR/issue-68523.rs:3:1
    |
 LL | async fn main() -> Result<i32, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `main` function is not allowed to be `async`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0277, E0752.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0752`.

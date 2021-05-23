@@ -14,9 +14,9 @@ fn non_async_func() {
     }
 }
 
-// FIXME(#83985): The auto-generated closure in an async function is failing to include
-// the println!() and `let` assignment lines in the coverage code region(s), as it does in the
-// non-async function above, unless the `println!()` is inside a covered block.
+
+
+
 async fn async_func() {
     println!("async_func was covered");
     let b = true;
@@ -25,9 +25,9 @@ async fn async_func() {
     }
 }
 
-// FIXME(#83985): As above, this async function only has the `println!()` macro call, which is not
-// showing coverage, so the entire async closure _appears_ uncovered; but this is not exactly true.
-// It's only certain kinds of lines and/or their context that results in missing coverage.
+
+
+
 async fn async_func_just_println() {
     println!("async_func_just_println was covered");
 }

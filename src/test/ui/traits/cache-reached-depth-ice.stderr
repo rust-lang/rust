@@ -1,0 +1,11 @@
+error: evaluate(Binder(TraitPredicate(<A as std::marker::Send>), [])) = Ok(EvaluatedToOk)
+  --> $DIR/cache-reached-depth-ice.rs:43:5
+   |
+LL | fn test<X: ?Sized + Send>() {}
+   |                     ---- predicate
+...
+LL |     test::<A>();
+   |     ^^^^^^^^^
+
+error: aborting due to previous error
+

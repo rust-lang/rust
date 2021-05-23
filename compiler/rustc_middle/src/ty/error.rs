@@ -159,10 +159,23 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 )
             }),
             IntMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
+                let expected = match values.expected {
+                    ty::IntVarValue::IntType(ty) => ty.name_str(),
+                    ty::IntVarValue::UintType(ty) => ty.name_str(),
+                };
+                let found = match values.found {
+                    ty::IntVarValue::IntType(ty) => ty.name_str(),
+                    ty::IntVarValue::UintType(ty) => ty.name_str(),
+                };
+                write!(f, "expected `{}`, found `{}`", expected, found)
             }
             FloatMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
+                write!(
+                    f,
+                    "expected `{}`, found `{}`",
+                    values.expected.name_str(),
+                    values.found.name_str()
+                )
             }
             VariadicMismatch(ref values) => write!(
                 f,

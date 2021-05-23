@@ -1230,7 +1230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // struct-like enums (yet...), but it's definitely not
                 // a bug to have constructed one.
                 if adt_kind != AdtKind::Enum {
-                    tcx.check_stability(v_field.did, Some(expr_id), field.span);
+                    tcx.check_stability(v_field.did, Some(expr_id), field.span, None);
                 }
 
                 self.field_ty(field.span, v_field, substs)
@@ -1571,7 +1571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.apply_adjustments(base, adjustments);
                             self.register_predicates(autoderef.into_obligations());
 
-                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span);
+                            self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
                             return field_ty;
                         }
                         private_candidate = Some((base_def.did, field_ty));

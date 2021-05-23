@@ -62,7 +62,7 @@ LL | #[message = "This is missing a closing brace: {name"]
    | ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
   --> $DIR/session-derive-errors.rs:119:1
@@ -71,7 +71,7 @@ LL | #[message = "This is missing an opening brace: name}"]
    | ^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
-   = note: this error originates in a derive macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: The `#[label = ...]` attribute can only be applied to fields of type Span
   --> $DIR/session-derive-errors.rs:138:5

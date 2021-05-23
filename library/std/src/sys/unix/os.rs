@@ -13,13 +13,13 @@ use crate::fmt;
 use crate::io;
 use crate::iter;
 use crate::mem;
-use crate::memchr;
 use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sys::cvt;
 use crate::sys::fd;
+use crate::sys::memchr;
 use crate::sys::rwlock::{RWLockReadGuard, StaticRWLock};
 use crate::sys_common::mutex::{StaticMutex, StaticMutexGuard};
 use crate::vec;
@@ -155,12 +155,10 @@ pub fn getcwd() -> io::Result<PathBuf> {
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let p: &OsStr = p.as_ref();
     let p = CString::new(p.as_bytes())?;
-    unsafe {
-        match libc::chdir(p.as_ptr()) == (0 as c_int) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
-        }
+    if unsafe { libc::chdir(p.as_ptr()) } != 0 {
+        return Err(io::Error::last_os_error());
     }
+    Ok(())
 }
 
 pub struct SplitPaths<'a> {

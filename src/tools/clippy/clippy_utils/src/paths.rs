@@ -5,6 +5,17 @@
 //! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
 pub const ANY_TRAIT: [&str; 3] = ["core", "any", "Any"];
+#[cfg(feature = "metadata-collector-lint")]
+pub const APPLICABILITY: [&str; 2] = ["rustc_lint_defs", "Applicability"];
+#[cfg(feature = "metadata-collector-lint")]
+pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
+    ["rustc_lint_defs", "Applicability", "Unspecified"],
+    ["rustc_lint_defs", "Applicability", "HasPlaceholders"],
+    ["rustc_lint_defs", "Applicability", "MaybeIncorrect"],
+    ["rustc_lint_defs", "Applicability", "MachineApplicable"],
+];
+#[cfg(feature = "metadata-collector-lint")]
+pub const DIAGNOSTIC_BUILDER: [&str; 3] = ["rustc_errors", "diagnostic_builder", "DiagnosticBuilder"];
 pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 pub const ASMUT_TRAIT: [&str; 3] = ["core", "convert", "AsMut"];
 pub const ASREF_TRAIT: [&str; 3] = ["core", "convert", "AsRef"];
@@ -72,7 +83,7 @@ pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
 #[cfg(feature = "internal-lints")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LINKED_LIST: [&str; 4] = ["alloc", "collections", "linked_list", "LinkedList"];
-#[cfg(feature = "internal-lints")]
+#[cfg(any(feature = "internal-lints", feature = "metadata-collector-lint"))]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MEM_DISCRIMINANT: [&str; 3] = ["core", "mem", "discriminant"];
 pub const MEM_FORGET: [&str; 3] = ["core", "mem", "forget"];
@@ -101,7 +112,7 @@ pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 2] = ["parking_lot", "RwLockWri
 pub const PATH_BUF_AS_PATH: [&str; 4] = ["std", "path", "PathBuf", "as_path"];
 pub const PATH_TO_PATH_BUF: [&str; 4] = ["std", "path", "Path", "to_path_buf"];
 pub const PERMISSIONS: [&str; 3] = ["std", "fs", "Permissions"];
-pub const PERMISSIONS_FROM_MODE: [&str; 7] = ["std", "sys", "unix", "ext", "fs", "PermissionsExt", "from_mode"];
+pub const PERMISSIONS_FROM_MODE: [&str; 7] = ["std", "os", "imp", "unix", "fs", "PermissionsExt", "from_mode"];
 pub const POLL: [&str; 4] = ["core", "task", "poll", "Poll"];
 pub const POLL_PENDING: [&str; 5] = ["core", "task", "poll", "Poll", "Pending"];
 pub const POLL_READY: [&str; 5] = ["core", "task", "poll", "Poll", "Ready"];

@@ -46,7 +46,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, CRATE_DEF_ID};
@@ -58,10 +58,11 @@ use rustc_session::lint::builtin::{BARE_TRAIT_OBJECTS, MISSING_ABI};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::spec::abi::Abi;
 
 use smallvec::{smallvec, SmallVec};
@@ -76,6 +77,7 @@ macro_rules! arena_vec {
     });
 }
 
+mod asm;
 mod expr;
 mod item;
 mod pat;
@@ -165,7 +167,7 @@ struct LoweringContext<'a, 'hir: 'a> {
 
     type_def_lifetime_params: DefIdMap<usize>,
 
-    current_hir_id_owner: Vec<(LocalDefId, u32)>,
+    current_hir_id_owner: (LocalDefId, u32),
     item_local_id_counters: NodeMap<u32>,
     node_id_to_hir_id: IndexVec<NodeId, Option<hir::HirId>>,
 
@@ -321,7 +323,7 @@ pub fn lower_crate<'a, 'hir>(
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         type_def_lifetime_params: Default::default(),
         current_module: CRATE_DEF_ID,
-        current_hir_id_owner: vec![(CRATE_DEF_ID, 0)],
+        current_hir_id_owner: (CRATE_DEF_ID, 0),
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         generator_kind: None,
@@ -330,7 +332,7 @@ pub fn lower_crate<'a, 'hir>(
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
         in_scope_lifetimes: Vec::new(),
-        allow_try_trait: Some([sym::try_trait][..].into()),
+        allow_try_trait: Some([sym::control_flow_enum, sym::try_trait_v2][..].into()),
         allow_gen_future: Some([sym::gen_future][..].into()),
     }
     .lower_crate(krate)
@@ -594,9 +596,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .insert(owner, HIR_ID_COUNTER_LOCKED)
             .unwrap_or_else(|| panic!("no `item_local_id_counters` entry for {:?}", owner));
         let def_id = self.resolver.local_def_id(owner);
-        self.current_hir_id_owner.push((def_id, counter));
+        let old_owner = std::mem::replace(&mut self.current_hir_id_owner, (def_id, counter));
         let ret = f(self);
-        let (new_def_id, new_counter) = self.current_hir_id_owner.pop().unwrap();
+        let (new_def_id, new_counter) =
+            std::mem::replace(&mut self.current_hir_id_owner, old_owner);
 
         debug_assert!(def_id == new_def_id);
         debug_assert!(new_counter >= counter);
@@ -614,8 +617,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
         self.lower_node_id_generic(ast_node_id, |this| {
-            let &mut (owner, ref mut local_id_counter) =
-                this.current_hir_id_owner.last_mut().unwrap();
+            let &mut (owner, ref mut local_id_counter) = &mut this.current_hir_id_owner;
             let local_id = *local_id_counter;
             *local_id_counter += 1;
             hir::HirId { owner, local_id: hir::ItemLocalId::from_u32(local_id) }
@@ -868,10 +870,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // wouldn't have been added yet.
                     let generics = this.lower_generics_mut(
                         generics,
-                        ImplTraitContext::Universal(
-                            &mut params,
-                            this.current_hir_id_owner.last().unwrap().0,
-                        ),
+                        ImplTraitContext::Universal(&mut params, this.current_hir_id_owner.0),
                     );
                     let res = f(this, &mut params);
                     (params, (generics, res))
@@ -1077,7 +1076,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             AssocTyConstraintKind::Bound { ref bounds } => {
                 let mut capturable_lifetimes;
-                let mut parent_def_id = self.current_hir_id_owner.last().unwrap().0;
+                let mut parent_def_id = self.current_hir_id_owner.0;
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let (desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
@@ -1198,7 +1197,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                             // Construct a AnonConst where the expr is the "ty"'s path.
 
-                            let parent_def_id = self.current_hir_id_owner.last().unwrap().0;
+                            let parent_def_id = self.current_hir_id_owner.0;
                             let node_id = self.resolver.next_node_id();
 
                             // Add a definition for the in-band const def.
@@ -1268,6 +1267,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let kind = match t.kind {
             TyKind::Infer => hir::TyKind::Infer,
             TyKind::Err => hir::TyKind::Err,
+            // FIXME(unnamed_fields): IMPLEMENTATION IN PROGRESS
+            TyKind::AnonymousStruct(ref _fields, _recovered) => {
+                self.sess.struct_span_err(t.span, "anonymous structs are unimplemented").emit();
+                hir::TyKind::Err
+            }
+            TyKind::AnonymousUnion(ref _fields, _recovered) => {
+                self.sess.struct_span_err(t.span, "anonymous unions are unimplemented").emit();
+                hir::TyKind::Err
+            }
             TyKind::Slice(ref ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(ref mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
             TyKind::Rptr(ref region, ref mt) => {
@@ -1814,10 +1822,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if let Some((_, ibty)) = &mut in_band_ty_params {
                     this.lower_ty_direct(
                         &param.ty,
-                        ImplTraitContext::Universal(
-                            ibty,
-                            this.current_hir_id_owner.last().unwrap().0,
-                        ),
+                        ImplTraitContext::Universal(ibty, this.current_hir_id_owner.0),
                     )
                 } else {
                     this.lower_ty_direct(&param.ty, ImplTraitContext::disallowed())
@@ -2089,6 +2094,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             args: &[],
             bindings: arena_vec![self; self.output_ty_binding(span, output_ty)],
             parenthesized: false,
+            span_ext: DUMMY_SP,
         });
 
         hir::GenericBound::LangItemTrait(
@@ -2484,14 +2490,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat(span, hir::PatKind::Lit(expr))
     }
 
-    fn pat_ok(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
+    fn pat_cf_continue(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ResultOk, field)
+        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowContinue, field)
     }
 
-    fn pat_err(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
+    fn pat_cf_break(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
         let field = self.single_pat_field(span, pat);
-        self.pat_lang_item_variant(span, hir::LangItem::ResultErr, field)
+        self.pat_lang_item_variant(span, hir::LangItem::ControlFlowBreak, field)
     }
 
     fn pat_some(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {
@@ -2736,13 +2742,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .map(|snippet| snippet.starts_with("#["))
             .unwrap_or(true);
         if !is_macro_callsite {
-            self.resolver.lint_buffer().buffer_lint_with_diagnostic(
-                BARE_TRAIT_OBJECTS,
-                id,
-                span,
-                "trait objects without an explicit `dyn` are deprecated",
-                BuiltinLintDiagnostics::BareTraitObject(span, is_global),
-            )
+            if span.edition() < Edition::Edition2021 {
+                self.resolver.lint_buffer().buffer_lint_with_diagnostic(
+                    BARE_TRAIT_OBJECTS,
+                    id,
+                    span,
+                    "trait objects without an explicit `dyn` are deprecated",
+                    BuiltinLintDiagnostics::BareTraitObject(span, is_global),
+                )
+            } else {
+                let msg = "trait objects must include the `dyn` keyword";
+                let label = "add `dyn` keyword before this trait";
+                let mut err = struct_span_err!(self.sess, span, E0782, "{}", msg,);
+                err.span_suggestion_verbose(
+                    span.shrink_to_lo(),
+                    label,
+                    String::from("dyn "),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+            }
         }
     }
 
@@ -2780,6 +2799,7 @@ struct GenericArgsCtor<'hir> {
     args: SmallVec<[hir::GenericArg<'hir>; 4]>,
     bindings: &'hir [hir::TypeBinding<'hir>],
     parenthesized: bool,
+    span: Span,
 }
 
 impl<'hir> GenericArgsCtor<'hir> {
@@ -2792,6 +2812,7 @@ impl<'hir> GenericArgsCtor<'hir> {
             args: arena.alloc_from_iter(self.args),
             bindings: self.bindings,
             parenthesized: self.parenthesized,
+            span_ext: self.span,
         }
     }
 }

@@ -8,23 +8,23 @@ LL | #![feature(generic_associated_types)]
    = note: see issue #44265 <https://github.com/rust-lang/rust/issues/44265> for more information
 
 error[E0107]: missing generics for associated type `SuperTrait::SubType`
-  --> $DIR/issue-76535.rs:7:10
+  --> $DIR/issue-76535.rs:37:33
    |
-LL |     type SubType<'a>: SubTrait;
-   |          ^^^^^^^ expected 1 lifetime argument
+LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                 ^^^^^^^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
   --> $DIR/issue-76535.rs:7:10
    |
 LL |     type SubType<'a>: SubTrait;
    |          ^^^^^^^ --
-help: use angle brackets to add missing lifetime argument
+help: add missing lifetime argument
    |
-LL |     type SubType<'a><'a>: SubTrait;
-   |                 ^^^^
+LL |     let sub: Box<dyn SuperTrait<SubType<'a> = SubStruct>> = Box::new(SuperStruct::new(0));
+   |                                 ^^^^^^^^^^^
 
 error[E0038]: the trait `SuperTrait` cannot be made into an object
-  --> $DIR/issue-76535.rs:38:14
+  --> $DIR/issue-76535.rs:37:14
    |
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object
@@ -39,7 +39,7 @@ LL |     type SubType<'a>: SubTrait;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
 
 error[E0038]: the trait `SuperTrait` cannot be made into an object
-  --> $DIR/issue-76535.rs:38:57
+  --> $DIR/issue-76535.rs:37:57
    |
 LL |     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `SuperTrait` cannot be made into an object

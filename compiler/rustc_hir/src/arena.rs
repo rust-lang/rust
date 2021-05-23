@@ -19,7 +19,6 @@ macro_rules! arena_types {
             [] attribute: rustc_ast::Attribute,
             [] block: rustc_hir::Block<$tcx>,
             [] bare_fn_ty: rustc_hir::BareFnTy<$tcx>,
-            [few] global_asm: rustc_hir::GlobalAsm,
             [] generic_arg: rustc_hir::GenericArg<$tcx>,
             [] generic_args: rustc_hir::GenericArgs<$tcx>,
             [] generic_bound: rustc_hir::GenericBound<$tcx>,

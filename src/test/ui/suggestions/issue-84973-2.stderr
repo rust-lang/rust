@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `i32: Tr` is not satisfied
+  --> $DIR/issue-84973-2.rs:11:9
+   |
+LL | fn foo<T: Tr>(i: T) {}
+   |           -- required by this bound in `foo`
+...
+LL |     foo(a);
+   |         ^
+   |         |
+   |         expected an implementor of trait `Tr`
+   |         help: consider mutably borrowing here: `&mut a`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

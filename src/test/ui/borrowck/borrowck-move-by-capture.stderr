@@ -5,10 +5,10 @@ LL |     let bar: Box<_> = box 3;
    |         --- captured outer variable
 LL |     let _g = to_fn_mut(|| {
 LL |         let _h = to_fn_once(move || -> isize { *bar });
-   |                             ^^^^^^^^^^^^^^^^    ---
-   |                             |                   |
-   |                             |                   move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
-   |                             |                   move occurs due to use in closure
+   |                             ^^^^^^^^^^^^^^^^   ----
+   |                             |                  |
+   |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
+   |                             |                  move occurs due to use in closure
    |                             move out of `bar` occurs here
 
 error: aborting due to previous error

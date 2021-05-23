@@ -1,0 +1,10 @@
+error: use of bitwise operator instead of lazy operator between booleans
+  --> $DIR/needless_bitwise_bool.rs:24:8
+   |
+LL |     if y & !x {
+   |        ^^^^^^ help: try: `y && !x`
+   |
+   = note: `-D clippy::needless-bitwise-bool` implied by `-D warnings`
+
+error: aborting due to previous error
+

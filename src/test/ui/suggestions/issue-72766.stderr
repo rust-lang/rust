@@ -5,7 +5,7 @@ LL |     SadGirl {}.call()?;
    |     ^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `impl Future`
    |
    = help: the trait `Try` is not implemented for `impl Future`
-   = note: required by `into_result`
+   = note: required by `branch`
 help: consider `await`ing on the `Future`
    |
 LL |     SadGirl {}.call().await?;

@@ -1124,11 +1124,11 @@ impl<'a> Parser<'a> {
                 if !this.recover_nested_adt_item(kw::Enum)? {
                     return Ok((None, TrailingToken::None));
                 }
-                let ident = this.parse_ident()?;
+                let ident = this.parse_field_ident("enum", vlo)?;
 
                 let struct_def = if this.check(&token::OpenDelim(token::Brace)) {
                     // Parse a struct variant.
-                    let (fields, recovered) = this.parse_record_struct_body()?;
+                    let (fields, recovered) = this.parse_record_struct_body("struct")?;
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(token::Paren)) {
                     VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
@@ -1182,7 +1182,7 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                let (fields, recovered) = self.parse_record_struct_body()?;
+                let (fields, recovered) = self.parse_record_struct_body("struct")?;
                 VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
@@ -1190,7 +1190,7 @@ impl<'a> Parser<'a> {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body()?;
+            let (fields, recovered) = self.parse_record_struct_body("struct")?;
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
@@ -1220,10 +1220,10 @@ impl<'a> Parser<'a> {
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            let (fields, recovered) = self.parse_record_struct_body()?;
+            let (fields, recovered) = self.parse_record_struct_body("union")?;
             VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body()?;
+            let (fields, recovered) = self.parse_record_struct_body("union")?;
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
@@ -1236,12 +1236,15 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics)))
     }
 
-    fn parse_record_struct_body(&mut self) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
+    pub(super) fn parse_record_struct_body(
+        &mut self,
+        adt_ty: &str,
+    ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
-                let field = self.parse_field_def().map_err(|e| {
+                let field = self.parse_field_def(adt_ty).map_err(|e| {
                     self.consume_block(token::Brace, ConsumeClosingDelim::No);
                     recovered = true;
                     e
@@ -1294,24 +1297,25 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an element of a struct declaration.
-    fn parse_field_def(&mut self) -> PResult<'a, FieldDef> {
+    fn parse_field_def(&mut self, adt_ty: &str) -> PResult<'a, FieldDef> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            Ok((this.parse_single_struct_field(lo, vis, attrs)?, TrailingToken::None))
+            Ok((this.parse_single_struct_field(adt_ty, lo, vis, attrs)?, TrailingToken::None))
         })
     }
 
     /// Parses a structure field declaration.
     fn parse_single_struct_field(
         &mut self,
+        adt_ty: &str,
         lo: Span,
         vis: Visibility,
         attrs: Vec<Attribute>,
     ) -> PResult<'a, FieldDef> {
         let mut seen_comma: bool = false;
-        let a_var = self.parse_name_and_ty(lo, vis, attrs)?;
+        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, attrs)?;
         if self.token == token::Comma {
             seen_comma = true;
         }
@@ -1322,7 +1326,7 @@ impl<'a> Parser<'a> {
             token::CloseDelim(token::Brace) => {}
             token::DocComment(..) => {
                 let previous_span = self.prev_token.span;
-                let mut err = self.span_fatal_err(self.token.span, Error::UselessDocComment);
+                let mut err = self.span_err(self.token.span, Error::UselessDocComment);
                 self.bump(); // consume the doc comment
                 let comma_after_doc_seen = self.eat(&token::Comma);
                 // `seen_comma` is always false, because we are inside doc block
@@ -1395,16 +1399,61 @@ impl<'a> Parser<'a> {
         Ok(a_var)
     }
 
+    fn expect_field_ty_separator(&mut self) -> PResult<'a, ()> {
+        if let Err(mut err) = self.expect(&token::Colon) {
+            let sm = self.sess.source_map();
+            let eq_typo = self.token.kind == token::Eq && self.look_ahead(1, |t| t.is_path_start());
+            let semi_typo = self.token.kind == token::Semi
+                && self.look_ahead(1, |t| {
+                    t.is_path_start()
+                    // We check that we are in a situation like `foo; bar` to avoid bad suggestions
+                    // when there's no type and `;` was used instead of a comma.
+                    && match (sm.lookup_line(self.token.span.hi()), sm.lookup_line(t.span.lo())) {
+                        (Ok(l), Ok(r)) => l.line == r.line,
+                        _ => true,
+                    }
+                });
+            if eq_typo || semi_typo {
+                self.bump();
+                // Gracefully handle small typos.
+                err.span_suggestion_short(
+                    self.prev_token.span,
+                    "field names and their types are separated with `:`",
+                    ":".to_string(),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+            } else {
+                return Err(err);
+            }
+        }
+        Ok(())
+    }
+
     /// Parses a structure field.
     fn parse_name_and_ty(
         &mut self,
+        adt_ty: &str,
         lo: Span,
         vis: Visibility,
         attrs: Vec<Attribute>,
     ) -> PResult<'a, FieldDef> {
-        let name = self.parse_ident_common(false)?;
-        self.expect(&token::Colon)?;
+        let name = self.parse_field_ident(adt_ty, lo)?;
+        self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
+        if self.token.kind == token::Eq {
+            self.bump();
+            let const_expr = self.parse_anon_const_expr()?;
+            let sp = ty.span.shrink_to_hi().to(const_expr.value.span);
+            self.struct_span_err(sp, "default values on `struct` fields aren't supported")
+                .span_suggestion(
+                    sp,
+                    "remove this unsupported default value",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .emit();
+        }
         Ok(FieldDef {
             span: lo.to(self.prev_token.span),
             ident: Some(name),
@@ -1414,6 +1463,35 @@ impl<'a> Parser<'a> {
             attrs,
             is_placeholder: false,
         })
+    }
+
+    /// Parses a field identifier. Specialized version of `parse_ident_common`
+    /// for better diagnostics and suggestions.
+    fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
+        let (ident, is_raw) = self.ident_or_err()?;
+        if !is_raw && ident.is_reserved() {
+            if ident.name == kw::Underscore {
+                self.sess.gated_spans.gate(sym::unnamed_fields, lo);
+            } else {
+                let err = if self.check_fn_front_matter(false) {
+                    let _ = self.parse_fn(&mut Vec::new(), |_| true, lo);
+                    let mut err = self.struct_span_err(
+                        lo.to(self.prev_token.span),
+                        &format!("functions are not allowed in {} definitions", adt_ty),
+                    );
+                    err.help(
+                        "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
+                    );
+                    err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
+                    err
+                } else {
+                    self.expected_ident_found()
+                };
+                return Err(err);
+            }
+        }
+        self.bump();
+        Ok(ident)
     }
 
     /// Parses a declarative macro 2.0 definition.

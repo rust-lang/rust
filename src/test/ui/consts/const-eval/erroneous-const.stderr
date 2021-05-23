@@ -27,16 +27,16 @@ LL | #![warn(const_err, unconditional_panic)]
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/erroneous-const.rs:13:17
+  --> $DIR/erroneous-const.rs:15:17
    |
 LL |         let _ = PrintName::<T>::VOID;
    |                 ^^^^^^^^^^^^^^^^^^^^
    |                 |
    |                 referenced constant has errors
-   |                 inside `no_codegen::<i32>` at $DIR/erroneous-const.rs:13:17
+   |                 inside `no_codegen::<i32>` at $DIR/erroneous-const.rs:15:17
 ...
 LL | pub static FOO: () = no_codegen::<i32>();
-   |                      ------------------- inside `FOO` at $DIR/erroneous-const.rs:17:22
+   |                      ------------------- inside `FOO` at $DIR/erroneous-const.rs:19:22
 
 error: aborting due to previous error; 2 warnings emitted
 

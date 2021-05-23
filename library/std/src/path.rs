@@ -569,7 +569,7 @@ pub struct Components<'a> {
     prefix: Option<Prefix<'a>>,
 
     // true if path *physically* has a root separator; for most Windows
-    // prefixes, it may have a "logical" rootseparator for the purposes of
+    // prefixes, it may have a "logical" root separator for the purposes of
     // normalization, e.g.,  \\server\share == \\server\share\.
     has_physical_root: bool,
 
@@ -1065,7 +1065,6 @@ impl FusedIterator for Ancestors<'_> {}
 /// ```
 ///
 /// Which method works best depends on what kind of situation you're in.
-#[derive(Clone)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
@@ -1403,6 +1402,19 @@ impl PathBuf {
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         self.inner.shrink_to(min_capacity)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for PathBuf {
+    #[inline]
+    fn clone(&self) -> Self {
+        PathBuf { inner: self.inner.clone() }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.inner.clone_from(&source.inner)
     }
 }
 
@@ -2495,11 +2507,7 @@ impl Path {
     #[unstable(feature = "path_try_exists", issue = "83186")]
     #[inline]
     pub fn try_exists(&self) -> io::Result<bool> {
-        match fs::metadata(self) {
-            Ok(_) => Ok(true),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
-            Err(error) => Err(error),
-        }
+        fs::try_exists(self)
     }
 
     /// Returns `true` if the path exists on disk and is pointing at a regular file.

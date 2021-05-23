@@ -16,6 +16,9 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::mem;
 
+#[cfg(test)]
+mod tests;
+
 crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
 
@@ -45,9 +48,9 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
                 // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
                 if it.is_extern_crate()
                     && (it.attrs.has_doc_flag(sym::masked)
-                        || cx.tcx.is_compiler_builtins(it.def_id.krate))
+                        || cx.tcx.is_compiler_builtins(it.def_id.krate()))
                 {
-                    cx.cache.masked_crates.insert(it.def_id.krate);
+                    cx.cache.masked_crates.insert(it.def_id.krate());
                 }
             }
         }
@@ -335,11 +338,27 @@ crate fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String>
 
 fn format_integer_with_underscore_sep(num: &str) -> String {
     let num_chars: Vec<_> = num.chars().collect();
-    let num_start_index = if num_chars.get(0) == Some(&'-') { 1 } else { 0 };
+    let mut num_start_index = if num_chars.get(0) == Some(&'-') { 1 } else { 0 };
+    let chunk_size = match num[num_start_index..].as_bytes() {
+        [b'0', b'b' | b'x', ..] => {
+            num_start_index += 2;
+            4
+        }
+        [b'0', b'o', ..] => {
+            num_start_index += 2;
+            let remaining_chars = num_chars.len() - num_start_index;
+            if remaining_chars <= 6 {
+                // don't add underscores to Unix permissions like 0755 or 100755
+                return num.to_string();
+            }
+            3
+        }
+        _ => 3,
+    };
 
     num_chars[..num_start_index]
         .iter()
-        .chain(num_chars[num_start_index..].rchunks(3).rev().intersperse(&['_']).flatten())
+        .chain(num_chars[num_start_index..].rchunks(chunk_size).rev().intersperse(&['_']).flatten())
         .collect()
 }
 
@@ -490,8 +509,6 @@ where
 }
 
 /// Find the nearest parent module of a [`DefId`].
-///
-/// **Panics if the item it belongs to [is fake][Item::is_fake].**
 crate fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
     if def_id.is_top_level_module() {
         // The crate root has no parent. Use it as the root instead.
@@ -524,15 +541,4 @@ crate fn has_doc_flag(attrs: ty::Attributes<'_>, flag: Symbol) -> bool {
         attr.has_name(sym::doc)
             && attr.meta_item_list().map_or(false, |l| rustc_attr::list_contains_name(&l, flag))
     })
-}
-
-/// Return a channel suitable for using in a `doc.rust-lang.org/{channel}` format string.
-crate fn doc_rust_lang_org_channel() -> &'static str {
-    match env!("CFG_RELEASE_CHANNEL") {
-        "stable" => env!("CFG_RELEASE_NUM"),
-        "beta" => "beta",
-        "nightly" | "dev" => "nightly",
-        // custom build of rustdoc maybe? link to the stable docs just in case
-        _ => "",
-    }
 }

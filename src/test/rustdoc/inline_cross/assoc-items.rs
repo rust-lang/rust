@@ -16,15 +16,18 @@ extern crate assoc_items;
 // @has - '//*[@id="associatedconstant.ConstNoDefault"]' 'const ConstNoDefault: i16'
 // @has - '//*[@class="docblock"]' 'dox for ConstNoDefault'
 // @has - '//*[@id="associatedconstant.ConstWithDefault"]' 'const ConstWithDefault: u16'
-// @has - '//*[@class="docblock hidden"]' 'docs for ConstWithDefault'
+// @!has - '//details[@open=""]/details/div[@class="docblock"]' 'docs for ConstWithDefault'
+// @has - '//details/details/div[@class="docblock"]' 'docs for ConstWithDefault'
 // @has - '//*[@id="associatedtype.TypeNoDefault"]' 'type TypeNoDefault = i32'
 // @has - '//*[@class="docblock"]' 'dox for TypeNoDefault'
 // @has - '//*[@id="associatedtype.TypeWithDefault"]' 'type TypeWithDefault = u32'
-// @has - '//*[@class="docblock hidden"]' 'docs for TypeWithDefault'
+// @!has - '//details[@open=""]/details/div[@class="docblock"]' 'docs for TypeWithDefault'
+// @has - '//details/details/div[@class="docblock"]' 'docs for TypeWithDefault'
 // @has - '//*[@id="method.method_no_default"]' 'fn method_no_default()'
 // @has - '//*[@class="docblock"]' 'dox for method_no_default'
 // @has - '//*[@id="method.method_with_default"]' 'fn method_with_default()'
-// @has - '//*[@class="docblock hidden"]' 'docs for method_with_default'
+// @!has - '//details[@open=""]/details/div[@class="docblock"]' 'docs for method_with_default'
+// @has - '//details/details/div[@class="docblock"]' 'docs for method_with_default'
 pub use assoc_items::MyStruct;
 
 // @has foo/trait.MyTrait.html

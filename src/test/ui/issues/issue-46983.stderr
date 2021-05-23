@@ -1,8 +1,6 @@
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/issue-46983.rs:2:5
    |
-LL | fn foo(x: &u32) -> &'static u32 {
-   |           ---- help: add explicit lifetime `'static` to the type of `x`: `&'static u32`
 LL |     &*x
    |     ^^^ lifetime `'static` required
 

@@ -1,5 +1,3 @@
-#![feature(const_fn)]
-
 fn main() {}
 
 #[repr(C)]

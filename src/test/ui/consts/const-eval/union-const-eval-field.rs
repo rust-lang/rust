@@ -1,5 +1,4 @@
 // only-x86_64
-#![feature(const_fn)]
 
 type Field1 = i32;
 type Field2 = f32;

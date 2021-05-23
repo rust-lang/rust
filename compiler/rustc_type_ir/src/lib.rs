@@ -59,6 +59,15 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
+                                          // We consider 'freshened' types and constants
+                                          // to depend on a particular fn.
+                                          // The freshening process throws away information,
+                                          // which can make things unsuitable for use in a global
+                                          // cache. Note that there is no 'fresh lifetime' flag -
+                                          // freshening replaces all lifetimes with `ReErased`,
+                                          // which is different from how types/const are freshened.
+                                          | TypeFlags::HAS_TY_FRESH.bits
+                                          | TypeFlags::HAS_CT_FRESH.bits
                                           | TypeFlags::HAS_FREE_LOCAL_REGIONS.bits;
 
         /// Does this have `Projection`?
@@ -90,6 +99,12 @@ bitflags! {
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
         const STILL_FURTHER_SPECIALIZABLE = 1 << 17;
+
+        /// Does this value have `InferTy::FreshTy/FreshIntTy/FreshFloatTy`?
+        const HAS_TY_FRESH                = 1 << 18;
+
+        /// Does this value have `InferConst::Fresh`?
+        const HAS_CT_FRESH                = 1 << 19;
     }
 }
 

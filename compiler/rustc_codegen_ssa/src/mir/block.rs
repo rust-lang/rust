@@ -12,7 +12,6 @@ use crate::MemFlags;
 use rustc_ast as ast;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::{self, SwitchTargets};
 use rustc_middle::ty::layout::{FnAbiExt, HasTyCtxt};
@@ -21,7 +20,7 @@ use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::abi::{self, LayoutOf};
+use rustc_target::abi::{self, HasDataLayout, LayoutOf};
 use rustc_target::spec::abi::Abi;
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
@@ -33,13 +32,34 @@ struct TerminatorCodegenHelper<'tcx> {
 }
 
 impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
-    /// Returns the associated funclet from `FunctionCx::funclets` for the
-    /// `funclet_bb` member if it is not `None`.
+    /// Returns the appropriate `Funclet` for the current funclet, if on MSVC,
+    /// either already previously cached, or newly created, by `landing_pad_for`.
     fn funclet<'b, Bx: BuilderMethods<'a, 'tcx>>(
         &self,
-        fx: &'b FunctionCx<'a, 'tcx, Bx>,
+        fx: &'b mut FunctionCx<'a, 'tcx, Bx>,
     ) -> Option<&'b Bx::Funclet> {
-        self.funclet_bb.and_then(|funcl| fx.funclets[funcl].as_ref())
+        let funclet_bb = self.funclet_bb?;
+        if base::wants_msvc_seh(fx.cx.tcx().sess) {
+            // If `landing_pad_for` hasn't been called yet to create the `Funclet`,
+            // it has to be now. This may not seem necessary, as RPO should lead
+            // to all the unwind edges being visited (and so to `landing_pad_for`
+            // getting called for them), before building any of the blocks inside
+            // the funclet itself - however, if MIR contains edges that end up not
+            // being needed in the LLVM IR after monomorphization, the funclet may
+            // be unreachable, and we don't have yet a way to skip building it in
+            // such an eventuality (which may be a better solution than this).
+            if fx.funclets[funclet_bb].is_none() {
+                fx.landing_pad_for(funclet_bb);
+            }
+
+            Some(
+                fx.funclets[funclet_bb]
+                    .as_ref()
+                    .expect("landing_pad_for didn't also create funclets entry"),
+            )
+        } else {
+            None
+        }
     }
 
     fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
@@ -48,17 +68,17 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         target: mir::BasicBlock,
     ) -> (Bx::BasicBlock, bool) {
         let span = self.terminator.source_info.span;
-        let lltarget = fx.blocks[target];
+        let lltarget = fx.llbb(target);
         let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
         match (self.funclet_bb, target_funclet) {
             (None, None) => (lltarget, false),
             (Some(f), Some(t_f)) if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) => {
                 (lltarget, false)
             }
-            // jump *into* cleanup - need a landing pad if GNU
-            (None, Some(_)) => (fx.landing_pad_to(target), false),
+            // jump *into* cleanup - need a landing pad if GNU, cleanup pad if MSVC
+            (None, Some(_)) => (fx.landing_pad_for(target), false),
             (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", self.terminator),
-            (Some(_), Some(_)) => (fx.landing_pad_to(target), true),
+            (Some(_), Some(_)) => (fx.landing_pad_for(target), true),
         }
     }
 
@@ -113,13 +133,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
         if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
-            let ret_bx = if let Some((_, target)) = destination {
-                fx.blocks[target]
+            let ret_llbb = if let Some((_, target)) = destination {
+                fx.llbb(target)
             } else {
                 fx.unreachable_block()
             };
             let invokeret =
-                bx.invoke(fn_ptr, &llargs, ret_bx, self.llblock(fx, cleanup), self.funclet(fx));
+                bx.invoke(fn_ptr, &llargs, ret_llbb, self.llblock(fx, cleanup), self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, invokeret);
 
             if let Some((ret_dest, target)) = destination {
@@ -366,7 +386,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llblock(self, target);
-        let panic_block = self.new_block("panic");
+        let panic_block = bx.build_sibling_block("panic");
         if expected {
             bx.cond_br(cond, lltarget, panic_block.llbb());
         } else {
@@ -825,33 +845,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let const_value = self
                         .eval_mir_constant(value)
                         .unwrap_or_else(|_| span_bug!(span, "asm const cannot be resolved"));
-                    let ty = value.ty();
-                    let size = bx.layout_of(ty).size;
-                    let scalar = match const_value {
-                        ConstValue::Scalar(s) => s,
-                        _ => span_bug!(
-                            span,
-                            "expected Scalar for promoted asm const, but got {:#?}",
-                            const_value
-                        ),
-                    };
-                    let value = scalar.assert_bits(size);
-                    let string = match ty.kind() {
-                        ty::Uint(_) => value.to_string(),
-                        ty::Int(int_ty) => {
-                            match int_ty.normalize(bx.tcx().sess.target.pointer_width) {
-                                ty::IntTy::I8 => (value as i8).to_string(),
-                                ty::IntTy::I16 => (value as i16).to_string(),
-                                ty::IntTy::I32 => (value as i32).to_string(),
-                                ty::IntTy::I64 => (value as i64).to_string(),
-                                ty::IntTy::I128 => (value as i128).to_string(),
-                                ty::IntTy::Isize => unreachable!(),
-                            }
-                        }
-                        ty::Float(ty::FloatTy::F32) => f32::from_bits(value as u32).to_string(),
-                        ty::Float(ty::FloatTy::F64) => f64::from_bits(value as u64).to_string(),
-                        _ => span_bug!(span, "asm const has bad type {}", ty),
-                    };
+                    let string = common::asm_const_to_str(
+                        bx.tcx(),
+                        span,
+                        const_value,
+                        bx.layout_of(value.ty()),
+                    );
                     InlineAsmOperandRef::Const { string }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
@@ -1144,7 +1143,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = tcx.const_caller_location((
-                Symbol::intern(&caller.file.name.to_string()),
+                Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
                 caller.line as u32,
                 caller.col_display as u32 + 1,
             ));
@@ -1192,38 +1191,88 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    /// Returns the landing-pad wrapper around the given basic block.
-    ///
-    /// No-op in MSVC SEH scheme.
-    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> Bx::BasicBlock {
-        if let Some(block) = self.landing_pads[target_bb] {
-            return block;
+    /// Returns the landing/cleanup pad wrapper around the given basic block.
+    // FIXME(eddyb) rename this to `eh_pad_for`.
+    fn landing_pad_for(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
+        if let Some(landing_pad) = self.landing_pads[bb] {
+            return landing_pad;
         }
 
-        let block = self.blocks[target_bb];
-        let landing_pad = self.landing_pad_uncached(block);
-        self.landing_pads[target_bb] = Some(landing_pad);
+        let landing_pad = self.landing_pad_for_uncached(bb);
+        self.landing_pads[bb] = Some(landing_pad);
         landing_pad
     }
 
-    fn landing_pad_uncached(&mut self, target_bb: Bx::BasicBlock) -> Bx::BasicBlock {
+    // FIXME(eddyb) rename this to `eh_pad_for_uncached`.
+    fn landing_pad_for_uncached(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
+        let llbb = self.llbb(bb);
         if base::wants_msvc_seh(self.cx.sess()) {
-            span_bug!(self.mir.span, "landing pad was not inserted?")
+            let funclet;
+            let ret_llbb;
+            match self.mir[bb].terminator.as_ref().map(|t| &t.kind) {
+                // This is a basic block that we're aborting the program for,
+                // notably in an `extern` function. These basic blocks are inserted
+                // so that we assert that `extern` functions do indeed not panic,
+                // and if they do we abort the process.
+                //
+                // On MSVC these are tricky though (where we're doing funclets). If
+                // we were to do a cleanuppad (like below) the normal functions like
+                // `longjmp` would trigger the abort logic, terminating the
+                // program. Instead we insert the equivalent of `catch(...)` for C++
+                // which magically doesn't trigger when `longjmp` files over this
+                // frame.
+                //
+                // Lots more discussion can be found on #48251 but this codegen is
+                // modeled after clang's for:
+                //
+                //      try {
+                //          foo();
+                //      } catch (...) {
+                //          bar();
+                //      }
+                Some(&mir::TerminatorKind::Abort) => {
+                    let mut cs_bx = self.new_block(&format!("cs_funclet{:?}", bb));
+                    let mut cp_bx = self.new_block(&format!("cp_funclet{:?}", bb));
+                    ret_llbb = cs_bx.llbb();
+
+                    let cs = cs_bx.catch_switch(None, None, 1);
+                    cs_bx.add_handler(cs, cp_bx.llbb());
+
+                    // The "null" here is actually a RTTI type descriptor for the
+                    // C++ personality function, but `catch (...)` has no type so
+                    // it's null. The 64 here is actually a bitfield which
+                    // represents that this is a catch-all block.
+                    let null = cp_bx.const_null(
+                        cp_bx.type_i8p_ext(cp_bx.cx().data_layout().instruction_address_space),
+                    );
+                    let sixty_four = cp_bx.const_i32(64);
+                    funclet = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
+                    cp_bx.br(llbb);
+                }
+                _ => {
+                    let mut cleanup_bx = self.new_block(&format!("funclet_{:?}", bb));
+                    ret_llbb = cleanup_bx.llbb();
+                    funclet = cleanup_bx.cleanup_pad(None, &[]);
+                    cleanup_bx.br(llbb);
+                }
+            }
+            self.funclets[bb] = Some(funclet);
+            ret_llbb
+        } else {
+            let mut bx = self.new_block("cleanup");
+
+            let llpersonality = self.cx.eh_personality();
+            let llretty = self.landing_pad_type();
+            let lp = bx.landing_pad(llretty, llpersonality, 1);
+            bx.set_cleanup(lp);
+
+            let slot = self.get_personality_slot(&mut bx);
+            slot.storage_live(&mut bx);
+            Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
+
+            bx.br(llbb);
+            bx.llbb()
         }
-
-        let mut bx = self.new_block("cleanup");
-
-        let llpersonality = self.cx.eh_personality();
-        let llretty = self.landing_pad_type();
-        let lp = bx.landing_pad(llretty, llpersonality, 1);
-        bx.set_cleanup(lp);
-
-        let slot = self.get_personality_slot(&mut bx);
-        slot.storage_live(&mut bx);
-        Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
-
-        bx.br(target_bb);
-        bx.llbb()
     }
 
     fn landing_pad_type(&self) -> Bx::Type {
@@ -1240,14 +1289,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         })
     }
 
-    pub fn new_block(&self, name: &str) -> Bx {
-        Bx::new_block(self.cx, self.llfn, name)
+    // FIXME(eddyb) replace with `build_sibling_block`/`append_sibling_block`
+    // (which requires having a `Bx` already, and not all callers do).
+    fn new_block(&self, name: &str) -> Bx {
+        let llbb = Bx::append_block(self.cx, self.llfn, name);
+        Bx::build(self.cx, llbb)
     }
 
-    pub fn build_block(&self, bb: mir::BasicBlock) -> Bx {
-        let mut bx = Bx::with_cx(self.cx);
-        bx.position_at_end(self.blocks[bb]);
-        bx
+    /// Get the backend `BasicBlock` for a MIR `BasicBlock`, either already
+    /// cached in `self.cached_llbbs`, or created on demand (and cached).
+    // FIXME(eddyb) rename `llbb` and other `ll`-prefixed things to use a
+    // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbb`).
+    pub fn llbb(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
+        self.cached_llbbs[bb].unwrap_or_else(|| {
+            // FIXME(eddyb) only name the block if `fewer_names` is `false`.
+            let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
+            self.cached_llbbs[bb] = Some(llbb);
+            llbb
+        })
+    }
+
+    pub fn build_block(&mut self, bb: mir::BasicBlock) -> Bx {
+        let llbb = self.llbb(bb);
+        Bx::build(self.cx, llbb)
     }
 
     fn make_return_dest(

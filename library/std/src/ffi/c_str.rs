@@ -10,7 +10,6 @@ use crate::error::Error;
 use crate::fmt::{self, Write};
 use crate::io;
 use crate::mem;
-use crate::memchr;
 use crate::num::NonZeroU8;
 use crate::ops;
 use crate::os::raw::c_char;
@@ -20,6 +19,7 @@ use crate::slice;
 use crate::str::{self, Utf8Error};
 use crate::sync::Arc;
 use crate::sys;
+use crate::sys_common::memchr;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -185,6 +185,7 @@ pub struct CString {
 ///
 /// [`&str`]: prim@str
 #[derive(Hash)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "CStr")]
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME:
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
@@ -498,7 +499,7 @@ impl CString {
     /// Failure to call [`CString::from_raw`] will lead to a memory leak.
     ///
     /// The C side must **not** modify the length of the string (by writing a
-    /// `NULL` somewhere inside the string or removing the final one) before
+    /// `null` somewhere inside the string or removing the final one) before
     /// it makes it back into Rust using [`CString::from_raw`]. See the safety section
     /// in [`CString::from_raw`].
     ///

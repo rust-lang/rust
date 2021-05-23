@@ -484,6 +484,9 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
+        TyKind::AnonymousStruct(fields, ..) | TyKind::AnonymousUnion(fields, ..) => {
+            fields.flat_map_in_place(|field| vis.flat_map_field_def(field));
+        }
     }
     vis.visit_span(span);
     visit_lazy_tts(tokens, vis);
@@ -965,7 +968,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             ModKind::Unloaded => {}
         },
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
-        ItemKind::GlobalAsm(_ga) => {}
+        ItemKind::GlobalAsm(asm) => noop_visit_inline_asm(asm, vis),
         ItemKind::TyAlias(box TyAliasKind(_, generics, bounds, ty)) => {
             vis.visit_generics(generics);
             visit_bounds(bounds, vis);
@@ -1170,6 +1173,28 @@ pub fn noop_visit_anon_const<T: MutVisitor>(AnonConst { id, value }: &mut AnonCo
     vis.visit_expr(value);
 }
 
+fn noop_visit_inline_asm<T: MutVisitor>(asm: &mut InlineAsm, vis: &mut T) {
+    for (op, _) in &mut asm.operands {
+        match op {
+            InlineAsmOperand::In { expr, .. }
+            | InlineAsmOperand::InOut { expr, .. }
+            | InlineAsmOperand::Sym { expr, .. } => vis.visit_expr(expr),
+            InlineAsmOperand::Out { expr, .. } => {
+                if let Some(expr) = expr {
+                    vis.visit_expr(expr);
+                }
+            }
+            InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
+                vis.visit_expr(in_expr);
+                if let Some(out_expr) = out_expr {
+                    vis.visit_expr(out_expr);
+                }
+            }
+            InlineAsmOperand::Const { anon_const, .. } => vis.visit_anon_const(anon_const),
+        }
+    }
+}
+
 pub fn noop_visit_expr<T: MutVisitor>(
     Expr { kind, id, span, attrs, tokens }: &mut Expr,
     vis: &mut T,
@@ -1288,27 +1313,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         ExprKind::Ret(expr) => {
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
-        ExprKind::InlineAsm(asm) => {
-            for (op, _) in &mut asm.operands {
-                match op {
-                    InlineAsmOperand::In { expr, .. }
-                    | InlineAsmOperand::InOut { expr, .. }
-                    | InlineAsmOperand::Sym { expr, .. } => vis.visit_expr(expr),
-                    InlineAsmOperand::Out { expr, .. } => {
-                        if let Some(expr) = expr {
-                            vis.visit_expr(expr);
-                        }
-                    }
-                    InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
-                        vis.visit_expr(in_expr);
-                        if let Some(out_expr) = out_expr {
-                            vis.visit_expr(out_expr);
-                        }
-                    }
-                    InlineAsmOperand::Const { anon_const, .. } => vis.visit_anon_const(anon_const),
-                }
-            }
-        }
+        ExprKind::InlineAsm(asm) => noop_visit_inline_asm(asm, vis),
         ExprKind::LlvmInlineAsm(asm) => {
             let LlvmInlineAsm {
                 asm: _,

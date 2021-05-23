@@ -1,0 +1,52 @@
+#![feature(prelude_import)]
+#![no_std]
+// check-pass
+// force-host
+// no-prefer-dynamic
+// compile-flags: -Z unpretty=expanded
+//
+// This file is not actually used as a proc-macro - instead,
+// it's just used to show the output of the `quote!` macro
+
+#![feature(proc_macro_quote)]
+#![crate_type = "proc-macro"]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+
+extern crate proc_macro;
+
+fn main() {
+    [crate::TokenStream::from(crate::TokenTree::Ident(crate::Ident::new("let",
+                                                                        crate::Span::recover_proc_macro_span(0)))),
+     crate::TokenStream::from(crate::TokenTree::Ident(crate::Ident::new("hello",
+                                                                        crate::Span::recover_proc_macro_span(1)))),
+     crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new('\u{3d}',
+                                                                        crate::Spacing::Alone))),
+     crate::TokenStream::from(crate::TokenTree::Literal({
+                                                            let mut iter =
+                                                                "\"world\"".parse::<crate::TokenStream>().unwrap().into_iter();
+                                                            if let (Some(crate::TokenTree::Literal(mut lit)),
+                                                                    None) =
+                                                                   (iter.next(),
+                                                                    iter.next())
+                                                               {
+                                                                lit.set_span(crate::Span::recover_proc_macro_span(2));
+                                                                lit
+                                                            } else {
+                                                                {
+                                                                    ::core::panicking::panic("internal error: entered unreachable code")
+                                                                }
+                                                            }
+                                                        })),
+     crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new('\u{3b}',
+                                                                        crate::Spacing::Alone)))].iter().cloned().collect::<crate::TokenStream>()
+}
+const _: () =
+    {
+        extern crate proc_macro;
+        #[rustc_proc_macro_decls]
+        #[allow(deprecated)]
+        static _DECLS: &[proc_macro::bridge::client::ProcMacro] = &[];
+    };

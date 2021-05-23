@@ -1604,13 +1604,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             match (&terr, expected == found) {
                 (TypeError::Sorts(values), extra) => {
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
-                        (true, ty::Opaque(def_id, _)) => format!(
-                            " (opaque type at {})",
-                            self.tcx
+                        (true, ty::Opaque(def_id, _)) => {
+                            let pos = self
+                                .tcx
                                 .sess
                                 .source_map()
-                                .mk_substr_filename(self.tcx.def_span(*def_id)),
-                        ),
+                                .lookup_char_pos(self.tcx.def_span(*def_id).lo());
+                            format!(
+                                " (opaque type at <{}:{}:{}>)",
+                                pos.file.name.prefer_local(),
+                                pos.line,
+                                pos.col.to_usize() + 1,
+                            )
+                        }
                         (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
                         (false, _) => "".to_string(),
                     };
@@ -2398,9 +2404,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 self.tcx.associated_item(def_id).ident
             ),
             infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{}`", name),
-            infer::BoundRegionInCoherence(name) => {
-                format!(" for lifetime parameter `{}` in coherence check", name)
-            }
             infer::UpvarRegion(ref upvar_id, _) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{}` by closure", var_name)

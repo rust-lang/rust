@@ -11,6 +11,22 @@ unsafe extern "C" fn my_puts(s: *const i8) {
     puts(s);
 }
 
+macro_rules! assert {
+    ($e:expr) => {
+        if !$e {
+            panic(stringify!(! $e));
+        }
+    };
+}
+
+macro_rules! assert_eq {
+    ($l:expr, $r: expr) => {
+        if $l != $r {
+            panic(stringify!($l != $r));
+        }
+    }
+}
+
 #[lang = "termination"]
 trait Termination {
     fn report(self) -> i32;
@@ -20,8 +36,9 @@ impl Termination for () {
     fn report(self) -> i32 {
         unsafe {
             NUM = 6 * 7 + 1 + (1u8 == 1u8) as u8; // 44
-            *NUM_REF as i32
+            assert_eq!(*NUM_REF as i32, 44);
         }
+        0
     }
 }
 
@@ -82,28 +99,11 @@ fn start<T: Termination + 'static>(
         unsafe { puts(*((argv as usize + 2 * intrinsics::size_of::<*const u8>()) as *const *const i8)); }
     }
 
-    main().report();
-    0
+    main().report() as isize
 }
 
 static mut NUM: u8 = 6 * 7;
 static NUM_REF: &'static u8 = unsafe { &NUM };
-
-macro_rules! assert {
-    ($e:expr) => {
-        if !$e {
-            panic(stringify!(! $e));
-        }
-    };
-}
-
-macro_rules! assert_eq {
-    ($l:expr, $r: expr) => {
-        if $l != $r {
-            panic(stringify!($l != $r));
-        }
-    }
-}
 
 struct Unique<T: ?Sized> {
     pointer: *const T,
@@ -296,6 +296,11 @@ fn main() {
     unsafe {
         global_asm_test();
     }
+
+    // Both statics have a reference that points to the same anonymous allocation.
+    static REF1: &u8 = &42;
+    static REF2: &u8 = REF1;
+    assert_eq!(*REF1, *REF2);
 }
 
 #[cfg(all(not(jit), target_os = "linux"))]

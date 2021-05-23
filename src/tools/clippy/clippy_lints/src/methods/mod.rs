@@ -1838,16 +1838,18 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     }
                 }
 
-                wrong_self_convention::check(
-                    cx,
-                    &name,
-                    item.vis.node.is_pub(),
-                    self_ty,
-                    first_arg_ty,
-                    first_arg.pat.span,
-                    implements_trait,
-                    false
-                );
+                if sig.decl.implicit_self.has_implicit_self() {
+                    wrong_self_convention::check(
+                        cx,
+                        &name,
+                        item.vis.node.is_pub(),
+                        self_ty,
+                        first_arg_ty,
+                        first_arg.pat.span,
+                        implements_trait,
+                        false
+                    );
+                }
             }
         }
 
@@ -1903,7 +1905,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
         if_chain! {
             if let TraitItemKind::Fn(ref sig, _) = item.kind;
+            if sig.decl.implicit_self.has_implicit_self();
             if let Some(first_arg_ty) = sig.decl.inputs.iter().next();
+
             then {
                 let first_arg_span = first_arg_ty.span;
                 let first_arg_ty = hir_ty_to_ty(cx.tcx, first_arg_ty);
@@ -2187,27 +2191,6 @@ const TRAIT_METHODS: [ShouldImplTraitCase; 30] = [
     ShouldImplTraitCase::new("std::ops::Shl", "shl",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
     ShouldImplTraitCase::new("std::ops::Shr", "shr",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
     ShouldImplTraitCase::new("std::ops::Sub", "sub",  2,  FN_HEADER,  SelfKind::Value,  OutType::Any, true),
-];
-
-#[rustfmt::skip]
-const PATTERN_METHODS: [(&str, usize); 17] = [
-    ("contains", 1),
-    ("starts_with", 1),
-    ("ends_with", 1),
-    ("find", 1),
-    ("rfind", 1),
-    ("split", 1),
-    ("rsplit", 1),
-    ("split_terminator", 1),
-    ("rsplit_terminator", 1),
-    ("splitn", 2),
-    ("rsplitn", 2),
-    ("matches", 1),
-    ("rmatches", 1),
-    ("match_indices", 1),
-    ("rmatch_indices", 1),
-    ("trim_start_matches", 1),
-    ("trim_end_matches", 1),
 ];
 
 #[derive(Clone, Copy, PartialEq, Debug)]

@@ -15,11 +15,11 @@ use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
 
-use crate::clean::{self, Attributes, AttributesExt, GetDefId, ToSource};
+use crate::clean::{self, Attributes, AttributesExt, FakeDefId, GetDefId, ToSource};
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
-use super::Clean;
+use super::{Clean, Visibility};
 
 type Attrs<'hir> = rustc_middle::ty::Attributes<'hir>;
 
@@ -121,7 +121,7 @@ crate fn try_inline(
     };
 
     let (attrs, cfg) = merge_attrs(cx, Some(parent_module), load_attrs(cx, did), attrs_clone);
-    cx.inlined.insert(did);
+    cx.inlined.insert(did.into());
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         Some(name),
@@ -188,13 +188,23 @@ crate fn record_extern_fqn(cx: &mut DocContext<'_>, did: DefId, kind: ItemType) 
     if did.is_local() {
         cx.cache.exact_paths.insert(did, fqn);
     } else {
-        cx.cache.external_paths.insert(did, (fqn, ItemType::from(kind)));
+        cx.cache.external_paths.insert(did, (fqn, kind));
     }
 }
 
 crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Trait {
-    let trait_items =
-        cx.tcx.associated_items(did).in_definition_order().map(|item| item.clean(cx)).collect();
+    let trait_items = cx
+        .tcx
+        .associated_items(did)
+        .in_definition_order()
+        .map(|item| {
+            // When building an external trait, the cleaned trait will have all items public,
+            // which causes methods to have a `pub` prefix, which is invalid since items in traits
+            // can not have a visibility prefix. Thus we override the visibility here manually.
+            // See https://github.com/rust-lang/rust/issues/81274
+            clean::Item { visibility: Visibility::Inherited, ..item.clean(cx) }
+        })
+        .collect();
 
     let predicates = cx.tcx.predicates_of(did);
     let generics = (cx.tcx.generics_of(did), predicates).clean(cx);
@@ -307,10 +317,10 @@ fn merge_attrs(
             } else {
                 Attributes::from_ast(&both, None)
             },
-            both.cfg(cx.sess().diagnostic()),
+            both.cfg(cx.sess()),
         )
     } else {
-        (old_attrs.clean(cx), old_attrs.cfg(cx.sess().diagnostic()))
+        (old_attrs.clean(cx), old_attrs.cfg(cx.sess()))
     }
 }
 
@@ -322,7 +332,7 @@ crate fn build_impl(
     attrs: Option<Attrs<'_>>,
     ret: &mut Vec<clean::Item>,
 ) {
-    if !cx.inlined.insert(did) {
+    if !cx.inlined.insert(did.into()) {
         return;
     }
 
@@ -414,16 +424,10 @@ crate fn build_impl(
         record_extern_trait(cx, trait_did);
     }
 
-    let provided = trait_
-        .def_id()
-        .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
-        .unwrap_or_default();
-
-    debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
-
     let (merged_attrs, cfg) = merge_attrs(cx, parent_module.into(), load_attrs(cx, did), attrs);
     debug!("merged_attrs={:?}", merged_attrs);
 
+    debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
     ret.push(clean::Item::from_def_id_and_attrs_and_parts(
         did,
         None,
@@ -431,7 +435,6 @@ crate fn build_impl(
             span: clean::types::rustc_span(did, cx.tcx),
             unsafety: hir::Unsafety::Normal,
             generics,
-            provided_trait_methods: provided,
             trait_,
             for_,
             items: trait_items,
@@ -467,7 +470,7 @@ fn build_module(
                 items.push(clean::Item {
                     name: None,
                     attrs: box clean::Attributes::default(),
-                    def_id: cx.next_def_id(did.krate),
+                    def_id: FakeDefId::new_fake(did.krate),
                     visibility: clean::Public,
                     kind: box clean::ImportItem(clean::Import::new_simple(
                         item.ident.name,

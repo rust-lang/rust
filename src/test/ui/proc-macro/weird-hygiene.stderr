@@ -7,7 +7,7 @@ LL |             Value = (stringify!($tokens + hidden_ident), 1).1
 LL |     other!(50);
    |     ----------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `inner` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `hidden_ident` in this scope
   --> $DIR/weird-hygiene.rs:34:13
@@ -18,7 +18,7 @@ LL |             hidden_ident
 LL |     invoke_it!(25);
    |     --------------- in this macro invocation
    |
-   = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `invoke_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

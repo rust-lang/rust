@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Z thir-unsafeck
+
 static mut a: isize = 3;
 
 fn main() {

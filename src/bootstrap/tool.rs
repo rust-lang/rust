@@ -52,7 +52,10 @@ impl Step for ToolBuild {
         let is_optional_tool = self.is_optional_tool;
 
         match self.mode {
-            Mode::ToolRustc => builder.ensure(compile::Rustc { compiler, target }),
+            Mode::ToolRustc => {
+                builder.ensure(compile::Std { compiler, target: compiler.host });
+                builder.ensure(compile::Rustc { compiler, target });
+            }
             Mode::ToolStd => builder.ensure(compile::Std { compiler, target }),
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
@@ -392,7 +395,10 @@ impl ErrorIndex {
         let compiler = builder.compiler(builder.top_stage.saturating_sub(1), builder.config.build);
         let mut cmd = Command::new(builder.ensure(ErrorIndex { compiler }));
         add_dylib_path(
-            vec![PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host))],
+            vec![
+                PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)),
+                PathBuf::from(builder.rustc_libdir(compiler)),
+            ],
             &mut cmd,
         );
         cmd
@@ -590,7 +596,14 @@ impl Step for Cargo {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.path("src/tools/cargo").default_condition(builder.config.extended)
+        run.path("src/tools/cargo").default_condition(
+            builder.config.extended
+                && builder.config.tools.as_ref().map_or(
+                    true,
+                    // If `tools` is set, search list for this tool.
+                    |tools| tools.iter().any(|tool| tool == "cargo"),
+                ),
+        )
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -723,7 +736,7 @@ macro_rules! tool_extended {
 // Note: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
 // to make `./x.py build <tool>` work.
 tool_extended!((self, builder),
-    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, {};
+    Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", stable=true, in_tree=true, {};
     CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", stable=true, in_tree=true, {};
     Clippy, clippy, "src/tools/clippy", "clippy-driver", stable=true, in_tree=true, {};
     Miri, miri, "src/tools/miri", "miri", stable=false, {};
@@ -737,7 +750,7 @@ tool_extended!((self, builder),
         self.extra_features.push("clippy".to_owned());
     };
     RustDemangler, rust_demangler, "src/tools/rust-demangler", "rust-demangler", stable=false, in_tree=true, {};
-    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, {};
+    Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, in_tree=true, {};
     RustAnalyzer, rust_analyzer, "src/tools/rust-analyzer/crates/rust-analyzer", "rust-analyzer", stable=false, {};
 );
 

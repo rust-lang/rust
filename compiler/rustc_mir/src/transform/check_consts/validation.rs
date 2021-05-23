@@ -10,9 +10,7 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{
-    self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt, TypeAndMut,
-};
+use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
@@ -426,7 +424,7 @@ impl Validator<'mir, 'tcx> {
                     ty::PredicateKind::Subtype(_) => {
                         bug!("subtype predicate on function: {:#?}", predicate)
                     }
-                    ty::PredicateKind::Trait(pred, constness) => {
+                    ty::PredicateKind::Trait(pred, _constness) => {
                         if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
                             continue;
                         }
@@ -440,16 +438,7 @@ impl Validator<'mir, 'tcx> {
                                 // arguments when determining importance.
                                 let kind = LocalKind::Arg;
 
-                                if constness == hir::Constness::Const {
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                } else if !tcx.features().const_fn
-                                    || self.ccx.is_const_stable_const_fn()
-                                {
-                                    // HACK: We shouldn't need the conditional above, but trait
-                                    // bounds on containing impl blocks are wrongly being marked as
-                                    // "not-const".
-                                    self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                                }
+                                self.check_op_spanned(ops::ty::TraitBound(kind), span);
                             }
                             // other kinds of bounds are either tautologies
                             // or cause errors in other passes
@@ -645,17 +634,9 @@ impl Visitor<'tcx> for Validator<'mir, 'tcx> {
                 _,
             ) => self.check_op(ops::FnPtrCast),
 
-            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, cast_ty) => {
-                if let Some(TypeAndMut { ty, .. }) = cast_ty.builtin_deref(true) {
-                    let unsized_ty = self.tcx.struct_tail_erasing_lifetimes(ty, self.param_env);
-
-                    // Casting/coercing things to slices is fine.
-                    if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
-                        return;
-                    }
-                }
-
-                self.check_op(ops::UnsizingCast);
+            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
+                // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur
+                // in the type of any local, which also excludes casts).
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {

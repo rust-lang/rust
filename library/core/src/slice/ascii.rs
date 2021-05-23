@@ -110,7 +110,7 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
     fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: ops::Try<Ok = Acc>,
+        R: ops::Try<Output = Acc>,
     {
         self.inner.try_fold(init, fold)
     }

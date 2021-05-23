@@ -1,18 +1,18 @@
 warning: any use of this value will cause an error
-  --> $DIR/validate_uninhabited_zsts.rs:6:14
+  --> $DIR/validate_uninhabited_zsts.rs:5:14
    |
 LL |     unsafe { std::mem::transmute(()) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^
    |              |
    |              transmuting to uninhabited type
-   |              inside `foo` at $DIR/validate_uninhabited_zsts.rs:6:14
-   |              inside `FOO` at $DIR/validate_uninhabited_zsts.rs:16:26
+   |              inside `foo` at $DIR/validate_uninhabited_zsts.rs:5:14
+   |              inside `FOO` at $DIR/validate_uninhabited_zsts.rs:15:26
 ...
 LL | const FOO: [Empty; 3] = [foo(); 3];
    | -----------------------------------
    |
 note: the lint level is defined here
-  --> $DIR/validate_uninhabited_zsts.rs:15:8
+  --> $DIR/validate_uninhabited_zsts.rs:14:8
    |
 LL | #[warn(const_err)]
    |        ^^^^^^^^^
@@ -20,7 +20,7 @@ LL | #[warn(const_err)]
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/validate_uninhabited_zsts.rs:19:1
+  --> $DIR/validate_uninhabited_zsts.rs:18:1
    |
 LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a value of uninhabited type Empty at [0]
@@ -29,7 +29,7 @@ LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    = note: the raw bytes of the constant (size: 0, align: 1) {}
 
 warning: the type `!` does not permit zero-initialization
-  --> $DIR/validate_uninhabited_zsts.rs:6:14
+  --> $DIR/validate_uninhabited_zsts.rs:5:14
    |
 LL |     unsafe { std::mem::transmute(()) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     unsafe { std::mem::transmute(()) }
    = note: the `!` type has no valid value
 
 warning: the type `Empty` does not permit zero-initialization
-  --> $DIR/validate_uninhabited_zsts.rs:19:35
+  --> $DIR/validate_uninhabited_zsts.rs:18:35
    |
 LL | const BAR: [Empty; 3] = [unsafe { std::mem::transmute(()) }; 3];
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^

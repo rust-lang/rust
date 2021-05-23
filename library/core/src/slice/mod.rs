@@ -1948,8 +1948,9 @@ impl<T> [T] {
     /// assert!(!v.contains(&50));
     /// ```
     ///
-    /// If you do not have an `&T`, but just an `&U` such that `T: Borrow<U>`
-    /// (e.g. `String: Borrow<str>`), you can use `iter().any`:
+    /// If you do not have a `&T`, but some other value that you can compare
+    /// with one (for example, `String` implements `PartialEq<str>`), you can
+    /// use `iter().any`:
     ///
     /// ```
     /// let v = [String::from("hello"), String::from("world")]; // slice of `String`

@@ -110,6 +110,7 @@ use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
 use crate::io::{self, Initializer, IoSlice, IoSliceMut};
+use crate::num::NonZeroI32;
 use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
@@ -1387,8 +1388,8 @@ impl From<fs::File> for Stdio {
 /// An `ExitStatus` represents every possible disposition of a process.  On Unix this
 /// is the **wait status**.  It is *not* simply an *exit status* (a value passed to `exit`).
 ///
-/// For proper error reporting of failed processes, print the value of `ExitStatus` using its
-/// implementation of [`Display`](crate::fmt::Display).
+/// For proper error reporting of failed processes, print the value of `ExitStatus` or
+/// `ExitStatusError` using their implementations of [`Display`](crate::fmt::Display).
 ///
 /// [`status`]: Command::status
 /// [`wait`]: Child::wait
@@ -1401,6 +1402,29 @@ pub struct ExitStatus(imp::ExitStatus);
 impl crate::sealed::Sealed for ExitStatus {}
 
 impl ExitStatus {
+    /// Was termination successful?  Returns a `Result`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # if cfg!(unix) {
+    /// use std::process::Command;
+    ///
+    /// let status = Command::new("ls")
+    ///                      .arg("/dev/nonexistent")
+    ///                      .status()
+    ///                      .expect("ls could not be executed");
+    ///
+    /// println!("ls: {}", status);
+    /// status.exit_ok().expect_err("/dev/nonexistent could be listed!");
+    /// # } // cfg!(unix)
+    /// ```
+    #[unstable(feature = "exit_status_error", issue = "84908")]
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        self.0.exit_ok().map_err(ExitStatusError)
+    }
+
     /// Was termination successful? Signal termination is not considered a
     /// success, and success is defined as a zero exit status.
     ///
@@ -1422,7 +1446,7 @@ impl ExitStatus {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn success(&self) -> bool {
-        self.0.success()
+        self.0.exit_ok().is_ok()
     }
 
     /// Returns the exit code of the process, if any.
@@ -1475,6 +1499,120 @@ impl fmt::Display for ExitStatus {
         self.0.fmt(f)
     }
 }
+
+/// Allows extension traits within `std`.
+#[unstable(feature = "sealed", issue = "none")]
+impl crate::sealed::Sealed for ExitStatusError {}
+
+/// Describes the result of a process after it has failed
+///
+/// Produced by the [`.exit_ok`](ExitStatus::exit_ok) method on [`ExitStatus`].
+///
+/// # Examples
+///
+/// ```
+/// #![feature(exit_status_error)]
+/// # if cfg!(unix) {
+/// use std::process::{Command, ExitStatusError};
+///
+/// fn run(cmd: &str) -> Result<(),ExitStatusError> {
+///     Command::new(cmd).status().unwrap().exit_ok()?;
+///     Ok(())
+/// }
+///
+/// run("true").unwrap();
+/// run("false").unwrap_err();
+/// # } // cfg!(unix)
+/// ```
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[unstable(feature = "exit_status_error", issue = "84908")]
+// The definition of imp::ExitStatusError should ideally be such that
+// Result<(), imp::ExitStatusError> has an identical representation to imp::ExitStatus.
+pub struct ExitStatusError(imp::ExitStatusError);
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl ExitStatusError {
+    /// Reports the exit code, if applicable, from an `ExitStatusError`.
+    ///
+    /// In Unix terms the return value is the **exit status**: the value passed to `exit`, if the
+    /// process finished by calling `exit`.  Note that on Unix the exit status is truncated to 8
+    /// bits, and that values that didn't come from a program's call to `exit` may be invented by the
+    /// runtime system (often, for example, 255, 254, 127 or 126).
+    ///
+    /// On Unix, this will return `None` if the process was terminated by a signal.  If you want to
+    /// handle such situations specially, consider using methods from
+    /// [`ExitStatusExt`](crate::os::unix::process::ExitStatusExt).
+    ///
+    /// If the process finished by calling `exit` with a nonzero value, this will return
+    /// that exit status.
+    ///
+    /// If the error was something else, it will return `None`.
+    ///
+    /// If the process exited successfully (ie, by calling `exit(0)`), there is no
+    /// `ExitStatusError`.  So the return value from `ExitStatusError::code()` is always nonzero.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # #[cfg(unix)] {
+    /// use std::process::Command;
+    ///
+    /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
+    /// assert_eq!(bad.code(), Some(1));
+    /// # } // #[cfg(unix)]
+    /// ```
+    pub fn code(&self) -> Option<i32> {
+        self.code_nonzero().map(Into::into)
+    }
+
+    /// Reports the exit code, if applicable, from an `ExitStatusError`, as a `NonZero`
+    ///
+    /// This is exaclty like [`code()`](Self::code), except that it returns a `NonZeroI32`.
+    ///
+    /// Plain `code`, returning a plain integer, is provided because is is often more convenient.
+    /// The returned value from `code()` is indeed also nonzero; use `code_nonzero()` when you want
+    /// a type-level guarantee of nonzeroness.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(exit_status_error)]
+    /// # if cfg!(unix) {
+    /// use std::convert::TryFrom;
+    /// use std::num::NonZeroI32;
+    /// use std::process::Command;
+    ///
+    /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
+    /// assert_eq!(bad.code_nonzero().unwrap(), NonZeroI32::try_from(1).unwrap());
+    /// # } // cfg!(unix)
+    /// ```
+    pub fn code_nonzero(&self) -> Option<NonZeroI32> {
+        self.0.code()
+    }
+
+    /// Converts an `ExitStatusError` (back) to an `ExitStatus`.
+    pub fn into_status(&self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl fmt::Display for ExitStatusError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "process exited unsuccessfully: {}", self.into_status())
+    }
+}
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl crate::error::Error for ExitStatusError {}
 
 /// This type represents the status code a process can return to its
 /// parent under normal termination.

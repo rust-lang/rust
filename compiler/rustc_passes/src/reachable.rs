@@ -8,8 +8,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node;
@@ -250,7 +249,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     // Reachable constants will be inlined into other crates
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
-                    hir::ItemKind::Const(_, init) => {
+                    hir::ItemKind::Const(_, init) | hir::ItemKind::Static(_, _, init) => {
                         self.visit_nested_body(init);
                     }
 
@@ -261,7 +260,6 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Use(..)
                     | hir::ItemKind::OpaqueTy(..)
                     | hir::ItemKind::TyAlias(..)
-                    | hir::ItemKind::Static(..)
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl { .. }
@@ -386,10 +384,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
     }
 }
 
-fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, crate_num: CrateNum) -> FxHashSet<LocalDefId> {
-    debug_assert!(crate_num == LOCAL_CRATE);
-
-    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
+    let access_levels = &tcx.privacy_access_levels(());
 
     let any_library =
         tcx.sess.crate_types().iter().any(|ty| {

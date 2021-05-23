@@ -454,7 +454,7 @@ in `clippy_lints/src/utils/conf.rs`:
 ```rust
 define_Conf! {
     /// Lint: LIST, OF, LINTS, <THE_NEWLY_ADDED_LINT>. The minimum rust version that the project supports
-    (msrv, "msrv": Option<String>, None),
+    (msrv: Option<String> = None),
     ...
 }
 ```
@@ -562,7 +562,7 @@ in the following steps:
     like this:
     ```rust
     /// Lint: LINT_NAME. <The configuration field doc comment>
-    (configuration_ident, "configuration_value": Type, DefaultValue),
+    (configuration_ident: Type = DefaultValue),
     ```
     The configuration value and identifier should usually be the same. The doc comment will be
     automatically added to the lint documentation.

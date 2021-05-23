@@ -118,7 +118,7 @@ which `IntelliJ Rust` will be able to understand.
 Run `cargo dev ide_setup --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
-Clippys `Cargo.toml`s and should allow rust-analyzer to understand most of the types that Clippy uses.
+Clippys `Cargo.toml`s and should allow `IntelliJ Rust` to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
 [rustc_repo]: https://github.com/rust-lang/rust/

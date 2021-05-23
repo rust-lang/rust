@@ -12,7 +12,7 @@ note: the lint level is defined here
    |
 LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
-   = note: this warning originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: unused import: `std::string::ToString`
   --> $DIR/lints-in-foreign-macros.rs:16:18

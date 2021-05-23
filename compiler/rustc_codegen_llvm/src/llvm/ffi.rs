@@ -54,7 +54,7 @@ pub enum CallConv {
 }
 
 /// LLVMRustLinkage
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub enum Linkage {
     ExternalLinkage = 0,
@@ -72,6 +72,7 @@ pub enum Linkage {
 
 // LLVMRustVisibility
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub enum Visibility {
     Default = 0,
     Hidden = 1,
@@ -1079,7 +1080,6 @@ extern "C" {
         Fn: &'a Value,
         Name: *const c_char,
     ) -> &'a BasicBlock;
-    pub fn LLVMDeleteBasicBlock(BB: &BasicBlock);
 
     // Operations on instructions
     pub fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
@@ -2203,10 +2203,14 @@ extern "C" {
         SanitizerOptions: Option<&SanitizerOptions>,
         PGOGenPath: *const c_char,
         PGOUsePath: *const c_char,
+        InstrumentCoverage: bool,
+        InstrumentGCOV: bool,
         llvm_selfprofiler: *mut c_void,
         begin_callback: SelfProfileBeforePassCallback,
         end_callback: SelfProfileAfterPassCallback,
-    );
+        ExtraPasses: *const c_char,
+        ExtraPassesLen: size_t,
+    ) -> LLVMRustResult;
     pub fn LLVMRustPrintModule(
         M: &'a Module,
         Output: *const c_char,

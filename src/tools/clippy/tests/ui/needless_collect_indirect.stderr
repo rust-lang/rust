@@ -69,5 +69,61 @@ LL |
 LL |     sample.into_iter().any(|x| x == a);
    |
 
-error: aborting due to 5 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:52:51
+   |
+LL |         let buffer: Vec<&str> = string.split('/').collect();
+   |                                                   ^^^^^^^
+LL |         buffer.len()
+   |         ------------ the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL |         
+LL |         string.split('/').count()
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:57:55
+   |
+LL |         let indirect_len: VecDeque<_> = sample.iter().collect();
+   |                                                       ^^^^^^^
+LL |         indirect_len.len()
+   |         ------------------ the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL |         
+LL |         sample.iter().count()
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:62:57
+   |
+LL |         let indirect_len: LinkedList<_> = sample.iter().collect();
+   |                                                         ^^^^^^^
+LL |         indirect_len.len()
+   |         ------------------ the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL |         
+LL |         sample.iter().count()
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:67:57
+   |
+LL |         let indirect_len: BinaryHeap<_> = sample.iter().collect();
+   |                                                         ^^^^^^^
+LL |         indirect_len.len()
+   |         ------------------ the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL |         
+LL |         sample.iter().count()
+   |
+
+error: aborting due to 9 previous errors
 

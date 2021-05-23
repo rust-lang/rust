@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `Something` as `*const Something`
-  --> $DIR/issue-84213.rs:10:33
+  --> $DIR/issue-84213.rs:11:33
    |
 LL |     let _pointer_to_something = something as *const Something;
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
@@ -10,7 +10,7 @@ LL |     let _pointer_to_something = &something as *const Something;
    |                                 ^
 
 error[E0605]: non-primitive cast: `Something` as `*mut Something`
-  --> $DIR/issue-84213.rs:13:37
+  --> $DIR/issue-84213.rs:14:37
    |
 LL |     let _mut_pointer_to_something = something as *mut Something;
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast

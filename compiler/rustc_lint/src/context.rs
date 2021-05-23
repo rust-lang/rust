@@ -710,7 +710,7 @@ pub trait LintContext: Sized {
                     db.note(&note);
                 }
                 BuiltinLintDiagnostics::OrPatternsBackCompat(span,suggestion) => {
-                    db.span_suggestion(span, "use pat2015 to preserve semantics", suggestion, Applicability::MachineApplicable);
+                    db.span_suggestion(span, "use pat_param to preserve semantics", suggestion, Applicability::MachineApplicable);
                 }
             }
             // Rewrap `db`, and pass control to the user.

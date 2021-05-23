@@ -20,7 +20,7 @@ use rustc_attr::{self as attr, is_builtin_attr};
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{AttemptLocalParseRecovery, ForceCollect, Parser, RecoverComma};
 use rustc_parse::validate_attr;
@@ -361,9 +361,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     // FIXME: Avoid visiting the crate as a `Mod` item,
     // make crate a first class expansion target instead.
     pub fn expand_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        let file_path = match self.cx.source_map().span_to_unmapped_path(krate.span) {
-            FileName::Real(name) => name.into_local_path(),
-            other => PathBuf::from(other.to_string()),
+        let file_path = match self.cx.source_map().span_to_filename(krate.span) {
+            FileName::Real(name) => name
+                .into_local_path()
+                .expect("attempting to resolve a file path in an external file"),
+            other => PathBuf::from(other.prefer_local().to_string()),
         };
         let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
         self.cx.root_path = dir_path.clone();
@@ -414,6 +416,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         kind.article(), kind.descr()
                     ),
                 );
+                // FIXME: this workaround issue #84569
+                FatalError.raise();
             }
         };
         self.cx.trace_macros_diag();

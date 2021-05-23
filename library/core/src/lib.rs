@@ -77,6 +77,7 @@
 #![feature(const_float_classify)]
 #![feature(const_float_bits_conv)]
 #![feature(const_int_unchecked_arith)]
+#![feature(const_inherent_unchecked_arith)]
 #![feature(const_mut_refs)]
 #![feature(const_refs_to_cell)]
 #![feature(const_panic)]
@@ -112,7 +113,7 @@
 #![cfg_attr(bootstrap, feature(doc_spotlight))]
 #![cfg_attr(not(bootstrap), feature(doc_notable_trait))]
 #![feature(duration_consts_2)]
-#![feature(extended_key_value_attributes)]
+#![cfg_attr(bootstrap, feature(extended_key_value_attributes))]
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intra_doc_pointers)]
@@ -166,8 +167,13 @@
 #![feature(const_caller_location)]
 #![feature(slice_ptr_get)]
 #![feature(no_niche)] // rust-lang/rust#68303
+#![cfg_attr(not(bootstrap), feature(no_coverage))] // rust-lang/rust#84605
 #![feature(int_error_matching)]
 #![deny(unsafe_op_in_unsafe_fn)]
+
+// allow using `core::` in intra-doc links
+#[allow(unused_extern_crates)]
+extern crate self as core;
 
 #[prelude_import]
 #[allow(unused)]

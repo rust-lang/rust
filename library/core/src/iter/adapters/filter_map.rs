@@ -39,7 +39,7 @@ fn filter_map_fold<T, B, Acc>(
     }
 }
 
-fn filter_map_try_fold<'a, T, B, Acc, R: Try<Ok = Acc>>(
+fn filter_map_try_fold<'a, T, B, Acc, R: Try<Output = Acc>>(
     f: &'a mut impl FnMut(T) -> Option<B>,
     mut fold: impl FnMut(Acc, B) -> R + 'a,
 ) -> impl FnMut(Acc, T) -> R + 'a {
@@ -72,7 +72,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         self.iter.try_fold(init, filter_map_try_fold(&mut self.f, fold))
     }
@@ -111,7 +111,7 @@ where
     where
         Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
-        R: Try<Ok = Acc>,
+        R: Try<Output = Acc>,
     {
         self.iter.try_rfold(init, filter_map_try_fold(&mut self.f, fold))
     }
