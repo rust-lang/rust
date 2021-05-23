@@ -23,7 +23,7 @@ use crate::{
 //
 // impl Person {
 //     /// Get a reference to the person's name.
-//     fn name(&self) -> &String {
+//     fn $0name(&self) -> &String {
 //         &self.name
 //     }
 // }
@@ -49,7 +49,7 @@ pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext) -> Option<
 //
 // impl Person {
 //     /// Get a mutable reference to the person's name.
-//     fn name_mut(&mut self) -> &mut String {
+//     fn $0name_mut(&mut self) -> &mut String {
 //         &mut self.name
 //     }
 // }
@@ -119,7 +119,12 @@ pub(crate) fn generate_getter_impl(
                     strukt.syntax().text_range().end()
                 });
 
-            builder.insert(start_offset, buf);
+            match ctx.config.snippet_cap {
+                Some(cap) => {
+                    builder.insert_snippet(cap, start_offset, buf.replacen("fn ", "fn $0", 1))
+                }
+                None => builder.insert(start_offset, buf),
+            }
         },
     )
 }
@@ -146,7 +151,7 @@ struct Context {
 
 impl Context {
     /// Get a reference to the context's data.
-    fn data(&self) -> &Data {
+    fn $0data(&self) -> &Data {
         &self.data
     }
 }
@@ -167,7 +172,7 @@ struct Context {
 
 impl Context {
     /// Get a mutable reference to the context's data.
-    fn data_mut(&mut self) -> &mut Data {
+    fn $0data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
 }
@@ -224,7 +229,7 @@ pub(crate) struct Context {
 
 impl Context {
     /// Get a reference to the context's data.
-    pub(crate) fn data(&self) -> &Data {
+    pub(crate) fn $0data(&self) -> &Data {
         &self.data
     }
 }
@@ -262,7 +267,7 @@ impl Context {
     }
 
     /// Get a reference to the context's count.
-    fn count(&self) -> &usize {
+    fn $0count(&self) -> &usize {
         &self.count
     }
 }
