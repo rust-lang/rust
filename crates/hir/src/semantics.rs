@@ -11,7 +11,7 @@ use hir_def::{
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
 use hir_expand::{name::AsName, ExpansionInfo};
-use hir_ty::associated_type_shorthand_candidates;
+use hir_ty::{associated_type_shorthand_candidates, Interner};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
@@ -227,7 +227,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn resolve_record_field(
         &self,
         field: &ast::RecordExprField,
-    ) -> Option<(Field, Option<Local>)> {
+    ) -> Option<(Field, Option<Local>, Type)> {
         self.imp.resolve_record_field(field)
     }
 
@@ -501,14 +501,12 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<FunctionId> {
-        self.analyze(call.syntax()).resolve_method_call(self.db, call)
+        self.analyze(call.syntax()).resolve_method_call(self.db, call).map(|(id, _)| id)
     }
 
     fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
-        // FIXME: this erases Substs, we should instead record the correct
-        // substitution during inference and use that
-        let func = self.resolve_method_call(call)?;
-        let ty = hir_ty::TyBuilder::value_ty(self.db, func.into()).fill_with_unknown().build();
+        let (func, subst) = self.analyze(call.syntax()).resolve_method_call(self.db, call)?;
+        let ty = self.db.value_ty(func.into()).substitute(&Interner, &subst);
         let resolver = self.analyze(call.syntax()).resolver;
         let ty = Type::new_with_resolver(self.db, &resolver, ty)?;
         let mut res = ty.as_callable(self.db)?;
@@ -520,7 +518,10 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax()).resolve_field(self.db, field)
     }
 
-    fn resolve_record_field(&self, field: &ast::RecordExprField) -> Option<(Field, Option<Local>)> {
+    fn resolve_record_field(
+        &self,
+        field: &ast::RecordExprField,
+    ) -> Option<(Field, Option<Local>, Type)> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 

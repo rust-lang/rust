@@ -105,7 +105,7 @@ fn walk_unsafe(
         Expr::MethodCall { .. } => {
             if infer
                 .method_resolution(current)
-                .map(|func| db.function_data(func).is_unsafe())
+                .map(|(func, _)| db.function_data(func).is_unsafe())
                 .unwrap_or(false)
             {
                 unsafe_exprs.push(UnsafeExpr { expr: current, inside_unsafe_block });

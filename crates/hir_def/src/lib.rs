@@ -485,6 +485,14 @@ impl VariantId {
             VariantId::UnionId(it) => it.lookup(db).id.file_id(),
         }
     }
+
+    pub fn adt_id(self) -> AdtId {
+        match self {
+            VariantId::EnumVariantId(it) => it.parent.into(),
+            VariantId::StructId(it) => it.into(),
+            VariantId::UnionId(it) => it.into(),
+        }
+    }
 }
 
 trait Intern {

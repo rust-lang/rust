@@ -311,7 +311,7 @@ impl NameRefClass {
         }
 
         if let Some(record_field) = ast::RecordExprField::for_field_name(name_ref) {
-            if let Some((field, local)) = sema.resolve_record_field(&record_field) {
+            if let Some((field, local, _)) = sema.resolve_record_field(&record_field) {
                 let field = Definition::Field(field);
                 let res = match local {
                     None => NameRefClass::Definition(field),

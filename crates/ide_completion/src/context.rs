@@ -337,25 +337,24 @@ impl<'a> CompletionContext<'a> {
                     },
                     ast::RecordExprFieldList(_it) => {
                         cov_mark::hit!(expected_type_struct_field_without_leading_char);
-                        self.token.prev_sibling_or_token()
-                            .and_then(|se| se.into_node())
-                            .and_then(|node| ast::RecordExprField::cast(node))
-                            .and_then(|rf| self.sema.resolve_record_field(&rf).zip(Some(rf)))
-                            .map(|(f, rf)|(
-                                Some(f.0.ty(self.db)),
-                                rf.field_name().map(NameOrNameRef::NameRef),
+                        // wouldn't try {} be nice...
+                        (|| {
+                            let expr_field = self.token.prev_sibling_or_token()?
+                                      .into_node()
+                                      .and_then(|node| ast::RecordExprField::cast(node))?;
+                            let (_, _, ty) = self.sema.resolve_record_field(&expr_field)?;
+                            Some((
+                                Some(ty),
+                                expr_field.field_name().map(NameOrNameRef::NameRef),
                             ))
-                            .unwrap_or((None, None))
+                        })().unwrap_or((None, None))
                     },
                     ast::RecordExprField(it) => {
                         cov_mark::hit!(expected_type_struct_field_with_leading_char);
-                        self.sema
-                            .resolve_record_field(&it)
-                            .map(|f|(
-                                Some(f.0.ty(self.db)),
-                                it.field_name().map(NameOrNameRef::NameRef),
-                            ))
-                            .unwrap_or((None, None))
+                        (
+                            it.expr().as_ref().and_then(|e| self.sema.type_of_expr(e)),
+                            it.field_name().map(NameOrNameRef::NameRef),
+                        )
                     },
                     ast::MatchExpr(it) => {
                         cov_mark::hit!(expected_type_match_arm_without_leading_char);
@@ -381,6 +380,12 @@ impl<'a> CompletionContext<'a> {
                         cov_mark::hit!(expected_type_fn_ret_without_leading_char);
                         let def = self.sema.to_def(&it);
                         (def.map(|def| def.ret_type(self.db)), None)
+                    },
+                    ast::ClosureExpr(it) => {
+                        let ty = self.sema.type_of_expr(&it.into());
+                        ty.and_then(|ty| ty.as_callable(self.db))
+                            .map(|c| (Some(c.return_type()), None))
+                            .unwrap_or((None, None))
                     },
                     ast::Stmt(_it) => (None, None),
                     _ => {
@@ -785,6 +790,19 @@ fn foo() {
     }
 
     #[test]
+    fn expected_type_generic_struct_field() {
+        check_expected_type_and_name(
+            r#"
+struct Foo<T> { a: T }
+fn foo() -> Foo<u32> {
+    Foo { a: $0 }
+}
+"#,
+            expect![[r#"ty: u32, name: a"#]],
+        )
+    }
+
+    #[test]
     fn expected_type_struct_field_with_leading_char() {
         cov_mark::check!(expected_type_struct_field_with_leading_char);
         check_expected_type_and_name(
@@ -894,5 +912,53 @@ fn foo() -> u32 {
 "#,
             expect![[r#"ty: u32, name: ?"#]],
         )
+    }
+
+    #[test]
+    fn expected_type_closure_param_return() {
+        // FIXME: make this work with `|| $0`
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    bar(|| a$0);
+}
+
+fn bar(f: impl FnOnce() -> u32) {}
+#[lang = "fn_once"]
+trait FnOnce { type Output; }
+"#,
+            expect![[r#"ty: u32, name: ?"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_generic_function() {
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    bar::<u32>($0);
+}
+
+fn bar<T>(t: T) {}
+"#,
+            expect![[r#"ty: u32, name: t"#]],
+        );
+    }
+
+    #[test]
+    fn expected_type_generic_method() {
+        check_expected_type_and_name(
+            r#"
+fn foo() {
+    S(1u32).bar($0);
+}
+
+struct S<T>(T);
+impl<T> S<T> {
+    fn bar(self, t: T) {}
+}
+"#,
+            expect![[r#"ty: u32, name: t"#]],
+        );
     }
 }

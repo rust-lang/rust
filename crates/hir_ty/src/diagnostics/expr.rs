@@ -181,7 +181,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         for (id, expr) in body.exprs.iter() {
             if let Expr::MethodCall { receiver, .. } = expr {
                 let function_id = match self.infer.method_resolution(id) {
-                    Some(id) => id,
+                    Some((id, _)) => id,
                     None => continue,
                 };
 
@@ -239,15 +239,11 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                     return;
                 }
 
-                // FIXME: note that we erase information about substs here. This
-                // is not right, but, luckily, doesn't matter as we care only
-                // about the number of params
-                let callee = match self.infer.method_resolution(call_id) {
-                    Some(callee) => callee,
+                let (callee, subst) = match self.infer.method_resolution(call_id) {
+                    Some(it) => it,
                     None => return,
                 };
-                let sig =
-                    db.callable_item_signature(callee.into()).into_value_and_skipped_binders().0;
+                let sig = db.callable_item_signature(callee.into()).substitute(&Interner, &subst);
 
                 (sig, args)
             }

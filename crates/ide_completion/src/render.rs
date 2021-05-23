@@ -667,6 +667,13 @@ fn foo() { A { the$0 } }
                         ),
                         detail: "u32",
                         deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: Some(
+                                CouldUnify,
+                            ),
+                            is_local: false,
+                        },
                     },
                 ]
             "#]],

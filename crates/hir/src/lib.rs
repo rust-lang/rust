@@ -513,9 +513,8 @@ impl Field {
     }
 
     /// Returns the type as in the signature of the struct (i.e., with
-    /// placeholder types for type parameters). This is good for showing
-    /// signature help, but not so good to actually get the type of the field
-    /// when you actually have a variable of the struct.
+    /// placeholder types for type parameters). Only use this in the context of
+    /// the field definition.
     pub fn ty(&self, db: &dyn HirDatabase) -> Type {
         let var_id = self.parent.into();
         let generic_def_id: GenericDefId = match self.parent {
