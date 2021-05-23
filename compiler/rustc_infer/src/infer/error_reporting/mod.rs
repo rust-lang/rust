@@ -2052,7 +2052,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .in_progress_typeck_results
             .map(|typeck_results| typeck_results.borrow().hir_owner)
             .map(|owner| {
-                let hir_id = hir.local_def_id_to_hir_id(owner.def_id);
+                let hir_id = owner.to_hir_id();
                 let parent_id = hir.get_parent_item(hir_id);
                 (
                     // Parent item could be a `mod`, so we check the HIR before calling:

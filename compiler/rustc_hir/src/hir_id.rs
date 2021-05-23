@@ -16,6 +16,10 @@ impl HirOwner {
     pub fn to_def_id(&self) -> DefId {
         self.def_id.to_def_id()
     }
+
+    pub fn to_hir_id(self) -> HirId {
+        HirId { owner: self, local_id: ItemLocalId::from_u32(0) }
+    }
 }
 
 impl rustc_index::vec::Idx for HirOwner {

@@ -50,7 +50,7 @@ impl<'tcx> DiagnosticItemCollector<'tcx> {
     }
 
     fn observe_item(&mut self, def_id: HirOwner) {
-        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.def_id);
+        let hir_id = def_id.to_hir_id();
         let attrs = self.tcx.hir().attrs(hir_id);
         if let Some(name) = extract(&self.tcx.sess, attrs) {
             // insert into our table
