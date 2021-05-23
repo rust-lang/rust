@@ -661,19 +661,28 @@ pub(crate) fn handle_runnables(
             }
         }
         None => {
-            res.push(lsp_ext::Runnable {
-                label: "cargo check --workspace".to_string(),
-                location: None,
-                kind: lsp_ext::RunnableKind::Cargo,
-                args: lsp_ext::CargoRunnable {
-                    workspace_root: None,
-                    override_cargo: config.override_cargo,
-                    cargo_args: vec!["check".to_string(), "--workspace".to_string()],
-                    cargo_extra_args: config.cargo_extra_args,
-                    executable_args: Vec::new(),
-                    expect_test: None,
-                },
-            });
+            if !snap.config.linked_projects().is_empty()
+                || !snap
+                    .config
+                    .discovered_projects
+                    .as_ref()
+                    .map(|projects| projects.is_empty())
+                    .unwrap_or(true)
+            {
+                res.push(lsp_ext::Runnable {
+                    label: "cargo check --workspace".to_string(),
+                    location: None,
+                    kind: lsp_ext::RunnableKind::Cargo,
+                    args: lsp_ext::CargoRunnable {
+                        workspace_root: None,
+                        override_cargo: config.override_cargo,
+                        cargo_args: vec!["check".to_string(), "--workspace".to_string()],
+                        cargo_extra_args: config.cargo_extra_args,
+                        executable_args: Vec::new(),
+                        expect_test: None,
+                    },
+                });
+            }
         }
     }
     Ok(res)
