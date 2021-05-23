@@ -316,7 +316,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
 
                 if !matches!(unwind, StackPopUnwind::NotAllowed)
-                    && self
+                    && !self
                         .fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi)
                 {
                     unwind = StackPopUnwind::NotAllowed;
