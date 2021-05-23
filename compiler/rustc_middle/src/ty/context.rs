@@ -1072,7 +1072,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Allocates a read-only byte or string literal for `mir::interpret`.
     pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
         // Create an allocation that just contains these bytes.
-        let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);
+        let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.intern_const_alloc(alloc);
         self.create_memory_alloc(alloc)
     }

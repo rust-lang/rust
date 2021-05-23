@@ -6,6 +6,7 @@ use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use rustc_ast::Mutability;
 use rustc_macros::HashStable;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{PrimitiveExt, TyAndLayout};
@@ -1024,18 +1025,23 @@ where
         MPlaceTy::from_aligned_ptr(ptr, layout)
     }
 
-    /// Returns a wide MPlace.
+    /// Returns a wide MPlace of type `&'static [mut] str` to a new 1-aligned allocation.
     pub fn allocate_str(
         &mut self,
         str: &str,
         kind: MemoryKind<M::MemoryKind>,
+        mutbl: Mutability,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let ptr = self.memory.allocate_bytes(str.as_bytes(), kind);
+        let ptr = self.memory.allocate_bytes(str.as_bytes(), Align::ONE, kind, mutbl);
         let meta = Scalar::from_machine_usize(u64::try_from(str.len()).unwrap(), self);
         let mplace =
             MemPlace { ptr: ptr.into(), align: Align::ONE, meta: MemPlaceMeta::Meta(meta) };
 
-        let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
+        let ty = self.tcx.mk_ref(
+            self.tcx.lifetimes.re_static,
+            ty::TypeAndMut { ty: self.tcx.types.str_, mutbl },
+        );
+        let layout = self.layout_of(ty).unwrap();
         MPlaceTy { mplace, layout }
     }
 

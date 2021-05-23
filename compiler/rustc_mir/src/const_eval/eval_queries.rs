@@ -169,8 +169,9 @@ pub(super) fn op_to_const<'tcx>(
                         (ecx.tcx.global_alloc(ptr.alloc_id).unwrap_memory(), ptr.offset.bytes())
                     }
                     Scalar::Int { .. } => (
-                        ecx.tcx
-                            .intern_const_alloc(Allocation::from_byte_aligned_bytes(b"" as &[u8])),
+                        ecx.tcx.intern_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
+                            b"" as &[u8],
+                        )),
                         0,
                     ),
                 };

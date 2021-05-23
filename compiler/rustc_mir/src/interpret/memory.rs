@@ -219,9 +219,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn allocate_bytes(
         &mut self,
         bytes: &[u8],
+        align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        mutability: Mutability,
     ) -> Pointer<M::PointerTag> {
-        let alloc = Allocation::from_byte_aligned_bytes(bytes);
+        let alloc = Allocation::from_bytes(bytes, align, mutability);
         self.allocate_with(alloc, kind)
     }
 
