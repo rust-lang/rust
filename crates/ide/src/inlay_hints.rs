@@ -219,7 +219,7 @@ fn hint_iterator(
 ) -> Option<SmolStr> {
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
-    let krate = strukt.krate(db);
+    let krate = strukt.module(db).krate();
     if krate != famous_defs.core()? {
         return None;
     }
