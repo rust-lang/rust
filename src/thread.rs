@@ -332,7 +332,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn join_thread(
         &mut self,
         joined_thread_id: ThreadId,
-        data_race: &Option<data_race::GlobalState>,
+        data_race: Option<&mut data_race::GlobalState>,
     ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status != ThreadJoinStatus::Joinable {
             throw_ub_format!("trying to join a detached or already joined thread");
@@ -436,7 +436,10 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
 
     /// Wakes up threads joining on the active one and deallocates thread-local statics.
     /// The `AllocId` that can now be freed is returned.
-    fn thread_terminated(&mut self, data_race: &Option<data_race::GlobalState>) -> Vec<AllocId> {
+    fn thread_terminated(
+        &mut self,
+        mut data_race: Option<&mut data_race::GlobalState>,
+    ) -> Vec<AllocId> {
         let mut free_tls_statics = Vec::new();
         {
             let mut thread_local_statics = self.thread_local_alloc_ids.borrow_mut();
@@ -452,14 +455,14 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
             });
         }
         // Set the thread into a terminated state in the data-race detector
-        if let Some(data_race) = data_race {
+        if let Some(ref mut data_race) = data_race {
             data_race.thread_terminated();
         }
         // Check if we need to unblock any threads.
         for (i, thread) in self.threads.iter_enumerated_mut() {
             if thread.state == ThreadState::BlockedOnJoin(self.active_thread) {
                 // The thread has terminated, mark happens-before edge to joining thread
-                if let Some(data_race) = data_race {
+                if let Some(ref mut data_race) = data_race {
                     data_race.thread_joined(i, self.active_thread);
                 }
                 trace!("unblocking {:?} because {:?} terminated", i, self.active_thread);
@@ -584,7 +587,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn create_thread(&mut self) -> ThreadId {
         let this = self.eval_context_mut();
         let id = this.machine.threads.create_thread();
-        if let Some(data_race) = &this.memory.extra.data_race {
+        if let Some(data_race) = &mut this.memory.extra.data_race {
             data_race.thread_created(id);
         }
         id
@@ -599,8 +602,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let data_race = &this.memory.extra.data_race;
-        this.machine.threads.join_thread(joined_thread_id, data_race)?;
+        this.machine.threads.join_thread(joined_thread_id, this.memory.extra.data_race.as_mut())?;
         Ok(())
     }
 
@@ -664,7 +666,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
-        if let Some(data_race) = &this.memory.extra.data_race {
+        if let Some(data_race) = &mut this.memory.extra.data_race {
             if let Ok(string) = String::from_utf8(new_thread_name.clone()) {
                 data_race.thread_set_name(this.machine.threads.active_thread, string);
             }
@@ -759,8 +761,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn thread_terminated(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let data_race = &this.memory.extra.data_race;
-        for alloc_id in this.machine.threads.thread_terminated(data_race) {
+        for alloc_id in this.machine.threads.thread_terminated(this.memory.extra.data_race.as_mut())
+        {
             let ptr = this.memory.global_base_pointer(alloc_id.into())?;
             this.memory.deallocate(ptr, None, MiriMemoryKind::Tls.into())?;
         }
