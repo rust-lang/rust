@@ -719,7 +719,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         if let Some(data_race) = &mut this.memory.extra.data_race {
             if data_race.multi_threaded.get() {
                 let alloc_meta =
-                    this.memory.get_alloc_extra_mut(ptr.alloc_id)?.data_race.as_mut().unwrap();
+                    this.memory.get_alloc_extra_mut(ptr.alloc_id)?.0.data_race.as_mut().unwrap();
                 alloc_meta.reset_clocks(ptr.offset, size);
             }
         }
