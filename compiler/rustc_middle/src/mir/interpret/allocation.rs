@@ -99,7 +99,7 @@ impl AllocRange {
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Tag> Allocation<Tag> {
-    /// Creates a read-only allocation initialized by the given bytes
+    /// Creates an allocation initialized by the given bytes
     pub fn from_bytes<'a>(
         slice: impl Into<Cow<'a, [u8]>>,
         align: Align,
