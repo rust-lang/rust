@@ -72,6 +72,10 @@ impl TraitRef {
 }
 
 /// Compare ty::Ty
+///
+/// Note: Most users of `TypeRef` that end up in the salsa database intern it using
+/// `Interned<TypeRef>` to save space. But notably, nested `TypeRef`s are not interned, since that
+/// does not seem to save any noticeable amount of memory.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeRef {
     Never,
