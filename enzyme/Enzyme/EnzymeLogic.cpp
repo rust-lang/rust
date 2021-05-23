@@ -3018,10 +3018,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       } else {
         llvm_unreachable("unknown gpu architecture");
       }
-      Value *AndVal = ebuilder.CreateAnd(ebuilder.CreateAnd(tx, ty), tz);
+      Value *OrVal = ebuilder.CreateOr(ebuilder.CreateOr(tx, ty), tz);
 
       ebuilder.CreateCondBr(
-          ebuilder.CreateICmpEQ(AndVal, ConstantInt::get(AndVal->getType(), 0)),
+          ebuilder.CreateICmpEQ(OrVal, ConstantInt::get(OrVal->getType(), 0)),
           sharedBlock, OldEntryInsts);
 
       IRBuilder<> instbuilder(OldEntryInsts, OldEntryInsts->begin());

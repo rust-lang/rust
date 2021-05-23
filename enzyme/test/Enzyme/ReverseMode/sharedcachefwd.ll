@@ -182,8 +182,8 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %0 = call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
 ; CHECK-NEXT:   %1 = call i32 @llvm.nvvm.read.ptx.sreg.tid.y()
 ; CHECK-NEXT:   %2 = call i32 @llvm.nvvm.read.ptx.sreg.tid.z()
-; CHECK-NEXT:   %3 = and i32 %0, %1
-; CHECK-NEXT:   %4 = and i32 %3, %2
+; CHECK-NEXT:   %3 = or i32 %0, %1
+; CHECK-NEXT:   %4 = or i32 %3, %2
 ; CHECK-NEXT:   %5 = icmp eq i32 %4, 0
 ; CHECK-NEXT:   br i1 %5, label %shblock, label %[[blk:.+]]
 
