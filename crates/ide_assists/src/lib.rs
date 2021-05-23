@@ -206,7 +206,6 @@ mod handlers {
     mod generate_enum_projection_method;
     mod generate_from_impl_for_enum;
     mod generate_function;
-    mod generate_getter_mut;
     mod generate_getter;
     mod generate_impl;
     mod generate_new;
@@ -276,8 +275,8 @@ mod handlers {
             generate_enum_projection_method::generate_enum_try_into_method,
             generate_from_impl_for_enum::generate_from_impl_for_enum,
             generate_function::generate_function,
-            generate_getter_mut::generate_getter_mut,
             generate_getter::generate_getter,
+            generate_getter::generate_getter_mut,
             generate_impl::generate_impl,
             generate_new::generate_new,
             generate_setter::generate_setter,
