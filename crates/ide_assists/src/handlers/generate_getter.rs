@@ -23,8 +23,8 @@ use crate::{
 //
 // impl Person {
 //     /// Get a reference to the person's name.
-//     fn $0name(&self) -> &String {
-//         &self.name
+//     fn $0name(&self) -> &str {
+//         self.name.as_str()
 //     }
 // }
 // ```
@@ -96,20 +96,27 @@ pub(crate) fn generate_getter_impl(
             }
 
             let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let (ty, body) = if mutable {
+                (format!("&mut {}", field_ty), format!("&mut self.{}", field_name))
+            } else {
+                useless_type_special_case(&field_name.to_string(), &field_ty)
+                    .unwrap_or_else(|| (format!("&{}", field_ty), format!("&self.{}", field_name)))
+            };
+
             format_to!(
                 buf,
                 "    /// Get a {}reference to the {}'s {}.
-    {}fn {}(&{mut_}self) -> &{mut_}{} {{
-        &{mut_}self.{}
+    {}fn {}(&{}self) -> {} {{
+        {}
     }}",
                 mutable.then(|| "mutable ").unwrap_or_default(),
                 to_lower_snake_case(&strukt_name.to_string()).replace('_', " "),
                 fn_name.trim_end_matches("_mut").replace('_', " "),
                 vis,
                 fn_name,
-                field_ty,
-                field_name,
-                mut_ = mutable.then(|| "mut ").unwrap_or_default(),
+                mutable.then(|| "mut ").unwrap_or_default(),
+                ty,
+                body,
             );
 
             let start_offset = impl_def
@@ -127,6 +134,29 @@ pub(crate) fn generate_getter_impl(
             }
         },
     )
+}
+
+fn useless_type_special_case(field_name: &str, field_ty: &ast::Type) -> Option<(String, String)> {
+    if field_ty.to_string() == "String" {
+        cov_mark::hit!(useless_type_special_case);
+        return Some(("&str".to_string(), format!("self.{}.as_str()", field_name)));
+    }
+    if let Some(arg) = ty_ctor(field_ty, "Vec") {
+        return Some((format!("&[{}]", arg), format!("self.{}.as_slice()", field_name)));
+    }
+    if let Some(arg) = ty_ctor(field_ty, "Box") {
+        return Some((format!("&{}", arg), format!("self.{}.as_ref()", field_name)));
+    }
+    if let Some(arg) = ty_ctor(field_ty, "Option") {
+        return Some((format!("Option<&{}>", arg), format!("self.{}.as_ref()", field_name)));
+    }
+    None
+}
+
+// FIXME: This should rely on semantic info.
+fn ty_ctor(ty: &ast::Type, ctor: &str) -> Option<String> {
+    let res = ty.to_string().strip_prefix(ctor)?.strip_prefix('<')?.strip_suffix('>')?.to_string();
+    Some(res)
 }
 
 #[cfg(test)]
@@ -269,6 +299,75 @@ impl Context {
     /// Get a reference to the context's count.
     fn $0count(&self) -> &usize {
         &self.count
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_special_cases() {
+        cov_mark::check!(useless_type_special_case);
+        check_assist(
+            generate_getter,
+            r#"
+struct S { foo: $0String }
+"#,
+            r#"
+struct S { foo: String }
+
+impl S {
+    /// Get a reference to the s's foo.
+    fn $0foo(&self) -> &str {
+        self.foo.as_str()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_getter,
+            r#"
+struct S { foo: $0Box<Sweets> }
+"#,
+            r#"
+struct S { foo: Box<Sweets> }
+
+impl S {
+    /// Get a reference to the s's foo.
+    fn $0foo(&self) -> &Sweets {
+        self.foo.as_ref()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_getter,
+            r#"
+struct S { foo: $0Vec<()> }
+"#,
+            r#"
+struct S { foo: Vec<()> }
+
+impl S {
+    /// Get a reference to the s's foo.
+    fn $0foo(&self) -> &[()] {
+        self.foo.as_slice()
+    }
+}
+"#,
+        );
+        check_assist(
+            generate_getter,
+            r#"
+struct S { foo: $0Option<Failure> }
+"#,
+            r#"
+struct S { foo: Option<Failure> }
+
+impl S {
+    /// Get a reference to the s's foo.
+    fn $0foo(&self) -> Option<&Failure> {
+        self.foo.as_ref()
     }
 }
 "#,
