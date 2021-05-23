@@ -224,31 +224,19 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
             let (ref krate, ref resolver, ref lint_store) = &*self.expansion()?.peek();
-            let resolver = resolver.steal();
             let dep_graph = self.dep_graph()?.peek().clone();
-            let krate = resolver.borrow_mut().access(|resolver| {
-                Ok(passes::lower_to_hir(
-                    self.session(),
-                    lint_store,
-                    resolver,
-                    &dep_graph,
-                    &krate,
-                    &self.hir_arena,
-                ))
-            })?;
-            let krate = self.hir_arena.alloc(krate);
-            let resolver_outputs = Steal::new(BoxedResolver::to_resolver_outputs(resolver));
             Ok(passes::create_global_ctxt(
                 self.compiler,
                 lint_store.clone(),
                 krate,
                 dep_graph,
-                resolver_outputs.steal(),
+                resolver.steal(),
                 outputs,
                 &crate_name,
                 &self.queries,
                 &self.gcx,
                 &self.arena,
+                &self.hir_arena,
             ))
         })
     }

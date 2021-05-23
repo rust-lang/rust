@@ -458,15 +458,9 @@ pub fn lower_to_hir<'res, 'tcx>(
     sess: &'tcx Session,
     lint_store: &LintStore,
     resolver: &'res mut Resolver<'_>,
-    dep_graph: &'res DepGraph,
     krate: &'res ast::Crate,
     arena: &'tcx rustc_ast_lowering::Arena<'tcx>,
 ) -> Crate<'tcx> {
-    // We're constructing the HIR here; we don't care what we will
-    // read, since we haven't even constructed the *input* to
-    // incr. comp. yet.
-    dep_graph.assert_ignored();
-
     // Lower AST to HIR.
     let hir_crate = rustc_ast_lowering::lower_crate(
         sess,
@@ -783,17 +777,27 @@ impl<'tcx> QueryContext<'tcx> {
 pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     lint_store: Lrc<LintStore>,
-    krate: &'tcx Crate<'tcx>,
+    krate: &ast::Crate,
     dep_graph: DepGraph,
-    resolver_outputs: ResolverOutputs,
+    resolver: Rc<RefCell<BoxedResolver>>,
     outputs: OutputFilenames,
     crate_name: &str,
     queries: &'tcx OnceCell<TcxQueries<'tcx>>,
     global_ctxt: &'tcx OnceCell<GlobalCtxt<'tcx>>,
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
+    hir_arena: &'tcx WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
+    // We're constructing the HIR here; we don't care what we will
+    // read, since we haven't even constructed the *input* to
+    // incr. comp. yet.
+    dep_graph.assert_ignored();
+
     let sess = &compiler.session();
-    let _timer = sess.timer("create_global_ctxt");
+    let krate = resolver
+        .borrow_mut()
+        .access(|resolver| lower_to_hir(sess, &lint_store, resolver, krate, hir_arena));
+    let krate = &*hir_arena.alloc(krate);
+    let resolver_outputs = BoxedResolver::to_resolver_outputs(resolver);
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
@@ -812,7 +816,7 @@ pub fn create_global_ctxt<'tcx>(
     let queries = queries.get_or_init(|| TcxQueries::new(local_providers, extern_providers));
 
     let gcx = sess.time("setup_global_ctxt", || {
-        global_ctxt.get_or_init(|| {
+        global_ctxt.get_or_init(move || {
             TyCtxt::create_global_ctxt(
                 sess,
                 lint_store,
