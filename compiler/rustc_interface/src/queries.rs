@@ -8,12 +8,11 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::Crate;
 use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
-use rustc_middle::ty::{GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{GlobalCtxt, TyCtxt};
 use rustc_query_impl::Queries as TcxQueries;
 use rustc_serialize::json;
 use rustc_session::config::{self, OutputFilenames, OutputType};
@@ -83,7 +82,6 @@ pub struct Queries<'tcx> {
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
@@ -103,7 +101,6 @@ impl<'tcx> Queries<'tcx> {
             register_plugins: Default::default(),
             expansion: Default::default(),
             dep_graph: Default::default(),
-            lower_to_hir: Default::default(),
             prepare_outputs: Default::default(),
             global_ctxt: Default::default(),
             ongoing_codegen: Default::default(),
@@ -117,7 +114,7 @@ impl<'tcx> Queries<'tcx> {
         &self.compiler.codegen_backend()
     }
 
-    pub fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
+    fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
         self.dep_graph_future.compute(|| {
             let sess = self.session();
             Ok(sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess)))
@@ -191,7 +188,7 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn dep_graph(&self) -> Result<&Query<DepGraph>> {
+    fn dep_graph(&self) -> Result<&Query<DepGraph>> {
         self.dep_graph.compute(|| {
             let sess = self.session();
             let future_opt = self.dep_graph_future()?.take();
@@ -204,28 +201,6 @@ impl<'tcx> Queries<'tcx> {
                 })
                 .unwrap_or_else(DepGraph::new_disabled);
             Ok(dep_graph)
-        })
-    }
-
-    pub fn lower_to_hir(&'tcx self) -> Result<&Query<(&'tcx Crate<'tcx>, Steal<ResolverOutputs>)>> {
-        self.lower_to_hir.compute(|| {
-            let expansion_result = self.expansion()?;
-            let peeked = expansion_result.peek();
-            let krate = &peeked.0;
-            let resolver = peeked.1.steal();
-            let lint_store = &peeked.2;
-            let hir = resolver.borrow_mut().access(|resolver| {
-                Ok(passes::lower_to_hir(
-                    self.session(),
-                    lint_store,
-                    resolver,
-                    &*self.dep_graph()?.peek(),
-                    &krate,
-                    &self.hir_arena,
-                ))
-            })?;
-            let hir = self.hir_arena.alloc(hir);
-            Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }
 
@@ -248,14 +223,24 @@ impl<'tcx> Queries<'tcx> {
         self.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
-            let lint_store = self.expansion()?.peek().2.clone();
-            let hir = self.lower_to_hir()?.peek();
+            let (ref krate, ref resolver, ref lint_store) = &*self.expansion()?.peek();
+            let resolver = resolver.steal();
             let dep_graph = self.dep_graph()?.peek().clone();
-            let (ref krate, ref resolver_outputs) = &*hir;
-            let _timer = self.session().timer("create_global_ctxt");
+            let krate = resolver.borrow_mut().access(|resolver| {
+                Ok(passes::lower_to_hir(
+                    self.session(),
+                    lint_store,
+                    resolver,
+                    &dep_graph,
+                    &krate,
+                    &self.hir_arena,
+                ))
+            })?;
+            let krate = self.hir_arena.alloc(krate);
+            let resolver_outputs = Steal::new(BoxedResolver::to_resolver_outputs(resolver));
             Ok(passes::create_global_ctxt(
                 self.compiler,
-                lint_store,
+                lint_store.clone(),
                 krate,
                 dep_graph,
                 resolver_outputs.steal(),

@@ -793,6 +793,7 @@ pub fn create_global_ctxt<'tcx>(
     arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
+    let _timer = sess.timer("create_global_ctxt");
 
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);
 
