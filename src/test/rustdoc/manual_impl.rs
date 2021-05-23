@@ -65,7 +65,8 @@ impl T for S2 {
 }
 
 // @has manual_impl/struct.S3.html '//*[@class="trait"]' 'T'
-// @has  - '//details[@open=""]/div[@class="docblock"]' 'Docs associated with the S3 trait implementation.'
+// @has  - '//details/div[@class="docblock"]' 'Docs associated with the S3 trait implementation.'
+// @!has  - '//details[@open=""]/div[@class="docblock"]' 'Docs associated with the S3 trait implementation.'
 // @has  - '//details[@open=""]/div[@class="docblock"]' 'Docs associated with the S3 trait b_method implementation.'
 // @!has - '//div[@class="impl-items"]/details[@open=""]//div[@class="docblock"]' 'Docs associated with the trait a_method definition.'
 // @has - '//div[@class="impl-items"]/details//div[@class="docblock"]' 'Docs associated with the trait a_method definition.'
