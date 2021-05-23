@@ -572,6 +572,18 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         new_tag: Tag,
         protect: bool,
     ) -> InterpResult<'tcx> {
+        // Nothing to do for ZSTs.
+        if size == Size::ZERO {
+            trace!(
+                "reborrow of size 0: {} reference {:?} derived from {:?} (pointee {})",
+                kind,
+                new_tag,
+                place.ptr,
+                place.layout.ty,
+            );
+            return Ok(());
+        }
+
         let this = self.eval_context_mut();
         let protector = if protect { Some(this.frame().extra.call_id) } else { None };
         let ptr = place.ptr.assert_ptr();
@@ -617,6 +629,8 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         };
         // Here we can avoid `borrow()` calls because we have mutable references.
+        // Note that this asserts that the allocation is mutable -- but since we are creating a
+        // mutable pointer, that seems reasonable.
         let (alloc_extra, memory_extra) = this.memory.get_alloc_extra_mut(ptr.alloc_id)?;
         let stacked_borrows =
             alloc_extra.stacked_borrows.as_mut().expect("we should have Stacked Borrows data");
@@ -649,12 +663,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // We can see dangling ptrs in here e.g. after a Box's `Unique` was
         // updated using "self.0 = ..." (can happen in Box::from_raw) so we cannot ICE; see miri#1050.
         let place = this.mplace_access_checked(place, Some(Align::from_bytes(1).unwrap()))?;
-        // Nothing to do for ZSTs. We use `is_bits` here because we *do* need to retag even ZSTs
-        // when there actually is a tag (to avoid inheriting a tag that would let us access more
-        // than 0 bytes).
-        if size == Size::ZERO && place.ptr.is_bits() {
-            return Ok(*val);
-        }
 
         // Compute new borrow.
         let new_tag = {
