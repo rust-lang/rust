@@ -242,7 +242,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
     fn insert_nested(&mut self, item: HirOwner) {
         #[cfg(debug_assertions)]
         {
-            let dk_parent = self.definitions.def_key(item).parent.unwrap();
+            let dk_parent = self.definitions.def_key(item.def_id).parent.unwrap();
             let dk_parent = LocalDefId { local_def_index: dk_parent };
             let dk_parent = self.definitions.local_def_id_to_hir_id(dk_parent);
             debug_assert_eq!(

@@ -13,7 +13,7 @@ use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::{LocalDefId};
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::hir_id::HirOwner;
 use rustc_hir::*;
 use rustc_index::vec::IndexVec;
