@@ -225,8 +225,10 @@ fn hint_iterator(
     }
     let iter_trait = famous_defs.core_iter_Iterator()?;
     let iter_mod = famous_defs.core_iter()?;
-    // assert this struct comes from `core::iter`
+
+    // Assert that this struct comes from `core::iter`.
     iter_mod.visibility_of(db, &strukt.into()).filter(|&vis| vis == hir::Visibility::Public)?;
+
     if ty.impls_trait(db, iter_trait, &[]) {
         let assoc_type_item = iter_trait.items(db).into_iter().find_map(|item| match item {
             hir::AssocItem::TypeAlias(alias) if alias.name(db) == known::Item => Some(alias),
