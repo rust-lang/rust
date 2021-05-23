@@ -156,8 +156,8 @@ export async function deactivate() {
 async function bootstrap(config: Config, state: PersistentState): Promise<string> {
     await fs.mkdir(config.globalStoragePath, { recursive: true });
 
-    if (config.package.releaseTag != NIGHTLY_TAG) {
-        await state.removeNightlyReleaseId();
+    if (config.package.releaseTag !== NIGHTLY_TAG) {
+        await state.updateNightlyReleaseId(undefined);
     }
     await bootstrapExtension(config, state);
     const path = await bootstrapServer(config, state);
@@ -166,8 +166,9 @@ async function bootstrap(config: Config, state: PersistentState): Promise<string
 
 async function bootstrapExtension(config: Config, state: PersistentState): Promise<void> {
     if (config.package.releaseTag === null) return;
+    const currentExtensionIsNightly = config.package.releaseTag === NIGHTLY_TAG;
     if (config.channel === "stable") {
-        if (config.package.releaseTag === NIGHTLY_TAG) {
+        if (currentExtensionIsNightly) {
             void vscode.window.showWarningMessage(
                 `You are running a nightly version of rust-analyzer extension. ` +
                 `To switch to stable, uninstall the extension and re-install it from the marketplace`
@@ -178,13 +179,14 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
     if (serverPath(config)) return;
 
     const now = Date.now();
-    if (config.package.releaseTag === NIGHTLY_TAG) {
+    const isInitialDownload = state.nightlyReleaseId === undefined;
+    if (currentExtensionIsNightly) {
         // Check if we should poll github api for the new nightly version
         // if we haven't done it during the past hour
         const lastCheck = state.lastCheck;
 
         const anHour = 60 * 60 * 1000;
-        const shouldCheckForNewNightly = state.nightlyReleaseId === undefined || (now - (lastCheck ?? 0)) > anHour;
+        const shouldCheckForNewNightly = isInitialDownload || (now - (lastCheck ?? 0)) > anHour;
 
         if (!shouldCheckForNewNightly) return;
     }
@@ -193,18 +195,18 @@ async function bootstrapExtension(config: Config, state: PersistentState): Promi
         return await fetchRelease("nightly", state.githubToken, config.httpProxy);
     }).catch(async (e) => {
         log.error(e);
-        if (state.nightlyReleaseId === undefined) { // Show error only for the initial download
+        if (isInitialDownload) {
             await vscode.window.showErrorMessage(`Failed to download rust-analyzer nightly: ${e}`);
         }
         return;
     });
     if (release === undefined) {
-        if (state.nightlyReleaseId === undefined) { // Show error only for the initial download
+        if (isInitialDownload) {
             await vscode.window.showErrorMessage("Failed to download rust-analyzer nightly: empty release contents returned");
         }
         return;
     }
-    if (config.package.releaseTag === NIGHTLY_TAG && release.id === state.nightlyReleaseId) return;
+    if (currentExtensionIsNightly && release.id === state.nightlyReleaseId) return;
 
     const userResponse = await vscode.window.showInformationMessage(
         "New version of rust-analyzer (nightly) is available (requires reload).",

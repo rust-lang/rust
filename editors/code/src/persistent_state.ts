@@ -24,11 +24,8 @@ export class PersistentState {
     get nightlyReleaseId(): number | undefined {
         return this.globalState.get("releaseId");
     }
-    async updateNightlyReleaseId(value: number) {
+    async updateNightlyReleaseId(value: number | undefined) {
         await this.globalState.update("releaseId", value);
-    }
-    async removeNightlyReleaseId() {
-        await this.globalState.update("releaseId", undefined);
     }
 
     /**
