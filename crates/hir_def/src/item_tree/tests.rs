@@ -183,7 +183,11 @@ trait Tr: SuperTrait + 'lifetime {
                 _: (),
             ) -> ();
 
-            pub(self) trait Tr: SuperTrait + 'lifetime {
+            pub(self) trait Tr<Self>: SuperTrait + 'lifetime
+            where
+                Self: SuperTrait,
+                Self: 'lifetime
+            {
                 pub(self) type Assoc: AssocBound = Default;
 
                 // flags = 0x1
@@ -207,6 +211,8 @@ mod inline {
 
     fn fn_in_module() {}
 }
+
+mod outline;
         "#,
         expect![[r##"
             #[doc = " outer"]  // AttrId { is_doc_comment: true, ast_index: 0 }
@@ -217,6 +223,8 @@ mod inline {
                 // flags = 0x2
                 pub(self) fn fn_in_module() -> ();
             }
+
+            pub(self) mod outline;
         "##]],
     );
 }
@@ -293,7 +301,11 @@ struct S {
 fn generics() {
     check(
         r#"
-struct S<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> {}
+struct S<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> {
+    field: &'a &'b T,
+}
+
+struct Tuple<T: Copy>(T);
 
 impl<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> S<'a, 'b, T, K> {
     fn f<G: 'a>(arg: impl Copy) -> impl Copy {}
@@ -301,22 +313,51 @@ impl<'a, 'b: 'a, T: Copy + 'a + 'b, const K: u8 = 0> S<'a, 'b, T, K> {
 
 enum Enum<'a, T, const U: u8> {}
 union Union<'a, T, const U: u8> {}
+
+trait Tr<'a, T: 'a>: Super {}
         "#,
         expect![[r#"
-            pub(self) struct S<'a, 'b, T, const K: u8> {
+            pub(self) struct S<'a, 'b, T, const K: u8>
+            where
+                T: Copy,
+                T: 'a,
+                T: 'b
+            {
+                pub(self) field: &'a &'b T,
             }
 
-            impl<'a, 'b, T, const K: u8> S<'a, 'b, T, K> {
+            pub(self) struct Tuple<T>(
+                pub(self) 0: T,
+            )
+            where
+                T: Copy;
+
+            impl<'a, 'b, T, const K: u8> S<'a, 'b, T, K>
+            where
+                T: Copy,
+                T: 'a,
+                T: 'b
+            {
                 // flags = 0x2
-                pub(self) fn f<G>(
+                pub(self) fn f<G, _anon_1>(
                     _: impl Copy,
-                ) -> impl Copy;
+                ) -> impl Copy
+                where
+                    G: 'a,
+                    _anon_1: Copy;
             }
 
             pub(self) enum Enum<'a, T, const U: u8> {
             }
 
             pub(self) union Union<'a, T, const U: u8> {
+            }
+
+            pub(self) trait Tr<'a, Self, T>: Super
+            where
+                Self: Super,
+                T: 'a
+            {
             }
         "#]],
     )
