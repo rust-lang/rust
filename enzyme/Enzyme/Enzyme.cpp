@@ -101,8 +101,7 @@ public:
   }
 
   /// Return whether successful
-  template <typename T>
-  bool HandleAutoDiff(T *CI, TargetLibraryInfo &TLI, bool PostOpt,
+  bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, bool PostOpt,
                       bool fwdMode) {
 
     Value *fn = CI->getArgOperand(0);
@@ -575,9 +574,65 @@ public:
 
     bool Changed = false;
 
+    for (BasicBlock &BB : F)
+      if (InvokeInst *II = dyn_cast<InvokeInst>(BB.getTerminator())) {
+
+        Function *Fn = II->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst = dyn_cast<ConstantExpr>(II->getCalledOperand()))
+#else
+        if (auto castinst = dyn_cast<ConstantExpr>(II->getCalledValue()))
+#endif
+        {
+          if (castinst->isCast())
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0)))
+              Fn = fn;
+        }
+        if (!Fn)
+          continue;
+
+        if (!(Fn->getName() == "__enzyme_float" ||
+              Fn->getName() == "__enzyme_double" ||
+              Fn->getName() == "__enzyme_integer" ||
+              Fn->getName() == "__enzyme_pointer" ||
+              Fn->getName().contains("__enzyme_call_inactive") ||
+              Fn->getName().contains("__enzyme_autodiff") ||
+              Fn->getName().contains("__enzyme_fwddiff")))
+          continue;
+
+        SmallVector<Value *, 16> CallArgs(II->arg_begin(), II->arg_end());
+        SmallVector<OperandBundleDef, 1> OpBundles;
+        II->getOperandBundlesAsDefs(OpBundles);
+// Insert a normal call instruction...
+#if LLVM_VERSION_MAJOR >= 8
+        CallInst *NewCall =
+            CallInst::Create(II->getFunctionType(), II->getCalledOperand(),
+                             CallArgs, OpBundles, "", II);
+#else
+        CallInst *NewCall =
+            CallInst::Create(II->getFunctionType(), II->getCalledValue(),
+                             CallArgs, OpBundles, "", II);
+#endif
+        NewCall->takeName(II);
+        NewCall->setCallingConv(II->getCallingConv());
+        NewCall->setAttributes(II->getAttributes());
+        NewCall->setDebugLoc(II->getDebugLoc());
+        II->replaceAllUsesWith(NewCall);
+
+        // Insert an unconditional branch to the normal destination.
+        BranchInst::Create(II->getNormalDest(), II);
+
+        // Remove any PHI node entries from the exception destination.
+        II->getUnwindDest()->removePredecessor(&BB);
+
+        // Remove the invoke instruction now.
+        BB.getInstList().erase(II);
+        Changed = true;
+      }
+
     std::set<CallInst *> toLowerAuto;
     std::set<CallInst *> toLowerFwd;
-    std::set<InvokeInst *> toLowerI;
     std::set<CallInst *> InactiveCalls;
   retry:;
     for (BasicBlock &BB : F) {
@@ -752,15 +807,9 @@ public:
           }
         }
 
-        bool autoDiff = Fn && (Fn->getName() == "__enzyme_autodiff" ||
-                               Fn->getName() == "enzyme_autodiff_" ||
-                               Fn->getName().startswith("__enzyme_autodiff") ||
-                               Fn->getName().contains("__enzyme_autodiff"));
+        bool autoDiff = Fn && Fn->getName().contains("__enzyme_autodiff");
 
-        bool fwdDiff = Fn && (Fn->getName() == "__enzyme_fwddiff" ||
-                              Fn->getName() == "enzyme_fwddiff_" ||
-                              Fn->getName().startswith("__enzyme_fwddiff") ||
-                              Fn->getName().contains("__enzyme_fwddiff"));
+        bool fwdDiff = Fn && Fn->getName().contains("__enzyme_fwddiff");
 
         if (autoDiff || fwdDiff) {
           if (autoDiff) {
@@ -840,13 +889,6 @@ public:
 
     for (auto CI : toLowerFwd) {
       successful &= HandleAutoDiff(CI, TLI, PostOpt, /*fwdMode*/ true);
-      Changed = true;
-      if (!successful)
-        break;
-    }
-
-    for (auto CI : toLowerI) {
-      successful &= HandleAutoDiff(CI, TLI, PostOpt, /*fwdMode*/ false);
       Changed = true;
       if (!successful)
         break;

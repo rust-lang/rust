@@ -2736,6 +2736,13 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                           shouldRecompute(LI, incoming_available, &BuilderM);
       }
     }
+    if (!inst->mayReadOrWriteMemory()) {
+      reduceRegister |= tryLegalRecomputeCheck &&
+                        legalRecompute(inst, incoming_available, &BuilderM) &&
+                        shouldRecompute(inst, incoming_available, &BuilderM);
+    }
+    if (this->isOriginalBlock(*BuilderM.GetInsertBlock()))
+      reduceRegister = false;
   }
 
   if (!reduceRegister) {
@@ -2928,7 +2935,6 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   }
   inst = cast<Instruction>(val);
   assert(prelcssaInst->getType() == inst->getType());
-
   assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
 
   // Update index and caching per lcssa
