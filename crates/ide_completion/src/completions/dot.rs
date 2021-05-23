@@ -454,4 +454,34 @@ mod foo {
             "#]],
         );
     }
+
+    #[test]
+    fn issue_8931() {
+        check(
+            r#"
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+struct S;
+
+struct Foo;
+impl Foo {
+    fn foo(&self) -> &[u8] { loop {} }
+}
+
+impl S {
+    fn indented(&mut self, f: impl FnOnce(&mut Self)) {
+    }
+
+    fn f(&mut self, v: Foo) {
+        self.indented(|this| v.$0)
+    }
+}
+        "#,
+            expect![[r#"
+                me foo() fn(&self) -> &[u8]
+            "#]],
+        );
+    }
 }

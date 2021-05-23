@@ -43,7 +43,6 @@ use hir_def::{
     type_ref::{ConstScalar, Rawness},
     TypeParamId,
 };
-use stdx::always;
 
 use crate::{db::HirDatabase, utils::generics};
 
@@ -329,14 +328,17 @@ pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
     t.fold_with(&mut TyFolder(f), binders).expect("fold failed unexpectedly")
 }
 
-pub fn replace_errors_with_variables<T>(t: T) -> Canonical<T::Result>
+/// 'Canonicalizes' the `t` by replacing any errors with new variables. Also
+/// ensures there are no unbound variables or inference variables anywhere in
+/// the `t`.
+pub fn replace_errors_with_variables<T>(t: &T) -> Canonical<T::Result>
 where
-    T: HasInterner<Interner = Interner> + Fold<Interner>,
+    T: HasInterner<Interner = Interner> + Fold<Interner> + Clone,
     T::Result: HasInterner<Interner = Interner>,
 {
     use chalk_ir::{
         fold::{Folder, SuperFold},
-        Fallible,
+        Fallible, NoSolution,
     };
     struct ErrorReplacer {
         vars: usize,
@@ -363,18 +365,88 @@ where
 
         fn fold_inference_ty(
             &mut self,
-            var: InferenceVar,
-            kind: TyVariableKind,
+            _var: InferenceVar,
+            _kind: TyVariableKind,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Ty> {
-            always!(false);
-            Ok(TyKind::InferenceVar(var, kind).intern(&Interner))
+            if cfg!(debug_assertions) {
+                // we don't want to just panic here, because then the error message
+                // won't contain the whole thing, which would not be very helpful
+                Err(NoSolution)
+            } else {
+                Ok(TyKind::Error.intern(&Interner))
+            }
+        }
+
+        fn fold_free_var_ty(
+            &mut self,
+            _bound_var: BoundVar,
+            _outer_binder: DebruijnIndex,
+        ) -> Fallible<Ty> {
+            if cfg!(debug_assertions) {
+                // we don't want to just panic here, because then the error message
+                // won't contain the whole thing, which would not be very helpful
+                Err(NoSolution)
+            } else {
+                Ok(TyKind::Error.intern(&Interner))
+            }
+        }
+
+        fn fold_inference_const(
+            &mut self,
+            _ty: Ty,
+            _var: InferenceVar,
+            _outer_binder: DebruijnIndex,
+        ) -> Fallible<Const> {
+            if cfg!(debug_assertions) {
+                Err(NoSolution)
+            } else {
+                Ok(dummy_usize_const())
+            }
+        }
+
+        fn fold_free_var_const(
+            &mut self,
+            _ty: Ty,
+            _bound_var: BoundVar,
+            _outer_binder: DebruijnIndex,
+        ) -> Fallible<Const> {
+            if cfg!(debug_assertions) {
+                Err(NoSolution)
+            } else {
+                Ok(dummy_usize_const())
+            }
+        }
+
+        fn fold_inference_lifetime(
+            &mut self,
+            _var: InferenceVar,
+            _outer_binder: DebruijnIndex,
+        ) -> Fallible<Lifetime> {
+            if cfg!(debug_assertions) {
+                Err(NoSolution)
+            } else {
+                Ok(static_lifetime())
+            }
+        }
+
+        fn fold_free_var_lifetime(
+            &mut self,
+            _bound_var: BoundVar,
+            _outer_binder: DebruijnIndex,
+        ) -> Fallible<Lifetime> {
+            if cfg!(debug_assertions) {
+                Err(NoSolution)
+            } else {
+                Ok(static_lifetime())
+            }
         }
     }
     let mut error_replacer = ErrorReplacer { vars: 0 };
-    let value = t
-        .fold_with(&mut error_replacer, DebruijnIndex::INNERMOST)
-        .expect("fold failed unexpectedly");
+    let value = match t.clone().fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
+        Ok(t) => t,
+        Err(_) => panic!("Encountered unbound or inference vars in {:?}", t),
+    };
     let kinds = (0..error_replacer.vars).map(|_| {
         chalk_ir::CanonicalVarKind::new(
             chalk_ir::VariableKind::Ty(TyVariableKind::General),

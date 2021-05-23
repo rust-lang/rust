@@ -505,9 +505,10 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn resolve_method_call_as_callable(&self, call: &ast::MethodCallExpr) -> Option<Callable> {
-        // FIXME: this erases Substs
+        // FIXME: this erases Substs, we should instead record the correct
+        // substitution during inference and use that
         let func = self.resolve_method_call(call)?;
-        let (ty, _) = self.db.value_ty(func.into()).into_value_and_skipped_binders();
+        let ty = hir_ty::TyBuilder::value_ty(self.db, func.into()).fill_with_unknown().build();
         let resolver = self.analyze(call.syntax()).resolver;
         let ty = Type::new_with_resolver(self.db, &resolver, ty)?;
         let mut res = ty.as_callable(self.db)?;
