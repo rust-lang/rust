@@ -1,5 +1,8 @@
+use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
+use crate::num::NonZeroI32;
+use crate::os::raw::NonZero_c_int;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
@@ -187,8 +190,16 @@ impl ExitStatus {
         libc::WIFEXITED(self.0)
     }
 
-    pub fn success(&self) -> bool {
-        self.code() == Some(0)
+    pub fn exit_ok(&self) -> Result<(), ExitStatusError> {
+        // This assumes that WIFEXITED(status) && WEXITSTATUS==0 corresponds to status==0.  This is
+        // true on all actual versions of Unix, is widely assumed, and is specified in SuS
+        // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html .  If it is not
+        // true for a platform pretending to be Unix, the tests (our doctests, and also
+        // procsss_unix/tests.rs) will spot it.  `ExitStatusError::code` assumes this too.
+        match NonZero_c_int::try_from(self.0) {
+            Ok(failure) => Err(ExitStatusError(failure)),
+            Err(_) => Ok(()),
+        }
     }
 
     pub fn code(&self) -> Option<i32> {
@@ -233,5 +244,20 @@ impl fmt::Display for ExitStatus {
             let signal = self.signal().unwrap();
             write!(f, "signal: {}", signal)
         }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitStatusError(NonZero_c_int);
+
+impl Into<ExitStatus> for ExitStatusError {
+    fn into(self) -> ExitStatus {
+        ExitStatus(self.0.into())
+    }
+}
+
+impl ExitStatusError {
+    pub fn code(self) -> Option<NonZeroI32> {
+        ExitStatus(self.0.into()).code().map(|st| st.try_into().unwrap())
     }
 }
