@@ -673,6 +673,11 @@ impl Variant {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.parent.module(db)
     }
+
+    pub fn krate(self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+
     pub fn parent_enum(self, _db: &dyn HirDatabase) -> Enum {
         self.parent
     }
@@ -765,6 +770,10 @@ impl VariantDef {
             VariantDef::Union(it) => it.module(db),
             VariantDef::Variant(it) => it.module(db),
         }
+    }
+
+    pub fn krate(self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
     }
 
     pub fn name(&self, db: &dyn HirDatabase) -> Name {
@@ -1074,6 +1083,10 @@ impl Trait {
         Module { id: self.id.lookup(db.upcast()).container }
     }
 
+    pub fn krate(self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
+    }
+
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         db.trait_data(self.id).name.clone()
     }
@@ -1176,6 +1189,10 @@ impl MacroDef {
         let def_map = db.crate_def_map(krate);
         let module_id = def_map.root();
         Some(Module { id: def_map.module_id(module_id) })
+    }
+
+    pub fn krate(self, db: &dyn HirDatabase) -> Option<Crate> {
+        self.module(db).map(Module::krate)
     }
 
     /// XXX: this parses the file

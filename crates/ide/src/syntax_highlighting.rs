@@ -80,6 +80,7 @@ pub(crate) fn highlight(
         &mut hl,
         &sema,
         InFile::new(file_id.into(), &root),
+        sema.scope(&root).krate(),
         range_to_highlight,
         syntactic_name_ref_highlighting,
     );
@@ -90,6 +91,7 @@ fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<RootDatabase>,
     root: InFile<&SyntaxNode>,
+    krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
     syntactic_name_ref_highlighting: bool,
 ) {
@@ -209,6 +211,7 @@ fn traverse(
 
         if let Some((mut highlight, binding_hash)) = highlight::element(
             &sema,
+            krate,
             &mut bindings_shadow_count,
             syntactic_name_ref_highlighting,
             element_to_highlight.clone(),
