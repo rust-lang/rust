@@ -4,7 +4,7 @@ import { log } from "./util";
 
 export type UpdatesChannel = "stable" | "nightly";
 
-export const NIGHTLY_TAG = "nightly";
+const NIGHTLY_TAG = "nightly";
 
 export type RunnableEnvCfg = undefined | Record<string, string> | { mask?: string; env: Record<string, string> }[];
 
@@ -169,5 +169,9 @@ export class Config {
             debug: this.get<boolean>("hoverActions.debug"),
             gotoTypeDef: this.get<boolean>("hoverActions.gotoTypeDef"),
         };
+    }
+
+    get currentExtensionIsNightly() {
+        return this.package.releaseTag === NIGHTLY_TAG;
     }
 }
