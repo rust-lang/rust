@@ -345,6 +345,9 @@ mod prim_never {}
 mod prim_char {}
 
 #[doc(primitive = "unit")]
+#[doc(alias = "(")]
+#[doc(alias = ")")]
+#[doc(alias = "()")]
 //
 /// The `()` type, also called "unit".
 ///

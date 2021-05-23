@@ -631,7 +631,7 @@ pub struct timeval {
     pub tv_usec: c_long,
 }
 
-// Functions forbidden when targeting UWP
+// Desktop specific functions & types
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
     pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
@@ -645,7 +645,7 @@ if #[cfg(not(target_vendor = "uwp"))] {
         pub ExceptionRecord: *mut EXCEPTION_RECORD,
         pub ExceptionAddress: LPVOID,
         pub NumberParameters: DWORD,
-        pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
+        pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS],
     }
 
     pub enum CONTEXT {}
@@ -656,8 +656,8 @@ if #[cfg(not(target_vendor = "uwp"))] {
         pub ContextRecord: *mut CONTEXT,
     }
 
-    pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
-            fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
+    pub type PVECTORED_EXCEPTION_HANDLER =
+        extern "system" fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
 
     #[repr(C)]
     #[derive(Copy, Clone)]
@@ -691,44 +691,66 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     pub const TOKEN_READ: DWORD = 0x20008;
 
+    #[link(name = "advapi32")]
     extern "system" {
+        // Forbidden when targeting UWP
         #[link_name = "SystemFunction036"]
         pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
 
-        pub fn ReadConsoleW(hConsoleInput: HANDLE,
-                            lpBuffer: LPVOID,
-                            nNumberOfCharsToRead: DWORD,
-                            lpNumberOfCharsRead: LPDWORD,
-                            pInputControl: PCONSOLE_READCONSOLE_CONTROL) -> BOOL;
-
-        pub fn WriteConsoleW(hConsoleOutput: HANDLE,
-                             lpBuffer: LPCVOID,
-                             nNumberOfCharsToWrite: DWORD,
-                             lpNumberOfCharsWritten: LPDWORD,
-                             lpReserved: LPVOID) -> BOOL;
-
-        pub fn GetConsoleMode(hConsoleHandle: HANDLE,
-                              lpMode: LPDWORD) -> BOOL;
         // Allowed but unused by UWP
-        pub fn OpenProcessToken(ProcessHandle: HANDLE,
-                                DesiredAccess: DWORD,
-                                TokenHandle: *mut HANDLE) -> BOOL;
-        pub fn GetUserProfileDirectoryW(hToken: HANDLE,
-                                        lpProfileDir: LPWSTR,
-                                        lpcchSize: *mut DWORD) -> BOOL;
-        pub fn GetFileInformationByHandle(hFile: HANDLE,
-                            lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
-                            -> BOOL;
-        pub fn SetHandleInformation(hObject: HANDLE,
-                                    dwMask: DWORD,
-                                    dwFlags: DWORD) -> BOOL;
-        pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
-                                           VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
-                                           -> LPVOID;
-        pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
-                               lpTargetFileName: LPCWSTR,
-                               lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
-                               -> BOOL;
+        pub fn OpenProcessToken(
+            ProcessHandle: HANDLE,
+            DesiredAccess: DWORD,
+            TokenHandle: *mut HANDLE,
+        ) -> BOOL;
+    }
+
+    #[link(name = "userenv")]
+    extern "system" {
+        // Allowed but unused by UWP
+        pub fn GetUserProfileDirectoryW(
+            hToken: HANDLE,
+            lpProfileDir: LPWSTR,
+            lpcchSize: *mut DWORD,
+        ) -> BOOL;
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        // Functions forbidden when targeting UWP
+        pub fn ReadConsoleW(
+            hConsoleInput: HANDLE,
+            lpBuffer: LPVOID,
+            nNumberOfCharsToRead: DWORD,
+            lpNumberOfCharsRead: LPDWORD,
+            pInputControl: PCONSOLE_READCONSOLE_CONTROL,
+        ) -> BOOL;
+
+        pub fn WriteConsoleW(
+            hConsoleOutput: HANDLE,
+            lpBuffer: LPCVOID,
+            nNumberOfCharsToWrite: DWORD,
+            lpNumberOfCharsWritten: LPDWORD,
+            lpReserved: LPVOID,
+        ) -> BOOL;
+
+        pub fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
+        // Allowed but unused by UWP
+        pub fn GetFileInformationByHandle(
+            hFile: HANDLE,
+            lpFileInformation: LPBY_HANDLE_FILE_INFORMATION,
+        ) -> BOOL;
+        pub fn SetHandleInformation(hObject: HANDLE, dwMask: DWORD, dwFlags: DWORD) -> BOOL;
+        pub fn AddVectoredExceptionHandler(
+            FirstHandler: ULONG,
+            VectoredHandler: PVECTORED_EXCEPTION_HANDLER,
+        ) -> LPVOID;
+        pub fn CreateHardLinkW(
+            lpSymlinkFileName: LPCWSTR,
+            lpTargetFileName: LPCWSTR,
+            lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+        ) -> BOOL;
+        pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL;
     }
 }
 }
@@ -747,55 +769,32 @@ if #[cfg(target_vendor = "uwp")] {
         pub Directory: BOOLEAN,
     }
 
+    #[link(name = "bcrypt")]
     extern "system" {
-        pub fn GetFileInformationByHandleEx(hFile: HANDLE,
-                                            fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
-                                            lpFileInformation: LPVOID,
-                                            dwBufferSize: DWORD) -> BOOL;
-        pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
-                               cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
+        pub fn BCryptGenRandom(
+            hAlgorithm: LPVOID,
+            pBuffer: *mut u8,
+            cbBuffer: ULONG,
+            dwFlags: ULONG,
+        ) -> LONG;
+    }
+    #[link(name = "kernel32")]
+    extern "system" {
+        pub fn GetFileInformationByHandleEx(
+            hFile: HANDLE,
+            fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
+            lpFileInformation: LPVOID,
+            dwBufferSize: DWORD,
+        ) -> BOOL;
     }
 }
 }
 
 // Shared between Desktop & UWP
+
+#[link(name = "kernel32")]
 extern "system" {
-    pub fn WSAStartup(wVersionRequested: WORD, lpWSAData: LPWSADATA) -> c_int;
-    pub fn WSACleanup() -> c_int;
-    pub fn WSAGetLastError() -> c_int;
-    pub fn WSADuplicateSocketW(
-        s: SOCKET,
-        dwProcessId: DWORD,
-        lpProtocolInfo: LPWSAPROTOCOL_INFO,
-    ) -> c_int;
-    pub fn WSASend(
-        s: SOCKET,
-        lpBuffers: LPWSABUF,
-        dwBufferCount: DWORD,
-        lpNumberOfBytesSent: LPDWORD,
-        dwFlags: DWORD,
-        lpOverlapped: LPWSAOVERLAPPED,
-        lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE,
-    ) -> c_int;
-    pub fn WSARecv(
-        s: SOCKET,
-        lpBuffers: LPWSABUF,
-        dwBufferCount: DWORD,
-        lpNumberOfBytesRecvd: LPDWORD,
-        lpFlags: LPDWORD,
-        lpOverlapped: LPWSAOVERLAPPED,
-        lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE,
-    ) -> c_int;
     pub fn GetCurrentProcessId() -> DWORD;
-    pub fn WSASocketW(
-        af: c_int,
-        kind: c_int,
-        protocol: c_int,
-        lpProtocolInfo: LPWSAPROTOCOL_INFO,
-        g: GROUP,
-        dwFlags: DWORD,
-    ) -> SOCKET;
-    pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut c_ulong) -> c_int;
     pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOL;
@@ -882,28 +881,6 @@ extern "system" {
     pub fn DeleteFileW(lpPathName: LPCWSTR) -> BOOL;
     pub fn GetCurrentDirectoryW(nBufferLength: DWORD, lpBuffer: LPWSTR) -> DWORD;
     pub fn SetCurrentDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-
-    pub fn closesocket(socket: SOCKET) -> c_int;
-    pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int, flags: c_int) -> c_int;
-    pub fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int;
-    pub fn recvfrom(
-        socket: SOCKET,
-        buf: *mut c_void,
-        len: c_int,
-        flags: c_int,
-        addr: *mut SOCKADDR,
-        addrlen: *mut c_int,
-    ) -> c_int;
-    pub fn sendto(
-        socket: SOCKET,
-        buf: *const c_void,
-        len: c_int,
-        flags: c_int,
-        addr: *const SOCKADDR,
-        addrlen: c_int,
-    ) -> c_int;
-    pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
-    pub fn accept(socket: SOCKET, address: *mut SOCKADDR, address_len: *mut c_int) -> SOCKET;
     pub fn DuplicateHandle(
         hSourceProcessHandle: HANDLE,
         hSourceHandle: HANDLE,
@@ -950,32 +927,6 @@ extern "system" {
     pub fn FindFirstFileW(fileName: LPCWSTR, findFileData: LPWIN32_FIND_DATAW) -> HANDLE;
     pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW) -> BOOL;
     pub fn FindClose(findFile: HANDLE) -> BOOL;
-    pub fn getsockopt(
-        s: SOCKET,
-        level: c_int,
-        optname: c_int,
-        optval: *mut c_char,
-        optlen: *mut c_int,
-    ) -> c_int;
-    pub fn setsockopt(
-        s: SOCKET,
-        level: c_int,
-        optname: c_int,
-        optval: *const c_void,
-        optlen: c_int,
-    ) -> c_int;
-    pub fn getsockname(socket: SOCKET, address: *mut SOCKADDR, address_len: *mut c_int) -> c_int;
-    pub fn getpeername(socket: SOCKET, address: *mut SOCKADDR, address_len: *mut c_int) -> c_int;
-    pub fn bind(socket: SOCKET, address: *const SOCKADDR, address_len: socklen_t) -> c_int;
-    pub fn listen(socket: SOCKET, backlog: c_int) -> c_int;
-    pub fn connect(socket: SOCKET, address: *const SOCKADDR, len: c_int) -> c_int;
-    pub fn getaddrinfo(
-        node: *const c_char,
-        service: *const c_char,
-        hints: *const ADDRINFOA,
-        res: *mut *mut ADDRINFOA,
-    ) -> c_int;
-    pub fn freeaddrinfo(res: *mut ADDRINFOA);
 
     pub fn GetProcAddress(handle: HMODULE, name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
@@ -1012,47 +963,23 @@ extern "system" {
         lpNumberOfBytesTransferred: LPDWORD,
         bWait: BOOL,
     ) -> BOOL;
-    pub fn select(
-        nfds: c_int,
-        readfds: *mut fd_set,
-        writefds: *mut fd_set,
-        exceptfds: *mut fd_set,
-        timeout: *const timeval,
-    ) -> c_int;
-
-    // >= Vista / Server 2008
-    // https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createsymboliclinkw
     pub fn CreateSymbolicLinkW(
         lpSymlinkFileName: LPCWSTR,
         lpTargetFileName: LPCWSTR,
         dwFlags: DWORD,
     ) -> BOOLEAN;
-
-    // >= Vista / Server 2008
-    // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew
     pub fn GetFinalPathNameByHandleW(
         hFile: HANDLE,
         lpszFilePath: LPCWSTR,
         cchFilePath: DWORD,
         dwFlags: DWORD,
     ) -> DWORD;
-
-    // >= Vista / Server 2003
-    // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadstackguarantee
-    #[cfg(not(target_vendor = "uwp"))]
-    pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL;
-
-    // >= Vista / Server 2008
-    // https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle
     pub fn SetFileInformationByHandle(
         hFile: HANDLE,
         FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
         lpFileInformation: LPVOID,
         dwBufferSize: DWORD,
     ) -> BOOL;
-
-    // >= Vista / Server 2008
-    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleepconditionvariablesrw
     pub fn SleepConditionVariableSRW(
         ConditionVariable: PCONDITION_VARIABLE,
         SRWLock: PSRWLOCK,
@@ -1060,19 +987,108 @@ extern "system" {
         Flags: ULONG,
     ) -> BOOL;
 
-    // >= Vista / Server 2008
-    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-wakeconditionvariable
     pub fn WakeConditionVariable(ConditionVariable: PCONDITION_VARIABLE);
     pub fn WakeAllConditionVariable(ConditionVariable: PCONDITION_VARIABLE);
 
-    // >= Vista / Server 2008
-    // https://docs.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-acquiresrwlockexclusive
     pub fn AcquireSRWLockExclusive(SRWLock: PSRWLOCK);
     pub fn AcquireSRWLockShared(SRWLock: PSRWLOCK);
     pub fn ReleaseSRWLockExclusive(SRWLock: PSRWLOCK);
     pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK);
     pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN;
     pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN;
+}
+
+#[link(name = "ws2_32")]
+extern "system" {
+    pub fn WSAStartup(wVersionRequested: WORD, lpWSAData: LPWSADATA) -> c_int;
+    pub fn WSACleanup() -> c_int;
+    pub fn WSAGetLastError() -> c_int;
+    pub fn WSADuplicateSocketW(
+        s: SOCKET,
+        dwProcessId: DWORD,
+        lpProtocolInfo: LPWSAPROTOCOL_INFO,
+    ) -> c_int;
+    pub fn WSASend(
+        s: SOCKET,
+        lpBuffers: LPWSABUF,
+        dwBufferCount: DWORD,
+        lpNumberOfBytesSent: LPDWORD,
+        dwFlags: DWORD,
+        lpOverlapped: LPWSAOVERLAPPED,
+        lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE,
+    ) -> c_int;
+    pub fn WSARecv(
+        s: SOCKET,
+        lpBuffers: LPWSABUF,
+        dwBufferCount: DWORD,
+        lpNumberOfBytesRecvd: LPDWORD,
+        lpFlags: LPDWORD,
+        lpOverlapped: LPWSAOVERLAPPED,
+        lpCompletionRoutine: LPWSAOVERLAPPED_COMPLETION_ROUTINE,
+    ) -> c_int;
+    pub fn WSASocketW(
+        af: c_int,
+        kind: c_int,
+        protocol: c_int,
+        lpProtocolInfo: LPWSAPROTOCOL_INFO,
+        g: GROUP,
+        dwFlags: DWORD,
+    ) -> SOCKET;
+    pub fn ioctlsocket(s: SOCKET, cmd: c_long, argp: *mut c_ulong) -> c_int;
+    pub fn closesocket(socket: SOCKET) -> c_int;
+    pub fn recv(socket: SOCKET, buf: *mut c_void, len: c_int, flags: c_int) -> c_int;
+    pub fn send(socket: SOCKET, buf: *const c_void, len: c_int, flags: c_int) -> c_int;
+    pub fn recvfrom(
+        socket: SOCKET,
+        buf: *mut c_void,
+        len: c_int,
+        flags: c_int,
+        addr: *mut SOCKADDR,
+        addrlen: *mut c_int,
+    ) -> c_int;
+    pub fn sendto(
+        socket: SOCKET,
+        buf: *const c_void,
+        len: c_int,
+        flags: c_int,
+        addr: *const SOCKADDR,
+        addrlen: c_int,
+    ) -> c_int;
+    pub fn shutdown(socket: SOCKET, how: c_int) -> c_int;
+    pub fn accept(socket: SOCKET, address: *mut SOCKADDR, address_len: *mut c_int) -> SOCKET;
+    pub fn getsockopt(
+        s: SOCKET,
+        level: c_int,
+        optname: c_int,
+        optval: *mut c_char,
+        optlen: *mut c_int,
+    ) -> c_int;
+    pub fn setsockopt(
+        s: SOCKET,
+        level: c_int,
+        optname: c_int,
+        optval: *const c_void,
+        optlen: c_int,
+    ) -> c_int;
+    pub fn getsockname(socket: SOCKET, address: *mut SOCKADDR, address_len: *mut c_int) -> c_int;
+    pub fn getpeername(socket: SOCKET, address: *mut SOCKADDR, address_len: *mut c_int) -> c_int;
+    pub fn bind(socket: SOCKET, address: *const SOCKADDR, address_len: socklen_t) -> c_int;
+    pub fn listen(socket: SOCKET, backlog: c_int) -> c_int;
+    pub fn connect(socket: SOCKET, address: *const SOCKADDR, len: c_int) -> c_int;
+    pub fn getaddrinfo(
+        node: *const c_char,
+        service: *const c_char,
+        hints: *const ADDRINFOA,
+        res: *mut *mut ADDRINFOA,
+    ) -> c_int;
+    pub fn freeaddrinfo(res: *mut ADDRINFOA);
+    pub fn select(
+        nfds: c_int,
+        readfds: *mut fd_set,
+        writefds: *mut fd_set,
+        exceptfds: *mut fd_set,
+        timeout: *const timeval,
+    ) -> c_int;
 }
 
 // Functions that aren't available on every version of Windows that we support,
