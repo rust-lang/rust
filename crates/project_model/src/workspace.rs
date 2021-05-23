@@ -148,6 +148,9 @@ impl ProjectWorkspace {
                 let rustc_cfg = rustc_cfg::get(Some(&cargo_toml), config.target.as_deref());
                 ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg }
             }
+            ProjectManifest::DetachedFile(_) => {
+                todo!("TODO kb")
+            }
         };
 
         Ok(res)

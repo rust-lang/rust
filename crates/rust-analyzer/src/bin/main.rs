@@ -214,7 +214,7 @@ fn run_server() -> Result<()> {
 
             let discovered = ProjectManifest::discover_all(&workspace_roots);
             log::info!("discovered projects: {:?}", discovered);
-            if discovered.is_empty() {
+            if discovered.is_empty() && config.detached_files().is_empty() {
                 log::error!("failed to find any projects in {:?}", workspace_roots);
             }
 

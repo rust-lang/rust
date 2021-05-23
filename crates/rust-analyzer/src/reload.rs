@@ -146,6 +146,7 @@ impl GlobalState {
         log::info!("will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender({
+            // TODO kb reload workspace here?
             let linked_projects = self.config.linked_projects();
             let cargo_config = self.config.cargo();
 

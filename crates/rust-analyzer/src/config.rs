@@ -236,6 +236,7 @@ impl Default for ConfigData {
 pub struct Config {
     caps: lsp_types::ClientCapabilities,
     data: ConfigData,
+    detached_files: Vec<ProjectManifest>,
     pub discovered_projects: Option<Vec<ProjectManifest>>,
     pub root_path: AbsPathBuf,
 }
@@ -328,13 +329,24 @@ pub struct WorkspaceSymbolConfig {
 
 impl Config {
     pub fn new(root_path: AbsPathBuf, caps: ClientCapabilities) -> Self {
-        Config { caps, data: ConfigData::default(), discovered_projects: None, root_path }
+        Config {
+            caps,
+            data: ConfigData::default(),
+            detached_files: Vec::new(),
+            discovered_projects: None,
+            root_path,
+        }
     }
-    pub fn update(&mut self, json: serde_json::Value) {
+    pub fn update(&mut self, mut json: serde_json::Value) {
         log::info!("updating config from JSON: {:#}", json);
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return;
         }
+        self.detached_files = get_field::<Vec<PathBuf>>(&mut json, "detachedFiles", None, "[]")
+            .into_iter()
+            .map(AbsPathBuf::assert)
+            .map(ProjectManifest::DetachedFile)
+            .collect();
         self.data = ConfigData::from_json(json);
     }
 
@@ -385,6 +397,10 @@ impl Config {
                 })
                 .collect()
         }
+    }
+
+    pub fn detached_files(&self) -> &[ProjectManifest] {
+        &self.detached_files
     }
 
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {
