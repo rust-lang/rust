@@ -16,13 +16,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-<<<<<<< unify_box_rc
 use core::mem::{self, forget};
-=======
-#[cfg(not(no_global_oom_handling))]
-use core::mem::size_of_val;
-use core::mem::{self, align_of_val_raw};
->>>>>>> master
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -445,11 +439,8 @@ impl<T> Arc<T> {
     ///
     /// assert_eq!(*five, 5)
     /// ```
-<<<<<<< unify_box_rc
     #[inline]
-=======
     #[cfg(not(no_global_oom_handling))]
->>>>>>> master
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         let alloc = ArcAllocator::new(Global);
@@ -484,11 +475,8 @@ impl<T> Arc<T> {
     /// ```
     ///
     /// [zeroed]: ../../std/mem/union.MaybeUninit.html#method.zeroed
-<<<<<<< unify_box_rc
     #[inline]
-=======
     #[cfg(not(no_global_oom_handling))]
->>>>>>> master
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         let alloc = ArcAllocator::new(Global);
@@ -1102,33 +1090,7 @@ impl<T: ?Sized> Arc<T> {
 }
 
 impl<T: ?Sized> Arc<T> {
-<<<<<<< unify_box_rc
     /// Allocates an `Rc<T>` with sufficient space for
-=======
-    /// Allocates an `ArcInner<T>` with sufficient space for
-    /// a possibly-unsized inner value where the value has the layout provided.
-    ///
-    /// The function `mem_to_arcinner` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
-    #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_layout(
-        value_layout: Layout,
-        allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
-    ) -> *mut ArcInner<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
-        unsafe {
-            Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-        }
-    }
-
-    /// Allocates an `ArcInner<T>` with sufficient space for
->>>>>>> master
     /// a possibly-unsized inner value where the value has the layout provided,
     /// returning an error if allocation fails.
     ///
@@ -1149,7 +1111,6 @@ impl<T: ?Sized> Arc<T> {
         ptr
     }
 
-<<<<<<< unify_box_rc
     /// Allocates an `Arc<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided.
     ///
@@ -1164,12 +1125,6 @@ impl<T: ?Sized> Arc<T> {
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> Result<NonNull<T>, AllocError> {
         let ptr = mem_to_ptr(try_allocate(alloc, layout, init)?);
-=======
-    /// Allocates an `ArcInner<T>` with sufficient space for an unsized inner value.
-    #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
-        // Allocate for the `ArcInner<T>` using the given value.
->>>>>>> master
         unsafe {
             ArcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
         }
@@ -1208,21 +1163,6 @@ impl<T: ?Sized> Arc<T> {
 }
 
 impl<T> Arc<[T]> {
-<<<<<<< unify_box_rc
-=======
-    /// Allocates an `ArcInner<[T]>` with the given length.
-    #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
-        unsafe {
-            Self::allocate_for_layout(
-                Layout::array::<T>(len).unwrap(),
-                |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
-            )
-        }
-    }
-
->>>>>>> master
     /// Copy elements from slice into newly allocated Arc<\[T\]>
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`.

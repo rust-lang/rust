@@ -18,17 +18,6 @@ use crate::collections::TryReserveError::{self, *};
 #[cfg(test)]
 mod tests;
 
-<<<<<<< unify_box_rc
-=======
-#[cfg(not(no_global_oom_handling))]
-enum AllocInit {
-    /// The contents of the new memory are uninitialized.
-    Uninitialized,
-    /// The new memory is guaranteed to be zeroed.
-    Zeroed,
-}
-
->>>>>>> master
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases
 /// involved. This type is excellent for building your own data structures like Vec and VecDeque.
