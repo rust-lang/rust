@@ -99,8 +99,12 @@ impl AllocRange {
 
 // The constructors are all without extra; the extra gets added by a machine hook later.
 impl<Tag> Allocation<Tag> {
-    /// Creates a read-only allocation initialized by the given bytes
-    pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
+    /// Creates an allocation initialized by the given bytes
+    pub fn from_bytes<'a>(
+        slice: impl Into<Cow<'a, [u8]>>,
+        align: Align,
+        mutability: Mutability,
+    ) -> Self {
         let bytes = slice.into().into_owned();
         let size = Size::from_bytes(bytes.len());
         Self {
@@ -108,13 +112,13 @@ impl<Tag> Allocation<Tag> {
             relocations: Relocations::new(),
             init_mask: InitMask::new(size, true),
             align,
-            mutability: Mutability::Not,
+            mutability,
             extra: (),
         }
     }
 
-    pub fn from_byte_aligned_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
-        Allocation::from_bytes(slice, Align::ONE)
+    pub fn from_bytes_byte_aligned_immutable<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
+        Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
 
     pub fn uninit(size: Size, align: Align) -> Self {

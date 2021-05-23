@@ -219,9 +219,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn allocate_bytes(
         &mut self,
         bytes: &[u8],
+        align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        mutability: Mutability,
     ) -> Pointer<M::PointerTag> {
-        let alloc = Allocation::from_byte_aligned_bytes(bytes);
+        let alloc = Allocation::from_bytes(bytes, align, mutability);
         self.allocate_with(alloc, kind)
     }
 
@@ -321,6 +323,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         };
 
+        if alloc.mutability == Mutability::Not {
+            throw_ub_format!("deallocating immutable allocation {}", ptr.alloc_id);
+        }
         if alloc_kind != kind {
             throw_ub_format!(
                 "deallocating {}, which is {} memory, using {} deallocation operation",
@@ -625,9 +630,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // Need to make a copy, even if `get_global_alloc` is able
             // to give us a cheap reference.
             let alloc = Self::get_global_alloc(memory_extra, tcx, id, /*is_write*/ true)?;
-            if alloc.mutability == Mutability::Not {
-                throw_ub!(WriteToReadOnly(id))
-            }
             let kind = M::GLOBAL_KIND.expect(
                 "I got a global allocation that I have to copy but the machine does \
                     not expect that to happen",
