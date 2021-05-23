@@ -414,7 +414,6 @@ symbols! {
         constructor,
         contents,
         context,
-        control_flow_enum,
         convert,
         copy,
         copy_closures,

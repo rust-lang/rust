@@ -15,7 +15,6 @@
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_ptr_offset)]
-#![feature(control_flow_enum)]
 #![feature(core_intrinsics)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
