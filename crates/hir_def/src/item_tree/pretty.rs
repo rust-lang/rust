@@ -2,7 +2,12 @@
 
 use std::fmt::{self, Write};
 
-use crate::{attr::RawAttrs, visibility::RawVisibility};
+use crate::{
+    attr::RawAttrs,
+    generics::{WherePredicate, WherePredicateTypeTarget},
+    path::GenericArg,
+    visibility::RawVisibility,
+};
 
 use super::*;
 
@@ -70,6 +75,13 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn whitespace(&mut self) {
+        match self.buf.chars().next_back() {
+            None | Some('\n') | Some(' ') => {}
+            _ => self.buf.push(' '),
+        }
+    }
+
     fn print_attrs(&mut self, attrs: &RawAttrs, inner: bool) {
         let inner = if inner { "!" } else { "" };
         for attr in &**attrs {
@@ -100,7 +112,8 @@ impl<'a> Printer<'a> {
     fn print_fields(&mut self, fields: &Fields) {
         match fields {
             Fields::Record(fields) => {
-                w!(self, " {{");
+                self.whitespace();
+                w!(self, "{{");
                 self.indented(|this| {
                     for field in fields.clone() {
                         let Field { visibility, name, type_ref } = &this.tree[field];
@@ -128,6 +141,25 @@ impl<'a> Printer<'a> {
                 w!(self, ")");
             }
             Fields::Unit => {}
+        }
+    }
+
+    fn print_fields_and_where_clause(&mut self, fields: &Fields, params: &GenericParams) {
+        match fields {
+            Fields::Record(_) => {
+                if self.print_where_clause(params) {
+                    wln!(self);
+                }
+                self.print_fields(fields);
+            }
+            Fields::Unit => {
+                self.print_where_clause(params);
+                self.print_fields(fields);
+            }
+            Fields::Tuple(_) => {
+                self.print_fields(fields);
+                self.print_where_clause(params);
+            }
         }
     }
 
@@ -174,7 +206,7 @@ impl<'a> Printer<'a> {
                 let Function {
                     name,
                     visibility,
-                    generic_params: _, // FIXME print these somehow
+                    generic_params,
                     abi,
                     params,
                     ret_type,
@@ -188,7 +220,9 @@ impl<'a> Printer<'a> {
                 if let Some(abi) = abi {
                     w!(self, "extern \"{}\" ", abi);
                 }
-                w!(self, "fn {}(", name);
+                w!(self, "fn {}", name);
+                self.print_generic_params(generic_params);
+                w!(self, "(");
                 if !params.is_empty() {
                     self.indented(|this| {
                         for param in params.clone() {
@@ -208,14 +242,15 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, ") -> ");
                 self.print_type_ref(ret_type);
+                self.print_where_clause(generic_params);
                 wln!(self, ";");
             }
             ModItem::Struct(it) => {
-                let Struct { visibility, name, fields, generic_params: _, ast_id: _ } =
-                    &self.tree[it];
+                let Struct { visibility, name, fields, generic_params, ast_id: _ } = &self.tree[it];
                 self.print_visibility(*visibility);
                 w!(self, "struct {}", name);
-                self.print_fields(fields);
+                self.print_generic_params(generic_params);
+                self.print_fields_and_where_clause(fields, generic_params);
                 if matches!(fields, Fields::Record(_)) {
                     wln!(self);
                 } else {
@@ -223,11 +258,11 @@ impl<'a> Printer<'a> {
                 }
             }
             ModItem::Union(it) => {
-                let Union { name, visibility, fields, generic_params: _, ast_id: _ } =
-                    &self.tree[it];
+                let Union { name, visibility, fields, generic_params, ast_id: _ } = &self.tree[it];
                 self.print_visibility(*visibility);
                 w!(self, "union {}", name);
-                self.print_fields(fields);
+                self.print_generic_params(generic_params);
+                self.print_fields_and_where_clause(fields, generic_params);
                 if matches!(fields, Fields::Record(_)) {
                     wln!(self);
                 } else {
@@ -235,10 +270,11 @@ impl<'a> Printer<'a> {
                 }
             }
             ModItem::Enum(it) => {
-                let Enum { name, visibility, variants, generic_params: _, ast_id: _ } =
-                    &self.tree[it];
+                let Enum { name, visibility, variants, generic_params, ast_id: _ } = &self.tree[it];
                 self.print_visibility(*visibility);
-                w!(self, "enum {} {{", name);
+                w!(self, "enum {}", name);
+                self.print_generic_params(generic_params);
+                self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for variant in variants.clone() {
                         let Variant { name, fields } = &this.tree[variant];
@@ -286,7 +322,7 @@ impl<'a> Printer<'a> {
                     is_unsafe,
                     bounds,
                     items,
-                    generic_params: _,
+                    generic_params,
                     ast_id: _,
                 } = &self.tree[it];
                 self.print_visibility(*visibility);
@@ -297,11 +333,12 @@ impl<'a> Printer<'a> {
                     w!(self, "auto ");
                 }
                 w!(self, "trait {}", name);
+                self.print_generic_params(generic_params);
                 if !bounds.is_empty() {
                     w!(self, ": ");
                     self.print_type_bounds(bounds);
                 }
-                w!(self, " {{");
+                self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for item in &**items {
                         this.print_mod_item((*item).into());
@@ -310,15 +347,11 @@ impl<'a> Printer<'a> {
                 wln!(self, "}}");
             }
             ModItem::Impl(it) => {
-                let Impl {
-                    target_trait,
-                    self_ty,
-                    is_negative,
-                    items,
-                    generic_params: _,
-                    ast_id: _,
-                } = &self.tree[it];
-                w!(self, "impl ");
+                let Impl { target_trait, self_ty, is_negative, items, generic_params, ast_id: _ } =
+                    &self.tree[it];
+                w!(self, "impl");
+                self.print_generic_params(generic_params);
+                w!(self, " ");
                 if *is_negative {
                     w!(self, "!");
                 }
@@ -327,7 +360,7 @@ impl<'a> Printer<'a> {
                     w!(self, " for ");
                 }
                 self.print_type_ref(self_ty);
-                w!(self, " {{");
+                self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for item in &**items {
                         this.print_mod_item((*item).into());
@@ -342,11 +375,12 @@ impl<'a> Printer<'a> {
                     bounds,
                     type_ref,
                     is_extern,
-                    generic_params: _,
+                    generic_params,
                     ast_id: _,
                 } = &self.tree[it];
                 self.print_visibility(*visibility);
                 w!(self, "type {}", name);
+                self.print_generic_params(generic_params);
                 if !bounds.is_empty() {
                     w!(self, ": ");
                     self.print_type_bounds(bounds);
@@ -355,6 +389,7 @@ impl<'a> Printer<'a> {
                     w!(self, " = ");
                     self.print_type_ref(ty);
                 }
+                self.print_where_clause(generic_params);
                 w!(self, ";");
                 if *is_extern {
                     w!(self, "  // extern");
@@ -466,7 +501,7 @@ impl<'a> Printer<'a> {
             TypeRef::Macro(_ast_id) => {
                 w!(self, "<macro>");
             }
-            TypeRef::Error => drop(write!(self, "{{unknown}}")),
+            TypeRef::Error => w!(self, "{{unknown}}"),
             TypeRef::ImplTrait(bounds) => {
                 w!(self, "impl ");
                 self.print_type_bounds(bounds);
@@ -493,14 +528,167 @@ impl<'a> Printer<'a> {
     }
 
     fn print_path(&mut self, path: &Path) {
-        if path.type_anchor().is_none()
-            && path.segments().iter().all(|seg| seg.args_and_bindings.is_none())
-        {
-            w!(self, "{}", path.mod_path());
-        } else {
-            // too complicated, just use `Debug`
-            w!(self, "{:?}", path);
+        match path.type_anchor() {
+            Some(anchor) => {
+                w!(self, "<");
+                self.print_type_ref(anchor);
+                w!(self, ">::");
+            }
+            None => match path.kind() {
+                PathKind::Plain => {}
+                PathKind::Super(0) => w!(self, "self::"),
+                PathKind::Super(n) => {
+                    for _ in 0..*n {
+                        w!(self, "super::");
+                    }
+                }
+                PathKind::Crate => w!(self, "crate::"),
+                PathKind::Abs => w!(self, "::"),
+                PathKind::DollarCrate(_) => w!(self, "$crate::"),
+            },
         }
+
+        for (i, segment) in path.segments().iter().enumerate() {
+            if i != 0 {
+                w!(self, "::");
+            }
+
+            w!(self, "{}", segment.name);
+            if let Some(generics) = segment.args_and_bindings {
+                // NB: these are all in type position, so `::<` turbofish syntax is not necessary
+                w!(self, "<");
+                let mut first = true;
+                let args = if generics.has_self_type {
+                    let (self_ty, args) = generics.args.split_first().unwrap();
+                    w!(self, "Self=");
+                    self.print_generic_arg(self_ty);
+                    first = false;
+                    args
+                } else {
+                    &generics.args
+                };
+                for arg in args {
+                    if !first {
+                        w!(self, ", ");
+                    }
+                    first = false;
+                    self.print_generic_arg(arg);
+                }
+                for binding in &generics.bindings {
+                    if !first {
+                        w!(self, ", ");
+                    }
+                    first = false;
+                    w!(self, "{}", binding.name);
+                    if !binding.bounds.is_empty() {
+                        w!(self, ": ");
+                        self.print_type_bounds(&binding.bounds);
+                    }
+                    if let Some(ty) = &binding.type_ref {
+                        w!(self, " = ");
+                        self.print_type_ref(ty);
+                    }
+                }
+
+                w!(self, ">");
+            }
+        }
+    }
+
+    fn print_generic_arg(&mut self, arg: &GenericArg) {
+        match arg {
+            GenericArg::Type(ty) => self.print_type_ref(ty),
+            GenericArg::Lifetime(lt) => w!(self, "{}", lt.name),
+        }
+    }
+
+    fn print_generic_params(&mut self, params: &GenericParams) {
+        if params.types.is_empty() && params.lifetimes.is_empty() && params.consts.is_empty() {
+            return;
+        }
+
+        w!(self, "<");
+        let mut first = true;
+        for (_, lt) in params.lifetimes.iter() {
+            if !first {
+                w!(self, ", ");
+            }
+            first = false;
+            w!(self, "{}", lt.name);
+        }
+        for (idx, ty) in params.types.iter() {
+            if !first {
+                w!(self, ", ");
+            }
+            first = false;
+            match &ty.name {
+                Some(name) => w!(self, "{}", name),
+                None => w!(self, "_anon_{}", idx.into_raw()),
+            }
+        }
+        for (_, konst) in params.consts.iter() {
+            if !first {
+                w!(self, ", ");
+            }
+            first = false;
+            w!(self, "const {}: ", konst.name);
+            self.print_type_ref(&konst.ty);
+        }
+        w!(self, ">");
+    }
+
+    fn print_where_clause_and_opening_brace(&mut self, params: &GenericParams) {
+        if self.print_where_clause(params) {
+            w!(self, "\n{{");
+        } else {
+            self.whitespace();
+            w!(self, "{{");
+        }
+    }
+
+    fn print_where_clause(&mut self, params: &GenericParams) -> bool {
+        if params.where_predicates.is_empty() {
+            return false;
+        }
+
+        w!(self, "\nwhere");
+        self.indented(|this| {
+            for (i, pred) in params.where_predicates.iter().enumerate() {
+                if i != 0 {
+                    wln!(this, ",");
+                }
+
+                let (target, bound) = match pred {
+                    WherePredicate::TypeBound { target, bound } => (target, bound),
+                    WherePredicate::Lifetime { target, bound } => {
+                        wln!(this, "{}: {},", target.name, bound.name);
+                        continue;
+                    }
+                    WherePredicate::ForLifetime { lifetimes, target, bound } => {
+                        w!(this, "for<");
+                        for (i, lt) in lifetimes.iter().enumerate() {
+                            if i != 0 {
+                                w!(this, ", ");
+                            }
+                            w!(this, "{}", lt);
+                        }
+                        w!(this, "> ");
+                        (target, bound)
+                    }
+                };
+
+                match target {
+                    WherePredicateTypeTarget::TypeRef(ty) => this.print_type_ref(ty),
+                    WherePredicateTypeTarget::TypeParam(id) => match &params.types[*id].name {
+                        Some(name) => w!(this, "{}", name),
+                        None => w!(this, "_anon_{}", id.into_raw()),
+                    },
+                }
+                w!(this, ": ");
+                this.print_type_bounds(std::slice::from_ref(bound));
+            }
+        });
+        true
     }
 }
 
