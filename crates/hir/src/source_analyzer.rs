@@ -161,7 +161,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         field: &ast::RecordExprField,
-    ) -> Option<(Field, Option<Local>)> {
+    ) -> Option<(Field, Option<Local>, Type)> {
         let record_expr = ast::RecordExpr::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let expr = ast::Expr::from(record_expr);
         let expr_id = self.body_source_map.as_ref()?.node_expr(InFile::new(self.file_id, &expr))?;
@@ -178,10 +178,13 @@ impl SourceAnalyzer {
                 _ => None,
             }
         };
+        let (_, subst) = self.infer.as_ref()?.type_of_expr.get(expr_id)?.as_adt()?;
         let variant = self.infer.as_ref()?.variant_resolution_for_expr(expr_id)?;
         let variant_data = variant.variant_data(db.upcast());
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
-        Some((field.into(), local))
+        let field_ty =
+            db.field_types(variant).get(field.local_id)?.clone().substitute(&Interner, subst);
+        Some((field.into(), local, Type::new_with_resolver(db, &self.resolver, field_ty)?))
     }
 
     pub(crate) fn resolve_record_pat_field(

@@ -339,13 +339,12 @@ impl<'a> CompletionContext<'a> {
                         cov_mark::hit!(expected_type_struct_field_without_leading_char);
                         // wouldn't try {} be nice...
                         (|| {
-                            let record_ty = self.sema.type_of_expr(&ast::Expr::cast(node.parent()?)?)?;
                             let expr_field = self.token.prev_sibling_or_token()?
-                            .into_node()
+                                      .into_node()
                                       .and_then(|node| ast::RecordExprField::cast(node))?;
-                            let field = self.sema.resolve_record_field(&expr_field)?.0;
+                            let (_, _, ty) = self.sema.resolve_record_field(&expr_field)?;
                             Some((
-                                record_ty.field_type(self.db, field),
+                                Some(ty),
                                 expr_field.field_name().map(NameOrNameRef::NameRef),
                             ))
                         })().unwrap_or((None, None))

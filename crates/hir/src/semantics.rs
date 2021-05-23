@@ -227,7 +227,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn resolve_record_field(
         &self,
         field: &ast::RecordExprField,
-    ) -> Option<(Field, Option<Local>)> {
+    ) -> Option<(Field, Option<Local>, Type)> {
         self.imp.resolve_record_field(field)
     }
 
@@ -518,7 +518,10 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax()).resolve_field(self.db, field)
     }
 
-    fn resolve_record_field(&self, field: &ast::RecordExprField) -> Option<(Field, Option<Local>)> {
+    fn resolve_record_field(
+        &self,
+        field: &ast::RecordExprField,
+    ) -> Option<(Field, Option<Local>, Type)> {
         self.analyze(field.syntax()).resolve_record_field(self.db, field)
     }
 
