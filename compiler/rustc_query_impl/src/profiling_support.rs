@@ -3,6 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::SelfProfiler;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
+use rustc_hir::HirOwner;
 use rustc_middle::ty::{TyCtxt, WithOptConstParam};
 use rustc_query_system::query::{QueryCache, QueryCacheStore};
 use std::fmt::Debug;
@@ -162,6 +163,15 @@ impl SpecIntoSelfProfilingString for LocalDefId {
         builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
     ) -> StringId {
         builder.def_id_to_string_id(DefId { krate: LOCAL_CRATE, index: self.local_def_index })
+    }
+}
+
+impl SpecIntoSelfProfilingString for HirOwner {
+    fn spec_to_self_profile_string(
+        &self,
+        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
+    ) -> StringId {
+        self.def_id.spec_to_self_profile_string(builder)
     }
 }
 
