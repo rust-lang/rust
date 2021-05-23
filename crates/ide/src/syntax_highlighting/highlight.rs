@@ -338,7 +338,14 @@ fn highlight_def(db: &RootDatabase, def: Definition) -> Highlight {
 
                 return h;
             }
-            hir::ModuleDef::Trait(_) => HlTag::Symbol(SymbolKind::Trait),
+            hir::ModuleDef::Trait(trait_) => {
+                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Trait));
+
+                if trait_.is_unsafe(db) {
+                    h |= HlMod::Unsafe;
+                }
+                return h;
+            }
             hir::ModuleDef::TypeAlias(type_) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
                 if let Some(item) = type_.as_assoc_item(db) {

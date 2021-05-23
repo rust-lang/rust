@@ -68,7 +68,7 @@ pub enum HlMod {
     /// Used with keywords like `async` and `await`.
     Async,
     // Keep this last!
-    /// Used for unsafe functions, mutable statics, union accesses and unsafe operations.
+    /// Used for unsafe functions, unsafe traits, mutable statics, union accesses and unsafe operations.
     Unsafe,
 }
 

@@ -219,6 +219,9 @@ async fn async_main() {
     let f2 = dance();
     futures::join!(f1, f2);
 }
+
+unsafe trait Dangerous {}
+impl Dangerous for () {}
 "#
         .trim(),
         expect_file!["./test_data/highlighting.html"],
