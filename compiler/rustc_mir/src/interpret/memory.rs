@@ -628,9 +628,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // Need to make a copy, even if `get_global_alloc` is able
             // to give us a cheap reference.
             let alloc = Self::get_global_alloc(memory_extra, tcx, id, /*is_write*/ true)?;
-            if alloc.mutability == Mutability::Not {
-                throw_ub!(WriteToReadOnly(id))
-            }
             let kind = M::GLOBAL_KIND.expect(
                 "I got a global allocation that I have to copy but the machine does \
                     not expect that to happen",
