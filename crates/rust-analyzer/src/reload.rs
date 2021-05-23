@@ -146,8 +146,8 @@ impl GlobalState {
         log::info!("will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender({
-            // TODO kb reload workspace here?
             let linked_projects = self.config.linked_projects();
+            let detached_files = self.config.detached_files().to_vec();
             let cargo_config = self.config.cargo();
 
             move |sender| {
@@ -162,7 +162,7 @@ impl GlobalState {
 
                 sender.send(Task::FetchWorkspace(ProjectWorkspaceProgress::Begin)).unwrap();
 
-                let workspaces = linked_projects
+                let mut workspaces = linked_projects
                     .iter()
                     .map(|project| match project {
                         LinkedProject::ProjectManifest(manifest) => {
@@ -180,6 +180,11 @@ impl GlobalState {
                         }
                     })
                     .collect::<Vec<_>>();
+
+                if !detached_files.is_empty() {
+                    workspaces
+                        .push(project_model::ProjectWorkspace::load_detached_files(detached_files));
+                }
 
                 log::info!("did fetch workspaces {:?}", workspaces);
                 sender
@@ -408,6 +413,7 @@ impl GlobalState {
                         _ => None,
                     }
                 }
+                ProjectWorkspace::DetachedFiles { .. } => None,
             })
             .map(|(id, root)| {
                 let sender = sender.clone();

@@ -236,7 +236,7 @@ impl Default for ConfigData {
 pub struct Config {
     caps: lsp_types::ClientCapabilities,
     data: ConfigData,
-    detached_files: Vec<ProjectManifest>,
+    detached_files: Vec<AbsPathBuf>,
     pub discovered_projects: Option<Vec<ProjectManifest>>,
     pub root_path: AbsPathBuf,
 }
@@ -345,7 +345,6 @@ impl Config {
         self.detached_files = get_field::<Vec<PathBuf>>(&mut json, "detachedFiles", None, "[]")
             .into_iter()
             .map(AbsPathBuf::assert)
-            .map(ProjectManifest::DetachedFile)
             .collect();
         self.data = ConfigData::from_json(json);
     }
@@ -399,7 +398,7 @@ impl Config {
         }
     }
 
-    pub fn detached_files(&self) -> &[ProjectManifest] {
+    pub fn detached_files(&self) -> &[AbsPathBuf] {
         &self.detached_files
     }
 

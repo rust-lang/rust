@@ -50,7 +50,6 @@ pub use proc_macro_api::ProcMacroClient;
 pub enum ProjectManifest {
     ProjectJson(AbsPathBuf),
     CargoToml(AbsPathBuf),
-    DetachedFile(AbsPathBuf),
 }
 
 impl ProjectManifest {

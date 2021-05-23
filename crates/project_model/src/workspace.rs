@@ -4,7 +4,7 @@
 
 use std::{collections::VecDeque, fmt, fs, path::Path, process::Command};
 
-use anyhow::{Context, Result};
+use anyhow::{format_err, Context, Result};
 use base_db::{CrateDisplayName, CrateGraph, CrateId, CrateName, Edition, Env, FileId, ProcMacro};
 use cargo_workspace::DepKind;
 use cfg::CfgOptions;
@@ -49,6 +49,8 @@ pub enum ProjectWorkspace {
     },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson, sysroot: Option<Sysroot>, rustc_cfg: Vec<CfgFlag> },
+    /// TODO kb docs
+    DetachedFiles { files: Vec<AbsPathBuf>, sysroot: Sysroot, rustc_cfg: Vec<CfgFlag> },
 }
 
 impl fmt::Debug for ProjectWorkspace {
@@ -75,6 +77,12 @@ impl fmt::Debug for ProjectWorkspace {
                 debug_struct.field("n_rustc_cfg", &rustc_cfg.len());
                 debug_struct.finish()
             }
+            ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => f
+                .debug_struct("DetachedFiles")
+                .field("n_files", &files.len())
+                .field("n_sysroot_crates", &sysroot.crates().len())
+                .field("n_rustc_cfg", &rustc_cfg.len())
+                .finish(),
         }
     }
 }
@@ -148,9 +156,6 @@ impl ProjectWorkspace {
                 let rustc_cfg = rustc_cfg::get(Some(&cargo_toml), config.target.as_deref());
                 ProjectWorkspace::Cargo { cargo, sysroot, rustc, rustc_cfg }
             }
-            ProjectManifest::DetachedFile(_) => {
-                todo!("TODO kb")
-            }
         };
 
         Ok(res)
@@ -166,6 +171,14 @@ impl ProjectWorkspace {
         };
         let rustc_cfg = rustc_cfg::get(None, target);
         Ok(ProjectWorkspace::Json { project: project_json, sysroot, rustc_cfg })
+    }
+
+    pub fn load_detached_files(detached_files: Vec<AbsPathBuf>) -> Result<ProjectWorkspace> {
+        let sysroot = Sysroot::discover(
+            &detached_files.first().ok_or_else(|| format_err!("No detached files to load"))?,
+        )?;
+        let rustc_cfg = rustc_cfg::get(None, None);
+        Ok(ProjectWorkspace::DetachedFiles { files: detached_files, sysroot, rustc_cfg })
     }
 
     /// Returns the roots for the current `ProjectWorkspace`
@@ -227,6 +240,19 @@ impl ProjectWorkspace {
                     })
                 }))
                 .collect(),
+            ProjectWorkspace::DetachedFiles { files, sysroot, .. } => files
+                .into_iter()
+                .map(|detached_file| PackageRoot {
+                    is_member: true,
+                    include: vec![detached_file.clone()],
+                    exclude: Vec::new(),
+                })
+                .chain(sysroot.crates().map(|krate| PackageRoot {
+                    is_member: false,
+                    include: vec![sysroot[krate].root_dir().to_path_buf()],
+                    exclude: Vec::new(),
+                }))
+                .collect(),
         }
     }
 
@@ -236,6 +262,9 @@ impl ProjectWorkspace {
             ProjectWorkspace::Cargo { cargo, sysroot, rustc, .. } => {
                 let rustc_package_len = rustc.as_ref().map_or(0, |rc| rc.packages().len());
                 cargo.packages().len() + sysroot.crates().len() + rustc_package_len
+            }
+            ProjectWorkspace::DetachedFiles { sysroot, files, .. } => {
+                sysroot.crates().len() + files.len()
             }
         }
     }
@@ -270,6 +299,9 @@ impl ProjectWorkspace {
                 rustc,
                 rustc.as_ref().zip(build_data).and_then(|(it, map)| map.get(it.workspace_root())),
             ),
+            ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
+                detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot)
+            }
         };
         if crate_graph.patch_cfg_if() {
             log::debug!("Patched std to depend on cfg-if")
@@ -472,6 +504,39 @@ fn cargo_to_crate_graph(
                 cargo,
                 &pkg_crates,
             );
+        }
+    }
+    crate_graph
+}
+
+// TODO kb refactor and check for correctness
+fn detached_files_to_crate_graph(
+    rustc_cfg: Vec<CfgFlag>,
+    load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
+    detached_files: &[AbsPathBuf],
+    sysroot: &Sysroot,
+) -> CrateGraph {
+    let _p = profile::span("detached_files_to_crate_graph");
+    let mut crate_graph = CrateGraph::default();
+    let (public_deps, _libproc_macro) =
+        sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load);
+
+    let mut cfg_options = CfgOptions::default();
+    cfg_options.extend(rustc_cfg);
+
+    for detached_file in detached_files {
+        let file_id = load(&detached_file).unwrap();
+        let detached_file_crate = crate_graph.add_crate_root(
+            file_id,
+            Edition::Edition2018,
+            None,
+            cfg_options.clone(),
+            Env::default(),
+            Vec::new(),
+        );
+
+        for (name, krate) in public_deps.iter() {
+            add_dep(&mut crate_graph, detached_file_crate, name.clone(), *krate);
         }
     }
     crate_graph
