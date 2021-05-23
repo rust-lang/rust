@@ -1542,24 +1542,33 @@ fn render_impl(
         }
     }
     let toggled = !impl_items.is_empty() || !default_impl_items.is_empty();
-    let open_details = |close_tags: &mut String| {
+    let open_details = |close_tags: &mut String, is_collapsed: bool| {
         if toggled {
             close_tags.insert_str(0, "</details>");
-            "<details class=\"rustdoc-toggle implementors-toggle\"><summary>"
+            if is_collapsed {
+                "<details class=\"rustdoc-toggle implementors-toggle\"><summary>"
+            } else {
+                "<details class=\"rustdoc-toggle implementors-toggle\" open><summary>"
+            }
         } else {
             ""
         }
     };
     if render_mode == RenderMode::Normal {
+        let is_implementing_trait;
         let id = cx.derive_id(match i.inner_impl().trait_ {
             Some(ref t) => {
+                is_implementing_trait = true;
                 if is_on_foreign_type {
                     get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t, cx)
                 } else {
                     format!("impl-{}", small_url_encode(format!("{:#}", t.print(cx))))
                 }
             }
-            None => "impl".to_string(),
+            None => {
+                is_implementing_trait = false;
+                "impl".to_string()
+            }
         });
         let aliases = if aliases.is_empty() {
             String::new()
@@ -1570,7 +1579,7 @@ fn render_impl(
             write!(
                 w,
                 "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">",
-                open_details(&mut close_tags),
+                open_details(&mut close_tags, is_implementing_trait),
                 id,
                 aliases
             );
@@ -1597,7 +1606,7 @@ fn render_impl(
             write!(
                 w,
                 "{}<h3 id=\"{}\" class=\"impl\"{}><code class=\"in-band\">{}</code>",
-                open_details(&mut close_tags),
+                open_details(&mut close_tags, is_implementing_trait),
                 id,
                 aliases,
                 i.inner_impl().print(false, cx)
