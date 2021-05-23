@@ -34,7 +34,7 @@ export class Config {
     readonly globalStoragePath: string;
 
     constructor(ctx: vscode.ExtensionContext) {
-        this.globalStoragePath = ctx.globalStoragePath;
+        this.globalStoragePath = ctx.globalStorageUri.path;
         vscode.workspace.onDidChangeConfiguration(this.onDidChangeConfiguration, this, ctx.subscriptions);
         this.refreshLogging();
     }
