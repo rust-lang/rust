@@ -20,8 +20,7 @@ pub mod path_transform;
 use std::str::FromStr;
 
 use hir::Semantics;
-use ide_db::base_db::FileRange;
-use ide_db::{label::Label, source_change::SourceChange, RootDatabase};
+use ide_db::{base_db::FileRange, label::Label, source_change::SourceChange, RootDatabase};
 use syntax::TextRange;
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
