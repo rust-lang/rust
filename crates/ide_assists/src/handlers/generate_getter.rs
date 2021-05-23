@@ -130,10 +130,6 @@ mod tests {
 
     use super::*;
 
-    fn check_not_applicable(ra_fixture: &str) {
-        check_assist_not_applicable(generate_getter, ra_fixture)
-    }
-
     #[test]
     fn test_generate_getter_from_field() {
         check_assist(
@@ -154,11 +150,31 @@ impl<T: Clone> Context<T> {
     }
 }"#,
         );
+
+        check_assist(
+            generate_getter_mut,
+            r#"
+struct Context<T: Clone> {
+    dat$0a: T,
+}"#,
+            r#"
+struct Context<T: Clone> {
+    data: T,
+}
+
+impl<T: Clone> Context<T> {
+    /// Get a mutable reference to the context's data.
+    fn data_mut(&mut self) -> &mut T {
+        &mut self.data
+    }
+}"#,
+        );
     }
 
     #[test]
     fn test_generate_getter_already_implemented() {
-        check_not_applicable(
+        check_assist_not_applicable(
+            generate_getter,
             r#"
 struct Context<T: Clone> {
     dat$0a: T,
@@ -167,6 +183,20 @@ struct Context<T: Clone> {
 impl<T: Clone> Context<T> {
     fn data(&self) -> &T {
         &self.data
+    }
+}"#,
+        );
+
+        check_assist_not_applicable(
+            generate_getter_mut,
+            r#"
+struct Context<T: Clone> {
+    dat$0a: T,
+}
+
+impl<T: Clone> Context<T> {
+    fn data_mut(&mut self) -> &mut T {
+        &mut self.data
     }
 }"#,
         );
@@ -225,113 +255,6 @@ impl<T: Clone> Context<T> {
     /// Get a reference to the context's count.
     fn count(&self) -> &usize {
         &self.count
-    }
-}"#,
-        );
-    }
-}
-
-#[cfg(test)]
-mod tests_mut {
-    use crate::tests::{check_assist, check_assist_not_applicable};
-
-    use super::*;
-
-    fn check_not_applicable(ra_fixture: &str) {
-        check_assist_not_applicable(generate_getter_mut, ra_fixture)
-    }
-
-    #[test]
-    fn test_generate_getter_mut_from_field() {
-        check_assist(
-            generate_getter_mut,
-            r#"
-struct Context<T: Clone> {
-    dat$0a: T,
-}"#,
-            r#"
-struct Context<T: Clone> {
-    data: T,
-}
-
-impl<T: Clone> Context<T> {
-    /// Get a mutable reference to the context's data.
-    fn data_mut(&mut self) -> &mut T {
-        &mut self.data
-    }
-}"#,
-        );
-    }
-
-    #[test]
-    fn test_generate_getter_mut_already_implemented() {
-        check_not_applicable(
-            r#"
-struct Context<T: Clone> {
-    dat$0a: T,
-}
-
-impl<T: Clone> Context<T> {
-    fn data_mut(&mut self) -> &mut T {
-        &mut self.data
-    }
-}"#,
-        );
-    }
-
-    #[test]
-    fn test_generate_getter_mut_from_field_with_visibility_marker() {
-        check_assist(
-            generate_getter_mut,
-            r#"
-pub(crate) struct Context<T: Clone> {
-    dat$0a: T,
-}"#,
-            r#"
-pub(crate) struct Context<T: Clone> {
-    data: T,
-}
-
-impl<T: Clone> Context<T> {
-    /// Get a mutable reference to the context's data.
-    pub(crate) fn data_mut(&mut self) -> &mut T {
-        &mut self.data
-    }
-}"#,
-        );
-    }
-
-    #[test]
-    fn test_multiple_generate_getter_mut() {
-        check_assist(
-            generate_getter_mut,
-            r#"
-struct Context<T: Clone> {
-    data: T,
-    cou$0nt: usize,
-}
-
-impl<T: Clone> Context<T> {
-    /// Get a mutable reference to the context's data.
-    fn data_mut(&mut self) -> &mut T {
-        &mut self.data
-    }
-}"#,
-            r#"
-struct Context<T: Clone> {
-    data: T,
-    count: usize,
-}
-
-impl<T: Clone> Context<T> {
-    /// Get a mutable reference to the context's data.
-    fn data_mut(&mut self) -> &mut T {
-        &mut self.data
-    }
-
-    /// Get a mutable reference to the context's count.
-    fn count_mut(&mut self) -> &mut usize {
-        &mut self.count
     }
 }"#,
         );
