@@ -3,7 +3,6 @@ use rustc_index::vec::IndexVec;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 
-/// TODO
 #[derive(Copy, Clone, PartialEq, Eq, Debug, PartialOrd, Ord, Hash)]
 pub struct HirOwner {
     pub def_id: LocalDefId,

@@ -69,7 +69,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OwnerNodes<'tcx> {
 #[derive(Copy, Clone)]
 pub struct AttributeMap<'tcx> {
     map: &'tcx BTreeMap<HirId, &'tcx [Attribute]>,
-    prefix: LocalDefId,
+    prefix: HirOwner,
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for AttributeMap<'tcx> {
@@ -95,21 +95,17 @@ impl<'tcx> std::fmt::Debug for AttributeMap<'tcx> {
 
 impl<'tcx> AttributeMap<'tcx> {
     fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
-        self.map
-            .get(&HirId { owner: HirOwner { def_id: self.prefix }, local_id: id })
-            .copied()
-            .unwrap_or(&[])
+        self.map.get(&HirId { owner: self.prefix, local_id: id }).copied().unwrap_or(&[])
     }
 
     fn range(&self) -> std::collections::btree_map::Range<'_, rustc_hir::HirId, &[Attribute]> {
         let local_zero = ItemLocalId::from_u32(0);
-        let range = HirId { owner: HirOwner { def_id: self.prefix }, local_id: local_zero }
-            ..HirId {
-                owner: HirOwner {
-                    def_id: LocalDefId { local_def_index: self.prefix.local_def_index + 1 },
-                },
-                local_id: local_zero,
-            };
+        let range = HirId { owner: self.prefix, local_id: local_zero }..HirId {
+            owner: HirOwner {
+                def_id: LocalDefId { local_def_index: self.prefix.def_id.local_def_index + 1 },
+            },
+            local_id: local_zero,
+        };
         self.map.range(range)
     }
 }

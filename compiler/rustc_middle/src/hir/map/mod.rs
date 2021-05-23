@@ -814,7 +814,7 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.tcx.hir_attrs(id.owner.def_id).get(id.local_id)
+        self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 
     /// Gets the span of the definition of the specified HIR node.
@@ -953,7 +953,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
             let def_path_hash = tcx.definitions.def_path_hash(def_id.def_id);
             let mut hasher = StableHasher::new();
             hod.with_bodies.as_ref()?.hash_stable(&mut hcx, &mut hasher);
-            AttributeMap { map: &tcx.untracked_crate.attrs, prefix: def_id.def_id }
+            AttributeMap { map: &tcx.untracked_crate.attrs, prefix: def_id }
                 .hash_stable(&mut hcx, &mut hasher);
             Some((def_path_hash, hasher.finish()))
         })
