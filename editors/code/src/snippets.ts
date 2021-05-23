@@ -56,6 +56,9 @@ export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vs
         }
     });
     if (selections.length > 0) editor.selections = selections;
+    if (selections.length === 1) {
+        editor.revealRange(selections[0], vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    }
 }
 
 function parseSnippet(snip: string): [string, [number, number]] | undefined {
