@@ -27,6 +27,9 @@ export class PersistentState {
     async updateReleaseId(value: number) {
         await this.globalState.update("releaseId", value);
     }
+    async removeReleaseId() {
+        await this.globalState.update("releaseId", undefined);
+    }
 
     /**
      * Version of the extension that installed the server.

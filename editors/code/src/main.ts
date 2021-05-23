@@ -156,9 +156,11 @@ export async function deactivate() {
 async function bootstrap(config: Config, state: PersistentState): Promise<string> {
     await fs.mkdir(config.globalStoragePath, { recursive: true });
 
+    if (config.package.releaseTag != NIGHTLY_TAG) {
+        await state.removeReleaseId();
+    }
     await bootstrapExtension(config, state);
     const path = await bootstrapServer(config, state);
-
     return path;
 }
 
