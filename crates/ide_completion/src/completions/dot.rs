@@ -480,6 +480,7 @@ impl S {
 }
         "#,
             expect![[r#"
+                me foo() fn(&self) -> &[u8]
             "#]],
         );
     }
