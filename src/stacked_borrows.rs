@@ -457,14 +457,29 @@ impl<'tcx> Stacks {
         &self,
         ptr: Pointer<Tag>,
         size: Size,
-        global: &GlobalState,
-        f: impl Fn(Pointer<Tag>, &mut Stack, &GlobalState) -> InterpResult<'tcx>,
+        f: impl Fn(Pointer<Tag>, &mut Stack) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
         let mut stacks = self.stacks.borrow_mut();
         for (offset, stack) in stacks.iter_mut(ptr.offset, size) {
             let mut cur_ptr = ptr;
             cur_ptr.offset = offset;
-            f(cur_ptr, stack, &*global)?;
+            f(cur_ptr, stack)?;
+        }
+        Ok(())
+    }
+
+    /// Call `f` on every stack in the range.
+    fn for_each_mut(
+        &mut self,
+        ptr: Pointer<Tag>,
+        size: Size,
+        f: impl Fn(Pointer<Tag>, &mut Stack) -> InterpResult<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let stacks = self.stacks.get_mut();
+        for (offset, stack) in stacks.iter_mut(ptr.offset, size) {
+            let mut cur_ptr = ptr;
+            cur_ptr.offset = offset;
+            f(cur_ptr, stack)?;
         }
         Ok(())
     }
@@ -516,9 +531,8 @@ impl Stacks {
         extra: &MemoryExtra,
     ) -> InterpResult<'tcx> {
         trace!("read access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, &*extra.borrow(), |ptr, stack, global| {
-            stack.access(AccessKind::Read, ptr, global)
-        })
+        let global = &*extra.borrow();
+        self.for_each(ptr, size, move |ptr, stack| stack.access(AccessKind::Read, ptr, global))
     }
 
     #[inline(always)]
@@ -529,9 +543,8 @@ impl Stacks {
         extra: &mut MemoryExtra,
     ) -> InterpResult<'tcx> {
         trace!("write access with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, extra.get_mut(), |ptr, stack, global| {
-            stack.access(AccessKind::Write, ptr, global)
-        })
+        let global = extra.get_mut();
+        self.for_each_mut(ptr, size, move |ptr, stack| stack.access(AccessKind::Write, ptr, global))
     }
 
     #[inline(always)]
@@ -542,7 +555,8 @@ impl Stacks {
         extra: &mut MemoryExtra,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", ptr.tag, ptr.erase_tag(), size.bytes());
-        self.for_each(ptr, size, extra.get_mut(), |ptr, stack, global| stack.dealloc(ptr, global))
+        let global = extra.get_mut();
+        self.for_each_mut(ptr, size, move |ptr, stack| stack.dealloc(ptr, global))
     }
 }
 
@@ -571,12 +585,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             size.bytes()
         );
 
-        // Get the allocation. We need both the allocation and the MemoryExtra, so we cannot use `&mut`.
-        // FIXME: make `get_alloc_extra_mut` also return `&mut MemoryExtra`.
-        let extra = this.memory.get_alloc_extra(ptr.alloc_id)?;
-        let stacked_borrows =
-            extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
-        let global = this.memory.extra.stacked_borrows.as_ref().unwrap().borrow();
         // Update the stacks.
         // Make sure that raw pointers and mutable shared references are reborrowed "weak":
         // There could be existing unique pointers reborrowed from them that should remain valid!
@@ -588,6 +596,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Shared references and *const are a whole different kind of game, the
                 // permission is not uniform across the entire range!
                 // We need a frozen-sensitive reborrow.
+                // We have to use shared references to alloc/memory_extra here since
+                // `visit_freeze_sensitive` needs to access the global state.
+                let extra = this.memory.get_alloc_extra(ptr.alloc_id)?;
+                let stacked_borrows =
+                    extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
+                let global = this.memory.extra.stacked_borrows.as_ref().unwrap().borrow();
                 return this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                     // We are only ever `SharedReadOnly` inside the frozen bits.
                     let perm = if frozen {
@@ -596,15 +610,19 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Permission::SharedReadWrite
                     };
                     let item = Item { perm, tag: new_tag, protector };
-                    stacked_borrows.for_each(cur_ptr, size, &*global, |cur_ptr, stack, global| {
-                        stack.grant(cur_ptr, item, global)
+                    stacked_borrows.for_each(cur_ptr, size, |cur_ptr, stack| {
+                        stack.grant(cur_ptr, item, &*global)
                     })
                 });
             }
         };
+        // Here we can avoid `borrow()` calls because we have mutable references.
+        let (alloc_extra, memory_extra) = this.memory.get_alloc_extra_mut(ptr.alloc_id)?;
+        let stacked_borrows =
+            alloc_extra.stacked_borrows.as_mut().expect("we should have Stacked Borrows data");
+        let global = memory_extra.stacked_borrows.as_mut().unwrap().get_mut();
         let item = Item { perm, tag: new_tag, protector };
-        stacked_borrows
-            .for_each(ptr, size, &*global, |ptr, stack, global| stack.grant(ptr, item, global))
+        stacked_borrows.for_each_mut(ptr, size, |ptr, stack| stack.grant(ptr, item, global))
     }
 
     /// Retags an indidual pointer, returning the retagged version.
@@ -640,7 +658,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Compute new borrow.
         let new_tag = {
-            let mut mem_extra = this.memory.extra.stacked_borrows.as_ref().unwrap().borrow_mut();
+            let mem_extra = this.memory.extra.stacked_borrows.as_mut().unwrap().get_mut();
             match kind {
                 // Give up tracking for raw pointers.
                 RefKind::Raw { .. } if !mem_extra.track_raw => Tag::Untagged,
