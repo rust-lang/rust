@@ -135,39 +135,43 @@ mod tests {
         check_assist(
             generate_getter,
             r#"
-struct Context<T: Clone> {
-    dat$0a: T,
-}"#,
+struct Context {
+    dat$0a: Data,
+}
+"#,
             r#"
-struct Context<T: Clone> {
-    data: T,
+struct Context {
+    data: Data,
 }
 
-impl<T: Clone> Context<T> {
+impl Context {
     /// Get a reference to the context's data.
-    fn data(&self) -> &T {
+    fn data(&self) -> &Data {
         &self.data
     }
-}"#,
+}
+"#,
         );
 
         check_assist(
             generate_getter_mut,
             r#"
-struct Context<T: Clone> {
-    dat$0a: T,
-}"#,
+struct Context {
+    dat$0a: Data,
+}
+"#,
             r#"
-struct Context<T: Clone> {
-    data: T,
+struct Context {
+    data: Data,
 }
 
-impl<T: Clone> Context<T> {
+impl Context {
     /// Get a mutable reference to the context's data.
-    fn data_mut(&mut self) -> &mut T {
+    fn data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -176,29 +180,31 @@ impl<T: Clone> Context<T> {
         check_assist_not_applicable(
             generate_getter,
             r#"
-struct Context<T: Clone> {
-    dat$0a: T,
+struct Context {
+    dat$0a: Data,
 }
 
-impl<T: Clone> Context<T> {
-    fn data(&self) -> &T {
+impl Context {
+    fn data(&self) -> &Data {
         &self.data
     }
-}"#,
+}
+"#,
         );
 
         check_assist_not_applicable(
             generate_getter_mut,
             r#"
-struct Context<T: Clone> {
-    dat$0a: T,
+struct Context {
+    dat$0a: Data,
 }
 
-impl<T: Clone> Context<T> {
-    fn data_mut(&mut self) -> &mut T {
+impl Context {
+    fn data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -207,20 +213,22 @@ impl<T: Clone> Context<T> {
         check_assist(
             generate_getter,
             r#"
-pub(crate) struct Context<T: Clone> {
-    dat$0a: T,
-}"#,
+pub(crate) struct Context {
+    dat$0a: Data,
+}
+"#,
             r#"
-pub(crate) struct Context<T: Clone> {
-    data: T,
+pub(crate) struct Context {
+    data: Data,
 }
 
-impl<T: Clone> Context<T> {
+impl Context {
     /// Get a reference to the context's data.
-    pub(crate) fn data(&self) -> &T {
+    pub(crate) fn data(&self) -> &Data {
         &self.data
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -229,26 +237,27 @@ impl<T: Clone> Context<T> {
         check_assist(
             generate_getter,
             r#"
-struct Context<T: Clone> {
-    data: T,
+struct Context {
+    data: Data,
     cou$0nt: usize,
 }
 
-impl<T: Clone> Context<T> {
+impl Context {
     /// Get a reference to the context's data.
-    fn data(&self) -> &T {
+    fn data(&self) -> &Data {
         &self.data
     }
-}"#,
+}
+"#,
             r#"
-struct Context<T: Clone> {
-    data: T,
+struct Context {
+    data: Data,
     count: usize,
 }
 
-impl<T: Clone> Context<T> {
+impl Context {
     /// Get a reference to the context's data.
-    fn data(&self) -> &T {
+    fn data(&self) -> &Data {
         &self.data
     }
 
@@ -256,7 +265,8 @@ impl<T: Clone> Context<T> {
     fn count(&self) -> &usize {
         &self.count
     }
-}"#,
+}
+"#,
         );
     }
 }
