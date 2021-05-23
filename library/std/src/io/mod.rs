@@ -526,7 +526,12 @@ pub trait Read {
     ///
     /// 1. This reader has reached its "end of file" and will likely no longer
     ///    be able to produce bytes. Note that this does not mean that the
-    ///    reader will *always* no longer be able to produce bytes.
+    ///    reader will *always* no longer be able to produce bytes. As an example,
+    ///    on Linux, this method will call the `recv` syscall for a [`TcpStream`],
+    ///    where returning zero indicates the connection was shut down correctly. While
+    ///    for [`File`], it is possible to reach the end of file and get zero as result,
+    ///    but if more data is appended to the file, future calls to `read` will return
+    ///    more data.
     /// 2. The buffer specified was 0 bytes in length.
     ///
     /// It is not an error if the returned value `n` is smaller than the buffer size,
@@ -568,6 +573,7 @@ pub trait Read {
     ///
     /// [`Ok(n)`]: Ok
     /// [`File`]: crate::fs::File
+    /// [`TcpStream`]: crate::net::TcpStream
     ///
     /// ```no_run
     /// use std::io;
