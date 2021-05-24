@@ -455,8 +455,8 @@ enum Action { Move { distance: u32 }, Stop }
 
 fn handle(action: Action) {
     match action {
-        $0Action::Move { distance } => {}
-        Action::Stop => {}
+        $0Action::Move { distance } => todo!(),
+        Action::Stop => todo!(),
     }
 }
 "#####,

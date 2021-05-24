@@ -356,13 +356,17 @@ impl ast::MatchArm {
 impl ast::MatchArmList {
     pub fn add_arm(&self, arm: ast::MatchArm) {
         normalize_ws_between_braces(self.syntax());
+        let mut elements = Vec::new();
         let position = match self.arms().last() {
             Some(last_arm) => {
-                let curly = last_arm
+                let comma = last_arm
                     .syntax()
                     .siblings_with_tokens(Direction::Next)
                     .find(|it| it.kind() == T![,]);
-                Position::after(curly.unwrap_or_else(|| last_arm.syntax().clone().into()))
+                if needs_comma(&last_arm) && comma.is_none() {
+                    elements.push(make::token(SyntaxKind::COMMA).into());
+                }
+                Position::after(comma.unwrap_or_else(|| last_arm.syntax().clone().into()))
             }
             None => match self.l_curly_token() {
                 Some(it) => Position::after(it),
@@ -370,11 +374,16 @@ impl ast::MatchArmList {
             },
         };
         let indent = IndentLevel::from_node(self.syntax()) + 1;
-        let elements = vec![
-            make::tokens::whitespace(&format!("\n{}", indent)).into(),
-            arm.syntax().clone().into(),
-        ];
+        elements.push(make::tokens::whitespace(&format!("\n{}", indent)).into());
+        elements.push(arm.syntax().clone().into());
+        if needs_comma(&arm) {
+            elements.push(make::token(SyntaxKind::COMMA).into());
+        }
         ted::insert_all(position, elements);
+
+        fn needs_comma(arm: &ast::MatchArm) -> bool {
+            arm.expr().map_or(false, |e| !e.is_block_like())
+        }
     }
 }
 
