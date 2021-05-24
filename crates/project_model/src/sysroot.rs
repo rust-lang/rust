@@ -51,7 +51,7 @@ impl Sysroot {
     pub fn discover(cargo_toml: &AbsPath) -> Result<Sysroot> {
         log::debug!("Discovering sysroot for {}", cargo_toml.display());
         let current_dir = cargo_toml.parent().ok_or_else(|| {
-            format_err!("Failed to find the parent directory for file {:?}", cargo_toml)
+            format_err!("Failed to find the parent directory for {}", cargo_toml.display())
         })?;
         let sysroot_dir = discover_sysroot_dir(current_dir)?;
         let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir, current_dir)?;
