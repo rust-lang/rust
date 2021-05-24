@@ -350,10 +350,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {
         let mut data_ctx = DataContext::new();
         data_ctx.define(msg.as_bytes().to_vec().into_boxed_slice());
-        let msg_id = self
-            .module
-            .declare_anonymous_data(false, false)
-            .unwrap();
+        let msg_id = self.module.declare_anonymous_data(false, false).unwrap();
 
         // Ignore DuplicateDefinition error, as the data will be the same
         let _ = self.module.define_data(msg_id, &data_ctx);
