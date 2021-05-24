@@ -165,7 +165,7 @@ pub struct AssociatedTypeBinding {
     /// Bounds for the associated type, like in `Iterator<Item:
     /// SomeOtherTrait>`. (This is the unstable `associated_type_bounds`
     /// feature.)
-    pub bounds: Vec<TypeBound>,
+    pub bounds: Vec<Interned<TypeBound>>,
 }
 
 /// A single generic argument.

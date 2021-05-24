@@ -68,9 +68,19 @@ pub struct GenericParams {
 /// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
-    TypeBound { target: WherePredicateTypeTarget, bound: TypeBound },
-    Lifetime { target: LifetimeRef, bound: LifetimeRef },
-    ForLifetime { lifetimes: Box<[Name]>, target: WherePredicateTypeTarget, bound: TypeBound },
+    TypeBound {
+        target: WherePredicateTypeTarget,
+        bound: Interned<TypeBound>,
+    },
+    Lifetime {
+        target: LifetimeRef,
+        bound: LifetimeRef,
+    },
+    ForLifetime {
+        lifetimes: Box<[Name]>,
+        target: WherePredicateTypeTarget,
+        bound: Interned<TypeBound>,
+    },
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -339,11 +349,11 @@ impl GenericParams {
                 Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
                     lifetimes: hrtb_lifetimes.clone(),
                     target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
-                    bound,
+                    bound: Interned::new(bound),
                 },
                 None => WherePredicate::TypeBound {
                     target: WherePredicateTypeTarget::TypeRef(Interned::new(type_ref)),
-                    bound,
+                    bound: Interned::new(bound),
                 },
             },
             (Either::Right(lifetime), TypeBound::Lifetime(bound)) => {

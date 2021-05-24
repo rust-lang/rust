@@ -384,7 +384,7 @@ impl<'a> Ctx<'a> {
 
         let ret_type = if func.async_token().is_some() {
             let future_impl = desugar_future_path(ret_type);
-            let ty_bound = TypeBound::Path(future_impl);
+            let ty_bound = Interned::new(TypeBound::Path(future_impl));
             TypeRef::ImplTrait(vec![ty_bound])
         } else {
             ret_type
@@ -738,11 +738,12 @@ impl<'a> Ctx<'a> {
         Interned::new(generics)
     }
 
-    fn lower_type_bounds(&mut self, node: &impl ast::TypeBoundsOwner) -> Vec<TypeBound> {
+    fn lower_type_bounds(&mut self, node: &impl ast::TypeBoundsOwner) -> Vec<Interned<TypeBound>> {
         match node.type_bound_list() {
-            Some(bound_list) => {
-                bound_list.bounds().map(|it| TypeBound::from_ast(&self.body_ctx, it)).collect()
-            }
+            Some(bound_list) => bound_list
+                .bounds()
+                .map(|it| Interned::new(TypeBound::from_ast(&self.body_ctx, it)))
+                .collect(),
             None => Vec::new(),
         }
     }

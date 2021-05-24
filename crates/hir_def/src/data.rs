@@ -112,7 +112,7 @@ pub struct TypeAliasData {
     pub visibility: RawVisibility,
     pub is_extern: bool,
     /// Bounds restricting the type alias itself (eg. `type Ty: Bound;` in a trait or impl).
-    pub bounds: Vec<TypeBound>,
+    pub bounds: Vec<Interned<TypeBound>>,
 }
 
 impl TypeAliasData {
@@ -141,7 +141,7 @@ pub struct TraitData {
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub visibility: RawVisibility,
-    pub bounds: Box<[TypeBound]>,
+    pub bounds: Box<[Interned<TypeBound>]>,
 }
 
 impl TraitData {
