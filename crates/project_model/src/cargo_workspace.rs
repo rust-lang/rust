@@ -121,7 +121,7 @@ pub struct PackageDependency {
     pub kind: DepKind,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum DepKind {
     /// Available to the library, binary, and dev targets in the package (but not the build script).
     Normal,
@@ -132,17 +132,23 @@ pub enum DepKind {
 }
 
 impl DepKind {
-    fn new(list: &[cargo_metadata::DepKindInfo]) -> Self {
-        for info in list {
-            match info.kind {
-                cargo_metadata::DependencyKind::Normal => return Self::Normal,
-                cargo_metadata::DependencyKind::Development => return Self::Dev,
-                cargo_metadata::DependencyKind::Build => return Self::Build,
-                cargo_metadata::DependencyKind::Unknown => continue,
-            }
+    fn iter(list: &[cargo_metadata::DepKindInfo]) -> impl Iterator<Item = Self> + '_ {
+        let mut dep_kinds = Vec::new();
+        if list.is_empty() {
+            dep_kinds.push(Self::Normal);
         }
-
-        Self::Normal
+        for info in list {
+            let kind = match info.kind {
+                cargo_metadata::DependencyKind::Normal => Self::Normal,
+                cargo_metadata::DependencyKind::Development => Self::Dev,
+                cargo_metadata::DependencyKind::Build => Self::Build,
+                cargo_metadata::DependencyKind::Unknown => continue,
+            };
+            dep_kinds.push(kind);
+        }
+        dep_kinds.sort_unstable();
+        dep_kinds.dedup();
+        dep_kinds.into_iter()
     }
 }
 
@@ -317,7 +323,11 @@ impl CargoWorkspace {
                 }
             };
             node.deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
-            for dep_node in node.deps {
+            for (dep_node, kind) in node
+                .deps
+                .iter()
+                .flat_map(|dep| DepKind::iter(&dep.dep_kinds).map(move |kind| (dep, kind)))
+            {
                 let pkg = match pkg_by_id.get(&dep_node.pkg) {
                     Some(&pkg) => pkg,
                     None => {
@@ -328,11 +338,7 @@ impl CargoWorkspace {
                         continue;
                     }
                 };
-                let dep = PackageDependency {
-                    name: dep_node.name,
-                    pkg,
-                    kind: DepKind::new(&dep_node.dep_kinds),
-                };
+                let dep = PackageDependency { name: dep_node.name.clone(), pkg, kind };
                 packages[source].dependencies.push(dep);
             }
             packages[source].active_features.extend(node.features);
