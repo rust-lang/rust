@@ -798,26 +798,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
-        let frame =
-            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
-
-        if !unwinding {
-            // Copy the return value to the caller's stack frame.
-            if let Some(ref return_place) = frame.return_place {
-                let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
-                self.copy_op_transmute(&op, return_place)?;
-                trace!("{:?}", self.dump_place(**return_place));
-            } else {
-                throw_ub!(Unreachable);
-            }
-        }
-
-        // Now where do we jump next?
+        // Where do we jump next?
 
         // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
         // In that case, we return early. We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
-        let (cleanup, next_block) = match (frame.return_to_block, unwinding) {
+        let (cleanup, next_block) = match (self.frame().return_to_block, unwinding) {
             (StackPopCleanup::Goto { ret, .. }, false) => (true, Some(ret)),
             (StackPopCleanup::Goto { unwind, .. }, true) => (
                 true,
@@ -831,6 +817,19 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ),
             (StackPopCleanup::None { cleanup, .. }, _) => (cleanup, None),
         };
+
+        let frame = self.stack_mut().pop().unwrap();
+
+        if !unwinding {
+            // Copy the return value to the caller's stack frame.
+            if let Some(ref return_place) = frame.return_place {
+                let op = self.access_local(&frame, mir::RETURN_PLACE, None)?;
+                self.copy_op_transmute(&op, return_place)?;
+                trace!("{:?}", self.dump_place(**return_place));
+            } else {
+                throw_ub!(Unreachable);
+            }
+        }
 
         if !cleanup {
             assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
