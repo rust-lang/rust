@@ -283,35 +283,11 @@ pub(super) fn element(
     }
 }
 fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) -> Highlight {
-    match def {
-        Definition::Macro(m) => {
-            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Macro));
-
-            if m.module(db).map(hir::Module::krate) != krate {
-                h |= HlMod::Library;
-            }
-
-            h
-        }
-        Definition::Field(field) => {
-            let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Field));
-
-            if Some(field.parent_def(db).module(db).krate()) != krate {
-                h |= HlMod::Library;
-            }
-
-            h
-        }
+    let mut h = match def {
+        Definition::Macro(_) => Highlight::new(HlTag::Symbol(SymbolKind::Macro)),
+        Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
         Definition::ModuleDef(def) => match def {
-            hir::ModuleDef::Module(module) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
-
-                if Some(module.krate()) != krate {
-                    h |= HlMod::Library;
-                }
-
-                h
-            }
+            hir::ModuleDef::Module(_) => Highlight::new(HlTag::Symbol(SymbolKind::Module)),
             hir::ModuleDef::Function(func) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
                 if let Some(item) = func.as_assoc_item(db) {
@@ -343,9 +319,6 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 if func.is_async(db) {
                     h |= HlMod::Async;
                 }
-                if Some(func.module(db).krate()) != krate {
-                    h |= HlMod::Library;
-                }
 
                 h
             }
@@ -355,23 +328,10 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     hir::Adt::Enum(_) => HlTag::Symbol(SymbolKind::Enum),
                     hir::Adt::Union(_) => HlTag::Symbol(SymbolKind::Union),
                 };
-                let mut h = Highlight::new(h);
 
-                if Some(adt.module(db).krate()) != krate {
-                    h |= HlMod::Library;
-                }
-
-                h
+                Highlight::new(h)
             }
-            hir::ModuleDef::Variant(variant) => {
-                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Variant));
-
-                if Some(variant.module(db).krate()) != krate {
-                    h |= HlMod::Library;
-                }
-
-                h
-            }
+            hir::ModuleDef::Variant(_) => Highlight::new(HlTag::Symbol(SymbolKind::Variant)),
             hir::ModuleDef::Const(konst) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
 
@@ -389,10 +349,6 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     }
                 }
 
-                if Some(konst.module(db).krate()) != krate {
-                    h |= HlMod::Library;
-                }
-
                 h
             }
             hir::ModuleDef::Trait(trait_) => {
@@ -400,10 +356,6 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
 
                 if trait_.is_unsafe(db) {
                     h |= HlMod::Unsafe;
-                }
-
-                if Some(trait_.module(db).krate()) != krate {
-                    h |= HlMod::Library;
                 }
 
                 h
@@ -425,10 +377,6 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     }
                 }
 
-                if Some(type_.module(db).krate()) != krate {
-                    h |= HlMod::Library;
-                }
-
                 h
             }
             hir::ModuleDef::BuiltinType(_) => Highlight::new(HlTag::BuiltinType),
@@ -438,10 +386,6 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 if s.is_mut(db) {
                     h |= HlMod::Mutable;
                     h |= HlMod::Unsafe;
-                }
-
-                if Some(s.module(db).krate()) != krate {
-                    h |= HlMod::Library;
                 }
 
                 h
@@ -476,7 +420,16 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             h
         }
         Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
+    };
+
+    let is_from_other_crate = def.module(db).map(hir::Module::krate) != krate;
+    let is_builtin_type = matches!(def, Definition::ModuleDef(hir::ModuleDef::BuiltinType(_)));
+
+    if is_from_other_crate && !is_builtin_type {
+        h |= HlMod::Library;
     }
+
+    h
 }
 
 fn highlight_func_by_name_ref(
