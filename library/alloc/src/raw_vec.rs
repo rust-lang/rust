@@ -1,7 +1,9 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "none")]
 #![doc(hidden)]
 
-use core::alloc::{helper::AllocInit, LayoutError};
+#[cfg(not(no_global_oom_handling))]
+use core::alloc::helper::AllocInit;
+use core::alloc::LayoutError;
 use core::cmp;
 use core::intrinsics;
 use core::mem::{self, ManuallyDrop, MaybeUninit};

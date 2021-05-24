@@ -16,7 +16,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
-use core::mem::{self, forget};
+use core::mem;
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -31,6 +31,7 @@ use crate::alloc::handle_alloc_error;
 use crate::alloc::{box_free, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
+#[cfg(not(no_global_oom_handling))]
 use crate::boxed::Box;
 use crate::rc::is_dangling;
 #[cfg(not(no_global_oom_handling))]
@@ -278,8 +279,19 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Arc<U>> for Arc<T> {}
 
 impl<T: ?Sized> Arc<T> {
     #[inline]
+    fn metadata_ptr(ptr: NonNull<T>) -> NonNull<ArcMetadata> {
+        // SAFETY: since the only unsized types possible are slices, trait objects,
+        //   and extern types, the input safety requirement is currently enough to
+        //   satisfy the requirements of for_value_raw; this is an implementation
+        //   detail of the language that may not be relied upon outside of std.
+        let align = unsafe { mem::align_of_val_raw(ptr.as_ptr()) };
+
+        unsafe { ArcAllocator::<Global>::prefix(ptr.cast(), align) }
+    }
+
+    #[inline(always)]
     fn metadata(&self) -> &ArcMetadata {
-        unsafe { ArcAllocator::<Global>::prefix(self.ptr).as_ref() }
+        unsafe { Self::metadata_ptr(self.ptr).as_ref() }
     }
 }
 
@@ -335,11 +347,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Weak<T> {
 impl<T: ?Sized> Weak<T> {
     #[inline]
     fn metadata(&self) -> Option<&ArcMetadata> {
-        if is_dangling(self.ptr.as_ptr()) {
-            None
-        } else {
-            Some(unsafe { ArcAllocator::<Global>::prefix(self.ptr).as_ref() })
-        }
+        (!is_dangling(self.ptr.as_ptr())).then(|| unsafe { Arc::metadata_ptr(self.ptr).as_ref() })
     }
 }
 
@@ -354,12 +362,21 @@ impl<T> Arc<T> {
     /// let five = Arc::new(5);
     /// ```
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(data: T) -> Self {
-        let mut arc = Self::new_uninit();
+    pub fn new(value: T) -> Self {
+        let alloc = ArcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::allocate(
+            &alloc,
+            layout,
+            ArcMetadata::new_strong(),
+            AllocInit::Uninitialized,
+            NonNull::cast,
+        );
         unsafe {
-            Arc::get_mut_unchecked(&mut arc).as_mut_ptr().write(data);
-            arc.assume_init()
+            ptr.as_ptr().write(value);
+            Self::from_raw_in(ptr.as_ptr().cast(), alloc)
         }
     }
 
@@ -384,6 +401,7 @@ impl<T> Arc<T> {
     /// });
     /// ```
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Self {
         // Construct the inner in the "uninitialized" state with a single
@@ -411,7 +429,8 @@ impl<T> Arc<T> {
             ptr.as_ptr().write(data_fn(&weak));
         }
 
-        let meta = unsafe { ArcAllocator::<Global>::prefix(ptr).as_ref() };
+        // SAFETY: `ptr` was just allocated with the allocator with the alignment of `T`
+        let meta = unsafe { Self::metadata_ptr(ptr).as_ref() };
         let prev_value = meta.strong.fetch_add(1, Release);
         debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
 
@@ -1097,6 +1116,7 @@ impl<T: ?Sized> Arc<T> {
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     fn allocate(
         alloc: &ArcAllocator<Global>,
         layout: Layout,
@@ -1105,9 +1125,7 @@ impl<T: ?Sized> Arc<T> {
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> NonNull<T> {
         let ptr = mem_to_ptr(allocate(alloc, layout, init));
-        unsafe {
-            ArcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
-        }
+        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
         ptr
     }
 
@@ -1125,9 +1143,7 @@ impl<T: ?Sized> Arc<T> {
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> Result<NonNull<T>, AllocError> {
         let ptr = mem_to_ptr(try_allocate(alloc, layout, init)?);
-        unsafe {
-            ArcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
-        }
+        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
         Ok(ptr)
     }
 
@@ -1228,7 +1244,7 @@ impl<T> Arc<[T]> {
             }
 
             // All clear. Forget the guard so it doesn't free the new RcBox.
-            forget(guard);
+            mem::forget(guard);
 
             Self::from_raw_in(ptr.as_ptr(), alloc)
         }
@@ -2473,6 +2489,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToArcSlice<T> for I {
 
 /// Dediated function for allocating to prevent generating a function for every `T`
 #[inline]
+#[cfg(not(no_global_oom_handling))]
 fn allocate(alloc: &ArcAllocator<Global>, layout: Layout, init: AllocInit) -> NonNull<u8> {
     try_allocate(alloc, layout, init).unwrap_or_else(|_| handle_alloc_error(layout))
 }

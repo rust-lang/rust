@@ -259,7 +259,7 @@ use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
-use core::mem::{self, forget};
+use core::mem;
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -389,8 +389,19 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline]
+    fn metadata_ptr(ptr: NonNull<T>) -> NonNull<RcMetadata> {
+        // SAFETY: since the only unsized types possible are slices, trait objects,
+        //   and extern types, the input safety requirement is currently enough to
+        //   satisfy the requirements of for_value_raw; this is an implementation
+        //   detail of the language that may not be relied upon outside of std.
+        let align = unsafe { mem::align_of_val_raw(ptr.as_ptr()) };
+
+        unsafe { RcAllocator::<Global>::prefix(ptr.cast(), align) }
+    }
+
+    #[inline(always)]
     fn metadata(&self) -> &RcMetadata {
-        unsafe { RcAllocator::<Global>::prefix(self.ptr).as_ref() }
+        unsafe { Self::metadata_ptr(self.ptr).as_ref() }
     }
 }
 
@@ -404,13 +415,21 @@ impl<T> Rc<T> {
     ///
     /// let five = Rc::new(5);
     /// ```
-    #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
-        let mut rc = Self::new_uninit();
+        let alloc = RcAllocator::new(Global);
+        let layout = Layout::new::<T>();
+        let ptr = Self::allocate(
+            &alloc,
+            layout,
+            RcMetadata::new_strong(),
+            AllocInit::Uninitialized,
+            NonNull::cast,
+        );
         unsafe {
-            Rc::get_mut_unchecked(&mut rc).as_mut_ptr().write(value);
-            rc.assume_init()
+            ptr.as_ptr().write(value);
+            Self::from_raw_in(ptr.as_ptr().cast(), alloc)
         }
     }
 
@@ -439,6 +458,7 @@ impl<T> Rc<T> {
     /// }
     /// ```
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "arc_new_cyclic", issue = "75861")]
     pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
@@ -466,7 +486,7 @@ impl<T> Rc<T> {
             ptr.as_ptr().write(data_fn(&weak));
         }
 
-        let meta = unsafe { RcAllocator::<Global>::prefix(ptr).as_ref() };
+        let meta = unsafe { Self::metadata_ptr(ptr).as_ref() };
         debug_assert_eq!(meta.strong.get(), 0, "No prior strong references should exist");
         meta.strong.set(1);
 
@@ -1295,9 +1315,7 @@ impl<T: ?Sized> Rc<T> {
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> NonNull<T> {
         let ptr = mem_to_ptr(allocate(alloc, layout, init));
-        unsafe {
-            RcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
-        }
+        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
         ptr
     }
 
@@ -1316,9 +1334,7 @@ impl<T: ?Sized> Rc<T> {
         mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
     ) -> Result<NonNull<T>, AllocError> {
         let ptr = mem_to_ptr(try_allocate(alloc, layout, init)?);
-        unsafe {
-            RcAllocator::<Global>::prefix(ptr).as_ptr().write(meta);
-        }
+        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
         Ok(ptr)
     }
 
@@ -1419,7 +1435,7 @@ impl<T> Rc<[T]> {
             }
 
             // All clear. Forget the guard so it doesn't free the new RcBox.
-            forget(guard);
+            mem::forget(guard);
 
             Self::from_raw_in(ptr.as_ptr(), alloc)
         }
@@ -1488,17 +1504,22 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// drop(foo2);   // Prints "dropped!"
     /// ```
     fn drop(&mut self) {
-        self.metadata().dec_strong();
-        if self.metadata().strong() == 0 {
+        let metadata = self.metadata();
+
+        metadata.dec_strong();
+        if metadata.strong() == 0 {
             // destroy the contained object
             unsafe {
                 ptr::drop_in_place(Self::get_mut_unchecked(self));
             }
 
+            // Due to the borrow checker, we have to read the metadata again
+            let metadata = self.metadata();
+
             // remove the implicit "strong weak" pointer now that we've
             // destroyed the contents.
-            self.metadata().dec_weak();
-            if self.metadata().weak() == 0 {
+            metadata.dec_weak();
+            if metadata.weak() == 0 {
                 unsafe {
                     let layout = Layout::for_value_raw(self.ptr.as_ptr());
                     self.alloc.deallocate(self.ptr.cast(), layout);
@@ -2071,11 +2092,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 impl<T: ?Sized> Weak<T> {
     #[inline]
     fn metadata(&self) -> Option<&RcMetadata> {
-        if is_dangling(self.ptr.as_ptr()) {
-            None
-        } else {
-            Some(unsafe { RcAllocator::<Global>::prefix(self.ptr).as_ref() })
-        }
+        (!is_dangling(self.ptr.as_ptr())).then(|| unsafe { Rc::metadata_ptr(self.ptr).as_ref() })
     }
 }
 
@@ -2426,6 +2443,7 @@ impl<T> Default for Weak<T> {
 
 /// Dediated function for allocating to prevent generating a function for every `T`
 #[inline]
+#[cfg(not(no_global_oom_handling))]
 fn allocate(alloc: &RcAllocator<Global>, layout: Layout, init: AllocInit) -> NonNull<u8> {
     try_allocate(alloc, layout, init).unwrap_or_else(|_| handle_alloc_error(layout))
 }
