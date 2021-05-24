@@ -2,6 +2,7 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            cannot_be_a_base: false,
             username: "",
             password: None,
             host: None,
@@ -33,6 +34,7 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        cannot_be_a_base: false,
                         username: "",
                         password: None,
                         host: Some(
@@ -59,6 +61,7 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                cannot_be_a_base: false,
                                 username: "",
                                 password: None,
                                 host: None,
@@ -90,6 +93,7 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            cannot_be_a_base: false,
             username: "",
             password: None,
             host: None,
@@ -121,6 +125,7 @@
                 CodeDescription {
                     href: Url {
                         scheme: "https",
+                        cannot_be_a_base: false,
                         username: "",
                         password: None,
                         host: Some(
@@ -147,6 +152,7 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                cannot_be_a_base: false,
                                 username: "",
                                 password: None,
                                 host: None,
