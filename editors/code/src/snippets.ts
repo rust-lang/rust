@@ -52,7 +52,7 @@ export async function applySnippetTextEdits(editor: vscode.TextEditor, edits: vs
             } else {
                 builder.replace(indel.range, indel.newText);
             }
-            lineDelta = countLines(indel.newText) - (indel.range.end.line - indel.range.start.line);
+            lineDelta += countLines(indel.newText) - (indel.range.end.line - indel.range.start.line);
         }
     });
     if (selections.length > 0) editor.selections = selections;
