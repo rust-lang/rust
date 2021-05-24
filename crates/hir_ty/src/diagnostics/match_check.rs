@@ -25,6 +25,7 @@ pub(crate) enum PatternError {
     Unimplemented,
     UnresolvedVariant,
     MissingField,
+    ExtraFields,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -182,6 +183,11 @@ impl<'a> PatCtxt<'a> {
         expected_len: usize,
         ellipsis: Option<usize>,
     ) -> Vec<FieldPat> {
+        if pats.len() > expected_len {
+            self.errors.push(PatternError::ExtraFields);
+            return Vec::new();
+        }
+
         pats.iter()
             .enumerate_and_adjust(expected_len, ellipsis)
             .map(|(i, &subpattern)| FieldPat {
@@ -696,6 +702,25 @@ fn main() {
     match Either::A {
         Either::A => (),
         Either::B() => (),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn malformed_match_arm_extra_fields() {
+        check_diagnostics(
+            r#"
+enum A { B(isize, isize), C }
+fn main() {
+    match A::B(1, 2) {
+        A::B(_, _, _) => (),
+    //  ^^^^^^^^^^^^^ Internal: match check bailed out
+    }
+    match A::B(1, 2) {
+        A::C(_) => (),
+    //  ^^^^^^^ Internal: match check bailed out
     }
 }
 "#,
