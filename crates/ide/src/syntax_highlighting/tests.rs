@@ -10,6 +10,7 @@ use crate::{fixture, FileRange, HlTag, TextRange};
 fn test_highlighting() {
     check_highlighting(
         r#"
+//- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
 
@@ -222,6 +223,43 @@ async fn async_main() {
 
 unsafe trait Dangerous {}
 impl Dangerous for () {}
+
+fn use_foo_items() {
+    let bob = foo::Person {
+        name: "Bob",
+        age: foo::consts::NUMBER,
+    };
+
+    let control_flow = foo::identity(foo::ControlFlow::Continue);
+
+    if let foo::ControlFlow::Die = control_flow {
+        foo::die!();
+    }
+}
+
+
+//- /foo.rs crate:foo
+pub struct Person {
+    pub name: &'static str,
+    pub age: u8,
+}
+
+pub enum ControlFlow {
+    Continue,
+    Die,
+}
+
+pub fn identity<T>(x: T) -> T { x }
+
+pub mod consts {
+    pub const NUMBER: i64 = 92;
+}
+
+macro_rules! die {
+    () => {
+        panic!();
+    };
+}
 "#
         .trim(),
         expect_file!["./test_data/highlighting.html"],
