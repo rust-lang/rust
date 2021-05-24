@@ -168,6 +168,12 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
+    pub fn eq_body(&mut self, left: BodyId, right: BodyId) -> bool {
+        let cx = self.inner.cx;
+        let eval_const = |body| constant_context(cx, cx.tcx.typeck_body(body)).expr(&cx.tcx.hir().body(body).value);
+        eval_const(left) == eval_const(right)
+    }
+
     #[allow(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         if !self.inner.allow_side_effects && differing_macro_contexts(left.span, right.span) {
@@ -243,12 +249,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 self.inner.allow_side_effects && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(le, ref ll_id), &ExprKind::Repeat(re, ref rl_id)) => {
-                let mut celcx = constant_context(self.inner.cx, self.inner.cx.tcx.typeck_body(ll_id.body));
-                let ll = celcx.expr(&self.inner.cx.tcx.hir().body(ll_id.body).value);
-                let mut celcx = constant_context(self.inner.cx, self.inner.cx.tcx.typeck_body(rl_id.body));
-                let rl = celcx.expr(&self.inner.cx.tcx.hir().body(rl_id.body).value);
-
-                self.eq_expr(le, re) && ll == rl
+                self.eq_expr(le, re) && self.eq_body(ll_id.body, rl_id.body)
             },
             (&ExprKind::Ret(ref l), &ExprKind::Ret(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprKind::Path(ref l), &ExprKind::Path(ref r)) => self.eq_qpath(l, r),
@@ -284,6 +285,7 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
         match (left, right) {
+            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_body(l.value.body, r.value.body),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
             (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
             _ => false,
@@ -384,10 +386,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         match (&left.kind, &right.kind) {
             (&TyKind::Slice(l_vec), &TyKind::Slice(r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyKind::Array(lt, ref ll_id), &TyKind::Array(rt, ref rl_id)) => {
-                let cx = self.inner.cx;
-                let eval_const =
-                    |body| constant_context(cx, cx.tcx.typeck_body(body)).expr(&cx.tcx.hir().body(body).value);
-                self.eq_ty(lt, rt) && eval_const(ll_id.body) == eval_const(rl_id.body)
+                self.eq_ty(lt, rt) && self.eq_body(ll_id.body, rl_id.body)
             },
             (&TyKind::Ptr(ref l_mut), &TyKind::Ptr(ref r_mut)) => {
                 l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty)
@@ -837,6 +836,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             _ => {
                 for seg in path.segments {
                     self.hash_name(seg.ident.name);
+                    self.hash_generic_args(seg.args().args);
                 }
             },
         }
