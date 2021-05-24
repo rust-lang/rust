@@ -242,9 +242,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(not(test))]
+#[cfg(all(not(test), not(no_global_oom_handling)))]
 use crate::boxed::Box;
-#[cfg(test)]
+#[cfg(all(test, not(no_global_oom_handling)))]
 use std::boxed::Box;
 
 use core::alloc::helper::{AllocInit, PrefixAllocator};
@@ -261,15 +261,14 @@ use core::iter;
 use core::marker::{self, PhantomData, Unpin, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+#[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 
 #[cfg(not(no_global_oom_handling))]
-use crate::alloc::handle_alloc_error;
-#[cfg(not(no_global_oom_handling))]
-use crate::alloc::{box_free, WriteCloneIntoRaw};
+use crate::alloc::{handle_alloc_error, box_free, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(no_global_oom_handling))]
@@ -661,6 +660,7 @@ impl<T> Rc<T> {
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn pin(value: T) -> Pin<Rc<T>> {
         unsafe { Pin::new_unchecked(Rc::new(value)) }
@@ -1552,6 +1552,7 @@ impl<T: ?Sized> Clone for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Rc<T> {
     /// Creates a new `Rc<T>`, with the `Default` value for `T`.
@@ -1810,6 +1811,7 @@ impl<T: ?Sized> fmt::Pointer for Rc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Rc<T> {
     /// Converts a generic type `T` into a `Rc<T>`

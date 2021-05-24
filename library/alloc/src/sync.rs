@@ -18,6 +18,7 @@ use core::iter;
 use core::marker::{PhantomData, Unpin, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DispatchFromDyn, Receiver};
+#[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
@@ -513,6 +514,7 @@ impl<T> Arc<T> {
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
     /// `data` will be pinned in memory and unable to be moved.
     #[inline]
+    #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn pin(data: T) -> Pin<Self> {
         unsafe { Pin::new_unchecked(Arc::new(data)) }
@@ -2241,6 +2243,7 @@ impl<T: ?Sized> fmt::Pointer for Arc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Arc<T> {
     /// Creates a new `Arc<T>`, with the `Default` value for `T`.
@@ -2265,6 +2268,7 @@ impl<T: ?Sized + Hash> Hash for Arc<T> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Arc<T> {
     fn from(t: T) -> Self {
