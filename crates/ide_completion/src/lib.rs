@@ -107,7 +107,7 @@ pub use crate::{
 /// identifier prefix/fuzzy match should be done higher in the stack, together
 /// with ordering of completions (currently this is done by the client).
 ///
-/// # Hypothetical Completion Problem
+/// # Speculative Completion Problem
 ///
 /// There's a curious unsolved problem in the current implementation. Often, you
 /// want to compute completions on a *slightly different* text document.
@@ -121,7 +121,7 @@ pub use crate::{
 /// doesn't allow such "phantom" inputs.
 ///
 /// Another case where this would be instrumental is macro expansion. We want to
-/// insert a fake ident and re-expand code. There's `expand_hypothetical` as a
+/// insert a fake ident and re-expand code. There's `expand_speculative` as a
 /// work-around for this.
 ///
 /// A different use-case is completion of injection (examples and links in doc
