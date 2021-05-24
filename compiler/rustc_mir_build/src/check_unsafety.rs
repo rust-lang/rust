@@ -72,16 +72,20 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             SafetyContext::UnsafeFn if unsafe_op_in_unsafe_fn_allowed => {}
             SafetyContext::UnsafeFn => {
                 // unsafe_op_in_unsafe_fn is disallowed
-                struct_span_err!(
-                    self.tcx.sess,
+                self.tcx.struct_span_lint_hir(
+                    UNSAFE_OP_IN_UNSAFE_FN,
+                    self.hir_context,
                     span,
-                    E0133,
-                    "{} is unsafe and requires unsafe block",
-                    description,
+                    |lint| {
+                        lint.build(&format!(
+                            "{} is unsafe and requires unsafe block (error E0133)",
+                            description,
+                        ))
+                        .span_label(span, description)
+                        .note(note)
+                        .emit();
+                    },
                 )
-                .span_label(span, description)
-                .note(note)
-                .emit();
             }
             SafetyContext::Safe => {
                 let fn_sugg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
