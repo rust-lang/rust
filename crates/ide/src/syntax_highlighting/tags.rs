@@ -68,7 +68,7 @@ pub enum HlMod {
     /// Used with keywords like `async` and `await`.
     Async,
     /// Used for items from other crates.
-    Foreign,
+    Library,
     // Keep this last!
     /// Used for unsafe functions, unsafe traits, mutable statics, union accesses and unsafe operations.
     Unsafe,
@@ -191,7 +191,7 @@ impl HlMod {
         HlMod::Static,
         HlMod::Trait,
         HlMod::Async,
-        HlMod::Foreign,
+        HlMod::Library,
         HlMod::Unsafe,
     ];
 
@@ -210,7 +210,7 @@ impl HlMod {
             HlMod::Static => "static",
             HlMod::Trait => "trait",
             HlMod::Async => "async",
-            HlMod::Foreign => "foreign",
+            HlMod::Library => "library",
             HlMod::Unsafe => "unsafe",
         }
     }

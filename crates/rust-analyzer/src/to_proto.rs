@@ -504,7 +504,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Mutable => semantic_tokens::MUTABLE,
             HlMod::Consuming => semantic_tokens::CONSUMING,
             HlMod::Async => semantic_tokens::ASYNC,
-            HlMod::Foreign => semantic_tokens::FOREIGN,
+            HlMod::Library => semantic_tokens::LIBRARY,
             HlMod::Unsafe => semantic_tokens::UNSAFE,
             HlMod::Callable => semantic_tokens::CALLABLE,
             HlMod::Static => lsp_types::SemanticTokenModifier::STATIC,

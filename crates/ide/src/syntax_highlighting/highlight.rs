@@ -288,7 +288,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Macro));
 
             if m.module(db).map(hir::Module::krate) != krate {
-                h |= HlMod::Foreign;
+                h |= HlMod::Library;
             }
 
             return h;
@@ -297,7 +297,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Field));
 
             if Some(field.parent_def(db).module(db).krate()) != krate {
-                h |= HlMod::Foreign;
+                h |= HlMod::Library;
             }
 
             return h;
@@ -307,7 +307,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
 
                 if Some(module.krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
 
                 return h;
@@ -344,7 +344,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Async;
                 }
                 if Some(func.module(db).krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
                 return h;
             }
@@ -357,7 +357,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 let mut h = Highlight::new(h);
 
                 if Some(adt.module(db).krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
 
                 return h;
@@ -366,7 +366,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Variant));
 
                 if Some(variant.module(db).krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
 
                 return h;
@@ -389,7 +389,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 }
 
                 if Some(konst.module(db).krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
 
                 return h;
@@ -402,7 +402,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 }
 
                 if Some(trait_.module(db).krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
 
                 return h;
@@ -425,7 +425,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 }
 
                 if Some(type_.module(db).krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
 
                 return h;
@@ -440,7 +440,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 }
 
                 if Some(s.module(db).krate()) != krate {
-                    h |= HlMod::Foreign;
+                    h |= HlMod::Library;
                 }
 
                 return h;
