@@ -1096,4 +1096,24 @@ fn foo(t: bool) {
 }"#,
         );
     }
+
+    #[test]
+    fn does_not_add_extra_comma() {
+        check_assist(
+            fill_match_arms,
+            r#"
+fn foo(t: bool) {
+    match $0t {
+        true => 1 + 2,
+    }
+}"#,
+            r#"
+fn foo(t: bool) {
+    match t {
+        true => 1 + 2,
+        $0false => todo!(),
+    }
+}"#,
+        );
+    }
 }
