@@ -196,46 +196,46 @@ impl<'a> CompletionContext<'a> {
         };
 
         let mut original_file = original_file.syntax().clone();
-        let mut hypothetical_file = file_with_fake_ident.syntax().clone();
+        let mut speculative_file = file_with_fake_ident.syntax().clone();
         let mut offset = position.offset;
         let mut fake_ident_token = fake_ident_token;
 
         // Are we inside a macro call?
         while let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
             find_node_at_offset::<ast::MacroCall>(&original_file, offset),
-            find_node_at_offset::<ast::MacroCall>(&hypothetical_file, offset),
+            find_node_at_offset::<ast::MacroCall>(&speculative_file, offset),
         ) {
             if actual_macro_call.path().as_ref().map(|s| s.syntax().text())
                 != macro_call_with_fake_ident.path().as_ref().map(|s| s.syntax().text())
             {
                 break;
             }
-            let hypothetical_args = match macro_call_with_fake_ident.token_tree() {
+            let speculative_args = match macro_call_with_fake_ident.token_tree() {
                 Some(tt) => tt,
                 None => break,
             };
-            if let (Some(actual_expansion), Some(hypothetical_expansion)) = (
+            if let (Some(actual_expansion), Some(speculative_expansion)) = (
                 ctx.sema.expand(&actual_macro_call),
                 ctx.sema.speculative_expand(
                     &actual_macro_call,
-                    &hypothetical_args,
+                    &speculative_args,
                     fake_ident_token,
                 ),
             ) {
-                let new_offset = hypothetical_expansion.1.text_range().start();
+                let new_offset = speculative_expansion.1.text_range().start();
                 if new_offset > actual_expansion.text_range().end() {
                     break;
                 }
                 original_file = actual_expansion;
-                hypothetical_file = hypothetical_expansion.0;
-                fake_ident_token = hypothetical_expansion.1;
+                speculative_file = speculative_expansion.0;
+                fake_ident_token = speculative_expansion.1;
                 offset = new_offset;
             } else {
                 break;
             }
         }
-        ctx.fill_keyword_patterns(&hypothetical_file, offset);
-        ctx.fill(&original_file, hypothetical_file, offset);
+        ctx.fill_keyword_patterns(&speculative_file, offset);
+        ctx.fill(&original_file, speculative_file, offset);
         Some(ctx)
     }
 

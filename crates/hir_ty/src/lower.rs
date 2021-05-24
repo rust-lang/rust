@@ -1026,7 +1026,7 @@ pub(crate) fn trait_environment_query(
     };
     if let Some(AssocContainerId::TraitId(trait_id)) = container {
         // add `Self: Trait<T1, T2, ...>` to the environment in trait
-        // function default implementations (and hypothetical code
+        // function default implementations (and speculative code
         // inside consts or type aliases)
         cov_mark::hit!(trait_self_implements_self);
         let substs = TyBuilder::type_params_subst(db, trait_id);

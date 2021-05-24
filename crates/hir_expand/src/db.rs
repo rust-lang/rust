@@ -131,15 +131,15 @@ pub trait AstDatabase: SourceDatabase {
 /// used for completion, where we want to see what 'would happen' if we insert a
 /// token. The `token_to_map` mapped down into the expansion, with the mapped
 /// token returned.
-pub fn expand_hypothetical(
+pub fn expand_speculative(
     db: &dyn AstDatabase,
     actual_macro_call: MacroCallId,
-    hypothetical_args: &ast::TokenTree,
+    speculative_args: &ast::TokenTree,
     token_to_map: SyntaxToken,
 ) -> Option<(SyntaxNode, SyntaxToken)> {
-    let (tt, tmap_1) = mbe::syntax_node_to_token_tree(hypothetical_args.syntax());
+    let (tt, tmap_1) = mbe::syntax_node_to_token_tree(speculative_args.syntax());
     let range =
-        token_to_map.text_range().checked_sub(hypothetical_args.syntax().text_range().start())?;
+        token_to_map.text_range().checked_sub(speculative_args.syntax().text_range().start())?;
     let token_id = tmap_1.token_by_range(range)?;
 
     let macro_def = {
@@ -147,12 +147,12 @@ pub fn expand_hypothetical(
         db.macro_def(loc.def)?
     };
 
-    let hypothetical_expansion = macro_def.expand(db, actual_macro_call, &tt);
+    let speculative_expansion = macro_def.expand(db, actual_macro_call, &tt);
 
     let fragment_kind = macro_fragment_kind(db, actual_macro_call);
 
     let (node, tmap_2) =
-        mbe::token_tree_to_syntax_node(&hypothetical_expansion.value, fragment_kind).ok()?;
+        mbe::token_tree_to_syntax_node(&speculative_expansion.value, fragment_kind).ok()?;
 
     let token_id = macro_def.map_id_down(token_id);
     let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
@@ -325,7 +325,7 @@ fn macro_expand_with_arg(
     if let Some(eager) = &loc.eager {
         if arg.is_some() {
             return ExpandResult::str_err(
-                "hypothetical macro expansion not implemented for eager macro".to_owned(),
+                "speculative macro expansion not implemented for eager macro".to_owned(),
             );
         } else {
             return ExpandResult {

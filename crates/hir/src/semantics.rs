@@ -120,10 +120,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     pub fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
-        hypothetical_args: &ast::TokenTree,
+        speculative_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
-        self.imp.speculative_expand(actual_macro_call, hypothetical_args, token_to_map)
+        self.imp.speculative_expand(actual_macro_call, speculative_args, token_to_map)
     }
 
     pub fn descend_into_macros(&self, token: SyntaxToken) -> SyntaxToken {
@@ -335,7 +335,7 @@ impl<'db> SemanticsImpl<'db> {
     fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
-        hypothetical_args: &ast::TokenTree,
+        speculative_args: &ast::TokenTree,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
         let sa = self.analyze(actual_macro_call.syntax());
@@ -344,10 +344,10 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
             sa.resolver.resolve_path_as_macro(self.db.upcast(), &path)
         })?;
-        hir_expand::db::expand_hypothetical(
+        hir_expand::db::expand_speculative(
             self.db.upcast(),
             macro_call_id,
-            hypothetical_args,
+            speculative_args,
             token_to_map,
         )
     }
