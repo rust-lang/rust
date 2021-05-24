@@ -745,7 +745,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_name(&mut self, n: Symbol) {
-        n.as_str().hash(&mut self.s);
+        n.hash(&mut self.s);
     }
 
     pub fn hash_qpath(&mut self, p: &QPath<'_>) {
