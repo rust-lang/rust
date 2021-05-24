@@ -199,7 +199,7 @@ fn run_server() -> Result<()> {
             config.update(json);
         }
 
-        if config.linked_projects().is_empty() {
+        if config.linked_projects().is_empty() && config.detached_files().is_empty() {
             let workspace_roots = initialize_params
                 .workspace_folders
                 .map(|workspaces| {
@@ -217,7 +217,6 @@ fn run_server() -> Result<()> {
             if discovered.is_empty() {
                 log::error!("failed to find any projects in {:?}", workspace_roots);
             }
-
             config.discovered_projects = Some(discovered);
         }
 

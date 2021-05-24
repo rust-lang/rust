@@ -103,6 +103,7 @@ impl fmt::Debug for Event {
 impl GlobalState {
     fn run(mut self, inbox: Receiver<lsp_server::Message>) -> Result<()> {
         if self.config.linked_projects().is_empty()
+            && self.config.detached_files().is_empty()
             && self.config.notifications().cargo_toml_not_found
         {
             self.show_message(
