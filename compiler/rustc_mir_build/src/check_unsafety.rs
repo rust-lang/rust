@@ -329,6 +329,11 @@ impl UnsafeOpKind {
 // FIXME: checking unsafety for closures should be handled by their parent body,
 // as they inherit their "safety context" from their declaration site.
 pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) {
+    // THIR unsafeck is gated under `-Z thir-unsafeck`
+    if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+        return;
+    }
+
     let (thir, expr) = tcx.thir_body(def);
     let thir = &thir.borrow();
     // If `thir` is empty, a type error occured, skip this body.

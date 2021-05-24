@@ -46,15 +46,13 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     let body_owner_kind = tcx.hir().body_owner_kind(id);
     let typeck_results = tcx.typeck_opt_const_arg(def);
 
-    if tcx.sess.opts.debugging_opts.thir_unsafeck {
-        // Ensure unsafeck is ran before we steal the THIR.
-        match def {
-            ty::WithOptConstParam { did, const_param_did: Some(const_param_did) } => {
-                tcx.ensure().thir_check_unsafety_for_const_arg((did, const_param_did))
-            }
-            ty::WithOptConstParam { did, const_param_did: None } => {
-                tcx.ensure().thir_check_unsafety(did)
-            }
+    // Ensure unsafeck is ran before we steal the THIR.
+    match def {
+        ty::WithOptConstParam { did, const_param_did: Some(const_param_did) } => {
+            tcx.ensure().thir_check_unsafety_for_const_arg((did, const_param_did))
+        }
+        ty::WithOptConstParam { did, const_param_did: None } => {
+            tcx.ensure().thir_check_unsafety(did)
         }
     }
 
