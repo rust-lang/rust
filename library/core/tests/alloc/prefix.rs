@@ -29,7 +29,7 @@ fn test_prefix<T, Prefix>() {
         });
 
         assert_eq!(
-            PrefixAllocator::<System, Prefix>::prefix::<T>(memory.as_non_null_ptr().cast())
+            PrefixAllocator::<System, Prefix>::prefix(memory.as_non_null_ptr(), layout.align())
                 .cast()
                 .as_ptr(),
             memory.as_mut_ptr().sub(prefix_offset),
