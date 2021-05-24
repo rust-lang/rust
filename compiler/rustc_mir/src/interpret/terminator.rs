@@ -69,7 +69,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi, can_unwind) = match *func.layout.ty.kind() {
+                let (fn_val, abi, caller_can_unwind) = match *func.layout.ty.kind() {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(&func)?.check_init()?;
@@ -110,7 +110,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     abi,
                     &args[..],
                     ret,
-                    if can_unwind {
+                    if caller_can_unwind {
                         cleanup.map_or(StackPopUnwind::Skip, StackPopUnwind::Cleanup)
                     } else {
                         StackPopUnwind::NotAllowed
