@@ -1,6 +1,4 @@
-//! Implementations of things like `Eq` for fixed-length arrays
-//! up to a certain length. Eventually, we should be able to generalize
-//! to all lengths.
+//! Helper functions and types for fixed-length arrays.
 //!
 //! *[See also the array primitive type](array).*
 
