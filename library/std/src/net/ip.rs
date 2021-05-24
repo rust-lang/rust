@@ -1193,25 +1193,45 @@ impl Ipv6Addr {
         u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::UNSPECIFIED.octets())
     }
 
-    /// Returns [`true`] if this is a loopback address (::1).
+    /// Returns [`true`] if this is either:
+    /// - the [loopback address] as defined in [IETF RFC 4291 section 2.5.3] (`::1`).
+    /// - an IPv4-mapped address representing an IPv4 loopback address as defined in [IETF RFC 1122] (`::ffff:127.0.0.0/104`).
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// Note that this returns [`false`] for an IPv4-compatible address representing an IPv4 loopback address (`::127.0.0.0/104`).
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [loopback address]: Ipv6Addr::LOCALHOST
+    /// [IETF RFC 4291 section 2.5.3]: https://tools.ietf.org/html/rfc4291#section-2.5.3
+    /// [IETF RFC 1122]: https://tools.ietf.org/html/rfc1122
     ///
     /// # Examples
     ///
     /// ```
     /// use std::net::Ipv6Addr;
     ///
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_loopback(), false);
+    /// // `true` for the IPv6 loopback address (`::1`)
+    /// assert_eq!(Ipv6Addr::LOCALHOST.is_loopback(), true);
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0x1).is_loopback(), true);
+    ///
+    /// use std::net::Ipv4Addr;
+    ///
+    /// // `true` for an IPv4-mapped address representing an IPv4 loopback address (`::ffff:127.0.0.1`)
+    /// assert_eq!(Ipv4Addr::LOCALHOST.to_ipv6_mapped().is_loopback(), true);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).is_loopback(), true);
+    ///
+    /// // `false` for an IPv4-compatible address representing an IPv4 loopback address (`::127.0.0.1`)
+    /// assert_eq!(Ipv4Addr::LOCALHOST.to_ipv6_compatible().is_loopback(), false);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0x7f00, 0x1).is_loopback(), false);
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(since = "1.7.0", feature = "ip_17")]
+    #[rustc_allow_const_fn_unstable(const_ipv6)]
     #[inline]
     pub const fn is_loopback(&self) -> bool {
-        u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
+        if let Some(ipv4) = self.to_ipv4_mapped() {
+            ipv4.is_loopback()
+        } else {
+            u128::from_be_bytes(self.octets()) == u128::from_be_bytes(Ipv6Addr::LOCALHOST.octets())
+        }
     }
 
     /// Returns [`true`] if the address appears to be globally routable.
