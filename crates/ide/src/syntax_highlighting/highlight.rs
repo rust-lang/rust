@@ -303,7 +303,15 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             return h;
         }
         Definition::ModuleDef(def) => match def {
-            hir::ModuleDef::Module(_) => HlTag::Symbol(SymbolKind::Module),
+            hir::ModuleDef::Module(module) => {
+                let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
+
+                if Some(module.krate()) != krate {
+                    h |= HlMod::Foreign;
+                }
+
+                return h;
+            }
             hir::ModuleDef::Function(func) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
                 if let Some(item) = func.as_assoc_item(db) {
