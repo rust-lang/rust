@@ -291,7 +291,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 h |= HlMod::Library;
             }
 
-            return h;
+            h
         }
         Definition::Field(field) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Field));
@@ -300,7 +300,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 h |= HlMod::Library;
             }
 
-            return h;
+            h
         }
         Definition::ModuleDef(def) => match def {
             hir::ModuleDef::Module(module) => {
@@ -310,7 +310,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Library;
                 }
 
-                return h;
+                h
             }
             hir::ModuleDef::Function(func) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Function));
@@ -346,7 +346,8 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                 if Some(func.module(db).krate()) != krate {
                     h |= HlMod::Library;
                 }
-                return h;
+
+                h
             }
             hir::ModuleDef::Adt(adt) => {
                 let h = match adt {
@@ -360,7 +361,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Library;
                 }
 
-                return h;
+                h
             }
             hir::ModuleDef::Variant(variant) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Variant));
@@ -369,7 +370,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Library;
                 }
 
-                return h;
+                h
             }
             hir::ModuleDef::Const(konst) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Const));
@@ -392,7 +393,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Library;
                 }
 
-                return h;
+                h
             }
             hir::ModuleDef::Trait(trait_) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Trait));
@@ -405,7 +406,7 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Library;
                 }
 
-                return h;
+                h
             }
             hir::ModuleDef::TypeAlias(type_) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::TypeAlias));
@@ -428,9 +429,9 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Library;
                 }
 
-                return h;
+                h
             }
-            hir::ModuleDef::BuiltinType(_) => HlTag::BuiltinType,
+            hir::ModuleDef::BuiltinType(_) => Highlight::new(HlTag::BuiltinType),
             hir::ModuleDef::Static(s) => {
                 let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Static));
 
@@ -443,14 +444,18 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
                     h |= HlMod::Library;
                 }
 
-                return h;
+                h
             }
         },
-        Definition::SelfType(_) => HlTag::Symbol(SymbolKind::Impl),
+        Definition::SelfType(_) => Highlight::new(HlTag::Symbol(SymbolKind::Impl)),
         Definition::GenericParam(it) => match it {
-            hir::GenericParam::TypeParam(_) => HlTag::Symbol(SymbolKind::TypeParam),
-            hir::GenericParam::ConstParam(_) => HlTag::Symbol(SymbolKind::ConstParam),
-            hir::GenericParam::LifetimeParam(_) => HlTag::Symbol(SymbolKind::LifetimeParam),
+            hir::GenericParam::TypeParam(_) => Highlight::new(HlTag::Symbol(SymbolKind::TypeParam)),
+            hir::GenericParam::ConstParam(_) => {
+                Highlight::new(HlTag::Symbol(SymbolKind::ConstParam))
+            }
+            hir::GenericParam::LifetimeParam(_) => {
+                Highlight::new(HlTag::Symbol(SymbolKind::LifetimeParam))
+            }
         },
         Definition::Local(local) => {
             let tag = if local.is_self(db) {
@@ -468,11 +473,10 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
             if ty.as_callable(db).is_some() || ty.impls_fnonce(db) {
                 h |= HlMod::Callable;
             }
-            return h;
+            h
         }
-        Definition::Label(_) => HlTag::Symbol(SymbolKind::Label),
+        Definition::Label(_) => Highlight::new(HlTag::Symbol(SymbolKind::Label)),
     }
-    .into()
 }
 
 fn highlight_func_by_name_ref(
