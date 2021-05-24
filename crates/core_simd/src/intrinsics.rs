@@ -45,6 +45,9 @@ extern "platform-intrinsic" {
 
     /// fabs
     pub(crate) fn simd_fabs<T>(x: T) -> T;
+    
+    /// fsqrt
+    pub(crate) fn simd_fsqrt<T>(x: T) -> T;
 
     pub(crate) fn simd_eq<T, U>(x: T, y: T) -> U;
     pub(crate) fn simd_ne<T, U>(x: T, y: T) -> U;
