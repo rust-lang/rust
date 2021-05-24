@@ -294,11 +294,11 @@ impl<T: ?Sized> Mutex<T> {
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
-    /// this call will return the error [`Poisoned`] if the mutex would
+    /// this call will return the [`Poisoned`] error if the mutex would
     /// otherwise be acquired.
     ///
     /// If the mutex could not be acquired because it is already locked, then
-    /// this call will return [`WouldBlock`].
+    /// this call will return the [`WouldBlock`] error.
     ///
     /// [`Poisoned`]: TryLockError::Poisoned
     /// [`WouldBlock`]: TryLockError::WouldBlock

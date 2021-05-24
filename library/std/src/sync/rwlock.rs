@@ -199,12 +199,12 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return the error [`Poisoned`] if the RwLock is poisoned.
+    /// This function will return the [`Poisoned`] error if the RwLock is poisoned.
     /// An RwLock is poisoned whenever a writer panics while holding an exclusive
     /// lock. `Poisoned` will only be returned if the lock would have otherwise been
     /// acquired.
     ///
-    /// This function will return the error [`WouldBlock`] if the RwLock could not
+    /// This function will return the [`WouldBlock`] error if the RwLock could not
     /// be acquired because it was already locked exclusively.
     ///
     /// [`Poisoned`]: TryLockError::Poisoned
@@ -287,12 +287,12 @@ impl<T: ?Sized> RwLock<T> {
     ///
     /// # Errors
     ///
-    /// This function will return the error [`Poisoned`] if the RwLock is
+    /// This function will return the [`Poisoned`] error if the RwLock is
     /// poisoned. An RwLock is poisoned whenever a writer panics while holding
     /// an exclusive lock. `Poisoned` will only be returned if the lock would have
     /// otherwise been acquired.
     ///
-    /// This function will return the error [`WouldBlock`] if the RwLock could not
+    /// This function will return the [`WouldBlock`] error if the RwLock could not
     /// be acquired because it was already locked exclusively.
     ///
     /// [`Poisoned`]: TryLockError::Poisoned
