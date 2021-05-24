@@ -12,13 +12,13 @@ LL | | }
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<(), ()>`
    = note: required by `from_residual`
 
-error[E0277]: the `?` operator can only be used on `Option`s in a function that returns `Option`
+error[E0277]: the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
   --> $DIR/option-to-result.rs:11:6
    |
 LL | / fn test_option() -> Option<i32>{
 LL | |     let a:Result<i32, i32> = Ok(5);
 LL | |     a?;
-   | |      ^ this `?` produces `Result<Infallible, i32>`, which is incompatible with `Option<i32>`
+   | |      ^ use `.ok()?` if you want to discard the `Result<Infallible, i32>` error information
 LL | |     Some(5)
 LL | | }
    | |_- this function returns an `Option`

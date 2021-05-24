@@ -20,7 +20,7 @@ fn control_flow_to_result() -> Result<u64, String> {
 
 fn result_to_option() -> Option<u16> {
     Some(Err("hello")?)
-    //~^ ERROR the `?` operator can only be used on `Option`s in a function that returns `Option`
+    //~^ ERROR the `?` operator can only be used on `Option`s, not `Result`s, in a function that returns `Option`
 }
 
 fn control_flow_to_option() -> Option<u64> {
@@ -30,18 +30,18 @@ fn control_flow_to_option() -> Option<u64> {
 
 fn result_to_control_flow() -> ControlFlow<String> {
     ControlFlow::Continue(Err("hello")?)
-    //~^ ERROR the `?` operator can only be used on `ControlFlow<B, _>`s in a function that returns `ControlFlow<B, _>`
+    //~^ ERROR the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
 }
 
 fn option_to_control_flow() -> ControlFlow<u64> {
     Some(3)?;
-    //~^ ERROR the `?` operator can only be used on `ControlFlow<B, _>`s in a function that returns `ControlFlow<B, _>`
+    //~^ ERROR the `?` operator can only be used on `ControlFlow`s in a function that returns `ControlFlow`
     ControlFlow::Break(10)
 }
 
 fn control_flow_to_control_flow() -> ControlFlow<i64> {
     ControlFlow::Break(4_u8)?;
-    //~^ ERROR the `?` operator can only be used on `ControlFlow<B, _>`s in a function that returns `ControlFlow<B, _>`
+    //~^ ERROR the `?` operator in a function that returns `ControlFlow<B, _>` can only be used on other `ControlFlow<B, _>`s
     ControlFlow::Continue(())
 }
 

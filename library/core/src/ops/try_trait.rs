@@ -259,6 +259,18 @@ pub trait Try: FromResidual {
             from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::option::Option<T>",
+            R = "std::result::Result<T, E>",
+        ),
+        message = "the `?` operator can only be used on `Option`s, not `Result`s, \
+            in {ItemContext} that returns `Option`",
+        label = "use `.ok()?` if you want to discard the `{R}` error information",
+        enclosing_scope = "this function returns an `Option`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::option::Option<T>",
         ),
         // `Option`-in-`Option` always works, as there's only one possible
         // residual, so this can also be phrased strongly.
@@ -272,12 +284,25 @@ pub trait Try: FromResidual {
             from_method = "from_residual",
             from_desugaring = "QuestionMark",
             _Self = "std::ops::ControlFlow<B, C>",
+            R = "std::ops::ControlFlow<B, C>",
         ),
-        message = "the `?` operator can only be used on `ControlFlow<B, _>`s \
-            in {ItemContext} that returns `ControlFlow<B, _>`",
+        message = "the `?` operator in {ItemContext} that returns `ControlFlow<B, _>` \
+            can only be used on other `ControlFlow<B, _>`s (with the same Break type)",
         label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
         enclosing_scope = "this function returns a `ControlFlow`",
         note = "unlike `Result`, there's no `From`-conversion performed for `ControlFlow`"
+    ),
+    on(
+        all(
+            from_method = "from_residual",
+            from_desugaring = "QuestionMark",
+            _Self = "std::ops::ControlFlow<B, C>",
+            // `R` is not a `ControlFlow`, as that case was matched previously
+        ),
+        message = "the `?` operator can only be used on `ControlFlow`s \
+            in {ItemContext} that returns `ControlFlow`",
+        label = "this `?` produces `{R}`, which is incompatible with `{Self}`",
+        enclosing_scope = "this function returns a `ControlFlow`",
     ),
     on(
         all(
