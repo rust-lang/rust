@@ -27,7 +27,7 @@ fn find_registrar_symbol(file: &Path) -> io::Result<Option<String>> {
     let file = File::open(file)?;
     let buffer = unsafe { Mmap::map(&file)? };
 
-    Ok(object::File::parse(&buffer)
+    Ok(object::File::parse(&*buffer)
         .map_err(invalid_data_err)?
         .exports()
         .map_err(invalid_data_err)?
