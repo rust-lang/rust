@@ -1,3 +1,5 @@
+//! Mapping between `TokenId`s and the token's position in macro definitions or inputs.
+
 use parser::{SyntaxKind, T};
 use syntax::{TextRange, TextSize};
 
