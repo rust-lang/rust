@@ -73,14 +73,14 @@ export interface GithubRelease {
     assets: Array<{
         name: string;
         // eslint-disable-next-line camelcase
-        browser_download_url: string;
+        browser_download_url: vscode.Uri;
     }>;
 }
 
 interface DownloadOpts {
     progressTitle: string;
-    url: string;
-    dest: string;
+    url: vscode.Uri;
+    dest: vscode.Uri;
     mode?: number;
     gunzip?: boolean;
     httpProxy?: string;
@@ -90,9 +90,9 @@ export async function download(opts: DownloadOpts) {
     // Put artifact into a temporary file (in the same dir for simplicity)
     // to prevent partially downloaded files when user kills vscode
     // This also avoids overwriting running executables
-    const dest = path.parse(opts.dest);
     const randomHex = crypto.randomBytes(5).toString("hex");
-    const tempFile = path.join(dest.dir, `${dest.name}${randomHex}`);
+    const rawDest = path.parse(opts.dest.path);
+    const tempFilePath = vscode.Uri.joinPath(vscode.Uri.file(rawDest.dir), `${rawDest.name}${randomHex}`);
 
     await vscode.window.withProgress(
         {
@@ -102,7 +102,7 @@ export async function download(opts: DownloadOpts) {
         },
         async (progress, _cancellationToken) => {
             let lastPercentage = 0;
-            await downloadFile(opts.url, tempFile, opts.mode, !!opts.gunzip, opts.httpProxy, (readBytes, totalBytes) => {
+            await downloadFile(opts.url, tempFilePath, opts.mode, !!opts.gunzip, opts.httpProxy, (readBytes, totalBytes) => {
                 const newPercentage = Math.round((readBytes / totalBytes) * 100);
                 if (newPercentage !== lastPercentage) {
                     progress.report({
@@ -116,12 +116,12 @@ export async function download(opts: DownloadOpts) {
         }
     );
 
-    await fs.promises.rename(tempFile, opts.dest);
+    await vscode.workspace.fs.rename(tempFilePath, opts.dest);
 }
 
 async function downloadFile(
-    url: string,
-    destFilePath: fs.PathLike,
+    url: vscode.Uri,
+    destFilePath: vscode.Uri,
     mode: number | undefined,
     gunzip: boolean,
     httpProxy: string | null | undefined,
@@ -129,15 +129,15 @@ async function downloadFile(
 ): Promise<void> {
     const res = await (() => {
         if (httpProxy) {
-            log.debug(`Downloading ${url} via proxy: ${httpProxy}`);
-            return fetch(url, { agent: new HttpsProxyAgent(httpProxy) });
+            log.debug(`Downloading ${url.path} via proxy: ${httpProxy}`);
+            return fetch(url.path, { agent: new HttpsProxyAgent(httpProxy) });
         }
 
-        return fetch(url);
+        return fetch(url.path);
     })();
 
     if (!res.ok) {
-        log.error("Error", res.status, "while downloading file from", url);
+        log.error("Error", res.status, "while downloading file from", url.path);
         log.error({ body: await res.text(), headers: res.headers });
 
         throw new Error(`Got response ${res.status} when trying to download a file.`);
@@ -146,7 +146,7 @@ async function downloadFile(
     const totalBytes = Number(res.headers.get('content-length'));
     assert(!Number.isNaN(totalBytes), "Sanity check of content-length protocol");
 
-    log.debug("Downloading file of", totalBytes, "bytes size from", url, "to", destFilePath);
+    log.debug("Downloading file of", totalBytes, "bytes size from", url.path, "to", destFilePath.path);
 
     let readBytes = 0;
     res.body.on("data", (chunk: Buffer) => {
@@ -154,7 +154,7 @@ async function downloadFile(
         onProgress(readBytes, totalBytes);
     });
 
-    const destFileStream = fs.createWriteStream(destFilePath, { mode });
+    const destFileStream = fs.createWriteStream(destFilePath.path, { mode });
     const srcStream = gunzip ? res.body.pipe(zlib.createGunzip()) : res.body;
 
     await pipeline(srcStream, destFileStream);
