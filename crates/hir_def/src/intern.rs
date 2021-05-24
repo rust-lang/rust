@@ -218,6 +218,7 @@ impl_internable!(
     crate::type_ref::TraitRef,
     crate::type_ref::TypeBound,
     crate::path::ModPath,
+    crate::path::GenericArgs,
     GenericParams,
     str,
 );

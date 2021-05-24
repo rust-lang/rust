@@ -4,7 +4,6 @@ mod lower;
 use std::{
     fmt::{self, Display},
     iter,
-    sync::Arc,
 };
 
 use crate::{body::LowerCtx, db::DefDatabase, intern::Interned, type_ref::LifetimeRef};
@@ -136,7 +135,7 @@ pub struct Path {
     type_anchor: Option<Interned<TypeRef>>,
     mod_path: Interned<ModPath>,
     /// Invariant: the same len as `self.mod_path.segments`
-    generic_args: Vec<Option<Arc<GenericArgs>>>,
+    generic_args: Vec<Option<Interned<GenericArgs>>>,
 }
 
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
@@ -185,7 +184,7 @@ impl Path {
     /// Converts a known mod path to `Path`.
     pub(crate) fn from_known_path(
         path: ModPath,
-        generic_args: Vec<Option<Arc<GenericArgs>>>,
+        generic_args: Vec<Option<Interned<GenericArgs>>>,
     ) -> Path {
         Path { type_anchor: None, mod_path: Interned::new(path), generic_args }
     }
@@ -239,7 +238,7 @@ pub struct PathSegment<'a> {
 
 pub struct PathSegments<'a> {
     segments: &'a [Name],
-    generic_args: &'a [Option<Arc<GenericArgs>>],
+    generic_args: &'a [Option<Interned<GenericArgs>>],
 }
 
 impl<'a> PathSegments<'a> {

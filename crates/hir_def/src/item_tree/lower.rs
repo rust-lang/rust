@@ -811,7 +811,7 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     let binding =
         AssociatedTypeBinding { name: name![Output], type_ref: Some(orig), bounds: Vec::new() };
     last.bindings.push(binding);
-    generic_args.push(Some(Arc::new(last)));
+    generic_args.push(Some(Interned::new(last)));
 
     Path::from_known_path(path, generic_args)
 }
