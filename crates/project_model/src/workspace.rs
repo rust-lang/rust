@@ -49,6 +49,15 @@ pub enum ProjectWorkspace {
     },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson, sysroot: Option<Sysroot>, rustc_cfg: Vec<CfgFlag> },
+
+    // FIXME: The primary limitation of this approach is that the set of detached files needs to be fixed at the beginning.
+    // That's not the end user experience we should strive for.
+    // Ideally, you should be able to just open a random detached file in existing cargo projects, and get the basic features working.
+    // That needs some changes on the salsa-level though.
+    // In particular, we should split the unified CrateGraph (which currently has maximal durability) into proper crate graph, and a set of ad hoc roots (with minimal durability).
+    // Then, we need to hide the graph behind the queries such that most queries look only at the proper crate graph, and fall back to ad hoc roots only if there's no results.
+    // After this, we should be able to tweak the logic in reload.rs to add newly opened files, which don't belong to any existing crates, to the set of the detached files.
+    // //
     /// Project with a set of disjoint files, not belonging to any particular workspace.
     /// Backed by basic sysroot crates for basic completion and highlighting.
     DetachedFiles { files: Vec<AbsPathBuf>, sysroot: Sysroot, rustc_cfg: Vec<CfgFlag> },
