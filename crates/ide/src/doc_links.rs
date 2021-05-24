@@ -286,7 +286,7 @@ fn get_doc_link(db: &RootDatabase, definition: Definition) -> Option<String> {
         .and_then(
             |url| if let Some(fragment) = fragment { url.join(&fragment).ok() } else { Some(url) },
         )
-        .map(|url| url.into_string())
+        .map(|url| url.into())
 }
 
 fn rewrite_intra_doc_link(
@@ -325,7 +325,7 @@ fn rewrite_intra_doc_link(
         };
     }
 
-    Some((new_url.into_string(), strip_prefixes_suffixes(title).to_string()))
+    Some((new_url.into(), strip_prefixes_suffixes(title).to_string()))
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
@@ -345,7 +345,7 @@ fn rewrite_url_link(db: &RootDatabase, def: ModuleDef, target: &str) -> Option<S
             get_symbol_filename(db, &def).as_deref().map(|f| url.join(f).ok()).flatten()
         })
         .and_then(|url| url.join(target).ok())
-        .map(|url| url.into_string())
+        .map(|url| url.into())
 }
 
 /// Rewrites a markdown document, applying 'callback' to each link.

@@ -2,6 +2,7 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            cannot_be_a_base: false,
             username: "",
             password: None,
             host: None,
@@ -36,6 +37,7 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                cannot_be_a_base: false,
                                 username: "",
                                 password: None,
                                 host: None,
@@ -67,6 +69,7 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            cannot_be_a_base: false,
             username: "",
             password: None,
             host: None,
@@ -101,6 +104,7 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                cannot_be_a_base: false,
                                 username: "",
                                 password: None,
                                 host: None,
@@ -132,6 +136,7 @@
     MappedRustDiagnostic {
         url: Url {
             scheme: "file",
+            cannot_be_a_base: false,
             username: "",
             password: None,
             host: None,
@@ -166,6 +171,7 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                cannot_be_a_base: false,
                                 username: "",
                                 password: None,
                                 host: None,
@@ -191,6 +197,7 @@
                         location: Location {
                             uri: Url {
                                 scheme: "file",
+                                cannot_be_a_base: false,
                                 username: "",
                                 password: None,
                                 host: None,

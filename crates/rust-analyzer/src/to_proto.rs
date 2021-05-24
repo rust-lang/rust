@@ -604,7 +604,7 @@ pub(crate) fn url_from_abs_path(path: &Path) -> lsp_types::Url {
     // Note: lowercasing the `path` itself doesn't help, the `Url::parse`
     // machinery *also* canonicalizes the drive letter. So, just massage the
     // string in place.
-    let mut url = url.into_string();
+    let mut url: String = url.into();
     url[driver_letter_range].make_ascii_lowercase();
     lsp_types::Url::parse(&url).unwrap()
 }
