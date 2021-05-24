@@ -595,7 +595,7 @@ macro_rules! unreachable {
 /// Indicates unimplemented code by panicking with a message of "not implemented".
 ///
 /// This allows your code to type-check, which is useful if you are prototyping or
-/// implementing a trait that requires multiple methods which you don't plan of using all of.
+/// implementing a trait that requires multiple methods which you don't plan to use all of.
 ///
 /// The difference between `unimplemented!` and [`todo!`] is that while `todo!`
 /// conveys an intent of implementing the functionality later and the message is "not yet
