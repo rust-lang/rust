@@ -2,13 +2,13 @@ use parser::{SyntaxKind, T};
 use syntax::{TextRange, TextSize};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum TokenTextRange {
+enum TokenTextRange {
     Token(TextRange),
     Delimiter(TextRange),
 }
 
 impl TokenTextRange {
-    pub fn by_kind(self, kind: SyntaxKind) -> Option<TextRange> {
+    fn by_kind(self, kind: SyntaxKind) -> Option<TextRange> {
         match self {
             TokenTextRange::Token(it) => Some(it),
             TokenTextRange::Delimiter(it) => match kind {
@@ -42,9 +42,9 @@ impl TokenMap {
         Some(token_id)
     }
 
-    pub fn range_by_token(&self, token_id: tt::TokenId) -> Option<TokenTextRange> {
+    pub fn range_by_token(&self, token_id: tt::TokenId, kind: SyntaxKind) -> Option<TextRange> {
         let &(_, range) = self.entries.iter().find(|(tid, _)| *tid == token_id)?;
-        Some(range)
+        range.by_kind(kind)
     }
 
     pub(crate) fn shrink_to_fit(&mut self) {

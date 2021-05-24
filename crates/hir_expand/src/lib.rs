@@ -329,7 +329,7 @@ impl ExpansionInfo {
         let token_id = self.macro_arg.1.token_by_range(range)?;
         let token_id = self.macro_def.map_id_down(token_id);
 
-        let range = self.exp_map.range_by_token(token_id)?.by_kind(token.value.kind())?;
+        let range = self.exp_map.range_by_token(token_id, token.value.kind())?;
 
         let token = self.expanded.value.covering_element(range).into_token()?;
 
@@ -354,7 +354,7 @@ impl ExpansionInfo {
             },
         };
 
-        let range = token_map.range_by_token(token_id)?.by_kind(token.value.kind())?;
+        let range = token_map.range_by_token(token_id, token.value.kind())?;
         let token =
             tt.value.covering_element(range + tt.value.text_range().start()).into_token()?;
         Some((tt.with_value(token), origin))

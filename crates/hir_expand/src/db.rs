@@ -155,7 +155,7 @@ pub fn expand_hypothetical(
         mbe::token_tree_to_syntax_node(&hypothetical_expansion.value, fragment_kind).ok()?;
 
     let token_id = macro_def.map_id_down(token_id);
-    let range = tmap_2.range_by_token(token_id)?.by_kind(token_to_map.kind())?;
+    let range = tmap_2.range_by_token(token_id, token_to_map.kind())?;
     let token = node.syntax_node().covering_element(range).into_token()?;
     Some((node.syntax_node(), token))
 }
