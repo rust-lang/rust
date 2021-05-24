@@ -319,6 +319,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     && !self
                         .fn_can_unwind(self.tcx.codegen_fn_attrs(callee_def_id).flags, callee_abi)
                 {
+                    // The callee cannot unwind.
                     unwind = StackPopUnwind::NotAllowed;
                 }
 
