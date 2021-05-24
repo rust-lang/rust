@@ -285,7 +285,7 @@ impl DefCollector<'_> {
                 let registered_name = if *attr_name == hir_expand::name![register_attr]
                     || *attr_name == hir_expand::name![register_tool]
                 {
-                    match &attr.input {
+                    match attr.input.as_deref() {
                         Some(AttrInput::TokenTree(subtree)) => match &*subtree.token_trees {
                             [tt::TokenTree::Leaf(tt::Leaf::Ident(name))] => name.as_name(),
                             _ => continue,

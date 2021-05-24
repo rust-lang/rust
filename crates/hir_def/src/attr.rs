@@ -105,7 +105,7 @@ impl RawAttrs {
                 Either::Left(attr) => Attr::from_src(db, attr, hygiene, id),
                 Either::Right(comment) => comment.doc_comment().map(|doc| Attr {
                     id,
-                    input: Some(AttrInput::Literal(SmolStr::new(doc))),
+                    input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                     path: Interned::new(ModPath::from(hir_expand::name!(doc))),
                 }),
             })
@@ -151,7 +151,7 @@ impl RawAttrs {
                     return smallvec![attr.clone()];
                 }
 
-                let subtree = match &attr.input {
+                let subtree = match attr.input.as_deref() {
                     Some(AttrInput::TokenTree(it)) => it,
                     _ => return smallvec![attr.clone()],
                 };
@@ -251,7 +251,7 @@ impl Attrs {
     }
 
     pub fn docs(&self) -> Option<Documentation> {
-        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_ref()? {
+        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(s) => Some(s),
             AttrInput::TokenTree(_) => None,
         });
@@ -454,7 +454,7 @@ impl AttrsWithOwner {
         db: &dyn DefDatabase,
     ) -> Option<(Documentation, DocsRangeMap)> {
         // FIXME: code duplication in `docs` above
-        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_ref()? {
+        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(s) => Some((s, attr.id)),
             AttrInput::TokenTree(_) => None,
         });
@@ -637,10 +637,10 @@ pub(crate) struct AttrId {
 pub struct Attr {
     pub(crate) id: AttrId,
     pub(crate) path: Interned<ModPath>,
-    pub(crate) input: Option<AttrInput>,
+    pub(crate) input: Option<Interned<AttrInput>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AttrInput {
     /// `#[attr = "string"]`
     Literal(SmolStr),
@@ -670,9 +670,9 @@ impl Attr {
                 ast::LiteralKind::String(string) => string.value()?.into(),
                 _ => lit.syntax().first_token()?.text().trim_matches('"').into(),
             };
-            Some(AttrInput::Literal(value))
+            Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            Some(AttrInput::TokenTree(ast_to_token_tree(&tt).0))
+            Some(Interned::new(AttrInput::TokenTree(ast_to_token_tree(&tt).0)))
         } else {
             None
         };
@@ -688,7 +688,7 @@ impl Attr {
             return None;
         }
 
-        match &self.input {
+        match self.input.as_deref() {
             Some(AttrInput::TokenTree(args)) => {
                 let mut counter = 0;
                 let paths = args
@@ -720,7 +720,7 @@ impl Attr {
     }
 
     pub fn string_value(&self) -> Option<&SmolStr> {
-        match self.input.as_ref()? {
+        match self.input.as_deref()? {
             AttrInput::Literal(it) => Some(it),
             _ => None,
         }
@@ -735,14 +735,14 @@ pub struct AttrQuery<'a> {
 
 impl<'a> AttrQuery<'a> {
     pub fn tt_values(self) -> impl Iterator<Item = &'a Subtree> {
-        self.attrs().filter_map(|attr| match attr.input.as_ref()? {
+        self.attrs().filter_map(|attr| match attr.input.as_deref()? {
             AttrInput::TokenTree(it) => Some(it),
             _ => None,
         })
     }
 
     pub fn string_value(self) -> Option<&'a SmolStr> {
-        self.attrs().find_map(|attr| match attr.input.as_ref()? {
+        self.attrs().find_map(|attr| match attr.input.as_deref()? {
             AttrInput::Literal(it) => Some(it),
             _ => None,
         })
