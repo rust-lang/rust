@@ -66,12 +66,8 @@ fn dist_client(version: &str, release_tag: &str) -> Result<()> {
 
 fn dist_server(release_channel: &str) -> Result<()> {
     let _e = pushenv("RUST_ANALYZER_CHANNEL", release_channel);
-    let _e = pushenv("CARGO_PROFILE_RELEASE_LTO", "true");
-
-    // We want do enable debug symbols, but this causes our windows CI to fail:
-    // https://github.com/rust-lang/rust/issues/85598
-    //
-    // let _e = pushenv("CARGO_PROFILE_RELEASE_DEBUG", "1");
+    let _e = pushenv("CARGO_PROFILE_RELEASE_LTO", "thin");
+    let _e = pushenv("CARGO_PROFILE_RELEASE_DEBUG", "1");
 
     let target = get_target();
     if target.contains("-linux-gnu") || target.contains("-linux-musl") {
