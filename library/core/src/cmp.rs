@@ -27,12 +27,23 @@ use self::Ordering::*;
 /// Trait for equality comparisons which are [partial equivalence
 /// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
+/// `x.eq(y)` can also be written `x == y`, and `x.ne(y)` can be written `x != y`.
+/// We use the easier-to-read infix notation in the remainder of this documentation.
+///
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not [`trait@Eq`].
 ///
-/// Formally, the equality must be (for all `a`, `b`, `c` of type `A`, `B`,
-/// `C`):
+/// Implementations must ensure that `eq` and `ne` are consistent with each other:
+/// `a != b` if and only if `!(a == b)`.
+/// This is ensured by the default implementation of `ne`.
+/// If [`PartialOrd`] or [`Ord`] are also implemented for `Self` and `Rhs`, their methods must also
+/// be consistent with `PartialEq` (see the documentation of those traits for the exact
+/// requirememts). It's easy to accidentally make them disagree by deriving some of the traits and
+/// manually implementing others.
+///
+/// The equality relation `==` must satisfy the following conditions
+/// (for all `a`, `b`, `c` of type `A`, `B`, `C`):
 ///
 /// - **Symmetric**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
 ///   implies `b == a`**; and
@@ -52,15 +63,6 @@ use self::Ordering::*;
 /// and not equal to the other variants.
 ///
 /// ## How can I implement `PartialEq`?
-///
-/// `PartialEq` only requires the [`eq`] method to be implemented; [`ne`] is defined
-/// in terms of it by default. Any manual implementation of [`ne`] *must* respect
-/// the rule that [`eq`] is a strict inverse of [`ne`]; that is, `!(a == b)` if and
-/// only if `a != b`.
-///
-/// Implementations of `PartialEq`, [`PartialOrd`], and [`Ord`] *must* agree with
-/// each other. It's easy to accidentally make them disagree by deriving some
-/// of the traits and manually implementing others.
 ///
 /// An example implementation for a domain in which two books are considered
 /// the same book if their ISBN matches, even if the formats differ:
@@ -634,7 +636,19 @@ impl<T: Clone> Clone for Reverse<T> {
 /// An order is a total order if it is (for all `a`, `b` and `c`):
 ///
 /// - total and asymmetric: exactly one of `a < b`, `a == b` or `a > b` is true; and
-/// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+/// - transitive: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+///
+/// Implementations of [`PartialEq`], [`PartialOrd`], and `Ord` *must* agree with each other (for
+/// all `a` and `b`):
+///
+/// - `a.partial_cmp(b) == Some(a.cmp(b))`
+/// - `a.cmp(b) == Ordering::Equal` if and only if `a == b`
+///   (already follows from the above and the requirements of `PartialOrd`)
+///
+/// It's easy to accidentally make them disagree by
+/// deriving some of the traits and manually implementing others.
+///
+/// Furthermore, the `max`, `min`, and `clamp` methods of this trait must be consistent with `cmp`.
 ///
 /// ## Derivable
 ///
@@ -658,12 +672,6 @@ impl<T: Clone> Clone for Reverse<T> {
 ///
 /// Then you must define an implementation for [`cmp`]. You may find it useful to use
 /// [`cmp`] on your type's fields.
-///
-/// Implementations of [`PartialEq`], [`PartialOrd`], and `Ord` *must*
-/// agree with each other. That is, `a.cmp(b) == Ordering::Equal` if
-/// and only if `a == b` and `Some(a.cmp(b)) == a.partial_cmp(b)` for
-/// all `a` and `b`. It's easy to accidentally make them disagree by
-/// deriving some of the traits and manually implementing others.
 ///
 /// Here's an example where you want to sort people by height only, disregarding `id`
 /// and `name`:
@@ -824,14 +832,40 @@ impl PartialOrd for Ordering {
 
 /// Trait for values that can be compared for a sort-order.
 ///
+/// The `lt`, `le`, `gt`, and `ge` methods of this trait can be called using
+/// the `<`, `<=`, `>`, and `>=` operators, respectively.
+///
+/// The methods of this trait must be consistent with each other and with those of `PartialEq` in
+/// the following sense:
+///
+/// - `a == b` if and only if `partial_cmp(a, b) == Some(Equal)`.
+/// - `a < b` if and only if `partial_cmp(a, b) == Some(Less)`.
+/// - `a > b` if and only if `partial_cmp(a, b) == Some(Greater)`.
+/// - `a <= b` if and only if `a < b || a == b`.
+/// - `a >= b` if and only if `a > b || a == b`.
+/// - `a != b` if and only if `!(a == b)` (already part of `PartialEq`).
+///
+/// If [`Ord`] is also implemented for `Self` and `Rhs`, it must also be consistent with
+/// `partial_cmp` (see the documentation of that trait for the exact requirements). It's
+/// easy to accidentally make them disagree by deriving some of the traits and manually
+/// implementing others.
+///
 /// The comparison must satisfy, for all `a`, `b` and `c`:
 ///
-/// - asymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`; and
 /// - transitivity: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+/// - duality: `a < b` if and only if `b > a`.
 ///
 /// Note that these requirements mean that the trait itself must be implemented symmetrically and
 /// transitively: if `T: PartialOrd<U>` and `U: PartialOrd<V>` then `U: PartialOrd<T>` and `T:
 /// PartialOrd<V>`.
+///
+/// ## Corollaries
+///
+/// The following corollaries follow from the above requirements:
+///
+/// - irreflexivity of `<` and `>`: `!(a < a)`, `!(a > a)`
+/// - transitivity of `>`: if `a > b` and `b > c` then `a > c`
+/// - duality of `partial_cmp`: `partial_cmp(a, b) == partial_cmp(b, a).map(Ordering::reverse)`
 ///
 /// ## Derivable
 ///
@@ -849,10 +883,6 @@ impl PartialOrd for Ordering {
 /// false` (cf. IEEE 754-2008 section 5.11).
 ///
 /// `PartialOrd` requires your type to be [`PartialEq`].
-///
-/// Implementations of [`PartialEq`], `PartialOrd`, and [`Ord`] *must* agree with each other. It's
-/// easy to accidentally make them disagree by deriving some of the traits and manually
-/// implementing others.
 ///
 /// If your type is [`Ord`], you can implement [`partial_cmp`] by using [`cmp`]:
 ///
