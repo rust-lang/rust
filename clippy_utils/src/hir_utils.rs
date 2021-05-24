@@ -2,20 +2,19 @@ use crate::consts::{constant_context, constant_simple};
 use crate::differing_macro_contexts;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::fx::FxHasher;
 use rustc_hir::def::Res;
 use rustc_hir::HirIdMap;
 use rustc_hir::{
-    BinOpKind, Block, BlockCheckMode, BodyId, BorrowKind, CaptureBy, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
-    GenericArgs, Guard, HirId, InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path,
-    PathSegment, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
+    BinOpKind, Block, BodyId, Expr, ExprField, ExprKind, FnRetTy, GenericArg, GenericArgs, Guard, HirId,
+    InlineAsmOperand, Lifetime, LifetimeName, ParamName, Pat, PatField, PatKind, Path, PathSegment, QPath, Stmt,
+    StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::LateContext;
-use rustc_middle::ich::StableHashingContextProvider;
 use rustc_middle::ty::TypeckResults;
 use rustc_span::Symbol;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator
@@ -169,6 +168,12 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
+    pub fn eq_body(&mut self, left: BodyId, right: BodyId) -> bool {
+        let cx = self.inner.cx;
+        let eval_const = |body| constant_context(cx, cx.tcx.typeck_body(body)).expr(&cx.tcx.hir().body(body).value);
+        eval_const(left) == eval_const(right)
+    }
+
     #[allow(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         if !self.inner.allow_side_effects && differing_macro_contexts(left.span, right.span) {
@@ -244,12 +249,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 self.inner.allow_side_effects && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(le, ref ll_id), &ExprKind::Repeat(re, ref rl_id)) => {
-                let mut celcx = constant_context(self.inner.cx, self.inner.cx.tcx.typeck_body(ll_id.body));
-                let ll = celcx.expr(&self.inner.cx.tcx.hir().body(ll_id.body).value);
-                let mut celcx = constant_context(self.inner.cx, self.inner.cx.tcx.typeck_body(rl_id.body));
-                let rl = celcx.expr(&self.inner.cx.tcx.hir().body(rl_id.body).value);
-
-                self.eq_expr(le, re) && ll == rl
+                self.eq_expr(le, re) && self.eq_body(ll_id.body, rl_id.body)
             },
             (&ExprKind::Ret(ref l), &ExprKind::Ret(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprKind::Path(ref l), &ExprKind::Path(ref r)) => self.eq_qpath(l, r),
@@ -285,6 +285,7 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
         match (left, right) {
+            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_body(l.value.body, r.value.body),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
             (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
             _ => false,
@@ -385,10 +386,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         match (&left.kind, &right.kind) {
             (&TyKind::Slice(l_vec), &TyKind::Slice(r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyKind::Array(lt, ref ll_id), &TyKind::Array(rt, ref rl_id)) => {
-                let cx = self.inner.cx;
-                let eval_const =
-                    |body| constant_context(cx, cx.tcx.typeck_body(body)).expr(&cx.tcx.hir().body(body).value);
-                self.eq_ty(lt, rt) && eval_const(ll_id.body) == eval_const(rl_id.body)
+                self.eq_ty(lt, rt) && self.eq_body(ll_id.body, rl_id.body)
             },
             (&TyKind::Ptr(ref l_mut), &TyKind::Ptr(ref r_mut)) => {
                 l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty)
@@ -512,7 +510,7 @@ pub struct SpanlessHash<'a, 'tcx> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'tcx>,
     maybe_typeck_results: Option<&'tcx TypeckResults<'tcx>>,
-    s: StableHasher,
+    s: FxHasher,
 }
 
 impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
@@ -520,7 +518,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         Self {
             cx,
             maybe_typeck_results: cx.maybe_typeck_results(),
-            s: StableHasher::new(),
+            s: FxHasher::default(),
         }
     }
 
@@ -537,13 +535,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             self.hash_expr(e);
         }
 
-        match b.rules {
-            BlockCheckMode::DefaultBlock => 0,
-            BlockCheckMode::UnsafeBlock(_) => 1,
-            BlockCheckMode::PushUnsafeBlock(_) => 2,
-            BlockCheckMode::PopUnsafeBlock(_) => 3,
-        }
-        .hash(&mut self.s);
+        std::mem::discriminant(&b.rules).hash(&mut self.s);
     }
 
     #[allow(clippy::many_single_char_names, clippy::too_many_lines)]
@@ -554,21 +546,16 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
         // const hashing may result in the same hash as some unrelated node, so add a sort of
         // discriminant depending on which path we're choosing next
-        simple_const.is_some().hash(&mut self.s);
-
-        if let Some(e) = simple_const {
-            return e.hash(&mut self.s);
+        simple_const.hash(&mut self.s);
+        if simple_const.is_some() {
+            return;
         }
 
         std::mem::discriminant(&e.kind).hash(&mut self.s);
 
         match e.kind {
             ExprKind::AddrOf(kind, m, e) => {
-                match kind {
-                    BorrowKind::Ref => 0,
-                    BorrowKind::Raw => 1,
-                }
-                .hash(&mut self.s);
+                std::mem::discriminant(&kind).hash(&mut self.s);
                 m.hash(&mut self.s);
                 self.hash_expr(e);
             },
@@ -582,8 +569,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(r);
             },
             ExprKind::AssignOp(ref o, l, r) => {
-                o.node
-                    .hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&o.node).hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
@@ -591,8 +577,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_block(b);
             },
             ExprKind::Binary(op, l, r) => {
-                op.node
-                    .hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&op.node).hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
@@ -616,11 +601,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(ty);
             },
             ExprKind::Closure(cap, _, eid, _, _) => {
-                match cap {
-                    CaptureBy::Value => 0,
-                    CaptureBy::Ref => 1,
-                }
-                .hash(&mut self.s);
+                std::mem::discriminant(&cap).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(&self.cx.tcx.hir().body(eid).value);
             },
@@ -694,8 +675,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             ExprKind::If(cond, then, ref else_opt) => {
-                let c: fn(_, _, _) -> _ = ExprKind::If;
-                c.hash(&mut self.s);
                 self.hash_expr(cond);
                 self.hash_expr(then);
                 if let Some(e) = *else_opt {
@@ -753,7 +732,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_exprs(v);
             },
             ExprKind::Unary(lop, le) => {
-                lop.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
             },
         }
@@ -766,7 +745,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_name(&mut self, n: Symbol) {
-        n.as_str().hash(&mut self.s);
+        n.hash(&mut self.s);
     }
 
     pub fn hash_qpath(&mut self, p: &QPath<'_>) {
@@ -778,7 +757,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_name(path.ident.name);
             },
             QPath::LangItem(lang_item, ..) => {
-                lang_item.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&lang_item).hash(&mut self.s);
             },
         }
         // self.maybe_typeck_results.unwrap().qpath_res(p, id).hash(&mut self.s);
@@ -788,7 +767,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
             PatKind::Binding(ann, _, _, pat) => {
-                ann.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&ann).hash(&mut self.s);
                 if let Some(pat) = pat {
                     self.hash_pat(pat);
                 }
@@ -808,11 +787,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 if let Some(e) = e {
                     self.hash_expr(e);
                 }
-                i.hash_stable(&mut self.cx.tcx.get_stable_hashing_context(), &mut self.s);
+                std::mem::discriminant(&i).hash(&mut self.s);
             },
-            PatKind::Ref(pat, m) => {
+            PatKind::Ref(pat, mu) => {
                 self.hash_pat(pat);
-                m.hash(&mut self.s);
+                std::mem::discriminant(&mu).hash(&mut self.s);
             },
             PatKind::Slice(l, m, r) => {
                 for pat in l {
@@ -857,6 +836,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             _ => {
                 for seg in path.segments {
                     self.hash_name(seg.ident.name);
+                    self.hash_generic_args(seg.args().args);
                 }
             },
         }
@@ -928,10 +908,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 for arg in bfn.decl.inputs {
                     self.hash_ty(arg);
                 }
+                std::mem::discriminant(&bfn.decl.output).hash(&mut self.s);
                 match bfn.decl.output {
-                    FnRetTy::DefaultReturn(_) => {
-                        ().hash(&mut self.s);
-                    },
+                    FnRetTy::DefaultReturn(_) => {},
                     FnRetTy::Return(ty) => {
                         self.hash_ty(ty);
                     },
@@ -943,24 +922,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_ty(ty);
                 }
             },
-            TyKind::Path(ref qpath) => match qpath {
-                QPath::Resolved(ref maybe_ty, path) => {
-                    if let Some(ty) = maybe_ty {
-                        self.hash_ty(ty);
-                    }
-                    for segment in path.segments {
-                        segment.ident.name.hash(&mut self.s);
-                        self.hash_generic_args(segment.args().args);
-                    }
-                },
-                QPath::TypeRelative(ty, segment) => {
-                    self.hash_ty(ty);
-                    segment.ident.name.hash(&mut self.s);
-                },
-                QPath::LangItem(lang_item, ..) => {
-                    lang_item.hash(&mut self.s);
-                },
-            },
+            TyKind::Path(ref qpath) => self.hash_qpath(qpath),
             TyKind::OpaqueDef(_, arg_list) => {
                 self.hash_generic_args(arg_list);
             },
