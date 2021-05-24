@@ -145,6 +145,7 @@ h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-im
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .search-results .result-name,
+.content table td:first-child > a,
 div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
@@ -759,25 +760,40 @@ a {
 
 .search-results.active {
 	display: block;
+	/* prevent overhanging tabs from moving the first result */
+	clear: both;
 }
 
-.search-results .desc {
+.search-results .desc > span {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
 	display: block;
 }
 
-.search-results a {
+.search-results > a {
+	display: block;
+	width: 100%;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
-	display: block;
+	border-bottom: 1px solid #aaa3;
 }
 
-.result-name {
+.search-results > a > div {
+	display: flex;
+	flex-flow: row wrap;
+}
+
+.search-results .result-name, .search-results div.desc, .search-results .result-description {
 	width: 50%;
-	float: left;
+}
+.search-results .result-name {
+	padding-right: 1em;
+}
+
+.search-results .result-name > span {
+	display: inline-block;
 }
 
 .result-name span.primitive::after {
@@ -1732,6 +1748,18 @@ details.undocumented[open] > summary::before {
 	}
 	.search-container > div {
 		width: calc(100% - 32px);
+	}
+
+	/* Display an alternating layout on tablets and phones */
+	.search-results > a {
+		border-bottom: 1px solid #aaa9;
+		padding: 5px 0px;
+	}
+	.search-results .result-name, .search-results div.desc, .search-results .result-description {
+		width: 100%;
+	}
+	.search-results div.desc, .search-results .result-description {
+		padding-left: 2em;
 	}
 }
 
