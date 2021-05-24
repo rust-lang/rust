@@ -145,6 +145,7 @@ h4.type.trait-impl, h4.associatedconstant.trait-impl, h4.associatedtype.trait-im
 
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .search-results .result-name,
+.content table td:first-child > a,
 div.item-list .out-of-band,
 #source-sidebar, #sidebar-toggle,
 details.rustdoc-toggle > summary::before,
