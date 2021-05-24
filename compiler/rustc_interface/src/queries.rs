@@ -119,11 +119,8 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
         self.dep_graph_future.compute(|| {
-            Ok(self
-                .session()
-                .opts
-                .build_dep_graph()
-                .then(|| rustc_incremental::load_dep_graph(self.session())))
+            let sess = self.session();
+            Ok(sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess)))
         })
     }
 
@@ -195,27 +192,17 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn dep_graph(&self) -> Result<&Query<DepGraph>> {
         self.dep_graph.compute(|| {
-            Ok(match self.dep_graph_future()?.take() {
-                None => DepGraph::new_disabled(),
-                Some(future) => {
+            let sess = self.session();
+            let future_opt = self.dep_graph_future()?.take();
+            let dep_graph = future_opt
+                .and_then(|future| {
                     let (prev_graph, prev_work_products) =
-                        self.session().time("blocked_on_dep_graph_loading", || {
-                            future
-                                .open()
-                                .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
-                                    message: format!("could not decode incremental cache: {:?}", e),
-                                })
-                                .open(self.session())
-                        });
+                        sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
 
-                    rustc_incremental::build_dep_graph(
-                        self.session(),
-                        prev_graph,
-                        prev_work_products,
-                    )
-                    .unwrap_or_else(DepGraph::new_disabled)
-                }
-            })
+                    rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
+                })
+                .unwrap_or_else(DepGraph::new_disabled);
+            Ok(dep_graph)
         })
     }
 
