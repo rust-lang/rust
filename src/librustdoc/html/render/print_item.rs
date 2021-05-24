@@ -263,14 +263,14 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             curty = myty;
         } else if myty != curty {
             if curty.is_some() {
-                w.write_str("</table>");
+                w.write_str("</item-table>");
             }
             curty = myty;
             let (short, name) = item_ty_to_strs(myty.unwrap());
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"section-header\">\
-                       <a href=\"#{id}\">{name}</a></h2>\n<table>",
+                       <a href=\"#{id}\">{name}</a></h2>\n<item-table>",
                 id = cx.derive_id(short.to_owned()),
                 name = name
             );
@@ -283,14 +283,14 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 match *src {
                     Some(ref src) => write!(
                         w,
-                        "<tr><td><code>{}extern crate {} as {};",
+                        "<item-left><code>{}extern crate {} as {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
                         anchor(myitem.def_id.expect_real(), &*src.as_str(), cx),
                         myitem.name.as_ref().unwrap(),
                     ),
                     None => write!(
                         w,
-                        "<tr><td><code>{}extern crate {};",
+                        "<item-left><code>{}extern crate {};",
                         myitem.visibility.print_with_space(myitem.def_id, cx),
                         anchor(
                             myitem.def_id.expect_real(),
@@ -299,7 +299,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         ),
                     ),
                 }
-                w.write_str("</code></td></tr>");
+                w.write_str("</code></item-left>\n");
             }
 
             clean::ImportItem(ref import) => {
@@ -326,10 +326,10 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 write!(
                     w,
-                    "<tr class=\"{stab}{add}import-item\">\
-                         <td><code>{vis}{imp}</code></td>\
-                         <td class=\"docblock-short\">{stab_tags}</td>\
-                     </tr>",
+                    "<item-left class=\"{stab}{add}import-item\">\
+                         <code>{vis}{imp}</code>\
+                     </item-left>\
+                     <item-right class=\"docblock-short\">{stab_tags}</item-right>\n",
                     stab = stab.unwrap_or_default(),
                     add = add,
                     vis = myitem.visibility.print_with_space(myitem.def_id, cx),
@@ -358,11 +358,10 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let doc_value = myitem.doc_value().unwrap_or_default();
                 write!(
                     w,
-                    "<tr class=\"{stab}{add}module-item\">\
-                         <td><a class=\"{class}\" href=\"{href}\" \
-                             title=\"{title}\">{name}</a>{unsafety_flag}</td>\
-                         <td class=\"docblock-short\">{stab_tags}{docs}</td>\
-                     </tr>",
+                    "<item-left class=\"{stab}{add}module-item\">\
+                         <a class=\"{class}\" href=\"{href}\" \
+                             title=\"{title}\">{name}</a>{unsafety_flag}</item-left>\
+                     <item-right class=\"docblock-short\">{stab_tags}{docs}</item-right>\n",
                     name = *myitem.name.as_ref().unwrap(),
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
@@ -382,7 +381,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     }
 
     if curty.is_some() {
-        w.write_str("</table>");
+        w.write_str("</item-table>\n");
     }
 }
 
