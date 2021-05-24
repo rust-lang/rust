@@ -1,0 +1,15 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/auxiliary/post_monomorphization_error.rs:7:17
+   |
+LL |         let _ = 1 / ((IMM >= MIN && IMM <= MAX) as usize);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to divide `1_usize` by zero
+
+note: the above error was encountered while instantiating `fn stdarch_intrinsic::<2_i32>`
+  --> $DIR/issue-85155.rs:19:5
+   |
+LL |     post_monomorphization_error::stdarch_intrinsic::<2>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.
