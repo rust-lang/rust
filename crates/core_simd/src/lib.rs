@@ -17,6 +17,9 @@ mod reduction;
 mod select;
 pub use select::Select;
 
+mod to_bytes;
+pub use to_bytes::ToBytes;
+
 mod comparisons;
 mod fmt;
 mod intrinsics;
