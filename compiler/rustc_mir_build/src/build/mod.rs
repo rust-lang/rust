@@ -118,6 +118,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let body = tcx.hir().body(body_id);
             let (thir, expr) = tcx.thir_body(def);
+            // We ran all queries that depended on THIR at the beginning
+            // of `mir_build`, so now we can steal it
             let thir = thir.steal();
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
@@ -227,6 +229,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             let return_ty = typeck_results.node_type(id);
 
             let (thir, expr) = tcx.thir_body(def);
+            // We ran all queries that depended on THIR at the beginning
+            // of `mir_build`, so now we can steal it
             let thir = thir.steal();
 
             build::construct_const(&thir, &infcx, expr, def, id, return_ty, return_ty_span)
