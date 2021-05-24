@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Zthir-unsafeck
+
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(unused_unsafe)]
 
