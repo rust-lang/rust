@@ -829,10 +829,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
     fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, id: hir::HirId) {
         if let Some(def_id) = path.res.opt_def_id() {
             let method_span = if path.segments.len() >= 2 {
-                match path.segments.last() {
-                    Some(s) => Some(s.ident.span),
-                    None => None,
-                }
+                path.segments.last().map(|s| s.ident.span)
             } else {
                 None
             };
