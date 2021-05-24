@@ -268,7 +268,7 @@ use core::ptr::{self, NonNull};
 use core::slice::from_raw_parts_mut;
 
 #[cfg(not(no_global_oom_handling))]
-use crate::alloc::{handle_alloc_error, box_free, WriteCloneIntoRaw};
+use crate::alloc::{box_free, handle_alloc_error, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(no_global_oom_handling))]
