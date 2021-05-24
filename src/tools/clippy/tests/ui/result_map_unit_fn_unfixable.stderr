@@ -1,5 +1,5 @@
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_unfixable.rs:23:5
+  --> $DIR/result_map_unit_fn_unfixable.rs:22:5
    |
 LL |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -9,7 +9,7 @@ LL |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
    = note: `-D clippy::result-map-unit-fn` implied by `-D warnings`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_unfixable.rs:25:5
+  --> $DIR/result_map_unit_fn_unfixable.rs:24:5
    |
 LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -17,7 +17,7 @@ LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value)
    |     help: try this: `if let Ok(value) = x.field { ... }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_unfixable.rs:29:5
+  --> $DIR/result_map_unit_fn_unfixable.rs:28:5
    |
 LL |        x.field.map(|value| {
    |   _____^
@@ -31,7 +31,7 @@ LL | ||     });
    | 
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_unfixable.rs:33:5
+  --> $DIR/result_map_unit_fn_unfixable.rs:32:5
    |
 LL |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -39,7 +39,7 @@ LL |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
    |     help: try this: `if let Ok(value) = x.field { ... }`
 
 error: called `map(f)` on an `Result` value where `f` is a function that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_unfixable.rs:37:5
+  --> $DIR/result_map_unit_fn_unfixable.rs:36:5
    |
 LL |     "12".parse::<i32>().map(diverge);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
@@ -47,7 +47,7 @@ LL |     "12".parse::<i32>().map(diverge);
    |     help: try this: `if let Ok(a) = "12".parse::<i32>() { diverge(a) }`
 
 error: called `map(f)` on an `Result` value where `f` is a function that returns the unit type `()`
-  --> $DIR/result_map_unit_fn_unfixable.rs:43:5
+  --> $DIR/result_map_unit_fn_unfixable.rs:42:5
    |
 LL |     y.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^-
