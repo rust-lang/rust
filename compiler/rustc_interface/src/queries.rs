@@ -177,16 +177,17 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
             let _timer = self.session().timer("configure_and_expand");
-            passes::configure_and_expand(
-                self.session().clone(),
-                lint_store.clone(),
+            let sess = self.session();
+            let mut resolver = passes::create_resolver(
+                sess.clone(),
                 self.codegen_backend().metadata_loader(),
-                krate,
+                &krate,
                 &crate_name,
-            )
-            .map(|(krate, resolver)| {
-                (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
-            })
+            );
+            let krate = resolver.access(|resolver| {
+                passes::configure_and_expand(&sess, &lint_store, krate, &crate_name, resolver)
+            })?;
+            Ok((krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store))
         })
     }
 

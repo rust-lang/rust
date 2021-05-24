@@ -110,12 +110,9 @@ mod boxed_resolver {
     }
 
     impl BoxedResolver {
-        pub(super) fn new<F>(session: Lrc<Session>, make_resolver: F) -> Result<(ast::Crate, Self)>
+        pub(super) fn new<F>(session: Lrc<Session>, make_resolver: F) -> Self
         where
-            F: for<'a> FnOnce(
-                &'a Session,
-                &'a ResolverArenas<'a>,
-            ) -> Result<(ast::Crate, Resolver<'a>)>,
+            F: for<'a> FnOnce(&'a Session, &'a ResolverArenas<'a>) -> Resolver<'a>,
         {
             let mut boxed_resolver = Box::new(BoxedResolverInner {
                 session,
@@ -127,14 +124,14 @@ mod boxed_resolver {
             // returns a resolver with the same lifetime as the arena. We ensure that the arena
             // outlives the resolver in the drop impl and elsewhere so these transmutes are sound.
             unsafe {
-                let (crate_, resolver) = make_resolver(
+                let resolver = make_resolver(
                     std::mem::transmute::<&Session, &Session>(&boxed_resolver.session),
                     std::mem::transmute::<&ResolverArenas<'_>, &ResolverArenas<'_>>(
                         boxed_resolver.resolver_arenas.as_ref().unwrap(),
                     ),
-                )?;
+                );
                 boxed_resolver.resolver = Some(resolver);
-                Ok((crate_, BoxedResolver(Pin::new_unchecked(boxed_resolver))))
+                BoxedResolver(Pin::new_unchecked(boxed_resolver))
             }
         }
 
@@ -165,35 +162,20 @@ mod boxed_resolver {
     }
 }
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
-/// syntax expansion, secondary `cfg` expansion, synthesis of a test
-/// harness if one is to be provided, injection of a dependency on the
-/// standard library and prelude, and name resolution.
-///
-/// Returns [`None`] if we're aborting after handling -W help.
-pub fn configure_and_expand(
+pub fn create_resolver(
     sess: Lrc<Session>,
-    lint_store: Lrc<LintStore>,
     metadata_loader: Box<MetadataLoaderDyn>,
-    krate: ast::Crate,
+    krate: &ast::Crate,
     crate_name: &str,
-) -> Result<(ast::Crate, BoxedResolver)> {
-    tracing::trace!("configure_and_expand");
+) -> BoxedResolver {
+    tracing::trace!("create_resolver");
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
     // item, much like we do for macro expansion. In other words, the hash reflects not just
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
-    let crate_name = crate_name.to_string();
     BoxedResolver::new(sess, move |sess, resolver_arenas| {
-        configure_and_expand_inner(
-            sess,
-            &lint_store,
-            krate,
-            &crate_name,
-            &resolver_arenas,
-            metadata_loader,
-        )
+        Resolver::new(sess, &krate, &crate_name, metadata_loader, &resolver_arenas)
     })
 }
 
@@ -278,28 +260,26 @@ fn pre_expansion_lint(
     });
 }
 
-fn configure_and_expand_inner<'a>(
-    sess: &'a Session,
+/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
+/// syntax expansion, secondary `cfg` expansion, synthesis of a test
+/// harness if one is to be provided, injection of a dependency on the
+/// standard library and prelude, and name resolution.
+///
+/// Returns [`None`] if we're aborting after handling -W help.
+pub fn configure_and_expand(
+    sess: &Session,
     lint_store: &LintStore,
     mut krate: ast::Crate,
     crate_name: &str,
-    resolver_arenas: &'a ResolverArenas<'a>,
-    metadata_loader: Box<MetadataLoaderDyn>,
-) -> Result<(ast::Crate, Resolver<'a>)> {
-    tracing::trace!("configure_and_expand_inner");
+    resolver: &mut Resolver<'_>,
+) -> Result<ast::Crate> {
+    tracing::trace!("configure_and_expand");
     pre_expansion_lint(sess, lint_store, &krate, crate_name);
-
-    let mut resolver = Resolver::new(sess, &krate, crate_name, metadata_loader, &resolver_arenas);
-    rustc_builtin_macros::register_builtin_macros(&mut resolver);
+    rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
-        rustc_builtin_macros::standard_library_imports::inject(
-            krate,
-            &mut resolver,
-            &sess,
-            alt_std_name,
-        )
+        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, &sess, alt_std_name)
     });
 
     util::check_attr_crate_type(&sess, &krate.attrs, &mut resolver.lint_buffer());
@@ -354,7 +334,7 @@ fn configure_and_expand_inner<'a>(
             pre_expansion_lint(sess, lint_store, &krate, &ident.name.as_str());
             (krate.attrs, krate.items)
         };
-        let mut ecx = ExtCtxt::new(&sess, cfg, &mut resolver, Some(&extern_mod_loaded));
+        let mut ecx = ExtCtxt::new(&sess, cfg, resolver, Some(&extern_mod_loaded));
 
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
@@ -396,16 +376,16 @@ fn configure_and_expand_inner<'a>(
     })?;
 
     sess.time("maybe_building_test_harness", || {
-        rustc_builtin_macros::test_harness::inject(&sess, &mut resolver, &mut krate)
+        rustc_builtin_macros::test_harness::inject(&sess, resolver, &mut krate)
     });
 
     if let Some(PpMode::Source(PpSourceMode::EveryBodyLoops)) = sess.opts.pretty {
         tracing::debug!("replacing bodies with loop {{}}");
-        util::ReplaceBodyWithLoop::new(&mut resolver).visit_crate(&mut krate);
+        util::ReplaceBodyWithLoop::new(resolver).visit_crate(&mut krate);
     }
 
     let has_proc_macro_decls = sess.time("AST_validation", || {
-        rustc_ast_passes::ast_validation::check_crate(sess, &krate, &mut resolver.lint_buffer())
+        rustc_ast_passes::ast_validation::check_crate(sess, &krate, resolver.lint_buffer())
     });
 
     let crate_types = sess.crate_types();
@@ -431,7 +411,7 @@ fn configure_and_expand_inner<'a>(
             let is_test_crate = sess.opts.test;
             rustc_builtin_macros::proc_macro_harness::inject(
                 &sess,
-                &mut resolver,
+                resolver,
                 krate,
                 is_proc_macro_crate,
                 has_proc_macro_decls,
@@ -471,7 +451,7 @@ fn configure_and_expand_inner<'a>(
         }
     });
 
-    Ok((krate, resolver))
+    Ok(krate)
 }
 
 pub fn lower_to_hir<'res, 'tcx>(
