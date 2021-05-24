@@ -14,6 +14,7 @@ mod tests;
 
 #[cfg(test)]
 mod benchmark;
+mod token_map;
 
 use std::fmt;
 
@@ -65,8 +66,9 @@ impl fmt::Display for ExpandError {
 
 pub use crate::syntax_bridge::{
     ast_to_token_tree, parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
-    token_tree_to_syntax_node, TokenMap,
+    token_tree_to_syntax_node,
 };
+pub use crate::token_map::TokenMap;
 
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as

@@ -10,36 +10,8 @@ use syntax::{
 };
 use tt::buffer::{Cursor, TokenBuffer};
 
-use crate::ExpandError;
 use crate::{subtree_source::SubtreeTokenSource, tt_iter::TtIter};
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum TokenTextRange {
-    Token(TextRange),
-    Delimiter(TextRange),
-}
-
-impl TokenTextRange {
-    pub fn by_kind(self, kind: SyntaxKind) -> Option<TextRange> {
-        match self {
-            TokenTextRange::Token(it) => Some(it),
-            TokenTextRange::Delimiter(it) => match kind {
-                T!['{'] | T!['('] | T!['['] => Some(TextRange::at(it.start(), 1.into())),
-                T!['}'] | T![')'] | T![']'] => {
-                    Some(TextRange::at(it.end() - TextSize::of('}'), 1.into()))
-                }
-                _ => None,
-            },
-        }
-    }
-}
-
-/// Maps `tt::TokenId` to the relative range of the original token.
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
-pub struct TokenMap {
-    /// Maps `tt::TokenId` to the *relative* source range.
-    entries: Vec<(tt::TokenId, TokenTextRange)>,
-}
+use crate::{ExpandError, TokenMap};
 
 /// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
 /// will consume).
@@ -53,7 +25,7 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
     let global_offset = node.text_range().start();
     let mut c = Convertor::new(node, global_offset);
     let subtree = c.go();
-    c.id_alloc.map.entries.shrink_to_fit();
+    c.id_alloc.map.shrink_to_fit();
     (subtree, c.id_alloc.map)
 }
 
@@ -147,55 +119,6 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     }
 
     res
-}
-
-impl TokenMap {
-    pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
-        let &(token_id, _) = self.entries.iter().find(|(_, range)| match range {
-            TokenTextRange::Token(it) => *it == relative_range,
-            TokenTextRange::Delimiter(it) => {
-                let open = TextRange::at(it.start(), 1.into());
-                let close = TextRange::at(it.end() - TextSize::of('}'), 1.into());
-                open == relative_range || close == relative_range
-            }
-        })?;
-        Some(token_id)
-    }
-
-    pub fn range_by_token(&self, token_id: tt::TokenId) -> Option<TokenTextRange> {
-        let &(_, range) = self.entries.iter().find(|(tid, _)| *tid == token_id)?;
-        Some(range)
-    }
-
-    fn insert(&mut self, token_id: tt::TokenId, relative_range: TextRange) {
-        self.entries.push((token_id, TokenTextRange::Token(relative_range)));
-    }
-
-    fn insert_delim(
-        &mut self,
-        token_id: tt::TokenId,
-        open_relative_range: TextRange,
-        close_relative_range: TextRange,
-    ) -> usize {
-        let res = self.entries.len();
-        let cover = open_relative_range.cover(close_relative_range);
-
-        self.entries.push((token_id, TokenTextRange::Delimiter(cover)));
-        res
-    }
-
-    fn update_close_delim(&mut self, idx: usize, close_relative_range: TextRange) {
-        let (_, token_text_range) = &mut self.entries[idx];
-        if let TokenTextRange::Delimiter(dim) = token_text_range {
-            let cover = dim.cover(close_relative_range);
-            *token_text_range = TokenTextRange::Delimiter(cover);
-        }
-    }
-
-    fn remove_delim(&mut self, idx: usize) {
-        // FIXME: This could be accidentally quadratic
-        self.entries.remove(idx);
-    }
 }
 
 /// Returns the textual content of a doc comment block as a quoted string
@@ -634,7 +557,7 @@ impl<'a> TtTreeSink<'a> {
     }
 
     fn finish(mut self) -> (Parse<SyntaxNode>, TokenMap) {
-        self.token_map.entries.shrink_to_fit();
+        self.token_map.shrink_to_fit();
         (self.inner.finish(), self.token_map)
     }
 }
