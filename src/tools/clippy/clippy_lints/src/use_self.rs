@@ -9,8 +9,8 @@ use rustc_hir::{
     def::{self, DefKind},
     def_id::LocalDefId,
     intravisit::{walk_ty, NestedVisitorMap, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node,
-    Path, PathSegment, QPath, TyKind,
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Path, PathSegment,
+    QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -65,7 +65,10 @@ pub struct UseSelf {
 impl UseSelf {
     #[must_use]
     pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv, ..Self::default() }
+        Self {
+            msrv,
+            ..Self::default()
+        }
     }
 }
 
@@ -94,20 +97,20 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // NB: If you push something on the stack in this method, remember to also pop it in the
         // `check_item_post` method.
         match &item.kind {
-            ItemKind::Impl(Impl { self_ty: hir_self_ty, of_trait, .. }) => {
-                let should_check = if let TyKind::Path(QPath::Resolved(_, item_path)) =
-                    hir_self_ty.kind
-                {
+            ItemKind::Impl(Impl {
+                self_ty: hir_self_ty,
+                of_trait,
+                ..
+            }) => {
+                let should_check = if let TyKind::Path(QPath::Resolved(_, item_path)) = hir_self_ty.kind {
                     let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args;
                     parameters.as_ref().map_or(true, |params| {
-                        !params.parenthesized
-                            && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
+                        !params.parenthesized && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
                     })
                 } else {
                     false
                 };
-                let impl_trait_ref_def_id =
-                    of_trait.as_ref().map(|_| cx.tcx.hir().local_def_id(item.hir_id()));
+                let impl_trait_ref_def_id = of_trait.as_ref().map(|_| cx.tcx.hir().local_def_id(item.hir_id()));
                 if should_check {
                     self.stack.push(StackItem::Check {
                         hir_id: hir_self_ty.hir_id,
@@ -118,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 } else {
                     self.stack.push(StackItem::NoCheck);
                 }
-            }
+            },
             ItemKind::Static(..)
             | ItemKind::Const(..)
             | ItemKind::Fn(..)
@@ -127,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             | ItemKind::Union(..)
             | ItemKind::Trait(..) => {
                 self.stack.push(StackItem::NoCheck);
-            }
+            },
             _ => (),
         }
     }
@@ -135,16 +138,9 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
         use ItemKind::{Const, Enum, Fn, Impl, Static, Struct, Trait, Union};
         match item.kind {
-            Impl { .. }
-            | Static(..)
-            | Const(..)
-            | Fn(..)
-            | Enum(..)
-            | Struct(..)
-            | Union(..)
-            | Trait(..) => {
+            Impl { .. } | Static(..) | Const(..) | Fn(..) | Enum(..) | Struct(..) | Union(..) | Trait(..) => {
                 self.stack.pop();
-            }
+            },
             _ => (),
         }
     }
@@ -216,13 +212,21 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // which shouldn't, with a visitor. We could directly lint in the visitor, but then we
         // could only allow this lint on item scope. And we would have to check if those types are
         // already dealt with in `check_ty` anyway.
-        if let Some(StackItem::Check { hir_id, types_to_lint, types_to_skip, .. }) =
-            self.stack.last_mut()
+        if let Some(StackItem::Check {
+            hir_id,
+            types_to_lint,
+            types_to_skip,
+            ..
+        }) = self.stack.last_mut()
         {
             let self_ty = ty_from_hir_id(cx, *hir_id);
 
-            let mut visitor =
-                LintTyCollector { cx, self_ty, types_to_lint: vec![], types_to_skip: vec![] };
+            let mut visitor = LintTyCollector {
+                cx,
+                self_ty,
+                types_to_lint: vec![],
+                types_to_skip: vec![],
+            };
             visitor.visit_expr(&body.value);
             types_to_lint.extend(visitor.types_to_lint);
             types_to_skip.extend(visitor.types_to_skip);
@@ -237,21 +241,24 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             return;
         }
 
-        let lint_dependend_on_expr_kind =
-            if let Some(StackItem::Check { hir_id, types_to_lint, types_to_skip, .. }) =
-                self.stack.last()
-            {
-                if types_to_skip.contains(&hir_ty.hir_id) {
-                    false
-                } else if types_to_lint.contains(&hir_ty.hir_id) {
-                    true
-                } else {
-                    let self_ty = ty_from_hir_id(cx, *hir_id);
-                    should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
-                }
-            } else {
+        let lint_dependend_on_expr_kind = if let Some(StackItem::Check {
+            hir_id,
+            types_to_lint,
+            types_to_skip,
+            ..
+        }) = self.stack.last()
+        {
+            if types_to_skip.contains(&hir_ty.hir_id) {
                 false
-            };
+            } else if types_to_lint.contains(&hir_ty.hir_id) {
+                true
+            } else {
+                let self_ty = ty_from_hir_id(cx, *hir_id);
+                should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
+            }
+        } else {
+            false
+        };
 
         if lint_dependend_on_expr_kind {
             // FIXME: this span manipulation should not be necessary
@@ -282,8 +289,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             }
         }
 
-        if in_macro(expr.span) || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS)
-        {
+        if in_macro(expr.span) || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS) {
             return;
         }
 
@@ -295,18 +301,20 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                     if expr_ty_matches(cx, expr, self_ty) {
                         match path.res {
                             def::Res::SelfTy(..) => (),
-                            def::Res::Def(DefKind::Variant, _) => {
-                                span_lint_on_path_until_last_segment(cx, path)
-                            }
+                            def::Res::Def(DefKind::Variant, _) => span_lint_on_path_until_last_segment(cx, path),
                             _ => {
                                 span_lint(cx, path.span);
-                            }
+                            },
                         }
                     }
-                }
+                },
                 // tuple struct instantiation (`Foo(arg)` or `Enum::Foo(arg)`)
                 ExprKind::Call(fun, _) => {
-                    if let Expr { kind: ExprKind::Path(ref qpath), .. } = fun {
+                    if let Expr {
+                        kind: ExprKind::Path(ref qpath),
+                        ..
+                    } = fun
+                    {
                         if expr_ty_matches(cx, expr, self_ty) {
                             let res = cx.qpath_res(qpath, fun.hir_id);
 
@@ -314,21 +322,21 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                                 match ctor_of {
                                     def::CtorOf::Variant => {
                                         span_lint_on_qpath_resolved(cx, qpath, true);
-                                    }
+                                    },
                                     def::CtorOf::Struct => {
                                         span_lint_on_qpath_resolved(cx, qpath, false);
-                                    }
+                                    },
                                 }
                             }
                         }
                     }
-                }
+                },
                 // unit enum variants (`Enum::A`)
                 ExprKind::Path(qpath) => {
                     if expr_ty_matches(cx, expr, self_ty) {
                         span_lint_on_qpath_resolved(cx, qpath, true);
                     }
-                }
+                },
                 _ => (),
             }
         }
@@ -431,9 +439,7 @@ fn ty_from_hir_id<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Ty<'tcx> {
     if let Some(Node::Ty(hir_ty)) = cx.tcx.hir().find(hir_id) {
         hir_ty_to_ty(cx.tcx, hir_ty)
     } else {
-        unreachable!(
-            "This function should only be called with `HirId`s that are for sure `Node::Ty`"
-        )
+        unreachable!("This function should only be called with `HirId`s that are for sure `Node::Ty`")
     }
 }
 

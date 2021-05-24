@@ -95,7 +95,10 @@ pub struct WildcardImports {
 
 impl WildcardImports {
     pub fn new(warn_on_all: bool) -> Self {
-        Self { warn_on_all, test_modules_deep: 0 }
+        Self {
+            warn_on_all,
+            test_modules_deep: 0,
+        }
     }
 }
 

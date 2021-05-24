@@ -47,7 +47,9 @@ impl Default for MissingDoc {
 impl MissingDoc {
     #[must_use]
     pub fn new() -> Self {
-        Self { doc_hidden_stack: vec![false] }
+        Self {
+            doc_hidden_stack: vec![false],
+        }
     }
 
     fn doc_hidden(&self) -> bool {
@@ -92,10 +94,7 @@ impl MissingDoc {
         }
 
         let has_doc = attrs.iter().any(|a| {
-            a.is_doc_comment()
-                || a.doc_str().is_some()
-                || a.value_str().is_some()
-                || Self::has_include(a.meta())
+            a.is_doc_comment() || a.doc_str().is_some() || a.value_str().is_some() || Self::has_include(a.meta())
         });
         if !has_doc {
             span_lint(
@@ -135,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                         return;
                     }
                 }
-            }
+            },
             hir::ItemKind::Const(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Mod(..)
@@ -145,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::TraitAlias(..)
             | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Union(..)
-            | hir::ItemKind::OpaqueTy(..) => {}
+            | hir::ItemKind::OpaqueTy(..) => {},
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::GlobalAsm(..)
@@ -174,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 if cx.tcx.impl_trait_ref(cid).is_some() {
                     return;
                 }
-            }
+            },
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());

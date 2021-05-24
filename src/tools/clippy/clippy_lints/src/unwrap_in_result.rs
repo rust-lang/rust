@@ -109,11 +109,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindExpectUnwrap<'a, 'tcx> {
     }
 }
 
-fn lint_impl_body<'tcx>(
-    cx: &LateContext<'tcx>,
-    impl_span: Span,
-    impl_item: &'tcx hir::ImplItem<'_>,
-) {
+fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tcx hir::ImplItem<'_>) {
     if let ImplItemKind::Fn(_, body_id) = impl_item.kind {
         let body = cx.tcx.hir().body(body_id);
         let mut fpu = FindExpectUnwrap {

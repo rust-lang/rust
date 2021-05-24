@@ -27,10 +27,7 @@ pub(super) fn check_item(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
             return;
-        } else if is_public
-            && !is_proc_macro(cx.sess(), attrs)
-            && !attrs.iter().any(|a| a.has_name(sym::no_mangle))
-        {
+        } else if is_public && !is_proc_macro(cx.sess(), attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
             check_must_use_candidate(
                 cx,
                 sig.decl,
@@ -52,10 +49,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<
         let attr = must_use_attr(attrs);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
-        } else if is_public
-            && !is_proc_macro(cx.sess(), attrs)
-            && trait_ref_of_method(cx, item.hir_id()).is_none()
-        {
+        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.hir_id()).is_none() {
             check_must_use_candidate(
                 cx,
                 sig.decl,
@@ -192,12 +186,7 @@ fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) 
 
 static KNOWN_WRAPPER_TYS: &[&[&str]] = &[&["alloc", "rc", "Rc"], &["std", "sync", "Arc"]];
 
-fn is_mutable_ty<'tcx>(
-    cx: &LateContext<'tcx>,
-    ty: Ty<'tcx>,
-    span: Span,
-    tys: &mut DefIdSet,
-) -> bool {
+fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, tys: &mut DefIdSet) -> bool {
     match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
@@ -205,12 +194,12 @@ fn is_mutable_ty<'tcx>(
             tys.insert(adt.did) && !ty.is_freeze(cx.tcx.at(span), cx.param_env)
                 || KNOWN_WRAPPER_TYS.iter().any(|path| match_def_path(cx, adt.did, path))
                     && substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys))
-        }
+        },
         ty::Tuple(substs) => substs.types().any(|ty| is_mutable_ty(cx, ty, span, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, span, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, span, tys)
-        }
+        },
         // calling something constitutes a side effect, so return true on all callables
         // also never calls need not be used, so return true for them, too
         _ => true,
@@ -249,13 +238,11 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     }
                     tys.clear();
                 }
-            }
-            Assign(target, ..)
-            | AssignOp(_, target, _)
-            | AddrOf(_, hir::Mutability::Mut, target) => {
+            },
+            Assign(target, ..) | AssignOp(_, target, _) | AddrOf(_, hir::Mutability::Mut, target) => {
                 self.mutates_static |= is_mutated_static(target)
-            }
-            _ => {}
+            },
+            _ => {},
         }
     }
 
@@ -276,7 +263,10 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
 }
 
 fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bool {
-    let mut v = StaticMutVisitor { cx, mutates_static: false };
+    let mut v = StaticMutVisitor {
+        cx,
+        mutates_static: false,
+    };
     intravisit::walk_expr(&mut v, &body.value);
     v.mutates_static
 }

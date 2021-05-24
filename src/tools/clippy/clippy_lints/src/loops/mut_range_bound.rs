@@ -7,12 +7,15 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::{mir::FakeReadCause, ty};
 use rustc_span::source_map::Span;
-use rustc_typeck::expr_use_visitor::{
-    ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId,
-};
+use rustc_typeck::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
-    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(arg) {
+    if let Some(higher::Range {
+        start: Some(start),
+        end: Some(end),
+        ..
+    }) = higher::range(arg)
+    {
         let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {
             let (span_low, span_high) = check_for_mutation(cx, body, &mut_ids);
@@ -105,13 +108,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         }
     }
 
-    fn fake_read(
-        &mut self,
-        _: rustc_typeck::expr_use_visitor::Place<'tcx>,
-        _: FakeReadCause,
-        _: HirId,
-    ) {
-    }
+    fn fake_read(&mut self, _: rustc_typeck::expr_use_visitor::Place<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl MutatePairDelegate<'_, '_> {

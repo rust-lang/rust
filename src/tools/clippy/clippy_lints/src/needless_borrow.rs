@@ -51,8 +51,14 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
         if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = e.kind {
             if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(inner).kind() {
                 for adj3 in cx.typeck_results().expr_adjustments(e).windows(3) {
-                    if let [Adjustment { kind: Adjust::Deref(_), .. }, Adjustment { kind: Adjust::Deref(_), .. }, Adjustment { kind: Adjust::Borrow(_), .. }] =
-                        *adj3
+                    if let [Adjustment {
+                        kind: Adjust::Deref(_), ..
+                    }, Adjustment {
+                        kind: Adjust::Deref(_), ..
+                    }, Adjustment {
+                        kind: Adjust::Borrow(_),
+                        ..
+                    }] = *adj3
                     {
                         span_lint_and_then(
                             cx,
