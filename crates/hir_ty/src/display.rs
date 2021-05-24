@@ -13,6 +13,7 @@ use hir_def::{
     db::DefDatabase,
     find_path,
     generics::TypeParamProvenance,
+    intern::{Internable, Interned},
     item_scope::ItemInNs,
     path::{Path, PathKind},
     type_ref::{TypeBound, TypeRef},
@@ -253,6 +254,12 @@ const TYPE_HINT_TRUNCATION: &str = "…";
 impl<T: HirDisplay> HirDisplay for &'_ T {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         HirDisplay::hir_fmt(*self, f)
+    }
+}
+
+impl<T: HirDisplay + Internable> HirDisplay for Interned<T> {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        HirDisplay::hir_fmt(self.as_ref(), f)
     }
 }
 

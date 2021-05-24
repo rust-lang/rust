@@ -513,13 +513,13 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_type_bounds(&mut self, bounds: &[TypeBound]) {
+    fn print_type_bounds(&mut self, bounds: &[Interned<TypeBound>]) {
         for (i, bound) in bounds.iter().enumerate() {
             if i != 0 {
                 w!(self, " + ");
             }
 
-            match bound {
+            match bound.as_ref() {
                 TypeBound::Path(path) => self.print_path(path),
                 TypeBound::Lifetime(lt) => w!(self, "{}", lt.name),
                 TypeBound::Error => w!(self, "{{unknown}}"),

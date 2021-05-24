@@ -216,7 +216,9 @@ pub use crate::_impl_internable as impl_internable;
 impl_internable!(
     crate::type_ref::TypeRef,
     crate::type_ref::TraitRef,
+    crate::type_ref::TypeBound,
     crate::path::ModPath,
+    crate::path::GenericArgs,
     GenericParams,
     str,
 );

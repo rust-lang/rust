@@ -10,6 +10,7 @@ use std::{iter, sync::Arc};
 
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, fold::Shift, interner::HasInterner, Mutability, Safety};
+use hir_def::intern::Interned;
 use hir_def::{
     adt::StructKind,
     body::{Expander, LowerCtx},
@@ -843,7 +844,7 @@ impl<'a> TyLoweringContext<'a> {
             })
     }
 
-    fn lower_impl_trait(&self, bounds: &[TypeBound]) -> ReturnTypeImplTrait {
+    fn lower_impl_trait(&self, bounds: &[Interned<TypeBound>]) -> ReturnTypeImplTrait {
         cov_mark::hit!(lower_rpit);
         let self_ty =
             TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(&Interner);

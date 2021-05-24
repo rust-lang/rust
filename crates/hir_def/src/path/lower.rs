@@ -3,7 +3,6 @@
 mod lower_use;
 
 use crate::intern::Interned;
-use std::sync::Arc;
 
 use either::Either;
 use hir_expand::name::{name, AsName};
@@ -48,7 +47,7 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                                     segment.ret_type(),
                                 )
                             })
-                            .map(Arc::new);
+                            .map(Interned::new);
                         segments.push(name);
                         generic_args.push(args)
                     }
@@ -87,13 +86,13 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                         // Insert the type reference (T in the above example) as Self parameter for the trait
                         let last_segment =
                             generic_args.iter_mut().rev().nth(num_segments.saturating_sub(1))?;
-                        if last_segment.is_none() {
-                            *last_segment = Some(Arc::new(GenericArgs::empty()));
+                        let mut args_inner = match last_segment {
+                            Some(it) => it.as_ref().clone(),
+                            None => GenericArgs::empty(),
                         };
-                        let args = last_segment.as_mut().unwrap();
-                        let mut args_inner = Arc::make_mut(args);
                         args_inner.has_self_type = true;
                         args_inner.args.insert(0, GenericArg::Type(self_type));
+                        *last_segment = Some(Interned::new(args_inner));
                     }
                 }
             }
@@ -171,7 +170,9 @@ pub(super) fn lower_generic_args(
                     let name = name_ref.as_name();
                     let type_ref = assoc_type_arg.ty().map(|it| TypeRef::from_ast(lower_ctx, it));
                     let bounds = if let Some(l) = assoc_type_arg.type_bound_list() {
-                        l.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
+                        l.bounds()
+                            .map(|it| Interned::new(TypeBound::from_ast(lower_ctx, it)))
+                            .collect()
                     } else {
                         Vec::new()
                     };

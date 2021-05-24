@@ -644,7 +644,7 @@ pub struct Trait {
     pub generic_params: Interned<GenericParams>,
     pub is_auto: bool,
     pub is_unsafe: bool,
-    pub bounds: Box<[TypeBound]>,
+    pub bounds: Box<[Interned<TypeBound>]>,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Trait>,
 }
@@ -664,7 +664,7 @@ pub struct TypeAlias {
     pub name: Name,
     pub visibility: RawVisibilityId,
     /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
-    pub bounds: Box<[TypeBound]>,
+    pub bounds: Box<[Interned<TypeBound>]>,
     pub generic_params: Interned<GenericParams>,
     pub type_ref: Option<Interned<TypeRef>>,
     pub is_extern: bool,

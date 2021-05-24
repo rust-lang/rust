@@ -5,7 +5,7 @@ use hir_expand::{name::Name, AstId, InFile};
 use std::convert::TryInto;
 use syntax::ast;
 
-use crate::{body::LowerCtx, path::Path};
+use crate::{body::LowerCtx, intern::Interned, path::Path};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Mutability {
@@ -91,8 +91,8 @@ pub enum TypeRef {
     /// A fn pointer. Last element of the vector is the return type.
     Fn(Vec<TypeRef>, bool /*varargs*/),
     // For
-    ImplTrait(Vec<TypeBound>),
-    DynTrait(Vec<TypeBound>),
+    ImplTrait(Vec<Interned<TypeBound>>),
+    DynTrait(Vec<Interned<TypeBound>>),
     Macro(AstId<ast::MacroCall>),
     Error,
 }
@@ -232,7 +232,7 @@ impl TypeRef {
                 | TypeRef::Slice(type_ref) => go(&type_ref, f),
                 TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {
                     for bound in bounds {
-                        match bound {
+                        match bound.as_ref() {
                             TypeBound::Path(path) => go_path(path, f),
                             TypeBound::Lifetime(_) | TypeBound::Error => (),
                         }
@@ -262,7 +262,7 @@ impl TypeRef {
                             go(type_ref, f);
                         }
                         for bound in &binding.bounds {
-                            match bound {
+                            match bound.as_ref() {
                                 TypeBound::Path(path) => go_path(path, f),
                                 TypeBound::Lifetime(_) | TypeBound::Error => (),
                             }
@@ -277,9 +277,9 @@ impl TypeRef {
 pub(crate) fn type_bounds_from_ast(
     lower_ctx: &LowerCtx,
     type_bounds_opt: Option<ast::TypeBoundList>,
-) -> Vec<TypeBound> {
+) -> Vec<Interned<TypeBound>> {
     if let Some(type_bounds) = type_bounds_opt {
-        type_bounds.bounds().map(|it| TypeBound::from_ast(lower_ctx, it)).collect()
+        type_bounds.bounds().map(|it| Interned::new(TypeBound::from_ast(lower_ctx, it))).collect()
     } else {
         vec![]
     }
