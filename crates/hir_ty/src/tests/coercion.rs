@@ -832,11 +832,9 @@ fn coerce_unsize_super_trait_cycle() {
     );
 }
 
-#[ignore]
 #[test]
 fn coerce_unsize_generic() {
-    // FIXME: Implement this
-    // https://doc.rust-lang.org/reference/type-coercions.html#unsized-coercions
+    // FIXME: fix the type mismatches here
     check_infer_with_mismatches(
         r#"
         #[lang = "unsize"]
@@ -854,8 +852,58 @@ fn coerce_unsize_generic() {
             let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
         }
         "#,
-        expect![[r"
-        "]],
+        expect![[r#"
+            209..317 '{     ... }); }': ()
+            219..220 '_': &Foo<[usize]>
+            238..259 '&Foo {..., 3] }': &Foo<[usize]>
+            239..259 'Foo { ..., 3] }': Foo<[usize]>
+            248..257 '[1, 2, 3]': [usize; 3]
+            249..250 '1': usize
+            252..253 '2': usize
+            255..256 '3': usize
+            269..270 '_': &Bar<[usize]>
+            288..314 '&Bar(F... 3] })': &Bar<[i32; 3]>
+            289..292 'Bar': Bar<[i32; 3]>(Foo<[i32; 3]>) -> Bar<[i32; 3]>
+            289..314 'Bar(Fo... 3] })': Bar<[i32; 3]>
+            293..313 'Foo { ..., 3] }': Foo<[i32; 3]>
+            302..311 '[1, 2, 3]': [i32; 3]
+            303..304 '1': i32
+            306..307 '2': i32
+            309..310 '3': i32
+            248..257: expected [usize], got [usize; 3]
+            288..314: expected &Bar<[usize]>, got &Bar<[i32; 3]>
+        "#]],
+    );
+}
+
+#[test]
+fn coerce_unsize_apit() {
+    // FIXME: #8984
+    check_infer_with_mismatches(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+#[lang = "unsize"]
+pub trait Unsize<T> {}
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T> {}
+
+impl<T: Unsize<U>, U> CoerceUnsized<&U> for &T {}
+
+trait Foo {}
+
+fn test(f: impl Foo) {
+    let _: &dyn Foo = &f;
+}
+        "#,
+        expect![[r#"
+            210..211 'f': impl Foo
+            223..252 '{     ... &f; }': ()
+            233..234 '_': &dyn Foo
+            247..249 '&f': &impl Foo
+            248..249 'f': impl Foo
+            247..249: expected &dyn Foo, got &impl Foo
+        "#]],
     );
 }
 
@@ -921,7 +969,7 @@ mod panic {
     #[macro_export]
     pub macro panic_2015 {
         () => (
-            $crate::panicking::panic("explicit panic")
+            $crate::panicking::panic()
         ),
     }
 }
@@ -940,19 +988,18 @@ macro_rules! panic {
 }
 
 fn main() {
-    panic!("internal error: entered unreachable code")
+    panic!()
 }
         "#,
         expect![[r#"
-            190..201 '{ loop {} }': !
-            192..199 'loop {}': !
-            197..199 '{}': ()
+            174..185 '{ loop {} }': !
+            176..183 'loop {}': !
+            181..183 '{}': ()
             !0..24 '$crate...:panic': fn panic() -> !
-            !0..42 '$crate...anic")': !
-            !0..42 '$crate...anic")': !
-            !0..70 '$crate...code")': !
-            !25..41 '"expli...panic"': &str
-            470..528 '{     ...de") }': ()
+            !0..26 '$crate...anic()': !
+            !0..26 '$crate...anic()': !
+            !0..28 '$crate...015!()': !
+            454..470 '{     ...c!() }': ()
         "#]],
     );
 }
