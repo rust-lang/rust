@@ -1,0 +1,19 @@
+error[E0706]: functions in traits cannot be declared `async`
+  --> $DIR/issue-82933.rs:3:5
+   |
+LL |       async fn reduce(&self) {
+   |       ^----
+   |       |
+   |  _____`async` because of this
+   | |
+LL | |
+LL | |         vec![].into_iter().for_each(|_: ()| {})
+LL | |     }
+   | |_____^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0706`.
