@@ -22,8 +22,10 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
         None => return,
     };
 
-    snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
-    snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
+    if ctx.can_be_stmt {
+        snippet(ctx, cap, "pd", "eprintln!(\"$0 = {:?}\", $0);").add_to(acc);
+        snippet(ctx, cap, "ppd", "eprintln!(\"$0 = {:#?}\", $0);").add_to(acc);
+    }
 }
 
 pub(crate) fn complete_item_snippet(acc: &mut Completions, ctx: &CompletionContext) {
