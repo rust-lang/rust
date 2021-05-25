@@ -565,10 +565,10 @@ kbd {
 	background-color: rgba(70, 70, 70, 0.33);
 }
 
-.search-results td span.alias {
+.search-results .result-name span.alias {
 	color: #c5c5c5;
 }
-.search-results td span.grey {
+.search-results .result-name span.grey {
 	color: #999;
 }
 
