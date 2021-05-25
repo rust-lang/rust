@@ -179,7 +179,38 @@ fn dogfood_subprojects() {
 #[ignore]
 #[cfg(feature = "metadata-collector-lint")]
 fn run_metadata_collection_lint() {
+    use std::fs::File;
+    use std::time::SystemTime;
+
+    // Setup for validation
+    let metadata_output_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("util/gh-pages/metadata_collection.json");
+    let start_time = SystemTime::now();
+
+    // Run collection as is
     std::env::set_var("ENABLE_METADATA_COLLECTION", "1");
+    run_clippy_for_project("clippy_lints");
+
+    // Check if cargo caching got in the way
+    if let Ok(file) = File::open(metadata_output_path) {
+        if let Ok(metadata) = file.metadata() {
+            if let Ok(last_modification) = metadata.modified() {
+                if last_modification > start_time {
+                    // The output file has been modified. Most likely by a hungry
+                    // metadata collection monster. So We'll return.
+                    return;
+                }
+            }
+        }
+    }
+
+    // Force cargo to invalidate the caches
+    filetime::set_file_mtime(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("clippy_lints/src/lib.rs"),
+        filetime::FileTime::now(),
+    )
+    .unwrap();
+
+    // Running the collection again
     run_clippy_for_project("clippy_lints");
 }
 
