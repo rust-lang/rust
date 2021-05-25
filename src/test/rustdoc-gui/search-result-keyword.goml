@@ -5,7 +5,6 @@ wait-for: "#titles"
 // Note: The two next assert commands could be merged as one but readability would be
 // less good.
 //
-// Checking that the CSS is displaying " (keyword)"...
-assert: (".result-name span.keyword::after", {"content": '" (keyword)"'})
-// ... in italic.
-assert: (".result-name span.keyword::after", {"font-style": "italic"})
+// Checking that the CSS is displaying " (keyword)" in italic.
+assert: (".result-name span.keyword > i", "(keyword)")
+assert: (".result-name span.keyword", "CookieMonster (keyword)")
