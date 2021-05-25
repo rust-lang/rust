@@ -953,9 +953,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvar_mutbls`.
         if hir_typeck_results.closure_min_captures.get(&fn_def_id).is_some() {
-            let closure_env_arg = Local::new(1);
             let mut closure_env_projs = vec![];
-            let mut closure_ty = self.local_decls[closure_env_arg].ty;
+            let mut closure_ty = self.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
             if let ty::Ref(_, ty, _) = closure_ty.kind() {
                 closure_env_projs.push(ProjectionElem::Deref);
                 closure_ty = ty;
@@ -1001,7 +1000,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         name,
                         source_info: SourceInfo::outermost(tcx_hir.span(var_id)),
                         value: VarDebugInfoContents::Place(Place {
-                            local: closure_env_arg,
+                            local: ty::CAPTURE_STRUCT_LOCAL,
                             projection: tcx.intern_place_elems(&projs),
                         }),
                     });

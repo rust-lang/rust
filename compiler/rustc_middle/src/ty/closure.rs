@@ -1,7 +1,7 @@
 use crate::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
-use crate::ty;
+use crate::{mir, ty};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
@@ -11,6 +11,10 @@ use rustc_span::Span;
 use super::{Ty, TyCtxt};
 
 use self::BorrowKind::*;
+
+// Captures are represented using fields inside a structure.
+// This represents accessing self in the closure structure
+pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::from_u32(1);
 
 #[derive(
     Clone,
