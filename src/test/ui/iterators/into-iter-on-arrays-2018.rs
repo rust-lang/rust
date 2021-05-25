@@ -25,6 +25,9 @@ fn main() {
 
     // But you can always use the trait method explicitly as an array.
     let _: IntoIter<i32, 10> = IntoIterator::into_iter(array);
+
+    for _ in [1, 2, 3].into_iter() {}
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
 }
 
 /// User type that dereferences to an array.
