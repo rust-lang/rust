@@ -1502,7 +1502,7 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
             w.write_str(
                 "Non-exhaustive structs could have additional fields added in future. \
                  Therefore, non-exhaustive structs cannot be constructed in external crates \
-                 using the traditional <code>Struct {{ .. }}</code> syntax; cannot be \
+                 using the traditional <code>Struct { .. }</code> syntax; cannot be \
                  matched against without a wildcard <code>..</code>; and \
                  struct update syntax will not work.",
             );
