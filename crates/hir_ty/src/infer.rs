@@ -578,10 +578,12 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
+        // FIXME resolve via lang_item once try v2 is stable
         let path = path![core::ops::Try];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
         let trait_data = self.db.trait_data(trait_);
         trait_data
+            // FIXME remove once try v2 is stable
             .associated_type_by_name(&name![Ok])
             .or_else(|| trait_data.associated_type_by_name(&name![Output]))
     }

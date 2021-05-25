@@ -3630,3 +3630,33 @@ fn test<F: FnOnce()>(f: F) {
         "#]],
     );
 }
+
+#[test]
+fn trait_in_scope_of_trait_impl() {
+    check_infer(
+        r#"
+mod foo {
+    pub trait Foo {
+        fn foo(self);
+        fn bar(self) -> usize { 0 }
+    }
+}
+impl foo::Foo for u32 {
+    fn foo(self) {
+        let _x = self.bar();
+    }
+}
+    "#,
+        expect![[r#"
+            45..49 'self': Self
+            67..71 'self': Self
+            82..87 '{ 0 }': usize
+            84..85 '0': usize
+            131..135 'self': u32
+            137..173 '{     ...     }': ()
+            151..153 '_x': usize
+            156..160 'self': u32
+            156..166 'self.bar()': usize
+        "#]],
+    );
+}

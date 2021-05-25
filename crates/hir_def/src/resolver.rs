@@ -337,22 +337,34 @@ impl Resolver {
     pub fn traits_in_scope(&self, db: &dyn DefDatabase) -> FxHashSet<TraitId> {
         let mut traits = FxHashSet::default();
         for scope in &self.scopes {
-            if let Scope::ModuleScope(m) = scope {
-                if let Some(prelude) = m.def_map.prelude() {
-                    let prelude_def_map = prelude.def_map(db);
-                    traits.extend(prelude_def_map[prelude.local_id].scope.traits());
-                }
-                traits.extend(m.def_map[m.module_id].scope.traits());
-
-                // Add all traits that are in scope because of the containing DefMaps
-                m.def_map.with_ancestor_maps(db, m.module_id, &mut |def_map, module| {
-                    if let Some(prelude) = def_map.prelude() {
+            match scope {
+                Scope::ModuleScope(m) => {
+                    if let Some(prelude) = m.def_map.prelude() {
                         let prelude_def_map = prelude.def_map(db);
                         traits.extend(prelude_def_map[prelude.local_id].scope.traits());
                     }
-                    traits.extend(def_map[module].scope.traits());
-                    None::<()>
-                });
+                    traits.extend(m.def_map[m.module_id].scope.traits());
+
+                    // Add all traits that are in scope because of the containing DefMaps
+                    m.def_map.with_ancestor_maps(db, m.module_id, &mut |def_map, module| {
+                        if let Some(prelude) = def_map.prelude() {
+                            let prelude_def_map = prelude.def_map(db);
+                            traits.extend(prelude_def_map[prelude.local_id].scope.traits());
+                        }
+                        traits.extend(def_map[module].scope.traits());
+                        None::<()>
+                    });
+                }
+                &Scope::ImplDefScope(impl_) => {
+                    if let Some(target_trait) = &db.impl_data(impl_).target_trait {
+                        if let Some(TypeNs::TraitId(trait_)) =
+                            self.resolve_path_in_type_ns_fully(db, target_trait.path.mod_path())
+                        {
+                            traits.insert(trait_);
+                        }
+                    }
+                }
+                _ => (),
             }
         }
         traits
