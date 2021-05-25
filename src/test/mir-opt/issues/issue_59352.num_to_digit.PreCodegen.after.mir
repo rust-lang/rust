@@ -9,7 +9,7 @@ fn num_to_digit(_1: char) -> u32 {
     let mut _5: u32;                     // in scope 0 at $DIR/issue-59352.rs:14:8: 14:23
     let mut _11: isize;                  // in scope 0 at $DIR/issue-59352.rs:14:8: 14:23
     scope 1 (inlined char::methods::<impl char>::is_digit) { // at $DIR/issue-59352.rs:14:8: 14:23
-        debug self => _2;                // in scope 1 at $DIR/issue-59352.rs:14:8: 14:23
+        debug self => _1;                // in scope 1 at $DIR/issue-59352.rs:14:8: 14:23
         debug radix => _5;               // in scope 1 at $DIR/issue-59352.rs:14:8: 14:23
         let mut _6: &std::option::Option<u32>; // in scope 1 at $DIR/issue-59352.rs:14:8: 14:23
         let _7: std::option::Option<u32>; // in scope 1 at $DIR/issue-59352.rs:14:8: 14:23

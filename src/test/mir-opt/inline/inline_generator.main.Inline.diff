@@ -24,7 +24,7 @@
 +         }
 +     }
 +     scope 6 (inlined g::{closure#0}) {   // at $DIR/inline-generator.rs:9:14: 9:46
-+         debug a => _11;                  // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         debug a => _7;                   // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +         let mut _8: i32;                 // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +         let mut _9: bool;                // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
 +         let mut _10: bool;               // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46

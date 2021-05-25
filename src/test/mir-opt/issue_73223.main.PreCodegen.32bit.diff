@@ -19,7 +19,7 @@
       let _18: &i32;                       // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       let mut _19: std::option::Option<std::fmt::Arguments>; // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       scope 1 {
-          debug split => _1;               // in scope 1 at $DIR/issue-73223.rs:2:9: 2:14
+          debug split => _3;               // in scope 1 at $DIR/issue-73223.rs:2:9: 2:14
           let _4: std::option::Option<i32>; // in scope 1 at $DIR/issue-73223.rs:7:9: 7:14
           scope 3 {
               debug _prev => _4;           // in scope 3 at $DIR/issue-73223.rs:7:9: 7:14

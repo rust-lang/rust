@@ -21,4 +21,4 @@ fn main() {
     let a = p.x + p.y;
 }
 
-// EMIT_MIR const_debuginfo.main.ConstDebugInfo.diff
+// EMIT_MIR simplify_debuginfo.main.SimplifyDebugInfo.diff

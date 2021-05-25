@@ -1,0 +1,13 @@
+// MIR for `should_opt` after PreCodegen
+
+fn should_opt(_1: bool) -> () {
+    debug input => _1;                   // in scope 0 at $DIR/issue-78994.rs:5:19: 5:24
+    let mut _0: ();                      // return place in scope 0 at $DIR/issue-78994.rs:5:32: 5:32
+    scope 1 {
+        debug x => _1;                   // in scope 1 at $DIR/issue-78994.rs:6:9: 6:10
+    }
+
+    bb0: {
+        return;                          // scope 0 at $DIR/issue-78994.rs:7:2: 7:2
+    }
+}

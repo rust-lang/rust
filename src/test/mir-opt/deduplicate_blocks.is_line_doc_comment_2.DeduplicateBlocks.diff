@@ -11,7 +11,7 @@
       let mut _6: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
       let mut _7: bool;                    // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
       scope 1 (inlined core::str::<impl str>::as_bytes) { // at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          debug self => _3;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          debug self => _1;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           let mut _8: &str;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           scope 2 {
           }
