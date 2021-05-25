@@ -247,7 +247,7 @@ use crate::boxed::Box;
 #[cfg(all(test, not(no_global_oom_handling)))]
 use std::boxed::Box;
 
-use core::alloc::helper::{AllocInit, PrefixAllocator};
+use core::alloc::helper::PrefixAllocator;
 use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
@@ -418,17 +418,10 @@ impl<T> Rc<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
         let alloc = RcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::allocate(
-            &alloc,
-            layout,
-            RcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        );
+        let ptr = allocate(&alloc, Layout::new::<T>(), RcMetadata::new_strong()).cast::<T>();
         unsafe {
             ptr.as_ptr().write(value);
-            Self::from_raw_in(ptr.as_ptr().cast(), alloc)
+            Self::from_non_null(ptr, alloc)
         }
     }
 
@@ -463,13 +456,7 @@ impl<T> Rc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let alloc = RcAllocator::new(Global);
-        let ptr = Self::allocate(
-            &alloc,
-            Layout::new::<T>(),
-            RcMetadata::new_weak(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        );
+        let ptr = allocate(&alloc, Layout::new::<T>(), RcMetadata::new_weak()).cast::<T>();
 
         // Strong references should collectively own a shared weak reference,
         // so don't run the destructor for our old weak reference.
@@ -489,7 +476,7 @@ impl<T> Rc<T> {
         debug_assert_eq!(meta.strong.get(), 0, "No prior strong references should exist");
         meta.strong.set(1);
 
-        unsafe { Self::from_raw_in(ptr.as_ptr(), weak.alloc) }
+        unsafe { Self::from_non_null(ptr, weak.alloc) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents.
@@ -517,15 +504,8 @@ impl<T> Rc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
         let alloc = RcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::allocate(
-            &alloc,
-            layout,
-            RcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        );
-        unsafe { Rc::from_raw_in(ptr.as_ptr().cast(), alloc) }
+        let ptr = allocate(&alloc, Layout::new::<T>(), RcMetadata::new_strong()).cast();
+        unsafe { Rc::from_non_null(ptr, alloc) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -552,15 +532,8 @@ impl<T> Rc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
         let alloc = RcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::allocate(
-            &alloc,
-            layout,
-            RcMetadata::new_strong(),
-            AllocInit::Zeroed,
-            NonNull::cast,
-        );
-        unsafe { Rc::from_raw_in(ptr.as_ptr().cast(), alloc) }
+        let ptr = allocate_zeroed(&alloc, Layout::new::<T>(), RcMetadata::new_strong()).cast();
+        unsafe { Rc::from_non_null(ptr, alloc) }
     }
 
     /// Constructs a new `Rc<T>`, returning an error if the allocation fails
@@ -577,10 +550,11 @@ impl<T> Rc<T> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn try_new(value: T) -> Result<Rc<T>, AllocError> {
-        let mut rc = Self::try_new_uninit()?;
+        let alloc = RcAllocator::new(Global);
+        let ptr = try_allocate(&alloc, Layout::new::<T>(), RcMetadata::new_strong())?.cast::<T>();
         unsafe {
-            Rc::get_mut_unchecked(&mut rc).as_mut_ptr().write(value);
-            Ok(rc.assume_init())
+            ptr.as_ptr().write(value);
+            Ok(Self::from_non_null(ptr, alloc))
         }
     }
 
@@ -610,15 +584,8 @@ impl<T> Rc<T> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
         let alloc = RcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::try_allocate(
-            &alloc,
-            layout,
-            RcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        )?;
-        unsafe { Ok(Rc::from_raw_in(ptr.as_ptr().cast(), alloc)) }
+        let ptr = try_allocate(&alloc, Layout::new::<T>(), RcMetadata::new_strong())?;
+        unsafe { Ok(Rc::from_non_null(ptr.cast(), alloc)) }
     }
 
     /// Constructs a new `Rc` with uninitialized contents, with the memory
@@ -646,15 +613,8 @@ impl<T> Rc<T> {
     //#[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
         let alloc = RcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::try_allocate(
-            &alloc,
-            layout,
-            RcMetadata::new_strong(),
-            AllocInit::Zeroed,
-            NonNull::cast,
-        )?;
-        unsafe { Ok(Rc::from_raw_in(ptr.as_ptr().cast(), alloc)) }
+        let ptr = try_allocate_zeroed(&alloc, Layout::new::<T>(), RcMetadata::new_strong())?;
+        unsafe { Ok(Rc::from_non_null(ptr.cast(), alloc)) }
     }
 
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
@@ -735,14 +695,11 @@ impl<T> Rc<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         let alloc = RcAllocator::new(Global);
-        let ptr = Rc::allocate(
-            &alloc,
-            Layout::array::<T>(len).unwrap(),
-            RcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+        let ptr = NonNull::slice_from_raw_parts(
+            allocate(&alloc, Layout::array::<T>(len).unwrap(), RcMetadata::new_strong()).cast(),
+            len,
         );
-        unsafe { Rc::from_raw_in(ptr.as_ptr(), alloc) }
+        unsafe { Rc::from_non_null(ptr, alloc) }
     }
 
     /// Constructs a new reference-counted slice with uninitialized contents, with the memory being
@@ -769,14 +726,12 @@ impl<T> Rc<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         let alloc = RcAllocator::new(Global);
-        let ptr = Rc::allocate(
-            &alloc,
-            Layout::array::<T>(len).unwrap(),
-            RcMetadata::new_strong(),
-            AllocInit::Zeroed,
-            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+        let ptr = NonNull::slice_from_raw_parts(
+            allocate_zeroed(&alloc, Layout::array::<T>(len).unwrap(), RcMetadata::new_strong())
+                .cast(),
+            len,
         );
-        unsafe { Rc::from_raw_in(ptr.as_ptr(), alloc) }
+        unsafe { Rc::from_non_null(ptr, alloc) }
     }
 }
 
@@ -816,7 +771,7 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub unsafe fn assume_init(self) -> Rc<T> {
         let this = mem::ManuallyDrop::new(self);
-        unsafe { Rc::from_raw_in(this.ptr.cast().as_ptr(), this.alloc) }
+        unsafe { Rc::from_non_null(this.ptr.cast(), this.alloc) }
     }
 }
 
@@ -862,7 +817,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
         let ptr = unsafe {
             NonNull::slice_from_raw_parts(NonNull::new_unchecked(this.ptr.as_mut_ptr().cast()), len)
         };
-        unsafe { Rc::from_raw_in(ptr.as_ptr(), this.alloc) }
+        unsafe { Rc::from_non_null(ptr, this.alloc) }
     }
 }
 
@@ -952,14 +907,14 @@ impl<T: ?Sized> Rc<T> {
     #[inline]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe { Self::from_raw_in(ptr, RcAllocator::new(Global)) }
+        unsafe {
+            Self::from_non_null(NonNull::new_unchecked(ptr as *mut T), RcAllocator::new(Global))
+        }
     }
 
-    /// Constructs an `Rc<T, A>` from a raw pointer.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_in(ptr: *const T, alloc: RcAllocator<Global>) -> Self {
-        Self { ptr: unsafe { NonNull::new_unchecked(ptr as *mut T) }, alloc, _marker: PhantomData }
+    #[inline(always)]
+    unsafe fn from_non_null(ptr: NonNull<T>, alloc: RcAllocator<Global>) -> Self {
+        Self { ptr, alloc, _marker: PhantomData }
     }
 
     /// Creates a new [`Weak`] pointer to this allocation.
@@ -1291,7 +1246,7 @@ impl Rc<dyn Any> {
     pub fn downcast<T: Any>(self) -> Result<Rc<T>, Rc<dyn Any>> {
         if (*self).is::<T>() {
             let this = mem::ManuallyDrop::new(self);
-            unsafe { Ok(Rc::from_raw_in(this.ptr.cast().as_ptr(), this.alloc)) }
+            unsafe { Ok(Rc::from_non_null(this.ptr.cast(), this.alloc)) }
         } else {
             Err(self)
         }
@@ -1299,45 +1254,6 @@ impl Rc<dyn Any> {
 }
 
 impl<T: ?Sized> Rc<T> {
-    /// Allocates an `Rc<T>` with sufficient space for
-    /// a possibly-unsized inner value where the value has the layout provided,
-    /// returning an error if allocation fails.
-    ///
-    /// The function `mem_to_rcbox` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
-    #[inline]
-    #[cfg(not(no_global_oom_handling))]
-    fn allocate(
-        alloc: &RcAllocator<Global>,
-        layout: Layout,
-        meta: RcMetadata,
-        init: AllocInit,
-        mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
-    ) -> NonNull<T> {
-        let ptr = mem_to_ptr(allocate(alloc, layout, init));
-        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
-        ptr
-    }
-
-    /// Allocates an `Rc<T>` with sufficient space for
-    /// a possibly-unsized inner value where the value has the layout provided,
-    /// returning an error if allocation fails.
-    ///
-    /// The function `mem_to_ptr` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
-    #[inline]
-    fn try_allocate(
-        alloc: &RcAllocator<Global>,
-        layout: Layout,
-        meta: RcMetadata,
-        init: AllocInit,
-        mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
-    ) -> Result<NonNull<T>, AllocError> {
-        let ptr = mem_to_ptr(try_allocate(alloc, layout, init)?);
-        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
-        Ok(ptr)
-    }
-
     #[cfg(not(no_global_oom_handling))]
     fn from_box(v: Box<T>) -> Rc<T> {
         unsafe {
@@ -1346,13 +1262,8 @@ impl<T: ?Sized> Rc<T> {
             let rc_alloc = RcAllocator::new(alloc);
 
             let layout = Layout::for_value(&*bptr);
-            let ptr = Self::allocate(
-                &rc_alloc,
-                layout,
-                RcMetadata::new_strong(),
-                AllocInit::Uninitialized,
-                |mem| NonNull::new_unchecked(bptr.set_ptr_value(mem.as_ptr())),
-            );
+            let mem = allocate(&rc_alloc, layout, RcMetadata::new_strong()).cast();
+            let ptr = NonNull::new_unchecked(bptr.set_ptr_value(mem.as_ptr()));
 
             // Copy value as bytes
             ptr::copy_nonoverlapping(
@@ -1364,7 +1275,7 @@ impl<T: ?Sized> Rc<T> {
             // Free the allocation without dropping its contents
             box_free(box_unique, &rc_alloc.parent);
 
-            Self::from_raw_in(ptr.as_ptr(), rc_alloc)
+            Self::from_non_null(ptr, rc_alloc)
         }
     }
 }
@@ -1376,16 +1287,13 @@ impl<T> Rc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Rc<[T]> {
         let alloc = RcAllocator::new(Global);
-        let ptr = Self::allocate(
-            &alloc,
-            Layout::array::<T>(v.len()).unwrap(),
-            RcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), v.len()),
+        let ptr = NonNull::slice_from_raw_parts(
+            allocate(&alloc, Layout::array::<T>(v.len()).unwrap(), RcMetadata::new_strong()).cast(),
+            v.len(),
         );
         unsafe {
             ptr::copy_nonoverlapping(v.as_ptr(), ptr.as_non_null_ptr().as_ptr(), v.len());
-            Self::from_raw_in(ptr.as_ptr(), alloc)
+            Self::from_non_null(ptr, alloc)
         }
     }
 
@@ -1418,12 +1326,9 @@ impl<T> Rc<[T]> {
         unsafe {
             let alloc = RcAllocator::new(Global);
             let layout = Layout::array::<T>(len).unwrap();
-            let ptr = Self::allocate(
-                &alloc,
-                layout,
-                RcMetadata::new_strong(),
-                AllocInit::Uninitialized,
-                |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+            let ptr = NonNull::slice_from_raw_parts(
+                allocate(&alloc, layout, RcMetadata::new_strong()).cast(),
+                len,
             );
 
             let mut guard =
@@ -1437,7 +1342,7 @@ impl<T> Rc<[T]> {
             // All clear. Forget the guard so it doesn't free the new RcBox.
             mem::forget(guard);
 
-            Self::from_raw_in(ptr.as_ptr(), alloc)
+            Self::from_non_null(ptr, alloc)
         }
     }
 }
@@ -2238,14 +2143,15 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe { Self::from_raw_in(ptr, RcAllocator::new(Global)) }
+        unsafe {
+            Self::from_non_null(NonNull::new_unchecked(ptr as *mut T), RcAllocator::new(Global))
+        }
     }
 
     /// Constructs a `Weak<T, A>` from a raw pointer.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_in(ptr: *const T, alloc: RcAllocator<Global>) -> Self {
-        Self { ptr: unsafe { NonNull::new_unchecked(ptr as *mut T) }, alloc }
+    #[inline(always)]
+    unsafe fn from_non_null(ptr: NonNull<T>, alloc: RcAllocator<Global>) -> Self {
+        Self { ptr, alloc }
     }
 
     /// Attempts to upgrade the `Weak` pointer to an [`Rc`], delaying
@@ -2444,24 +2350,37 @@ impl<T> Default for Weak<T> {
 }
 
 /// Dediated function for allocating to prevent generating a function for every `T`
-#[inline]
 #[cfg(not(no_global_oom_handling))]
-fn allocate(alloc: &RcAllocator<Global>, layout: Layout, init: AllocInit) -> NonNull<u8> {
-    try_allocate(alloc, layout, init).unwrap_or_else(|_| handle_alloc_error(layout))
+fn allocate(alloc: &RcAllocator<Global>, layout: Layout, metadata: RcMetadata) -> NonNull<u8> {
+    try_allocate(alloc, layout, metadata).unwrap_or_else(|_| handle_alloc_error(layout))
 }
 
 /// Dediated function for allocating to prevent generating a function for every `T`
-#[inline]
+#[cfg(not(no_global_oom_handling))]
+fn allocate_zeroed(
+    alloc: &RcAllocator<Global>,
+    layout: Layout,
+    metadata: RcMetadata,
+) -> NonNull<u8> {
+    try_allocate_zeroed(alloc, layout, metadata).unwrap_or_else(|_| handle_alloc_error(layout))
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
 fn try_allocate(
     alloc: &RcAllocator<Global>,
     layout: Layout,
-    init: AllocInit,
+    metadata: RcMetadata,
 ) -> Result<NonNull<u8>, AllocError> {
-    let ptr = match init {
-        AllocInit::Uninitialized => alloc.allocate(layout)?,
-        AllocInit::Zeroed => alloc.allocate_zeroed(layout)?,
-    };
-    Ok(ptr.as_non_null_ptr())
+    alloc.allocate_with_prefix(layout, metadata).map(NonNull::as_non_null_ptr)
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
+fn try_allocate_zeroed(
+    alloc: &RcAllocator<Global>,
+    layout: Layout,
+    metadata: RcMetadata,
+) -> Result<NonNull<u8>, AllocError> {
+    alloc.allocate_zeroed_with_prefix(layout, metadata).map(NonNull::as_non_null_ptr)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

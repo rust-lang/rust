@@ -4,7 +4,7 @@
 //!
 //! See the [`Arc<T>`][Arc] documentation for more details.
 
-use core::alloc::helper::{AllocInit, PrefixAllocator};
+use core::alloc::helper::PrefixAllocator;
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
@@ -367,17 +367,10 @@ impl<T> Arc<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Self {
         let alloc = ArcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::allocate(
-            &alloc,
-            layout,
-            ArcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        );
+        let ptr = allocate(&alloc, Layout::new::<T>(), ArcMetadata::new_strong()).cast::<T>();
         unsafe {
             ptr.as_ptr().write(value);
-            Self::from_raw_in(ptr.as_ptr().cast(), alloc)
+            Self::from_non_null(ptr, alloc)
         }
     }
 
@@ -408,13 +401,7 @@ impl<T> Arc<T> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let alloc = ArcAllocator::new(Global);
-        let ptr = Self::allocate(
-            &alloc,
-            Layout::new::<T>(),
-            ArcMetadata::new_weak(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        );
+        let ptr = allocate(&alloc, Layout::new::<T>(), ArcMetadata::new_weak()).cast::<T>();
 
         // Strong references should collectively own a shared weak reference,
         // so don't run the destructor for our old weak reference.
@@ -435,7 +422,7 @@ impl<T> Arc<T> {
         let prev_value = meta.strong.fetch_add(1, Release);
         debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
 
-        unsafe { Self::from_raw_in(ptr.as_ptr(), weak.alloc) }
+        unsafe { Self::from_non_null(ptr, weak.alloc) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents.
@@ -464,15 +451,8 @@ impl<T> Arc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         let alloc = ArcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::allocate(
-            &alloc,
-            layout,
-            ArcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        );
-        unsafe { Arc::from_raw_in(ptr.as_ptr().cast(), alloc) }
+        let ptr = allocate(&alloc, Layout::new::<T>(), ArcMetadata::new_strong()).cast();
+        unsafe { Arc::from_non_null(ptr, alloc) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -500,15 +480,8 @@ impl<T> Arc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed() -> Arc<mem::MaybeUninit<T>> {
         let alloc = ArcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::allocate(
-            &alloc,
-            layout,
-            ArcMetadata::new_strong(),
-            AllocInit::Zeroed,
-            NonNull::cast,
-        );
-        unsafe { Arc::from_raw_in(ptr.as_ptr().cast(), alloc) }
+        let ptr = allocate_zeroed(&alloc, Layout::new::<T>(), ArcMetadata::new_strong()).cast();
+        unsafe { Arc::from_non_null(ptr, alloc) }
     }
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
@@ -533,11 +506,12 @@ impl<T> Arc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn try_new(data: T) -> Result<Self, AllocError> {
-        let mut arc = Self::try_new_uninit()?;
+    pub fn try_new(value: T) -> Result<Self, AllocError> {
+        let alloc = ArcAllocator::new(Global);
+        let ptr = try_allocate(&alloc, Layout::new::<T>(), ArcMetadata::new_strong())?.cast::<T>();
         unsafe {
-            Arc::get_mut_unchecked(&mut arc).as_mut_ptr().write(data);
-            Ok(arc.assume_init())
+            ptr.as_ptr().write(value);
+            Ok(Self::from_non_null(ptr, alloc))
         }
     }
 
@@ -568,15 +542,8 @@ impl<T> Arc<T> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_uninit() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
         let alloc = ArcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::try_allocate(
-            &alloc,
-            layout,
-            ArcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            NonNull::cast,
-        )?;
-        unsafe { Ok(Arc::from_raw_in(ptr.as_ptr().cast(), alloc)) }
+        let ptr = try_allocate(&alloc, Layout::new::<T>(), ArcMetadata::new_strong())?.cast();
+        unsafe { Ok(Arc::from_non_null(ptr, alloc)) }
     }
 
     /// Constructs a new `Arc` with uninitialized contents, with the memory
@@ -604,15 +571,9 @@ impl<T> Arc<T> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed() -> Result<Arc<mem::MaybeUninit<T>>, AllocError> {
         let alloc = ArcAllocator::new(Global);
-        let layout = Layout::new::<T>();
-        let ptr = Self::try_allocate(
-            &alloc,
-            layout,
-            ArcMetadata::new_strong(),
-            AllocInit::Zeroed,
-            NonNull::cast,
-        )?;
-        unsafe { Ok(Arc::from_raw_in(ptr.as_ptr().cast(), alloc)) }
+        let ptr =
+            try_allocate_zeroed(&alloc, Layout::new::<T>(), ArcMetadata::new_strong())?.cast();
+        unsafe { Ok(Arc::from_non_null(ptr, alloc)) }
     }
     /// Returns the inner value, if the `Arc` has exactly one strong reference.
     ///
@@ -681,14 +642,11 @@ impl<T> Arc<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         let alloc = ArcAllocator::new(Global);
-        let ptr = Arc::allocate(
-            &alloc,
-            Layout::array::<T>(len).unwrap(),
-            ArcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+        let ptr = NonNull::slice_from_raw_parts(
+            allocate(&alloc, Layout::array::<T>(len).unwrap(), ArcMetadata::new_strong()).cast(),
+            len,
         );
-        unsafe { Arc::from_raw_in(ptr.as_ptr(), alloc) }
+        unsafe { Arc::from_non_null(ptr, alloc) }
     }
 
     /// Constructs a new atomically reference-counted slice with uninitialized contents, with the memory being
@@ -715,14 +673,12 @@ impl<T> Arc<[T]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_zeroed_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
         let alloc = ArcAllocator::new(Global);
-        let ptr = Arc::allocate(
-            &alloc,
-            Layout::array::<T>(len).unwrap(),
-            ArcMetadata::new_strong(),
-            AllocInit::Zeroed,
-            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+        let ptr = NonNull::slice_from_raw_parts(
+            allocate_zeroed(&alloc, Layout::array::<T>(len).unwrap(), ArcMetadata::new_strong())
+                .cast(),
+            len,
         );
-        unsafe { Arc::from_raw_in(ptr.as_ptr(), alloc) }
+        unsafe { Arc::from_non_null(ptr, alloc) }
     }
 }
 
@@ -762,7 +718,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub unsafe fn assume_init(self) -> Arc<T> {
         let this = mem::ManuallyDrop::new(self);
-        unsafe { Arc::from_raw_in(this.ptr.cast().as_ptr(), this.alloc) }
+        unsafe { Arc::from_non_null(this.ptr.cast(), this.alloc) }
     }
 }
 
@@ -808,7 +764,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
         let ptr = unsafe {
             NonNull::slice_from_raw_parts(NonNull::new_unchecked(this.ptr.as_mut_ptr().cast()), len)
         };
-        unsafe { Arc::from_raw_in(ptr.as_ptr(), this.alloc) }
+        unsafe { Arc::from_non_null(ptr, this.alloc) }
     }
 }
 
@@ -896,14 +852,14 @@ impl<T: ?Sized> Arc<T> {
     #[inline]
     #[stable(feature = "rc_raw", since = "1.17.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe { Self::from_raw_in(ptr, ArcAllocator::new(Global)) }
+        unsafe {
+            Self::from_non_null(NonNull::new_unchecked(ptr as *mut T), ArcAllocator::new(Global))
+        }
     }
 
-    /// Constructs an `Arc<T, A>` from a raw pointer.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_in(ptr: *const T, alloc: ArcAllocator<Global>) -> Self {
-        Self { ptr: unsafe { NonNull::new_unchecked(ptr as *mut T) }, alloc, _marker: PhantomData }
+    #[inline(always)]
+    unsafe fn from_non_null(ptr: NonNull<T>, alloc: ArcAllocator<Global>) -> Self {
+        Self { ptr, alloc, _marker: PhantomData }
     }
 
     /// Creates a new [`Weak`] pointer to this allocation.
@@ -1111,44 +1067,6 @@ impl<T: ?Sized> Arc<T> {
 }
 
 impl<T: ?Sized> Arc<T> {
-    /// Allocates an `Rc<T>` with sufficient space for
-    /// a possibly-unsized inner value where the value has the layout provided,
-    /// returning an error if allocation fails.
-    ///
-    /// The function `mem_to_rcbox` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
-    #[inline]
-    #[cfg(not(no_global_oom_handling))]
-    fn allocate(
-        alloc: &ArcAllocator<Global>,
-        layout: Layout,
-        meta: ArcMetadata,
-        init: AllocInit,
-        mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
-    ) -> NonNull<T> {
-        let ptr = mem_to_ptr(allocate(alloc, layout, init));
-        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
-        ptr
-    }
-
-    /// Allocates an `Arc<T>` with sufficient space for
-    /// a possibly-unsized inner value where the value has the layout provided.
-    ///
-    /// The function `mem_to_mem` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `Arc<T>`.
-    #[inline]
-    fn try_allocate(
-        alloc: &ArcAllocator<Global>,
-        layout: Layout,
-        meta: ArcMetadata,
-        init: AllocInit,
-        mem_to_ptr: impl FnOnce(NonNull<u8>) -> NonNull<T>,
-    ) -> Result<NonNull<T>, AllocError> {
-        let ptr = mem_to_ptr(try_allocate(alloc, layout, init)?);
-        unsafe { Self::metadata_ptr(ptr).as_ptr().write(meta) }
-        Ok(ptr)
-    }
-
     #[cfg(not(no_global_oom_handling))]
     fn from_box(v: Box<T>) -> Arc<T> {
         unsafe {
@@ -1157,13 +1075,8 @@ impl<T: ?Sized> Arc<T> {
             let arc_alloc = ArcAllocator::new(alloc);
 
             let layout = Layout::for_value(&*bptr);
-            let ptr = Self::allocate(
-                &arc_alloc,
-                layout,
-                ArcMetadata::new_strong(),
-                AllocInit::Uninitialized,
-                |mem| NonNull::new_unchecked(bptr.set_ptr_value(mem.as_ptr())),
-            );
+            let mem = allocate(&arc_alloc, layout, ArcMetadata::new_strong()).cast();
+            let ptr = NonNull::new_unchecked(bptr.set_ptr_value(mem.as_ptr()));
 
             // Copy value as bytes
             ptr::copy_nonoverlapping(
@@ -1175,7 +1088,7 @@ impl<T: ?Sized> Arc<T> {
             // Free the allocation without dropping its contents
             box_free(box_unique, &arc_alloc.parent);
 
-            Self::from_raw_in(ptr.as_ptr(), arc_alloc)
+            Self::from_non_null(ptr, arc_alloc)
         }
     }
 }
@@ -1187,16 +1100,14 @@ impl<T> Arc<[T]> {
     #[cfg(not(no_global_oom_handling))]
     unsafe fn copy_from_slice(v: &[T]) -> Arc<[T]> {
         let alloc = ArcAllocator::new(Global);
-        let ptr = Self::allocate(
-            &alloc,
-            Layout::array::<T>(v.len()).unwrap(),
-            ArcMetadata::new_strong(),
-            AllocInit::Uninitialized,
-            |ptr| NonNull::slice_from_raw_parts(ptr.cast(), v.len()),
+        let ptr = NonNull::slice_from_raw_parts(
+            allocate(&alloc, Layout::array::<T>(v.len()).unwrap(), ArcMetadata::new_strong())
+                .cast(),
+            v.len(),
         );
         unsafe {
             ptr::copy_nonoverlapping(v.as_ptr(), ptr.as_non_null_ptr().as_ptr(), v.len());
-            Self::from_raw_in(ptr.as_ptr(), alloc)
+            Self::from_non_null(ptr, alloc)
         }
     }
 
@@ -1229,12 +1140,9 @@ impl<T> Arc<[T]> {
         unsafe {
             let alloc = ArcAllocator::new(Global);
             let layout = Layout::array::<T>(len).unwrap();
-            let ptr = Self::allocate(
-                &alloc,
-                layout,
-                ArcMetadata::new_strong(),
-                AllocInit::Uninitialized,
-                |ptr| NonNull::slice_from_raw_parts(ptr.cast(), len),
+            let ptr = NonNull::slice_from_raw_parts(
+                allocate(&alloc, layout, ArcMetadata::new_strong()).cast(),
+                len,
             );
 
             let mut guard =
@@ -1248,7 +1156,7 @@ impl<T> Arc<[T]> {
             // All clear. Forget the guard so it doesn't free the new RcBox.
             mem::forget(guard);
 
-            Self::from_raw_in(ptr.as_ptr(), alloc)
+            Self::from_non_null(ptr, alloc)
         }
     }
 }
@@ -1629,7 +1537,7 @@ impl Arc<dyn Any + Send + Sync> {
     {
         if (*self).is::<T>() {
             let this = mem::ManuallyDrop::new(self);
-            unsafe { Ok(Arc::from_raw_in(this.ptr.cast().as_ptr(), this.alloc)) }
+            unsafe { Ok(Arc::from_non_null(this.ptr.cast(), this.alloc)) }
         } else {
             Err(self)
         }
@@ -1769,14 +1677,14 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
-        unsafe { Self::from_raw_in(ptr, ArcAllocator::new(Global)) }
+        unsafe {
+            Self::from_non_null(NonNull::new_unchecked(ptr as *mut T), ArcAllocator::new(Global))
+        }
     }
 
-    /// Constructs a `Weak<T, A>` from a raw pointer.
-    #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_in(ptr: *const T, alloc: ArcAllocator<Global>) -> Self {
-        Self { ptr: unsafe { NonNull::new_unchecked(ptr as *mut T) }, alloc }
+    #[inline(always)]
+    unsafe fn from_non_null(ptr: NonNull<T>, alloc: ArcAllocator<Global>) -> Self {
+        Self { ptr, alloc }
     }
 }
 
@@ -2492,24 +2400,37 @@ impl<T, I: iter::TrustedLen<Item = T>> ToArcSlice<T> for I {
 }
 
 /// Dediated function for allocating to prevent generating a function for every `T`
-#[inline]
 #[cfg(not(no_global_oom_handling))]
-fn allocate(alloc: &ArcAllocator<Global>, layout: Layout, init: AllocInit) -> NonNull<u8> {
-    try_allocate(alloc, layout, init).unwrap_or_else(|_| handle_alloc_error(layout))
+fn allocate(alloc: &ArcAllocator<Global>, layout: Layout, metadata: ArcMetadata) -> NonNull<u8> {
+    try_allocate(alloc, layout, metadata).unwrap_or_else(|_| handle_alloc_error(layout))
 }
 
 /// Dediated function for allocating to prevent generating a function for every `T`
-#[inline]
+#[cfg(not(no_global_oom_handling))]
+fn allocate_zeroed(
+    alloc: &ArcAllocator<Global>,
+    layout: Layout,
+    metadata: ArcMetadata,
+) -> NonNull<u8> {
+    try_allocate_zeroed(alloc, layout, metadata).unwrap_or_else(|_| handle_alloc_error(layout))
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
 fn try_allocate(
     alloc: &ArcAllocator<Global>,
     layout: Layout,
-    init: AllocInit,
+    metadata: ArcMetadata,
 ) -> Result<NonNull<u8>, AllocError> {
-    let ptr = match init {
-        AllocInit::Uninitialized => alloc.allocate(layout)?,
-        AllocInit::Zeroed => alloc.allocate_zeroed(layout)?,
-    };
-    Ok(ptr.as_non_null_ptr())
+    alloc.allocate_with_prefix(layout, metadata).map(NonNull::as_non_null_ptr)
+}
+
+/// Dediated function for allocating to prevent generating a function for every `T`
+fn try_allocate_zeroed(
+    alloc: &ArcAllocator<Global>,
+    layout: Layout,
+    metadata: ArcMetadata,
+) -> Result<NonNull<u8>, AllocError> {
+    alloc.allocate_zeroed_with_prefix(layout, metadata).map(NonNull::as_non_null_ptr)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

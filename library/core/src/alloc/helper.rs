@@ -128,6 +128,42 @@ impl<Alloc, Prefix> PrefixAllocator<Alloc, Prefix> {
 
         Ok(Self::create_ptr(alloc(layout)?, offset_prefix))
     }
+
+    /// Behaves like `allocate` but also writes the `prefix`
+    pub fn allocate_with_prefix(
+        &self,
+        layout: Layout,
+        prefix: Prefix,
+    ) -> Result<NonNull<[u8]>, AllocError>
+    where
+        Alloc: Allocator,
+    {
+        let (layout, offset_prefix) =
+            Layout::new::<Prefix>().extend(layout).map_err(|_| AllocError)?;
+
+        let memory = self.parent.allocate(layout)?;
+        // SAFETY: memory was just allocated with the layout of `Prefix`
+        unsafe { memory.as_mut_ptr().cast::<Prefix>().write(prefix) };
+        Ok(Self::create_ptr(memory, offset_prefix))
+    }
+
+    /// Behaves like `allocate_zeroed` but also writes the `prefix`
+    pub fn allocate_zeroed_with_prefix(
+        &self,
+        layout: Layout,
+        prefix: Prefix,
+    ) -> Result<NonNull<[u8]>, AllocError>
+    where
+        Alloc: Allocator,
+    {
+        let (layout, offset_prefix) =
+            Layout::new::<Prefix>().extend(layout).map_err(|_| AllocError)?;
+
+        let memory = self.parent.allocate_zeroed(layout)?;
+        // SAFETY: memory was just allocated with the layout of `Prefix`
+        unsafe { memory.as_mut_ptr().cast::<Prefix>().write(prefix) };
+        Ok(Self::create_ptr(memory, offset_prefix))
+    }
 }
 
 unsafe impl<Alloc, Prefix> Allocator for PrefixAllocator<Alloc, Prefix>
