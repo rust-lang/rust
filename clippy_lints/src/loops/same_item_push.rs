@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
             "it looks like the same item is being pushed into this Vec",
             None,
             &format!(
-                "try using vec![{}; SIZE] or {}.resize(NEW_SIZE, {})",
+                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
                 item_str, vec_str, item_str
             ),
         );
