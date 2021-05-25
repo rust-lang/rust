@@ -3,7 +3,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
-use rustc_session::lint::FutureBreakage;
 use rustc_span::symbol::sym;
 
 declare_lint! {
@@ -20,28 +19,15 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// In the future, it is planned to add an `IntoIter` implementation for
-    /// arrays such that it will iterate over *values* of the array instead of
-    /// references. Due to how method resolution works, this will change
-    /// existing code that uses `into_iter` on arrays. The solution to avoid
-    /// this warning is to use `iter()` instead of `into_iter()`.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard error
-    /// in the future. See [issue #66145] for more details and a more thorough
-    /// description of the lint.
-    ///
-    /// [issue #66145]: https://github.com/rust-lang/rust/issues/66145
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    /// Since Rust 1.53, arrays implement `IntoIterator`. However, to avoid
+    /// breakage, `array.into_iter()` in Rust 2015 and 2018 code will still
+    /// behave as `(&array).into_iter()`, returning an iterator over
+    /// references, just like in Rust 1.52 and earlier.
+    /// This only applies to the method call syntax `array.into_iter()`, not to
+    /// any other syntax such as `for _ in array` or `IntoIterator::into_iter(array)`.
     pub ARRAY_INTO_ITER,
     Warn,
-    "detects calling `into_iter` on arrays",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #66145 <https://github.com/rust-lang/rust/issues/66145>",
-        edition: None,
-        future_breakage: Some(FutureBreakage {
-            date: None
-        })
-    };
+    "detects calling `into_iter` on arrays in Rust 2015 and 2018",
 }
 
 declare_lint_pass!(
@@ -107,10 +93,10 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             };
             cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
                 lint.build(&format!(
-                "this method call currently resolves to `<&{} as IntoIterator>::into_iter` (due \
-                    to autoref coercions), but that might change in the future when \
-                    `IntoIterator` impls for arrays are added.",
-                target,
+                    "this method call resolves to `<&{} as IntoIterator>::into_iter` \
+                    (due to backwards compatibility), \
+                    but will resolve to <{} as IntoIterator>::into_iter in Rust 2021.",
+                    target, target,
                 ))
                 .span_suggestion(
                     call.ident.span,
