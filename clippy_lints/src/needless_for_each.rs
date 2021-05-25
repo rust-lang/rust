@@ -142,7 +142,7 @@ impl<'tcx> Visitor<'tcx> for RetCollector {
         match expr.kind {
             ExprKind::Ret(..) => {
                 if self.loop_depth > 0 && !self.ret_in_loop {
-                    self.ret_in_loop = true
+                    self.ret_in_loop = true;
                 }
 
                 self.spans.push(expr.span);
