@@ -12,8 +12,7 @@ fn union_field() {
     union Union { unit: (), void: Void }
     let u = Union { unit: () };
     match u.void {}
-    //[mir]~^ ERROR access to union field is unsafe
-    // FIXME(thir-unsafeck): AccessToUnionField unimplemented
+    //~^ ERROR access to union field is unsafe
 }
 
 fn raw_ptr_deref() {
