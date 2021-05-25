@@ -667,7 +667,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr<'_>, methods: &[&str]) -> Option<Vec
                     return None;
                 }
                 matched.push(args); // build up `matched` backwards
-                current = &args[0] // go to parent expression
+                current = &args[0]; // go to parent expression
             } else {
                 return None;
             }
@@ -1094,9 +1094,9 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
 /// the function once on the given pattern.
 pub fn recurse_or_patterns<'tcx, F: FnMut(&'tcx Pat<'tcx>)>(pat: &'tcx Pat<'tcx>, mut f: F) {
     if let PatKind::Or(pats) = pat.kind {
-        pats.iter().copied().for_each(f)
+        pats.iter().copied().for_each(f);
     } else {
-        f(pat)
+        f(pat);
     }
 }
 
