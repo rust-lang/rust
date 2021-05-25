@@ -778,8 +778,10 @@ fn write_bounds_like_dyn_trait(
             }
             WhereClause::AliasEq(alias_eq) if is_fn_trait => {
                 is_fn_trait = false;
-                write!(f, " -> ")?;
-                alias_eq.ty.hir_fmt(f)?;
+                if !alias_eq.ty.is_unit() {
+                    write!(f, " -> ")?;
+                    alias_eq.ty.hir_fmt(f)?;
+                }
             }
             WhereClause::AliasEq(AliasEq { ty, alias }) => {
                 // in types in actual Rust, these will always come
