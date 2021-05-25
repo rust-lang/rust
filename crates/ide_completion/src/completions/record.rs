@@ -108,8 +108,6 @@ fn process(f: S) {
         check_snippet(
             test_code,
             expect![[r#"
-                sn pd
-                sn ppd
                 fd ..Default::default()
             "#]],
         );
@@ -179,13 +177,7 @@ fn process(f: S) {
             "#]],
         );
 
-        check_snippet(
-            test_code,
-            expect![[r#"
-                sn pd
-                sn ppd
-            "#]],
-        );
+        check_snippet(test_code, expect![[r#""#]]);
     }
 
     #[test]
