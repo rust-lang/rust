@@ -3876,6 +3876,7 @@ dependencies = [
  "rand 0.7.3",
  "rustc_ast",
  "rustc_data_structures",
+ "rustc_errors",
  "rustc_fs_util",
  "rustc_graphviz",
  "rustc_hir",

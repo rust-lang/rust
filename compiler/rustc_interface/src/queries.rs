@@ -148,7 +148,7 @@ impl<'tcx> Queries<'tcx> {
                 self.compiler.register_lints.as_deref().unwrap_or_else(|| empty),
                 krate,
                 &crate_name,
-            );
+            )?;
 
             // Compute the dependency graph (in the background). We want to do
             // this as early as possible, to give the DepGraph maximum time to
@@ -157,7 +157,7 @@ impl<'tcx> Queries<'tcx> {
             // called, which happens within passes::register_plugins().
             self.dep_graph_future().ok();
 
-            result
+            Ok(result)
         })
     }
 

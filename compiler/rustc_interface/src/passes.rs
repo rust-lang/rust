@@ -172,7 +172,7 @@ pub fn register_plugins<'a>(
 
     let disambiguator = util::compute_crate_disambiguator(sess);
     sess.crate_disambiguator.set(disambiguator).expect("not yet initialized");
-    rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
+    rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator)?;
 
     if sess.opts.incremental.is_some() {
         sess.time("incr_comp_garbage_collect_session_directories", || {
