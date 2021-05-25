@@ -975,18 +975,24 @@ window.initSearch = function(rawSearchIndex) {
             output = "<div class=\"search-results " + extraClass + "\">";
 
             array.forEach(function(item) {
-                var name, type;
-
-                name = item.name;
-                type = itemTypes[item.ty];
-
                 if (item.is_alias !== true) {
                     if (duplicates[item.fullPath]) {
                         return;
                     }
                     duplicates[item.fullPath] = true;
                 }
+
+                var name = item.name;
+                var type = itemTypes[item.ty];
+
                 length += 1;
+
+                var extra = "";
+                if (type === "primitive") {
+                    extra = " <i>(primitive type)</i>";
+                } else if (type === "keyword") {
+                    extra = " <i>(keyword)</i>";
+                }
 
                 output += "<a class=\"result-" + type + "\" href=\"" + item.href + "\">" +
                           "<div><div class=\"result-name\">" +
@@ -994,7 +1000,7 @@ window.initSearch = function(rawSearchIndex) {
                            ("<span class=\"alias\"><b>" + item.alias + " </b></span><span " +
                               "class=\"grey\"><i>&nbsp;- see&nbsp;</i></span>") : "") +
                           item.displayPath + "<span class=\"" + type + "\">" +
-                          name + "</span></div><div class=\"desc\">" +
+                          name + extra + "</span></div><div class=\"desc\">" +
                           "<span>" + item.desc +
                           "&nbsp;</span></div></div></a>";
             });
