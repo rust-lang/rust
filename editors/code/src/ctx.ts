@@ -10,7 +10,6 @@ import { ServerStatusParams } from './lsp_ext';
 export type Workspace =
     {
         kind: 'Workspace Folder';
-        folder: vscode.Uri;
     }
     | {
         kind: 'Detached Files';

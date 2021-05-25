@@ -45,8 +45,7 @@ async function tryActivate(context: vscode.ExtensionContext) {
         throw new Error(message);
     });
 
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (workspaceFolder === undefined) {
+    if (vscode.workspace.workspaceFolders?.length === 0) {
         const rustDocuments = vscode.workspace.textDocuments.filter(document => isRustDocument(document));
         if (rustDocuments.length > 0) {
             ctx = await Ctx.create(config, context, serverPath, { kind: 'Detached Files', files: rustDocuments });
@@ -58,8 +57,8 @@ async function tryActivate(context: vscode.ExtensionContext) {
         // registers its `onDidChangeDocument` handler before us.
         //
         // This a horribly, horribly wrong way to deal with this problem.
-        ctx = await Ctx.create(config, context, serverPath, { kind: "Workspace Folder", folder: workspaceFolder.uri });
-        ctx.pushCleanup(activateTaskProvider(workspaceFolder, ctx.config));
+        ctx = await Ctx.create(config, context, serverPath, { kind: "Workspace Folder" });
+        ctx.pushCleanup(activateTaskProvider(ctx.config));
     }
     await initCommonContext(context, ctx);
 
