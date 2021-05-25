@@ -158,7 +158,7 @@ impl SlowVectorInit {
     ) {
         match initialization {
             InitializationType::Extend(e) | InitializationType::Resize(e) => {
-                Self::emit_lint(cx, e, vec_alloc, "slow zero-filling initialization")
+                Self::emit_lint(cx, e, vec_alloc, "slow zero-filling initialization");
             },
         };
     }
@@ -290,7 +290,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
     fn visit_block(&mut self, block: &'tcx Block<'_>) {
         if self.initialization_found {
             if let Some(s) = block.stmts.get(0) {
-                self.visit_stmt(s)
+                self.visit_stmt(s);
             }
 
             self.initialization_found = false;

@@ -199,7 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrow {
                     |diag| {
                         diag.multipart_suggestion("try this", replacements, app);
                     },
-                )
+                );
             }
             self.current_body = None;
         }

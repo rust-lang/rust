@@ -684,7 +684,7 @@ impl<T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder
 
             if let Some(non_whitespace_offset) = non_whitespace_offset {
                 remove_span = remove_span
-                    .with_hi(remove_span.hi() + BytePos(non_whitespace_offset.try_into().expect("offset too large")))
+                    .with_hi(remove_span.hi() + BytePos(non_whitespace_offset.try_into().expect("offset too large")));
             }
         }
 

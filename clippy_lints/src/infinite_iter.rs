@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for InfiniteIter {
                 return;
             },
         };
-        span_lint(cx, lint, expr.span, msg)
+        span_lint(cx, lint, expr.span, msg);
     }
 }
 

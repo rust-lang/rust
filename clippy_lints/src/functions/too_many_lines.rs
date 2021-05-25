@@ -63,6 +63,6 @@ pub(super) fn check_fn(cx: &LateContext<'_>, span: Span, body: &'tcx hir::Body<'
                 "this function has too many lines ({}/{})",
                 line_count, too_many_lines_threshold
             ),
-        )
+        );
     }
 }

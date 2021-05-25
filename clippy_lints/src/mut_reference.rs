@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
                 let substs = cx.typeck_results().node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
-                check_arguments(cx, arguments, method_type, &path.ident.as_str(), "method")
+                check_arguments(cx, arguments, method_type, &path.ident.as_str(), "method");
             },
             _ => (),
         }

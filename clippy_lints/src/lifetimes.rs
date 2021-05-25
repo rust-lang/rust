@@ -205,7 +205,7 @@ fn could_use_elision<'tcx>(
         output_visitor.visit_ty(ty);
     }
     for lt in named_generics {
-        input_visitor.visit_generic_param(lt)
+        input_visitor.visit_generic_param(lt);
     }
 
     if input_visitor.abort() || output_visitor.abort() {
@@ -463,7 +463,7 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
         // `'b` in `'a: 'b` is useless unless used elsewhere in
         // a non-lifetime bound
         if let GenericParamKind::Type { .. } = param.kind {
-            walk_generic_param(self, param)
+            walk_generic_param(self, param);
         }
     }
     fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {

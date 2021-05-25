@@ -88,10 +88,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         if let ty::BorrowKind::MutBorrow = bk {
             if let PlaceBase::Local(id) = cmt.place.base {
                 if Some(id) == self.hir_id_low {
-                    self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
+                    self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
                 }
                 if Some(id) == self.hir_id_high {
-                    self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
+                    self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
                 }
             }
         }
@@ -100,10 +100,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         if let PlaceBase::Local(id) = cmt.place.base {
             if Some(id) == self.hir_id_low {
-                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id))
+                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
             }
             if Some(id) == self.hir_id_high {
-                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id))
+                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
             }
         }
     }

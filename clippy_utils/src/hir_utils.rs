@@ -810,7 +810,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_name(f.ident.name);
                     self.hash_pat(f.pat);
                 }
-                e.hash(&mut self.s)
+                e.hash(&mut self.s);
             },
             PatKind::Tuple(pats, e) => {
                 for pat in pats {

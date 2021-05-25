@@ -87,7 +87,7 @@ where
         }
 
         fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'_>) {
-            intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt)
+            intravisit::walk_stmt(&mut *self.inside_stmt(true), stmt);
         }
 
         fn visit_expr(&mut self, expr: &'hir hir::Expr<'_>) {
@@ -219,7 +219,7 @@ pub fn visit_break_exprs<'tcx>(
 
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             if let ExprKind::Break(dest, sub_expr) = e.kind {
-                self.0(e, dest, sub_expr)
+                self.0(e, dest, sub_expr);
             }
             walk_expr(self, e);
         }
@@ -251,7 +251,7 @@ pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
                     self.found = true;
                 }
             } else {
-                walk_expr(self, e)
+                walk_expr(self, e);
             }
         }
     }

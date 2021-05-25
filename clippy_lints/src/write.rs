@@ -300,7 +300,7 @@ impl EarlyLintPass for Write {
                                 Applicability::MachineApplicable,
                             );
                         },
-                    )
+                    );
                 }
             }
         } else if mac.path == sym!(writeln) {

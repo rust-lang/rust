@@ -135,7 +135,7 @@ pub(crate) trait BindInsteadOfMap {
                         .into_iter()
                         .map(|(span1, span2)| (span1, snippet(cx, span2, "_").into())),
                 ),
-            )
+            );
         });
         true
     }

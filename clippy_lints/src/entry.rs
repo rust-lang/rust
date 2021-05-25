@@ -469,7 +469,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     let mut is_map_used = self.is_map_used;
                     for arm in arms {
                         if let Some(Guard::If(guard) | Guard::IfLet(_, guard)) = arm.guard {
-                            self.visit_non_tail_expr(guard)
+                            self.visit_non_tail_expr(guard);
                         }
                         is_map_used |= self.visit_cond_arm(arm.body);
                     }

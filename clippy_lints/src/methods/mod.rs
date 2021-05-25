@@ -1951,7 +1951,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
     if let Some((name, [recv, args @ ..], span)) = method_call!(expr) {
         match (name, args) {
             ("add" | "offset" | "sub" | "wrapping_offset" | "wrapping_add" | "wrapping_sub", [recv, _]) => {
-                zst_offset::check(cx, expr, recv)
+                zst_offset::check(cx, expr, recv);
             },
             ("and_then", [arg]) => {
                 let biom_option_linted = bind_instead_of_map::OptionAndThenSome::check(cx, expr, recv, arg);
@@ -2012,7 +2012,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, msrv),
                         ("as_ref", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, false, msrv),
                         ("filter", [f_arg]) => {
-                            filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false)
+                            filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, false);
                         },
                         ("find", [f_arg]) => filter_map::check(cx, expr, recv2, f_arg, span2, recv, m_arg, span, true),
                         _ => {},
@@ -2058,7 +2058,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     manual_saturating_arithmetic::check(cx, expr, lhs, rhs, u_arg, &arith["checked_".len()..]);
                 },
                 Some(("map", [m_recv, m_arg], span)) => {
-                    option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span)
+                    option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span);
                 },
                 _ => {},
             },
@@ -2073,7 +2073,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
 
 fn check_is_some_is_none(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, is_some: bool) {
     if let Some((name @ ("find" | "position" | "rposition"), [f_recv, arg], span)) = method_call!(recv) {
-        search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span)
+        search_is_some::check(cx, expr, name, is_some, f_recv, arg, recv, span);
     }
 }
 

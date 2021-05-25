@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
                                           kind_word,
                                           snippet(cx, pattern.span, "..")))]
                             .into_iter().chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
-                        )
+                        );
                     });
                 }
             }

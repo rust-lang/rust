@@ -156,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                                         vec![(left.span, lsnip), (right.span, rsnip)],
                                     );
                                 },
-                            )
+                            );
                         } else if lcpy
                             && !rcpy
                             && implements_trait(cx, lty, trait_id, &[cx.typeck_results().expr_ty(right).into()])
@@ -175,7 +175,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                                         Applicability::MaybeIncorrect, // FIXME #2597
                                     );
                                 },
-                            )
+                            );
                         } else if !lcpy
                             && rcpy
                             && implements_trait(cx, cx.typeck_results().expr_ty(left), trait_id, &[rty.into()])
@@ -194,7 +194,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                                         Applicability::MaybeIncorrect, // FIXME #2597
                                     );
                                 },
-                            )
+                            );
                         }
                     },
                     // &foo == bar
@@ -218,7 +218,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                                         Applicability::MaybeIncorrect, // FIXME #2597
                                     );
                                 },
-                            )
+                            );
                         }
                     },
                     // foo == &bar
@@ -236,7 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                                     rsnip,
                                     Applicability::MaybeIncorrect, // FIXME #2597
                                 );
-                            })
+                            });
                         }
                     },
                     _ => {},

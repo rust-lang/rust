@@ -476,7 +476,7 @@ fn emit_branches_sharing_code_lint(
         }
 
         suggestions.push(("end", span, suggestion.to_string()));
-        add_expr_note = !cx.typeck_results().expr_ty(if_expr).is_unit()
+        add_expr_note = !cx.typeck_results().expr_ty(if_expr).is_unit();
     }
 
     let add_optional_msgs = |diag: &mut DiagnosticBuilder<'_>| {

@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                                         ));
                                     }
                                 }
-                            })
+                            });
                         },
                     );
                 }

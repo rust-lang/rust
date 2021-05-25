@@ -139,7 +139,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                 } else {
                     RetReplacement::Empty
                 };
-                check_final_expr(cx, &body.value, Some(body.value.span), replacement)
+                check_final_expr(cx, &body.value, Some(body.value.span), replacement);
             },
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 if let ExprKind::Block(block, _) = body.value.kind {
@@ -241,7 +241,7 @@ fn emit_return_lint(cx: &LateContext<'_>, ret_span: Span, inner_span: Option<Spa
                 if let Some(snippet) = snippet_opt(cx, inner_span) {
                     diag.span_suggestion(ret_span, "remove `return`", snippet, Applicability::MachineApplicable);
                 }
-            })
+            });
         },
         None => match replacement {
             RetReplacement::Empty => {

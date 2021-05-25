@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                 for arg in args {
                     // skip `foo(macro!())`
                     if arg.span.ctxt() == expr.span.ctxt() {
-                        check_closure(cx, arg)
+                        check_closure(cx, arg);
                     }
                 }
             },
@@ -190,9 +190,10 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: def_id::DefId, self_a
     cx.tcx.impl_of_method(method_def_id).and_then(|_| {
         //a type may implicitly implement other type's methods (e.g. Deref)
         if match_types(expected_type_of_self, actual_type_of_self) {
-            return Some(get_type_name(cx, actual_type_of_self));
+            Some(get_type_name(cx, actual_type_of_self))
+        } else {
+            None
         }
-        None
     })
 }
 

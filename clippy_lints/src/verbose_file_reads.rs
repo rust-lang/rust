@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for VerboseFileReads {
                 "use of `File::read_to_string`",
                 None,
                 "consider using `fs::read_to_string` instead",
-            )
+            );
         }
     }
 }
