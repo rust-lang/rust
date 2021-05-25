@@ -796,16 +796,6 @@ a {
 	display: inline-block;
 }
 
-.result-name span.primitive::after {
-	content: ' (primitive type)';
-	font-style: italic;
-}
-
-.result-name span.keyword::after {
-	content: ' (keyword)';
-	font-style: italic;
-}
-
 body.blur > :not(#help) {
 	filter: blur(8px);
 	-webkit-filter: blur(8px);
