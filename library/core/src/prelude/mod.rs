@@ -37,5 +37,11 @@ pub mod rust_2021 {
     #[doc(no_inline)]
     pub use super::v1::*;
 
-    // FIXME: Add more things.
+    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[doc(no_inline)]
+    pub use crate::iter::FromIterator;
+
+    #[unstable(feature = "prelude_2021", issue = "85684")]
+    #[doc(no_inline)]
+    pub use crate::convert::{TryFrom, TryInto};
 }
