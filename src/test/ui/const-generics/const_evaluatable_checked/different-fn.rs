@@ -9,6 +9,7 @@ struct Foo<T>(PhantomData<T>);
 fn test<T>() -> [u8; size_of::<T>()] {
     [0; size_of::<Foo<T>>()]
     //~^ ERROR unconstrained generic constant
+    //~| ERROR mismatched types
 }
 
 fn main() {
