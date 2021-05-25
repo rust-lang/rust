@@ -8,7 +8,6 @@
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(test)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]

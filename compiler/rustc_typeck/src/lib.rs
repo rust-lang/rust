@@ -65,7 +65,6 @@ This API is completely unstable and subject to change.
 #![feature(is_sorted)]
 #![feature(iter_zip)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![feature(slice_partition_dedup)]

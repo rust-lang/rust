@@ -10,7 +10,6 @@
     test(attr(deny(warnings)))
 )]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(bool_to_option)]
 
 pub use Alignment::*;

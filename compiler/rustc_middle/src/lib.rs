@@ -36,7 +36,6 @@
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
 #![feature(test)]

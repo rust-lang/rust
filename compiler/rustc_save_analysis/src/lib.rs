@@ -1,6 +1,5 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 mod dump_visitor;

@@ -9,7 +9,6 @@
 #![feature(decl_macro)]
 #![feature(iter_zip)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![recursion_limit = "256"]

@@ -10,7 +10,6 @@
 #![feature(bool_to_option)]
 #![feature(iter_zip)]
 #![feature(once_cell)]
-#![cfg_attr(bootstrap, feature(or_patterns))]
 #![recursion_limit = "256"]
 
 #[macro_use]

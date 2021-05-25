@@ -274,7 +274,7 @@ pub trait Eq: PartialEq<Self> {
     //
     // This should never be implemented by hand.
     #[doc(hidden)]
-    #[cfg_attr(not(bootstrap), no_coverage)] // rust-lang/rust#84605
+    #[no_coverage] // rust-lang/rust#84605
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
