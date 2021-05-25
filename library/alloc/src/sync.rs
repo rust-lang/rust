@@ -2300,6 +2300,20 @@ impl<T: ?Sized + Hash> Hash for Arc<T> {
 
 #[stable(feature = "from_for_ptrs", since = "1.6.0")]
 impl<T> From<T> for Arc<T> {
+    /// Converts a `T` into an `Arc<T>`
+    ///
+    /// The conversion moves the value into a
+    /// newly allocated `Arc`. It is equivalent to
+    /// calling `Arc::new(t)`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::sync::Arc;
+    /// let x = 5;
+    /// let arc = Arc::new(5);
+    ///
+    /// assert_eq!(Arc::from(x), arc);
+    /// ```
     fn from(t: T) -> Self {
         Arc::new(t)
     }
