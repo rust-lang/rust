@@ -110,6 +110,14 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                     "iter".into(),
                     Applicability::MachineApplicable,
                 )
+                .multipart_suggestion(
+                    "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
+                    vec![
+                        (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
+                        (receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()), ")".into()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                )
                 .emit();
             })
         }
