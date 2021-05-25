@@ -1,4 +1,4 @@
-use hir::{Impl, Semantics};
+use hir::{AsAssocItem, Impl, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
@@ -36,6 +36,7 @@ pub(crate) fn goto_implementation(
         }
         ast::NameLike::Lifetime(_) => None,
     }?;
+
     let def = match def {
         Definition::ModuleDef(def) => def,
         _ => return None,
@@ -47,6 +48,12 @@ pub(crate) fn goto_implementation(
         hir::ModuleDef::BuiltinType(builtin) => {
             let module = sema.to_module_def(position.file_id)?;
             impls_for_ty(&sema, builtin.ty(sema.db, module))
+        }
+        hir::ModuleDef::Function(f) => {
+            let assoc = f.as_assoc_item(sema.db)?;
+            let name = assoc.name(sema.db)?;
+            let trait_ = assoc.containing_trait(sema.db)?;
+            impls_for_trait_fn(&sema, trait_, name)
         }
         _ => return None,
     };
@@ -61,6 +68,23 @@ fn impls_for_trait(sema: &Semantics<RootDatabase>, trait_: hir::Trait) -> Vec<Na
     Impl::all_for_trait(sema.db, trait_)
         .into_iter()
         .filter_map(|imp| imp.try_to_nav(sema.db))
+        .collect()
+}
+
+fn impls_for_trait_fn(
+    sema: &Semantics<RootDatabase>,
+    trait_: hir::Trait,
+    fun_name: hir::Name,
+) -> Vec<NavigationTarget> {
+    Impl::all_for_trait(sema.db, trait_)
+        .into_iter()
+        .filter_map(|imp| {
+            let item = imp.items(sema.db).iter().find_map(|itm| {
+                let itm_name = itm.name(sema.db)?;
+                (itm_name == fun_name).then(|| itm.clone())
+            })?;
+            item.try_to_nav(sema.db)
+        })
         .collect()
 }
 
@@ -259,6 +283,26 @@ fn foo(_: bool$0) {{}}
 #[lang = "bool"]
 impl bool {}
    //^^^^
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_implementation_trait_functions() {
+        check(
+            r#"
+trait Tr {
+    fn f$0();
+}
+
+struct S;
+
+impl Tr for S {
+    fn f() {
+     //^
+        println!("Hello, world!");
+    }
+}
 "#,
         );
     }
