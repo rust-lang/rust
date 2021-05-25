@@ -807,7 +807,7 @@ void calculateUnusedValuesInFunction(
             PrimalSeen, oldUnreachable);
         return ivn;
       });
-#if 0
+#if 1
   llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
   for (auto a : unnecessaryValues) {
     llvm::errs() << *a << "\n";
