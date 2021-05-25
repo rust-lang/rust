@@ -71,7 +71,7 @@ pub(super) fn element(
         }
         NAME_REF => {
             let name_ref = element.into_node().and_then(ast::NameRef::cast).unwrap();
-            highlight_func_by_name_ref(sema, &name_ref).unwrap_or_else(|| {
+            highlight_func_by_name_ref(sema, krate, &name_ref).unwrap_or_else(|| {
                 let is_self = name_ref.self_token().is_some();
                 let h = match NameRefClass::classify(sema, &name_ref) {
                     Some(name_kind) => match name_kind {
@@ -108,7 +108,7 @@ pub(super) fn element(
                         NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
                     },
                     None if syntactic_name_ref_highlighting => {
-                        highlight_name_ref_by_syntax(name_ref, sema)
+                        highlight_name_ref_by_syntax(name_ref, sema, krate)
                     }
                     None => HlTag::UnresolvedReference.into(),
                 };
@@ -434,19 +434,23 @@ fn highlight_def(db: &RootDatabase, krate: Option<hir::Crate>, def: Definition) 
 
 fn highlight_func_by_name_ref(
     sema: &Semantics<RootDatabase>,
+    krate: Option<hir::Crate>,
     name_ref: &ast::NameRef,
 ) -> Option<Highlight> {
     let mc = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
-    highlight_method_call(sema, &mc)
+    highlight_method_call(sema, krate, &mc)
 }
 
 fn highlight_method_call(
     sema: &Semantics<RootDatabase>,
+    krate: Option<hir::Crate>,
     method_call: &ast::MethodCallExpr,
 ) -> Option<Highlight> {
     let func = sema.resolve_method_call(&method_call)?;
+
     let mut h = SymbolKind::Function.into();
     h |= HlMod::Associated;
+
     if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(&method_call) {
         h |= HlMod::Unsafe;
     }
@@ -454,7 +458,10 @@ fn highlight_method_call(
         h |= HlMod::Async;
     }
     if func.as_assoc_item(sema.db).and_then(|it| it.containing_trait(sema.db)).is_some() {
-        h |= HlMod::Trait
+        h |= HlMod::Trait;
+    }
+    if Some(func.module(sema.db).krate()) != krate {
+        h |= HlMod::Library;
     }
 
     if let Some(self_param) = func.self_param(sema.db) {
@@ -503,7 +510,11 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
     tag.into()
 }
 
-fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabase>) -> Highlight {
+fn highlight_name_ref_by_syntax(
+    name: ast::NameRef,
+    sema: &Semantics<RootDatabase>,
+    krate: Option<hir::Crate>,
+) -> Highlight {
     let default = HlTag::UnresolvedReference;
 
     let parent = match name.syntax().parent() {
@@ -514,7 +525,7 @@ fn highlight_name_ref_by_syntax(name: ast::NameRef, sema: &Semantics<RootDatabas
     match parent.kind() {
         METHOD_CALL_EXPR => {
             return ast::MethodCallExpr::cast(parent)
-                .and_then(|it| highlight_method_call(sema, &it))
+                .and_then(|it| highlight_method_call(sema, krate, &it))
                 .unwrap_or_else(|| SymbolKind::Function.into());
         }
         FIELD_EXPR => {

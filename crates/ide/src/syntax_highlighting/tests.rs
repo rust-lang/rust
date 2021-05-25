@@ -232,7 +232,7 @@ fn use_foo_items() {
 
     let control_flow = foo::identity(foo::ControlFlow::Continue);
 
-    if let foo::ControlFlow::Die = control_flow {
+    if control_flow.should_die() {
         foo::die!();
     }
 }
@@ -247,6 +247,12 @@ pub struct Person {
 pub enum ControlFlow {
     Continue,
     Die,
+}
+
+impl ControlFlow {
+    pub fn should_die(self) -> bool {
+        matches!(self, ControlFlow::Die)
+    }
 }
 
 pub fn identity<T>(x: T) -> T { x }
