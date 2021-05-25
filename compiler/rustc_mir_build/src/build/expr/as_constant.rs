@@ -1,8 +1,8 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::Builder;
-use crate::thir::*;
 use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

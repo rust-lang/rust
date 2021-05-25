@@ -220,6 +220,11 @@ rustc_queries! {
         desc { "checking if the crate is_panic_runtime" }
     }
 
+    /// Fetch the THIR for a given body. If typeck for that body failed, returns an empty `Thir`.
+    query thir_body(key: ty::WithOptConstParam<LocalDefId>) -> (&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId) {
+        desc { |tcx| "building THIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
+    }
+
     /// Set of all the `DefId`s in this crate that have MIR associated with
     /// them. This includes all the body owners, but also things like struct
     /// constructors.

@@ -5,11 +5,11 @@ use rustc_index::vec::Idx;
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::thir::*;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::mir::Place;
 use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, UpvarSubsts};
 use rustc_span::Span;
 

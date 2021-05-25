@@ -3,13 +3,13 @@
 use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
-use crate::thir::*;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_middle::ty::AdtDef;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, Variance};
 use rustc_span::Span;

@@ -1,8 +1,8 @@
 use crate::thir::visit::{self, Visitor};
-use crate::thir::*;
 
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
@@ -328,13 +328,20 @@ impl UnsafeOpKind {
 
 // FIXME: checking unsafety for closures should be handled by their parent body,
 // as they inherit their "safety context" from their declaration site.
-pub fn check_unsafety<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    thir: &Thir<'tcx>,
-    expr: ExprId,
-    def_id: LocalDefId,
-    hir_id: hir::HirId,
-) {
+pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalDefId>) {
+    // THIR unsafeck is gated under `-Z thir-unsafeck`
+    if !tcx.sess.opts.debugging_opts.thir_unsafeck {
+        return;
+    }
+
+    let (thir, expr) = tcx.thir_body(def);
+    let thir = &thir.borrow();
+    // If `thir` is empty, a type error occured, skip this body.
+    if thir.exprs.is_empty() {
+        return;
+    }
+
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_unsafety = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(BodyUnsafety::Safe, |fn_sig| {
         if fn_sig.header.unsafety == hir::Unsafety::Unsafe {
             BodyUnsafety::Unsafe(fn_sig.span)
@@ -342,12 +349,12 @@ pub fn check_unsafety<'tcx>(
             BodyUnsafety::Safe
         }
     });
-    let body_target_features = &tcx.codegen_fn_attrs(def_id).target_features;
+    let body_target_features = &tcx.codegen_fn_attrs(def.did).target_features;
     let safety_context =
         if body_unsafety.is_unsafe() { SafetyContext::UnsafeFn } else { SafetyContext::Safe };
     let is_const = match tcx.hir().body_owner_kind(hir_id) {
         hir::BodyOwnerKind::Closure => false,
-        hir::BodyOwnerKind::Fn => tcx.is_const_fn_raw(def_id.to_def_id()),
+        hir::BodyOwnerKind::Fn => tcx.is_const_fn_raw(def.did.to_def_id()),
         hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => true,
     };
     let mut visitor = UnsafetyVisitor {
@@ -362,22 +369,11 @@ pub fn check_unsafety<'tcx>(
     visitor.visit_expr(&thir[expr]);
 }
 
-crate fn thir_check_unsafety_inner<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
-) {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let body_id = tcx.hir().body_owned_by(hir_id);
-    let body = tcx.hir().body(body_id);
-    let (thir, expr) = cx::build_thir(tcx, def, &body.value);
-    check_unsafety(tcx, &thir, expr, def.did, hir_id);
-}
-
 crate fn thir_check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
         tcx.thir_check_unsafety_for_const_arg(def)
     } else {
-        thir_check_unsafety_inner(tcx, ty::WithOptConstParam::unknown(def_id))
+        check_unsafety(tcx, ty::WithOptConstParam::unknown(def_id))
     }
 }
 
@@ -385,5 +381,5 @@ crate fn thir_check_unsafety_for_const_arg<'tcx>(
     tcx: TyCtxt<'tcx>,
     (did, param_did): (LocalDefId, DefId),
 ) {
-    thir_check_unsafety_inner(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
+    check_unsafety(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
 }

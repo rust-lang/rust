@@ -1,4 +1,5 @@
-use crate::thir::*;
+use rustc_middle::thir::*;
+use rustc_middle::ty::Const;
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn thir(&self) -> &'a Thir<'tcx>;

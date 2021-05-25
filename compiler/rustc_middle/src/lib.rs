@@ -83,6 +83,7 @@ pub mod infer;
 pub mod lint;
 pub mod middle;
 pub mod mir;
+pub mod thir;
 pub mod traits;
 pub mod ty;
 

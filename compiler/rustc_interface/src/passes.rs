@@ -873,9 +873,8 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
     sess.time("MIR_effect_checking", || {
         for def_id in tcx.body_owners() {
-            if tcx.sess.opts.debugging_opts.thir_unsafeck {
-                tcx.ensure().thir_check_unsafety(def_id);
-            } else {
+            tcx.ensure().thir_check_unsafety(def_id);
+            if !tcx.sess.opts.debugging_opts.thir_unsafeck {
                 mir::transform::check_unsafety::check_unsafety(tcx, def_id);
             }
 

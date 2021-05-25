@@ -1,7 +1,7 @@
 use crate::build;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
-use crate::thir::{build_thir, BindingMode, Expr, ExprId, LintLevel, Pat, PatKind, Thir};
+use crate::thir::pattern::pat_from_hir;
 use rustc_attr::{self as attr, UnwindAttr};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -13,6 +13,7 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use rustc_middle::thir::{BindingMode, Expr, ExprId, LintLevel, PatKind, Thir};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_span::symbol::{kw, sym};
@@ -44,6 +45,16 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     let id = tcx.hir().local_def_id_to_hir_id(def.did);
     let body_owner_kind = tcx.hir().body_owner_kind(id);
     let typeck_results = tcx.typeck_opt_const_arg(def);
+
+    // Ensure unsafeck is ran before we steal the THIR.
+    match def {
+        ty::WithOptConstParam { did, const_param_did: Some(const_param_did) } => {
+            tcx.ensure().thir_check_unsafety_for_const_arg((did, const_param_did))
+        }
+        ty::WithOptConstParam { did, const_param_did: None } => {
+            tcx.ensure().thir_check_unsafety(did)
+        }
+    }
 
     // Figure out what primary body this item has.
     let (body_id, return_ty_span, span_with_body) = match tcx.hir().get(id) {
@@ -104,7 +115,10 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
-            let (thir, expr) = build_thir(tcx, def, &body.value);
+            let (thir, expr) = tcx.thir_body(def);
+            // We ran all queries that depended on THIR at the beginning
+            // of `mir_build`, so now we can steal it
+            let thir = thir.steal();
             let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.kind() {
@@ -212,8 +226,10 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let return_ty = typeck_results.node_type(id);
 
-            let ast_expr = &tcx.hir().body(body_id).value;
-            let (thir, expr) = build_thir(tcx, def, ast_expr);
+            let (thir, expr) = tcx.thir_body(def);
+            // We ran all queries that depended on THIR at the beginning
+            // of `mir_build`, so now we can steal it
+            let thir = thir.steal();
 
             build::construct_const(&thir, &infcx, expr, def, id, return_ty, return_ty_span)
         };
@@ -1016,7 +1032,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Node::Pat(pat) | Node::Binding(pat) => pat,
                     node => bug!("pattern became {:?}", node),
                 };
-                let pattern = Pat::from_hir(tcx, self.param_env, self.typeck_results, pat);
+                let pattern = pat_from_hir(tcx, self.param_env, self.typeck_results, pat);
                 let original_source_scope = self.source_scope;
                 let span = pattern.span;
                 self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);

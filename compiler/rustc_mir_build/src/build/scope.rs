@@ -82,11 +82,12 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 */
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
-use crate::thir::{Expr, LintLevel};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use rustc_middle::thir::{Expr, LintLevel};
+
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]

@@ -1,8 +1,8 @@
 use crate::thir::cx::Cx;
-use crate::thir::{self, *};
 
 use rustc_hir as hir;
 use rustc_middle::middle::region;
+use rustc_middle::thir::*;
 use rustc_middle::ty;
 
 use rustc_index::vec::Idx;
@@ -81,7 +81,7 @@ impl<'tcx> Cx<'tcx> {
                                     ty: pattern.ty,
                                     span: pattern.span,
                                     kind: Box::new(PatKind::AscribeUserType {
-                                        ascription: thir::pattern::Ascription {
+                                        ascription: Ascription {
                                             user_ty: PatTyProj::from_user_type(user_ty),
                                             user_ty_span: ty.span,
                                             variance: ty::Variance::Covariant,

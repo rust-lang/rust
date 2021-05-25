@@ -9,5 +9,5 @@ fn main() {
     let a: [u8; foo()];
     //~^ ERROR call to unsafe function is unsafe and requires unsafe function or block
     foo();
-    //~^ ERROR call to unsafe function is unsafe and requires unsafe function or block
+    //[mir]~^ ERROR call to unsafe function is unsafe and requires unsafe function or block
 }

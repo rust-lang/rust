@@ -10,7 +10,6 @@ use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use crate::thir::{self, *};
 use rustc_data_structures::{
     fx::{FxHashSet, FxIndexMap},
     stack::ensure_sufficient_stack,
@@ -19,6 +18,7 @@ use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
+use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -432,7 +432,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         ..
                     },
                 ascription:
-                    thir::pattern::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
+                    thir::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
@@ -687,7 +687,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: thir::pattern::Ascription { ref user_ty, user_ty_span, variance: _ },
+                ascription: thir::Ascription { ref user_ty, user_ty_span, variance: _ },
             } => {
                 // This corresponds to something like
                 //

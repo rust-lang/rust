@@ -1,8 +1,8 @@
 use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use crate::thir::*;
 use rustc_middle::mir::*;
+use rustc_middle::thir::*;
 use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
 use rustc_session::lint::Level;
 use rustc_span::Span;

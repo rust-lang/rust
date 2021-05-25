@@ -58,6 +58,14 @@ LL | const unsafe fn unsafe_transmute_fn_core_intrinsic() -> u32 { core::intrins
    = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
    = note: `transmute` is only allowed in constants and statics for now
 
+error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+  --> $DIR/feature-gate-const_fn_transmute.rs:29:39
+   |
+LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
 error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:29:39
    |
@@ -67,6 +75,14 @@ LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
    = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
    = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
    = note: `transmute` is only allowed in constants and statics for now
+
+error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+  --> $DIR/feature-gate-const_fn_transmute.rs:33:49
+   |
+LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(Foo(3)) }
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:33:49
@@ -78,6 +94,14 @@ LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(
    = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
    = note: `transmute` is only allowed in constants and statics for now
 
+error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
+  --> $DIR/feature-gate-const_fn_transmute.rs:37:54
+   |
+LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::transmute(Foo(3)) }
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
 error[E0658]: `transmute` is not allowed in constant functions
   --> $DIR/feature-gate-const_fn_transmute.rs:37:54
    |
@@ -87,30 +111,6 @@ LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::tran
    = note: see issue #53605 <https://github.com/rust-lang/rust/issues/53605> for more information
    = help: add `#![feature(const_fn_transmute)]` to the crate attributes to enable
    = note: `transmute` is only allowed in constants and statics for now
-
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-const_fn_transmute.rs:29:39
-   |
-LL | const fn safe_transmute_fn() -> u32 { mem::transmute(Foo(3)) }
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-const_fn_transmute.rs:33:49
-   |
-LL | const fn safe_transmute_fn_intrinsic() -> u32 { std::intrinsics::transmute(Foo(3)) }
-   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
-
-error[E0133]: call to unsafe function is unsafe and requires unsafe function or block
-  --> $DIR/feature-gate-const_fn_transmute.rs:37:54
-   |
-LL | const fn safe_transmute_fn_core_intrinsic() -> u32 { core::intrinsics::transmute(Foo(3)) }
-   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
-   |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
 
 error: aborting due to 12 previous errors
 

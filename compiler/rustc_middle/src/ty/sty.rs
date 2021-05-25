@@ -669,7 +669,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, HashStable)]
 pub enum UpvarSubsts<'tcx> {
     Closure(SubstsRef<'tcx>),
     Generator(SubstsRef<'tcx>),
