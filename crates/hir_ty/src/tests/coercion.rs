@@ -912,3 +912,47 @@ fn test() -> i32 {
         "#,
     )
 }
+
+#[test]
+fn panic_macro() {
+    check_infer_with_mismatches(
+        r#"
+mod panic {
+    #[macro_export]
+    pub macro panic_2015 {
+        () => (
+            $crate::panicking::panic("explicit panic")
+        ),
+    }
+}
+
+mod panicking {
+    pub fn panic() -> ! { loop {} }
+}
+
+#[rustc_builtin_macro = "core_panic"]
+macro_rules! panic {
+    // Expands to either `$crate::panic::panic_2015` or `$crate::panic::panic_2021`
+    // depending on the edition of the caller.
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}
+
+fn main() {
+    panic!("internal error: entered unreachable code")
+}
+        "#,
+        expect![[r#"
+            190..201 '{ loop {} }': !
+            192..199 'loop {}': !
+            197..199 '{}': ()
+            !0..24 '$crate...:panic': fn panic() -> !
+            !0..42 '$crate...anic")': !
+            !0..42 '$crate...anic")': !
+            !0..70 '$crate...code")': !
+            !25..41 '"expli...panic"': &str
+            470..528 '{     ...de") }': ()
+        "#]],
+    );
+}
