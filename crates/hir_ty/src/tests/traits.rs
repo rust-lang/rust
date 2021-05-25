@@ -161,6 +161,43 @@ mod result {
 }
 
 #[test]
+fn infer_tryv2() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:core
+fn test() {
+    let r: Result<i32, u64> = Result::Ok(1);
+    let v = r?;
+    v;
+} //^ i32
+
+//- /core.rs crate:core
+#[prelude_import] use ops::*;
+mod ops {
+    trait Try {
+        type Output;
+        type Residual;
+    }
+}
+
+#[prelude_import] use result::*;
+mod result {
+    enum Infallible {}
+    enum Result<O, E> {
+        Ok(O),
+        Err(E)
+    }
+
+    impl<O, E> crate::ops::Try for Result<O, E> {
+        type Output = O;
+        type Error = Result<Infallible, E>;
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn infer_for_loop() {
     check_types(
         r#"
