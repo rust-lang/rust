@@ -15,7 +15,7 @@ use crate::{
     type_ref::{LifetimeRef, TypeBound, TypeRef},
 };
 
-pub(super) use lower_use::lower_use_tree;
+pub(super) use lower_use::convert_path;
 
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.

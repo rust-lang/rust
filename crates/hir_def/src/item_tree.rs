@@ -523,21 +523,38 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     }
 }
 
-/// A desugared `use` import.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Import {
-    pub path: Interned<ModPath>,
-    pub alias: Option<ImportAlias>,
     pub visibility: RawVisibilityId,
-    pub is_glob: bool,
-    /// AST ID of the `use` item this import was derived from. Note that many `Import`s can map to
-    /// the same `use` item.
     pub ast_id: FileAstId<ast::Use>,
-    /// Index of this `Import` when the containing `Use` is visited via `ModPath::expand_use_item`.
-    ///
-    /// This can be used to get the `UseTree` this `Import` corresponds to and allows emitting
-    /// precise diagnostics.
-    pub index: usize,
+    pub use_tree: UseTree,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct UseTree {
+    pub index: Idx<ast::UseTree>,
+    kind: UseTreeKind,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum UseTreeKind {
+    /// ```ignore
+    /// use path::to::Item;
+    /// use path::to::Item as Renamed;
+    /// use path::to::Trait as _;
+    /// ```
+    Single { path: ModPath, alias: Option<ImportAlias> },
+
+    /// ```ignore
+    /// use *;  // (invalid, but can occur in nested tree)
+    /// use path::*;
+    /// ```
+    Glob { path: Option<ModPath> },
+
+    /// ```ignore
+    /// use prefix::{self, Item, ...};
+    /// ```
+    Prefixed { prefix: Option<ModPath>, list: Vec<UseTree> },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -709,6 +726,97 @@ pub struct MacroDef {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::MacroDef>,
+}
+
+impl Import {
+    /// Maps a `UseTree` contained in this import back to its AST node.
+    pub fn use_tree_to_ast(
+        &self,
+        db: &dyn DefDatabase,
+        file_id: HirFileId,
+        index: Idx<ast::UseTree>,
+    ) -> ast::UseTree {
+        // Re-lower the AST item and get the source map.
+        // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
+        let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
+        let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
+        let hygiene = Hygiene::new(db.upcast(), file_id);
+        let (_, source_map) =
+            lower::lower_use_tree(db, &hygiene, ast_use_tree).expect("failed to lower use tree");
+        source_map[index].clone()
+    }
+}
+
+impl UseTree {
+    /// Expands the `UseTree` into individually imported `ModPath`s.
+    pub fn expand(
+        &self,
+        mut cb: impl FnMut(Idx<ast::UseTree>, ModPath, /* is_glob */ bool, Option<ImportAlias>),
+    ) {
+        self.expand_impl(None, &mut cb)
+    }
+
+    fn expand_impl(
+        &self,
+        prefix: Option<ModPath>,
+        cb: &mut dyn FnMut(
+            Idx<ast::UseTree>,
+            ModPath,
+            /* is_glob */ bool,
+            Option<ImportAlias>,
+        ),
+    ) {
+        fn concat_mod_paths(prefix: Option<ModPath>, path: &ModPath) -> Option<ModPath> {
+            match (prefix, &path.kind) {
+                (None, _) => Some(path.clone()),
+                (Some(mut prefix), PathKind::Plain) => {
+                    for segment in path.segments() {
+                        prefix.push_segment(segment.clone());
+                    }
+                    Some(prefix)
+                }
+                (Some(prefix), PathKind::Super(0)) => {
+                    // `some::path::self` == `some::path`
+                    if path.segments().is_empty() {
+                        Some(prefix)
+                    } else {
+                        None
+                    }
+                }
+                (Some(_), _) => None,
+            }
+        }
+
+        match &self.kind {
+            UseTreeKind::Single { path, alias } => {
+                if let Some(path) = concat_mod_paths(prefix, path) {
+                    cb(self.index, path, false, alias.clone());
+                }
+            }
+            UseTreeKind::Glob { path: Some(path) } => {
+                if let Some(path) = concat_mod_paths(prefix, path) {
+                    cb(self.index, path, true, None);
+                }
+            }
+            UseTreeKind::Glob { path: None } => {
+                if let Some(prefix) = prefix {
+                    cb(self.index, prefix, true, None);
+                }
+            }
+            UseTreeKind::Prefixed { prefix: additional_prefix, list } => {
+                let prefix = match additional_prefix {
+                    Some(path) => match concat_mod_paths(prefix, path) {
+                        Some(path) => Some(path),
+                        None => return,
+                    },
+                    None => prefix,
+                };
+                for tree in list {
+                    tree.expand_impl(prefix.clone(), cb);
+                }
+            }
+        }
+    }
 }
 
 macro_rules! impl_froms {

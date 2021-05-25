@@ -278,9 +278,11 @@ impl TestDB {
                         let node = ast.to_node(self.upcast());
                         (InFile::new(ast.file_id, node.syntax().clone()), "UnresolvedExternCrate")
                     }
-                    DefDiagnosticKind::UnresolvedImport { ast, .. } => {
-                        let node = ast.to_node(self.upcast());
-                        (InFile::new(ast.file_id, node.syntax().clone()), "UnresolvedImport")
+                    DefDiagnosticKind::UnresolvedImport { id, .. } => {
+                        let item_tree = id.item_tree(self.upcast());
+                        let import = &item_tree[id.value];
+                        let node = InFile::new(id.file_id(), import.ast_id).to_node(self.upcast());
+                        (InFile::new(id.file_id(), node.syntax().clone()), "UnresolvedImport")
                     }
                     DefDiagnosticKind::UnconfiguredCode { ast, .. } => {
                         let node = ast.to_node(self.upcast());

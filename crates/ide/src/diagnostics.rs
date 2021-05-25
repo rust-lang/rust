@@ -311,6 +311,7 @@ mod tests {
     ///  * a diagnostic is produced
     ///  * the first diagnostic fix trigger range touches the input cursor position
     ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
+    #[track_caller]
     pub(crate) fn check_fix(ra_fixture_before: &str, ra_fixture_after: &str) {
         check_nth_fix(0, ra_fixture_before, ra_fixture_after);
     }
@@ -325,6 +326,7 @@ mod tests {
         }
     }
 
+    #[track_caller]
     fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
         let after = trim_indent(ra_fixture_after);
 

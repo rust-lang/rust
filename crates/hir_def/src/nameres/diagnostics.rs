@@ -2,9 +2,15 @@
 
 use cfg::{CfgExpr, CfgOptions};
 use hir_expand::MacroCallKind;
+use la_arena::Idx;
 use syntax::ast;
 
-use crate::{nameres::LocalModuleId, path::ModPath, AstId};
+use crate::{
+    item_tree::{self, ItemTreeId},
+    nameres::LocalModuleId,
+    path::ModPath,
+    AstId,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DefDiagnosticKind {
@@ -12,7 +18,7 @@ pub enum DefDiagnosticKind {
 
     UnresolvedExternCrate { ast: AstId<ast::ExternCrate> },
 
-    UnresolvedImport { ast: AstId<ast::Use>, index: usize },
+    UnresolvedImport { id: ItemTreeId<item_tree::Import>, index: Idx<ast::UseTree> },
 
     UnconfiguredCode { ast: AstId<ast::Item>, cfg: CfgExpr, opts: CfgOptions },
 
@@ -53,10 +59,10 @@ impl DefDiagnostic {
 
     pub(super) fn unresolved_import(
         container: LocalModuleId,
-        ast: AstId<ast::Use>,
-        index: usize,
+        id: ItemTreeId<item_tree::Import>,
+        index: Idx<ast::UseTree>,
     ) -> Self {
-        Self { in_module: container, kind: DefDiagnosticKind::UnresolvedImport { ast, index } }
+        Self { in_module: container, kind: DefDiagnosticKind::UnresolvedImport { id, index } }
     }
 
     pub(super) fn unconfigured_code(

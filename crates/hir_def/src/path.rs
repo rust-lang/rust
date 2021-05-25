@@ -14,10 +14,7 @@ use hir_expand::{
 };
 use syntax::ast;
 
-use crate::{
-    type_ref::{TypeBound, TypeRef},
-    InFile,
-};
+use crate::type_ref::{TypeBound, TypeRef};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {
@@ -56,8 +53,7 @@ impl Display for ImportAlias {
 
 impl ModPath {
     pub fn from_src(db: &dyn DefDatabase, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
-        let ctx = LowerCtx::with_hygiene(db, hygiene);
-        lower::lower_path(path, &ctx).map(|it| (*it.mod_path).clone())
+        lower::convert_path(db, None, path, hygiene)
     }
 
     pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
@@ -68,18 +64,6 @@ impl ModPath {
     /// Creates a `ModPath` from a `PathKind`, with no extra path segments.
     pub const fn from_kind(kind: PathKind) -> ModPath {
         ModPath { kind, segments: Vec::new() }
-    }
-
-    /// Calls `cb` with all paths, represented by this use item.
-    pub fn expand_use_item(
-        db: &dyn DefDatabase,
-        item_src: InFile<ast::Use>,
-        hygiene: &Hygiene,
-        mut cb: impl FnMut(ModPath, &ast::UseTree, /* is_glob */ bool, Option<ImportAlias>),
-    ) {
-        if let Some(tree) = item_src.value.use_tree() {
-            lower::lower_use_tree(db, None, tree, hygiene, &mut cb);
-        }
     }
 
     pub fn segments(&self) -> &[Name] {

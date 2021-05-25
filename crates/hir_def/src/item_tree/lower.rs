@@ -35,7 +35,6 @@ pub(super) struct Ctx<'a> {
     db: &'a dyn DefDatabase,
     tree: ItemTree,
     hygiene: Hygiene,
-    file: HirFileId,
     source_ast_id_map: Arc<AstIdMap>,
     body_ctx: crate::body::LowerCtx<'a>,
     forced_visibility: Option<RawVisibilityId>,
@@ -47,7 +46,6 @@ impl<'a> Ctx<'a> {
             db,
             tree: ItemTree::default(),
             hygiene,
-            file,
             source_ast_id_map: db.ast_id_map(file),
             body_ctx: crate::body::LowerCtx::new(db, file),
             forced_visibility: None,
@@ -561,30 +559,13 @@ impl<'a> Ctx<'a> {
         Some(id(self.data().impls.alloc(res)))
     }
 
-    fn lower_use(&mut self, use_item: &ast::Use) -> Vec<FileItemTreeId<Import>> {
+    fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Import>> {
         let visibility = self.lower_visibility(use_item);
         let ast_id = self.source_ast_id_map.ast_id(use_item);
+        let (use_tree, _) = lower_use_tree(self.db, &self.hygiene, use_item.use_tree()?)?;
 
-        // Every use item can expand to many `Import`s.
-        let mut imports = Vec::new();
-        let tree = self.tree.data_mut();
-        ModPath::expand_use_item(
-            self.db,
-            InFile::new(self.file, use_item.clone()),
-            &self.hygiene,
-            |path, _use_tree, is_glob, alias| {
-                imports.push(id(tree.imports.alloc(Import {
-                    path: Interned::new(path),
-                    alias,
-                    visibility,
-                    is_glob,
-                    ast_id,
-                    index: imports.len(),
-                })));
-            },
-        );
-
-        imports
+        let res = Import { visibility, ast_id, use_tree };
+        Some(id(self.data().imports.alloc(res)))
     }
 
     fn lower_extern_crate(
@@ -883,4 +864,77 @@ fn lower_abi(abi: ast::Abi) -> Interned<str> {
             Interned::new_str("C")
         }
     }
+}
+
+struct UseTreeLowering<'a> {
+    db: &'a dyn DefDatabase,
+    hygiene: &'a Hygiene,
+    mapping: Arena<ast::UseTree>,
+}
+
+impl UseTreeLowering<'_> {
+    fn lower_use_tree(&mut self, tree: ast::UseTree) -> Option<UseTree> {
+        if let Some(use_tree_list) = tree.use_tree_list() {
+            let prefix = match tree.path() {
+                // E.g. use something::{{{inner}}};
+                None => None,
+                // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
+                // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
+                Some(path) => {
+                    match ModPath::from_src(self.db, path, &self.hygiene) {
+                        Some(it) => Some(it),
+                        None => return None, // FIXME: report errors somewhere
+                    }
+                }
+            };
+
+            let list =
+                use_tree_list.use_trees().filter_map(|tree| self.lower_use_tree(tree)).collect();
+
+            Some(self.use_tree(UseTreeKind::Prefixed { prefix, list }, tree))
+        } else {
+            let is_glob = tree.star_token().is_some();
+            let path = match tree.path() {
+                Some(path) => Some(ModPath::from_src(self.db, path, &self.hygiene)?),
+                None => None,
+            };
+            let alias = tree.rename().map(|a| {
+                a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
+            });
+            if alias.is_some() && is_glob {
+                return None;
+            }
+
+            match (path, alias, is_glob) {
+                (path, None, true) => {
+                    if path.is_none() {
+                        cov_mark::hit!(glob_enum_group);
+                    }
+                    Some(self.use_tree(UseTreeKind::Glob { path }, tree))
+                }
+                // Globs can't be renamed
+                (_, Some(_), true) | (None, None, false) => None,
+                // `bla::{ as Name}` is invalid
+                (None, Some(_), false) => None,
+                (Some(path), alias, false) => {
+                    Some(self.use_tree(UseTreeKind::Single { path, alias }, tree))
+                }
+            }
+        }
+    }
+
+    fn use_tree(&mut self, kind: UseTreeKind, ast: ast::UseTree) -> UseTree {
+        let index = self.mapping.alloc(ast);
+        UseTree { index, kind }
+    }
+}
+
+pub(super) fn lower_use_tree(
+    db: &dyn DefDatabase,
+    hygiene: &Hygiene,
+    tree: ast::UseTree,
+) -> Option<(UseTree, Arena<ast::UseTree>)> {
+    let mut lowering = UseTreeLowering { db, hygiene, mapping: Arena::new() };
+    let tree = lowering.lower_use_tree(tree)?;
+    Some((tree, lowering.mapping))
 }

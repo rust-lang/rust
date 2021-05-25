@@ -17,6 +17,7 @@ use hir_expand::{
 };
 use hir_expand::{InFile, MacroCallLoc};
 use itertools::Itertools;
+use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast;
 
@@ -143,7 +144,7 @@ impl PartialResolvedImport {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum ImportSource {
-    Import(ItemTreeId<item_tree::Import>),
+    Import { id: ItemTreeId<item_tree::Import>, use_tree: Idx<ast::UseTree> },
     ExternCrate(ItemTreeId<item_tree::ExternCrate>),
 }
 
@@ -165,20 +166,26 @@ impl Import {
         krate: CrateId,
         tree: &ItemTree,
         id: ItemTreeId<item_tree::Import>,
-    ) -> Self {
+    ) -> Vec<Self> {
         let it = &tree[id.value];
         let attrs = &tree.attrs(db, krate, ModItem::from(id.value).into());
         let visibility = &tree[it.visibility];
-        Self {
-            path: it.path.clone(),
-            alias: it.alias.clone(),
-            visibility: visibility.clone(),
-            is_glob: it.is_glob,
-            is_prelude: attrs.by_key("prelude_import").exists(),
-            is_extern_crate: false,
-            is_macro_use: false,
-            source: ImportSource::Import(id),
-        }
+        let is_prelude = attrs.by_key("prelude_import").exists();
+
+        let mut res = Vec::new();
+        it.use_tree.expand(|idx, path, is_glob, alias| {
+            res.push(Self {
+                path: Interned::new(path), // FIXME this makes little sense
+                alias,
+                visibility: visibility.clone(),
+                is_glob,
+                is_prelude,
+                is_extern_crate: false,
+                is_macro_use: false,
+                source: ImportSource::Import { id, use_tree: idx },
+            });
+        });
+        res
     }
 
     fn from_extern_crate(
@@ -1130,11 +1137,8 @@ impl DefCollector<'_> {
         }
 
         for directive in &self.unresolved_imports {
-            if let ImportSource::Import(import) = &directive.import.source {
-                let item_tree = import.item_tree(self.db);
-                let import_data = &item_tree[import.value];
-
-                match (import_data.path.segments().first(), &import_data.path.kind) {
+            if let ImportSource::Import { id: import, use_tree } = &directive.import.source {
+                match (directive.import.path.segments().first(), &directive.import.path.kind) {
                     (Some(krate), PathKind::Plain) | (Some(krate), PathKind::Abs) => {
                         if diagnosed_extern_crates.contains(krate) {
                             continue;
@@ -1145,8 +1149,8 @@ impl DefCollector<'_> {
 
                 self.def_map.diagnostics.push(DefDiagnostic::unresolved_import(
                     directive.module_id,
-                    InFile::new(import.file_id(), import_data.ast_id),
-                    import_data.index,
+                    *import,
+                    *use_tree,
                 ));
             }
         }
@@ -1222,16 +1226,20 @@ impl ModCollector<'_, '_> {
             match item {
                 ModItem::Mod(m) => self.collect_module(&self.item_tree[m], &attrs),
                 ModItem::Import(import_id) => {
-                    self.def_collector.unresolved_imports.push(ImportDirective {
-                        module_id: self.module_id,
-                        import: Import::from_use(
-                            self.def_collector.db,
-                            krate,
-                            &self.item_tree,
-                            ItemTreeId::new(self.file_id, import_id),
-                        ),
-                        status: PartialResolvedImport::Unresolved,
-                    })
+                    let module_id = self.module_id;
+                    let imports = Import::from_use(
+                        self.def_collector.db,
+                        krate,
+                        &self.item_tree,
+                        ItemTreeId::new(self.file_id, import_id),
+                    );
+                    self.def_collector.unresolved_imports.extend(imports.into_iter().map(
+                        |import| ImportDirective {
+                            module_id,
+                            import,
+                            status: PartialResolvedImport::Unresolved,
+                        },
+                    ));
                 }
                 ModItem::ExternCrate(import_id) => {
                     self.def_collector.unresolved_imports.push(ImportDirective {

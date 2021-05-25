@@ -4,68 +4,15 @@
 use std::iter;
 
 use either::Either;
-use hir_expand::{hygiene::Hygiene, name::AsName};
-use syntax::ast::{self, NameOwner};
+use hir_expand::hygiene::Hygiene;
+use syntax::{ast, AstNode};
 
 use crate::{
     db::DefDatabase,
-    path::{ImportAlias, ModPath, PathKind},
+    path::{ModPath, PathKind},
 };
 
-pub(crate) fn lower_use_tree(
-    db: &dyn DefDatabase,
-    prefix: Option<ModPath>,
-    tree: ast::UseTree,
-    hygiene: &Hygiene,
-    cb: &mut dyn FnMut(ModPath, &ast::UseTree, bool, Option<ImportAlias>),
-) {
-    if let Some(use_tree_list) = tree.use_tree_list() {
-        let prefix = match tree.path() {
-            // E.g. use something::{{{inner}}};
-            None => prefix,
-            // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
-            // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
-            Some(path) => match convert_path(db, prefix, path, hygiene) {
-                Some(it) => Some(it),
-                None => return, // FIXME: report errors somewhere
-            },
-        };
-        for child_tree in use_tree_list.use_trees() {
-            lower_use_tree(db, prefix.clone(), child_tree, hygiene, cb);
-        }
-    } else {
-        let alias = tree.rename().map(|a| {
-            a.name().map(|it| it.as_name()).map_or(ImportAlias::Underscore, ImportAlias::Alias)
-        });
-        let is_glob = tree.star_token().is_some();
-        if let Some(ast_path) = tree.path() {
-            // Handle self in a path.
-            // E.g. `use something::{self, <...>}`
-            if ast_path.qualifier().is_none() {
-                if let Some(segment) = ast_path.segment() {
-                    if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
-                        if let Some(prefix) = prefix {
-                            cb(prefix, &tree, false, alias);
-                            return;
-                        }
-                    }
-                }
-            }
-            if let Some(path) = convert_path(db, prefix, ast_path, hygiene) {
-                cb(path, &tree, is_glob, alias)
-            }
-        // FIXME: report errors somewhere
-        // We get here if we do
-        } else if is_glob {
-            cov_mark::hit!(glob_enum_group);
-            if let Some(prefix) = prefix {
-                cb(prefix, &tree, is_glob, None)
-            }
-        }
-    }
-}
-
-fn convert_path(
+pub(crate) fn convert_path(
     db: &dyn DefDatabase,
     prefix: Option<ModPath>,
     path: ast::Path,
@@ -78,7 +25,7 @@ fn convert_path(
     };
 
     let segment = path.segment()?;
-    let res = match segment.kind()? {
+    let mut mod_path = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             match hygiene.name_ref_to_name(db.upcast(), name_ref) {
                 Either::Left(name) => {
@@ -125,5 +72,18 @@ fn convert_path(
             return None;
         }
     };
-    Some(res)
+
+    // handle local_inner_macros :
+    // Basically, even in rustc it is quite hacky:
+    // https://github.com/rust-lang/rust/blob/614f273e9388ddd7804d5cbc80b8865068a3744e/src/librustc_resolve/macros.rs#L456
+    // We follow what it did anyway :)
+    if mod_path.segments.len() == 1 && mod_path.kind == PathKind::Plain {
+        if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
+            if let Some(crate_id) = hygiene.local_inner_macros(db.upcast(), path) {
+                mod_path.kind = PathKind::DollarCrate(crate_id);
+            }
+        }
+    }
+
+    Some(mod_path)
 }
