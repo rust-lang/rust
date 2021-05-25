@@ -168,6 +168,7 @@
 #![feature(no_coverage)] // rust-lang/rust#84605
 #![feature(int_error_matching)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(or_patterns_back_compat)]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
