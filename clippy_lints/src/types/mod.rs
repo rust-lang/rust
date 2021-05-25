@@ -306,7 +306,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_trait_item(&mut self, cx: &LateContext<'_>, item: &TraitItem<'_>) {
         match item.kind {
             TraitItemKind::Const(ty, _) | TraitItemKind::Type(_, Some(ty)) => {
-                self.check_ty(cx, ty, CheckTyContext::default())
+                self.check_ty(cx, ty, CheckTyContext::default());
             },
             TraitItemKind::Fn(ref sig, _) => self.check_fn_decl(cx, sig.decl, CheckTyContext::default()),
             TraitItemKind::Type(..) => (),
@@ -433,7 +433,7 @@ impl Types {
             },
             TyKind::Slice(ty) | TyKind::Array(ty, _) | TyKind::Ptr(MutTy { ty, .. }) => {
                 context.is_nested_call = true;
-                self.check_ty(cx, ty, context)
+                self.check_ty(cx, ty, context);
             },
             TyKind::Tup(tys) => {
                 context.is_nested_call = true;

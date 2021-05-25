@@ -71,7 +71,7 @@ impl LateLintPass<'_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(ref lit) = expr.kind {
             if let LitKind::Str(_, _) = lit.node {
-                check_str(cx, lit.span, expr.hir_id)
+                check_str(cx, lit.span, expr.hir_id);
             }
         }
     }
@@ -82,7 +82,7 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
     for c in s {
         if c as u32 > 0x7F {
             for d in c.escape_unicode() {
-                result.push(d)
+                result.push(d);
             }
         } else {
             result.push(c);
