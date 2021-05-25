@@ -227,7 +227,7 @@ pub(crate) fn runnable_fn(sema: &Semantics<RootDatabase>, def: hir::Function) ->
     let func = def.source(sema.db)?;
     let name_string = def.name(sema.db).to_string();
 
-    let root = def.krate(sema.db)?.root_module(sema.db);
+    let root = def.module(sema.db).krate().root_module(sema.db);
 
     let kind = if name_string == "main" && def.module(sema.db) == root {
         RunnableKind::Bin

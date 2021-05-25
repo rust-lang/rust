@@ -248,4 +248,20 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword unsafe">unsafe</span> <span class="keyword">trait</span> <span class="trait declaration unsafe">Dangerous</span> <span class="brace">{</span><span class="brace">}</span>
-<span class="keyword">impl</span> <span class="trait unsafe">Dangerous</span> <span class="keyword">for</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span></code></pre>
+<span class="keyword">impl</span> <span class="trait unsafe">Dangerous</span> <span class="keyword">for</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
+
+<span class="keyword">fn</span> <span class="function declaration">use_foo_items</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">let</span> <span class="variable declaration">bob</span> <span class="operator">=</span> <span class="module library">foo</span><span class="operator">::</span><span class="struct library">Person</span> <span class="brace">{</span>
+        <span class="field library">name</span><span class="colon">:</span> <span class="string_literal">"Bob"</span><span class="comma">,</span>
+        <span class="field library">age</span><span class="colon">:</span> <span class="module library">foo</span><span class="operator">::</span><span class="module library">consts</span><span class="operator">::</span><span class="constant library">NUMBER</span><span class="comma">,</span>
+    <span class="brace">}</span><span class="semicolon">;</span>
+
+    <span class="keyword">let</span> <span class="variable declaration">control_flow</span> <span class="operator">=</span> <span class="module library">foo</span><span class="operator">::</span><span class="function library">identity</span><span class="parenthesis">(</span><span class="module library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Continue</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+
+    <span class="keyword control">if</span> <span class="keyword">let</span> <span class="module library">foo</span><span class="operator">::</span><span class="enum library">ControlFlow</span><span class="operator">::</span><span class="enum_variant library">Die</span> <span class="operator">=</span> <span class="variable">control_flow</span> <span class="brace">{</span>
+        foo::<span class="macro">die!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="brace">}</span>
+<span class="brace">}</span>
+
+
+</code></pre>
