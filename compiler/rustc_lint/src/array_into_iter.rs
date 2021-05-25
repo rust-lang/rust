@@ -6,6 +6,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
+use rustc_span::Span;
 
 declare_lint! {
     /// The `array_into_iter` lint detects calling `into_iter` on arrays.
@@ -36,13 +37,29 @@ declare_lint! {
     };
 }
 
-declare_lint_pass!(
-    /// Checks for instances of calling `into_iter` on arrays.
-    ArrayIntoIter => [ARRAY_INTO_ITER]
-);
+#[derive(Copy, Clone, Default)]
+pub struct ArrayIntoIter {
+    for_expr_span: Span,
+}
+
+impl_lint_pass!(ArrayIntoIter => [ARRAY_INTO_ITER]);
 
 impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        // Save the span of expressions in `for _ in expr` syntax,
+        // so we can give a better suggestion for those later.
+        if let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) = &expr.kind {
+            if let hir::ExprKind::Call(path, [arg]) = &arg.kind {
+                if let hir::ExprKind::Path(hir::QPath::LangItem(
+                    hir::LangItem::IntoIterIntoIter,
+                    _,
+                )) = &path.kind
+                {
+                    self.for_expr_span = arg.span;
+                }
+            }
+        }
+
         // We only care about method call expressions.
         if let hir::ExprKind::MethodCall(call, span, args, _) = &expr.kind {
             if call.ident.name != sym::into_iter {
@@ -98,27 +115,37 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 _ => bug!("array type coerced to something other than array or slice"),
             };
             cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
-                lint.build(&format!(
+                let mut diag = lint.build(&format!(
                     "this method call resolves to `<&{} as IntoIterator>::into_iter` \
                     (due to backwards compatibility), \
                     but will resolve to <{} as IntoIterator>::into_iter in Rust 2021.",
                     target, target,
-                ))
-                .span_suggestion(
+                ));
+                diag.span_suggestion(
                     call.ident.span,
                     "use `.iter()` instead of `.into_iter()` to avoid ambiguity",
                     "iter".into(),
                     Applicability::MachineApplicable,
-                )
-                .multipart_suggestion(
-                    "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
-                    vec![
-                        (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
-                        (receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()), ")".into()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+                );
+                if self.for_expr_span == expr.span {
+                    let expr_span = expr.span.ctxt().outer_expn_data().call_site;
+                    diag.span_suggestion(
+                        receiver_arg.span.shrink_to_hi().to(expr_span.shrink_to_hi()),
+                        "or remove `.into_iter()` to iterate by value",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    diag.multipart_suggestion(
+                        "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
+                        vec![
+                            (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
+                            (receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()), ")".into()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                diag.emit();
             })
         }
     }
