@@ -27,7 +27,7 @@ use lsp_types::{
 };
 use project_model::TargetKind;
 use serde::{Deserialize, Serialize};
-use serde_json::to_value;
+use serde_json::{json, to_value};
 use stdx::format_to;
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 
@@ -955,104 +955,17 @@ pub(crate) fn handle_formatting(
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let _p = profile::span("handle_formatting");
-    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let file = snap.analysis.file_text(file_id)?;
-    let crate_ids = snap.analysis.crate_for(file_id)?;
 
-    let line_index = snap.file_line_index(file_id)?;
+    run_rustfmt(&snap, params.text_document, None)
+}
 
-    let mut rustfmt = match snap.config.rustfmt() {
-        RustfmtConfig::Rustfmt { extra_args } => {
-            let mut cmd = process::Command::new(toolchain::rustfmt());
-            cmd.args(extra_args);
-            // try to chdir to the file so we can respect `rustfmt.toml`
-            // FIXME: use `rustfmt --config-path` once
-            // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
-            match params.text_document.uri.to_file_path() {
-                Ok(mut path) => {
-                    // pop off file name
-                    if path.pop() && path.is_dir() {
-                        cmd.current_dir(path);
-                    }
-                }
-                Err(_) => {
-                    log::error!(
-                        "Unable to get file path for {}, rustfmt.toml might be ignored",
-                        params.text_document.uri
-                    );
-                }
-            }
-            if let Some(&crate_id) = crate_ids.first() {
-                // Assume all crates are in the same edition
-                let edition = snap.analysis.crate_edition(crate_id)?;
-                cmd.arg("--edition");
-                cmd.arg(edition.to_string());
-            }
-            cmd
-        }
-        RustfmtConfig::CustomCommand { command, args } => {
-            let mut cmd = process::Command::new(command);
-            cmd.args(args);
-            cmd
-        }
-    };
+pub(crate) fn handle_range_formatting(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::DocumentRangeFormattingParams,
+) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+    let _p = profile::span("handle_range_formatting");
 
-    let mut rustfmt =
-        rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
-
-    rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
-
-    let output = rustfmt.wait_with_output()?;
-    let captured_stdout = String::from_utf8(output.stdout)?;
-    let captured_stderr = String::from_utf8(output.stderr).unwrap_or_default();
-
-    if !output.status.success() {
-        let rustfmt_not_installed =
-            captured_stderr.contains("not installed") || captured_stderr.contains("not available");
-
-        return match output.status.code() {
-            Some(1) if !rustfmt_not_installed => {
-                // While `rustfmt` doesn't have a specific exit code for parse errors this is the
-                // likely cause exiting with 1. Most Language Servers swallow parse errors on
-                // formatting because otherwise an error is surfaced to the user on top of the
-                // syntax error diagnostics they're already receiving. This is especially jarring
-                // if they have format on save enabled.
-                log::info!("rustfmt exited with status 1, assuming parse error and ignoring");
-                Ok(None)
-            }
-            _ => {
-                // Something else happened - e.g. `rustfmt` is missing or caught a signal
-                Err(LspError::new(
-                    -32900,
-                    format!(
-                        r#"rustfmt exited with:
-                           Status: {}
-                           stdout: {}
-                           stderr: {}"#,
-                        output.status, captured_stdout, captured_stderr,
-                    ),
-                )
-                .into())
-            }
-        };
-    }
-
-    let (new_text, new_line_endings) = LineEndings::normalize(captured_stdout);
-
-    if line_index.endings != new_line_endings {
-        // If line endings are different, send the entire file.
-        // Diffing would not work here, as the line endings might be the only
-        // difference.
-        Ok(Some(to_proto::text_edit_vec(
-            &line_index,
-            TextEdit::replace(TextRange::up_to(TextSize::of(&*file)), new_text),
-        )))
-    } else if *file == new_text {
-        // The document is already formatted correctly -- no edits needed.
-        Ok(None)
-    } else {
-        Ok(Some(to_proto::text_edit_vec(&line_index, diff(&file, &new_text))))
-    }
+    run_rustfmt(&snap, params.text_document, Some(params.range))
 }
 
 pub(crate) fn handle_code_action(
@@ -1672,6 +1585,140 @@ fn should_skip_target(runnable: &Runnable, cargo_spec: Option<&CargoTargetSpec>)
             }
         }
         _ => false,
+    }
+}
+
+fn run_rustfmt(
+    snap: &GlobalStateSnapshot,
+    text_document: TextDocumentIdentifier,
+    range: Option<lsp_types::Range>,
+) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+    let file_id = from_proto::file_id(&snap, &text_document.uri)?;
+    let file = snap.analysis.file_text(file_id)?;
+    let crate_ids = snap.analysis.crate_for(file_id)?;
+
+    let line_index = snap.file_line_index(file_id)?;
+
+    let mut rustfmt = match snap.config.rustfmt() {
+        RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
+            let mut cmd = process::Command::new(toolchain::rustfmt());
+            cmd.args(extra_args);
+            // try to chdir to the file so we can respect `rustfmt.toml`
+            // FIXME: use `rustfmt --config-path` once
+            // https://github.com/rust-lang/rustfmt/issues/4660 gets fixed
+            match text_document.uri.to_file_path() {
+                Ok(mut path) => {
+                    // pop off file name
+                    if path.pop() && path.is_dir() {
+                        cmd.current_dir(path);
+                    }
+                }
+                Err(_) => {
+                    log::error!(
+                        "Unable to get file path for {}, rustfmt.toml might be ignored",
+                        text_document.uri
+                    );
+                }
+            }
+            if let Some(&crate_id) = crate_ids.first() {
+                // Assume all crates are in the same edition
+                let edition = snap.analysis.crate_edition(crate_id)?;
+                cmd.arg("--edition");
+                cmd.arg(edition.to_string());
+            }
+
+            if let Some(range) = range {
+                if !enable_range_formatting {
+                    return Err(LspError::new(
+                        ErrorCode::InvalidRequest as i32,
+                        String::from(
+                            "rustfmt range formatting is unstable. \
+                            Opt-in by using a nightly build of rustfmt and setting \
+                            `rustfmt.enableRangeFormatting` to true in your LSP configuration",
+                        ),
+                    )
+                    .into());
+                }
+
+                let frange = from_proto::file_range(&snap, text_document.clone(), range)?;
+                let start_line = line_index.index.line_col(frange.range.start()).line;
+                let end_line = line_index.index.line_col(frange.range.end()).line;
+
+                cmd.arg("--unstable-features");
+                cmd.arg("--file-lines");
+                cmd.arg(
+                    json!([{
+                        "file": "stdin",
+                        "range": [start_line, end_line]
+                    }])
+                    .to_string(),
+                );
+            }
+
+            cmd
+        }
+        RustfmtConfig::CustomCommand { command, args } => {
+            let mut cmd = process::Command::new(command);
+            cmd.args(args);
+            cmd
+        }
+    };
+
+    let mut rustfmt =
+        rustfmt.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn()?;
+
+    rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
+
+    let output = rustfmt.wait_with_output()?;
+    let captured_stdout = String::from_utf8(output.stdout)?;
+    let captured_stderr = String::from_utf8(output.stderr).unwrap_or_default();
+
+    if !output.status.success() {
+        let rustfmt_not_installed =
+            captured_stderr.contains("not installed") || captured_stderr.contains("not available");
+
+        return match output.status.code() {
+            Some(1) if !rustfmt_not_installed => {
+                // While `rustfmt` doesn't have a specific exit code for parse errors this is the
+                // likely cause exiting with 1. Most Language Servers swallow parse errors on
+                // formatting because otherwise an error is surfaced to the user on top of the
+                // syntax error diagnostics they're already receiving. This is especially jarring
+                // if they have format on save enabled.
+                log::info!("rustfmt exited with status 1, assuming parse error and ignoring");
+                Ok(None)
+            }
+            _ => {
+                // Something else happened - e.g. `rustfmt` is missing or caught a signal
+                Err(LspError::new(
+                    -32900,
+                    format!(
+                        r#"rustfmt exited with:
+                           Status: {}
+                           stdout: {}
+                           stderr: {}"#,
+                        output.status, captured_stdout, captured_stderr,
+                    ),
+                )
+                .into())
+            }
+        };
+    }
+
+    let (new_text, new_line_endings) = LineEndings::normalize(captured_stdout);
+
+    if line_index.endings != new_line_endings {
+        // If line endings are different, send the entire file.
+        // Diffing would not work here, as the line endings might be the only
+        // difference.
+        Ok(Some(to_proto::text_edit_vec(
+            &line_index,
+            TextEdit::replace(TextRange::up_to(TextSize::of(&*file)), new_text),
+        )))
+    } else if *file == new_text {
+        // The document is already formatted correctly -- no edits needed.
+        Ok(None)
+    } else {
+        Ok(Some(to_proto::text_edit_vec(&line_index, diff(&file, &new_text))))
     }
 }
 

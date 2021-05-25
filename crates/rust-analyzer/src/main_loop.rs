@@ -543,6 +543,7 @@ impl GlobalState {
             .on::<lsp_types::request::Rename>(handlers::handle_rename)
             .on::<lsp_types::request::References>(handlers::handle_references)
             .on::<lsp_types::request::Formatting>(handlers::handle_formatting)
+            .on::<lsp_types::request::RangeFormatting>(handlers::handle_range_formatting)
             .on::<lsp_types::request::DocumentHighlightRequest>(handlers::handle_document_highlight)
             .on::<lsp_types::request::CallHierarchyPrepare>(handlers::handle_call_hierarchy_prepare)
             .on::<lsp_types::request::CallHierarchyIncomingCalls>(

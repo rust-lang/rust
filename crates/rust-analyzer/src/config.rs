@@ -218,6 +218,10 @@ config_data! {
         /// Advanced option, fully override the command rust-analyzer uses for
         /// formatting.
         rustfmt_overrideCommand: Option<Vec<String>> = "null",
+        /// Enables the use of rustfmt's unstable range formatting command for the
+        /// `textDocument/rangeFormatting` request. The rustfmt option is unstable and only
+        /// available on a nightly build.
+        rustfmt_enableRangeFormatting: bool = "false",
 
         /// Workspace symbol search scope.
         workspace_symbol_search_scope: WorskpaceSymbolSearchScopeDef = "\"workspace\"",
@@ -305,7 +309,7 @@ pub struct NotificationsConfig {
 
 #[derive(Debug, Clone)]
 pub enum RustfmtConfig {
-    Rustfmt { extra_args: Vec<String> },
+    Rustfmt { extra_args: Vec<String>, enable_range_formatting: bool },
     CustomCommand { command: String, args: Vec<String> },
 }
 
@@ -584,9 +588,10 @@ impl Config {
                 let command = args.remove(0);
                 RustfmtConfig::CustomCommand { command, args }
             }
-            Some(_) | None => {
-                RustfmtConfig::Rustfmt { extra_args: self.data.rustfmt_extraArgs.clone() }
-            }
+            Some(_) | None => RustfmtConfig::Rustfmt {
+                extra_args: self.data.rustfmt_extraArgs.clone(),
+                enable_range_formatting: self.data.rustfmt_enableRangeFormatting,
+            },
         }
     }
     pub fn flycheck(&self) -> Option<FlycheckConfig> {
