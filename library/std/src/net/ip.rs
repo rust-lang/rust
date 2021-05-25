@@ -822,10 +822,10 @@ impl Ipv4Addr {
     /// ```
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
-    /// assert_eq!(
-    ///     Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(),
-    ///     Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x2ff)
-    /// );
+    /// // ::192.0.2.255
+    /// let ipv6_compatible = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc000, 0x2ff);
+    ///
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_compatible(), ipv6_compatible);
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -849,8 +849,10 @@ impl Ipv4Addr {
     /// ```
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
-    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(),
-    ///            Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff));
+    /// // ::ffff:192.0.2.255
+    /// let ipv6_mapped = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x2ff);
+    ///
+    /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).to_ipv6_mapped(), ipv6_mapped);
     /// ```
     #[rustc_const_stable(feature = "const_ipv4", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1599,10 +1601,18 @@ impl Ipv6Addr {
     ///
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
+    /// let ipv4 = Ipv4Addr::new(192, 10, 2, 255);
+    /// let ipv6_compatible = ipv4.to_ipv6_compatible();
+    /// let ipv6_mapped = ipv4.to_ipv6_mapped();
+    ///
+    /// // Only IPv4-mapped addresses are converted.
+    /// assert_eq!(ipv6_compatible.to_ipv4_mapped(), None);
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc00a, 0x2ff).to_ipv4_mapped(), None);
+    /// assert_eq!(ipv6_mapped.to_ipv4_mapped(), Some(ipv4));
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4_mapped(), Some(ipv4));
+    ///
+    /// // Addresses that are neither an IPv4-compatible or IPv4-mapped address are not converted.
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4_mapped(), None);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4_mapped(),
-    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4_mapped(), None);
     /// ```
     #[rustc_const_unstable(feature = "const_ipv6", issue = "76205")]
     #[unstable(feature = "ip", issue = "27709")]
@@ -1632,11 +1642,18 @@ impl Ipv6Addr {
     /// ```
     /// use std::net::{Ipv4Addr, Ipv6Addr};
     ///
+    /// let ipv4 = Ipv4Addr::new(192, 10, 2, 255);
+    /// let ipv6_compatible = ipv4.to_ipv6_compatible();
+    /// let ipv6_mapped = ipv4.to_ipv6_mapped();
+    ///
+    /// // Both IPv4-compatible and IPv4-mapped addresses are converted.
+    /// assert_eq!(ipv6_compatible.to_ipv4(), Some(ipv4));
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0xc00a, 0x2ff).to_ipv4(), Some(ipv4));
+    /// assert_eq!(ipv6_mapped.to_ipv4(), Some(ipv4));
+    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4(), Some(ipv4));
+    ///
+    /// // Addresses that are neither an IPv4-compatible or IPv4-mapped address are not converted.
     /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).to_ipv4(), None);
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).to_ipv4(),
-    ///            Some(Ipv4Addr::new(192, 10, 2, 255)));
-    /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1).to_ipv4(),
-    ///            Some(Ipv4Addr::new(0, 0, 0, 1)));
     /// ```
     #[rustc_const_stable(feature = "const_ipv6", since = "1.50.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
