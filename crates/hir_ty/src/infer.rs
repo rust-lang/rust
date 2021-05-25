@@ -580,7 +580,10 @@ impl<'a> InferenceContext<'a> {
     fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
         let path = path![core::ops::Try];
         let trait_ = self.resolver.resolve_known_trait(self.db.upcast(), &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name![Ok])
+        let trait_data = self.db.trait_data(trait_);
+        trait_data
+            .associated_type_by_name(&name![Ok])
+            .or_else(|| trait_data.associated_type_by_name(&name![Output]))
     }
 
     fn resolve_ops_neg_output(&self) -> Option<TypeAliasId> {
