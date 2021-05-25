@@ -3093,10 +3093,11 @@ impl<T> [T] {
         let Range { start: src_start, end: src_end } = slice::range(src, ..self.len());
         let count = src_end - src_start;
         assert!(dest <= self.len() - count, "dest is out of bounds");
+        let ptr = self.as_mut_ptr();
         // SAFETY: the conditions for `ptr::copy` have all been checked above,
         // as have those for `ptr::add`.
         unsafe {
-            ptr::copy(self.as_ptr().add(src_start), self.as_mut_ptr().add(dest), count);
+            ptr::copy(ptr.add(src_start), ptr.add(dest), count);
         }
     }
 
