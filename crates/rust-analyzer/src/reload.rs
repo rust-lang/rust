@@ -455,7 +455,11 @@ impl ProjectFolders {
                 dirs.include.extend(root.include);
                 dirs.exclude.extend(root.exclude);
                 for excl in global_excludes {
-                    if dirs.include.iter().any(|incl| incl.starts_with(excl)) {
+                    if dirs
+                        .include
+                        .iter()
+                        .any(|incl| incl.starts_with(excl) || excl.starts_with(incl))
+                    {
                         dirs.exclude.push(excl.clone());
                     }
                 }
