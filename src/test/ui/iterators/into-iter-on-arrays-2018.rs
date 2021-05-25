@@ -12,12 +12,10 @@ fn main() {
     // Before 2021, the method dispatched to `IntoIterator for &[T; N]`,
     // which we continue to support for compatibility.
     let _: Iter<'_, i32> = array.into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this was previously accepted by the compiler but is being phased out
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
 
     let _: Iter<'_, i32> = Box::new(array).into_iter();
-    //~^ WARNING this method call currently resolves to `<&[T; N] as IntoIterator>::into_iter`
-    //~| WARNING this was previously accepted by the compiler but is being phased out
+    //~^ WARNING this method call resolves to `<&[T; N] as IntoIterator>::into_iter`
 
     // The `array_into_iter` lint doesn't cover other wrappers that deref to an array.
     let _: Iter<'_, i32> = Rc::new(array).into_iter();
