@@ -757,13 +757,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// *Unwind* to the given `target` basic block.
     /// Do *not* use for returning! Use `return_to_block` instead.
     ///
-    /// If `target` is `None`, that indicates the function does not need cleanup during
-    /// unwinding, and we will just keep propagating that upwards.
-    pub fn unwind_to_block(&mut self, target: Option<mir::BasicBlock>) {
+    /// If `target` is `StackPopUnwind::Skip`, that indicates the function does not need cleanup
+    /// during unwinding, and we will just keep propagating that upwards.
+    ///
+    /// If `target` is `StackPopUnwind::NotAllowed`, that indicates the function does not allow
+    /// unwinding, and doing so is UB.
+    pub fn unwind_to_block(&mut self, target: StackPopUnwind) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            Some(block) => Ok(mir::Location { block, statement_index: 0 }),
-            None => Err(self.frame_mut().body.span),
+            StackPopUnwind::Cleanup(block) => Ok(mir::Location { block, statement_index: 0 }),
+            StackPopUnwind::Skip => Err(self.frame_mut().body.span),
+            StackPopUnwind::NotAllowed => {
+                throw_ub_format!("unwinding past a frame that does not allow unwinding")
+            }
         };
+        Ok(())
     }
 
     /// Pops the current frame from the stack, deallocating the
@@ -798,27 +805,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
-        // Where do we jump next?
-
-        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
-        // In that case, we return early. We also avoid validation in that case,
-        // because this is CTFE and the final value will be thoroughly validated anyway.
-        let (cleanup, next_block) = match (self.frame().return_to_block, unwinding) {
-            (StackPopCleanup::Goto { ret, .. }, false) => (true, Some(ret)),
-            (StackPopCleanup::Goto { unwind, .. }, true) => (
-                true,
-                Some(match unwind {
-                    StackPopUnwind::Cleanup(unwind) => Some(unwind),
-                    StackPopUnwind::Skip => None,
-                    StackPopUnwind::NotAllowed => {
-                        throw_ub_format!("unwinding past a frame that does not allow unwinding")
-                    }
-                }),
-            ),
-            (StackPopCleanup::None { cleanup, .. }, _) => (cleanup, None),
-        };
-
-        let frame = self.stack_mut().pop().unwrap();
+        let frame =
+            self.stack_mut().pop().expect("tried to pop a stack frame, but there were none");
 
         if !unwinding {
             // Copy the return value to the caller's stack frame.
@@ -831,9 +819,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
+        let return_to_block = frame.return_to_block;
+
+        // Now where do we jump next?
+
+        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
+        // In that case, we return early. We also avoid validation in that case,
+        // because this is CTFE and the final value will be thoroughly validated anyway.
+        let cleanup = match return_to_block {
+            StackPopCleanup::Goto { .. } => true,
+            StackPopCleanup::None { cleanup, .. } => cleanup,
+        };
+
         if !cleanup {
             assert!(self.stack().is_empty(), "only the topmost frame should ever be leaked");
-            assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
             assert!(!unwinding, "tried to skip cleanup during unwinding");
             // Leak the locals, skip validation, skip machine hook.
             return Ok(());
@@ -852,11 +851,16 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Normal return, figure out where to jump.
         if unwinding {
             // Follow the unwind edge.
-            let unwind = next_block.expect("Encountered StackPopCleanup::None when unwinding!");
-            self.unwind_to_block(unwind);
+            let unwind = match return_to_block {
+                StackPopCleanup::Goto { unwind, .. } => unwind,
+                StackPopCleanup::None { .. } => {
+                    panic!("Encountered StackPopCleanup::None when unwinding!")
+                }
+            };
+            self.unwind_to_block(unwind)?;
         } else {
             // Follow the normal return edge.
-            if let Some(ret) = next_block {
+            if let StackPopCleanup::Goto { ret, .. } = return_to_block {
                 self.return_to_block(ret)?;
             }
         }
