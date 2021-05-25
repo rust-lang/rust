@@ -3095,16 +3095,16 @@ fn foo() {
             478..576 '{     ...&s); }': ()
             488..489 's': Option<i32>
             492..504 'Option::None': Option<i32>
-            514..515 'f': Box<dyn FnOnce(&Option<i32>) -> ()>
+            514..515 'f': Box<dyn FnOnce(&Option<i32>)>
             549..562 'box (|ps| {})': Box<|{unknown}| -> ()>
             554..561 '|ps| {}': |{unknown}| -> ()
             555..557 'ps': {unknown}
             559..561 '{}': ()
-            568..569 'f': Box<dyn FnOnce(&Option<i32>) -> ()>
+            568..569 'f': Box<dyn FnOnce(&Option<i32>)>
             568..573 'f(&s)': ()
             570..572 '&s': &Option<i32>
             571..572 's': Option<i32>
-            549..562: expected Box<dyn FnOnce(&Option<i32>) -> ()>, got Box<|{unknown}| -> ()>
+            549..562: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|{unknown}| -> ()>
         "#]],
     );
 }
