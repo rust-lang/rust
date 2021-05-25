@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
                                 },
                             );
                         }
-                   },
+                    },
                     // foo == &bar
                     (_, &ExprKind::AddrOf(BorrowKind::Ref, _, r)) => {
                         let rty = cx.typeck_results().expr_ty(r);
