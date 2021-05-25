@@ -593,12 +593,16 @@ fn ipv6_properties() {
 
     check!("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
 
-    check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
+    check!(
+        "fc00::",
+        &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        unique_local | unicast_global
+    );
 
     check!(
         "fdff:ffff::",
         &[0xfd, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        unique_local
+        unique_local | unicast_global
     );
 
     check!(
@@ -676,7 +680,7 @@ fn ipv6_properties() {
     check!(
         "2001:db8:85a3::8a2e:370:7334",
         &[0x20, 1, 0xd, 0xb8, 0x85, 0xa3, 0, 0, 0, 0, 0x8a, 0x2e, 3, 0x70, 0x73, 0x34],
-        documentation
+        documentation | unicast_global
     );
 
     check!(
