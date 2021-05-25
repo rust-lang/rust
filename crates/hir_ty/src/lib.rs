@@ -21,6 +21,7 @@ mod utils;
 mod walk;
 pub mod db;
 pub mod diagnostics;
+pub mod diagnostics_sink;
 pub mod display;
 pub mod method_resolution;
 pub mod primitive;

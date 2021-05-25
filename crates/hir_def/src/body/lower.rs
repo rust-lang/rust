@@ -8,7 +8,7 @@ use hir_expand::{
     ast_id_map::{AstIdMap, FileAstId},
     hygiene::Hygiene,
     name::{name, AsName, Name},
-    ExpandError, HirFileId,
+    ExpandError, HirFileId, InFile,
 };
 use la_arena::Arena;
 use profile::Count;
@@ -23,9 +23,9 @@ use syntax::{
 use crate::{
     adt::StructKind,
     body::{Body, BodySourceMap, Expander, LabelSource, PatPtr, SyntheticSyntax},
+    body::{BodyDiagnostic, ExprSource, PatSource},
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     db::DefDatabase,
-    diagnostics::{InactiveCode, MacroError, UnresolvedMacroCall, UnresolvedProcMacro},
     expr::{
         dummy_expr_id, ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Label,
         LabelId, Literal, LogicOp, MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField,
@@ -37,8 +37,6 @@ use crate::{
     type_ref::{Mutability, Rawness, TypeRef},
     AdtId, BlockLoc, ModuleDefId, UnresolvedMacro,
 };
-
-use super::{diagnostics::BodyDiagnostic, ExprSource, PatSource};
 
 pub struct LowerCtx<'a> {
     pub db: &'a dyn DefDatabase,
@@ -592,13 +590,10 @@ impl ExprCollector<'_> {
         let res = match res {
             Ok(res) => res,
             Err(UnresolvedMacro { path }) => {
-                self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedMacroCall(
-                    UnresolvedMacroCall {
-                        file: outer_file,
-                        node: syntax_ptr.cast().unwrap(),
-                        path,
-                    },
-                ));
+                self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedMacroCall {
+                    node: InFile::new(outer_file, syntax_ptr),
+                    path,
+                });
                 collector(self, None);
                 return;
             }
@@ -606,21 +601,15 @@ impl ExprCollector<'_> {
 
         match &res.err {
             Some(ExpandError::UnresolvedProcMacro) => {
-                self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro(
-                    UnresolvedProcMacro {
-                        file: outer_file,
-                        node: syntax_ptr.into(),
-                        precise_location: None,
-                        macro_name: None,
-                    },
-                ));
+                self.source_map.diagnostics.push(BodyDiagnostic::UnresolvedProcMacro {
+                    node: InFile::new(outer_file, syntax_ptr),
+                });
             }
             Some(err) => {
-                self.source_map.diagnostics.push(BodyDiagnostic::MacroError(MacroError {
-                    file: outer_file,
-                    node: syntax_ptr.into(),
+                self.source_map.diagnostics.push(BodyDiagnostic::MacroError {
+                    node: InFile::new(outer_file, syntax_ptr),
                     message: err.to_string(),
-                }));
+                });
             }
             None => {}
         }
@@ -945,12 +934,14 @@ impl ExprCollector<'_> {
                     return Some(());
                 }
 
-                self.source_map.diagnostics.push(BodyDiagnostic::InactiveCode(InactiveCode {
-                    file: self.expander.current_file_id,
-                    node: SyntaxNodePtr::new(owner.syntax()),
+                self.source_map.diagnostics.push(BodyDiagnostic::InactiveCode {
+                    node: InFile::new(
+                        self.expander.current_file_id,
+                        SyntaxNodePtr::new(owner.syntax()),
+                    ),
                     cfg,
                     opts: self.expander.cfg_options().clone(),
-                }));
+                });
 
                 None
             }

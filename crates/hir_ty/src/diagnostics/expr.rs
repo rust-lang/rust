@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use hir_def::{expr::Statement, path::path, resolver::HasResolver, AssocItemId, DefWithBodyId};
-use hir_expand::{diagnostics::DiagnosticSink, name};
+use hir_expand::name;
 use rustc_hash::FxHashSet;
 use syntax::{ast, AstPtr};
 
@@ -16,6 +16,7 @@ use crate::{
         MismatchedArgCount, MissingFields, MissingMatchArms, MissingOkOrSomeInTailExpr,
         MissingPatFields, RemoveThisSemicolon,
     },
+    diagnostics_sink::DiagnosticSink,
     AdtId, InferenceResult, Interner, TyExt, TyKind,
 };
 

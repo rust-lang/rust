@@ -18,36 +18,9 @@ fn unresolved_import() {
         r"
         use does_exist;
         use does_not_exist;
-          //^^^^^^^^^^^^^^ unresolved import
+      //^^^^^^^^^^^^^^^^^^^ UnresolvedImport
 
         mod does_exist {}
-        ",
-    );
-}
-
-#[test]
-fn unresolved_import_in_use_tree() {
-    // Only the relevant part of a nested `use` item should be highlighted.
-    check_diagnostics(
-        r"
-        use does_exist::{Exists, DoesntExist};
-                               //^^^^^^^^^^^ unresolved import
-
-        use {does_not_exist::*, does_exist};
-           //^^^^^^^^^^^^^^^^^ unresolved import
-
-        use does_not_exist::{
-            a,
-          //^ unresolved import
-            b,
-          //^ unresolved import
-            c,
-          //^ unresolved import
-        };
-
-        mod does_exist {
-            pub struct Exists;
-        }
         ",
     );
 }
@@ -59,7 +32,7 @@ fn unresolved_extern_crate() {
         //- /main.rs crate:main deps:core
         extern crate core;
           extern crate doesnotexist;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved extern crate
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedExternCrate
         //- /lib.rs crate:core
         ",
     );
@@ -72,7 +45,7 @@ fn extern_crate_self_as() {
         r"
         //- /lib.rs
           extern crate doesnotexist;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved extern crate
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedExternCrate
         // Should not error.
         extern crate self as foo;
         struct Foo;
@@ -88,18 +61,18 @@ fn dedup_unresolved_import_from_unresolved_crate() {
         //- /main.rs crate:main
         mod a {
             extern crate doesnotexist;
-          //^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved extern crate
+          //^^^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedExternCrate
 
             // Should not error, since we already errored for the missing crate.
             use doesnotexist::{self, bla, *};
 
             use crate::doesnotexist;
-              //^^^^^^^^^^^^^^^^^^^ unresolved import
+          //^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedImport
         }
 
         mod m {
             use super::doesnotexist;
-              //^^^^^^^^^^^^^^^^^^^ unresolved import
+          //^^^^^^^^^^^^^^^^^^^^^^^^ UnresolvedImport
         }
         ",
     );
@@ -112,7 +85,7 @@ fn unresolved_module() {
         //- /lib.rs
         mod foo;
           mod bar;
-        //^^^^^^^^ unresolved module
+        //^^^^^^^^ UnresolvedModule
         mod baz {}
         //- /foo.rs
         ",
@@ -127,16 +100,16 @@ fn inactive_item() {
         r#"
         //- /lib.rs
           #[cfg(no)] pub fn f() {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+        //^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
 
           #[cfg(no)] #[cfg(no2)] mod m;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no and no2 are disabled
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
 
           #[cfg(all(not(a), b))] enum E {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: b is disabled
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
 
           #[cfg(feature = "std")] use std;
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: feature = "std" is disabled
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
         "#,
     );
 }
@@ -149,14 +122,14 @@ fn inactive_via_cfg_attr() {
         r#"
         //- /lib.rs
           #[cfg_attr(not(never), cfg(no))] fn f() {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
 
           #[cfg_attr(not(never), cfg(not(no)))] fn f() {}
 
           #[cfg_attr(never, cfg(no))] fn g() {}
 
           #[cfg_attr(not(never), inline, cfg(no))] fn h() {}
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: no is disabled
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ UnconfiguredCode
         "#,
     );
 }
@@ -170,7 +143,7 @@ fn unresolved_legacy_scope_macro() {
 
           m!();
           m2!();
-        //^^^^^^ unresolved macro `self::m2!`
+        //^^^^^^ UnresolvedMacroCall
         "#,
     );
 }
@@ -187,7 +160,7 @@ fn unresolved_module_scope_macro() {
 
           self::m!();
           self::m2!();
-        //^^^^^^^^^^^^ unresolved macro `self::m2!`
+        //^^^^^^^^^^^^ UnresolvedMacroCall
         "#,
     );
 }

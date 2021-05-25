@@ -28,13 +28,14 @@ use hir_def::{
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, HasModule, Lookup,
     TraitId, TypeAliasId, VariantId,
 };
-use hir_expand::{diagnostics::DiagnosticSink, name::name};
+use hir_expand::name::name;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
 use stdx::impl_from;
 use syntax::SmolStr;
 
 use super::{DomainGoal, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty};
+use crate::diagnostics_sink::DiagnosticSink;
 use crate::{
     db::HirDatabase, fold_tys, infer::diagnostics::InferenceDiagnostic,
     lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Goal, Interner, Substitution,
@@ -798,11 +799,11 @@ impl std::ops::BitOrAssign for Diverges {
 
 mod diagnostics {
     use hir_def::{expr::ExprId, DefWithBodyId};
-    use hir_expand::diagnostics::DiagnosticSink;
 
     use crate::{
         db::HirDatabase,
         diagnostics::{BreakOutsideOfLoop, NoSuchField},
+        diagnostics_sink::DiagnosticSink,
     };
 
     #[derive(Debug, PartialEq, Eq, Clone)]

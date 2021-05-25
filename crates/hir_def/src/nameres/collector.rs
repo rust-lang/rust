@@ -33,7 +33,10 @@ use crate::{
     },
     macro_call_as_call_id,
     nameres::{
-        diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
+        diagnostics::DefDiagnostic,
+        mod_resolution::ModDir,
+        path_resolution::ReachedFixedPoint,
+        proc_macro::{ProcMacroDef, ProcMacroKind},
         BuiltinShadowMode, DefMap, ModuleData, ModuleOrigin, ResolveMode,
     },
     path::{ImportAlias, ModPath, PathKind},
@@ -43,8 +46,6 @@ use crate::{
     LocalModuleId, ModuleDefId, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc,
     UnresolvedMacro,
 };
-
-use super::proc_macro::{ProcMacroDef, ProcMacroKind};
 
 const GLOB_RECURSION_LIMIT: usize = 100;
 const EXPANSION_DEPTH_LIMIT: usize = 128;

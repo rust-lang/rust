@@ -16,9 +16,8 @@
 
 use std::{any::Any, fmt};
 
+use hir_expand::InFile;
 use syntax::SyntaxNodePtr;
-
-use crate::InFile;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct DiagnosticCode(pub &'static str);

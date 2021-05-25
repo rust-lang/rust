@@ -19,7 +19,6 @@ pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
 pub mod builtin_attr;
-pub mod diagnostics;
 pub mod per_ns;
 pub mod item_scope;
 
@@ -56,7 +55,6 @@ use std::{
     sync::Arc,
 };
 
-use adt::VariantData;
 use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
     ast_id_map::FileAstId,
@@ -67,15 +65,18 @@ use hir_expand::{
 use la_arena::Idx;
 use nameres::DefMap;
 use path::ModPath;
+use stdx::impl_from;
 use syntax::ast;
 
-use crate::attr::AttrId;
-use crate::builtin_type::BuiltinType;
-use item_tree::{
-    Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, ModItem, Static, Struct, Trait,
-    TypeAlias, Union,
+use crate::{
+    adt::VariantData,
+    attr::AttrId,
+    builtin_type::BuiltinType,
+    item_tree::{
+        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, ModItem, Static, Struct, Trait,
+        TypeAlias, Union,
+    },
 };
-use stdx::impl_from;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {

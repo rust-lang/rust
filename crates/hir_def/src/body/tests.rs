@@ -96,26 +96,26 @@ fn f() {
     // The three g̶e̶n̶d̶e̶r̶s̶ statements:
 
     #[cfg(a)] fn f() {}  // Item statement
-  //^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^^^^^^^^^ InactiveCode
     #[cfg(a)] {}         // Expression statement
-  //^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^^ InactiveCode
     #[cfg(a)] let x = 0; // let statement
-  //^^^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^^^^^^^^^^ InactiveCode
 
     abc(#[cfg(a)] 0);
-      //^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+      //^^^^^^^^^^^ InactiveCode
     let x = Struct {
         #[cfg(a)] f: 0,
-      //^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+      //^^^^^^^^^^^^^^ InactiveCode
     };
     match () {
         () => (),
         #[cfg(a)] () => (),
-      //^^^^^^^^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+      //^^^^^^^^^^^^^^^^^^ InactiveCode
     }
 
     #[cfg(a)] 0          // Trailing expression of block
-  //^^^^^^^^^^^ code is inactive due to #[cfg] directives: a is disabled
+  //^^^^^^^^^^^ InactiveCode
 }
     ",
     );
@@ -188,7 +188,7 @@ fn unresolved_macro_diag() {
         r#"
 fn f() {
     m!();
-  //^^^^ unresolved macro `m!`
+  //^^^^ UnresolvedMacroCall
 }
       "#,
     );

@@ -47,18 +47,19 @@
 //! path and, upon success, we run macro expansion and "collect module" phase on
 //! the result
 
+pub mod diagnostics;
 mod collector;
 mod mod_resolution;
 mod path_resolution;
+mod proc_macro;
 
 #[cfg(test)]
 mod tests;
-mod proc_macro;
 
 use std::sync::Arc;
 
 use base_db::{CrateId, Edition, FileId};
-use hir_expand::{diagnostics::DiagnosticSink, name::Name, InFile, MacroDefId};
+use hir_expand::{name::Name, InFile, MacroDefId};
 use la_arena::Arena;
 use profile::Count;
 use rustc_hash::FxHashMap;
@@ -254,15 +255,6 @@ impl DefMap {
         }
     }
 
-    pub fn add_diagnostics(
-        &self,
-        db: &dyn DefDatabase,
-        module: LocalModuleId,
-        sink: &mut DiagnosticSink,
-    ) {
-        self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
-    }
-
     pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules
             .iter()
@@ -448,6 +440,11 @@ impl DefMap {
             module.scope.shrink_to_fit();
         }
     }
+
+    /// Get a reference to the def map's diagnostics.
+    pub fn diagnostics(&self) -> &[DefDiagnostic] {
+        self.diagnostics.as_slice()
+    }
 }
 
 impl ModuleData {
@@ -470,237 +467,4 @@ pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
     BlockExpr(ast::BlockExpr),
-}
-
-mod diagnostics {
-    use cfg::{CfgExpr, CfgOptions};
-    use hir_expand::diagnostics::DiagnosticSink;
-    use hir_expand::hygiene::Hygiene;
-    use hir_expand::{InFile, MacroCallKind};
-    use syntax::ast::AttrsOwner;
-    use syntax::{ast, AstNode, AstPtr, SyntaxKind, SyntaxNodePtr};
-
-    use crate::path::ModPath;
-    use crate::{db::DefDatabase, diagnostics::*, nameres::LocalModuleId, AstId};
-
-    #[derive(Debug, PartialEq, Eq)]
-    enum DiagnosticKind {
-        UnresolvedModule { declaration: AstId<ast::Module>, candidate: String },
-
-        UnresolvedExternCrate { ast: AstId<ast::ExternCrate> },
-
-        UnresolvedImport { ast: AstId<ast::Use>, index: usize },
-
-        UnconfiguredCode { ast: AstId<ast::Item>, cfg: CfgExpr, opts: CfgOptions },
-
-        UnresolvedProcMacro { ast: MacroCallKind },
-
-        UnresolvedMacroCall { ast: AstId<ast::MacroCall>, path: ModPath },
-
-        MacroError { ast: MacroCallKind, message: String },
-    }
-
-    #[derive(Debug, PartialEq, Eq)]
-    pub(super) struct DefDiagnostic {
-        in_module: LocalModuleId,
-        kind: DiagnosticKind,
-    }
-
-    impl DefDiagnostic {
-        pub(super) fn unresolved_module(
-            container: LocalModuleId,
-            declaration: AstId<ast::Module>,
-            candidate: String,
-        ) -> Self {
-            Self {
-                in_module: container,
-                kind: DiagnosticKind::UnresolvedModule { declaration, candidate },
-            }
-        }
-
-        pub(super) fn unresolved_extern_crate(
-            container: LocalModuleId,
-            declaration: AstId<ast::ExternCrate>,
-        ) -> Self {
-            Self {
-                in_module: container,
-                kind: DiagnosticKind::UnresolvedExternCrate { ast: declaration },
-            }
-        }
-
-        pub(super) fn unresolved_import(
-            container: LocalModuleId,
-            ast: AstId<ast::Use>,
-            index: usize,
-        ) -> Self {
-            Self { in_module: container, kind: DiagnosticKind::UnresolvedImport { ast, index } }
-        }
-
-        pub(super) fn unconfigured_code(
-            container: LocalModuleId,
-            ast: AstId<ast::Item>,
-            cfg: CfgExpr,
-            opts: CfgOptions,
-        ) -> Self {
-            Self { in_module: container, kind: DiagnosticKind::UnconfiguredCode { ast, cfg, opts } }
-        }
-
-        pub(super) fn unresolved_proc_macro(container: LocalModuleId, ast: MacroCallKind) -> Self {
-            Self { in_module: container, kind: DiagnosticKind::UnresolvedProcMacro { ast } }
-        }
-
-        pub(super) fn macro_error(
-            container: LocalModuleId,
-            ast: MacroCallKind,
-            message: String,
-        ) -> Self {
-            Self { in_module: container, kind: DiagnosticKind::MacroError { ast, message } }
-        }
-
-        pub(super) fn unresolved_macro_call(
-            container: LocalModuleId,
-            ast: AstId<ast::MacroCall>,
-            path: ModPath,
-        ) -> Self {
-            Self { in_module: container, kind: DiagnosticKind::UnresolvedMacroCall { ast, path } }
-        }
-
-        pub(super) fn add_to(
-            &self,
-            db: &dyn DefDatabase,
-            target_module: LocalModuleId,
-            sink: &mut DiagnosticSink,
-        ) {
-            if self.in_module != target_module {
-                return;
-            }
-
-            match &self.kind {
-                DiagnosticKind::UnresolvedModule { declaration, candidate } => {
-                    let decl = declaration.to_node(db.upcast());
-                    sink.push(UnresolvedModule {
-                        file: declaration.file_id,
-                        decl: AstPtr::new(&decl),
-                        candidate: candidate.clone(),
-                    })
-                }
-
-                DiagnosticKind::UnresolvedExternCrate { ast } => {
-                    let item = ast.to_node(db.upcast());
-                    sink.push(UnresolvedExternCrate {
-                        file: ast.file_id,
-                        item: AstPtr::new(&item),
-                    });
-                }
-
-                DiagnosticKind::UnresolvedImport { ast, index } => {
-                    let use_item = ast.to_node(db.upcast());
-                    let hygiene = Hygiene::new(db.upcast(), ast.file_id);
-                    let mut cur = 0;
-                    let mut tree = None;
-                    ModPath::expand_use_item(
-                        db,
-                        InFile::new(ast.file_id, use_item),
-                        &hygiene,
-                        |_mod_path, use_tree, _is_glob, _alias| {
-                            if cur == *index {
-                                tree = Some(use_tree.clone());
-                            }
-
-                            cur += 1;
-                        },
-                    );
-
-                    if let Some(tree) = tree {
-                        sink.push(UnresolvedImport { file: ast.file_id, node: AstPtr::new(&tree) });
-                    }
-                }
-
-                DiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
-                    let item = ast.to_node(db.upcast());
-                    sink.push(InactiveCode {
-                        file: ast.file_id,
-                        node: AstPtr::new(&item).into(),
-                        cfg: cfg.clone(),
-                        opts: opts.clone(),
-                    });
-                }
-
-                DiagnosticKind::UnresolvedProcMacro { ast } => {
-                    let mut precise_location = None;
-                    let (file, ast, name) = match ast {
-                        MacroCallKind::FnLike { ast_id, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)), None)
-                        }
-                        MacroCallKind::Derive { ast_id, derive_name, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-
-                            // Compute the precise location of the macro name's token in the derive
-                            // list.
-                            // FIXME: This does not handle paths to the macro, but neither does the
-                            // rest of r-a.
-                            let derive_attrs =
-                                node.attrs().filter_map(|attr| match attr.as_simple_call() {
-                                    Some((name, args)) if name == "derive" => Some(args),
-                                    _ => None,
-                                });
-                            'outer: for attr in derive_attrs {
-                                let tokens =
-                                    attr.syntax().children_with_tokens().filter_map(|elem| {
-                                        match elem {
-                                            syntax::NodeOrToken::Node(_) => None,
-                                            syntax::NodeOrToken::Token(tok) => Some(tok),
-                                        }
-                                    });
-                                for token in tokens {
-                                    if token.kind() == SyntaxKind::IDENT
-                                        && token.text() == derive_name.as_str()
-                                    {
-                                        precise_location = Some(token.text_range());
-                                        break 'outer;
-                                    }
-                                }
-                            }
-
-                            (
-                                ast_id.file_id,
-                                SyntaxNodePtr::from(AstPtr::new(&node)),
-                                Some(derive_name.clone()),
-                            )
-                        }
-                    };
-                    sink.push(UnresolvedProcMacro {
-                        file,
-                        node: ast,
-                        precise_location,
-                        macro_name: name,
-                    });
-                }
-
-                DiagnosticKind::UnresolvedMacroCall { ast, path } => {
-                    let node = ast.to_node(db.upcast());
-                    sink.push(UnresolvedMacroCall {
-                        file: ast.file_id,
-                        node: AstPtr::new(&node),
-                        path: path.clone(),
-                    });
-                }
-
-                DiagnosticKind::MacroError { ast, message } => {
-                    let (file, ast) = match ast {
-                        MacroCallKind::FnLike { ast_id, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
-                        }
-                        MacroCallKind::Derive { ast_id, .. } => {
-                            let node = ast_id.to_node(db.upcast());
-                            (ast_id.file_id, SyntaxNodePtr::from(AstPtr::new(&node)))
-                        }
-                    };
-                    sink.push(MacroError { file, node: ast, message: message.clone() });
-                }
-            }
-        }
-    }
 }
