@@ -195,3 +195,18 @@ fn shared_from_iter_trustedlen_no_fuse() {
     assert_trusted_len(&iter);
     assert_eq!(&[Box::new(42), Box::new(24)], &*iter.collect::<Rc<[_]>>());
 }
+
+#[test]
+fn weak_may_dangle() {
+    fn hmm<'a>(val: &'a mut Weak<&'a str>) -> Weak<&'a str> {
+        val.clone()
+    }
+
+    // Without #[may_dangle] we get:
+    let mut val = Weak::new();
+    hmm(&mut val);
+    //  ~~~~~~~~ borrowed value does not live long enough
+    //
+    // `val` dropped here while still borrowed
+    // borrow might be used here, when `val` is dropped and runs the `Drop` code for type `std::sync::Weak`
+}
