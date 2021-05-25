@@ -818,7 +818,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
                     .any(|func_path| match_function_call(self.cx, fn_expr, func_path).is_some());
                 if found_function {
                     // These functions are all multi part suggestions
-                    self.add_single_span_suggestion()
+                    self.add_single_span_suggestion();
                 }
             },
             ExprKind::MethodCall(path, _path_span, arg, _arg_span) => {

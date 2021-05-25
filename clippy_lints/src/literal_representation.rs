@@ -231,7 +231,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
         }
 
         if let ExprKind::Lit(ref lit) = expr.kind {
-            self.check_lit(cx, lit)
+            self.check_lit(cx, lit);
         }
     }
 }
@@ -294,7 +294,7 @@ impl LiteralDigitGrouping {
                         }
                     };
                     if should_warn {
-                        warning_type.display(num_lit.format(), cx, lit.span)
+                        warning_type.display(num_lit.format(), cx, lit.span);
                     }
                 }
             }
@@ -424,7 +424,7 @@ impl EarlyLintPass for DecimalLiteralRepresentation {
         }
 
         if let ExprKind::Lit(ref lit) = expr.kind {
-            self.check_lit(cx, lit)
+            self.check_lit(cx, lit);
         }
     }
 }
@@ -446,7 +446,7 @@ impl DecimalLiteralRepresentation {
                 let hex = format!("{:#X}", val);
                 let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
                 let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                    warning_type.display(num_lit.format(), cx, lit.span)
+                    warning_type.display(num_lit.format(), cx, lit.span);
                 });
             }
         }

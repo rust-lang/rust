@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnConstants {
                 &format!("`assert!(false, {})` should probably be replaced", panic_message),
                 None,
                 &format!("use `panic!({})` or `unreachable!({})`", panic_message, panic_message),
-            )
+            );
         };
 
         if let Some(debug_assert_span) = is_expn_of(e.span, "debug_assert") {

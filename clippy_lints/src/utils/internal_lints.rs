@@ -1100,7 +1100,7 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
                 IF_CHAIN_STYLE,
                 if_chain_local_span(cx, local, if_chain_span),
                 "`let` expression should be inside `then { .. }`",
-            )
+            );
         }
     }
 
@@ -1141,7 +1141,7 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
         if is_first_if_chain_expr(cx, expr.hir_id, if_chain_span)
             && is_if_chain_then(then_block.stmts, then_block.expr, if_chain_span)
         {
-            span_lint(cx, IF_CHAIN_STYLE, expr.span, "`if_chain!` only has one `if`")
+            span_lint(cx, IF_CHAIN_STYLE, expr.span, "`if_chain!` only has one `if`");
         }
     }
 }

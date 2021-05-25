@@ -177,7 +177,7 @@ fn upcast_comparison_bounds_err<'tcx>(
                 },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
-                err_upcast_comparison(cx, span, lhs, true)
+                err_upcast_comparison(cx, span, lhs, true);
             } else if match rel {
                 Rel::Lt => {
                     if invert {
@@ -195,7 +195,7 @@ fn upcast_comparison_bounds_err<'tcx>(
                 },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
-                err_upcast_comparison(cx, span, lhs, false)
+                err_upcast_comparison(cx, span, lhs, false);
             }
         }
     }

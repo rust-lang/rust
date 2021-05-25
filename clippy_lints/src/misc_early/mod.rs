@@ -310,7 +310,7 @@ impl EarlyLintPass for MiscEarlyLints {
         if in_external_macro(cx.sess(), expr.span) {
             return;
         }
-        double_neg::check(cx, expr)
+        double_neg::check(cx, expr);
     }
 }
 
@@ -334,15 +334,15 @@ impl MiscEarlyLints {
             };
             unseparated_literal_suffix::check(cx, lit, &lit_snip, suffix, "integer");
             if lit_snip.starts_with("0x") {
-                mixed_case_hex_literals::check(cx, lit, suffix, &lit_snip)
+                mixed_case_hex_literals::check(cx, lit, suffix, &lit_snip);
             } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
-                /* nothing to do */
+                // nothing to do
             } else if value != 0 && lit_snip.starts_with('0') {
-                zero_prefixed_literal::check(cx, lit, &lit_snip)
+                zero_prefixed_literal::check(cx, lit, &lit_snip);
             }
         } else if let LitKind::Float(_, LitFloatType::Suffixed(float_ty)) = lit.kind {
             let suffix = float_ty.name_str();
-            unseparated_literal_suffix::check(cx, lit, &lit_snip, suffix, "float")
+            unseparated_literal_suffix::check(cx, lit, &lit_snip, suffix, "float");
         }
     }
 }

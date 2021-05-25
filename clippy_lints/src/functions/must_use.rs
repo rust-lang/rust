@@ -240,7 +240,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                 }
             },
             Assign(target, ..) | AssignOp(_, target, _) | AddrOf(_, hir::Mutability::Mut, target) => {
-                self.mutates_static |= is_mutated_static(target)
+                self.mutates_static |= is_mutated_static(target);
             },
             _ => {},
         }

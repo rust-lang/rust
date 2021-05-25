@@ -292,7 +292,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     LitKind::Str(ref text, _) => {
                         let str_pat = self.next("s");
                         println!("    if let LitKind::Str(ref {}, _) = {}.node;", str_pat, lit_pat);
-                        println!("    if {}.as_str() == {:?}", str_pat, &*text.as_str())
+                        println!("    if {}.as_str() == {:?}", str_pat, &*text.as_str());
                     },
                 }
             },

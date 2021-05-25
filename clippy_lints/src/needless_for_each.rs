@@ -145,7 +145,7 @@ impl<'tcx> Visitor<'tcx> for RetCollector {
                     self.ret_in_loop = true
                 }
 
-                self.spans.push(expr.span)
+                self.spans.push(expr.span);
             },
 
             ExprKind::Loop(..) => {
