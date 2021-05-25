@@ -543,18 +543,18 @@ pub enum UseTreeKind {
     /// use path::to::Item as Renamed;
     /// use path::to::Trait as _;
     /// ```
-    Single { path: ModPath, alias: Option<ImportAlias> },
+    Single { path: Interned<ModPath>, alias: Option<ImportAlias> },
 
     /// ```ignore
     /// use *;  // (invalid, but can occur in nested tree)
     /// use path::*;
     /// ```
-    Glob { path: Option<ModPath> },
+    Glob { path: Option<Interned<ModPath>> },
 
     /// ```ignore
     /// use prefix::{self, Item, ...};
     /// ```
-    Prefixed { prefix: Option<ModPath>, list: Vec<UseTree> },
+    Prefixed { prefix: Option<Interned<ModPath>>, list: Box<[UseTree]> },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -811,7 +811,7 @@ impl UseTree {
                     },
                     None => prefix,
                 };
-                for tree in list {
+                for tree in &**list {
                     tree.expand_impl(prefix.clone(), cb);
                 }
             }
