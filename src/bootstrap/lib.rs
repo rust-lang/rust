@@ -472,21 +472,11 @@ impl Build {
         slice::from_ref(&self.build.triple)
     }
 
-    /// If the LLVM submodule has been initialized already, sync it unconditionally. This avoids
-    /// contributors checking in a submodule change by accident.
-    pub fn maybe_update_llvm_submodule(&self) {
-        if self.in_tree_llvm_info.is_git() {
-            native::update_llvm_submodule(self);
-        }
-    }
-
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
             job::setup(self);
         }
-
-        self.maybe_update_llvm_submodule();
 
         if let Subcommand::Format { check, paths } = &self.config.cmd {
             return format::format(self, *check, &paths);
