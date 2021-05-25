@@ -517,21 +517,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if inherent_impls_candidate.len() > 0 {
                                 inherent_impls_candidate.sort();
                                 inherent_impls_candidate.dedup();
+
+                                // number of type to shows at most.
+                                let limit = if inherent_impls_candidate.len() == 5 { 5 } else { 4 };
                                 let type_candidates = inherent_impls_candidate
                                     .iter()
-                                    .map(|impl_item| self.tcx.at(span).type_of(*impl_item))
-                                    .collect::<Vec<_>>();
-                                // number of type to shows at most.
-                                let limit = if type_candidates.len() == 4 { 4 } else { 3 };
-                                for ty in type_candidates.iter().take(limit) {
-                                    err.note(&format!("the {item_kind} was found for {}", ty));
-                                }
-                                if type_candidates.len() > limit {
-                                    err.note(&format!(
-                                        "the {item_kind} was found for {} more types",
-                                        type_candidates.len() - limit
-                                    ));
-                                }
+                                    .take(limit)
+                                    .map(|impl_item| {
+                                        format!("- `{}`", self.tcx.at(span).type_of(*impl_item))
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .join("\n");
+                                let additional_types = if inherent_impls_candidate.len() > limit {
+                                    format!(
+                                        "\nand {} more types",
+                                        inherent_impls_candidate.len() - limit
+                                    )
+                                } else {
+                                    "".to_string()
+                                };
+                                err.note(&format!(
+                                    "the {item_kind} was found for\n{}{}",
+                                    type_candidates, additional_types
+                                ));
                             }
                         }
                     } else {

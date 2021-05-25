@@ -7,7 +7,8 @@ LL | struct Point<T> {
 LL |     let d = point_i32.distance();
    |                       ^^^^^^^^ method not found in `Point<i32>`
    |
-   = note: the method was found for Point<f64>
+   = note: the method was found for
+           - `Point<f64>`
 
 error[E0599]: no method named `other` found for struct `Point` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:84:23
@@ -33,10 +34,12 @@ LL | struct Wrapper<T>(T);
 LL |     wrapper.method();
    |             ^^^^^^ method not found in `Wrapper<bool>`
    |
-   = note: the method was found for Wrapper<i8>
-   = note: the method was found for Wrapper<i16>
-   = note: the method was found for Wrapper<i32>
-   = note: the method was found for 3 more types
+   = note: the method was found for
+           - `Wrapper<i8>`
+           - `Wrapper<i16>`
+           - `Wrapper<i32>`
+           - `Wrapper<i64>`
+           and 2 more types
 
 error[E0599]: no method named `other` found for struct `Wrapper` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:92:13
@@ -56,9 +59,10 @@ LL | struct Wrapper2<'a, T, const C: usize> {
 LL |     wrapper.method();
    |             ^^^^^^ method not found in `Wrapper2<'_, bool, 3_usize>`
    |
-   = note: the method was found for Wrapper2<'a, i8, C>
-   = note: the method was found for Wrapper2<'a, i16, C>
-   = note: the method was found for Wrapper2<'a, i32, C>
+   = note: the method was found for
+           - `Wrapper2<'a, i8, C>`
+           - `Wrapper2<'a, i16, C>`
+           - `Wrapper2<'a, i32, C>`
 
 error[E0599]: no method named `other` found for struct `Wrapper2` in the current scope
   --> $DIR/method-not-found-generic-arg-elision.rs:98:13
