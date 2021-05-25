@@ -117,9 +117,11 @@ public:
   std::shared_ptr<ActivityAnalyzer> ATA;
   SmallVector<BasicBlock *, 12> originalBlocks;
   std::map<BasicBlock *, std::vector<BasicBlock *>> reverseBlocks;
-  SmallVector<PHINode *, 4> fictiousPHIs;
+  SmallPtrSet<PHINode *, 4> fictiousPHIs;
   ValueToValueMapTy originalToNewFn;
   std::vector<CallInst *> originalCalls;
+
+  SmallPtrSet<Instruction *, 4> unnecessaryIntermediates;
 
   const std::map<Instruction *, bool> *can_modref_map;
 

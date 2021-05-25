@@ -630,10 +630,14 @@ void calculateUnusedValuesInFunction(
   calculateUnusedValues(
       func, unnecessaryValues, unnecessaryInstructions, returnValue,
       [&](const Value *val) {
-        return is_value_needed_in_reverse<ValueType::Primal>(
+        if (auto inst = dyn_cast<Instruction>(val))
+          if (gutils->unnecessaryIntermediates.count(inst))
+            return false;
+        bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, val,
             /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
             PrimalSeen, oldUnreachable);
+        return ivn;
       },
       [&](const Instruction *inst) {
         if (auto II = dyn_cast<IntrinsicInst>(inst)) {
@@ -795,13 +799,15 @@ void calculateUnusedValuesInFunction(
         if (isa<MemTransferInst>(inst) &&
             mode == DerivativeMode::ReverseModeGradient)
           return false;
+        if (gutils->unnecessaryIntermediates.count(inst))
+          return false;
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, inst,
             /*topLevel*/ mode == DerivativeMode::ReverseModeCombined,
             PrimalSeen, oldUnreachable);
         return ivn;
       });
-#if 0
+#if 1
   llvm::errs() << "unnecessaryValues of " << func.getName() << ":\n";
   for (auto a : unnecessaryValues) {
     llvm::errs() << *a << "\n";
@@ -1515,6 +1521,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   gutils->forceAugmentedReturns(TR, guaranteedUnreachable);
 
+  gutils->computeMinCache(TR, guaranteedUnreachable);
+
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
   calculateUnusedValuesInFunction(*gutils->oldFunc, unnecessaryValues,
@@ -1568,8 +1576,6 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     }
   }
 
-  gutils->computeMinCache(TR, guaranteedUnreachable);
-
   AdjointGenerator<AugmentedReturn *> maker(
       DerivativeMode::ReverseModePrimal, gutils, constant_args, retType, TR,
       getIndex, uncacheable_args_map, &returnuses,
@@ -1620,6 +1626,13 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     }
   }
 
+  for (const auto &m : gutils->knownRecomputeHeuristic) {
+    if (!m.second) {
+      auto newi = gutils->getNewFromOriginal(m.first);
+      IRBuilder<> BuilderZ(cast<Instruction>(newi)->getNextNode());
+      gutils->cacheForReverse(BuilderZ, newi, getIndex(cast<Instruction>(const_cast<Value*>(m.first)), CacheType::Self));
+    }
+  }
   auto nf = gutils->newFunc;
 
   while (gutils->inversionAllocs->size() > 0) {
@@ -2713,6 +2726,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     return gutils->getIndex(std::make_pair(I, u), mapping);
   };
 
+  gutils->computeMinCache(TR, guaranteedUnreachable);
+
   SmallPtrSet<const Value *, 4> unnecessaryValues;
   SmallPtrSet<const Instruction *, 4> unnecessaryInstructions;
   calculateUnusedValuesInFunction(
@@ -2823,8 +2838,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     }
   }
 
-  gutils->computeMinCache(TR, guaranteedUnreachable);
-
   if (fwdMode) {
     // set derivative of function arguments
     auto newArgs = gutils->newFunc->arg_begin();
@@ -2927,6 +2940,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   if (!topLevel) {
+    for (const auto &m : mapping) {
+      if (m.first.second == CacheType::Self) {
+        auto newi = gutils->getNewFromOriginal(m.first.first);
+        IRBuilder<> BuilderZ(newi->getNextNode());
+        gutils->cacheForReverse(BuilderZ, newi, m.second);
+      }
+    }
+
     // TODO also can consider switch instance as well
     // TODO can also insert to topLevel as well [note this requires putting the
     // intrinsic at the correct location]

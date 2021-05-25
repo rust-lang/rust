@@ -102,7 +102,7 @@ public:
 
   /// Return whether successful
   bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, bool PostOpt,
-                      bool fwdMode) {
+                      DerivativeMode mode) {
 
     Value *fn = CI->getArgOperand(0);
 
@@ -148,10 +148,20 @@ public:
                      Arch == Triple::amdgcn;
 
     std::map<int, Type *> byVal;
+    llvm::Value* tape = nullptr;
+    int allocatedTapeSize = -1;
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);
 
       if (truei >= FT->getNumParams()) {
+        if (mode == DerivativeMode::ReverseModeGradient) {
+          if (tape == nullptr) {
+            tape = res;
+            if (CI->paramHasAttr(i, Attribute::ByVal))
+              tape = Builder.CreateLoad(tape);
+            continue;
+          }
+        }
         EmitFailure("TooManyArgs", CI->getDebugLoc(), CI,
                     "Had too many arguments to __enzyme_autodiff", *CI,
                     " - extra arg - ", *res);
@@ -199,8 +209,12 @@ public:
           ty = DIFFE_TYPE::CONSTANT;
           ++i;
           res = CI->getArgOperand(i);
+        } else if (MS == "enzyme_allocated") {
+          ++i;
+          allocatedTapeSize = cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
         } else {
-          ty = whatType(PTy, fwdMode);
+          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
         }
       } else if (isa<LoadInst>(res) &&
                  isa<ConstantExpr>(cast<LoadInst>(res)->getOperand(0)) &&
@@ -229,8 +243,12 @@ public:
           ty = DIFFE_TYPE::CONSTANT;
           ++i;
           res = CI->getArgOperand(i);
+        } else if (MS == "enzyme_allocated") {
+          ++i;
+          allocatedTapeSize = cast<ConstantInt>(CI->getArgOperand(i))->getSExtValue();
+          continue;
         } else {
-          ty = whatType(PTy, fwdMode);
+          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
         }
       } else if (isa<GlobalVariable>(res)) {
         auto gv = cast<GlobalVariable>(res);
@@ -252,7 +270,7 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, fwdMode);
+          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
         }
       } else if (isa<ConstantExpr>(res) && cast<ConstantExpr>(res)->isCast() &&
                  isa<GlobalVariable>(cast<ConstantExpr>(res)->getOperand(0))) {
@@ -275,7 +293,7 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, fwdMode);
+          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
         }
       } else if (isa<CastInst>(res) && cast<CastInst>(res) &&
                  isa<AllocaInst>(cast<CastInst>(res)->getOperand(0))) {
@@ -298,7 +316,7 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, fwdMode);
+          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
         }
       } else if (isa<AllocaInst>(res)) {
         auto gv = cast<AllocaInst>(res);
@@ -320,10 +338,10 @@ public:
           ++i;
           res = CI->getArgOperand(i);
         } else {
-          ty = whatType(PTy, fwdMode);
+          ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
         }
       } else
-        ty = whatType(PTy, fwdMode);
+        ty = whatType(PTy, mode == DerivativeMode::ForwardMode);
 
       constants.push_back(ty);
 
@@ -417,14 +435,14 @@ public:
     }
 
     bool differentialReturn =
-        !fwdMode && cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
+        mode != DerivativeMode::ForwardMode && cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 
-    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), fwdMode);
+    DIFFE_TYPE retType = whatType(cast<Function>(fn)->getReturnType(), mode == DerivativeMode::ForwardMode);
 
     std::map<Argument *, bool> volatile_args;
     FnTypeInfo type_args(cast<Function>(fn));
     for (auto &a : type_args.Function->args()) {
-      volatile_args[&a] = false;
+      volatile_args[&a] = !(mode == DerivativeMode::ReverseModeCombined);
       TypeTree dt;
       if (a.getType()->isFPOrFPVectorTy()) {
         dt = ConcreteType(a.getType()->getScalarType());
@@ -449,17 +467,72 @@ public:
     TypeAnalysis TA(TLI);
     type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
 
-    auto newFunc = Logic.CreatePrimalAndGradient(
-        cast<Function>(fn), retType, constants, TLI, TA,
-        /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
-        /*addedType*/ nullptr, type_args, volatile_args,
-        /*index mapping*/ nullptr, AtomicAdd, fwdMode, PostOpt);
+    Function * newFunc = nullptr;
+    Type* tapeType = nullptr;
+    switch(mode) {
+      case DerivativeMode::ForwardMode:
+      case DerivativeMode::ReverseModeCombined:
+        newFunc = Logic.CreatePrimalAndGradient(
+          cast<Function>(fn), retType, constants, TLI, TA,
+          /*should return*/ false, /*dretPtr*/ false, /*topLevel*/ true,
+          /*addedType*/ nullptr, type_args, volatile_args,
+          /*index mapping*/ nullptr, AtomicAdd, mode == DerivativeMode::ForwardMode, PostOpt);
+        break;
+      case DerivativeMode::ReverseModePrimal:
+      case DerivativeMode::ReverseModeGradient:{
+        bool returnUsed = false;
+        bool forceAnonymousTape = allocatedTapeSize == -1;
+        auto &aug = Logic.CreateAugmentedPrimal(cast<Function>(fn),
+                    retType, constants, TLI, TA, /*returnUsed*/returnUsed, type_args,
+                    volatile_args, forceAnonymousTape, /*atomicAdd*/AtomicAdd, /*PostOpt*/PostOpt);
+        auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
+        if (!forceAnonymousTape) {
+          assert(!aug.tapeType);
+          if (aug.returns.find(AugmentedStruct::Tape) != aug.returns.end()) {
+            auto tapeIdx = aug.returns.find(AugmentedStruct::Tape)->second;
+            tapeType = (tapeIdx == -1) ? aug.fn->getReturnType()
+                                : cast<StructType>(aug.fn->getReturnType())
+                                      ->getElementType(tapeIdx);
+          }
+          if (tapeType && DL.getTypeSizeInBits(tapeType) < 8 * allocatedTapeSize) {
+            auto bytes = DL.getTypeSizeInBits(tapeType) / 8;
+            EmitFailure("Insufficient tape allocation size", CI->getDebugLoc(), CI,
+                        "need ", bytes, " bytes have ", allocatedTapeSize, " bytes");
+          }
+        } else {
+          tapeType = PointerType::getInt8PtrTy(fn->getContext());
+        }
+        if (mode == DerivativeMode::ReverseModePrimal)
+          newFunc = aug.fn;
+        else
+          newFunc = Logic.CreatePrimalAndGradient(cast<Function>(fn), retType, constants,
+          TLI, TA, /*should return*/false, /*dretPtr*/ false, /*topLevel*/ false,
+          tapeType, type_args, volatile_args,
+          &aug, AtomicAdd, /*fwdMode*/false, PostOpt);
+      }
+    }
 
     if (!newFunc)
       return false;
 
     if (differentialReturn)
       args.push_back(ConstantFP::get(cast<Function>(fn)->getReturnType(), 1.0));
+    
+    if (tape && tapeType) {
+      auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
+      if (tapeType != tape->getType() && DL.getTypeSizeInBits(tapeType) <= DL.getTypeSizeInBits(tape->getType())) {
+        IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
+        auto AL = EB.CreateAlloca(tape->getType());
+        Builder.CreateStore(tape, AL);
+        tape = Builder.CreateLoad(Builder.CreatePointerCast(AL, PointerType::getUnqual(tapeType)));
+      }
+      CI->getParent()->getParent()->dump();
+      CI->getParent()->dump();
+      llvm::errs() << *tape << "\n";
+      llvm::errs() << *tapeType << "\n";
+      assert(tape->getType() == tapeType);
+      args.push_back(tape);
+    }
     assert(newFunc);
 
     if (EnzymePrint) {
@@ -490,18 +563,34 @@ public:
 #endif
 
     if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy()) {
-      unsigned idxs[] = {0};
-      auto diffreti = Builder.CreateExtractValue(diffret, idxs);
-      if (diffreti->getType() == CI->getType()) {
-        CI->replaceAllUsesWith(diffreti);
-      } else if (diffret->getType() == CI->getType()) {
+      if (diffret->getType() == CI->getType()) {
         CI->replaceAllUsesWith(diffret);
+      } else if (mode == DerivativeMode::ReverseModePrimal) {
+        auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
+        if (DL.getTypeSizeInBits(CI->getType()) >= DL.getTypeSizeInBits(diffret->getType())) {
+          IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
+          auto AL = EB.CreateAlloca(CI->getType());
+          Builder.CreateStore(diffret, Builder.CreatePointerCast(AL, PointerType::getUnqual(diffret->getType())));
+          CI->replaceAllUsesWith(Builder.CreateLoad(AL));
+        } else {
+          llvm::errs() << *CI << " - " << *diffret << "\n";
+          assert(0 && " what");
+        }
       } else {
-        EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
-                    "Cannot cast return type of gradient ",
-                    *diffreti->getType(), *diffreti, ", to desired type ",
-                    *CI->getType());
-        return false;
+        
+        unsigned idxs[] = {0};
+        auto diffreti = Builder.CreateExtractValue(diffret, idxs);
+        if (diffreti->getType() == CI->getType()) {
+          CI->replaceAllUsesWith(diffreti);
+        } else if (diffret->getType() == CI->getType()) {
+          CI->replaceAllUsesWith(diffret);
+        } else {
+          EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
+                      "Cannot cast return type of gradient ",
+                      *diffreti->getType(), *diffreti, ", to desired type ",
+                      *CI->getType());
+          return false;
+        }
       }
     } else {
       CI->replaceAllUsesWith(UndefValue::get(CI->getType()));
@@ -610,7 +699,9 @@ public:
               Fn->getName() == "__enzyme_pointer" ||
               Fn->getName().contains("__enzyme_call_inactive") ||
               Fn->getName().contains("__enzyme_autodiff") ||
-              Fn->getName().contains("__enzyme_fwddiff")))
+              Fn->getName().contains("__enzyme_fwddiff") ||
+              Fn->getName().contains("__enzyme_augmentfwd") ||
+              Fn->getName().contains("__enzyme_reverse")))
           continue;
 
         SmallVector<Value *, 16> CallArgs(II->arg_begin(), II->arg_end());
@@ -643,8 +734,7 @@ public:
         Changed = true;
       }
 
-    std::set<CallInst *> toLowerAuto;
-    std::set<CallInst *> toLowerFwd;
+    std::map<CallInst *, DerivativeMode> toLower;
     std::set<CallInst *> InactiveCalls;
   retry:;
     for (BasicBlock &BB : F) {
@@ -666,7 +756,9 @@ public:
               Fn = fn;
         }
 
-        if (Fn && Fn->getName() == "__enzyme_float") {
+        if (!Fn) continue;
+
+        if (Fn->getName() == "__enzyme_float") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -675,7 +767,7 @@ public:
             }
           }
         }
-        if (Fn && Fn->getName() == "__enzyme_integer") {
+        if (Fn->getName() == "__enzyme_integer") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -684,7 +776,7 @@ public:
             }
           }
         }
-        if (Fn && Fn->getName() == "__enzyme_double") {
+        if (Fn->getName() == "__enzyme_double") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -693,7 +785,7 @@ public:
             }
           }
         }
-        if (Fn && Fn->getName() == "__enzyme_pointer") {
+        if (Fn->getName() == "__enzyme_pointer") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
           for (size_t i = 0; i < CI->getNumArgOperands(); ++i) {
             if (CI->getArgOperand(i)->getType()->isPointerTy()) {
@@ -702,26 +794,26 @@ public:
             }
           }
         }
-        if (Fn && Fn->getName().contains("__enzyme_call_inactive")) {
+        if (Fn->getName().contains("__enzyme_call_inactive")) {
           InactiveCalls.insert(CI);
         }
-        if (Fn && (Fn->getName() == "frexp" || Fn->getName() == "frexpf" ||
-                   Fn->getName() == "frexpl")) {
+        if (Fn->getName() == "frexp" || Fn->getName() == "frexpf" ||
+                   Fn->getName() == "frexpl") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ArgMemOnly);
           CI->addParamAttr(1, Attribute::WriteOnly);
         }
-        if (Fn && (Fn->getName() == "__fd_sincos_1" ||
+        if (Fn->getName() == "__fd_sincos_1" ||
                    Fn->getName() == "__fd_cos_1" ||
-                   Fn->getName() == "__mth_i_ipowi")) {
+                   Fn->getName() == "__mth_i_ipowi") {
           CI->addAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
         }
-        if (Fn && (Fn->getName() == "f90io_fmtw_end" ||
-                   Fn->getName() == "f90io_unf_end")) {
+        if (Fn->getName() == "f90io_fmtw_end" ||
+                   Fn->getName() == "f90io_unf_end") {
           Fn->addFnAttr(Attribute::InaccessibleMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOnly);
         }
-        if (Fn && (Fn->getName() == "f90io_open2003a")) {
+        if (Fn->getName() == "f90io_open2003a") {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
@@ -739,7 +831,7 @@ public:
             }
           }
         }
-        if (Fn && (Fn->getName() == "f90io_fmtw_inita")) {
+        if (Fn->getName() == "f90io_fmtw_inita") {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
@@ -760,7 +852,7 @@ public:
           }
         }
 
-        if (Fn && (Fn->getName() == "f90io_unf_init")) {
+        if (Fn->getName() == "f90io_unf_init") {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
@@ -781,7 +873,7 @@ public:
           }
         }
 
-        if (Fn && (Fn->getName() == "f90io_src_info03a")) {
+        if (Fn->getName() == "f90io_src_info03a") {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
@@ -801,13 +893,13 @@ public:
             }
           }
         }
-        if (Fn && (Fn->getName() == "f90io_sc_d_fmt_write" ||
-                   Fn->getName() == "f90io_sc_i_fmt_write" ||
-                   Fn->getName() == "ftnio_fmt_write64" ||
-                   Fn->getName() == "f90io_fmt_write64_aa" ||
-                   Fn->getName() == "f90io_fmt_writea" ||
-                   Fn->getName() == "f90io_unf_writea" ||
-                   Fn->getName() == "f90_pausea")) {
+        if (Fn->getName() == "f90io_sc_d_fmt_write" ||
+            Fn->getName() == "f90io_sc_i_fmt_write" ||
+            Fn->getName() == "ftnio_fmt_write64" ||
+            Fn->getName() == "f90io_fmt_write64_aa" ||
+            Fn->getName() == "f90io_fmt_writea" ||
+            Fn->getName() == "f90io_unf_writea" ||
+            Fn->getName() == "f90_pausea") {
           Fn->addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
           CI->addAttribute(AttributeList::FunctionIndex,
                            Attribute::InaccessibleMemOrArgMemOnly);
@@ -819,16 +911,24 @@ public:
           }
         }
 
-        bool autoDiff = Fn && Fn->getName().contains("__enzyme_autodiff");
+        bool enableEnzyme = false;
+        DerivativeMode mode;
+        if (Fn->getName().contains("__enzyme_autodiff")) {
+          enableEnzyme = true;
+          mode = DerivativeMode::ReverseModeCombined;
+        } else if (Fn->getName().contains("__enzyme_fwddiff")) {
+          enableEnzyme = true;
+          mode = DerivativeMode::ForwardMode;
+        } else if (Fn->getName().contains("__enzyme_augmentfwd")) {
+          enableEnzyme = true;
+          mode = DerivativeMode::ReverseModePrimal;
+        } else if (Fn->getName().contains("__enzyme_reverse")) {
+          enableEnzyme = true;
+          mode = DerivativeMode::ReverseModeGradient;
+        }
 
-        bool fwdDiff = Fn && Fn->getName().contains("__enzyme_fwddiff");
-
-        if (autoDiff || fwdDiff) {
-          if (autoDiff) {
-            toLowerAuto.insert(CI);
-          } else if (fwdDiff) {
-            toLowerFwd.insert(CI);
-          }
+        if (enableEnzyme) {
+          toLower[CI] = mode;
 
           Value *fn = CI->getArgOperand(0);
           while (auto ci = dyn_cast<CastInst>(fn)) {
@@ -892,15 +992,9 @@ public:
       CI->eraseFromParent();
       Changed = true;
     }
-    for (auto CI : toLowerAuto) {
-      successful &= HandleAutoDiff(CI, TLI, PostOpt, /*fwdMode*/ false);
-      Changed = true;
-      if (!successful)
-        break;
-    }
 
-    for (auto CI : toLowerFwd) {
-      successful &= HandleAutoDiff(CI, TLI, PostOpt, /*fwdMode*/ true);
+    for (auto pair : toLower) {
+      successful &= HandleAutoDiff(pair.first, TLI, PostOpt, pair.second);
       Changed = true;
       if (!successful)
         break;

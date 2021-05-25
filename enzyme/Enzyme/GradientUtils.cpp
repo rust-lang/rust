@@ -4339,10 +4339,31 @@ void GradientUtils::computeMinCache(
 
     SmallPtrSet<Value *, 5> MinReq;
     minCut(Recomputes, Intermediates, Required, MinReq);
+    SmallPtrSet<Value *, 5> NeedGraph;
+    for (Value* V : MinReq)
+      todo.push_back(V);
+    while (todo.size()) {
+      Value *V = todo.front();
+      todo.pop_front();
+      if (NeedGraph.count(V))
+        continue;
+      NeedGraph.insert(V);
+      for (auto V2 : V->users()) {
+        if (Intermediates.count(V2))
+          todo.push_back(V2);
+      }
+    }
+
     for (auto V : Intermediates) {
       // llvm::errs() << " int: " << *V << " minreq: " << (int)MinReq.count(V)
       // << "\n";
       knownRecomputeHeuristic[V] = !MinReq.count(V);
+      if (!NeedGraph.count(V)) {
+        // llvm::errs() << " ++ unnecessary\n";
+        unnecessaryIntermediates.insert(cast<Instruction>(V));
+      }
     }
+
+
   }
 }

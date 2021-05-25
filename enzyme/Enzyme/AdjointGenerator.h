@@ -107,7 +107,9 @@ public:
                      bool check = true) {
     bool used =
         unnecessaryInstructions.find(&I) == unnecessaryInstructions.end();
-
+    if (!used) {
+      assert(!gutils->unnecessaryIntermediates.count(&I));
+    }
     auto iload = gutils->getNewFromOriginal((Value *)&I);
     if (used && check)
       return;
@@ -117,7 +119,7 @@ public:
       IRBuilder<> BuilderZ(cast<Instruction>(iload));
       pn = BuilderZ.CreatePHI(I.getType(), 1,
                               (I.getName() + "_replacementA").str());
-      gutils->fictiousPHIs.push_back(pn);
+      gutils->fictiousPHIs.insert(pn);
 
       for (auto inst_orig : unnecessaryInstructions) {
         if (isa<ReturnInst>(inst_orig))
@@ -329,17 +331,19 @@ public:
          is_value_needed_in_reverse<ValueType::Primal>(
              TR, gutils, &I,
              /*toplevel*/ Mode == DerivativeMode::ReverseModeCombined,
-             oldUnreachable))) {
-      IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I)->getNextNode());
-      // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
-      inst = gutils->cacheForReverse(BuilderZ, newi,
-                                     getIndex(&I, CacheType::Self));
-      assert(inst->getType() == type);
+             oldUnreachable) )) {
+      if (!gutils->unnecessaryIntermediates.count(&I)) {
+        IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&I)->getNextNode());
+        // auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
+        inst = gutils->cacheForReverse(BuilderZ, newi,
+                                      getIndex(&I, CacheType::Self));
+        assert(inst->getType() == type);
 
-      if (Mode == DerivativeMode::ReverseModeGradient) {
-        assert(inst != newi);
-      } else {
-        assert(inst == newi);
+        if (Mode == DerivativeMode::ReverseModeGradient) {
+          assert(inst != newi);
+        } else {
+          assert(inst == newi);
+        }
       }
     }
 
@@ -3869,7 +3873,7 @@ public:
           // the true shadow of this
           auto pn = BuilderZ.CreatePHI(
               orig->getType(), 1, (orig->getName() + "_replacementB").str());
-          gutils->fictiousPHIs.push_back(pn);
+          gutils->fictiousPHIs.insert(pn);
           gutils->replaceAWithB(op, pn);
           gutils->erase(op);
         }
@@ -4429,7 +4433,7 @@ public:
           } else {
             auto pn = BuilderZ.CreatePHI(
                 orig->getType(), 1, (orig->getName() + "_replacementE").str());
-            gutils->fictiousPHIs.push_back(pn);
+            gutils->fictiousPHIs.insert(pn);
             cachereplace = pn;
           }
         } else {
@@ -4522,7 +4526,7 @@ public:
         } else {
           auto pn = BuilderZ.CreatePHI(
               orig->getType(), 1, (orig->getName() + "_replacementC").str());
-          gutils->fictiousPHIs.push_back(pn);
+          gutils->fictiousPHIs.insert(pn);
           cachereplace = pn; // UndefValue::get(op->getType());
           // cachereplace = UndefValue::get(op->getType());
         }
