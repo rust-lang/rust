@@ -53,7 +53,13 @@ pub(crate) fn goto_implementation(
             let assoc = f.as_assoc_item(sema.db)?;
             let name = assoc.name(sema.db)?;
             let trait_ = assoc.containing_trait(sema.db)?;
-            impls_for_trait_fn(&sema, trait_, name)
+            impls_for_trait_item(&sema, trait_, name)
+        }
+        hir::ModuleDef::Const(c) => {
+            let assoc = c.as_assoc_item(sema.db)?;
+            let name = assoc.name(sema.db)?;
+            let trait_ = assoc.containing_trait(sema.db)?;
+            impls_for_trait_item(&sema, trait_, name)
         }
         _ => return None,
     };
@@ -71,7 +77,7 @@ fn impls_for_trait(sema: &Semantics<RootDatabase>, trait_: hir::Trait) -> Vec<Na
         .collect()
 }
 
-fn impls_for_trait_fn(
+fn impls_for_trait_item(
     sema: &Semantics<RootDatabase>,
     trait_: hir::Trait,
     fun_name: hir::Name,
@@ -302,6 +308,24 @@ impl Tr for S {
      //^
         println!("Hello, world!");
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_implementation_trait_assoc_const() {
+        check(
+            r#"
+trait Tr {
+    const C$0: usize;
+}
+
+struct S;
+
+impl Tr for S {
+    const C: usize = 4;
+        //^
 }
 "#,
         );
