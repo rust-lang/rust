@@ -205,15 +205,14 @@ fn lower_generic_args_from_fn_path(
 ) -> Option<GenericArgs> {
     let mut args = Vec::new();
     let mut bindings = Vec::new();
-    if let Some(params) = params {
-        let mut param_types = Vec::new();
-        for param in params.params() {
-            let type_ref = TypeRef::from_ast_opt(&ctx, param.ty());
-            param_types.push(type_ref);
-        }
-        let arg = GenericArg::Type(TypeRef::Tuple(param_types));
-        args.push(arg);
+    let params = params?;
+    let mut param_types = Vec::new();
+    for param in params.params() {
+        let type_ref = TypeRef::from_ast_opt(&ctx, param.ty());
+        param_types.push(type_ref);
     }
+    let arg = GenericArg::Type(TypeRef::Tuple(param_types));
+    args.push(arg);
     if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(&ctx, ret_type.ty());
         bindings.push(AssociatedTypeBinding {
@@ -221,10 +220,14 @@ fn lower_generic_args_from_fn_path(
             type_ref: Some(type_ref),
             bounds: Vec::new(),
         });
-    }
-    if args.is_empty() && bindings.is_empty() {
-        None
     } else {
-        Some(GenericArgs { args, has_self_type: false, bindings })
+        // -> ()
+        let type_ref = TypeRef::Tuple(Vec::new());
+        bindings.push(AssociatedTypeBinding {
+            name: name![Output],
+            type_ref: Some(type_ref),
+            bounds: Vec::new(),
+        });
     }
+    Some(GenericArgs { args, has_self_type: false, bindings })
 }

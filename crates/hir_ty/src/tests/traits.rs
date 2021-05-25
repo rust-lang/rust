@@ -3041,7 +3041,7 @@ fn infer_fn_trait_arg() {
 
 #[test]
 fn infer_box_fn_arg() {
-    // The type mismatch is a bug
+    // The type mismatch is because we don't define Unsize and CoerceUnsized
     check_infer_with_mismatches(
         r#"
 //- /lib.rs deps:std
@@ -3095,16 +3095,16 @@ fn foo() {
             478..576 '{     ...&s); }': ()
             488..489 's': Option<i32>
             492..504 'Option::None': Option<i32>
-            514..515 'f': Box<dyn FnOnce(&Option<i32>)>
+            514..515 'f': Box<dyn FnOnce(&Option<i32>) -> ()>
             549..562 'box (|ps| {})': Box<|{unknown}| -> ()>
             554..561 '|ps| {}': |{unknown}| -> ()
             555..557 'ps': {unknown}
             559..561 '{}': ()
-            568..569 'f': Box<dyn FnOnce(&Option<i32>)>
-            568..573 'f(&s)': FnOnce::Output<dyn FnOnce(&Option<i32>), (&Option<i32>,)>
+            568..569 'f': Box<dyn FnOnce(&Option<i32>) -> ()>
+            568..573 'f(&s)': ()
             570..572 '&s': &Option<i32>
             571..572 's': Option<i32>
-            549..562: expected Box<dyn FnOnce(&Option<i32>)>, got Box<|{unknown}| -> ()>
+            549..562: expected Box<dyn FnOnce(&Option<i32>) -> ()>, got Box<|{unknown}| -> ()>
         "#]],
     );
 }
@@ -3570,4 +3570,26 @@ fn main() {
             245..257 'v.do_thing()': [u8; _]
         "#]],
     )
+}
+
+#[test]
+fn fn_returning_unit() {
+    check_infer_with_mismatches(
+        r#"
+#[lang = "fn_once"]
+trait FnOnce<Args> {
+    type Output;
+}
+
+fn test<F: FnOnce()>(f: F) {
+    let _: () = f();
+}"#,
+        expect![[r#"
+            82..83 'f': F
+            88..112 '{     ...f(); }': ()
+            98..99 '_': ()
+            106..107 'f': F
+            106..109 'f()': ()
+        "#]],
+    );
 }
