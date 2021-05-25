@@ -110,10 +110,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     abi,
                     &args[..],
                     ret,
-                    if caller_can_unwind {
-                        cleanup.map_or(StackPopUnwind::Skip, StackPopUnwind::Cleanup)
-                    } else {
-                        StackPopUnwind::NotAllowed
+                    match (cleanup, caller_can_unwind) {
+                        (Some(cleanup), true) => StackPopUnwind::Cleanup(*cleanup),
+                        (None, true) => StackPopUnwind::Skip,
+                        (_, false) => StackPopUnwind::NotAllowed,
                     },
                 )?;
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
@@ -511,7 +511,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Abi::Rust,
             &[arg.into()],
             Some((&dest.into(), target)),
-            unwind.map_or(StackPopUnwind::Skip, StackPopUnwind::Cleanup),
+            match unwind {
+                Some(cleanup) => StackPopUnwind::Cleanup(cleanup),
+                None => StackPopUnwind::Skip,
+            },
         )
     }
 }
