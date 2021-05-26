@@ -346,11 +346,8 @@ impl CargoWorkspace {
 
         let workspace_root =
             AbsPathBuf::assert(PathBuf::from(meta.workspace_root.into_os_string()));
-        let build_data_config = BuildDataConfig::new(
-            cargo_toml.to_path_buf(),
-            config.clone(),
-            Arc::new(meta.packages.clone()),
-        );
+        let build_data_config =
+            BuildDataConfig::new(cargo_toml.to_path_buf(), config.clone(), Arc::new(meta.packages));
 
         Ok(CargoWorkspace { packages, targets, workspace_root, build_data_config })
     }

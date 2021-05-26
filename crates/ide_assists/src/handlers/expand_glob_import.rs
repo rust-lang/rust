@@ -55,7 +55,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
     let refs_in_target = find_refs_in_mod(ctx, target_module, Some(current_module))?;
     let imported_defs = find_imported_defs(ctx, star)?;
 
-    let target = parent.clone().either(|n| n.syntax().clone(), |n| n.syntax().clone());
+    let target = parent.either(|n| n.syntax().clone(), |n| n.syntax().clone());
     acc.add(
         AssistId("expand_glob_import", AssistKind::RefactorRewrite),
         "Expand glob import",
