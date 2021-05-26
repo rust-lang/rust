@@ -1,3 +1,5 @@
+use rustc_data_structures::temp_dir::MaybeTempDir;
+use rustc_middle::middle::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
@@ -57,4 +59,11 @@ pub trait ArchiveBuilder<'a> {
     fn update_symbols(&mut self);
 
     fn build(self);
+
+    fn inject_dll_import_lib(
+        &mut self,
+        lib_name: &str,
+        dll_imports: &[DllImport],
+        tmpdir: &MaybeTempDir,
+    );
 }

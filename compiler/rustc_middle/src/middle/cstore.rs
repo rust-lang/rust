@@ -95,6 +95,13 @@ pub struct NativeLib {
     pub foreign_module: Option<DefId>,
     pub wasm_import_module: Option<Symbol>,
     pub verbatim: Option<bool>,
+    pub dll_imports: Vec<DllImport>,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+pub struct DllImport {
+    pub name: Symbol,
+    pub ordinal: Option<u16>,
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
