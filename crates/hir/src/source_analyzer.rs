@@ -308,7 +308,11 @@ impl SourceAnalyzer {
             }
         }
 
-        resolve_hir_path_(db, &self.resolver, &hir_path, prefer_value_ns)
+        if parent().map_or(false, |it| ast::Visibility::can_cast(it.kind())) {
+            resolve_hir_path_qualifier(db, &self.resolver, &hir_path)
+        } else {
+            resolve_hir_path_(db, &self.resolver, &hir_path, prefer_value_ns)
+        }
     }
 
     pub(crate) fn record_literal_missing_fields(

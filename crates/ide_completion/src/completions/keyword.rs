@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use syntax::SyntaxKind;
+use syntax::{SyntaxKind, T};
 
 use crate::{CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions};
 
@@ -54,7 +54,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "where", "where ");
         return;
     }
-    if ctx.unsafe_is_prev {
+    if ctx.previous_token_is(T![unsafe]) {
         if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
             add_keyword(ctx, acc, "fn", "fn $0() {}")
         }
@@ -92,7 +92,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "for", "for $1 in $0 {}");
     }
 
-    if ctx.if_is_prev || ctx.block_expr_parent {
+    if ctx.previous_token_is(T![if]) || ctx.previous_token_is(T![while]) || ctx.block_expr_parent {
         add_keyword(ctx, acc, "let", "let ");
     }
 
