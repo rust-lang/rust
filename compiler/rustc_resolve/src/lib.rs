@@ -233,7 +233,14 @@ enum ResolutionError<'a> {
         /* current */ &'static str,
     ),
     /// Error E0530: `X` bindings cannot shadow `Y`s.
-    BindingShadowsSomethingUnacceptable(&'static str, Symbol, &'a NameBinding<'a>),
+    BindingShadowsSomethingUnacceptable {
+        shadowing_binding_descr: &'static str,
+        name: Symbol,
+        participle: &'static str,
+        article: &'static str,
+        shadowed_binding_descr: &'static str,
+        shadowed_binding_span: Span,
+    },
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredTyParam, // FIXME(const_generics_defaults)
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.

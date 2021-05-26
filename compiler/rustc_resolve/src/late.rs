@@ -1763,13 +1763,33 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // to something unusable as a pattern (e.g., constructor function),
                 // but we still conservatively report an error, see
                 // issues/33118#issuecomment-233962221 for one reason why.
+                let binding = binding.expect("no binding for a ctor or static");
                 self.report_error(
                     ident.span,
-                    ResolutionError::BindingShadowsSomethingUnacceptable(
-                        pat_src.descr(),
-                        ident.name,
-                        binding.expect("no binding for a ctor or static"),
-                    ),
+                    ResolutionError::BindingShadowsSomethingUnacceptable {
+                        shadowing_binding_descr: pat_src.descr(),
+                        name: ident.name,
+                        participle: if binding.is_import() { "imported" } else { "defined" },
+                        article: binding.res().article(),
+                        shadowed_binding_descr: binding.res().descr(),
+                        shadowed_binding_span: binding.span,
+                    },
+                );
+                None
+            }
+            Res::Def(DefKind::ConstParam, def_id) => {
+                // Same as for DefKind::Const above, but here, `binding` is `None`, so we
+                // have to construct the error differently
+                self.report_error(
+                    ident.span,
+                    ResolutionError::BindingShadowsSomethingUnacceptable {
+                        shadowing_binding_descr: pat_src.descr(),
+                        name: ident.name,
+                        participle: "defined",
+                        article: res.article(),
+                        shadowed_binding_descr: res.descr(),
+                        shadowed_binding_span: self.r.opt_span(def_id).expect("const parameter defined outside of local crate"),
+                    }
                 );
                 None
             }
