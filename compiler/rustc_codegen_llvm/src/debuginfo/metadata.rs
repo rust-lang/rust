@@ -1485,8 +1485,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
             _ => bug!(),
         };
 
-        // This will always find the metadata in the type map.
         let fallback = use_enum_fallback(cx);
+        // This will always find the metadata in the type map.
         let self_metadata = type_metadata(cx, self.enum_type, self.span);
 
         match self.layout.variants {
@@ -1541,11 +1541,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     //   struct {variant 0 name} {
                     //     tag$ variant$;
                     //     <variant 0 fields>
-                    //   } Variant0;
+                    //   } variant0;
                     //   <other variant structs>
                     // }
                     // ```
-                    // The natvis in `intrinsic.nativs` then matches on `this.Variant0.variant$` to
+                    // The natvis in `intrinsic.nativs` then matches on `this.variant0.variant$` to
                     // determine which variant is active and then displays it.
                     Some(DirectTag {
                         tag_field: Field::from(tag_field),
@@ -1582,7 +1582,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                         MemberDescription {
                             name: if fallback {
-                                format!("Variant{}", i.as_u32())
+                                format!("variant{}", i.as_u32())
                             } else {
                                 variant_info.variant_name()
                             },
@@ -1623,43 +1623,27 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     }
                 };
 
-                // For MSVC, we will generate a union of two structs, one for the dataful variant and one that just points to
-                // the discriminant field. We also create an enum that contains tag values for the non-dataful variants and
-                // make the discriminant field that type. We then use natvis to render the enum type correctly in Windbg/VS.
+                // For MSVC, we will generate a union of two fields, one for the dataful variant
+                // and one that just points to the discriminant. We also create an enum that
+                // contains tag values for the non-dataful variants and make the discriminant field
+                // that type. We then use natvis to render the enum type correctly in Windbg/VS.
                 // This will generate debuginfo roughly equivalent to the following C:
                 // ```c
-                // union enum$<{name}, {min niche}, {max niche}, {dataful variant name} {
-                //   struct dataful_variant {
+                // union enum$<{name}, {min niche}, {max niche}, {dataful variant name}> {
+                //   struct <dataful variant name> {
                 //     <fields in dataful variant>
-                //   },
-                //   struct discriminant$ {
-                //     enum tag$ {
-                //       <non-dataful variants>
-                //     } discriminant;
-                //   }
+                //   } dataful_variant;
+                //   enum Discriminant$ {
+                //     <non-dataful variants>
+                //   } discriminant;
                 // }
                 // ```
                 // The natvis in `intrinsic.natvis` matches on the type name `enum$<*, *, *, *>`
-                // and evaluates `this.discriminant$.discriminant`. If the value is between
-                // the min niche and max niche, then the enum is in the dataful variant and
-                // `this.dataful_variant` is rendered. Otherwise, the enum is in one of the
-                // non-dataful variants. In that case, we just need to render the name of the
-                // `this.discriminant$.discriminant` enum.
+                // and evaluates `this.discriminant`. If the value is between the min niche and max
+                // niche, then the enum is in the dataful variant and `this.dataful_variant` is
+                // rendered. Otherwise, the enum is in one of the non-dataful variants. In that
+                // case, we just need to render the name of the `this.discriminant` enum.
                 if fallback {
-                    let unique_type_id = debug_context(cx)
-                        .type_map
-                        .borrow_mut()
-                        .get_unique_type_id_of_enum_variant(cx, self.enum_type, "discriminant$");
-
-                    let variant_metadata = create_struct_stub(
-                        cx,
-                        self.layout.ty,
-                        &"discriminant$",
-                        unique_type_id,
-                        Some(self_metadata),
-                        DIFlags::FlagArtificial,
-                    );
-
                     let dataful_variant_layout = self.layout.for_variant(cx, dataful_variant);
 
                     let mut discr_enum_ty = tag.value.to_ty(cx.tcx);
@@ -1694,8 +1678,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         llvm::LLVMRustDIBuilderCreateEnumerationType(
                             DIB(cx),
                             self_metadata,
-                            "tag$".as_ptr().cast(),
-                            "tag$".len(),
+                            "Discriminant$".as_ptr().cast(),
+                            "Discriminant$".len(),
                             unknown_file_metadata(cx),
                             UNKNOWN_LINE_NUMBER,
                             tag.value.size(cx).bits(),
@@ -1705,27 +1689,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             true,
                         )
                     };
-
-                    let (size, align) =
-                        cx.size_and_align_of(dataful_variant_layout.field(cx, tag_field).ty);
-                    let members = vec![MemberDescription {
-                        name: "discriminant".to_string(),
-                        type_metadata: discr_enum,
-                        offset: dataful_variant_layout.fields.offset(tag_field),
-                        size,
-                        align,
-                        flags: DIFlags::FlagArtificial,
-                        discriminant: None,
-                        source_info: None,
-                    }];
-
-                    set_members_of_composite_type(
-                        cx,
-                        self.enum_type,
-                        variant_metadata,
-                        members,
-                        None,
-                    );
 
                     let variant_info = variant_info_for(dataful_variant);
                     let (variant_type_metadata, member_desc_factory) = describe_enum_variant(
@@ -1747,6 +1710,9 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         Some(&self.common_members),
                     );
 
+                    let (size, align) =
+                        cx.size_and_align_of(dataful_variant_layout.field(cx, tag_field).ty);
+
                     vec![
                         MemberDescription {
                             // Name the dataful variant so that we can identify it for natvis
@@ -1760,11 +1726,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             source_info: variant_info.source_info(cx),
                         },
                         MemberDescription {
-                            name: "discriminant$".into(),
-                            type_metadata: variant_metadata,
-                            offset: Size::ZERO,
-                            size: self.layout.size,
-                            align: self.layout.align.abi,
+                            name: "discriminant".into(),
+                            type_metadata: discr_enum,
+                            offset: dataful_variant_layout.fields.offset(tag_field),
+                            size,
+                            align,
                             flags: DIFlags::FlagZero,
                             discriminant: None,
                             source_info: None,

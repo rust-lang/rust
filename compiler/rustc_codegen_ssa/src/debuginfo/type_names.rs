@@ -238,6 +238,10 @@ pub fn push_debuginfo_type_name<'tcx>(
         }
     }
 
+    /// MSVC names enums differently than other platforms so that the debugging visualization
+    // format (natvis) is able to understand enums and render the active variant correctly in the
+    // debugger. For more information, look in `src/etc/natvis/intrinsic.natvis` and
+    // `EnumMemberDescriptionFactor::create_member_descriptions`.
     fn msvc_enum_fallback(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
