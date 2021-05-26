@@ -25,9 +25,8 @@ use crate::{
     CompletionConfig,
 };
 
-#[derive(Debug, PartialEq, Eq)]
-pub(crate) enum IsPatOrConst {
-    No,
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum PatternRefutability {
     Refutable,
     Irrefutable,
 }
@@ -64,7 +63,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_label_ref: bool,
 
     // potentially set if we are completing a name
-    pub(super) is_pat_or_const: IsPatOrConst,
+    pub(super) is_pat_or_const: Option<PatternRefutability>,
     pub(super) is_param: bool,
 
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
@@ -169,7 +168,7 @@ impl<'a> CompletionContext<'a> {
             active_parameter: ActiveParameter::at(db, position),
             is_label_ref: false,
             is_param: false,
-            is_pat_or_const: IsPatOrConst::No,
+            is_pat_or_const: None,
             is_trivial_path: false,
             path_qual: None,
             after_if: false,
@@ -473,19 +472,13 @@ impl<'a> CompletionContext<'a> {
 
     fn classify_name(&mut self, original_file: &SyntaxNode, name: ast::Name, offset: TextSize) {
         if let Some(bind_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
-            self.is_pat_or_const = IsPatOrConst::Refutable;
+            self.is_pat_or_const = Some(PatternRefutability::Refutable);
             // if any of these is here our bind pat can't be a const pat anymore
             let complex_ident_pat = bind_pat.at_token().is_some()
                 || bind_pat.ref_token().is_some()
                 || bind_pat.mut_token().is_some();
             if complex_ident_pat {
-                self.is_pat_or_const = IsPatOrConst::No;
-            } else if let Some(pat_field) =
-                bind_pat.syntax().parent().and_then(ast::RecordPatField::cast)
-            {
-                if pat_field.name_ref().is_none() {
-                    self.is_pat_or_const = IsPatOrConst::No;
-                }
+                self.is_pat_or_const = None;
             } else {
                 let irrefutable_pat = bind_pat.syntax().ancestors().find_map(|node| {
                     match_ast! {
@@ -499,19 +492,24 @@ impl<'a> CompletionContext<'a> {
                 if let Some(Some(pat)) = irrefutable_pat {
                     // This check is here since we could be inside a pattern in the initializer expression of the let statement.
                     if pat.syntax().text_range().contains_range(bind_pat.syntax().text_range()) {
-                        self.is_pat_or_const = IsPatOrConst::Irrefutable;
+                        self.is_pat_or_const = Some(PatternRefutability::Irrefutable);
                     }
+                }
+
+                let is_name_in_field_pat = bind_pat
+                    .syntax()
+                    .parent()
+                    .and_then(ast::RecordPatField::cast)
+                    .map_or(false, |pat_field| pat_field.name_ref().is_none());
+                if is_name_in_field_pat {
+                    self.is_pat_or_const = None;
                 }
             }
 
             self.fill_impl_def();
         }
-        if is_node::<ast::Param>(name.syntax()) {
-            self.is_param = true;
-            return;
-        }
-        // FIXME: remove this (V) duplication and make the check more precise
-        if name.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
+        self.is_param |= is_node::<ast::Param>(name.syntax());
+        if ast::RecordPatField::for_field_name(&name).is_some() {
             self.record_pat_syntax =
                 self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }
@@ -523,22 +521,20 @@ impl<'a> CompletionContext<'a> {
         name_ref: ast::NameRef,
         offset: TextSize,
     ) {
-        // FIXME: remove this (^) duplication and make the check more precise
-        if name_ref.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
+        self.fill_impl_def();
+        if ast::RecordExprField::for_field_name(&name_ref).is_some() {
+            self.record_lit_syntax =
+                self.sema.find_node_at_offset_with_macros(original_file, offset);
+        }
+        if ast::RecordPatField::for_field_name_ref(&name_ref).is_some() {
             self.record_pat_syntax =
                 self.sema.find_node_at_offset_with_macros(&original_file, offset);
         }
 
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
+
         let name_range = name_ref.syntax().text_range();
-        if ast::RecordExprField::for_field_name(&name_ref).is_some() {
-            self.record_lit_syntax =
-                self.sema.find_node_at_offset_with_macros(original_file, offset);
-        }
-
-        self.fill_impl_def();
-
         let top_node = name_ref
             .syntax()
             .ancestors()
