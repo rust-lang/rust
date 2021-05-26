@@ -2427,22 +2427,6 @@ crate mod dep_tracking {
         )+};
     }
 
-    macro_rules! impl_dep_tracking_hash_for_sortable_vec_of {
-        ($($t:ty),+ $(,)?) => {$(
-            impl DepTrackingHash for Vec<$t> {
-                fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
-                    let mut elems: Vec<&$t> = self.iter().collect();
-                    elems.sort();
-                    Hash::hash(&elems.len(), hasher);
-                    for (index, elem) in elems.iter().enumerate() {
-                        Hash::hash(&index, hasher);
-                        DepTrackingHash::hash(*elem, hasher, error_format);
-                    }
-                }
-            }
-        )+};
-    }
-
     impl_dep_tracking_hash_via_hash!(
         bool,
         usize,
@@ -2491,16 +2475,6 @@ crate mod dep_tracking {
         TrimmedDefPaths,
     );
 
-    impl_dep_tracking_hash_for_sortable_vec_of!(
-        String,
-        PathBuf,
-        (PathBuf, PathBuf),
-        CrateType,
-        NativeLib,
-        (String, lint::Level),
-        (String, u64)
-    );
-
     impl<T1, T2> DepTrackingHash for (T1, T2)
     where
         T1: DepTrackingHash,
@@ -2527,6 +2501,16 @@ crate mod dep_tracking {
             DepTrackingHash::hash(&self.1, hasher, error_format);
             Hash::hash(&2, hasher);
             DepTrackingHash::hash(&self.2, hasher, error_format);
+        }
+    }
+
+    impl<T: DepTrackingHash> DepTrackingHash for Vec<T> {
+        fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
+            Hash::hash(&self.len(), hasher);
+            for (index, elem) in self.iter().enumerate() {
+                Hash::hash(&index, hasher);
+                DepTrackingHash::hash(elem, hasher, error_format);
+            }
         }
     }
 

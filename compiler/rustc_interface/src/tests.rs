@@ -252,7 +252,8 @@ fn test_lints_tracking_hash_different_construction_order() {
         (String::from("d"), Level::Forbid),
     ];
 
-    assert_same_hash(&v1, &v2);
+    // The hash should be order-dependent
+    assert_different_hash(&v1, &v2);
 }
 
 #[test]
@@ -491,9 +492,10 @@ fn test_native_libs_tracking_hash_different_order() {
         },
     ];
 
-    assert_same_hash(&v1, &v2);
-    assert_same_hash(&v1, &v3);
-    assert_same_hash(&v2, &v3);
+    // The hash should be order-dependent
+    assert_different_hash(&v1, &v2);
+    assert_different_hash(&v1, &v3);
+    assert_different_hash(&v2, &v3);
 }
 
 #[test]
