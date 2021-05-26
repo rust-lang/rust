@@ -9,7 +9,7 @@ use rustc_span::{Span, Symbol};
 
 use super::InterpCx;
 use crate::interpret::{
-    struct_error, ErrorHandled, FrameInfo, InterpError, InterpErrorInfo, Machine,
+    struct_error, ErrorHandled, FrameInfo, InterpError, InterpErrorInfo, Machine, MachineStopType,
 };
 
 /// The CTFE machine has some custom error kinds.
@@ -24,12 +24,21 @@ pub enum ConstEvalErrKind {
     Abort(String),
 }
 
+impl MachineStopType for ConstEvalErrKind {
+    fn is_hard_err(&self) -> bool {
+        match self {
+            Self::Panic { .. } => true,
+            _ => false,
+        }
+    }
+}
+
 // The errors become `MachineStop` with plain strings when being raised.
 // `ConstEvalErr` (in `librustc_middle/mir/interpret/error.rs`) knows to
 // handle these.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
-        err_machine_stop!(self.to_string()).into()
+        err_machine_stop!(self).into()
     }
 }
 
@@ -148,31 +157,10 @@ impl<'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'tcx>,
         message: &str,
         emit: impl FnOnce(DiagnosticBuilder<'_>),
-        lint_root: Option<hir::HirId>,
+        mut lint_root: Option<hir::HirId>,
     ) -> ErrorHandled {
-        let must_error = match self.error {
-            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
-                return ErrorHandled::TooGeneric;
-            }
-            err_inval!(AlreadyReported(error_reported)) => {
-                return ErrorHandled::Reported(error_reported);
-            }
-            // We must *always* hard error on these, even if the caller wants just a lint.
-            err_inval!(Layout(LayoutError::SizeOverflow(_))) => true,
-            _ => false,
-        };
-        trace!("reporting const eval failure at {:?}", self.span);
-
-        let err_msg = match &self.error {
-            InterpError::MachineStop(msg) => {
-                // A custom error (`ConstEvalErrKind` in `librustc_mir/interp/const_eval/error.rs`).
-                // Should be turned into a string by now.
-                msg.downcast_ref::<String>().expect("invalid MachineStop payload").clone()
-            }
-            err => err.to_string(),
-        };
-
         let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
+            trace!("reporting const eval failure at {:?}", self.span);
             if let Some(span_msg) = span_msg {
                 err.span_label(self.span, span_msg);
             }
@@ -186,34 +174,50 @@ impl<'tcx> ConstEvalErr<'tcx> {
             emit(err)
         };
 
-        if must_error {
-            // The `message` makes little sense here, this is a more serious error than the
-            // caller thinks anyway.
-            // See <https://github.com/rust-lang/rust/pull/63152>.
-            finish(struct_error(tcx, &err_msg), None);
-            ErrorHandled::Reported(ErrorReported)
-        } else {
-            // Regular case.
-            if let Some(lint_root) = lint_root {
-                // Report as lint.
-                let hir_id = self
-                    .stacktrace
-                    .iter()
-                    .rev()
-                    .find_map(|frame| frame.lint_root)
-                    .unwrap_or(lint_root);
-                tcx.struct_span_lint_hir(
-                    rustc_session::lint::builtin::CONST_ERR,
-                    hir_id,
-                    tcx.span,
-                    |lint| finish(lint.build(message), Some(err_msg)),
-                );
-                ErrorHandled::Linted
-            } else {
-                // Report as hard error.
-                finish(struct_error(tcx, message), Some(err_msg));
-                ErrorHandled::Reported(ErrorReported)
+        // Special handling for certain errors
+        match &self.error {
+            // Don't emit a new diagnostic for these errors
+            err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
+                return ErrorHandled::TooGeneric;
             }
+            err_inval!(AlreadyReported(error_reported)) => {
+                return ErrorHandled::Reported(*error_reported);
+            }
+            err_inval!(Layout(LayoutError::SizeOverflow(_))) => {
+                // We must *always* hard error on these, even if the caller wants just a lint.
+                // The `message` makes little sense here, this is a more serious error than the
+                // caller thinks anyway.
+                // See <https://github.com/rust-lang/rust/pull/63152>.
+                finish(struct_error(tcx, &self.error.to_string()), None);
+                return ErrorHandled::Reported(ErrorReported);
+            }
+            _ => {}
+        };
+
+        // If we have a 'hard error', then set `lint_root` to `None` so that we don't
+        // emit a lint.
+        if matches!(&self.error, InterpError::MachineStop(err) if err.is_hard_err()) {
+            lint_root = None;
+        }
+
+        let err_msg = self.error.to_string();
+
+        // Regular case - emit a lint.
+        if let Some(lint_root) = lint_root {
+            // Report as lint.
+            let hir_id =
+                self.stacktrace.iter().rev().find_map(|frame| frame.lint_root).unwrap_or(lint_root);
+            tcx.struct_span_lint_hir(
+                rustc_session::lint::builtin::CONST_ERR,
+                hir_id,
+                tcx.span,
+                |lint| finish(lint.build(message), Some(err_msg)),
+            );
+            ErrorHandled::Linted
+        } else {
+            // Report as hard error.
+            finish(struct_error(tcx, message), Some(err_msg));
+            ErrorHandled::Reported(ErrorReported)
         }
     }
 }

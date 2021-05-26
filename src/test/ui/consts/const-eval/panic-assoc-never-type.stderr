@@ -1,4 +1,4 @@
-warning: any use of this value will cause an error
+error[E0080]: any use of this value will cause an error
   --> $DIR/panic-assoc-never-type.rs:11:21
    |
 LL |     const VOID: ! = panic!();
@@ -6,21 +6,14 @@ LL |     const VOID: ! = panic!();
    |                     |
    |                     the evaluated program panicked at 'explicit panic', $DIR/panic-assoc-never-type.rs:11:21
    |
-note: the lint level is defined here
-  --> $DIR/panic-assoc-never-type.rs:4:9
-   |
-LL | #![warn(const_err)]
-   |         ^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: this warning originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: erroneous constant used
-  --> $DIR/panic-assoc-never-type.rs:17:13
+  --> $DIR/panic-assoc-never-type.rs:16:13
    |
 LL |     let _ = PrintName::VOID;
    |             ^^^^^^^^^^^^^^^ referenced constant has errors
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
