@@ -37,17 +37,19 @@ rustc_index::newtype_index! {
 #[derive(Debug)]
 pub struct SerializedDepGraph<K: DepKind> {
     /// The set of all DepNodes in the graph
-    pub nodes: IndexVec<SerializedDepNodeIndex, DepNode<K>>,
+    nodes: IndexVec<SerializedDepNodeIndex, DepNode<K>>,
     /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
     /// the DepNode at the same index in the nodes vector.
-    pub fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
+    fingerprints: IndexVec<SerializedDepNodeIndex, Fingerprint>,
     /// For each DepNode, stores the list of edges originating from that
     /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
     /// which holds the actual DepNodeIndices of the target nodes.
-    pub edge_list_indices: IndexVec<SerializedDepNodeIndex, (u32, u32)>,
+    edge_list_indices: IndexVec<SerializedDepNodeIndex, (u32, u32)>,
     /// A flattened list of all edge targets in the graph. Edge sources are
     /// implicit in edge_list_indices.
-    pub edge_list_data: Vec<SerializedDepNodeIndex>,
+    edge_list_data: Vec<SerializedDepNodeIndex>,
+    /// Reciprocal map to `nodes`.
+    index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
 }
 
 impl<K: DepKind> Default for SerializedDepGraph<K> {
@@ -57,6 +59,7 @@ impl<K: DepKind> Default for SerializedDepGraph<K> {
             fingerprints: Default::default(),
             edge_list_indices: Default::default(),
             edge_list_data: Default::default(),
+            index: Default::default(),
         }
     }
 }
@@ -66,6 +69,30 @@ impl<K: DepKind> SerializedDepGraph<K> {
     pub fn edge_targets_from(&self, source: SerializedDepNodeIndex) -> &[SerializedDepNodeIndex] {
         let targets = self.edge_list_indices[source];
         &self.edge_list_data[targets.0 as usize..targets.1 as usize]
+    }
+
+    #[inline]
+    pub fn index_to_node(&self, dep_node_index: SerializedDepNodeIndex) -> DepNode<K> {
+        self.nodes[dep_node_index]
+    }
+
+    #[inline]
+    pub fn node_to_index_opt(&self, dep_node: &DepNode<K>) -> Option<SerializedDepNodeIndex> {
+        self.index.get(dep_node).cloned()
+    }
+
+    #[inline]
+    pub fn fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
+        self.index.get(dep_node).map(|&node_index| self.fingerprints[node_index])
+    }
+
+    #[inline]
+    pub fn fingerprint_by_index(&self, dep_node_index: SerializedDepNodeIndex) -> Fingerprint {
+        self.fingerprints[dep_node_index]
+    }
+
+    pub fn node_count(&self) -> usize {
+        self.index.len()
     }
 }
 
@@ -121,7 +148,10 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
             })?;
         }
 
-        Ok(SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data })
+        let index: FxHashMap<_, _> =
+            nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
+
+        Ok(SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index })
     }
 }
 

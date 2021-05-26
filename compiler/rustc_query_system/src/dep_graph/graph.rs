@@ -19,9 +19,8 @@ use std::marker::PhantomData;
 use std::mem;
 use std::sync::atomic::Ordering::Relaxed;
 
-use super::prev::PreviousDepGraph;
 use super::query::DepGraphQuery;
-use super::serialized::{GraphEncoder, SerializedDepNodeIndex};
+use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, HasDepContext, WorkProductId};
 use crate::query::QueryContext;
 
@@ -78,7 +77,7 @@ struct DepGraphData<K: DepKind> {
 
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
-    previous: PreviousDepGraph<K>,
+    previous: SerializedDepGraph<K>,
 
     colors: DepNodeColorMap,
 
@@ -109,7 +108,7 @@ where
 
 impl<K: DepKind> DepGraph<K> {
     pub fn new(
-        prev_graph: PreviousDepGraph<K>,
+        prev_graph: SerializedDepGraph<K>,
         prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
         encoder: FileEncoder,
         record_graph: bool,
@@ -857,7 +856,7 @@ rustc_index::newtype_index! {
 /// For this reason, we avoid storing `DepNode`s more than once as map
 /// keys. The `new_node_to_index` map only contains nodes not in the previous
 /// graph, and we map nodes in the previous graph to indices via a two-step
-/// mapping. `PreviousDepGraph` maps from `DepNode` to `SerializedDepNodeIndex`,
+/// mapping. `SerializedDepGraph` maps from `DepNode` to `SerializedDepNodeIndex`,
 /// and the `prev_index_to_index` vector (which is more compact and faster than
 /// using a map) maps from `SerializedDepNodeIndex` to `DepNodeIndex`.
 ///
@@ -982,7 +981,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
     fn intern_node(
         &self,
         profiler: &SelfProfilerRef,
-        prev_graph: &PreviousDepGraph<K>,
+        prev_graph: &SerializedDepGraph<K>,
         key: DepNode<K>,
         edges: EdgesVec,
         fingerprint: Option<Fingerprint>,
@@ -1080,7 +1079,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
     fn promote_node_and_deps_to_current(
         &self,
         profiler: &SelfProfilerRef,
-        prev_graph: &PreviousDepGraph<K>,
+        prev_graph: &SerializedDepGraph<K>,
         prev_index: SerializedDepNodeIndex,
     ) -> DepNodeIndex {
         self.debug_assert_not_in_new_nodes(prev_graph, prev_index);
@@ -1112,7 +1111,7 @@ impl<K: DepKind> CurrentDepGraph<K> {
     #[inline]
     fn debug_assert_not_in_new_nodes(
         &self,
-        prev_graph: &PreviousDepGraph<K>,
+        prev_graph: &SerializedDepGraph<K>,
         prev_index: SerializedDepNodeIndex,
     ) {
         let node = &prev_graph.index_to_node(prev_index);
