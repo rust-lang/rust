@@ -187,9 +187,8 @@ impl<B, C> ControlFlow<B, C> {
 #[cfg(bootstrap)]
 impl<R: ops::TryV1> ControlFlow<R, R::Output> {
     /// Create a `ControlFlow` from any type implementing `Try`.
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
-    pub fn from_try(r: R) -> Self {
+    pub(crate) fn from_try(r: R) -> Self {
         match R::into_result(r) {
             Ok(v) => ControlFlow::Continue(v),
             Err(v) => ControlFlow::Break(R::from_error(v)),
@@ -197,9 +196,8 @@ impl<R: ops::TryV1> ControlFlow<R, R::Output> {
     }
 
     /// Convert a `ControlFlow` into any type implementing `Try`;
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
-    pub fn into_try(self) -> R {
+    pub(crate) fn into_try(self) -> R {
         match self {
             ControlFlow::Continue(v) => R::from_ok(v),
             ControlFlow::Break(v) => v,
@@ -207,12 +205,14 @@ impl<R: ops::TryV1> ControlFlow<R, R::Output> {
     }
 }
 
+/// These are used only as part of implementing the iterator adapters.
+/// They have mediocre names and non-obvious semantics, so aren't
+/// currently on a path to potential stabilization.
 #[cfg(not(bootstrap))]
 impl<R: ops::TryV2> ControlFlow<R, R::Output> {
     /// Create a `ControlFlow` from any type implementing `Try`.
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
-    pub fn from_try(r: R) -> Self {
+    pub(crate) fn from_try(r: R) -> Self {
         match R::branch(r) {
             ControlFlow::Continue(v) => ControlFlow::Continue(v),
             ControlFlow::Break(v) => ControlFlow::Break(R::from_residual(v)),
@@ -220,9 +220,8 @@ impl<R: ops::TryV2> ControlFlow<R, R::Output> {
     }
 
     /// Convert a `ControlFlow` into any type implementing `Try`;
-    #[unstable(feature = "control_flow_enum", reason = "new API", issue = "75744")]
     #[inline]
-    pub fn into_try(self) -> R {
+    pub(crate) fn into_try(self) -> R {
         match self {
             ControlFlow::Continue(v) => R::from_output(v),
             ControlFlow::Break(v) => v,
