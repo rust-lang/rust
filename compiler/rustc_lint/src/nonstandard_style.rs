@@ -176,6 +176,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
             | ast::ItemKind::Struct(..)
             | ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
             ast::ItemKind::Trait(..) => self.check_case(cx, "trait", &it.ident),
+            ast::ItemKind::TraitAlias(..) => self.check_case(cx, "trait alias", &it.ident),
             _ => (),
         }
     }
