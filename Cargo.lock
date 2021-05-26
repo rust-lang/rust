@@ -2845,9 +2845,9 @@ dependencies = [
 
 [[package]]
 name = "racer"
-version = "2.1.46"
+version = "2.1.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7cbda48a9124ed2e83766d2c15e3725710d344abca35fad8cf52341a55883b1"
+checksum = "513c70e67444a0d62fdc581dffa521c6820942a5f08300d0864863f8d0e750e3"
 dependencies = [
  "bitflags",
  "clap",
