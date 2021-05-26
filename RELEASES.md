@@ -4,7 +4,7 @@ Version 1.53.0 (2021-06-17)
 Language
 -----------------------
 - [You can now use unicode for identifiers.][83799] This allows multilingual
-  identifiers but still doesn't allow glyphs that not considered characters
+  identifiers but still doesn't allow glyphs that are not considered characters
   such as `◆` or `🦀`. More specifically you can now use any identifier that
   matches the UAX #31 "Unicode Identifier and Pattern Syntax" standard. This
   is the same standard as languages like Python, however Rust uses NFC
@@ -110,7 +110,7 @@ Compatibility Notes
 -------------------
 - [Implement token-based handling of attributes during expansion][82608]
 - [`Ipv4::from_str` will now reject octal format IP addresses.][83652] The octal format
-  can lead confusion and potential security vulnerablities and [is no longer recommended][ietf6943].
+  can lead to confusion and potential security vulnerabilities and [is no longer recommended][ietf6943].
 
 
 Internal Only
