@@ -41,6 +41,9 @@ extern crate rustc_target;
 extern crate rustc_trait_selection;
 extern crate rustc_typeck;
 
+#[macro_use]
+extern crate clippy_utils;
+
 use clippy_utils::parse_msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::LintId;
@@ -145,25 +148,10 @@ macro_rules! declare_clippy_lint {
     };
 }
 
-#[macro_export]
-macro_rules! sym {
-    ( $($x:tt)* ) => { clippy_utils::sym!($($x)*) }
-}
-
-#[macro_export]
-macro_rules! unwrap_cargo_metadata {
-    ( $($x:tt)* ) => { clippy_utils::unwrap_cargo_metadata!($($x)*) }
-}
-
-macro_rules! extract_msrv_attr {
-    ( $($x:tt)* ) => { clippy_utils::extract_msrv_attr!($($x)*); }
-}
-
 mod consts;
-#[macro_use]
-mod utils;
 #[cfg(feature = "metadata-collector-lint")]
 mod deprecated_lints;
+mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absurd_extreme_comparisons;
