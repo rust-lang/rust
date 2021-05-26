@@ -49,6 +49,30 @@ pub struct HlRange {
 // The general rule is that a reference to an entity gets colored the same way as the entity itself.
 // We also give special modifier for `mut` and `&mut` local variables.
 //
+// .Token Modifiers
+//
+// Token modifiers allow to style some elements in the source code more precisely.
+//
+// Rust-analyzer currently emits the following token modifiers:
+//
+// [horizontal]
+// associated:: Emitted for associated items.
+// async:: Emitted for async functions and the `async` and `await` keywords.
+// attribute:: Emitted for tokens inside attributes.
+// callable:: Emitted for locals whose types implements one of the `Fn*` traits.
+// consuming:: Emitted for locals that are being consumed when use in a function call.
+// controlFlow:: Emitted for control-flow related tokens, this includes the `?` operator.
+// declaration:: Emitted for names of definitions, like `foo` in `fn foo() {}`.
+// documentation:: Emitted for documentation comments.
+// injected:: Emitted for doc-string injected highlighting like rust source blocks in documentation.
+// intraDocLink:: Emitted for intra doc links in doc-strings.
+// library:: Emitted for items that are defined outside of the current crate.
+// mutable:: Emitted for mutable locals and statics.
+// static:: Emitted for "static" functions, also known as functions that do not take a `self` param.
+// trait:: Emitted for associated trait items.
+// unsafe:: Emitted for unsafe operations, like unsafe function calls, as well as the `unsafe` token.
+//
+//
 // image::https://user-images.githubusercontent.com/48062697/113164457-06cfb980-9239-11eb-819b-0f93e646acf8.png[]
 // image::https://user-images.githubusercontent.com/48062697/113187625-f7f50100-9250-11eb-825e-91c58f236071.png[]
 pub(crate) fn highlight(
