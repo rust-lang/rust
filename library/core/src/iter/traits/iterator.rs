@@ -2602,6 +2602,18 @@ pub trait Iterator {
     /// If several elements are equally maximum, the last element is
     /// returned. If the iterator is empty, [`None`] is returned.
     ///
+    /// Note that [`f32`]/[`f64`] doesn't implement [`Ord`] due to NaN being
+    /// incomparable. You can work around this by using [`Iterator::reduce`]:
+    /// ```
+    /// assert_eq!(
+    ///     vec![2.4, f32::NAN, 1.3]
+    ///         .into_iter()
+    ///         .reduce(|a, b| f32::max(a, b))
+    ///         .unwrap(),
+    ///     2.4
+    /// );
+    /// ```
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -2625,8 +2637,20 @@ pub trait Iterator {
 
     /// Returns the minimum element of an iterator.
     ///
-    /// If several elements are equally minimum, the first element is
-    /// returned. If the iterator is empty, [`None`] is returned.
+    /// If several elements are equally minimum, the first element is returned.
+    /// If the iterator is empty, [`None`] is returned.
+    ///
+    /// Note that [`f32`]/[`f64`] doesn't implement [`Ord`] due to NaN being
+    /// incomparable. You can work around this by using [`Iterator::reduce`]:
+    /// ```
+    /// assert_eq!(
+    ///     vec![2.4, f32::NAN, 1.3]
+    ///         .into_iter()
+    ///         .reduce(|a, b| f32::min(a, b))
+    ///         .unwrap(),
+    ///     1.3
+    /// );
+    /// ```
     ///
     /// # Examples
     ///
