@@ -138,7 +138,7 @@ macro_rules! assert_ne {
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_matches {
-    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => ({
+    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -150,7 +150,7 @@ macro_rules! assert_matches {
             }
         }
     });
-    ($left:expr, $( $pattern:pat )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
+    ($left:expr, $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -315,7 +315,7 @@ macro_rules! debug_assert_matches {
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
 macro_rules! matches {
-    ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )? $(,)?) => {
+    ($expression:expr, $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $expression {
             $( $pattern )|+ $( if $guard )? => true,
             _ => false

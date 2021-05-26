@@ -139,7 +139,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         // SAFETY: Callers are only allowed to pass an index that is in bounds
         // Additionally Self: TrustedRandomAccess is only implemented for T: Copy which means even
         // multiple repeated reads of the same index would be safe and the
-        // values aree !Drop, thus won't suffer from double drops.
+        // values are !Drop, thus won't suffer from double drops.
         unsafe { self.data.get_unchecked(self.alive.start + idx).assume_init_read() }
     }
 }

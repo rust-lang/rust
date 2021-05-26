@@ -425,24 +425,29 @@ impl<'a> Resolver<'a> {
                 }
                 err
             }
-            ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-                let res = binding.res();
-                let shadows_what = res.descr();
+            ResolutionError::BindingShadowsSomethingUnacceptable {
+                shadowing_binding_descr,
+                name,
+                participle,
+                article,
+                shadowed_binding_descr,
+                shadowed_binding_span,
+            } => {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
                     E0530,
                     "{}s cannot shadow {}s",
-                    what_binding,
-                    shadows_what
+                    shadowing_binding_descr,
+                    shadowed_binding_descr,
                 );
                 err.span_label(
                     span,
-                    format!("cannot be named the same as {} {}", res.article(), shadows_what),
+                    format!("cannot be named the same as {} {}", article, shadowed_binding_descr),
                 );
-                let participle = if binding.is_import() { "imported" } else { "defined" };
-                let msg = format!("the {} `{}` is {} here", shadows_what, name, participle);
-                err.span_label(binding.span, msg);
+                let msg =
+                    format!("the {} `{}` is {} here", shadowed_binding_descr, name, participle);
+                err.span_label(shadowed_binding_span, msg);
                 err
             }
             ResolutionError::ForwardDeclaredTyParam => {
