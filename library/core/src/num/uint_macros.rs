@@ -1672,36 +1672,6 @@ macro_rules! uint_impl {
             unsafe { mem::transmute(self) }
         }
 
-        /// Return the memory representation of this integer as a byte array in
-        /// native byte order.
-        ///
-        /// [`to_ne_bytes`] should be preferred over this whenever possible.
-        ///
-        /// [`to_ne_bytes`]: Self::to_ne_bytes
-        ///
-        /// # Examples
-        ///
-        /// ```
-        /// #![feature(num_as_ne_bytes)]
-        #[doc = concat!("let num = ", $swap_op, stringify!($SelfT), ";")]
-        /// let bytes = num.as_ne_bytes();
-        /// assert_eq!(
-        ///     bytes,
-        ///     if cfg!(target_endian = "big") {
-        #[doc = concat!("        &", $be_bytes)]
-        ///     } else {
-        #[doc = concat!("        &", $le_bytes)]
-        ///     }
-        /// );
-        /// ```
-        #[unstable(feature = "num_as_ne_bytes", issue = "76976")]
-        #[inline]
-        pub fn as_ne_bytes(&self) -> &[u8; mem::size_of::<Self>()] {
-            // SAFETY: integers are plain old datatypes so we can always transmute them to
-            // arrays of bytes
-            unsafe { &*(self as *const Self as *const _) }
-        }
-
         /// Create a native endian integer value from its representation
         /// as a byte array in big endian.
         ///
