@@ -484,9 +484,13 @@ module.
 ### Declaring a lint
 
 The built-in compiler lints are defined in the [`rustc_lint`][builtin]
-crate.
+crate. Lints that need to be implemented in other crates are defined in
+[`rustc_lint_defs`]. You should prefer to place lints in `rustc_lint` if
+possible. One benefit is that it is close to the dependency root, so it can be
+much faster to work on.
 
 [builtin]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/index.html
+[`rustc_lint_defs`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/index.html
 
 Every lint is implemented via a `struct` that implements the `LintPass` `trait`
 (you also implement one of the more specific lint pass traits, either
