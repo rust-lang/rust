@@ -67,7 +67,10 @@ impl PubFoo {
     pub fn foo() {}
     /// dox
     pub fn foo1() {}
-    fn foo2() {}
+    #[must_use = "yep"]
+    fn foo2() -> u32 {
+        1
+    }
     #[allow(clippy::missing_docs_in_private_items)]
     pub fn foo3() {}
 }

@@ -93,9 +93,9 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs.iter().any(|a| {
-            a.is_doc_comment() || a.doc_str().is_some() || a.value_str().is_some() || Self::has_include(a.meta())
-        });
+        let has_doc = attrs
+            .iter()
+            .any(|a| a.doc_str().is_some() || Self::has_include(a.meta()));
         if !has_doc {
             span_lint(
                 cx,
