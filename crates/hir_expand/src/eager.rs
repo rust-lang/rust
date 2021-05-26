@@ -197,7 +197,7 @@ fn eager_macro_recur(
     macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
     mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<SyntaxNode, ErrorEmitted> {
-    let original = curr.value.clone().clone_for_update();
+    let original = curr.value.clone_for_update();
 
     let children = original.descendants().filter_map(ast::MacroCall::cast);
     let mut replacements = Vec::new();

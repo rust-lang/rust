@@ -196,7 +196,7 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = if let Some(subpat) = subpat {
                     self.infer_pat(*subpat, &expected, default_bm)
                 } else {
-                    expected.clone()
+                    expected
                 };
                 let inner_ty = self.insert_type_vars_shallow(inner_ty);
 
@@ -266,10 +266,9 @@ impl<'a> InferenceContext<'a> {
         // use a new type variable if we got error type here
         let ty = self.insert_type_vars_shallow(ty);
         if !self.unify(&ty, &expected) {
-            self.result.type_mismatches.insert(
-                pat.into(),
-                TypeMismatch { expected: expected.clone(), actual: ty.clone() },
-            );
+            self.result
+                .type_mismatches
+                .insert(pat.into(), TypeMismatch { expected: expected, actual: ty.clone() });
         }
         self.write_pat_ty(pat, ty.clone());
         ty

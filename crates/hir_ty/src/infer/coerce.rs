@@ -76,17 +76,17 @@ impl<'a> InferenceContext<'a> {
         // way around first would mean we make the type variable `!`, instead of
         // just marking it as possibly diverging.
         if self.coerce(&ty2, &ty1) {
-            ty1.clone()
+            ty1
         } else if self.coerce(&ty1, &ty2) {
-            ty2.clone()
+            ty2
         } else {
             if let Some(id) = id {
                 self.result
                     .type_mismatches
-                    .insert(id.into(), TypeMismatch { expected: ty1.clone(), actual: ty2.clone() });
+                    .insert(id.into(), TypeMismatch { expected: ty1.clone(), actual: ty2 });
             }
             cov_mark::hit!(coerce_merge_fail_fallback);
-            ty1.clone()
+            ty1
         }
     }
 
@@ -183,7 +183,7 @@ impl<'a> InferenceContext<'a> {
         // details of coercion errors though, so I think it's useful to leave
         // the structure like it is.
 
-        let canonicalized = self.canonicalize(from_ty.clone());
+        let canonicalized = self.canonicalize(from_ty);
         let autoderef = autoderef::autoderef(
             self.db,
             self.resolver.krate(),
@@ -389,7 +389,7 @@ impl<'a> InferenceContext<'a> {
                 // The CoerceUnsized trait should have two generic params: Self and T.
                 return Err(TypeError);
             }
-            b.push(coerce_from.clone()).push(to_ty.clone()).build()
+            b.push(coerce_from).push(to_ty.clone()).build()
         };
 
         let goal: InEnvironment<DomainGoal> =
