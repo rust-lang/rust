@@ -1,4 +1,5 @@
-use stdsimd::simd::*;
+#![feature(platform_intrinsics, repr_simd)]
+use core_simd::*;
 
 use std::f64::consts::PI;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
