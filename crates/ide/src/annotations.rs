@@ -5,7 +5,7 @@ use ide_db::{
     helpers::visit_file_defs,
     RootDatabase,
 };
-use syntax::{ast::NameOwner, AstNode, TextRange, TextSize};
+use syntax::{ast::NameOwner, AstNode, TextRange};
 
 use crate::{
     fn_references::find_all_methods,
@@ -80,26 +80,26 @@ pub(crate) fn annotations(
 
     visit_file_defs(&Semantics::new(db), file_id, &mut |def| match def {
         Either::Left(def) => {
-            let node = match def {
+            let range = match def {
                 hir::ModuleDef::Const(konst) => {
-                    konst.source(db).and_then(|node| range_and_position_of(&node, file_id))
+                    konst.source(db).and_then(|node| name_range(&node, file_id))
                 }
                 hir::ModuleDef::Trait(trait_) => {
-                    trait_.source(db).and_then(|node| range_and_position_of(&node, file_id))
+                    trait_.source(db).and_then(|node| name_range(&node, file_id))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Struct(strukt)) => {
-                    strukt.source(db).and_then(|node| range_and_position_of(&node, file_id))
+                    strukt.source(db).and_then(|node| name_range(&node, file_id))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(enum_)) => {
-                    enum_.source(db).and_then(|node| range_and_position_of(&node, file_id))
+                    enum_.source(db).and_then(|node| name_range(&node, file_id))
                 }
                 hir::ModuleDef::Adt(hir::Adt::Union(union)) => {
-                    union.source(db).and_then(|node| range_and_position_of(&node, file_id))
+                    union.source(db).and_then(|node| name_range(&node, file_id))
                 }
                 _ => None,
             };
-            let (offset, range) = match node {
-                Some(node) => node,
+            let (range, offset) = match range {
+                Some(range) => (range, range.start()),
                 None => return,
             };
 
@@ -122,18 +122,12 @@ pub(crate) fn annotations(
                 });
             }
 
-            fn range_and_position_of<T: NameOwner>(
-                node: &InFile<T>,
-                file_id: FileId,
-            ) -> Option<(TextSize, TextRange)> {
-                if node.file_id != file_id.into() {
+            fn name_range<T: NameOwner>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
+                if node.file_id == file_id.into() {
+                    node.value.name().map(|it| it.syntax().text_range())
+                } else {
                     // Node is outside the file we are adding annotations to (e.g. macros).
                     None
-                } else {
-                    Some((
-                        node.value.name()?.syntax().text_range().start(),
-                        node.value.syntax().text_range(),
-                    ))
                 }
             }
         }
@@ -141,13 +135,15 @@ pub(crate) fn annotations(
     });
 
     if config.annotate_method_references {
-        annotations.extend(find_all_methods(db, file_id).into_iter().map(|method| Annotation {
-            range: method.range,
-            kind: AnnotationKind::HasReferences {
-                position: FilePosition { file_id, offset: method.range.start() },
-                data: None,
+        annotations.extend(find_all_methods(db, file_id).into_iter().map(
+            |FileRange { file_id, range }| Annotation {
+                range,
+                kind: AnnotationKind::HasReferences {
+                    position: FilePosition { file_id, offset: range.start() },
+                    data: None,
+                },
             },
-        }));
+        ));
     }
 
     annotations
@@ -266,7 +262,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 0..22,
+                        range: 6..10,
                         kind: HasReferences {
                             position: FilePosition {
                                 file_id: FileId(
@@ -287,7 +283,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 24..48,
+                        range: 30..36,
                         kind: HasReferences {
                             position: FilePosition {
                                 file_id: FileId(
@@ -370,7 +366,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 7..11,
                         kind: HasImpls {
                             position: FilePosition {
                                 file_id: FileId(
@@ -384,7 +380,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 7..11,
                         kind: HasReferences {
                             position: FilePosition {
                                 file_id: FileId(
@@ -478,7 +474,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 7..11,
                         kind: HasImpls {
                             position: FilePosition {
                                 file_id: FileId(
@@ -502,7 +498,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 7..11,
                         kind: HasReferences {
                             position: FilePosition {
                                 file_id: FileId(
@@ -529,7 +525,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 14..34,
+                        range: 20..31,
                         kind: HasImpls {
                             position: FilePosition {
                                 file_id: FileId(
@@ -553,7 +549,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 14..34,
+                        range: 20..31,
                         kind: HasReferences {
                             position: FilePosition {
                                 file_id: FileId(
@@ -712,7 +708,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 7..11,
                         kind: HasImpls {
                             position: FilePosition {
                                 file_id: FileId(
@@ -736,7 +732,7 @@ fn main() {
                         },
                     },
                     Annotation {
-                        range: 0..12,
+                        range: 7..11,
                         kind: HasReferences {
                             position: FilePosition {
                                 file_id: FileId(
