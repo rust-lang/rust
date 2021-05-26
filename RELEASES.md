@@ -111,7 +111,8 @@ Compatibility Notes
 -------------------
 - [Implement token-based handling of attributes during expansion][82608]
 - [`Ipv4::from_str` will now reject octal format IP addresses.][83652] The octal format
-  can lead confusion and potential security vulnerablities and is no longer recommended.
+  can lead confusion and potential security vulnerablities and [is no longer recommended][ietf6943].
+
 
 Internal Only
 -------------
@@ -193,6 +194,7 @@ related tools.
 [`cmp::min_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by.html
 [`f32::is_subnormal`]: https://doc.rust-lang.org/f32.html#method.is_subnormal
 [`f64::is_subnormal`]: https://doc.rust-lang.org/f64.html#method.is_subnormal
+[ietf6943]: https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1
 
 
 Version 1.52.1 (2021-05-10)
