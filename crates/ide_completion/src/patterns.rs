@@ -115,36 +115,8 @@ fn test_is_match_arm() {
     check_pattern_is_applicable(r"fn my_fn() { match () { () => m$0 } }", is_match_arm);
 }
 
-pub(crate) fn unsafe_is_prev(element: SyntaxElement) -> bool {
-    element
-        .into_token()
-        .and_then(|it| previous_non_trivia_token(it))
-        .filter(|it| it.kind() == T![unsafe])
-        .is_some()
-}
-#[test]
-fn test_unsafe_is_prev() {
-    check_pattern_is_applicable(r"unsafe i$0", unsafe_is_prev);
-}
-
-pub(crate) fn if_is_prev(element: SyntaxElement) -> bool {
-    element
-        .into_token()
-        .and_then(|it| previous_non_trivia_token(it))
-        .filter(|it| it.kind() == T![if])
-        .is_some()
-}
-
-pub(crate) fn fn_is_prev(element: SyntaxElement) -> bool {
-    element
-        .into_token()
-        .and_then(|it| previous_non_trivia_token(it))
-        .filter(|it| it.kind() == T![fn])
-        .is_some()
-}
-#[test]
-fn test_fn_is_prev() {
-    check_pattern_is_applicable(r"fn l$0", fn_is_prev);
+pub(crate) fn previous_token(element: SyntaxElement) -> Option<SyntaxToken> {
+    element.into_token().and_then(|it| previous_non_trivia_token(it))
 }
 
 /// Check if the token previous to the previous one is `for`.
@@ -160,11 +132,6 @@ pub(crate) fn for_is_prev2(element: SyntaxElement) -> bool {
 #[test]
 fn test_for_is_prev2() {
     check_pattern_is_applicable(r"for i i$0", for_is_prev2);
-}
-
-#[test]
-fn test_if_is_prev() {
-    check_pattern_is_applicable(r"if l$0", if_is_prev);
 }
 
 pub(crate) fn has_trait_as_prev_sibling(element: SyntaxElement) -> bool {

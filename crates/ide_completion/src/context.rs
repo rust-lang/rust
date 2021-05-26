@@ -1,25 +1,26 @@
 //! See `CompletionContext` structure.
 
 use hir::{Local, ScopeDef, Semantics, SemanticsScope, Type};
-use ide_db::base_db::{FilePosition, SourceDatabase};
-use ide_db::{call_info::ActiveParameter, RootDatabase};
+use ide_db::{
+    base_db::{FilePosition, SourceDatabase},
+    call_info::ActiveParameter,
+    RootDatabase,
+};
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, NameOrNameRef, NameOwner},
     match_ast, AstNode, NodeOrToken,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize,
+    SyntaxKind::{self, *},
+    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
 };
-
 use text_edit::Indel;
 
 use crate::{
     patterns::{
-        fn_is_prev, for_is_prev2, has_bind_pat_parent, has_block_expr_parent,
-        has_field_list_parent, has_impl_as_prev_sibling, has_impl_parent,
-        has_item_list_or_source_file_parent, has_ref_parent, has_trait_as_prev_sibling,
-        has_trait_parent, if_is_prev, inside_impl_trait_block, is_in_loop_body, is_match_arm,
-        unsafe_is_prev,
+        for_is_prev2, has_bind_pat_parent, has_block_expr_parent, has_field_list_parent,
+        has_impl_as_prev_sibling, has_impl_parent, has_item_list_or_source_file_parent,
+        has_ref_parent, has_trait_as_prev_sibling, has_trait_parent, inside_impl_trait_block,
+        is_in_loop_body, is_match_arm, previous_token,
     },
     CompletionConfig,
 };
@@ -81,25 +82,26 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_path_type: bool,
     pub(super) has_type_args: bool,
     pub(super) attribute_under_caret: Option<ast::Attr>,
+    pub(super) locals: Vec<(String, Local)>,
+
     pub(super) mod_declaration_under_caret: Option<ast::Module>,
-    pub(super) unsafe_is_prev: bool,
-    pub(super) if_is_prev: bool,
+    pub(super) has_trait_parent: bool,
+    pub(super) has_impl_parent: bool,
+
+    // keyword patterns
+    pub(super) previous_token: Option<SyntaxToken>,
     pub(super) block_expr_parent: bool,
     pub(super) bind_pat_parent: bool,
     pub(super) ref_pat_parent: bool,
     pub(super) in_loop_body: bool,
-    pub(super) has_trait_parent: bool,
-    pub(super) has_impl_parent: bool,
-    pub(super) inside_impl_trait_block: bool,
     pub(super) has_field_list_parent: bool,
     pub(super) trait_as_prev_sibling: bool,
     pub(super) impl_as_prev_sibling: bool,
     pub(super) is_match_arm: bool,
     pub(super) has_item_list_or_source_file_parent: bool,
-    pub(super) for_is_prev2: bool,
-    pub(super) fn_is_prev: bool,
     pub(super) incomplete_let: bool,
-    pub(super) locals: Vec<(String, Local)>,
+
+    no_completion_required: bool,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -175,22 +177,19 @@ impl<'a> CompletionContext<'a> {
             has_type_args: false,
             attribute_under_caret: None,
             mod_declaration_under_caret: None,
-            unsafe_is_prev: false,
-            if_is_prev: false,
+            previous_token: None,
             block_expr_parent: false,
             bind_pat_parent: false,
             ref_pat_parent: false,
             in_loop_body: false,
             has_trait_parent: false,
             has_impl_parent: false,
-            inside_impl_trait_block: false,
             has_field_list_parent: false,
             trait_as_prev_sibling: false,
             impl_as_prev_sibling: false,
             is_match_arm: false,
             has_item_list_or_source_file_parent: false,
-            for_is_prev2: false,
-            fn_is_prev: false,
+            no_completion_required: false,
             incomplete_let: false,
             locals,
         };
@@ -245,7 +244,7 @@ impl<'a> CompletionContext<'a> {
     ///   Exception for this case is `impl Trait for Foo`, where we would like to hint trait method names.
     /// - `for _ i$0` -- obviously, it'll be "in" keyword.
     pub(crate) fn no_completion_required(&self) -> bool {
-        (self.fn_is_prev && !self.inside_impl_trait_block) || self.for_is_prev2
+        self.no_completion_required
     }
 
     /// The range of the identifier that is being completed.
@@ -264,33 +263,39 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
+    pub(crate) fn previous_token_is(&self, kind: SyntaxKind) -> bool {
+        self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
+    }
+
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
+        self.previous_token = previous_token(syntax_element.clone());
         self.block_expr_parent = has_block_expr_parent(syntax_element.clone());
-        self.unsafe_is_prev = unsafe_is_prev(syntax_element.clone());
-        self.if_is_prev = if_is_prev(syntax_element.clone());
         self.bind_pat_parent = has_bind_pat_parent(syntax_element.clone());
         self.ref_pat_parent = has_ref_parent(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
         self.has_trait_parent = has_trait_parent(syntax_element.clone());
         self.has_impl_parent = has_impl_parent(syntax_element.clone());
-        self.inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
         self.has_field_list_parent = has_field_list_parent(syntax_element.clone());
         self.impl_as_prev_sibling = has_impl_as_prev_sibling(syntax_element.clone());
         self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
+
         self.has_item_list_or_source_file_parent =
             has_item_list_or_source_file_parent(syntax_element.clone());
         self.mod_declaration_under_caret =
             find_node_at_offset::<ast::Module>(&file_with_fake_ident, offset)
                 .filter(|module| module.item_list().is_none());
-        self.for_is_prev2 = for_is_prev2(syntax_element.clone());
-        self.fn_is_prev = fn_is_prev(syntax_element.clone());
         self.incomplete_let =
             syntax_element.ancestors().take(6).find_map(ast::LetStmt::cast).map_or(false, |it| {
                 it.syntax().text_range().end() == syntax_element.text_range().end()
             });
+
+        let inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
+        let fn_is_prev = self.previous_token_is(T![fn]);
+        let for_is_prev2 = for_is_prev2(syntax_element.clone());
+        self.no_completion_required = (fn_is_prev && !inside_impl_trait_block) || for_is_prev2;
     }
 
     fn fill_impl_def(&mut self) {
