@@ -56,40 +56,40 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
     if ctx.unsafe_is_prev {
         if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
-            add_keyword(ctx, acc, "fn", "fn $0() {}")
+            add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}")
         }
 
         if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
-            add_keyword(ctx, acc, "trait", "trait $0 {}");
-            add_keyword(ctx, acc, "impl", "impl $0 {}");
+            add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
+            add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
         }
 
         return;
     }
     if ctx.has_item_list_or_source_file_parent || has_trait_or_impl_parent || ctx.block_expr_parent
     {
-        add_keyword(ctx, acc, "fn", "fn $0() {}");
+        add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}");
     }
     if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
         add_keyword(ctx, acc, "use", "use ");
-        add_keyword(ctx, acc, "impl", "impl $0 {}");
-        add_keyword(ctx, acc, "trait", "trait $0 {}");
+        add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
+        add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
     }
 
     if ctx.has_item_list_or_source_file_parent {
-        add_keyword(ctx, acc, "enum", "enum $0 {}");
+        add_keyword(ctx, acc, "enum", "enum $1 {\n    $0\n}");
         add_keyword(ctx, acc, "struct", "struct $0");
-        add_keyword(ctx, acc, "union", "union $0 {}");
+        add_keyword(ctx, acc, "union", "union $1 {\n    $0\n}");
     }
 
     if ctx.is_expr {
-        add_keyword(ctx, acc, "match", "match $0 {}");
-        add_keyword(ctx, acc, "while", "while $0 {}");
-        add_keyword(ctx, acc, "while let", "while let $1 = $0 {}");
-        add_keyword(ctx, acc, "loop", "loop {$0}");
-        add_keyword(ctx, acc, "if", "if $0 {}");
-        add_keyword(ctx, acc, "if let", "if let $1 = $0 {}");
-        add_keyword(ctx, acc, "for", "for $1 in $0 {}");
+        add_keyword(ctx, acc, "match", "match $1 {\n    $0\n}");
+        add_keyword(ctx, acc, "while", "while $1 {\n    $0\n}");
+        add_keyword(ctx, acc, "while let", "while let $1 = $2 {\n    $0\n}");
+        add_keyword(ctx, acc, "loop", "loop {\n    $0\n}");
+        add_keyword(ctx, acc, "if", "if $1 {\n    $0\n}");
+        add_keyword(ctx, acc, "if let", "if let $1 = $2 {\n    $0\n}");
+        add_keyword(ctx, acc, "for", "for $1 in $2 {\n    $0\n}");
     }
 
     if ctx.if_is_prev || ctx.block_expr_parent {
@@ -97,8 +97,8 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     if ctx.after_if {
-        add_keyword(ctx, acc, "else", "else {$0}");
-        add_keyword(ctx, acc, "else if", "else if $0 {}");
+        add_keyword(ctx, acc, "else", "else {\n    $0\n}");
+        add_keyword(ctx, acc, "else if", "else if $1 {\n    $0\n}");
     }
     if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
         add_keyword(ctx, acc, "mod", "mod $0");
@@ -342,7 +342,9 @@ mod tests {
         check_edit(
             "else",
             r#"fn quux() { if true { () } $0 }"#,
-            r#"fn quux() { if true { () } else {$0} }"#,
+            r#"fn quux() { if true { () } else {
+    $0
+} }"#,
         );
     }
 
@@ -646,7 +648,9 @@ fn foo() {
 fn main() { let x = $0 }
 "#,
             r#"
-fn main() { let x = match $0 {}; }
+fn main() { let x = match $1 {
+    $0
+}; }
 "#,
         );
 
@@ -660,7 +664,9 @@ fn main() {
 "#,
             r#"
 fn main() {
-    let x = if $0 {};
+    let x = if $1 {
+    $0
+};
     let y = 92;
 }
 "#,
@@ -676,7 +682,9 @@ fn main() {
 "#,
             r#"
 fn main() {
-    let x = loop {$0};
+    let x = loop {
+    $0
+};
     bar();
 }
 "#,
