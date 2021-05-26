@@ -229,15 +229,13 @@ Example:
 
 ```md
 - [x] Complete task
-- [ ] IncComplete task
+- [ ] Incomplete task
 ```
 
-This will render as
+This will render as:
 
-<ul>
-    <li><input type="checkbox"></li>
-    <li><input type="checkbox" checked></li>
-</ul>
+> - [x] Complete task
+> - [ ] Incomplete task
 
 See the specification for the [task list extension] for more details.
 

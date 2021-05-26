@@ -2413,6 +2413,18 @@ where
     B: ToOwned + ?Sized,
     Arc<B>: From<&'a B> + From<B::Owned>,
 {
+    /// Create an atomically reference-counted pointer from
+    /// a clone-on-write pointer by copying its content.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::sync::Arc;
+    /// # use std::borrow::Cow;
+    /// let cow: Cow<str> = Cow::Borrowed("eggplant");
+    /// let shared: Arc<str> = Arc::from(cow);
+    /// assert_eq!("eggplant", &shared[..]);
+    /// ```
     #[inline]
     fn from(cow: Cow<'a, B>) -> Arc<B> {
         match cow {
