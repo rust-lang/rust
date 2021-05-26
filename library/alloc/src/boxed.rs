@@ -1166,23 +1166,23 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
 
             // Drop the old box without dropping its allocator, as the allocator has been moved
             // into the new box.
-            struct DeallocGuard<'alloc, A: Allocator> {
+            struct DeallocGuard<'alloc, A: Allocator, T: ?Sized> {
                 alloc: &'alloc A,
-                ptr: ptr::NonNull<u8>,
                 layout: Layout,
+                ptr: ptr::NonNull<T>,
             }
-            impl<A: Allocator> Drop for DeallocGuard<'_, A> {
+            impl<A: Allocator, T: ?Sized> Drop for DeallocGuard<'_, A, T> {
                 fn drop(&mut self) {
-                    unsafe { self.alloc.deallocate(self.ptr, self.layout) };
+                    unsafe { self.alloc.deallocate(self.ptr.cast(), self.layout) };
                 }
             }
 
-            let _dealloc_guard = DeallocGuard {
+            let guard = DeallocGuard {
                 alloc: Box::allocator(&b),
-                ptr: ptr::NonNull::from(old_ptr).cast(),
                 layout: Layout::for_value(unsafe { old_ptr.as_ref() }),
+                ptr: ptr::NonNull::from(old_ptr),
             };
-            unsafe { ptr::drop_in_place(old_ptr.as_ptr()) };
+            unsafe { ptr::drop_in_place(guard.ptr.as_ptr()) };
         }
         Ok(())
     }
