@@ -8,7 +8,7 @@ repository = "https://github.com/rust-lang/hashbrown"
 readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
-exclude = [".travis.yml", "bors.toml", "/ci/*"]
+exclude = [".github", "bors.toml", "/ci/*"]
 edition = "2018"
 
 [dependencies]
