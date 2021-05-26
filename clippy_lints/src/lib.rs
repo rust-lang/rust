@@ -505,6 +505,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         "clippy::filter_map",
         "this lint has been replaced by `manual_filter_map`, a more specific lint",
     );
+    store.register_removed(
+        "clippy::wrong_pub_self_convention",
+        "set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     // begin register lints, do not remove this comment, it’s used in `update_lints`
@@ -802,7 +806,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::UNNECESSARY_LAZY_EVALUATIONS,
         methods::UNWRAP_USED,
         methods::USELESS_ASREF,
-        methods::WRONG_PUB_SELF_CONVENTION,
         methods::WRONG_SELF_CONVENTION,
         methods::ZST_OFFSET,
         minmax::MIN_MAX,
@@ -1026,7 +1029,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::FILETYPE_IS_FILE),
         LintId::of(methods::GET_UNWRAP),
         LintId::of(methods::UNWRAP_USED),
-        LintId::of(methods::WRONG_PUB_SELF_CONVENTION),
         LintId::of(misc::FLOAT_CMP_CONST),
         LintId::of(misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
@@ -1862,7 +1864,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         })
     });
 
-    store.register_late_pass(move || box methods::Methods::new(msrv));
+    let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
+    store.register_late_pass(move || box methods::Methods::new(avoid_breaking_exported_api, msrv));
     store.register_late_pass(move || box matches::Matches::new(msrv));
     store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
     store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));

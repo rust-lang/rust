@@ -141,3 +141,12 @@ declare_deprecated_lint! {
     pub FILTER_MAP,
     "this lint has been replaced by `manual_filter_map`, a more specific lint"
 }
+
+declare_deprecated_lint! {
+    /// **What it does:** Nothing. This lint has been deprecated.
+    ///
+    /// **Deprecation reason:** The `avoid_breaking_exported_api` config option was added, which
+    /// enables the `wrong_self_conversion` lint for public items.
+    pub WRONG_PUB_SELF_CONVENTION,
+    "set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items"
+}
