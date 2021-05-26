@@ -343,7 +343,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Better error for attempts to create a thread
             "CreateThread" => {
                 this.check_abi(abi, Abi::System { unwind: false })?;
-                throw_unsup_format!("Miri does not support concurrency on Windows");
+
+                this.handle_unsupported("can't create threads on Windows")?;
+                return Ok(EmulateByNameResult::AlreadyJumped);
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.

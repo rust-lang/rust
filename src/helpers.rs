@@ -636,6 +636,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 == this.tcx.def_path(start_fn).krate
         })
     }
+
+    /// Handler that should be called when unsupported functionality is encountered.
+    /// This function will either panic within the context of the emulated application
+    /// or return an error in the Miri process context
+    ///
+    /// Return value of `Ok(bool)` indicates whether execution should continue.
+    fn handle_unsupported<S: AsRef<str>>(&mut self, error_msg: S) -> InterpResult<'tcx, ()> {
+        let this = self.eval_context_mut();
+        if this.machine.panic_on_unsupported {
+            // message is slightly different here to make automated analysis easier
+            let error_msg = format!("unsupported Miri functionality: {}", error_msg.as_ref());
+            this.start_panic(error_msg.as_ref(), StackPopUnwind::Skip)?;
+            return Ok(());
+        } else {
+            throw_unsup_format!("{}", error_msg.as_ref());
+        }
+    }
 }
 
 /// Check that the number of args is what we expect.

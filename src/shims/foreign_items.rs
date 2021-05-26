@@ -259,7 +259,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     if let Some(body) = this.lookup_exported_symbol(link_name_sym)? {
                         return Ok(Some(body));
                     }
-                    throw_unsup_format!("can't call (diverging) foreign function: {}", link_name);
+                    this.handle_unsupported(format!(
+                        "can't call (diverging) foreign function: {}",
+                        link_name
+                    ))?;
+                    return Ok(None);
                 }
             },
             Some(p) => p,
@@ -276,7 +280,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if let Some(body) = this.lookup_exported_symbol(link_name_sym)? {
                     return Ok(Some(body));
                 }
-                throw_unsup_format!("can't call foreign function: {}", link_name);
+
+                this.handle_unsupported(format!("can't call foreign function: {}", link_name))?;
+                return Ok(None);
             }
         }
 

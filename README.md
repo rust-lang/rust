@@ -228,6 +228,11 @@ environment variable:
    This can be used to find which parts of your program are executing slowly under Miri.
    The profile is written out to a file with the prefix `<name>`, and can be processed
    using the tools in the repository https://github.com/rust-lang/measureme.
+* `-Zmiri-panic-on-unsupported` will makes some forms of unsupported functionality,
+  such as FFI and unsupported syscalls, panic within the context of the emulated
+  application instead of raising an error within the context of Miri (and halting
+  execution). Note that code might not expect these operations to ever panic, so
+  this flag can lead to strange (mis)behavior.
 * `-Zmiri-seed=<hex>` configures the seed of the RNG that Miri uses to resolve
   non-determinism.  This RNG is used to pick base addresses for allocations.
   When isolation is enabled (the default), this is also used to emulate system

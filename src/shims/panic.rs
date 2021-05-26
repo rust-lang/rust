@@ -161,7 +161,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    /// Starta a panic in the interpreter with the given message as payload.
+    /// Start a panic in the interpreter with the given message as payload.
     fn start_panic(&mut self, msg: &str, unwind: StackPopUnwind) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 

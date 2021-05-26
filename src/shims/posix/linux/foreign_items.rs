@@ -183,7 +183,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     id if id == sys_futex => {
                         futex(this, args, dest)?;
                     }
-                    id => throw_unsup_format!("Miri does not support syscall ID {}", id),
+                    id => {
+                        this.handle_unsupported(format!("can't execute syscall with ID {}", id))?;
+                        return Ok(EmulateByNameResult::NotSupported);
+                    }
                 }
             }
 
