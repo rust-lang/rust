@@ -258,19 +258,16 @@ before the PR is merged.
 
 #### Breaking Tools Built With The Compiler
 
-Rust's build system builds a number of tools that make use of the
-internals of the compiler. This includes
-[RLS](https://github.com/rust-lang/rls) and
-[miri](https://github.com/rust-lang/miri). If these tools
-break because of your changes, you may run into a sort of "chicken and egg"
-problem. These tools rely on the latest compiler to be built so you can't update
-them to reflect your changes to the compiler until those changes are merged into
-the compiler. At the same time, you can't get your changes merged into the compiler
-because the rust-lang/rust build won't pass until those tools build and pass their
-tests.
-
-That would mean that, in the default state, you couldn't update the compiler without first
-fixing miri, rls and the other tools that the compiler builds.
+Rust's build system builds a number of tools that make use of the internals of
+the compiler and that are hosted in a separate repository, and included in Rust
+via git submodules. This includes [RLS](https://github.com/rust-lang/rls) and
+[Miri](https://github.com/rust-lang/Miri). If these tools break because of your
+changes, you may run into a sort of "chicken and egg" problem. These tools rely
+on the latest compiler to be built so you can't update them (in their own
+repositories) to reflect your changes to the compiler until those changes are
+merged into the compiler. At the same time, you can't get your changes merged
+into the compiler because the rust-lang/rust build won't pass until those tools
+build and pass their tests.
 
 Luckily, a feature was
 [added to Rust's build](https://github.com/rust-lang/rust/issues/45861) to make
