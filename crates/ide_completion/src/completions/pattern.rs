@@ -1,17 +1,14 @@
 //! Completes constants and paths in patterns.
 
-use crate::{context::IsPatOrConst, CompletionContext, Completions};
+use crate::{context::PatternRefutability, CompletionContext, Completions};
 
 /// Completes constants and paths in patterns.
 pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_pat_or_const == IsPatOrConst::No {
-        return;
-    }
-    if ctx.record_pat_syntax.is_some() {
-        return;
-    }
+    let refutable = match ctx.is_pat_or_const {
+        Some(it) => it == PatternRefutability::Refutable,
+        None => return,
+    };
 
-    let refutable = ctx.is_pat_or_const == IsPatOrConst::Refutable;
     if refutable {
         if let Some(hir::Adt::Enum(e)) =
             ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
@@ -401,6 +398,33 @@ impl Foo {
                 sp Self
                 en Foo
             "#]],
+        )
+    }
+
+    #[test]
+    fn completes_in_record_field_pat() {
+        check_snippet(
+            r#"
+struct Foo { bar: Bar }
+struct Bar(u32);
+fn outer(Foo { bar: $0 }: Foo) {}
+"#,
+            expect![[r#"
+                bn Foo Foo { bar$1 }$0
+                bn Bar Bar($1)$0
+            "#]],
+        )
+    }
+
+    #[test]
+    fn skips_in_record_field_pat_name() {
+        check_snippet(
+            r#"
+struct Foo { bar: Bar }
+struct Bar(u32);
+fn outer(Foo { bar$0 }: Foo) {}
+"#,
+            expect![[r#""#]],
         )
     }
 }
