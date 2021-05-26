@@ -13,6 +13,8 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         || ctx.record_pat_syntax.is_some()
         || ctx.attribute_under_caret.is_some()
         || ctx.mod_declaration_under_caret.is_some()
+        || ctx.has_impl_parent
+        || ctx.has_trait_parent
     {
         return;
     }
