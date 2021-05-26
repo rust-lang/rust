@@ -1,17 +1,18 @@
 //! Completes constants and paths in patterns.
 
-use crate::{CompletionContext, Completions};
+use crate::{context::IsPatOrConst, CompletionContext, Completions};
 
 /// Completes constants and paths in patterns.
 pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
-    if !(ctx.is_pat_binding_or_const || ctx.is_irrefutable_pat_binding) {
+    if ctx.is_pat_or_const == IsPatOrConst::No {
         return;
     }
     if ctx.record_pat_syntax.is_some() {
         return;
     }
 
-    if !ctx.is_irrefutable_pat_binding {
+    let refutable = ctx.is_pat_or_const == IsPatOrConst::Refutable;
+    if refutable {
         if let Some(hir::Adt::Enum(e)) =
             ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
         {
@@ -31,14 +32,14 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                     acc.add_struct_pat(ctx, *strukt, Some(name.clone()));
                     true
                 }
-                hir::ModuleDef::Variant(variant) if !ctx.is_irrefutable_pat_binding => {
+                hir::ModuleDef::Variant(variant) if refutable => {
                     acc.add_variant_pat(ctx, *variant, Some(name.clone()));
                     true
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(..))
                 | hir::ModuleDef::Variant(..)
                 | hir::ModuleDef::Const(..)
-                | hir::ModuleDef::Module(..) => !ctx.is_irrefutable_pat_binding,
+                | hir::ModuleDef::Module(..) => refutable,
                 _ => false,
             },
             hir::ScopeDef::MacroDef(_) => true,
@@ -47,7 +48,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                     acc.add_struct_pat(ctx, strukt, Some(name.clone()));
                     true
                 }
-                Some(hir::Adt::Enum(_)) => !ctx.is_irrefutable_pat_binding,
+                Some(hir::Adt::Enum(_)) => refutable,
                 _ => true,
             },
             _ => false,

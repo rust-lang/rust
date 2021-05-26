@@ -88,7 +88,7 @@ fn quux(x: Option<Enum>) {
     }
 }
 "#,
-            expect![[""]],
+            expect![[r#""#]],
         );
     }
 
@@ -104,7 +104,7 @@ fn quux(x: Option<Enum>) {
     }
 }
 "#,
-            expect![[""]],
+            expect![[r#""#]],
         );
     }
 

@@ -25,6 +25,13 @@ use crate::{
     CompletionConfig,
 };
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum IsPatOrConst {
+    No,
+    Refutable,
+    Irrefutable,
+}
+
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
@@ -42,23 +49,26 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
-    pub(super) lifetime_syntax: Option<ast::Lifetime>,
-    pub(super) lifetime_param_syntax: Option<ast::LifetimeParam>,
     pub(super) function_syntax: Option<ast::Fn>,
     pub(super) use_item_syntax: Option<ast::Use>,
     pub(super) record_lit_syntax: Option<ast::RecordExpr>,
     pub(super) record_pat_syntax: Option<ast::RecordPat>,
     pub(super) record_field_syntax: Option<ast::RecordExprField>,
+    /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
+
+    // potentially set if we are completing a lifetime
+    pub(super) lifetime_syntax: Option<ast::Lifetime>,
+    pub(super) lifetime_param_syntax: Option<ast::LifetimeParam>,
     pub(super) lifetime_allowed: bool,
+    pub(super) is_label_ref: bool,
+
+    // potentially set if we are completing a name
+    pub(super) is_pat_or_const: IsPatOrConst,
+    pub(super) is_param: bool,
+
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
-    pub(super) is_param: bool,
-    pub(super) is_label_ref: bool,
-    /// If a name-binding or reference to a const in a pattern.
-    /// Irrefutable patterns (like let) are excluded.
-    pub(super) is_pat_binding_or_const: bool,
-    pub(super) is_irrefutable_pat_binding: bool,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
@@ -103,7 +113,6 @@ pub(crate) struct CompletionContext<'a> {
 
     no_completion_required: bool,
 }
-
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a RootDatabase,
@@ -160,8 +169,7 @@ impl<'a> CompletionContext<'a> {
             active_parameter: ActiveParameter::at(db, position),
             is_label_ref: false,
             is_param: false,
-            is_pat_binding_or_const: false,
-            is_irrefutable_pat_binding: false,
+            is_pat_or_const: IsPatOrConst::No,
             is_trivial_path: false,
             path_qual: None,
             after_if: false,
@@ -417,67 +425,19 @@ impl<'a> CompletionContext<'a> {
         self.expected_type = expected_type;
         self.expected_name = expected_name;
         self.attribute_under_caret = find_node_at_offset(&file_with_fake_ident, offset);
-
-        if let Some(lifetime) = find_node_at_offset::<ast::Lifetime>(&file_with_fake_ident, offset)
-        {
-            self.classify_lifetime(original_file, lifetime, offset);
-        }
-
-        // First, let's try to complete a reference to some declaration.
-        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&file_with_fake_ident, offset) {
-            // Special case, `trait T { fn foo(i_am_a_name_ref) {} }`.
-            // See RFC#1685.
-            if is_node::<ast::Param>(name_ref.syntax()) {
-                self.is_param = true;
-                return;
+        let name_like = match find_node_at_offset(&&file_with_fake_ident, offset) {
+            Some(it) => it,
+            None => return,
+        };
+        match name_like {
+            ast::NameLike::Lifetime(lifetime) => {
+                self.classify_lifetime(original_file, lifetime, offset);
             }
-            // FIXME: remove this (V) duplication and make the check more precise
-            if name_ref.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
-                self.record_pat_syntax =
-                    self.sema.find_node_at_offset_with_macros(&original_file, offset);
+            ast::NameLike::NameRef(name_ref) => {
+                self.classify_name_ref(original_file, name_ref, offset);
             }
-            self.classify_name_ref(original_file, name_ref, offset);
-        }
-
-        // Otherwise, see if this is a declaration. We can use heuristics to
-        // suggest declaration names, see `CompletionKind::Magic`.
-        if let Some(name) = find_node_at_offset::<ast::Name>(&file_with_fake_ident, offset) {
-            if let Some(bind_pat) = name.syntax().ancestors().find_map(ast::IdentPat::cast) {
-                self.is_pat_binding_or_const = true;
-                if bind_pat.at_token().is_some()
-                    || bind_pat.ref_token().is_some()
-                    || bind_pat.mut_token().is_some()
-                {
-                    self.is_pat_binding_or_const = false;
-                }
-                if bind_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast).is_some() {
-                    self.is_pat_binding_or_const = false;
-                }
-                if let Some(Some(pat)) = bind_pat.syntax().ancestors().find_map(|node| {
-                    match_ast! {
-                        match node {
-                            ast::LetStmt(it) => Some(it.pat()),
-                            ast::Param(it) => Some(it.pat()),
-                            _ => None,
-                        }
-                    }
-                }) {
-                    if pat.syntax().text_range().contains_range(bind_pat.syntax().text_range()) {
-                        self.is_pat_binding_or_const = false;
-                        self.is_irrefutable_pat_binding = true;
-                    }
-                }
-
-                self.fill_impl_def();
-            }
-            if is_node::<ast::Param>(name.syntax()) {
-                self.is_param = true;
-                return;
-            }
-            // FIXME: remove this (^) duplication and make the check more precise
-            if name.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
-                self.record_pat_syntax =
-                    self.sema.find_node_at_offset_with_macros(&original_file, offset);
+            ast::NameLike::Name(name) => {
+                self.classify_name(original_file, name, offset);
             }
         }
     }
@@ -511,12 +471,64 @@ impl<'a> CompletionContext<'a> {
         }
     }
 
+    fn classify_name(&mut self, original_file: &SyntaxNode, name: ast::Name, offset: TextSize) {
+        if let Some(bind_pat) = name.syntax().parent().and_then(ast::IdentPat::cast) {
+            self.is_pat_or_const = IsPatOrConst::Refutable;
+            // if any of these is here our bind pat can't be a const pat anymore
+            let complex_ident_pat = bind_pat.at_token().is_some()
+                || bind_pat.ref_token().is_some()
+                || bind_pat.mut_token().is_some();
+            if complex_ident_pat {
+                self.is_pat_or_const = IsPatOrConst::No;
+            } else if let Some(pat_field) =
+                bind_pat.syntax().parent().and_then(ast::RecordPatField::cast)
+            {
+                if pat_field.name_ref().is_none() {
+                    self.is_pat_or_const = IsPatOrConst::No;
+                }
+            } else {
+                let irrefutable_pat = bind_pat.syntax().ancestors().find_map(|node| {
+                    match_ast! {
+                        match node {
+                            ast::LetStmt(it) => Some(it.pat()),
+                            ast::Param(it) => Some(it.pat()),
+                            _ => None,
+                        }
+                    }
+                });
+                if let Some(Some(pat)) = irrefutable_pat {
+                    // This check is here since we could be inside a pattern in the initializer expression of the let statement.
+                    if pat.syntax().text_range().contains_range(bind_pat.syntax().text_range()) {
+                        self.is_pat_or_const = IsPatOrConst::Irrefutable;
+                    }
+                }
+            }
+
+            self.fill_impl_def();
+        }
+        if is_node::<ast::Param>(name.syntax()) {
+            self.is_param = true;
+            return;
+        }
+        // FIXME: remove this (V) duplication and make the check more precise
+        if name.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
+            self.record_pat_syntax =
+                self.sema.find_node_at_offset_with_macros(&original_file, offset);
+        }
+    }
+
     fn classify_name_ref(
         &mut self,
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
         offset: TextSize,
     ) {
+        // FIXME: remove this (^) duplication and make the check more precise
+        if name_ref.syntax().ancestors().find_map(ast::RecordPatFieldList::cast).is_some() {
+            self.record_pat_syntax =
+                self.sema.find_node_at_offset_with_macros(&original_file, offset);
+        }
+
         self.name_ref_syntax =
             find_node_at_offset(original_file, name_ref.syntax().text_range().start());
         let name_range = name_ref.syntax().text_range();

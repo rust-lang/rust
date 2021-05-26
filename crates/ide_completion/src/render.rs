@@ -20,6 +20,7 @@ use ide_db::{
 use syntax::TextRange;
 
 use crate::{
+    context::IsPatOrConst,
     item::{CompletionRelevanceTypeMatch, ImportEdit},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, CompletionRelevance,
 };
@@ -188,8 +189,7 @@ impl<'a> Render<'a> {
                 return render_fn(self.ctx, import_to_add, Some(local_name), *func);
             }
             ScopeDef::ModuleDef(Variant(_))
-                if self.ctx.completion.is_pat_binding_or_const
-                    | self.ctx.completion.is_irrefutable_pat_binding =>
+                if self.ctx.completion.is_pat_or_const != IsPatOrConst::No =>
             {
                 CompletionItemKind::SymbolKind(SymbolKind::Variant)
             }
