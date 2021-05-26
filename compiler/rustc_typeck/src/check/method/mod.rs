@@ -21,7 +21,8 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TypeFoldable, WithConstness};
-use rustc_span::symbol::Ident;
+use rustc_session::lint::builtin::FUTURE_PRELUDE_COLLISION;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -197,6 +198,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let pick =
             self.lookup_probe(span, segment.ident, self_ty, call_expr, ProbeScope::TraitsInScope)?;
+
+        if let sym::try_from | sym::try_into = segment.ident.name {
+            if let probe::PickKind::TraitPick = pick.kind {
+                if !matches!(self.tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
+                    self.tcx.struct_span_lint_hir(
+                        FUTURE_PRELUDE_COLLISION,
+                        call_expr.hir_id,
+                        call_expr.span,
+                        |lint| {
+                            let sp = call_expr.span;
+                            let trait_name =
+                                self.tcx.def_path_str(pick.item.container.assert_trait());
+
+                            let mut lint = lint.build(&format!(
+                                "trait method `{}` will become ambiguous in Rust 2021",
+                                segment.ident.name
+                            ));
+
+                            if let Ok(self_expr) =
+                                self.sess().source_map().span_to_snippet(self_expr.span)
+                            {
+                                lint.span_suggestion(
+                                    sp,
+                                    "disambiguate the associated function",
+                                    format!(
+                                        "{}::{}({})",
+                                        trait_name, segment.ident.name, self_expr,
+                                    ),
+                                    Applicability::MachineApplicable,
+                                );
+                            } else {
+                                lint.span_help(
+                                    sp,
+                                    &format!(
+                                        "disambiguate the associated function with `{}::{}(...)`",
+                                        trait_name, segment.ident,
+                                    ),
+                                );
+                            }
+
+                            lint.emit();
+                        },
+                    );
+                }
+            }
+        }
 
         for import_id in &pick.import_ids {
             debug!("used_trait_import: {:?}", import_id);
