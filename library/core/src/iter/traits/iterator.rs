@@ -80,11 +80,6 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),
     on(
-        _Self = "[]",
-        label = "arrays do not yet implement `IntoIterator`; try using `std::array::IntoIter::new(arr)`",
-        note = "see <https://github.com/rust-lang/rust/pull/65819> for more details"
-    ),
-    on(
         _Self = "{integral}",
         note = "if you want to iterate between `start` until a value `end`, use the exclusive range \
               syntax `start..end` or the inclusive range syntax `start..=end`"
