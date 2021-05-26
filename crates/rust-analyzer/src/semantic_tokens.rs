@@ -46,7 +46,7 @@ define_semantic_token_types![
     (BRACE, "brace"),
     (BRACKET, "bracket"),
     (BUILTIN_TYPE, "builtinType"),
-    (CHAR_LITERAL, "characterLiteral"),
+    (CHAR, "character"),
     (COLON, "colon"),
     (COMMA, "comma"),
     (COMPARISON, "comparison"),
