@@ -5,7 +5,6 @@ from gdb_providers import *
 from rust_types import *
 
 
-rust_enabled = 'set language rust' in gdb.execute('complete set language ru', to_string=True)
 _gdb_version_matched = re.search('([0-9]+)\\.([0-9]+)', gdb.VERSION)
 gdb_version = [int(num) for num in _gdb_version_matched.groups()] if _gdb_version_matched else []
 
@@ -52,9 +51,10 @@ def lookup(valobj):
         return StdStringProvider(valobj)
     if rust_type == RustType.STD_OS_STRING:
         return StdOsStringProvider(valobj)
-    if rust_type == RustType.STD_STR and not rust_enabled:
+    if rust_type == RustType.STD_STR:
         return StdStrProvider(valobj)
-
+    if rust_type == RustType.STD_SLICE:
+        return StdSliceProvider(valobj)
     if rust_type == RustType.STD_VEC:
         return StdVecProvider(valobj)
     if rust_type == RustType.STD_VEC_DEQUE:
