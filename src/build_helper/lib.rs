@@ -130,7 +130,6 @@ pub fn make(host: &str) -> PathBuf {
     }
 }
 
-#[track_caller]
 pub fn output(cmd: &mut Command) -> String {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
