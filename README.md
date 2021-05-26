@@ -272,10 +272,8 @@ See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 
 ## Trademark
 
-The Rust programming language is an open source, community project governed
-by [the Rust Foundation][rust-foundation],
-which also owns and protects the Rust and Cargo trademarks and logos
-(the “Rust Trademarks”).
+[The Rust Foundation][rust-foundation] owns and protects the Rust and Cargo
+trademarks and logos (the “Rust Trademarks”).
 
 If you want to use these names or brands, please read the [media guide][media-guide].
 
