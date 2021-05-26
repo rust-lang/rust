@@ -15,9 +15,9 @@ use rustc_target::abi::{Abi, Align, FieldsShape, TagEncoding};
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, VariantIdx, Variants};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocId, AllocMap, AllocRef, AllocRefMut, Allocation,
-    ConstAlloc, ImmTy, Immediate, InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy,
-    Operand, Pointer, PointerArithmetic, Scalar, ScalarMaybeUninit,
+    alloc_range, mir_assign_valid_types, AllocRef, AllocRefMut, ConstAlloc, ImmTy, Immediate,
+    InterpCx, InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer,
+    PointerArithmetic, Scalar, ScalarMaybeUninit,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -292,8 +292,6 @@ where
     // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: Debug + Copy + Eq + Hash + 'static,
     M: Machine<'mir, 'tcx, PointerTag = Tag>,
-    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKind>, Allocation<Tag, M::AllocExtra>)>,
 {
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
