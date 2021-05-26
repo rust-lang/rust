@@ -24,7 +24,6 @@ Language
 
 Compiler
 -----------------------
-- [Enabled `mutable-noalias` when built with LLVM 12 or greater.][82834]
 - [Updated the minimum external LLVM version to LLVM 10.][83387]
 - [Added Tier 3\* support for the `wasm64-unknown-unknown` target.][80525]
 - [Improved debuginfo for closures and async functions on Windows MSVC.][83941]
@@ -143,7 +142,6 @@ related tools.
 [77704]: https://github.com/rust-lang/rust/pull/77704
 [83941]: https://github.com/rust-lang/rust/pull/83941
 [83065]: https://github.com/rust-lang/rust/pull/83065
-[82834]: https://github.com/rust-lang/rust/pull/82834
 [81764]: https://github.com/rust-lang/rust/pull/81764
 [81469]: https://github.com/rust-lang/rust/pull/81469
 [cargo/9298]: https://github.com/rust-lang/cargo/pull/9298
