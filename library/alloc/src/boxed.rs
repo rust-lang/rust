@@ -1056,7 +1056,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     where
         U: Unsize<T>,
     {
-        if Layout::for_value(&**b) != Layout::new::<U>() {
+        if Layout::for_value::<T>(&**b) != Layout::new::<U>() {
             return Err(val);
         }
 
@@ -1158,32 +1158,31 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
             let alloc = Box::allocator(b);
             // Use allocation methods directly instead of `Box::try_new_in` so ownership of the
             // allocator is not lost if allocation errors or panics.
-            let ptr: *mut U = alloc.allocate(Layout::new::<U>())?.cast().as_ptr();
-            unsafe { ptr::write(ptr, val) };
-            let new_b = unsafe { Box::from_raw_in(ptr, ptr::read(alloc)) };
+            let new_ptr: *mut U = alloc.allocate(Layout::new::<U>())?.cast().as_ptr();
+            unsafe { ptr::write(new_ptr, val) };
+            let new_ptr: Unique<U> = unsafe { Unique::new_unchecked(new_ptr) };
 
-            let old_b = mem::replace(b, new_b);
+            let old_ptr = mem::replace(&mut b.0, new_ptr);
 
             // Drop the old box without dropping its allocator, as the allocator has been moved
             // into the new box.
-            struct DeallocGuard<A: Allocator> {
-                alloc: A,
+            struct DeallocGuard<'alloc, A: Allocator> {
+                alloc: &'alloc A,
                 ptr: ptr::NonNull<u8>,
                 layout: Layout,
             }
-            impl<A: Allocator> Drop for DeallocGuard<A> {
+            impl<A: Allocator> Drop for DeallocGuard<'_, A> {
                 fn drop(&mut self) {
                     unsafe { self.alloc.deallocate(self.ptr, self.layout) };
                 }
             }
 
-            let old_val = Box::leak(old_b);
             let _dealloc_guard = DeallocGuard {
                 alloc: Box::allocator(&b),
-                ptr: ptr::NonNull::from(&mut *old_val).cast(),
-                layout: Layout::for_value(old_val),
+                ptr: ptr::NonNull::from(old_ptr).cast(),
+                layout: Layout::for_value(unsafe { old_ptr.as_ref() }),
             };
-            unsafe { ptr::drop_in_place(old_val) };
+            unsafe { ptr::drop_in_place(old_ptr.as_ptr()) };
         }
         Ok(())
     }
