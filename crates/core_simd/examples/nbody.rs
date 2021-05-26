@@ -5,11 +5,16 @@ use std::f64::consts::PI;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
 const DAYS_PER_YEAR: f64 = 365.24;
 
+#[derive(Debug)]
+#[repr(simd)]
 pub struct Body {
-    pub x: f64x4,
-    pub v: f64x4,
+    pub x: Simdf64([f64, 4]),
+    pub v: Simdf64([f64, 4]),
     pub mass: f64,
 }
+
+// Translation attempt is this ^^^ far
+//
 const N_BODIES: usize = 5;
 #[allow(clippy::unreadable_literal)]
 const BODIES: [Body; N_BODIES] = [
