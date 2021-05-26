@@ -526,8 +526,8 @@ public:
         Builder.CreateStore(tape, AL);
         tape = Builder.CreateLoad(Builder.CreatePointerCast(AL, PointerType::getUnqual(tapeType)));
       }
-      CI->getParent()->getParent()->dump();
-      CI->getParent()->dump();
+      llvm::errs() << *CI->getParent() << "\n";
+      llvm::errs() << *CI->getParent() << "\n";
       llvm::errs() << *tape << "\n";
       llvm::errs() << *tapeType << "\n";
       assert(tape->getType() == tapeType);

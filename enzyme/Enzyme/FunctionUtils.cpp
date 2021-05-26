@@ -1657,8 +1657,6 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
   SimplifyCFGPass(scfgo).run(*F, FAM);
   CorrelatedValuePropagationPass().run(*F, FAM);
   SelectOptimization(F);
-  llvm::errs() << " post cv:\n";
-  F->dump();
   // EarlyCSEPass(/*memoryssa*/ true).run(*F, FAM);
 
   for (Function &Impl : *F->getParent()) {
