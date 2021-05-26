@@ -285,6 +285,8 @@ declare_features! (
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835), None),
     /// Allows unsizing coercions in `const fn`.
     (accepted, const_fn_unsize, "1.54.0", Some(64992), None),
+    /// Allows `impl Trait` with multiple unrelated lifetimes.
+    (accepted, member_constraints, "1.54.0", Some(61997), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
