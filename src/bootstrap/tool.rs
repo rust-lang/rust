@@ -217,9 +217,8 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            let cargo_out =
-                builder.cargo_out(compiler, self.mode, target).join(exe(tool, compiler.host));
-            let bin = builder.tools_dir(compiler).join(exe(tool, compiler.host));
+            let cargo_out = builder.cargo_out(compiler, self.mode, target).join(exe(tool, target));
+            let bin = builder.tools_dir(compiler).join(exe(tool, target));
             builder.copy(&cargo_out, &bin);
             Some(bin)
         }
