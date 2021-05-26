@@ -32,14 +32,9 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
     const newEnv = Object.assign({}, process.env);
     Object.assign(newEnv, extraEnv);
 
-    let cwd = undefined;
-    if (workspace.kind === "Workspace Folder") {
-        cwd = workspace.folder.fsPath;
-    };
-
     const run: lc.Executable = {
         command: serverPath,
-        options: { cwd, env: newEnv },
+        options: { env: newEnv },
     };
     const serverOptions: lc.ServerOptions = {
         run,

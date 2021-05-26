@@ -17,11 +17,9 @@ export interface CargoTaskDefinition extends vscode.TaskDefinition {
 }
 
 class CargoTaskProvider implements vscode.TaskProvider {
-    private readonly target: vscode.WorkspaceFolder;
     private readonly config: Config;
 
-    constructor(target: vscode.WorkspaceFolder, config: Config) {
-        this.target = target;
+    constructor(config: Config) {
         this.config = config;
     }
 
@@ -40,10 +38,12 @@ class CargoTaskProvider implements vscode.TaskProvider {
         ];
 
         const tasks: vscode.Task[] = [];
-        for (const def of defs) {
-            const vscodeTask = await buildCargoTask(this.target, { type: TASK_TYPE, command: def.command }, `cargo ${def.command}`, [def.command], this.config.cargoRunner);
-            vscodeTask.group = def.group;
-            tasks.push(vscodeTask);
+        for (const workspaceTarget of vscode.workspace.workspaceFolders || []) {
+            for (const def of defs) {
+                const vscodeTask = await buildCargoTask(workspaceTarget, { type: TASK_TYPE, command: def.command }, `cargo ${def.command}`, [def.command], this.config.cargoRunner);
+                vscodeTask.group = def.group;
+                tasks.push(vscodeTask);
+            }
         }
 
         return tasks;
@@ -58,12 +58,17 @@ class CargoTaskProvider implements vscode.TaskProvider {
 
         if (definition.type === TASK_TYPE && definition.command) {
             const args = [definition.command].concat(definition.args ?? []);
-
-            return await buildCargoTask(this.target, definition, task.name, args, this.config.cargoRunner);
+            if (isWorkspaceFolder(task.scope)) {
+                return await buildCargoTask(task.scope, definition, task.name, args, this.config.cargoRunner);
+            }
         }
 
         return undefined;
     }
+}
+
+function isWorkspaceFolder(scope?: any): scope is vscode.WorkspaceFolder {
+    return (scope as vscode.WorkspaceFolder).name !== undefined;
 }
 
 export async function buildCargoTask(
@@ -119,7 +124,7 @@ export async function buildCargoTask(
     );
 }
 
-export function activateTaskProvider(target: vscode.WorkspaceFolder, config: Config): vscode.Disposable {
-    const provider = new CargoTaskProvider(target, config);
+export function activateTaskProvider(config: Config): vscode.Disposable {
+    const provider = new CargoTaskProvider(config);
     return vscode.tasks.registerTaskProvider(TASK_TYPE, provider);
 }
