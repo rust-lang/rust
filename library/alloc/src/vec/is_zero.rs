@@ -69,3 +69,36 @@ unsafe impl<T: ?Sized> IsZero for Option<Box<T>> {
         self.is_none()
     }
 }
+
+// `Option<num::NonZeroU32>` and similar have a representation guarantee that
+// they're the same size as the corresponding `u32` type, as well as a guarantee
+// that transmuting between `NonZeroU32` and `Option<num::NonZeroU32>` works.
+// While the documentation officially makes in UB to transmute from `None`,
+// we're the standard library so we can make extra inferences, and we know that
+// the only niche available to represent `None` is the one that's all zeros.
+
+macro_rules! impl_is_zero_option_of_nonzero {
+    ($($t:ident,)+) => {$(
+        unsafe impl IsZero for Option<core::num::$t> {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                self.is_none()
+            }
+        }
+    )+};
+}
+
+impl_is_zero_option_of_nonzero!(
+    NonZeroU8,
+    NonZeroU16,
+    NonZeroU32,
+    NonZeroU64,
+    NonZeroU128,
+    NonZeroI8,
+    NonZeroI16,
+    NonZeroI32,
+    NonZeroI64,
+    NonZeroI128,
+    NonZeroUsize,
+    NonZeroIsize,
+);
