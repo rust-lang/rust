@@ -37,8 +37,10 @@ Libraries
   Android platforms when available.][81469]
 - [`slice::IterMut<'_, T>` now implements `AsRef<[T]>`][82771]
 - [Arrays of any length now implement `IntoIterator`.][84147]
-  Currently `.into_iter()` will return `slice::Iter` (`Item=&T`), but
-  this may change in a future edition to return `Item=T`.
+  Currently call `.into_iter()` as a method on an array will
+  return `impl Iterator<Item=&T>`, but this may change in a
+  future edition to change `Item` to `T`. Calling `IntoIterator::into_iter`
+  directly on arrays will provide `impl Iterator<Item=T>` as expected.
 - [`NonZero<T>::{leading_zeros, trailing_zeros}` is now `const`.][84082]
 - [`{f32, f64}::from_str` now parse and print special values
   (`NaN`, `-0`) according to IEEE RFC 754.][78618]
