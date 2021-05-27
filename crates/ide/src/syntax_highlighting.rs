@@ -42,12 +42,82 @@ pub struct HlRange {
 // Feature: Semantic Syntax Highlighting
 //
 // rust-analyzer highlights the code semantically.
-// For example, `bar` in `foo::Bar` might be colored differently depending on whether `Bar` is an enum or a trait.
-// rust-analyzer does not specify colors directly, instead it assigns tag (like `struct`) and a set of modifiers (like `declaration`) to each token.
+// For example, `Bar` in `foo::Bar` might be colored differently depending on whether `Bar` is an enum or a trait.
+// rust-analyzer does not specify colors directly, instead it assigns a tag (like `struct`) and a set of modifiers (like `declaration`) to each token.
 // It's up to the client to map those to specific colors.
 //
 // The general rule is that a reference to an entity gets colored the same way as the entity itself.
 // We also give special modifier for `mut` and `&mut` local variables.
+//
+//
+// .Token Tags
+//
+// Rust-analyzer currently emits the following token tags:
+//
+// - For items:
+// +
+// [horizontal]
+// enum:: Emitted for enums.
+// function:: Emitted for free-standing functions.
+// macro:: Emitted for macros.
+// method:: Emitted for associated functions, also knowns as methods.
+// namespace:: Emitted for modules.
+// struct:: Emitted for structs.
+// trait:: Emitted for traits.
+// typeAlias:: Emitted for type aliases and `Self` in `impl`s.
+// union:: Emitted for unions.
+//
+// - For literals:
+// +
+// [horizontal]
+// boolean:: Emitted for the boolean literals `true` and `false`.
+// character:: Emitted for character literals.
+// number:: Emitted for numeric literals.
+// string:: Emitted for string literals.
+// escapeSequence:: Emitted for escaped sequences inside strings like `\n`.
+// formatSpecifier:: Emitted for format specifiers `{:?}` in `format!`-like macros.
+//
+// - For operators:
+// +
+// [horizontal]
+// operator:: Emitted for general operators.
+// arithmetic:: Emitted for the arithmetic operators `+`, `-`, `*`, `/`, `+=`, `-=`, `*=`, `/=`.
+// bitwise:: Emitted for the bitwise operators `|`, `&`, `!`, `^`, `|=`, `&=`, `^=`.
+// comparison:: Emitted for the comparison operators `>`, `<`, `==`, `>=`, `<=`, `!=`.
+// logical:: Emitted for the logical operators `||`, `&&`, `!`.
+//
+// - For punctuation:
+// +
+// [horizontal]
+// punctuation:: Emitted for general punctuation.
+// angle:: Emitted for `<>` angle brackets.
+// brace:: Emitted for `{}` braces.
+// bracket:: Emitted for `[]` brackets.
+// parenthesis:: Emitted for `()` parentheses.
+// colon:: Emitted for the `:` token.
+// comma:: Emitted for the `,` token.
+// dot:: Emitted for the `.` token.
+// Semi:: Emitted for the `;` token.
+//
+// //-
+//
+// [horizontal]
+// attribute:: Emitted for attributes.
+// builtinType:: Emitted for builtin types like `u32`, `str` and `f32`.
+// comment:: Emitted for comments.
+// constParameter:: Emitted for const parameters.
+// enumMember:: Emitted for enum variants.
+// generic:: Emitted for generic tokens that have no mapping.
+// keyword:: Emitted for keywords.
+// label:: Emitted for labels.
+// lifetime:: Emitted for lifetimes.
+// parameter:: Emitted for non-self function parameters.
+// property:: Emitted for struct and union fields.
+// selfKeyword:: Emitted for the self function parameter and self path-specifier.
+// typeParameter:: Emitted for type parameters.
+// unresolvedReference:: Emitted for unresolved references, names that rust-analyzer can't find the definition of.
+// variable:: Emitted for locals, constants and statics.
+//
 //
 // .Token Modifiers
 //
@@ -56,10 +126,10 @@ pub struct HlRange {
 // Rust-analyzer currently emits the following token modifiers:
 //
 // [horizontal]
-// associated:: Emitted for associated items.
 // async:: Emitted for async functions and the `async` and `await` keywords.
 // attribute:: Emitted for tokens inside attributes.
 // callable:: Emitted for locals whose types implements one of the `Fn*` traits.
+// constant:: Emitted for consts.
 // consuming:: Emitted for locals that are being consumed when use in a function call.
 // controlFlow:: Emitted for control-flow related tokens, this includes the `?` operator.
 // declaration:: Emitted for names of definitions, like `foo` in `fn foo() {}`.
@@ -68,7 +138,7 @@ pub struct HlRange {
 // intraDocLink:: Emitted for intra doc links in doc-strings.
 // library:: Emitted for items that are defined outside of the current crate.
 // mutable:: Emitted for mutable locals and statics.
-// static:: Emitted for "static" functions, also known as functions that do not take a `self` param.
+// static:: Emitted for "static" functions, also known as functions that do not take a `self` param, as well as statics and consts.
 // trait:: Emitted for associated trait items.
 // unsafe:: Emitted for unsafe operations, like unsafe function calls, as well as the `unsafe` token.
 //
