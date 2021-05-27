@@ -2568,6 +2568,32 @@ impl Path {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 
+    /// Returns true if the path exists on disk and is pointing at a symbolic link file.
+    /// This method can alse be used to check whether symlink exists.
+    ///
+    /// This function will not traverse symbolic links.
+    /// In case of broken symbolic links this will also return true.
+    ///
+    /// If you cannot access the directory containing the file, e.g., because of a
+    /// permission error, this will return false.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    /// use std::os::unix::fs::symlink;
+    ///
+    /// let link_path = Path::new("/link");
+    /// symlink("/origin_does_not_exists/", link_path)?;
+    /// assert_eq!(link_path.is_symlink(), true);
+    /// assert_eq!(link_path.exists(), false);
+    /// ```
+    #[unstable(feature = "path_ext", issue = "none")]
+    #[inline]
+    pub fn is_symlink(&self) -> bool {
+        fs::symlink_metadata(self).is_ok()
+    }
+
     /// Converts a [`Box<Path>`](Box) into a [`PathBuf`] without copying or
     /// allocating.
     #[stable(feature = "into_boxed_path", since = "1.20.0")]
