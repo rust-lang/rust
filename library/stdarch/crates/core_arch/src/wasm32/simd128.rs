@@ -277,13 +277,23 @@ extern "C" {
     fn llvm_f64x2_promote_low_f32x4(x: simd::f32x4) -> simd::f64x2;
 }
 
+#[repr(packed)]
+#[derive(Copy)]
+struct Unaligned<T>(T);
+
+impl<T: Copy> Clone for Unaligned<T> {
+    fn clone(&self) -> Unaligned<T> {
+        *self
+    }
+}
+
 /// Loads a `v128` vector from the given heap address.
 #[inline]
 #[cfg_attr(test, assert_instr(v128.load))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load"))]
 pub unsafe fn v128_load(m: *const v128) -> v128 {
-    *m
+    (*(m as *const Unaligned<v128>)).0
 }
 
 /// Load eight 8-bit integers and sign extend each one to a 16-bit lane
@@ -292,7 +302,8 @@ pub unsafe fn v128_load(m: *const v128) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load8x8_s"))]
 pub unsafe fn i16x8_load_extend_i8x8(m: *const i8) -> v128 {
-    transmute(simd_cast::<_, simd::i16x8>(*(m as *const simd::i8x8)))
+    let m = *(m as *const Unaligned<simd::i8x8>);
+    transmute(simd_cast::<_, simd::i16x8>(m.0))
 }
 
 /// Load eight 8-bit integers and zero extend each one to a 16-bit lane
@@ -301,7 +312,8 @@ pub unsafe fn i16x8_load_extend_i8x8(m: *const i8) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load8x8_u"))]
 pub unsafe fn i16x8_load_extend_u8x8(m: *const u8) -> v128 {
-    transmute(simd_cast::<_, simd::u16x8>(*(m as *const simd::u8x8)))
+    let m = *(m as *const Unaligned<simd::u8x8>);
+    transmute(simd_cast::<_, simd::u16x8>(m.0))
 }
 
 pub use i16x8_load_extend_u8x8 as u16x8_load_extend_u8x8;
@@ -312,7 +324,8 @@ pub use i16x8_load_extend_u8x8 as u16x8_load_extend_u8x8;
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load16x4_s"))]
 pub unsafe fn i32x4_load_extend_i16x4(m: *const i16) -> v128 {
-    transmute(simd_cast::<_, simd::i32x4>(*(m as *const simd::i16x4)))
+    let m = *(m as *const Unaligned<simd::i16x4>);
+    transmute(simd_cast::<_, simd::i32x4>(m.0))
 }
 
 /// Load four 16-bit integers and zero extend each one to a 32-bit lane
@@ -321,7 +334,8 @@ pub unsafe fn i32x4_load_extend_i16x4(m: *const i16) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load16x4_u"))]
 pub unsafe fn i32x4_load_extend_u16x4(m: *const u16) -> v128 {
-    transmute(simd_cast::<_, simd::u32x4>(*(m as *const simd::u16x4)))
+    let m = *(m as *const Unaligned<simd::u16x4>);
+    transmute(simd_cast::<_, simd::u32x4>(m.0))
 }
 
 pub use i32x4_load_extend_u16x4 as u32x4_load_extend_u16x4;
@@ -332,7 +346,8 @@ pub use i32x4_load_extend_u16x4 as u32x4_load_extend_u16x4;
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load32x2_s"))]
 pub unsafe fn i64x2_load_extend_i32x2(m: *const i32) -> v128 {
-    transmute(simd_cast::<_, simd::i64x2>(*(m as *const simd::i32x2)))
+    let m = *(m as *const Unaligned<simd::i32x2>);
+    transmute(simd_cast::<_, simd::i64x2>(m.0))
 }
 
 /// Load two 32-bit integers and zero extend each one to a 64-bit lane
@@ -341,7 +356,8 @@ pub unsafe fn i64x2_load_extend_i32x2(m: *const i32) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load32x2_u"))]
 pub unsafe fn i64x2_load_extend_u32x2(m: *const u32) -> v128 {
-    transmute(simd_cast::<_, simd::u64x2>(*(m as *const simd::u32x2)))
+    let m = *(m as *const Unaligned<simd::u32x2>);
+    transmute(simd_cast::<_, simd::u64x2>(m.0))
 }
 
 pub use i64x2_load_extend_u32x2 as u64x2_load_extend_u32x2;
@@ -361,7 +377,8 @@ pub unsafe fn v128_load8_splat(m: *const u8) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load16_splat"))]
 pub unsafe fn v128_load16_splat(m: *const u16) -> v128 {
-    transmute(simd::u16x8::splat(*m))
+    let m = ptr::read_unaligned(m);
+    transmute(simd::u16x8::splat(m))
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
@@ -370,7 +387,8 @@ pub unsafe fn v128_load16_splat(m: *const u16) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load32_splat"))]
 pub unsafe fn v128_load32_splat(m: *const u32) -> v128 {
-    transmute(simd::u32x4::splat(*m))
+    let m = ptr::read_unaligned(m);
+    transmute(simd::u32x4::splat(m))
 }
 
 /// Load a single element and splat to all lanes of a v128 vector.
@@ -379,7 +397,8 @@ pub unsafe fn v128_load32_splat(m: *const u32) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.load64_splat"))]
 pub unsafe fn v128_load64_splat(m: *const u64) -> v128 {
-    transmute(simd::u64x2::splat(*m))
+    let m = ptr::read_unaligned(m);
+    transmute(simd::u64x2::splat(m))
 }
 
 /// Load a 32-bit element into the low bits of the vector and sets all other
@@ -408,7 +427,7 @@ pub unsafe fn v128_load64_zero(m: *const u64) -> v128 {
 #[target_feature(enable = "simd128")]
 #[doc(alias("v128.store"))]
 pub unsafe fn v128_store(m: *mut v128, a: v128) {
-    *m = a;
+    *(m as *mut Unaligned<v128>) = Unaligned(a);
 }
 
 /// Loads an 8-bit value from `m` and sets lane `L` of `v` to that value.
