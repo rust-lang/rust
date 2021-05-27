@@ -109,6 +109,11 @@ impl<'s> LintLevelsBuilder<'s> {
             }
         }
 
+        for lint_name in &sess.opts.force_warns {
+            store.check_lint_name_cmdline(sess, &lint_name, Level::Allow); // FIXME level is wrong
+            self.sets.force_warns.insert(lint_name.to_uppercase());
+        }
+
         self.sets.list.push(LintSet::CommandLine { specs });
     }
 
@@ -142,6 +147,9 @@ impl<'s> LintLevelsBuilder<'s> {
                     LintLevelSource::Default => false,
                     LintLevelSource::Node(symbol, _, _) => self.store.is_lint_group(symbol),
                     LintLevelSource::CommandLine(symbol, _) => self.store.is_lint_group(symbol),
+                    LintLevelSource::ForceWarn(symbol) => {
+                        bug!("forced warn lint returned a forbid lint level")
+                    }
                 };
                 debug!(
                     "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
@@ -166,6 +174,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         LintLevelSource::CommandLine(_, _) => {
                             diag_builder.note("`forbid` lint level was set on command line");
                         }
+                        _ => bug!("forced warn lint returned a forbid lint level"),
                     }
                     diag_builder.emit();
                 };
