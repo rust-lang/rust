@@ -11,6 +11,7 @@ pub use self::CandidateSource::*;
 pub use self::MethodError::*;
 
 use crate::check::FnCtxt;
+use rustc_ast::ast::Mutability;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -222,12 +223,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let Ok(self_expr) =
                                     self.sess().source_map().span_to_snippet(self_expr.span)
                                 {
+                                    let derefs = "*".repeat(pick.autoderefs);
+                                    let self_adjusted = match pick.autoref_or_ptr_adjustment {
+                                        Some(probe::AutorefOrPtrAdjustment::Autoref {
+                                            mutbl: Mutability::Mut, ..
+                                        }) => format!("&mut {}{}", derefs, self_expr),
+                                        Some(probe::AutorefOrPtrAdjustment::Autoref {
+                                            mutbl: Mutability::Not, ..
+                                        }) => format!("&{}{}", derefs, self_expr),
+                                        Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None
+                                            => format!("{}{}", derefs, self_expr),
+                                    };
                                     lint.span_suggestion(
                                         sp,
                                         "disambiguate the associated function",
                                         format!(
                                             "{}::{}({})",
-                                            trait_name, segment.ident.name, self_expr,
+                                            trait_name, segment.ident.name, self_adjusted,
                                         ),
                                         Applicability::MachineApplicable,
                                     );
