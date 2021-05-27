@@ -903,7 +903,7 @@ fn phase_rustdoc(fst_arg: &str, mut args: env::Args) {
         show_error(format!("cross-interpreting doc-tests is not currently supported by Miri."));
     }
 
-    // Doc-tests of `proc-macro` crates (and their dependencies) are always built for the host,
+    // Doctests of `proc-macro` crates (and their dependencies) are always built for the host,
     // so we are not able to run them in Miri.
     if ArgFlagValueIter::new("--crate-type").any(|crate_type| crate_type == "proc-macro") {
         eprintln!("Running doctests of `proc-macro` crates is not currently supported by Miri.");
