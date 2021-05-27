@@ -7,7 +7,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    alloc_range, read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
+    alloc_range, read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc,
+    Scalar,
 };
 use rustc_middle::ty::ConstKind;
 
