@@ -1,4 +1,4 @@
-error[E0599]: no method named `iter` found for struct `Iterate<{integer}, [closure@$DIR/issue-41880.rs:26:24: 26:31]>` in the current scope
+error[E0599]: no method named `iter` found for struct `Iterate` in the current scope
   --> $DIR/issue-41880.rs:27:24
    |
 LL | pub struct Iterate<T, F> {
