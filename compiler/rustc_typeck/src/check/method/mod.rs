@@ -544,7 +544,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let probe::PickKind::TraitPick = pick.kind {
                     if !matches!(tcx.crate_name(pick.item.def_id.krate), sym::std | sym::core) {
                         tcx.struct_span_lint_hir(FUTURE_PRELUDE_COLLISION, expr_id, span, |lint| {
-                            let trait_name = tcx.def_path_str(pick.item.container.assert_trait());
+                            let trait_def_id = pick.item.container.assert_trait();
+                            let trait_generics = tcx.generics_of(trait_def_id);
+                            let parameter_count = trait_generics.count() - (trait_generics.has_self as usize);
+
+                            let trait_name = if parameter_count == 0 {
+                                tcx.def_path_str(trait_def_id)
+                            } else {
+                                format!(
+                                    "{}<{}>",
+                                    tcx.def_path_str(trait_def_id),
+                                    std::iter::repeat("_").take(parameter_count).collect::<Vec<_>>().join(", ")
+                                )
+                            };
 
                             let mut lint = lint.build(&format!(
                                 "trait-associated function `{}` will become ambiguous in Rust 2021",
