@@ -1069,13 +1069,14 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let mut result = T::from_u32(0);
 
     if radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize {
-        // SAFETY: We can take this fast path when `radix.pow(digits.len()) - 1 <= T::MAX`
-        // but the condition above is a faster (conservative) approximation of this.
+        // SAFETY: If the len of the str is short compared to the range of the type
+        // we are parsing into, then we can be certain that an overflow will not occur.
+        // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
+        // above is a faster (conservative) approximation of this.
         //
-        // Consider the highest radix of 16:
-        // `u8::MAX` is `ff` (2 characters), `u16::MAX` is `ffff` (4 characters)
-        // We can be sure that any src len of 2 would fit in a u8 so we don't need
-        // to check for overflow.
+        // Consider radix 16 as it has the most chance of overflow per digit:
+        // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
+        // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
         unsafe {
             let unchecked_additive_op =
                 if is_positive { T::unchecked_add } else { T::unchecked_sub };
