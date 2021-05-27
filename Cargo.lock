@@ -647,6 +647,7 @@ dependencies = [
  "ide_db",
  "itertools",
  "log",
+ "once_cell",
  "profile",
  "rustc-hash",
  "stdx",

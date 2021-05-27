@@ -15,6 +15,7 @@ itertools = "0.10.0"
 log = "0.4.8"
 rustc-hash = "1.1.0"
 either = "1.6.1"
+once_cell = "1.7"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }

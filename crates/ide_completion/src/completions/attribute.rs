@@ -4,8 +4,9 @@
 //! for built-in attributes.
 
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
-use syntax::{ast, AstNode, T};
+use once_cell::sync::Lazy;
+use rustc_hash::{FxHashMap, FxHashSet};
+use syntax::{ast, AstNode, SyntaxKind, T};
 
 use crate::{
     context::CompletionContext,
@@ -20,27 +21,34 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
     }
 
     let attribute = ctx.attribute_under_caret.as_ref()?;
-    match (attribute.path(), attribute.token_tree()) {
-        (Some(path), Some(token_tree)) => {
-            let path = path.syntax().text();
-            if path == "derive" {
-                complete_derive(acc, ctx, token_tree)
-            } else if path == "feature" {
-                complete_lint(acc, ctx, token_tree, FEATURES)
-            } else if path == "allow" || path == "warn" || path == "deny" || path == "forbid" {
+    match (attribute.path().and_then(|p| p.as_single_name_ref()), attribute.token_tree()) {
+        (Some(path), Some(token_tree)) => match path.text().as_str() {
+            "derive" => complete_derive(acc, ctx, token_tree),
+            "feature" => complete_lint(acc, ctx, token_tree, FEATURES),
+            "allow" | "warn" | "deny" | "forbid" => {
                 complete_lint(acc, ctx, token_tree.clone(), DEFAULT_LINT_COMPLETIONS);
                 complete_lint(acc, ctx, token_tree, CLIPPY_LINTS);
             }
-        }
-        (_, Some(_token_tree)) => {}
-        _ => complete_attribute_start(acc, ctx, attribute),
+            _ => (),
+        },
+        (None, Some(_)) => (),
+        _ => complete_new_attribute(acc, ctx, attribute),
     }
     Some(())
 }
 
-fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
+fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
+    let attribute_annotated_item_kind = attribute.syntax().parent().map(|it| it.kind());
+    let attributes = attribute_annotated_item_kind.and_then(|kind| {
+        if ast::Expr::can_cast(kind) {
+            Some(EXPR_ATTRIBUTES)
+        } else {
+            KIND_TO_ATTRIBUTES.get(&kind).copied()
+        }
+    });
     let is_inner = attribute.kind() == ast::AttrKind::Inner;
-    for attr_completion in ATTRIBUTES.iter().filter(|compl| is_inner || !compl.prefer_inner) {
+
+    let add_completion = |attr_completion: &AttrCompletion| {
         let mut item = CompletionItem::new(
             CompletionKind::Attribute,
             ctx.source_range(),
@@ -56,9 +64,19 @@ fn complete_attribute_start(acc: &mut Completions, ctx: &CompletionContext, attr
             item.insert_snippet(cap, snippet);
         }
 
-        if attribute.kind() == ast::AttrKind::Inner || !attr_completion.prefer_inner {
+        if is_inner || !attr_completion.prefer_inner {
             acc.add(item.build());
         }
+    };
+
+    match attributes {
+        Some(applicable) => applicable
+            .iter()
+            .flat_map(|name| ATTRIBUTES.binary_search_by(|attr| attr.key().cmp(name)).ok())
+            .flat_map(|idx| ATTRIBUTES.get(idx))
+            .for_each(add_completion),
+        None if is_inner => ATTRIBUTES.iter().for_each(add_completion),
+        None => ATTRIBUTES.iter().filter(|compl| !compl.prefer_inner).for_each(add_completion),
     }
 }
 
@@ -70,6 +88,10 @@ struct AttrCompletion {
 }
 
 impl AttrCompletion {
+    fn key(&self) -> &'static str {
+        self.lookup.unwrap_or(self.label)
+    }
+
     const fn prefer_inner(self) -> AttrCompletion {
         AttrCompletion { prefer_inner: true, ..self }
     }
@@ -83,26 +105,81 @@ const fn attr(
     AttrCompletion { label, lookup, snippet, prefer_inner: false }
 }
 
+macro_rules! attrs {
+    [$($($mac:ident!),+;)? $($key:literal),*] => {
+        &["allow", "cfg", "cfg_attr", "deny", "forbid", "warn", $($($mac!()),+,)? $($key),*] as _
+    }
+}
+macro_rules! item_attrs {
+    () => {
+        "deprecated"
+    };
+}
+
+static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
+    std::array::IntoIter::new([
+        (SyntaxKind::SOURCE_FILE, attrs!(item_attrs!;"crate_name")),
+        (SyntaxKind::MODULE, attrs!(item_attrs!;)),
+        (SyntaxKind::ITEM_LIST, attrs!(item_attrs!;)),
+        (SyntaxKind::MACRO_RULES, attrs!(item_attrs!;)),
+        (SyntaxKind::MACRO_DEF, attrs!(item_attrs!;)),
+        (SyntaxKind::EXTERN_CRATE, attrs!(item_attrs!;)),
+        (SyntaxKind::USE, attrs!(item_attrs!;)),
+        (SyntaxKind::FN, attrs!(item_attrs!;"cold", "must_use")),
+        (SyntaxKind::TYPE_ALIAS, attrs!(item_attrs!;)),
+        (SyntaxKind::STRUCT, attrs!(item_attrs!;"must_use")),
+        (SyntaxKind::ENUM, attrs!(item_attrs!;"must_use")),
+        (SyntaxKind::UNION, attrs!(item_attrs!;"must_use")),
+        (SyntaxKind::CONST, attrs!(item_attrs!;)),
+        (SyntaxKind::STATIC, attrs!(item_attrs!;)),
+        (SyntaxKind::TRAIT, attrs!(item_attrs!; "must_use")),
+        (SyntaxKind::IMPL, attrs!(item_attrs!;"automatically_derived")),
+        (SyntaxKind::ASSOC_ITEM_LIST, attrs!(item_attrs!;)),
+        (SyntaxKind::EXTERN_BLOCK, attrs!(item_attrs!;)),
+        (SyntaxKind::EXTERN_ITEM_LIST, attrs!(item_attrs!;)),
+        (SyntaxKind::MACRO_CALL, attrs!()),
+        (SyntaxKind::SELF_PARAM, attrs!()),
+        (SyntaxKind::PARAM, attrs!()),
+        (SyntaxKind::RECORD_FIELD, attrs!()),
+        (SyntaxKind::VARIANT, attrs!()),
+        (SyntaxKind::TYPE_PARAM, attrs!()),
+        (SyntaxKind::CONST_PARAM, attrs!()),
+        (SyntaxKind::LIFETIME_PARAM, attrs!()),
+        (SyntaxKind::LET_STMT, attrs!()),
+        (SyntaxKind::EXPR_STMT, attrs!()),
+        (SyntaxKind::LITERAL, attrs!()),
+        (SyntaxKind::RECORD_EXPR_FIELD_LIST, attrs!()),
+        (SyntaxKind::RECORD_EXPR_FIELD, attrs!()),
+        (SyntaxKind::MATCH_ARM_LIST, attrs!()),
+        (SyntaxKind::MATCH_ARM, attrs!()),
+        (SyntaxKind::IDENT_PAT, attrs!()),
+        (SyntaxKind::RECORD_PAT_FIELD, attrs!()),
+    ])
+    .collect()
+});
+const EXPR_ATTRIBUTES: &[&str] = attrs!();
+
 /// https://doc.rust-lang.org/reference/attributes.html#built-in-attributes-index
+// Keep these sorted for the binary search!
 const ATTRIBUTES: &[AttrCompletion] = &[
     attr("allow(…)", Some("allow"), Some("allow(${0:lint})")),
     attr("automatically_derived", None, None),
-    attr("cfg_attr(…)", Some("cfg_attr"), Some("cfg_attr(${1:predicate}, ${0:attr})")),
     attr("cfg(…)", Some("cfg"), Some("cfg(${0:predicate})")),
+    attr("cfg_attr(…)", Some("cfg_attr"), Some("cfg_attr(${1:predicate}, ${0:attr})")),
     attr("cold", None, None),
     attr(r#"crate_name = """#, Some("crate_name"), Some(r#"crate_name = "${0:crate_name}""#))
         .prefer_inner(),
     attr("deny(…)", Some("deny"), Some("deny(${0:lint})")),
     attr(r#"deprecated"#, Some("deprecated"), Some(r#"deprecated"#)),
     attr("derive(…)", Some("derive"), Some(r#"derive(${0:Debug})"#)),
+    attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
+    attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
+    attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
     attr(
         r#"export_name = "…""#,
         Some("export_name"),
         Some(r#"export_name = "${0:exported_symbol_name}""#),
     ),
-    attr(r#"doc(alias = "…")"#, Some("docalias"), Some(r#"doc(alias = "${0:docs}")"#)),
-    attr(r#"doc = "…""#, Some("doc"), Some(r#"doc = "${0:docs}""#)),
-    attr(r#"doc(hidden)"#, Some("dochidden"), Some(r#"doc(hidden)"#)),
     attr("feature(…)", Some("feature"), Some("feature(${0:flag})")).prefer_inner(),
     attr("forbid(…)", Some("forbid"), Some("forbid(${0:lint})")),
     // FIXME: resolve through macro resolution?
@@ -119,8 +196,8 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("macro_export", None, None),
     attr("macro_use", None, None),
     attr(r#"must_use"#, Some("must_use"), Some(r#"must_use"#)),
-    attr("no_link", None, None).prefer_inner(),
     attr("no_implicit_prelude", None, None).prefer_inner(),
+    attr("no_link", None, None).prefer_inner(),
     attr("no_main", None, None).prefer_inner(),
     attr("no_mangle", None, None),
     attr("no_std", None, None).prefer_inner(),
@@ -152,6 +229,22 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     )
     .prefer_inner(),
 ];
+
+#[test]
+fn attributes_are_sorted() {
+    let mut attrs = ATTRIBUTES.iter().map(|attr| attr.key());
+    let mut prev = attrs.next().unwrap();
+
+    attrs.for_each(|next| {
+        assert!(
+            prev < next,
+            r#"Attributes are not sorted, "{}" should come after "{}""#,
+            prev,
+            next
+        );
+        prev = next;
+    });
+}
 
 fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, derive_input: ast::TokenTree) {
     if let Ok(existing_derives) = parse_comma_sep_input(derive_input) {
@@ -410,6 +503,26 @@ mod tests {
     }
 
     #[test]
+    fn complete_attribute_on_struct() {
+        check(
+            r#"
+#[$0]
+struct Test {}
+        "#,
+            expect![[r#"
+                at allow(…)
+                at cfg(…)
+                at cfg_attr(…)
+                at deny(…)
+                at forbid(…)
+                at warn(…)
+                at deprecated
+                at must_use
+            "#]],
+        );
+    }
+
+    #[test]
     fn empty_derive_completion() {
         check(
             r#"
@@ -468,16 +581,16 @@ struct Test {}
             expect![[r#"
                 at allow(…)
                 at automatically_derived
-                at cfg_attr(…)
                 at cfg(…)
+                at cfg_attr(…)
                 at cold
                 at deny(…)
                 at deprecated
                 at derive(…)
-                at export_name = "…"
-                at doc(alias = "…")
                 at doc = "…"
+                at doc(alias = "…")
                 at doc(hidden)
+                at export_name = "…"
                 at forbid(…)
                 at ignore = "…"
                 at inline
@@ -516,17 +629,17 @@ struct Test {}
             expect![[r#"
                 at allow(…)
                 at automatically_derived
-                at cfg_attr(…)
                 at cfg(…)
+                at cfg_attr(…)
                 at cold
                 at crate_name = ""
                 at deny(…)
                 at deprecated
                 at derive(…)
-                at export_name = "…"
-                at doc(alias = "…")
                 at doc = "…"
+                at doc(alias = "…")
                 at doc(hidden)
+                at export_name = "…"
                 at feature(…)
                 at forbid(…)
                 at global_allocator
@@ -538,8 +651,8 @@ struct Test {}
                 at macro_export
                 at macro_use
                 at must_use
-                at no_link
                 at no_implicit_prelude
+                at no_link
                 at no_main
                 at no_mangle
                 at no_std
