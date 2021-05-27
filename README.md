@@ -436,6 +436,7 @@ Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows 
 * [Windows `Env` iterator using a raw pointer outside its valid memory area](https://github.com/rust-lang/rust/pull/70479)
 * [`VecDeque::iter_mut` creating overlapping mutable references](https://github.com/rust-lang/rust/issues/74029)
 * [Various standard library aliasing issues involving raw pointers](https://github.com/rust-lang/rust/pull/78602)
+* [`<[T]>::copy_within` using a loan after invalidating it](https://github.com/rust-lang/rust/pull/85610)
 
 ## License
 
