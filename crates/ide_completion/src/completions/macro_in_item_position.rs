@@ -4,13 +4,15 @@ use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_macro_in_item_position(acc: &mut Completions, ctx: &CompletionContext) {
     // Show only macros in top level.
-    if ctx.is_new_item {
-        ctx.scope.process_all_names(&mut |name, res| {
-            if let hir::ScopeDef::MacroDef(mac) = res {
-                acc.add_macro(ctx, Some(name.to_string()), mac);
-            }
-        })
+    if !ctx.is_new_item {
+        return;
     }
+
+    ctx.scope.process_all_names(&mut |name, res| {
+        if let hir::ScopeDef::MacroDef(mac) = res {
+            acc.add_macro(ctx, Some(name.to_string()), mac);
+        }
+    })
 }
 
 #[cfg(test)]

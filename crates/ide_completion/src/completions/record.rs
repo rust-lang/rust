@@ -13,20 +13,19 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
             let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_lit.clone()));
             let default_trait = FamousDefs(&ctx.sema, ctx.krate).core_default_Default();
             let impl_default_trait = default_trait
-                .and_then(|default_trait| ty.map(|ty| ty.impls_trait(ctx.db, default_trait, &[])))
-                .unwrap_or(false);
+                .zip(ty)
+                .map_or(false, |(default_trait, ty)| ty.impls_trait(ctx.db, default_trait, &[]));
 
             let missing_fields = ctx.sema.record_literal_missing_fields(record_lit);
             if impl_default_trait && !missing_fields.is_empty() {
                 let completion_text = "..Default::default()";
-                let completion_text = completion_text
-                    .strip_prefix(ctx.token.to_string().as_str())
-                    .unwrap_or(completion_text);
                 let mut item = CompletionItem::new(
                     CompletionKind::Snippet,
                     ctx.source_range(),
-                    "..Default::default()",
+                    completion_text,
                 );
+                let completion_text =
+                    completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
                 item.insert_text(completion_text).kind(SymbolKind::Field);
                 item.add_to(acc);
             }

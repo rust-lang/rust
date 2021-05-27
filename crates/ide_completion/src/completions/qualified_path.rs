@@ -7,21 +7,19 @@ use syntax::AstNode;
 use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
+    if ctx.is_path_disallowed() {
+        return;
+    }
     let path = match &ctx.path_qual {
         Some(path) => path.clone(),
         None => return,
     };
 
-    if ctx.attribute_under_caret.is_some() || ctx.mod_declaration_under_caret.is_some() {
-        return;
-    }
-
-    let context_module = ctx.scope.module();
-
     let resolution = match ctx.sema.resolve_path(&path) {
         Some(res) => res,
         None => return,
     };
+    let context_module = ctx.scope.module();
 
     // Add associated types on type parameters and `Self`.
     resolution.assoc_type_shorthand_candidates(ctx.db, |_, alias| {

@@ -9,12 +9,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if !ctx.is_trivial_path {
         return;
     }
-    if ctx.record_lit_syntax.is_some()
-        || ctx.record_pat_syntax.is_some()
-        || ctx.attribute_under_caret.is_some()
-        || ctx.mod_declaration_under_caret.is_some()
-        || ctx.has_impl_or_trait_parent()
-    {
+    if ctx.is_path_disallowed() {
         return;
     }
 

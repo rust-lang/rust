@@ -8,19 +8,24 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.lifetime_allowed {
         return;
     }
+    let lp_string;
     let param_lifetime = match (
         &ctx.lifetime_syntax,
         ctx.lifetime_param_syntax.as_ref().and_then(|lp| lp.lifetime()),
     ) {
         (Some(lt), Some(lp)) if lp == lt.clone() => return,
-        (Some(_), Some(lp)) => Some(lp.to_string()),
+        (Some(_), Some(lp)) => {
+            lp_string = lp.to_string();
+            Some(&lp_string)
+        }
         _ => None,
     };
 
     ctx.scope.process_all_names(&mut |name, res| {
         if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
-            if param_lifetime != Some(name.to_string()) {
-                acc.add_resolution(ctx, name.to_string(), &res);
+            let name = name.to_string();
+            if param_lifetime != Some(&name) {
+                acc.add_resolution(ctx, name, &res);
             }
         }
     });
