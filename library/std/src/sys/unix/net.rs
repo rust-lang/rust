@@ -62,7 +62,7 @@ impl Socket {
                     target_os = "illumos",
                     target_os = "linux",
                     target_os = "netbsd",
-                    target_os = "opensbd",
+                    target_os = "openbsd",
                 ))] {
                     // On platforms that support it we pass the SOCK_CLOEXEC
                     // flag to atomically create the socket and set it as
@@ -99,7 +99,7 @@ impl Socket {
                     target_os = "illumos",
                     target_os = "linux",
                     target_os = "netbsd",
-                    target_os = "opensbd",
+                    target_os = "openbsd",
                 ))] {
                     // Like above, set cloexec atomically
                     cvt(libc::socketpair(fam, ty | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr()))?;
@@ -204,7 +204,7 @@ impl Socket {
                 target_os = "illumos",
                 target_os = "linux",
                 target_os = "netbsd",
-                target_os = "opensbd",
+                target_os = "openbsd",
             ))] {
                 let fd = cvt_r(|| unsafe {
                     libc::accept4(self.0.raw(), storage, len, libc::SOCK_CLOEXEC)
