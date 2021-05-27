@@ -112,8 +112,10 @@ Rustdoc
 Compatibility Notes
 -------------------
 - [Implement token-based handling of attributes during expansion][82608]
-- [`Ipv4::from_str` will now reject octal format IP addresses.][83652] The octal format
-  can lead to confusion and potential security vulnerabilities and [is no longer recommended][ietf6943].
+- [`Ipv4::from_str` will now reject octal format IP addresses in addition
+  to rejecting hexadecimal IP addresses.][83652] The octal format can lead
+  to confusion and potential security vulnerabilities and [is no
+  longer recommended][ietf6943].
 
 
 Internal Only
