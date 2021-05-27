@@ -1,5 +1,5 @@
 use crate::alloc::Allocator;
-use core::iter::{TrustedLen, TrustedRandomAccess};
+use core::iter::TrustedLen;
 use core::ptr::{self};
 use core::slice::{self};
 
@@ -15,54 +15,11 @@ where
     I: Iterator<Item = T>,
 {
     default fn spec_extend(&mut self, iter: I) {
-        SpecExtendInner::spec_extend(self, iter);
-    }
-}
-
-impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
-    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
-        unsafe {
-            self.append_elements(iterator.as_slice() as _);
-        }
-        iterator.ptr = iterator.end;
-    }
-}
-
-impl<'a, T: 'a, I, A: Allocator + 'a> SpecExtend<&'a T, I> for Vec<T, A>
-where
-    I: Iterator<Item = &'a T>,
-    T: Clone,
-{
-    default fn spec_extend(&mut self, iterator: I) {
-        SpecExtend::spec_extend(self, iterator.cloned())
-    }
-}
-
-impl<'a, T: 'a, A: Allocator + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
-where
-    T: Copy,
-{
-    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
-        let slice = iterator.as_slice();
-        unsafe { self.append_elements(slice) };
-    }
-}
-
-// Helper trait to disambiguate overlapping specializations
-trait SpecExtendInner<T, I> {
-    fn spec_extend(&mut self, iter: I);
-}
-
-impl<T, I, A: Allocator> SpecExtendInner<T, I> for Vec<T, A>
-where
-    I: Iterator<Item = T>,
-{
-    default fn spec_extend(&mut self, iter: I) {
         self.extend_desugared(iter)
     }
 }
 
-impl<T, I, A: Allocator> SpecExtendInner<T, I> for Vec<T, A>
+impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
 where
     I: TrustedLen<Item = T>,
 {
@@ -98,22 +55,31 @@ where
     }
 }
 
-impl<T, I, A: Allocator> SpecExtendInner<T, I> for Vec<T, A>
-where
-    I: TrustedLen<Item = T> + TrustedRandomAccess,
-{
-    default fn spec_extend(&mut self, mut iterator: I) {
-        let size = iterator.size();
-        self.reserve(size);
-
-        // SAFETY: reserve ensured that there is sufficient capacity for the additional items.
-        // The loop upholds the TRA requirements by accessing each element only once.
+impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
+    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
         unsafe {
-            let sink = self.as_mut_ptr().add(self.len());
-            for i in 0..size {
-                ptr::write(sink.add(i), iterator.__iterator_get_unchecked(i));
-                self.set_len(self.len() + 1);
-            }
+            self.append_elements(iterator.as_slice() as _);
         }
+        iterator.ptr = iterator.end;
+    }
+}
+
+impl<'a, T: 'a, I, A: Allocator + 'a> SpecExtend<&'a T, I> for Vec<T, A>
+where
+    I: Iterator<Item = &'a T>,
+    T: Clone,
+{
+    default fn spec_extend(&mut self, iterator: I) {
+        self.spec_extend(iterator.cloned())
+    }
+}
+
+impl<'a, T: 'a, A: Allocator + 'a> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
+where
+    T: Copy,
+{
+    fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
+        let slice = iterator.as_slice();
+        unsafe { self.append_elements(slice) };
     }
 }
