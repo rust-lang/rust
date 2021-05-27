@@ -1,23 +1,21 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::same_type_and_consts;
 use clippy_utils::{in_macro, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
     self as hir,
-    def::{self, DefKind},
+    def::{CtorOf, DefKind, Res},
     def_id::LocalDefId,
     intravisit::{walk_ty, NestedVisitorMap, Visitor},
-    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Path, PathSegment,
-    QPath, TyKind,
+    Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Node, Path, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::ty::{AssocKind, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{BytePos, Span};
+use rustc_span::Span;
 use rustc_typeck::hir_ty_to_ty;
 
 declare_clippy_lint! {
@@ -234,111 +232,58 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
-        if in_macro(hir_ty.span)
-            || in_impl(cx, hir_ty)
-            || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS)
-        {
-            return;
-        }
-
-        let lint_dependend_on_expr_kind = if let Some(StackItem::Check {
-            hir_id,
-            types_to_lint,
-            types_to_skip,
-            ..
-        }) = self.stack.last()
-        {
-            if types_to_skip.contains(&hir_ty.hir_id) {
-                false
-            } else if types_to_lint.contains(&hir_ty.hir_id) {
-                true
-            } else {
-                let self_ty = ty_from_hir_id(cx, *hir_id);
-                should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
-            }
-        } else {
-            false
-        };
-
-        if lint_dependend_on_expr_kind {
-            // FIXME: this span manipulation should not be necessary
-            // @flip1995 found an ast lowering issue in
-            // https://github.com/rust-lang/rust/blob/master/src/librustc_ast_lowering/path.rs#l142-l162
+        if_chain! {
+            if !in_macro(hir_ty.span) && !in_impl(cx, hir_ty);
+            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if let Some(StackItem::Check {
+                hir_id,
+                types_to_lint,
+                types_to_skip,
+                ..
+            }) = self.stack.last();
+            if !types_to_skip.contains(&hir_ty.hir_id);
+            if types_to_lint.contains(&hir_ty.hir_id)
+                || {
+                    let self_ty = ty_from_hir_id(cx, *hir_id);
+                    should_lint_ty(hir_ty, hir_ty_to_ty(cx.tcx, hir_ty), self_ty)
+                };
             let hir = cx.tcx.hir();
             let id = hir.get_parent_node(hir_ty.hir_id);
-
-            if !hir.opt_span(id).map_or(false, in_macro) {
-                match hir.find(id) {
-                    Some(Node::Expr(Expr {
-                        kind: ExprKind::Path(QPath::TypeRelative(_, segment)),
-                        ..
-                    })) => span_lint_until_last_segment(cx, hir_ty.span, segment),
-                    _ => span_lint(cx, hir_ty.span),
-                }
+            if !hir.opt_span(id).map_or(false, in_macro);
+            then {
+                span_lint(cx, hir_ty.span);
             }
         }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        fn expr_ty_matches(cx: &LateContext<'_>, expr: &Expr<'_>, self_ty: Ty<'_>) -> bool {
-            let def_id = expr.hir_id.owner;
-            if cx.tcx.has_typeck_results(def_id) {
-                cx.tcx.typeck(def_id).expr_ty_opt(expr) == Some(self_ty)
-            } else {
-                false
-            }
+        if_chain! {
+            if !in_macro(expr.span);
+            if meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS);
+            if let Some(StackItem::Check { hir_id, .. }) = self.stack.last();
+            if cx.typeck_results().expr_ty(expr) == ty_from_hir_id(cx, *hir_id);
+            then {} else { return; }
         }
-
-        if in_macro(expr.span) || !meets_msrv(self.msrv.as_ref(), &msrvs::TYPE_ALIAS_ENUM_VARIANTS) {
-            return;
-        }
-
-        if let Some(StackItem::Check { hir_id, .. }) = self.stack.last() {
-            let self_ty = ty_from_hir_id(cx, *hir_id);
-
-            match &expr.kind {
-                ExprKind::Struct(QPath::Resolved(_, path), ..) => {
-                    if expr_ty_matches(cx, expr, self_ty) {
-                        match path.res {
-                            def::Res::SelfTy(..) => (),
-                            def::Res::Def(DefKind::Variant, _) => span_lint_on_path_until_last_segment(cx, path),
-                            _ => {
-                                span_lint(cx, path.span);
-                            },
+        match expr.kind {
+            ExprKind::Struct(QPath::Resolved(_, path), ..) => match path.res {
+                Res::SelfTy(..) => (),
+                Res::Def(DefKind::Variant, _) => lint_path_to_variant(cx, path),
+                _ => span_lint(cx, path.span),
+            },
+            // tuple struct instantiation (`Foo(arg)` or `Enum::Foo(arg)`)
+            ExprKind::Call(fun, _) => {
+                if let ExprKind::Path(QPath::Resolved(_, path)) = fun.kind {
+                    if let Res::Def(DefKind::Ctor(ctor_of, _), ..) = path.res {
+                        match ctor_of {
+                            CtorOf::Variant => lint_path_to_variant(cx, path),
+                            CtorOf::Struct => span_lint(cx, path.span),
                         }
                     }
-                },
-                // tuple struct instantiation (`Foo(arg)` or `Enum::Foo(arg)`)
-                ExprKind::Call(fun, _) => {
-                    if let Expr {
-                        kind: ExprKind::Path(ref qpath),
-                        ..
-                    } = fun
-                    {
-                        if expr_ty_matches(cx, expr, self_ty) {
-                            let res = cx.qpath_res(qpath, fun.hir_id);
-
-                            if let def::Res::Def(DefKind::Ctor(ctor_of, _), ..) = res {
-                                match ctor_of {
-                                    def::CtorOf::Variant => {
-                                        span_lint_on_qpath_resolved(cx, qpath, true);
-                                    },
-                                    def::CtorOf::Struct => {
-                                        span_lint_on_qpath_resolved(cx, qpath, false);
-                                    },
-                                }
-                            }
-                        }
-                    }
-                },
-                // unit enum variants (`Enum::A`)
-                ExprKind::Path(qpath) => {
-                    if expr_ty_matches(cx, expr, self_ty) {
-                        span_lint_on_qpath_resolved(cx, qpath, true);
-                    }
-                },
-                _ => (),
-            }
+                }
+            },
+            // unit enum variants (`Enum::A`)
+            ExprKind::Path(QPath::Resolved(_, path)) => lint_path_to_variant(cx, path),
+            _ => (),
         }
     }
 
@@ -405,33 +350,12 @@ fn span_lint(cx: &LateContext<'_>, span: Span) {
     );
 }
 
-#[allow(clippy::cast_possible_truncation)]
-fn span_lint_until_last_segment(cx: &LateContext<'_>, span: Span, segment: &PathSegment<'_>) {
-    let sp = span.with_hi(segment.ident.span.lo());
-    // remove the trailing ::
-    let span_without_last_segment = match snippet_opt(cx, sp) {
-        Some(snippet) => match snippet.rfind("::") {
-            Some(bidx) => sp.with_hi(sp.lo() + BytePos(bidx as u32)),
-            None => sp,
-        },
-        None => sp,
-    };
-    span_lint(cx, span_without_last_segment);
-}
-
-fn span_lint_on_path_until_last_segment(cx: &LateContext<'_>, path: &Path<'_>) {
-    if path.segments.len() > 1 {
-        span_lint_until_last_segment(cx, path.span, path.segments.last().unwrap());
-    }
-}
-
-fn span_lint_on_qpath_resolved(cx: &LateContext<'_>, qpath: &QPath<'_>, until_last_segment: bool) {
-    if let QPath::Resolved(_, path) = qpath {
-        if until_last_segment {
-            span_lint_on_path_until_last_segment(cx, path);
-        } else {
-            span_lint(cx, path.span);
-        }
+fn lint_path_to_variant(cx: &LateContext<'_>, path: &Path<'_>) {
+    if let [.., self_seg, _variant] = path.segments {
+        let span = path
+            .span
+            .with_hi(self_seg.args().span_ext().unwrap_or(self_seg.ident.span).hi());
+        span_lint(cx, span);
     }
 }
 
