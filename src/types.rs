@@ -2,7 +2,7 @@ use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
 use rustc_ast::ast::{self, FnRetTy, Mutability};
-use rustc_span::{symbol::kw, symbol::Ident, BytePos, Pos, Span};
+use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
@@ -24,7 +24,6 @@ use crate::utils::{
     colon_spaces, extra_offset, first_line_width, format_extern, format_mutability,
     last_line_extendable, last_line_width, mk_sp, rewrite_ident,
 };
-use crate::DEFAULT_VISIBILITY;
 use crate::{
     comment::{combine_strs_with_missing_comments, contains_comment},
     items::format_struct_struct,
