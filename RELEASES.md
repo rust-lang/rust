@@ -41,7 +41,8 @@ Libraries
   return `impl Iterator<Item=&T>`, but this may change in a
   future edition to change `Item` to `T`. Calling `IntoIterator::into_iter`
   directly on arrays will provide `impl Iterator<Item=T>` as expected.
-- [`NonZero<T>::{leading_zeros, trailing_zeros}` is now `const`.][84082]
+- [`leading_zeros`, and `trailing_zeros` are now available on all
+  `NonZero` integer types.][84082]
 - [`{f32, f64}::from_str` now parse and print special values
   (`NaN`, `-0`) according to IEEE RFC 754.][78618]
 - [You can now index into slices using `(Bound<usize>, Bound<usize>)`.][77704]
