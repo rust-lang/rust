@@ -355,8 +355,10 @@ impl<'tcx> LateLintPass<'tcx> for MiscLints {
             if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
             if let Some(sugg) = Sugg::hir_opt(cx, a);
             then {
-                span_lint_and_then(cx,
+                span_lint_hir_and_then(
+                    cx,
                     SHORT_CIRCUIT_STATEMENT,
+                    expr.hir_id,
                     stmt.span,
                     "boolean short circuit operator in statement may be clearer using an explicit test",
                     |diag| {
