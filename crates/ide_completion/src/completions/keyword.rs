@@ -49,34 +49,35 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
 
-    let has_trait_or_impl_parent = ctx.has_impl_parent || ctx.has_trait_parent;
-    if ctx.trait_as_prev_sibling || ctx.impl_as_prev_sibling {
+    let has_trait_or_impl_parent = ctx.has_impl_or_trait_parent();
+    let has_block_expr_parent = ctx.has_block_expr_parent();
+    let has_item_list_parent = ctx.has_item_list_parent();
+    if ctx.has_impl_or_trait_prev_sibling() {
         add_keyword(ctx, acc, "where", "where ");
         return;
     }
     if ctx.previous_token_is(T![unsafe]) {
-        if ctx.has_item_list_or_source_file_parent || ctx.block_expr_parent {
+        if has_item_list_parent || has_block_expr_parent {
             add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}")
         }
 
-        if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
+        if has_item_list_parent || has_block_expr_parent {
             add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
             add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
         }
 
         return;
     }
-    if ctx.has_item_list_or_source_file_parent || has_trait_or_impl_parent || ctx.block_expr_parent
-    {
+    if has_item_list_parent || has_trait_or_impl_parent || has_block_expr_parent {
         add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}");
     }
-    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
+    if has_item_list_parent || has_block_expr_parent {
         add_keyword(ctx, acc, "use", "use ");
         add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
         add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
     }
 
-    if ctx.has_item_list_or_source_file_parent {
+    if has_item_list_parent {
         add_keyword(ctx, acc, "enum", "enum $1 {\n    $0\n}");
         add_keyword(ctx, acc, "struct", "struct $0");
         add_keyword(ctx, acc, "union", "union $1 {\n    $0\n}");
@@ -92,7 +93,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "for", "for $1 in $2 {\n    $0\n}");
     }
 
-    if ctx.previous_token_is(T![if]) || ctx.previous_token_is(T![while]) || ctx.block_expr_parent {
+    if ctx.previous_token_is(T![if]) || ctx.previous_token_is(T![while]) || has_block_expr_parent {
         add_keyword(ctx, acc, "let", "let ");
     }
 
@@ -100,27 +101,23 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "else", "else {\n    $0\n}");
         add_keyword(ctx, acc, "else if", "else if $1 {\n    $0\n}");
     }
-    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
+    if has_item_list_parent || has_block_expr_parent {
         add_keyword(ctx, acc, "mod", "mod $0");
     }
-    if ctx.bind_pat_parent || ctx.ref_pat_parent {
+    if ctx.has_ident_or_ref_pat_parent() {
         add_keyword(ctx, acc, "mut", "mut ");
     }
-    if ctx.has_item_list_or_source_file_parent || has_trait_or_impl_parent || ctx.block_expr_parent
-    {
+    if has_item_list_parent || has_trait_or_impl_parent || has_block_expr_parent {
         add_keyword(ctx, acc, "const", "const ");
         add_keyword(ctx, acc, "type", "type ");
     }
-    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
+    if has_item_list_parent || has_block_expr_parent {
         add_keyword(ctx, acc, "static", "static ");
     };
-    if (ctx.has_item_list_or_source_file_parent) || ctx.block_expr_parent {
+    if has_item_list_parent || has_block_expr_parent {
         add_keyword(ctx, acc, "extern", "extern ");
     }
-    if ctx.has_item_list_or_source_file_parent
-        || has_trait_or_impl_parent
-        || ctx.block_expr_parent
-        || ctx.is_match_arm
+    if has_item_list_parent || has_trait_or_impl_parent || has_block_expr_parent || ctx.is_match_arm
     {
         add_keyword(ctx, acc, "unsafe", "unsafe ");
     }
@@ -133,7 +130,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
             add_keyword(ctx, acc, "break", "break");
         }
     }
-    if ctx.has_item_list_or_source_file_parent || ctx.has_impl_parent | ctx.has_field_list_parent {
+    if has_item_list_parent || ctx.has_impl_parent() || ctx.has_field_list_parent() {
         add_keyword(ctx, acc, "pub(crate)", "pub(crate) ");
         add_keyword(ctx, acc, "pub", "pub ");
     }
@@ -141,7 +138,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     if !ctx.is_trivial_path {
         return;
     }
-    let fn_def = match &ctx.function_syntax {
+    let fn_def = match &ctx.function_def {
         Some(it) => it,
         None => return,
     };
