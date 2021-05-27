@@ -235,6 +235,7 @@ struct UniversalRegionRelationsBuilder<'this, 'tcx> {
 
 impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
     crate fn create(mut self) -> CreateResult<'tcx> {
+        let tcx = self.infcx.tcx;
         let unnormalized_input_output_tys = self
             .universal_regions
             .unnormalized_input_tys
@@ -266,6 +267,9 @@ impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
                             .delay_span_bug(DUMMY_SP, &format!("failed to normalize {:?}", ty));
                         (self.infcx.tcx.ty_error(), None)
                     });
+                // We need to replace bound regions in the substs of associated types (parent substs, not GATs)
+                // with inference vars, see issue #78450
+                let ty = self.universal_regions.indices.fold_to_region_vids(tcx, ty);
                 let constraints2 = self.add_implied_bounds(ty);
                 normalized_inputs_and_output.push(ty);
                 constraints1.into_iter().chain(constraints2)

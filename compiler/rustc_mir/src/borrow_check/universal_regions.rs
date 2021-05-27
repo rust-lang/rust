@@ -30,7 +30,7 @@ use crate::borrow_check::nll::ToRegionVid;
 
 #[derive(Debug)]
 pub struct UniversalRegions<'tcx> {
-    indices: UniversalRegionIndices<'tcx>,
+    pub(crate) indices: UniversalRegionIndices<'tcx>,
 
     /// The vid assigned to `'static`
     pub fr_static: RegionVid,
@@ -162,7 +162,7 @@ impl<'tcx> DefiningTy<'tcx> {
 }
 
 #[derive(Debug)]
-struct UniversalRegionIndices<'tcx> {
+pub(crate) struct UniversalRegionIndices<'tcx> {
     /// For those regions that may appear in the parameter environment
     /// ('static and early-bound regions), we maintain a map from the
     /// `ty::Region` to the internal `RegionVid` we are using. This is
