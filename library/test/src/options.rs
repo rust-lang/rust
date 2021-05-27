@@ -39,6 +39,8 @@ pub enum OutputFormat {
     Terse,
     /// JSON output
     Json,
+    /// JUnit output
+    Junit,
 }
 
 /// Whether ignored test should be run or not

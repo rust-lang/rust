@@ -95,8 +95,9 @@ fn optgroups() -> getopts::Options {
             "Configure formatting of output:
             pretty = Print verbose output;
             terse  = Display one character per test;
-            json   = Output a json document",
-            "pretty|terse|json",
+            json   = Output a json document;
+            junit  = Output a JUnit document",
+            "pretty|terse|json|junit",
         )
         .optflag("", "show-output", "Show captured stdout of successful tests")
         .optopt(
@@ -336,10 +337,15 @@ fn get_format(
             }
             OutputFormat::Json
         }
-
+        Some("junit") => {
+            if !allow_unstable {
+                return Err("The \"junit\" format is only accepted on the nightly compiler".into());
+            }
+            OutputFormat::Junit
+        }
         Some(v) => {
             return Err(format!(
-                "argument for --format must be pretty, terse, or json (was \
+                "argument for --format must be pretty, terse, json or junit (was \
                  {})",
                 v
             ));
