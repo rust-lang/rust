@@ -468,6 +468,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Some(InferOk { obligations, value: callee })
     }
 
+    /// Performs "universal function call" lookup. If lookup is successful, it will return the type
+    /// of definition and the [`DefId`] of the found definition.
+    ///
+    /// # Arguments
+    ///
+    /// Given a function call like `Foo::bar::<T1,...Tn>(...)`:
+    ///
+    /// * `self`:                  the surrounding `FnCtxt` (!)
+    /// * `span`:                  the span of the entire function call
+    /// * `method_name`:           the identifier of the function within the container type (`bar`)
+    /// * `self_ty`:               the type to search within (`Foo`)
+    /// * `expr_id`:               the [`hir::HirId`] of the expression composing the entire call
     #[instrument(level = "debug", skip(self))]
     pub fn resolve_ufcs(
         &self,
