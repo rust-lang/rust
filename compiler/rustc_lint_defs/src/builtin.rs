@@ -3275,9 +3275,10 @@ declare_lint! {
     /// ### Explanation
     ///
     /// In Rust 2021, one of the important introductions is the [prelude changes], which add
-    /// `TryFrom` and `TryInto` into the standard library's prelude. Since this results in an
-    /// amiguity as to which method to call when an existing `try_from` or `try_into` method is
-    /// called via dot-call syntax.
+    /// `TryFrom`, `TryInto`, and `FromIterator` into the standard library's prelude. Since this
+    /// results in an amiguity as to which method/function to call when an existing `try_into`
+    ///  method is called via dot-call syntax or a `try_from`/`from_iter` associated function
+    ///  is called directly on a type.
     ///
     /// [prelude changes]: https://blog.rust-lang.org/inside-rust/2021/03/04/planning-rust-2021.html#prelude-changes
     pub FUTURE_PRELUDE_COLLISION,
