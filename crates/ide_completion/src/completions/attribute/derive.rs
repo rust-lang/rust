@@ -1,3 +1,4 @@
+//! Completion for derives
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use syntax::ast;

@@ -1,3 +1,4 @@
+//! Completion for lints
 use syntax::ast;
 
 use crate::{

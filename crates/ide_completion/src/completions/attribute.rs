@@ -109,42 +109,70 @@ const fn attr(
 }
 
 macro_rules! attrs {
-    [$($($mac:ident!),+;)? $($key:literal),*] => {
-        &["allow", "cfg", "cfg_attr", "deny", "forbid", "warn", $($($mac!()),+,)? $($key),*] as _
-    }
-}
-macro_rules! item_attrs {
-    () => {
-        "deprecated"
+    [@ { item $($tt:tt)* } {$($acc:tt)*}] => {
+        attrs!(@ { $($tt)* } { $($acc)*, "deprecated", "doc", "dochidden", "docalias", "must_use", "no_mangle" })
+    };
+    [@ { adt $($tt:tt)* } {$($acc:tt)*}] => {
+        attrs!(@ { $($tt)* } { $($acc)*, "derive", "repr" })
+    };
+    [@ { linkable $($tt:tt)* } {$($acc:tt)*}] => {
+        attrs!(@ { $($tt)* } { $($acc)*, "export_name", "link_name", "link_section" }) };
+    [@ { $ty:ident $($tt:tt)* } {$($acc:tt)*}] => { compile_error!(concat!("unknown attr subtype ", stringify!($ty)))
+    };
+    [@ { $lit:literal $($tt:tt)*} {$($acc:tt)*}] => {
+        attrs!(@ { $($tt)* } { $($acc)*, $lit })
+    };
+    [@ {$($tt:tt)+} {$($tt2:tt)*}] => {
+        compile_error!(concat!("Unexpected input ", stringify!($($tt)+)))
+    };
+    [@ {} {$($tt:tt)*}] => { &[$($tt)*] as _ };
+    [$($tt:tt),*] => {
+        attrs!(@ { $($tt)* } { "allow", "cfg", "cfg_attr", "deny", "forbid", "warn" })
     };
 }
 
+#[rustfmt::skip]
 static KIND_TO_ATTRIBUTES: Lazy<FxHashMap<SyntaxKind, &[&str]>> = Lazy::new(|| {
     std::array::IntoIter::new([
-        (SyntaxKind::SOURCE_FILE, attrs!(item_attrs!;"crate_name")),
-        (SyntaxKind::MODULE, attrs!(item_attrs!;)),
-        (SyntaxKind::ITEM_LIST, attrs!(item_attrs!;)),
-        (SyntaxKind::MACRO_RULES, attrs!(item_attrs!;)),
-        (SyntaxKind::MACRO_DEF, attrs!(item_attrs!;)),
-        (SyntaxKind::EXTERN_CRATE, attrs!(item_attrs!;)),
-        (SyntaxKind::USE, attrs!(item_attrs!;)),
-        (SyntaxKind::FN, attrs!(item_attrs!;"cold", "must_use")),
-        (SyntaxKind::TYPE_ALIAS, attrs!(item_attrs!;)),
-        (SyntaxKind::STRUCT, attrs!(item_attrs!;"must_use")),
-        (SyntaxKind::ENUM, attrs!(item_attrs!;"must_use")),
-        (SyntaxKind::UNION, attrs!(item_attrs!;"must_use")),
-        (SyntaxKind::CONST, attrs!(item_attrs!;)),
-        (SyntaxKind::STATIC, attrs!(item_attrs!;)),
-        (SyntaxKind::TRAIT, attrs!(item_attrs!; "must_use")),
-        (SyntaxKind::IMPL, attrs!(item_attrs!;"automatically_derived")),
-        (SyntaxKind::ASSOC_ITEM_LIST, attrs!(item_attrs!;)),
-        (SyntaxKind::EXTERN_BLOCK, attrs!(item_attrs!;)),
-        (SyntaxKind::EXTERN_ITEM_LIST, attrs!(item_attrs!;)),
+        (
+            SyntaxKind::SOURCE_FILE,
+            attrs!(
+                item,
+                "crate_name", "feature", "no_implicit_prelude", "no_main", "no_std",
+                "recursion_limit", "type_length_limit", "windows_subsystem"
+            ),
+        ),
+        (SyntaxKind::MODULE, attrs!(item, "no_implicit_prelude", "path")),
+        (SyntaxKind::ITEM_LIST, attrs!(item, "no_implicit_prelude")),
+        (SyntaxKind::MACRO_RULES, attrs!(item, "macro_export", "macro_use")),
+        (SyntaxKind::MACRO_DEF, attrs!(item)),
+        (SyntaxKind::EXTERN_CRATE, attrs!(item, "macro_use", "no_link")),
+        (SyntaxKind::USE, attrs!(item)),
+        (SyntaxKind::TYPE_ALIAS, attrs!(item)),
+        (SyntaxKind::STRUCT, attrs!(item, adt, "non_exhaustive")),
+        (SyntaxKind::ENUM, attrs!(item, adt, "non_exhaustive")),
+        (SyntaxKind::UNION, attrs!(item, adt)),
+        (SyntaxKind::CONST, attrs!(item)),
+        (
+            SyntaxKind::FN,
+            attrs!(
+                item, linkable,
+                "cold", "ignore", "inline", "must_use", "panic_handler", "proc_macro",
+                "proc_macro_derive", "proc_macro_attribute", "should_panic", "target_feature",
+                "test", "track_caller"
+            ),
+        ),
+        (SyntaxKind::STATIC, attrs!(item, linkable, "global_allocator", "used")),
+        (SyntaxKind::TRAIT, attrs!(item, "must_use")),
+        (SyntaxKind::IMPL, attrs!(item, "automatically_derived")),
+        (SyntaxKind::ASSOC_ITEM_LIST, attrs!(item)),
+        (SyntaxKind::EXTERN_BLOCK, attrs!(item, "link")),
+        (SyntaxKind::EXTERN_ITEM_LIST, attrs!(item, "link")),
         (SyntaxKind::MACRO_CALL, attrs!()),
         (SyntaxKind::SELF_PARAM, attrs!()),
         (SyntaxKind::PARAM, attrs!()),
         (SyntaxKind::RECORD_FIELD, attrs!()),
-        (SyntaxKind::VARIANT, attrs!()),
+        (SyntaxKind::VARIANT, attrs!("non_exhaustive")),
         (SyntaxKind::TYPE_PARAM, attrs!()),
         (SyntaxKind::CONST_PARAM, attrs!()),
         (SyntaxKind::LIFETIME_PARAM, attrs!()),
