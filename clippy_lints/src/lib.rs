@@ -148,7 +148,6 @@ macro_rules! declare_clippy_lint {
     };
 }
 
-mod consts;
 #[cfg(feature = "metadata-collector-lint")]
 mod deprecated_lints;
 mod utils;

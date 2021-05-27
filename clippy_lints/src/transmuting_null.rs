@@ -1,4 +1,4 @@
-use crate::consts::{constant_context, Constant};
+use clippy_utils::consts::{constant_context, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{is_expr_path_def_path, paths};
 use if_chain::if_chain;

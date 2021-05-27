@@ -1,4 +1,4 @@
-use crate::consts::{constant_simple, Constant};
+use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;

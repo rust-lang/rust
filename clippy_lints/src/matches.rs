@@ -1,4 +1,4 @@
-use crate::consts::{constant, miri_to_const, Constant};
+use clippy_utils::consts::{constant, miri_to_const, Constant};
 use clippy_utils::diagnostics::{
     multispan_sugg, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
 };
