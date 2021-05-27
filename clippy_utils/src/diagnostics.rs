@@ -167,7 +167,7 @@ pub fn span_lint_hir_and_then(
     cx: &LateContext<'_>,
     lint: &'static Lint,
     hir_id: HirId,
-    sp: Span,
+    sp: impl Into<MultiSpan>,
     msg: &str,
     f: impl FnOnce(&mut DiagnosticBuilder<'_>),
 ) {
