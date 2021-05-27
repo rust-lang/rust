@@ -163,21 +163,46 @@ impl<'a> Printer<'a> {
         }
     }
 
+    fn print_use_tree(&mut self, use_tree: &UseTree) {
+        match &use_tree.kind {
+            UseTreeKind::Single { path, alias } => {
+                w!(self, "{}", path);
+                if let Some(alias) = alias {
+                    w!(self, " as {}", alias);
+                }
+            }
+            UseTreeKind::Glob { path } => {
+                if let Some(path) = path {
+                    w!(self, "{}::", path);
+                }
+                w!(self, "*");
+            }
+            UseTreeKind::Prefixed { prefix, list } => {
+                if let Some(prefix) = prefix {
+                    w!(self, "{}::", prefix);
+                }
+                w!(self, "{{");
+                for (i, tree) in list.iter().enumerate() {
+                    if i != 0 {
+                        w!(self, ", ");
+                    }
+                    self.print_use_tree(tree);
+                }
+                w!(self, "}}");
+            }
+        }
+    }
+
     fn print_mod_item(&mut self, item: ModItem) {
         self.print_attrs_of(item);
 
         match item {
             ModItem::Import(it) => {
-                let Import { visibility, path, is_glob, alias, ast_id: _, index } = &self.tree[it];
+                let Import { visibility, use_tree, ast_id: _ } = &self.tree[it];
                 self.print_visibility(*visibility);
-                w!(self, "use {}", path);
-                if *is_glob {
-                    w!(self, "::*");
-                }
-                if let Some(alias) = alias {
-                    w!(self, " as {}", alias);
-                }
-                wln!(self, ";  // {}", index);
+                w!(self, "use ");
+                self.print_use_tree(use_tree);
+                wln!(self, ";");
             }
             ModItem::ExternCrate(it) => {
                 let ExternCrate { name, alias, visibility, ast_id: _ } = &self.tree[it];

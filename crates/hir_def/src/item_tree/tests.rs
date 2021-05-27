@@ -26,6 +26,8 @@ use globs::*;
 
 /// docs on import
 use crate::{A, B};
+
+use a::{c, d::{e}};
         "#,
         expect![[r##"
             #![doc = " file comment"]  // AttrId { is_doc_comment: true, ast_index: 0 }
@@ -36,19 +38,14 @@ use crate::{A, B};
 
             pub(super) extern crate bli;
 
-            pub use crate::path::nested;  // 0
+            pub use crate::path::{nested, items as renamed, Trait as _};
 
-            pub use crate::path::items as renamed;  // 1
-
-            pub use crate::path::Trait as _;  // 2
-
-            pub(self) use globs::*;  // 0
+            pub(self) use globs::*;
 
             #[doc = " docs on import"]  // AttrId { is_doc_comment: true, ast_index: 0 }
-            pub(self) use crate::A;  // 0
+            pub(self) use crate::{A, B};
 
-            #[doc = " docs on import"]  // AttrId { is_doc_comment: true, ast_index: 0 }
-            pub(self) use crate::B;  // 1
+            pub(self) use a::{c, d::{e}};
         "##]],
     );
 }
@@ -218,7 +215,7 @@ mod outline;
             #[doc = " outer"]  // AttrId { is_doc_comment: true, ast_index: 0 }
             #[doc = " inner"]  // AttrId { is_doc_comment: true, ast_index: 1 }
             pub(self) mod inline {
-                pub(self) use super::*;  // 0
+                pub(self) use super::*;
 
                 // flags = 0x2
                 pub(self) fn fn_in_module() -> ();

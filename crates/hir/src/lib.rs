@@ -472,27 +472,13 @@ impl Module {
                     });
                 }
 
-                DefDiagnosticKind::UnresolvedImport { ast, index } => {
-                    let use_item = ast.to_node(db.upcast());
-                    let hygiene = Hygiene::new(db.upcast(), ast.file_id);
-                    let mut cur = 0;
-                    let mut tree = None;
-                    ModPath::expand_use_item(
-                        db.upcast(),
-                        InFile::new(ast.file_id, use_item),
-                        &hygiene,
-                        |_mod_path, use_tree, _is_glob, _alias| {
-                            if cur == *index {
-                                tree = Some(use_tree.clone());
-                            }
+                DefDiagnosticKind::UnresolvedImport { id, index } => {
+                    let file_id = id.file_id();
+                    let item_tree = id.item_tree(db.upcast());
+                    let import = &item_tree[id.value];
 
-                            cur += 1;
-                        },
-                    );
-
-                    if let Some(tree) = tree {
-                        sink.push(UnresolvedImport { file: ast.file_id, node: AstPtr::new(&tree) });
-                    }
+                    let use_tree = import.use_tree_to_ast(db.upcast(), file_id, *index);
+                    sink.push(UnresolvedImport { file: file_id, node: AstPtr::new(&use_tree) });
                 }
 
                 DefDiagnosticKind::UnconfiguredCode { ast, cfg, opts } => {
