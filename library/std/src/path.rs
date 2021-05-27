@@ -2588,10 +2588,9 @@ impl Path {
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
     /// ```
-    #[unstable(feature = "path_ext", issue = "none")]
-    #[inline]
+    #[unstable(feature = "is_symlink", issue = "none")]
     pub fn is_symlink(&self) -> bool {
-        fs::symlink_metadata(self).is_ok()
+        fs::symlink_metadata(self).map(|m| m.is_symlink()).unwrap_or(false)
     }
 
     /// Converts a [`Box<Path>`](Box) into a [`PathBuf`] without copying or
