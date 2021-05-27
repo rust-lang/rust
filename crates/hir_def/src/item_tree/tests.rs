@@ -180,7 +180,7 @@ trait Tr: SuperTrait + 'lifetime {
                 _: (),
             ) -> ();
 
-            pub(self) trait Tr<Self>: SuperTrait + 'lifetime
+            pub(self) trait Tr<Self>
             where
                 Self: SuperTrait,
                 Self: 'lifetime
@@ -350,7 +350,7 @@ trait Tr<'a, T: 'a>: Super {}
             pub(self) union Union<'a, T, const U: u8> {
             }
 
-            pub(self) trait Tr<'a, Self, T>: Super
+            pub(self) trait Tr<'a, Self, T>
             where
                 Self: Super,
                 T: 'a

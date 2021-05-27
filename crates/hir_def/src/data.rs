@@ -141,7 +141,6 @@ pub struct TraitData {
     pub is_auto: bool,
     pub is_unsafe: bool,
     pub visibility: RawVisibility,
-    pub bounds: Box<[Interned<TypeBound>]>,
 }
 
 impl TraitData {
@@ -155,7 +154,6 @@ impl TraitData {
         let module_id = tr_loc.container;
         let container = AssocContainerId::TraitId(tr);
         let visibility = item_tree[tr_def.visibility].clone();
-        let bounds = tr_def.bounds.clone();
         let mut expander = Expander::new(db, tr_loc.id.file_id(), module_id);
 
         let items = collect_items(
@@ -168,7 +166,7 @@ impl TraitData {
             100,
         );
 
-        Arc::new(TraitData { name, items, is_auto, is_unsafe, visibility, bounds })
+        Arc::new(TraitData { name, items, is_auto, is_unsafe, visibility })
     }
 
     pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {

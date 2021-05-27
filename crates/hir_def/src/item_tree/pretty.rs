@@ -345,7 +345,6 @@ impl<'a> Printer<'a> {
                     visibility,
                     is_auto,
                     is_unsafe,
-                    bounds,
                     items,
                     generic_params,
                     ast_id: _,
@@ -359,10 +358,6 @@ impl<'a> Printer<'a> {
                 }
                 w!(self, "trait {}", name);
                 self.print_generic_params(generic_params);
-                if !bounds.is_empty() {
-                    w!(self, ": ");
-                    self.print_type_bounds(bounds);
-                }
                 self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
                     for item in &**items {

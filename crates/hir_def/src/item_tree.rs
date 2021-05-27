@@ -661,7 +661,6 @@ pub struct Trait {
     pub generic_params: Interned<GenericParams>,
     pub is_auto: bool,
     pub is_unsafe: bool,
-    pub bounds: Box<[Interned<TypeBound>]>,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Trait>,
 }

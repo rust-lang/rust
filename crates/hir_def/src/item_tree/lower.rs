@@ -474,7 +474,6 @@ impl<'a> Ctx<'a> {
             self.lower_generic_params_and_inner_items(GenericsOwner::Trait(trait_def), trait_def);
         let is_auto = trait_def.auto_token().is_some();
         let is_unsafe = trait_def.unsafe_token().is_some();
-        let bounds = self.lower_type_bounds(trait_def);
         let items = trait_def.assoc_item_list().map(|list| {
             let db = self.db;
             self.with_inherited_visibility(visibility, |this| {
@@ -497,7 +496,6 @@ impl<'a> Ctx<'a> {
             generic_params,
             is_auto,
             is_unsafe,
-            bounds: bounds.into(),
             items: items.unwrap_or_default(),
             ast_id,
         };
