@@ -7,7 +7,7 @@ use syntax::AstNode;
 use crate::{CompletionContext, Completions};
 
 pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_path_disallowed() {
+    if ctx.is_path_disallowed() || ctx.expects_item() {
         return;
     }
     let path = match &ctx.path_qual {
@@ -20,12 +20,15 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
     let context_module = ctx.scope.module();
-    if ctx.expects_item() || ctx.expects_assoc_item() {
+    if ctx.expects_assoc_item() {
         if let PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
             let module_scope = module.scope(ctx.db, context_module);
             for (name, def) in module_scope {
                 if let ScopeDef::MacroDef(macro_def) = def {
                     acc.add_macro(ctx, Some(name.to_string()), macro_def);
+                }
+                if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
+                    acc.add_resolution(ctx, name.to_string(), &def);
                 }
             }
         }
@@ -614,22 +617,41 @@ fn main() { let _ = crate::$0 }
     }
 
     #[test]
-    fn completes_qualified_macros_in_impl() {
+    fn completes_in_assoc_item_list() {
         check(
             r#"
 #[macro_export]
 macro_rules! foo { () => {} }
+mod bar {}
 
 struct MyStruct {}
-
 impl MyStruct {
     crate::$0
 }
 "#,
             expect![[r##"
+                md bar
                 ma foo! #[macro_export] macro_rules! foo
             "##]],
         );
+    }
+
+    #[test]
+    #[ignore] // FIXME doesn't complete anything atm
+    fn completes_in_item_list() {
+        check(
+            r#"
+struct MyStruct {}
+macro_rules! foo {}
+mod bar {}
+
+crate::$0
+"#,
+            expect![[r#"
+                md bar
+                ma foo! macro_rules! foo
+            "#]],
+        )
     }
 
     #[test]
