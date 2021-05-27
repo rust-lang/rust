@@ -1956,6 +1956,7 @@ public:
       case Intrinsic::nearbyint:
       case Intrinsic::round:
       case Intrinsic::sqrt:
+      case Intrinsic::nvvm_sqrt_rn_d:
       case Intrinsic::fma:
         return;
       default:
@@ -2071,6 +2072,7 @@ public:
         return;
       }
 
+      case Intrinsic::nvvm_sqrt_rn_d:
       case Intrinsic::sqrt: {
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
           SmallVector<Value *, 2> args = {

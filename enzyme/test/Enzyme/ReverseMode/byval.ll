@@ -490,6 +490,9 @@ attributes #11 = { noreturn }
 !21 = !{!22, !22, i64 0}
 !22 = !{!"int", !5, i64 0}
 
+; CHECK: define dso_local double @_Z14dcar_erg_atpos3card(%class.car* nocapture readonly byval(%class.car) align 8 %car1, double %pos)
+; CHECK: call { double } @diffe_Z13car_erg_atpos3card(%class.car* nonnull byval(%class.car) %car1, double %pos, double 1.000000e+00)
+
 ; CHECK: define internal { double } @diffe_Z13car_erg_atpos3card(%class.car* byval(%class.car) align 8 %car1, double %pos, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"car1'ipa" = alloca %class.car

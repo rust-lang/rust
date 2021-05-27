@@ -147,7 +147,7 @@ public:
     bool AtomicAdd = Arch == Triple::nvptx || Arch == Triple::nvptx64 ||
                      Arch == Triple::amdgcn;
 
-    std::map<int, Type*> byVal;
+    std::map<int, Type *> byVal;
     for (unsigned i = 1; i < CI->getNumArgOperands(); ++i) {
       Value *res = CI->getArgOperand(i);
 
@@ -358,9 +358,11 @@ public:
         }
         res = Builder.CreateBitCast(res, PTy);
       }
+#if LLVM_VERSION_MAJOR >= 9
       if (CI->isByValArgument(i)) {
         byVal[args.size()] = CI->getParamByValType(i);
       }
+#endif
       args.push_back(res);
       if (ty == DIFFE_TYPE::DUP_ARG || ty == DIFFE_TYPE::DUP_NONEED) {
         ++i;
@@ -479,9 +481,13 @@ public:
     CallInst *diffret = cast<CallInst>(Builder.CreateCall(newFunc, args));
     diffret->setCallingConv(CI->getCallingConv());
     diffret->setDebugLoc(CI->getDebugLoc());
+#if LLVM_VERSION_MAJOR >= 9
     for (auto pair : byVal) {
-        diffret->addParamAttr(pair.first, Attribute::getWithByValType(diffret->getContext(), pair.second));
+      diffret->addParamAttr(
+          pair.first,
+          Attribute::getWithByValType(diffret->getContext(), pair.second));
     }
+#endif
 
     if (!diffret->getType()->isEmptyTy() && !diffret->getType()->isVoidTy()) {
       unsigned idxs[] = {0};
