@@ -110,7 +110,11 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     if !ctx.config.enable_imports_on_the_fly {
         return None;
     }
-    if ctx.use_item_syntax.is_some() || ctx.is_path_disallowed() {
+    if ctx.use_item_syntax.is_some()
+        || ctx.is_path_disallowed()
+        || ctx.expects_item()
+        || ctx.expects_assoc_item()
+    {
         return None;
     }
     let potential_import_name = {

@@ -49,35 +49,35 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         return;
     }
 
-    let has_trait_or_impl_parent = ctx.has_impl_or_trait_parent();
+    let expects_assoc_item = ctx.expects_assoc_item();
     let has_block_expr_parent = ctx.has_block_expr_parent();
-    let has_item_list_parent = ctx.has_item_list_parent();
+    let expects_item = ctx.expects_item();
     if ctx.has_impl_or_trait_prev_sibling() {
         add_keyword(ctx, acc, "where", "where ");
         return;
     }
     if ctx.previous_token_is(T![unsafe]) {
-        if has_item_list_parent || has_block_expr_parent {
+        if expects_item || has_block_expr_parent {
             add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}")
         }
 
-        if has_item_list_parent || has_block_expr_parent {
+        if expects_item || has_block_expr_parent {
             add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
             add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
         }
 
         return;
     }
-    if has_item_list_parent || has_trait_or_impl_parent || has_block_expr_parent {
+    if expects_item || expects_assoc_item || has_block_expr_parent {
         add_keyword(ctx, acc, "fn", "fn $1($2) {\n    $0\n}");
     }
-    if has_item_list_parent || has_block_expr_parent {
+    if expects_item || has_block_expr_parent {
         add_keyword(ctx, acc, "use", "use ");
         add_keyword(ctx, acc, "impl", "impl $1 {\n    $0\n}");
         add_keyword(ctx, acc, "trait", "trait $1 {\n    $0\n}");
     }
 
-    if has_item_list_parent {
+    if expects_item {
         add_keyword(ctx, acc, "enum", "enum $1 {\n    $0\n}");
         add_keyword(ctx, acc, "struct", "struct $0");
         add_keyword(ctx, acc, "union", "union $1 {\n    $0\n}");
@@ -101,24 +101,23 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword(ctx, acc, "else", "else {\n    $0\n}");
         add_keyword(ctx, acc, "else if", "else if $1 {\n    $0\n}");
     }
-    if has_item_list_parent || has_block_expr_parent {
+    if expects_item || has_block_expr_parent {
         add_keyword(ctx, acc, "mod", "mod $0");
     }
-    if ctx.has_ident_or_ref_pat_parent() {
+    if ctx.expects_ident_pat_or_ref_expr() {
         add_keyword(ctx, acc, "mut", "mut ");
     }
-    if has_item_list_parent || has_trait_or_impl_parent || has_block_expr_parent {
+    if expects_item || expects_assoc_item || has_block_expr_parent {
         add_keyword(ctx, acc, "const", "const ");
         add_keyword(ctx, acc, "type", "type ");
     }
-    if has_item_list_parent || has_block_expr_parent {
+    if expects_item || has_block_expr_parent {
         add_keyword(ctx, acc, "static", "static ");
     };
-    if has_item_list_parent || has_block_expr_parent {
+    if expects_item || has_block_expr_parent {
         add_keyword(ctx, acc, "extern", "extern ");
     }
-    if has_item_list_parent || has_trait_or_impl_parent || has_block_expr_parent || ctx.is_match_arm
-    {
+    if expects_item || expects_assoc_item || has_block_expr_parent || ctx.is_match_arm {
         add_keyword(ctx, acc, "unsafe", "unsafe ");
     }
     if ctx.in_loop_body {
@@ -130,7 +129,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
             add_keyword(ctx, acc, "break", "break");
         }
     }
-    if has_item_list_parent || ctx.has_impl_parent() || ctx.has_field_list_parent() {
+    if expects_item || ctx.expects_non_trait_assoc_item() || ctx.expect_record_field() {
         add_keyword(ctx, acc, "pub(crate)", "pub(crate) ");
         add_keyword(ctx, acc, "pub", "pub ");
     }

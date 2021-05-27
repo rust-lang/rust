@@ -12,6 +12,14 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if ctx.is_path_disallowed() {
         return;
     }
+    if ctx.expects_item() || ctx.expects_assoc_item() {
+        ctx.scope.process_all_names(&mut |name, def| {
+            if let ScopeDef::MacroDef(macro_def) = def {
+                acc.add_macro(ctx, Some(name.to_string()), macro_def);
+            }
+        });
+        return;
+    }
 
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
@@ -647,7 +655,7 @@ fn f() {}
     }
 
     #[test]
-    fn completes_type_or_trait_in_impl_block() {
+    fn completes_target_type_or_trait_in_impl_block() {
         check(
             r#"
 trait MyTrait {}
@@ -659,6 +667,23 @@ impl My$0
                 sp Self
                 tt MyTrait
                 st MyStruct
+            "#]],
+        )
+    }
+
+    #[test]
+    fn only_completes_macros_in_assoc_item_list() {
+        check(
+            r#"
+struct MyStruct {}
+macro_rules! foo {}
+
+impl MyStruct {
+    $0
+}
+"#,
+            expect![[r#"
+                ma foo! macro_rules! foo
             "#]],
         )
     }

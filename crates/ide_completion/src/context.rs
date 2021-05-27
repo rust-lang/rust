@@ -17,9 +17,8 @@ use text_edit::Indel;
 
 use crate::{
     patterns::{
-        for_is_prev2, has_bind_pat_parent, has_block_expr_parent, has_field_list_parent,
-        has_impl_parent, has_item_list_or_source_file_parent, has_prev_sibling, has_ref_parent,
-        has_trait_parent, inside_impl_trait_block, is_in_loop_body, is_match_arm, previous_token,
+        determine_location, for_is_prev2, has_prev_sibling, inside_impl_trait_block,
+        is_in_loop_body, is_match_arm, previous_token, ImmediateLocation,
     },
     CompletionConfig,
 };
@@ -28,18 +27,6 @@ use crate::{
 pub(crate) enum PatternRefutability {
     Refutable,
     Irrefutable,
-}
-
-/// Direct parent container of the cursor position
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum ImmediateLocation {
-    Impl,
-    Trait,
-    RecordFieldList,
-    RefPatOrExpr,
-    IdentPat,
-    BlockExpr,
-    ItemList,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -127,6 +114,7 @@ pub(crate) struct CompletionContext<'a> {
 
     no_completion_required: bool,
 }
+
 impl<'a> CompletionContext<'a> {
     pub(super) fn new(
         db: &'a RootDatabase,
@@ -281,34 +269,34 @@ impl<'a> CompletionContext<'a> {
         self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
     }
 
-    pub(crate) fn has_impl_or_trait_parent(&self) -> bool {
+    pub(crate) fn expects_assoc_item(&self) -> bool {
         matches!(
             self.completion_location,
             Some(ImmediateLocation::Trait) | Some(ImmediateLocation::Impl)
         )
     }
 
+    pub(crate) fn expects_non_trait_assoc_item(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::Impl))
+    }
+
+    pub(crate) fn expects_item(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::ItemList))
+    }
+
     pub(crate) fn has_block_expr_parent(&self) -> bool {
         matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
     }
 
-    pub(crate) fn has_item_list_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::ItemList))
-    }
-
-    pub(crate) fn has_ident_or_ref_pat_parent(&self) -> bool {
+    pub(crate) fn expects_ident_pat_or_ref_expr(&self) -> bool {
         matches!(
             self.completion_location,
-            Some(ImmediateLocation::IdentPat) | Some(ImmediateLocation::RefPatOrExpr)
+            Some(ImmediateLocation::IdentPat) | Some(ImmediateLocation::RefExpr)
         )
     }
 
-    pub(crate) fn has_impl_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::Impl))
-    }
-
-    pub(crate) fn has_field_list_parent(&self) -> bool {
-        matches!(self.completion_location, Some(ImmediateLocation::RecordFieldList))
+    pub(crate) fn expect_record_field(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::RecordField))
     }
 
     pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
@@ -320,12 +308,11 @@ impl<'a> CompletionContext<'a> {
             || self.record_pat_syntax.is_some()
             || self.attribute_under_caret.is_some()
             || self.mod_declaration_under_caret.is_some()
-            || self.has_impl_or_trait_parent()
     }
 
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
-        let syntax_element = NodeOrToken::Token(fake_ident_token);
+        let syntax_element = NodeOrToken::Token(fake_ident_token.clone());
         self.previous_token = previous_token(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
@@ -333,22 +320,6 @@ impl<'a> CompletionContext<'a> {
             self.prev_sibling = Some(PrevSibling::Impl)
         } else if has_prev_sibling(syntax_element.clone(), TRAIT) {
             self.prev_sibling = Some(PrevSibling::Trait)
-        }
-
-        if has_block_expr_parent(syntax_element.clone()) {
-            self.completion_location = Some(ImmediateLocation::BlockExpr);
-        } else if has_bind_pat_parent(syntax_element.clone()) {
-            self.completion_location = Some(ImmediateLocation::IdentPat);
-        } else if has_ref_parent(syntax_element.clone()) {
-            self.completion_location = Some(ImmediateLocation::RefPatOrExpr);
-        } else if has_impl_parent(syntax_element.clone()) {
-            self.completion_location = Some(ImmediateLocation::Impl);
-        } else if has_field_list_parent(syntax_element.clone()) {
-            self.completion_location = Some(ImmediateLocation::RecordFieldList);
-        } else if has_trait_parent(syntax_element.clone()) {
-            self.completion_location = Some(ImmediateLocation::Trait);
-        } else if has_item_list_or_source_file_parent(syntax_element.clone()) {
-            self.completion_location = Some(ImmediateLocation::ItemList);
         }
 
         self.mod_declaration_under_caret =
@@ -363,6 +334,8 @@ impl<'a> CompletionContext<'a> {
         let fn_is_prev = self.previous_token_is(T![fn]);
         let for_is_prev2 = for_is_prev2(syntax_element.clone());
         self.no_completion_required = (fn_is_prev && !inside_impl_trait_block) || for_is_prev2;
+
+        self.completion_location = determine_location(fake_ident_token);
     }
 
     fn fill_impl_def(&mut self) {

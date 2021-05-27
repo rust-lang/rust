@@ -11,28 +11,115 @@ use syntax::{
 #[cfg(test)]
 use crate::test_utils::{check_pattern_is_applicable, check_pattern_is_not_applicable};
 
-pub(crate) fn has_trait_parent(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element)
-        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
-        .and_then(|it| it.parent())
-        .filter(|it| it.kind() == TRAIT)
-        .is_some()
-}
-#[test]
-fn test_has_trait_parent() {
-    check_pattern_is_applicable(r"trait A { f$0 }", has_trait_parent);
+/// Direct parent container of the cursor position
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ImmediateLocation {
+    Impl,
+    Trait,
+    RecordField,
+    RefExpr,
+    IdentPat,
+    BlockExpr,
+    ItemList,
 }
 
-pub(crate) fn has_impl_parent(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element)
-        .filter(|it| it.kind() == ASSOC_ITEM_LIST)
-        .and_then(|it| it.parent())
-        .filter(|it| it.kind() == IMPL)
-        .is_some()
+pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> {
+    // First "expand" the element we are completing to its maximum so that we can check in what
+    // context it immediately lies. This for example means if the token is a NameRef at the end of
+    // a path, we want to look at where the path is in the tree.
+    let node = match tok.parent().and_then(ast::NameLike::cast)? {
+        ast::NameLike::NameRef(name_ref) => {
+            if let Some(segment) = name_ref.syntax().parent().and_then(ast::PathSegment::cast) {
+                let p = segment.parent_path();
+                if p.parent_path().is_none() {
+                    p.syntax()
+                        .ancestors()
+                        .take_while(|it| it.text_range() == p.syntax().text_range())
+                        .last()?
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        }
+        it @ ast::NameLike::Name(_) | it @ ast::NameLike::Lifetime(_) => it.syntax().clone(),
+    };
+    let parent = match node.parent() {
+        Some(parent) => parent,
+        // SourceFile
+        None => {
+            return match node.kind() {
+                MACRO_ITEMS | SOURCE_FILE => Some(ImmediateLocation::ItemList),
+                _ => None,
+            }
+        }
+    };
+    let res = match_ast! {
+        match parent {
+            ast::IdentPat(_it) => ImmediateLocation::IdentPat,
+            ast::BlockExpr(_it) => ImmediateLocation::BlockExpr,
+            ast::SourceFile(_it) => ImmediateLocation::ItemList,
+            ast::ItemList(_it) => ImmediateLocation::ItemList,
+            ast::RefExpr(_it) => ImmediateLocation::RefExpr,
+            ast::RefPat(_it) => ImmediateLocation::RefExpr,
+            ast::RecordField(_it) => ImmediateLocation::RecordField,
+            ast::AssocItemList(it) => match it.syntax().parent().map(|it| it.kind()) {
+                Some(IMPL) => ImmediateLocation::Impl,
+                Some(TRAIT) => ImmediateLocation::Trait,
+                _ => return None,
+            },
+            _ => return None,
+        }
+    };
+    Some(res)
 }
+
+#[cfg(test)]
+fn check_location(code: &str, loc: ImmediateLocation) {
+    check_pattern_is_applicable(code, |e| {
+        assert_eq!(determine_location(e.into_token().expect("Expected a token")), Some(loc));
+        true
+    });
+}
+
+#[test]
+fn test_has_trait_parent() {
+    check_location(r"trait A { f$0 }", ImmediateLocation::Trait);
+}
+
 #[test]
 fn test_has_impl_parent() {
-    check_pattern_is_applicable(r"impl A { f$0 }", has_impl_parent);
+    check_location(r"impl A { f$0 }", ImmediateLocation::Impl);
+}
+#[test]
+fn test_has_field_list_parent() {
+    check_location(r"struct Foo { f$0 }", ImmediateLocation::RecordField);
+    check_location(r"struct Foo { f$0 pub f: i32}", ImmediateLocation::RecordField);
+}
+
+#[test]
+fn test_has_block_expr_parent() {
+    check_location(r"fn my_fn() { let a = 2; f$0 }", ImmediateLocation::BlockExpr);
+}
+
+#[test]
+fn test_has_ident_pat_parent() {
+    check_location(r"fn my_fn(m$0) {}", ImmediateLocation::IdentPat);
+    check_location(r"fn my_fn() { let m$0 }", ImmediateLocation::IdentPat);
+    check_location(r"fn my_fn(&m$0) {}", ImmediateLocation::IdentPat);
+    check_location(r"fn my_fn() { let &m$0 }", ImmediateLocation::IdentPat);
+}
+
+#[test]
+fn test_has_ref_expr_parent() {
+    check_location(r"fn my_fn() { let x = &m$0 foo; }", ImmediateLocation::RefExpr);
+}
+
+#[test]
+fn test_has_item_list_or_source_file_parent() {
+    check_location(r"i$0", ImmediateLocation::ItemList);
+    check_location(r"mod foo { f$0 }", ImmediateLocation::ItemList);
 }
 
 pub(crate) fn inside_impl_trait_block(element: SyntaxElement) -> bool {
@@ -51,56 +138,6 @@ fn test_inside_impl_trait_block() {
     check_pattern_is_applicable(r"impl Foo for Bar { fn f$0 }", inside_impl_trait_block);
     check_pattern_is_not_applicable(r"impl A { f$0 }", inside_impl_trait_block);
     check_pattern_is_not_applicable(r"impl A { fn f$0 }", inside_impl_trait_block);
-}
-
-pub(crate) fn has_field_list_parent(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element).filter(|it| it.kind() == RECORD_FIELD_LIST).is_some()
-}
-#[test]
-fn test_has_field_list_parent() {
-    check_pattern_is_applicable(r"struct Foo { f$0 }", has_field_list_parent);
-    check_pattern_is_applicable(r"struct Foo { f$0 pub f: i32}", has_field_list_parent);
-}
-
-pub(crate) fn has_block_expr_parent(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element).filter(|it| it.kind() == BLOCK_EXPR).is_some()
-}
-#[test]
-fn test_has_block_expr_parent() {
-    check_pattern_is_applicable(r"fn my_fn() { let a = 2; f$0 }", has_block_expr_parent);
-}
-
-pub(crate) fn has_bind_pat_parent(element: SyntaxElement) -> bool {
-    element.ancestors().any(|it| it.kind() == IDENT_PAT)
-}
-
-#[test]
-fn test_has_bind_pat_parent() {
-    check_pattern_is_applicable(r"fn my_fn(m$0) {}", has_bind_pat_parent);
-    check_pattern_is_applicable(r"fn my_fn() { let m$0 }", has_bind_pat_parent);
-}
-
-pub(crate) fn has_ref_parent(element: SyntaxElement) -> bool {
-    not_same_range_ancestor(element)
-        .filter(|it| it.kind() == REF_PAT || it.kind() == REF_EXPR)
-        .is_some()
-}
-#[test]
-fn test_has_ref_parent() {
-    check_pattern_is_applicable(r"fn my_fn(&m$0) {}", has_ref_parent);
-    check_pattern_is_applicable(r"fn my() { let &m$0 }", has_ref_parent);
-}
-
-pub(crate) fn has_item_list_or_source_file_parent(element: SyntaxElement) -> bool {
-    match not_same_range_ancestor(element) {
-        Some(it) => it.kind() == SOURCE_FILE || it.kind() == ITEM_LIST,
-        None => true,
-    }
-}
-#[test]
-fn test_has_item_list_or_source_file_parent() {
-    check_pattern_is_applicable(r"i$0", has_item_list_or_source_file_parent);
-    check_pattern_is_applicable(r"mod foo { f$0 }", has_item_list_or_source_file_parent);
 }
 
 pub(crate) fn is_match_arm(element: SyntaxElement) -> bool {
@@ -160,12 +197,8 @@ pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
         .is_some()
 }
 
-fn not_same_range_ancestor(element: SyntaxElement) -> Option<SyntaxNode> {
-    element
-        .ancestors()
-        .take_while(|it| it.text_range() == element.text_range())
-        .last()
-        .and_then(|it| it.parent())
+pub(crate) fn not_same_range_ancestor(element: SyntaxElement) -> Option<SyntaxNode> {
+    element.ancestors().skip_while(|it| it.text_range() == element.text_range()).next()
 }
 
 fn previous_non_trivia_token(token: SyntaxToken) -> Option<SyntaxToken> {
