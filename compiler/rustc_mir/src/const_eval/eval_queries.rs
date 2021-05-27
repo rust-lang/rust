@@ -16,6 +16,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{Abi, LayoutOf};
+use std::borrow::Cow;
 use std::convert::TryInto;
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
@@ -328,11 +329,22 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 ))
             } else {
                 let msg = if is_static {
-                    "could not evaluate static initializer"
+                    Cow::from("could not evaluate static initializer")
                 } else {
-                    "evaluation of constant value failed"
+                    // If the current item has generics, we'd like to enrich the message with the
+                    // instance and its substs: to show the actual compile-time values, in addition to
+                    // the expression, leading to the const eval error.
+                    let instance = &key.value.instance;
+                    if !instance.substs.is_empty() {
+                        let instance = with_no_trimmed_paths(|| instance.to_string());
+                        let msg = format!("evaluation of `{}` failed", instance);
+                        Cow::from(msg)
+                    } else {
+                        Cow::from("evaluation of constant value failed")
+                    }
                 };
-                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), msg))
+
+                Err(err.report_as_error(ecx.tcx.at(ecx.cur_span()), &msg))
             }
         }
         Ok(mplace) => {
