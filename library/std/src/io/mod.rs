@@ -1592,7 +1592,7 @@ pub trait Write {
                 if output.error.is_err() {
                     output.error
                 } else {
-                    Err(Error::new_const(ErrorKind::Other, &"formatter error"))
+                    Err(Error::new_const(ErrorKind::Unknown, &"formatter error"))
                 }
             }
         }
