@@ -14,6 +14,7 @@ pub(crate) fn maybe_create_entry_wrapper(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
     is_jit: bool,
+    is_primary_cgu: bool,
 ) {
     let (main_def_id, is_main_fn) = match tcx.entry_fn(()) {
         Some((def_id, entry_ty)) => (
@@ -26,8 +27,12 @@ pub(crate) fn maybe_create_entry_wrapper(
         None => return,
     };
 
-    let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
-    if !is_jit && module.get_name(&*tcx.symbol_name(instance).name).is_none() {
+    if main_def_id.is_local() {
+        let instance = Instance::mono(tcx, main_def_id).polymorphize(tcx);
+        if !is_jit && module.get_name(&*tcx.symbol_name(instance).name).is_none() {
+            return;
+        }
+    } else if !is_primary_cgu {
         return;
     }
 

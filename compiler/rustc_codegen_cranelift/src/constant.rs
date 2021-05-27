@@ -7,7 +7,8 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorReported;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    alloc_range, read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
+    alloc_range, read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc,
+    Scalar,
 };
 use rustc_middle::ty::ConstKind;
 
@@ -375,8 +376,19 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         data_ctx.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
-            // FIXME set correct segment for Mach-O files
-            data_ctx.set_segment_section("", &*section_name);
+            let (segment_name, section_name) = if tcx.sess.target.is_like_osx {
+                if let Some(names) = section_name.split_once(',') {
+                    names
+                } else {
+                    tcx.sess.fatal(&format!(
+                        "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
+                        section_name
+                    ));
+                }
+            } else {
+                ("", &*section_name)
+            };
+            data_ctx.set_segment_section(segment_name, section_name);
         }
 
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
@@ -438,12 +450,89 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
     operand: &Operand<'tcx>,
 ) -> Option<ConstValue<'tcx>> {
     match operand {
-        Operand::Copy(_) | Operand::Move(_) => None,
         Operand::Constant(const_) => match const_.literal {
             ConstantKind::Ty(const_) => {
                 fx.monomorphize(const_).eval(fx.tcx, ParamEnv::reveal_all()).val.try_to_value()
             }
             ConstantKind::Val(val, _) => Some(val),
         },
+        // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
+        // inside a temporary before being passed to the intrinsic requiring the const argument.
+        // This code tries to find a single constant defining definition of the referenced local.
+        Operand::Copy(place) | Operand::Move(place) => {
+            if !place.projection.is_empty() {
+                return None;
+            }
+            let mut computed_const_val = None;
+            for bb_data in fx.mir.basic_blocks() {
+                for stmt in &bb_data.statements {
+                    match &stmt.kind {
+                        StatementKind::Assign(local_and_rvalue) if &local_and_rvalue.0 == place => {
+                            match &local_and_rvalue.1 {
+                                Rvalue::Cast(CastKind::Misc, operand, ty) => {
+                                    if computed_const_val.is_some() {
+                                        return None; // local assigned twice
+                                    }
+                                    if !matches!(ty.kind(), ty::Uint(_) | ty::Int(_)) {
+                                        return None;
+                                    }
+                                    let const_val = mir_operand_get_const_val(fx, operand)?;
+                                    if fx.layout_of(ty).size
+                                        != const_val.try_to_scalar_int()?.size()
+                                    {
+                                        return None;
+                                    }
+                                    computed_const_val = Some(const_val);
+                                }
+                                Rvalue::Use(operand) => {
+                                    computed_const_val = mir_operand_get_const_val(fx, operand)
+                                }
+                                _ => return None,
+                            }
+                        }
+                        StatementKind::SetDiscriminant { place: stmt_place, variant_index: _ }
+                            if &**stmt_place == place =>
+                        {
+                            return None;
+                        }
+                        StatementKind::LlvmInlineAsm(_) | StatementKind::CopyNonOverlapping(_) => {
+                            return None;
+                        } // conservative handling
+                        StatementKind::Assign(_)
+                        | StatementKind::FakeRead(_)
+                        | StatementKind::SetDiscriminant { .. }
+                        | StatementKind::StorageLive(_)
+                        | StatementKind::StorageDead(_)
+                        | StatementKind::Retag(_, _)
+                        | StatementKind::AscribeUserType(_, _)
+                        | StatementKind::Coverage(_)
+                        | StatementKind::Nop => {}
+                    }
+                }
+                match &bb_data.terminator().kind {
+                    TerminatorKind::Goto { .. }
+                    | TerminatorKind::SwitchInt { .. }
+                    | TerminatorKind::Resume
+                    | TerminatorKind::Abort
+                    | TerminatorKind::Return
+                    | TerminatorKind::Unreachable
+                    | TerminatorKind::Drop { .. }
+                    | TerminatorKind::Assert { .. } => {}
+                    TerminatorKind::DropAndReplace { .. }
+                    | TerminatorKind::Yield { .. }
+                    | TerminatorKind::GeneratorDrop
+                    | TerminatorKind::FalseEdge { .. }
+                    | TerminatorKind::FalseUnwind { .. } => unreachable!(),
+                    TerminatorKind::InlineAsm { .. } => return None,
+                    TerminatorKind::Call { destination: Some((call_place, _)), .. }
+                        if call_place == place =>
+                    {
+                        return None;
+                    }
+                    TerminatorKind::Call { .. } => {}
+                }
+            }
+            computed_const_val
+        }
     }
 }

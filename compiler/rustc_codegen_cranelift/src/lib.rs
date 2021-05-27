@@ -256,6 +256,8 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
 
     flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
 
+    flags_builder.set("regalloc", &backend_config.regalloc).unwrap();
+
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
@@ -277,21 +279,23 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
             builder
         }
         Some(value) => {
-            let mut builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
+            let mut builder =
+                cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
             if let Err(_) = builder.enable(value) {
                 sess.fatal("The specified target cpu isn't currently supported by Cranelift.");
             }
             builder
         }
         None => {
-            let mut builder = cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
+            let mut builder =
+                cranelift_codegen::isa::lookup_variant(target_triple, variant).unwrap();
             // Don't use "haswell" as the default, as it implies `has_lzcnt`.
             // macOS CI is still at Ivy Bridge EP, so `lzcnt` is interpreted as `bsr`.
             builder.enable("nehalem").unwrap();
             builder
         }
     };
-    
+
     isa_builder.finish(flags)
 }
 

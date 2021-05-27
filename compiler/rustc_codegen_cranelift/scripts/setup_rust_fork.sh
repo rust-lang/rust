@@ -24,18 +24,6 @@ index 5bd1147cad5..10d68a2ff14 100644
 +
  [patch."https://github.com/rust-lang/rust-clippy"]
  clippy_lints = { path = "src/tools/clippy/clippy_lints" }
-diff --git a/compiler/rustc_data_structures/Cargo.toml b/compiler/rustc_data_structures/Cargo.toml
-index 23e689fcae7..5f077b765b6 100644
---- a/compiler/rustc_data_structures/Cargo.toml
-+++ b/compiler/rustc_data_structures/Cargo.toml
-@@ -32,7 +32,6 @@ tempfile = "3.0.5"
-
- [dependencies.parking_lot]
- version = "0.11"
--features = ["nightly"]
-
- [target.'cfg(windows)'.dependencies]
- winapi = { version = "0.3", features = ["fileapi", "psapi"] }
 diff --git a/library/alloc/Cargo.toml b/library/alloc/Cargo.toml
 index d95b5b7f17f..00b6f0e3635 100644
 --- a/library/alloc/Cargo.toml
@@ -44,11 +32,12 @@ index d95b5b7f17f..00b6f0e3635 100644
 
  [dependencies]
  core = { path = "../core" }
--compiler_builtins = { version = "0.1.39", features = ['rustc-dep-of-std'] }
-+compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std', 'no-asm'] }
+-compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
++compiler_builtins = { version = "0.1.43", features = ['rustc-dep-of-std', 'no-asm'] }
 
  [dev-dependencies]
  rand = "0.7"
+ rand_xorshift = "0.2"
 EOF
 
 cat > config.toml <<EOF
