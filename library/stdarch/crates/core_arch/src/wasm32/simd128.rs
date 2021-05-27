@@ -2026,8 +2026,12 @@ pub unsafe fn i8x16_all_true(a: v128) -> bool {
 #[cfg_attr(test, assert_instr(i8x16.bitmask))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i8x16.bitmask"))]
-pub unsafe fn i8x16_bitmask(a: v128) -> i32 {
-    llvm_bitmask_i8x16(transmute(a))
+pub unsafe fn i8x16_bitmask(a: v128) -> u16 {
+    // FIXME(https://bugs.llvm.org/show_bug.cgi?id=50507) - this produces an
+    // extraneous `i32.and` instruction against a mask of 65535 when converting
+    // from the native intrinsic's i32 return value to our desired u16. This
+    // shouldn't be necessary, though, but requires upstream LLVM changes.
+    llvm_bitmask_i8x16(transmute(a)) as u16
 }
 
 /// Converts two input vectors into a smaller lane vector by narrowing each
@@ -2277,8 +2281,8 @@ pub unsafe fn i16x8_all_true(a: v128) -> bool {
 #[cfg_attr(test, assert_instr(i16x8.bitmask))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i16x8.bitmask"))]
-pub unsafe fn i16x8_bitmask(a: v128) -> i32 {
-    llvm_bitmask_i16x8(transmute(a))
+pub unsafe fn i16x8_bitmask(a: v128) -> u8 {
+    llvm_bitmask_i16x8(transmute(a)) as u8
 }
 
 /// Converts two input vectors into a smaller lane vector by narrowing each
@@ -2633,8 +2637,8 @@ pub unsafe fn i32x4_all_true(a: v128) -> bool {
 #[cfg_attr(test, assert_instr(i32x4.bitmask))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i32x4.bitmask"))]
-pub unsafe fn i32x4_bitmask(a: v128) -> i32 {
-    llvm_bitmask_i32x4(transmute(a))
+pub unsafe fn i32x4_bitmask(a: v128) -> u8 {
+    llvm_bitmask_i32x4(transmute(a)) as u8
 }
 
 /// Converts low half of the smaller lane vector to a larger lane
@@ -2904,8 +2908,8 @@ pub unsafe fn i64x2_all_true(a: v128) -> bool {
 #[cfg_attr(test, assert_instr(i64x2.bitmask))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.bitmask"))]
-pub unsafe fn i64x2_bitmask(a: v128) -> i32 {
-    llvm_bitmask_i64x2(transmute(a))
+pub unsafe fn i64x2_bitmask(a: v128) -> u8 {
+    llvm_bitmask_i64x2(transmute(a)) as u8
 }
 
 /// Converts low half of the smaller lane vector to a larger lane
@@ -3805,27 +3809,27 @@ pub mod tests {
             let ones = i8x16_splat(!0);
 
             assert_eq!(i8x16_bitmask(zero), 0);
-            assert_eq!(i8x16_bitmask(ones), (1 << 16) - 1);
+            assert_eq!(i8x16_bitmask(ones), 0xffff);
             assert_eq!(i8x16_bitmask(i8x16_splat(i8::MAX)), 0);
-            assert_eq!(i8x16_bitmask(i8x16_splat(i8::MIN)), (1 << 16) - 1);
+            assert_eq!(i8x16_bitmask(i8x16_splat(i8::MIN)), 0xffff);
             assert_eq!(i8x16_bitmask(i8x16_replace_lane::<1>(zero, -1)), 0b10);
 
             assert_eq!(i16x8_bitmask(zero), 0);
-            assert_eq!(i16x8_bitmask(ones), (1 << 8) - 1);
+            assert_eq!(i16x8_bitmask(ones), 0xff);
             assert_eq!(i16x8_bitmask(i16x8_splat(i16::MAX)), 0);
-            assert_eq!(i16x8_bitmask(i16x8_splat(i16::MIN)), (1 << 8) - 1);
+            assert_eq!(i16x8_bitmask(i16x8_splat(i16::MIN)), 0xff);
             assert_eq!(i16x8_bitmask(i16x8_replace_lane::<1>(zero, -1)), 0b10);
 
             assert_eq!(i32x4_bitmask(zero), 0);
-            assert_eq!(i32x4_bitmask(ones), (1 << 4) - 1);
+            assert_eq!(i32x4_bitmask(ones), 0b1111);
             assert_eq!(i32x4_bitmask(i32x4_splat(i32::MAX)), 0);
-            assert_eq!(i32x4_bitmask(i32x4_splat(i32::MIN)), (1 << 4) - 1);
+            assert_eq!(i32x4_bitmask(i32x4_splat(i32::MIN)), 0b1111);
             assert_eq!(i32x4_bitmask(i32x4_replace_lane::<1>(zero, -1)), 0b10);
 
             assert_eq!(i64x2_bitmask(zero), 0);
-            assert_eq!(i64x2_bitmask(ones), (1 << 2) - 1);
+            assert_eq!(i64x2_bitmask(ones), 0b11);
             assert_eq!(i64x2_bitmask(i64x2_splat(i64::MAX)), 0);
-            assert_eq!(i64x2_bitmask(i64x2_splat(i64::MIN)), (1 << 2) - 1);
+            assert_eq!(i64x2_bitmask(i64x2_splat(i64::MIN)), 0b11);
             assert_eq!(i64x2_bitmask(i64x2_replace_lane::<1>(zero, -1)), 0b10);
         }
     }
