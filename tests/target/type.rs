@@ -20,6 +20,23 @@ struct F {
     ),
 }
 
+// anonymous structs and unions
+struct Foo {
+    foo: u8,
+    bar: union {
+        bar: u8,
+        baz: u16,
+    },
+}
+
+union Bar {
+    foobar: u8,
+    barfoo: struct {
+        foobaz: u8,
+        barbaz: u16,
+    },
+}
+
 fn issue_1006(def_id_to_string: for<'a, 'b> unsafe fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String) {}
 
 fn impl_trait_fn_1() -> impl Fn(i32) -> Option<u8> {}
