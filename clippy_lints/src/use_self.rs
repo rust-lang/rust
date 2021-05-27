@@ -386,7 +386,7 @@ fn should_lint_ty(hir_ty: &hir::Ty<'_>, ty: Ty<'_>, self_ty: Ty<'_>) -> bool {
         if same_type_and_consts(ty, self_ty);
         if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
         then {
-            !matches!(path.res, def::Res::SelfTy(..))
+            !matches!(path.res, Res::SelfTy(..) | Res::Def(DefKind::TyParam, _))
         } else {
             false
         }
