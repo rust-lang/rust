@@ -3,8 +3,6 @@
 // Test that a feature gate is needed to use `impl Trait` as the
 // return type of an async.
 
-#![feature(member_constraints)]
-
 trait Trait<'a> { }
 impl<T> Trait<'_> for T { }
 

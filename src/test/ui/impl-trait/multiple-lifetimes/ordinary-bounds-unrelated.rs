@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(member_constraints)]
-
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}
 

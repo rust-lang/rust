@@ -1,11 +1,11 @@
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-74761.rs:11:6
+  --> $DIR/issue-74761.rs:10:6
    |
 LL | impl<'a, 'b> A for () {
    |      ^^ unconstrained lifetime parameter
 
 error[E0207]: the lifetime parameter `'b` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/issue-74761.rs:11:10
+  --> $DIR/issue-74761.rs:10:10
    |
 LL | impl<'a, 'b> A for () {
    |          ^^ unconstrained lifetime parameter
