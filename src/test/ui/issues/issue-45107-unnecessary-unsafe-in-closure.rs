@@ -1,3 +1,6 @@
+// revisions: mir thir
+// [thir]compile-flags: -Zthir-unsafeck
+
 #[deny(unused_unsafe)]
 fn main() {
     let mut v = Vec::<i32>::with_capacity(24);
