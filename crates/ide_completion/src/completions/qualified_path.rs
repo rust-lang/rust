@@ -27,6 +27,9 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 if let ScopeDef::MacroDef(macro_def) = def {
                     acc.add_macro(ctx, Some(name.to_string()), macro_def);
                 }
+                if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
+                    acc.add_resolution(ctx, name.to_string(), &def);
+                }
             }
         }
         return;
@@ -614,19 +617,20 @@ fn main() { let _ = crate::$0 }
     }
 
     #[test]
-    fn completes_qualified_macros_in_impl() {
+    fn completes_in_assoc_item_list() {
         check(
             r#"
 #[macro_export]
 macro_rules! foo { () => {} }
+mod bar {}
 
 struct MyStruct {}
-
 impl MyStruct {
     crate::$0
 }
 "#,
             expect![[r##"
+                md bar
                 ma foo! #[macro_export] macro_rules! foo
             "##]],
         );

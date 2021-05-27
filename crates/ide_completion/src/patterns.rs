@@ -62,7 +62,6 @@ pub(crate) fn determine_location(tok: SyntaxToken) -> Option<ImmediateLocation> 
             ast::SourceFile(_it) => ImmediateLocation::ItemList,
             ast::ItemList(_it) => ImmediateLocation::ItemList,
             ast::RefExpr(_it) => ImmediateLocation::RefExpr,
-            ast::RefPat(_it) => ImmediateLocation::RefExpr,
             ast::RecordField(_it) => ImmediateLocation::RecordField,
             ast::AssocItemList(it) => match it.syntax().parent().map(|it| it.kind()) {
                 Some(IMPL) => ImmediateLocation::Impl,
