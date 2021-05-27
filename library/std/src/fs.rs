@@ -1026,7 +1026,7 @@ impl Metadata {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "is_symlink", issue = "none")]
+    #[unstable(feature = "is_symlink", issue = "85748")]
     pub fn is_symlink(&self) -> bool {
         self.file_type().is_symlink()
     }

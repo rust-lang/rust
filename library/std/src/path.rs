@@ -2588,7 +2588,7 @@ impl Path {
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
     /// ```
-    #[unstable(feature = "is_symlink", issue = "none")]
+    #[unstable(feature = "is_symlink", issue = "85748")]
     pub fn is_symlink(&self) -> bool {
         fs::symlink_metadata(self).map(|m| m.is_symlink()).unwrap_or(false)
     }
