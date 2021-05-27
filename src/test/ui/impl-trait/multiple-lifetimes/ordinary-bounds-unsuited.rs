@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(member_constraints)]
-
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}
 
@@ -18,7 +16,7 @@ struct Ordinary<'a>(&'a u8);
 // consider the loans for both `'a` and `'b` alive.
 
 fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
-    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
+//~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
 {
     // We return a value:
     //
