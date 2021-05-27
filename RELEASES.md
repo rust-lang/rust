@@ -190,8 +190,8 @@ related tools.
 [`cmp::max_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.max_by.html
 [`cmp::min_by_key`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by_key.html
 [`cmp::min_by`]: https://doc.rust-lang.org/beta/std/cmp/fn.min_by.html
-[`f32::is_subnormal`]: https://doc.rust-lang.org/f32.html#method.is_subnormal
-[`f64::is_subnormal`]: https://doc.rust-lang.org/f64.html#method.is_subnormal
+[`f32::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
+[`f64::is_subnormal`]: https://doc.rust-lang.org/std/primitive.f64.html#method.is_subnormal
 [ietf6943]: https://datatracker.ietf.org/doc/html/rfc6943#section-3.1.1
 
 
