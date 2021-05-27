@@ -9992,3 +9992,6 @@ mod shift_and_insert_tests;
 
 #[cfg(all(test, target_arch = "arm"))]
 mod load_tests;
+
+#[cfg(all(test, target_arch = "arm"))]
+mod store_tests;
