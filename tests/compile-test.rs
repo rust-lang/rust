@@ -4,8 +4,8 @@
 use compiletest_rs as compiletest;
 use compiletest_rs::common::Mode as TestMode;
 
-use std::env::{self, set_var, var};
-use std::ffi::OsStr;
+use std::env::{self, remove_var, set_var, var_os};
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -88,9 +88,11 @@ fn default_config() -> compiletest::Config {
     config
 }
 
-fn run_mode(cfg: &mut compiletest::Config) {
+fn run_ui(cfg: &mut compiletest::Config) {
     cfg.mode = TestMode::Ui;
     cfg.src_base = Path::new("tests").join("ui");
+    // use tests/clippy.toml
+    let _g = VarGuard::set("CARGO_MANIFEST_DIR", std::fs::canonicalize("tests").unwrap());
     compiletest::run_tests(cfg);
 }
 
@@ -114,7 +116,7 @@ fn run_ui_toml(config: &mut compiletest::Config) {
                 continue;
             }
             let dir_path = dir.path();
-            set_var("CARGO_MANIFEST_DIR", &dir_path);
+            let _g = VarGuard::set("CARGO_MANIFEST_DIR", &dir_path);
             for file in fs::read_dir(&dir_path)? {
                 let file = file?;
                 let file_path = file.path();
@@ -145,9 +147,7 @@ fn run_ui_toml(config: &mut compiletest::Config) {
 
     let tests = compiletest::make_tests(config);
 
-    let manifest_dir = var("CARGO_MANIFEST_DIR").unwrap_or_default();
     let res = run_tests(config, tests);
-    set_var("CARGO_MANIFEST_DIR", &manifest_dir);
     match res {
         Ok(true) => {},
         Ok(false) => panic!("Some tests failed"),
@@ -208,7 +208,7 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
                         Some("main.rs") => {},
                         _ => continue,
                     }
-                    set_var("CLIPPY_CONF_DIR", case.path());
+                    let _g = VarGuard::set("CLIPPY_CONF_DIR", case.path());
                     let paths = compiletest::common::TestPaths {
                         file: file_path,
                         base: config.src_base.clone(),
@@ -236,10 +236,8 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
     let tests = compiletest::make_tests(config);
 
     let current_dir = env::current_dir().unwrap();
-    let conf_dir = var("CLIPPY_CONF_DIR").unwrap_or_default();
     let res = run_tests(config, &config.filters, tests);
     env::set_current_dir(current_dir).unwrap();
-    set_var("CLIPPY_CONF_DIR", conf_dir);
 
     match res {
         Ok(true) => {},
@@ -260,8 +258,32 @@ fn prepare_env() {
 fn compile_test() {
     prepare_env();
     let mut config = default_config();
-    run_mode(&mut config);
+    run_ui(&mut config);
     run_ui_toml(&mut config);
     run_ui_cargo(&mut config);
     run_internal_tests(&mut config);
+}
+
+/// Restores an env var on drop
+#[must_use]
+struct VarGuard {
+    key: &'static str,
+    value: Option<OsString>,
+}
+
+impl VarGuard {
+    fn set(key: &'static str, val: impl AsRef<OsStr>) -> Self {
+        let value = var_os(key);
+        set_var(key, val);
+        Self { key, value }
+    }
+}
+
+impl Drop for VarGuard {
+    fn drop(&mut self) {
+        match self.value.as_deref() {
+            None => remove_var(self.key),
+            Some(value) => set_var(self.key, value),
+        }
+    }
 }

@@ -393,7 +393,6 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore) {
 
 #[doc(hidden)]
 pub fn read_conf(sess: &Session) -> Conf {
-    use std::path::Path;
     let file_name = match utils::conf::lookup_conf_file() {
         Ok(Some(path)) => path,
         Ok(None) => return Conf::default(),
@@ -402,16 +401,6 @@ pub fn read_conf(sess: &Session) -> Conf {
                 .emit();
             return Conf::default();
         },
-    };
-
-    let file_name = if file_name.is_relative() {
-        sess.local_crate_source_file
-            .as_deref()
-            .and_then(Path::parent)
-            .unwrap_or_else(|| Path::new(""))
-            .join(file_name)
-    } else {
-        file_name
     };
 
     let TryConf { conf, errors } = utils::conf::read(&file_name);
@@ -492,6 +481,14 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_removed(
         "clippy::filter_map",
         "this lint has been replaced by `manual_filter_map`, a more specific lint",
+    );
+    store.register_removed(
+        "clippy::pub_enum_variant_names",
+        "set the `avoid_breaking_exported_api` config option to `false` to enable the `enum_variant_names` lint for public items",
+    );
+    store.register_removed(
+        "clippy::wrong_pub_self_convention",
+        "set the `avoid_breaking_exported_api` config option to `false` to enable the `wrong_self_convention` lint for public items",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
@@ -606,7 +603,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         enum_variants::MODULE_NAME_REPETITIONS,
-        enum_variants::PUB_ENUM_VARIANT_NAMES,
         eq_op::EQ_OP,
         eq_op::OP_REF,
         erasing_op::ERASING_OP,
@@ -790,7 +786,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         methods::UNNECESSARY_LAZY_EVALUATIONS,
         methods::UNWRAP_USED,
         methods::USELESS_ASREF,
-        methods::WRONG_PUB_SELF_CONVENTION,
         methods::WRONG_SELF_CONVENTION,
         methods::ZST_OFFSET,
         minmax::MIN_MAX,
@@ -1014,7 +1009,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(methods::FILETYPE_IS_FILE),
         LintId::of(methods::GET_UNWRAP),
         LintId::of(methods::UNWRAP_USED),
-        LintId::of(methods::WRONG_PUB_SELF_CONVENTION),
         LintId::of(misc::FLOAT_CMP_CONST),
         LintId::of(misc_early::UNNEEDED_FIELD_PATTERN),
         LintId::of(missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS),
@@ -1066,7 +1060,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         LintId::of(doc::MISSING_PANICS_DOC),
         LintId::of(empty_enum::EMPTY_ENUM),
         LintId::of(enum_variants::MODULE_NAME_REPETITIONS),
-        LintId::of(enum_variants::PUB_ENUM_VARIANT_NAMES),
         LintId::of(eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
         LintId::of(excessive_bools::FN_PARAMS_EXCESSIVE_BOOLS),
         LintId::of(excessive_bools::STRUCT_EXCESSIVE_BOOLS),
@@ -1850,7 +1843,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         })
     });
 
-    store.register_late_pass(move || box methods::Methods::new(msrv));
+    let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
+    store.register_late_pass(move || box methods::Methods::new(avoid_breaking_exported_api, msrv));
     store.register_late_pass(move || box matches::Matches::new(msrv));
     store.register_early_pass(move || box manual_non_exhaustive::ManualNonExhaustive::new(msrv));
     store.register_late_pass(move || box manual_strip::ManualStrip::new(msrv));
@@ -1932,6 +1926,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let pass_by_ref_or_value = pass_by_ref_or_value::PassByRefOrValue::new(
         conf.trivial_copy_size_limit,
         conf.pass_by_value_size_limit,
+        conf.avoid_breaking_exported_api,
         &sess.target,
     );
     store.register_late_pass(move || box pass_by_ref_or_value);
@@ -1958,7 +1953,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| box redundant_clone::RedundantClone);
     store.register_late_pass(|| box slow_vector_initialization::SlowVectorInit);
     store.register_late_pass(|| box unnecessary_sort_by::UnnecessarySortBy);
-    store.register_late_pass(|| box unnecessary_wraps::UnnecessaryWraps);
+    store.register_late_pass(move || box unnecessary_wraps::UnnecessaryWraps::new(avoid_breaking_exported_api));
     store.register_late_pass(|| box assertions_on_constants::AssertionsOnConstants);
     store.register_late_pass(|| box transmuting_null::TransmutingNull);
     store.register_late_pass(|| box path_buf_push_overwrite::PathBufPushOverwrite);
@@ -1999,10 +1994,10 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let literal_representation_threshold = conf.literal_representation_threshold;
     store.register_early_pass(move || box literal_representation::DecimalLiteralRepresentation::new(literal_representation_threshold));
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
-    store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
+    store.register_late_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold, avoid_breaking_exported_api));
     store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
     let upper_case_acronyms_aggressive = conf.upper_case_acronyms_aggressive;
-    store.register_early_pass(move || box upper_case_acronyms::UpperCaseAcronyms::new(upper_case_acronyms_aggressive));
+    store.register_late_pass(move || box upper_case_acronyms::UpperCaseAcronyms::new(avoid_breaking_exported_api, upper_case_acronyms_aggressive));
     store.register_late_pass(|| box default::Default::default());
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);

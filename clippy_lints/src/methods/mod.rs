@@ -283,30 +283,6 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** This is the same as
-    /// [`wrong_self_convention`](#wrong_self_convention), but for public items.
-    ///
-    /// **Why is this bad?** See [`wrong_self_convention`](#wrong_self_convention).
-    ///
-    /// **Known problems:** Actually *renaming* the function may break clients if
-    /// the function is part of the public interface. In that case, be mindful of
-    /// the stability guarantees you've given your users.
-    ///
-    /// **Example:**
-    /// ```rust
-    /// # struct X;
-    /// impl<'a> X {
-    ///     pub fn as_str(self) -> &'a str {
-    ///         "foo"
-    ///     }
-    /// }
-    /// ```
-    pub WRONG_PUB_SELF_CONVENTION,
-    restriction,
-    "defining a public method named with an established prefix (like \"into_\") that takes `self` with the wrong convention"
-}
-
-declare_clippy_lint! {
     /// **What it does:** Checks for usage of `ok().expect(..)`.
     ///
     /// **Why is this bad?** Because you usually call `expect()` on the `Result`
@@ -1658,13 +1634,17 @@ declare_clippy_lint! {
 }
 
 pub struct Methods {
+    avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
 }
 
 impl Methods {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
-        Self { msrv }
+    pub fn new(avoid_breaking_exported_api: bool, msrv: Option<RustcVersion>) -> Self {
+        Self {
+            avoid_breaking_exported_api,
+            msrv,
+        }
     }
 }
 
@@ -1673,7 +1653,6 @@ impl_lint_pass!(Methods => [
     EXPECT_USED,
     SHOULD_IMPLEMENT_TRAIT,
     WRONG_SELF_CONVENTION,
-    WRONG_PUB_SELF_CONVENTION,
     OK_EXPECT,
     MAP_UNWRAP_OR,
     RESULT_MAP_OR_INTO_OPTION,
@@ -1838,11 +1817,13 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     }
                 }
 
-                if sig.decl.implicit_self.has_implicit_self() {
+                if sig.decl.implicit_self.has_implicit_self()
+                    && !(self.avoid_breaking_exported_api
+                        && cx.access_levels.is_exported(impl_item.hir_id()))
+                {
                     wrong_self_convention::check(
                         cx,
                         &name,
-                        item.vis.node.is_pub(),
                         self_ty,
                         first_arg_ty,
                         first_arg.pat.span,
@@ -1915,7 +1896,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 wrong_self_convention::check(
                     cx,
                     &item.ident.name.as_str(),
-                    false,
                     self_ty,
                     first_arg_ty,
                     first_arg_span,
