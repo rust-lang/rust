@@ -2568,11 +2568,11 @@ impl Path {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 
-    /// Returns true if the path exists on disk and is pointing at a symbolic link file.
+    /// Returns true if the path exists on disk and is pointing at a symbolic link.
     /// This method can alse be used to check whether symlink exists.
     ///
     /// This function will not traverse symbolic links.
-    /// In case of broken symbolic links this will also return true.
+    /// In case of a broken symbolic link this will also return true.
     ///
     /// If you cannot access the directory containing the file, e.g., because of a
     /// permission error, this will return false.
@@ -2580,11 +2580,12 @@ impl Path {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(is_symlink)]
     /// use std::path::Path;
     /// use std::os::unix::fs::symlink;
     ///
-    /// let link_path = Path::new("/link");
-    /// symlink("/origin_does_not_exists/", link_path)?;
+    /// let link_path = Path::new("link");
+    /// symlink("/origin_does_not_exists/", link_path).unwrap();
     /// assert_eq!(link_path.is_symlink(), true);
     /// assert_eq!(link_path.exists(), false);
     /// ```
