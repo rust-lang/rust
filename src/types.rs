@@ -769,54 +769,14 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Tup(ref items) => {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
             }
-            ast::TyKind::AnonymousStruct(ref fields, recovered) => {
-                let ident = Ident::new(
-                    kw::Struct,
-                    mk_sp(self.span.lo(), self.span.lo() + BytePos(6)),
-                );
-                let data = ast::VariantData::Struct(fields.clone(), recovered);
-                let variant = ast::Variant {
-                    attrs: vec![],
-                    id: self.id,
-                    span: self.span,
-                    vis: DEFAULT_VISIBILITY,
-                    ident,
-                    data,
-                    disr_expr: None,
-                    is_placeholder: false,
-                };
-                format_struct_struct(
-                    &context,
-                    &StructParts::from_variant(&variant),
-                    fields,
-                    shape.indent,
-                    None,
-                )
-            }
-            ast::TyKind::AnonymousUnion(ref fields, recovered) => {
-                let ident = Ident::new(
-                    kw::Union,
-                    mk_sp(self.span.lo(), self.span.lo() + BytePos(5)),
-                );
-                let data = ast::VariantData::Struct(fields.clone(), recovered);
-                let variant = ast::Variant {
-                    attrs: vec![],
-                    id: self.id,
-                    span: self.span,
-                    vis: DEFAULT_VISIBILITY,
-                    ident,
-                    data,
-                    disr_expr: None,
-                    is_placeholder: false,
-                };
-                format_struct_struct(
-                    &context,
-                    &StructParts::from_variant(&variant),
-                    fields,
-                    shape.indent,
-                    None,
-                )
-            }
+            ast::TyKind::AnonymousStruct(ref fields, _)
+            | ast::TyKind::AnonymousUnion(ref fields, _) => format_struct_struct(
+                &context,
+                &StructParts::from_anonymous_type(&self),
+                fields,
+                shape.indent,
+                None,
+            ),
             ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
             }

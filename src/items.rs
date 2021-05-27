@@ -6,7 +6,7 @@ use std::cmp::{max, min, Ordering};
 use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
-use rustc_span::{symbol, BytePos, Span};
+use rustc_span::{symbol::kw, symbol::Ident, BytePos, Span};
 
 use crate::attr::filter_inline_attrs;
 use crate::comment::{
@@ -291,7 +291,7 @@ impl<'a> FmtVisitor<'a> {
     pub(crate) fn rewrite_fn_before_block(
         &mut self,
         indent: Indent,
-        ident: symbol::Ident,
+        ident: Ident,
         fn_sig: &FnSig<'_>,
         span: Span,
     ) -> Option<(String, FnBraceStyle)> {
@@ -315,7 +315,7 @@ impl<'a> FmtVisitor<'a> {
     pub(crate) fn rewrite_required_fn(
         &mut self,
         indent: Indent,
-        ident: symbol::Ident,
+        ident: Ident,
         sig: &ast::FnSig,
         generics: &ast::Generics,
         span: Span,
@@ -385,18 +385,14 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub(crate) fn visit_struct(&mut self, struct_parts: &StructParts<'_>) {
-        let is_tuple = match struct_parts.def {
-            ast::VariantData::Tuple(..) => true,
-            _ => false,
-        };
         let rewrite = format_struct(&self.get_context(), struct_parts, self.block_indent, None)
-            .map(|s| if is_tuple { s + ";" } else { s });
+            .map(|s| if struct_parts.is_tuple() { s + ";" } else { s });
         self.push_rewrite(struct_parts.span, rewrite);
     }
 
     pub(crate) fn visit_enum(
         &mut self,
-        ident: symbol::Ident,
+        ident: Ident,
         vis: &ast::Visibility,
         enum_def: &ast::EnumDef,
         generics: &ast::Generics,
@@ -957,11 +953,27 @@ fn rewrite_trait_ref(
     ))
 }
 
+enum StructPartsVariantData<'a> {
+    Unit,
+    Tuple(&'a [ast::FieldDef]),
+    Struct(&'a [ast::FieldDef]),
+}
+
+impl<'a> From<&'a ast::VariantData> for StructPartsVariantData<'a> {
+    fn from(variant_data: &'a ast::VariantData) -> Self {
+        match variant_data {
+            ast::VariantData::Unit(..) => StructPartsVariantData::Unit,
+            ast::VariantData::Tuple(ref fields, _) => StructPartsVariantData::Tuple(fields),
+            ast::VariantData::Struct(ref fields, _) => StructPartsVariantData::Struct(fields),
+        }
+    }
+}
+
 pub(crate) struct StructParts<'a> {
     prefix: &'a str,
-    ident: symbol::Ident,
+    ident: Ident,
     vis: &'a ast::Visibility,
-    def: &'a ast::VariantData,
+    def: StructPartsVariantData<'a>,
     generics: Option<&'a ast::Generics>,
     span: Span,
 }
@@ -971,12 +983,16 @@ impl<'a> StructParts<'a> {
         format_header(context, self.prefix, self.ident, self.vis, offset)
     }
 
+    pub(crate) fn is_tuple(&self) -> bool {
+        matches!(self.def, StructPartsVariantData::Tuple(..))
+    }
+
     pub(crate) fn from_variant(variant: &'a ast::Variant) -> Self {
         StructParts {
             prefix: "",
             ident: variant.ident,
             vis: &DEFAULT_VISIBILITY,
-            def: &variant.data,
+            def: StructPartsVariantData::from(&variant.data),
             generics: None,
             span: variant.span,
         }
@@ -992,9 +1008,26 @@ impl<'a> StructParts<'a> {
             prefix,
             ident: item.ident,
             vis: &item.vis,
-            def,
+            def: StructPartsVariantData::from(def),
             generics: Some(generics),
             span: item.span,
+        }
+    }
+
+    pub(crate) fn from_anonymous_type(ty: &'a ast::Ty) -> Self {
+        let (fields, kw, kw_length) = match ty.kind {
+            ast::TyKind::AnonymousStruct(ref fields, _) => (fields, kw::Struct, 6),
+            ast::TyKind::AnonymousUnion(ref fields, _) => (fields, kw::Union, 5),
+            _ => unreachable!(),
+        };
+
+        StructParts {
+            prefix: "",
+            ident: Ident::new(kw, mk_sp(ty.span.lo(), ty.span.lo() + BytePos(kw_length))),
+            vis: &DEFAULT_VISIBILITY,
+            def: StructPartsVariantData::Struct(fields),
+            generics: None,
+            span: ty.span,
         }
     }
 }
@@ -1005,12 +1038,12 @@ fn format_struct(
     offset: Indent,
     one_line_width: Option<usize>,
 ) -> Option<String> {
-    match *struct_parts.def {
-        ast::VariantData::Unit(..) => format_unit_struct(context, struct_parts, offset),
-        ast::VariantData::Tuple(ref fields, _) => {
+    match struct_parts.def {
+        StructPartsVariantData::Unit => format_unit_struct(context, struct_parts, offset),
+        StructPartsVariantData::Tuple(fields) => {
             format_tuple_struct(context, struct_parts, fields, offset)
         }
-        ast::VariantData::Struct(ref fields, _) => {
+        StructPartsVariantData::Struct(fields) => {
             format_struct_struct(context, struct_parts, fields, offset, one_line_width)
         }
     }
@@ -1222,7 +1255,7 @@ impl<'a> Rewrite for TraitAliasBounds<'a> {
 
 pub(crate) fn format_trait_alias(
     context: &RewriteContext<'_>,
-    ident: symbol::Ident,
+    ident: Ident,
     vis: &ast::Visibility,
     generics: &ast::Generics,
     generic_bounds: &ast::GenericBounds,
@@ -1500,7 +1533,7 @@ fn format_tuple_struct(
 fn rewrite_type<R: Rewrite>(
     context: &RewriteContext<'_>,
     indent: Indent,
-    ident: symbol::Ident,
+    ident: Ident,
     vis: &ast::Visibility,
     generics: &ast::Generics,
     generic_bounds_opt: Option<&ast::GenericBounds>,
@@ -1598,7 +1631,7 @@ fn rewrite_type<R: Rewrite>(
 pub(crate) fn rewrite_opaque_type(
     context: &RewriteContext<'_>,
     indent: Indent,
-    ident: symbol::Ident,
+    ident: Ident,
     generic_bounds: &ast::GenericBounds,
     generics: &ast::Generics,
     vis: &ast::Visibility,
@@ -1714,7 +1747,7 @@ pub(crate) fn rewrite_struct_field(
 pub(crate) struct StaticParts<'a> {
     prefix: &'a str,
     vis: &'a ast::Visibility,
-    ident: symbol::Ident,
+    ident: Ident,
     ty: &'a ast::Ty,
     mutability: ast::Mutability,
     expr_opt: Option<&'a ptr::P<ast::Expr>>,
@@ -1843,7 +1876,7 @@ fn rewrite_static(
 }
 
 pub(crate) fn rewrite_type_alias(
-    ident: symbol::Ident,
+    ident: Ident,
     ty_opt: Option<&ptr::P<ast::Ty>>,
     generics: &ast::Generics,
     generic_bounds_opt: Option<&ast::GenericBounds>,
@@ -1879,7 +1912,7 @@ impl<'a> Rewrite for OpaqueType<'a> {
 
 pub(crate) fn rewrite_opaque_impl_type(
     context: &RewriteContext<'_>,
-    ident: symbol::Ident,
+    ident: Ident,
     generics: &ast::Generics,
     generic_bounds: &ast::GenericBounds,
     indent: Indent,
@@ -1903,7 +1936,7 @@ pub(crate) fn rewrite_opaque_impl_type(
 }
 
 pub(crate) fn rewrite_associated_impl_type(
-    ident: symbol::Ident,
+    ident: Ident,
     vis: &ast::Visibility,
     defaultness: ast::Defaultness,
     ty_opt: Option<&ptr::P<ast::Ty>>,
@@ -2125,7 +2158,7 @@ pub(crate) fn span_hi_for_param(context: &RewriteContext<'_>, param: &ast::Param
 
 pub(crate) fn is_named_param(param: &ast::Param) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
-        ident.name != symbol::kw::Empty
+        ident.name != kw::Empty
     } else {
         true
     }
@@ -2142,7 +2175,7 @@ pub(crate) enum FnBraceStyle {
 fn rewrite_fn_base(
     context: &RewriteContext<'_>,
     indent: Indent,
-    ident: symbol::Ident,
+    ident: Ident,
     fn_sig: &FnSig<'_>,
     span: Span,
     fn_brace_style: FnBraceStyle,
@@ -2971,7 +3004,7 @@ fn rewrite_comments_before_after_where(
 fn format_header(
     context: &RewriteContext<'_>,
     item_name: &str,
-    ident: symbol::Ident,
+    ident: Ident,
     vis: &ast::Visibility,
     offset: Indent,
 ) -> String {
