@@ -91,11 +91,10 @@ fn test_has_ref_parent() {
 }
 
 pub(crate) fn has_item_list_or_source_file_parent(element: SyntaxElement) -> bool {
-    let ancestor = not_same_range_ancestor(element);
-    if !ancestor.is_some() {
-        return true;
+    match not_same_range_ancestor(element) {
+        Some(it) => it.kind() == SOURCE_FILE || it.kind() == ITEM_LIST,
+        None => true,
     }
-    ancestor.filter(|it| it.kind() == SOURCE_FILE || it.kind() == ITEM_LIST).is_some()
 }
 #[test]
 fn test_has_item_list_or_source_file_parent() {
@@ -151,25 +150,21 @@ fn test_has_impl_as_prev_sibling() {
 }
 
 pub(crate) fn is_in_loop_body(element: SyntaxElement) -> bool {
-    for node in element.ancestors() {
-        if node.kind() == FN || node.kind() == CLOSURE_EXPR {
-            break;
-        }
-        let loop_body = match_ast! {
-            match node {
-                ast::ForExpr(it) => it.loop_body(),
-                ast::WhileExpr(it) => it.loop_body(),
-                ast::LoopExpr(it) => it.loop_body(),
-                _ => None,
-            }
-        };
-        if let Some(body) = loop_body {
-            if body.syntax().text_range().contains_range(element.text_range()) {
-                return true;
-            }
-        }
-    }
-    false
+    element
+        .ancestors()
+        .take_while(|it| it.kind() != FN && it.kind() != CLOSURE_EXPR)
+        .find_map(|it| {
+            let loop_body = match_ast! {
+                match it {
+                    ast::ForExpr(it) => it.loop_body(),
+                    ast::WhileExpr(it) => it.loop_body(),
+                    ast::LoopExpr(it) => it.loop_body(),
+                    _ => None,
+                }
+            };
+            loop_body.filter(|it| it.syntax().text_range().contains_range(element.text_range()))
+        })
+        .is_some()
 }
 
 fn not_same_range_ancestor(element: SyntaxElement) -> Option<SyntaxNode> {

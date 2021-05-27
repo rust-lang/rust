@@ -31,6 +31,24 @@ pub(crate) enum PatternRefutability {
     Irrefutable,
 }
 
+/// Direct parent container of the cursor position
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum ImmediateLocation {
+    Impl,
+    Trait,
+    RecordFieldList,
+    RefPatOrExpr,
+    IdentPat,
+    BlockExpr,
+    ItemList,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PrevSibling {
+    Trait,
+    Impl,
+}
+
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
@@ -48,13 +66,18 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
     pub(super) name_ref_syntax: Option<ast::NameRef>,
-    pub(super) function_syntax: Option<ast::Fn>,
+
     pub(super) use_item_syntax: Option<ast::Use>,
-    pub(super) record_lit_syntax: Option<ast::RecordExpr>,
-    pub(super) record_pat_syntax: Option<ast::RecordPat>,
-    pub(super) record_field_syntax: Option<ast::RecordExprField>,
+
+    /// The parent function of the cursor position if it exists.
+    pub(super) function_def: Option<ast::Fn>,
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
+
+    /// RecordExpr the token is a field of
+    pub(super) record_lit_syntax: Option<ast::RecordExpr>,
+    /// RecordPat the token is a field of
+    pub(super) record_pat_syntax: Option<ast::RecordPat>,
 
     // potentially set if we are completing a lifetime
     pub(super) lifetime_syntax: Option<ast::Lifetime>,
@@ -65,6 +88,8 @@ pub(crate) struct CompletionContext<'a> {
     // potentially set if we are completing a name
     pub(super) is_pat_or_const: Option<PatternRefutability>,
     pub(super) is_param: bool,
+
+    pub(super) completion_location: Option<ImmediateLocation>,
 
     /// FIXME: `ActiveParameter` is string-based, which is very very wrong
     pub(super) active_parameter: Option<ActiveParameter>,
@@ -94,20 +119,12 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) locals: Vec<(String, Local)>,
 
     pub(super) mod_declaration_under_caret: Option<ast::Module>,
-    pub(super) has_trait_parent: bool,
-    pub(super) has_impl_parent: bool,
 
     // keyword patterns
     pub(super) previous_token: Option<SyntaxToken>,
-    pub(super) block_expr_parent: bool,
-    pub(super) bind_pat_parent: bool,
-    pub(super) ref_pat_parent: bool,
     pub(super) in_loop_body: bool,
-    pub(super) has_field_list_parent: bool,
-    pub(super) trait_as_prev_sibling: bool,
-    pub(super) impl_as_prev_sibling: bool,
+    pub(super) prev_sibling: Option<PrevSibling>,
     pub(super) is_match_arm: bool,
-    pub(super) has_item_list_or_source_file_parent: bool,
     pub(super) incomplete_let: bool,
 
     no_completion_required: bool,
@@ -159,11 +176,10 @@ impl<'a> CompletionContext<'a> {
             name_ref_syntax: None,
             lifetime_syntax: None,
             lifetime_param_syntax: None,
-            function_syntax: None,
+            function_def: None,
             use_item_syntax: None,
             record_lit_syntax: None,
             record_pat_syntax: None,
-            record_field_syntax: None,
             impl_def: None,
             active_parameter: ActiveParameter::at(db, position),
             is_label_ref: false,
@@ -185,17 +201,10 @@ impl<'a> CompletionContext<'a> {
             attribute_under_caret: None,
             mod_declaration_under_caret: None,
             previous_token: None,
-            block_expr_parent: false,
-            bind_pat_parent: false,
-            ref_pat_parent: false,
             in_loop_body: false,
-            has_trait_parent: false,
-            has_impl_parent: false,
-            has_field_list_parent: false,
-            trait_as_prev_sibling: false,
-            impl_as_prev_sibling: false,
+            completion_location: None,
+            prev_sibling: None,
             is_match_arm: false,
-            has_item_list_or_source_file_parent: false,
             no_completion_required: false,
             incomplete_let: false,
             locals,
@@ -274,23 +283,68 @@ impl<'a> CompletionContext<'a> {
         self.previous_token.as_ref().map_or(false, |tok| tok.kind() == kind)
     }
 
+    pub(crate) fn has_impl_or_trait_parent(&self) -> bool {
+        matches!(
+            self.completion_location,
+            Some(ImmediateLocation::Trait) | Some(ImmediateLocation::Impl)
+        )
+    }
+
+    pub(crate) fn has_block_expr_parent(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::BlockExpr))
+    }
+
+    pub(crate) fn has_item_list_parent(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::ItemList))
+    }
+
+    pub(crate) fn has_ident_or_ref_pat_parent(&self) -> bool {
+        matches!(
+            self.completion_location,
+            Some(ImmediateLocation::IdentPat) | Some(ImmediateLocation::RefPatOrExpr)
+        )
+    }
+
+    pub(crate) fn has_impl_parent(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::Impl))
+    }
+
+    pub(crate) fn has_field_list_parent(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::RecordFieldList))
+    }
+
+    pub(crate) fn has_impl_or_trait_prev_sibling(&self) -> bool {
+        self.prev_sibling.is_some()
+    }
+
     fn fill_keyword_patterns(&mut self, file_with_fake_ident: &SyntaxNode, offset: TextSize) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
         self.previous_token = previous_token(syntax_element.clone());
-        self.block_expr_parent = has_block_expr_parent(syntax_element.clone());
-        self.bind_pat_parent = has_bind_pat_parent(syntax_element.clone());
-        self.ref_pat_parent = has_ref_parent(syntax_element.clone());
         self.in_loop_body = is_in_loop_body(syntax_element.clone());
-        self.has_trait_parent = has_trait_parent(syntax_element.clone());
-        self.has_impl_parent = has_impl_parent(syntax_element.clone());
-        self.has_field_list_parent = has_field_list_parent(syntax_element.clone());
-        self.impl_as_prev_sibling = has_impl_as_prev_sibling(syntax_element.clone());
-        self.trait_as_prev_sibling = has_trait_as_prev_sibling(syntax_element.clone());
         self.is_match_arm = is_match_arm(syntax_element.clone());
+        if has_impl_as_prev_sibling(syntax_element.clone()) {
+            self.prev_sibling = Some(PrevSibling::Impl)
+        } else if has_trait_as_prev_sibling(syntax_element.clone()) {
+            self.prev_sibling = Some(PrevSibling::Trait)
+        }
 
-        self.has_item_list_or_source_file_parent =
-            has_item_list_or_source_file_parent(syntax_element.clone());
+        if has_block_expr_parent(syntax_element.clone()) {
+            self.completion_location = Some(ImmediateLocation::BlockExpr);
+        } else if has_bind_pat_parent(syntax_element.clone()) {
+            self.completion_location = Some(ImmediateLocation::IdentPat);
+        } else if has_ref_parent(syntax_element.clone()) {
+            self.completion_location = Some(ImmediateLocation::RefPatOrExpr);
+        } else if has_impl_parent(syntax_element.clone()) {
+            self.completion_location = Some(ImmediateLocation::Impl);
+        } else if has_field_list_parent(syntax_element.clone()) {
+            self.completion_location = Some(ImmediateLocation::RecordFieldList);
+        } else if has_trait_parent(syntax_element.clone()) {
+            self.completion_location = Some(ImmediateLocation::Trait);
+        } else if has_item_list_or_source_file_parent(syntax_element.clone()) {
+            self.completion_location = Some(ImmediateLocation::ItemList);
+        }
+
         self.mod_declaration_under_caret =
             find_node_at_offset::<ast::Module>(&file_with_fake_ident, offset)
                 .filter(|module| module.item_list().is_none());
@@ -542,30 +596,19 @@ impl<'a> CompletionContext<'a> {
             .last()
             .unwrap();
 
-        match top_node.parent().map(|it| it.kind()) {
-            Some(SOURCE_FILE) | Some(ITEM_LIST) => {
-                self.is_new_item = true;
-                return;
-            }
-            _ => (),
+        if matches!(top_node.parent().map(|it| it.kind()), Some(SOURCE_FILE) | Some(ITEM_LIST)) {
+            self.is_new_item = true;
+            return;
         }
 
         self.use_item_syntax =
             self.sema.token_ancestors_with_macros(self.token.clone()).find_map(ast::Use::cast);
 
-        self.function_syntax = self
+        self.function_def = self
             .sema
             .token_ancestors_with_macros(self.token.clone())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::Fn::cast);
-
-        self.record_field_syntax = self
-            .sema
-            .token_ancestors_with_macros(self.token.clone())
-            .take_while(|it| {
-                it.kind() != SOURCE_FILE && it.kind() != MODULE && it.kind() != CALL_EXPR
-            })
-            .find_map(ast::RecordExprField::cast);
 
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,
@@ -639,6 +682,7 @@ impl<'a> CompletionContext<'a> {
                 }
             }
         }
+
         if let Some(field_expr) = ast::FieldExpr::cast(parent.clone()) {
             // The receiver comes before the point of insertion of the fake
             // ident, so it should have the same range in the non-modified file
@@ -656,6 +700,7 @@ impl<'a> CompletionContext<'a> {
                     false
                 };
         }
+
         if let Some(method_call_expr) = ast::MethodCallExpr::cast(parent) {
             // As above
             self.dot_receiver = method_call_expr
