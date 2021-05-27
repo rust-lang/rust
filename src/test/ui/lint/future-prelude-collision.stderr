@@ -1,0 +1,28 @@
+warning: trait method `try_into` will become ambiguous in Rust 2021
+  --> $DIR/future-prelude-collision.rs:40:18
+   |
+LL |     let _: u32 = 3u8.try_into().unwrap();
+   |                  ^^^^^^^^^^^^^^ help: disambiguate the associated function: `TryIntoU32::try_into(3u8)`
+   |
+   = note: `#[warn(future_prelude_collision)]` on by default
+
+warning: trait-associated function `try_from` will become ambiguous in Rust 2021
+  --> $DIR/future-prelude-collision.rs:44:13
+   |
+LL |     let _ = u32::try_from(3u8).unwrap();
+   |             ^^^^^^^^^^^^^ help: disambiguate the associated function: `<u32 as TryFromU8>::try_from`
+
+warning: trait-associated function `from_iter` will become ambiguous in Rust 2021
+  --> $DIR/future-prelude-collision.rs:48:13
+   |
+LL |     let _ = <Vec<u8>>::from_iter(vec![1u8, 2, 3, 4, 5, 6].into_iter());
+   |             ^^^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `<Vec<u8> as FromByteIterator>::from_iter`
+
+warning: trait-associated function `try_from` will become ambiguous in Rust 2021
+  --> $DIR/future-prelude-collision.rs:55:18
+   |
+LL |     let _: u32 = <_>::try_from(3u8).unwrap();
+   |                  ^^^^^^^^^^^^^ help: disambiguate the associated function: `<_ as TryFromU8>::try_from`
+
+warning: 4 warnings emitted
+

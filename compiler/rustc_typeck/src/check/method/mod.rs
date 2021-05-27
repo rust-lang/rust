@@ -535,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let trait_name = tcx.def_path_str(pick.item.container.assert_trait());
 
                             let mut lint = lint.build(&format!(
-                                "trait method `{}` will become ambiguous in Rust 2021",
+                                "trait-associated function `{}` will become ambiguous in Rust 2021",
                                 method_name.name
                             ));
 
