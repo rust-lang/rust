@@ -2462,10 +2462,10 @@ impl Path {
     /// Returns `true` if the path points at an existing entity.
     ///
     /// This function will traverse symbolic links to query information about the
-    /// destination file. In case of broken symbolic links this will return `false`.
+    /// destination file.
     ///
-    /// If you cannot access the directory containing the file, e.g., because of a
-    /// permission error, this will return `false`.
+    /// If you cannot access the metadata of the file, e.g. because of a
+    /// permission error or broken symbolic links, this will return `false`.
     ///
     /// # Examples
     ///
@@ -2513,10 +2513,10 @@ impl Path {
     /// Returns `true` if the path exists on disk and is pointing at a regular file.
     ///
     /// This function will traverse symbolic links to query information about the
-    /// destination file. In case of broken symbolic links this will return `false`.
+    /// destination file.
     ///
-    /// If you cannot access the directory containing the file, e.g., because of a
-    /// permission error, this will return `false`.
+    /// If you cannot access the metadata of the file, e.g. because of a
+    /// permission error or broken symbolic links, this will return `false`.
     ///
     /// # Examples
     ///
@@ -2545,10 +2545,10 @@ impl Path {
     /// Returns `true` if the path exists on disk and is pointing at a directory.
     ///
     /// This function will traverse symbolic links to query information about the
-    /// destination file. In case of broken symbolic links this will return `false`.
+    /// destination file.
     ///
-    /// If you cannot access the directory containing the file, e.g., because of a
-    /// permission error, this will return `false`.
+    /// If you cannot access the metadata of the file, e.g. because of a
+    /// permission error or broken symbolic links, this will return `false`.
     ///
     /// # Examples
     ///
