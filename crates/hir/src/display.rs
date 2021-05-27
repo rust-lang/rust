@@ -427,10 +427,6 @@ impl HirDisplay for Trait {
         write!(f, "trait {}", data.name)?;
         let def_id = GenericDefId::TraitId(self.id);
         write_generic_params(def_id, f)?;
-        if !data.bounds.is_empty() {
-            write!(f, ": ")?;
-            f.write_joined(&*data.bounds, " + ")?;
-        }
         write_where_clause(def_id, f)?;
         Ok(())
     }
